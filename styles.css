@@ -158,6 +158,7 @@ h1, h2, h3, p { margin: 0; }
   border: 1px solid var(--line);
   border-radius: var(--r);
   background: color-mix(in srgb, var(--panel) 78%, var(--bg));
+  cursor: pointer;
   padding: var(--s3);
 }
 .version-form-column.active {
@@ -179,7 +180,7 @@ h1, h2, h3, p { margin: 0; }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.version-column-title:hover { color: var(--accent); }
+.version-form-column:hover .version-column-title { color: var(--accent); }
 .version-column-subtitle {
   min-width: 0;
   overflow: hidden;

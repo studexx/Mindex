@@ -426,9 +426,9 @@ function handleDetailClick(event) {
     return;
   }
 
-  const versionButton = event.target.closest("[data-version-id]");
-  if (versionButton) {
-    selectVersion(versionButton.dataset.versionId);
+  const versionTarget = event.target.closest("[data-version-id]");
+  if (versionTarget) {
+    selectVersion(versionTarget.dataset.versionId);
     return;
   }
 
@@ -1138,12 +1138,12 @@ function renderVersionFormColumn(song, version) {
     : normalizeForms((version.forms || []).map((form) => ({ ...form, song_id: version.id })));
 
   return `
-    <section class="version-form-column${active ? " active" : ""}">
+    <section class="version-form-column${active ? " active" : ""}" data-version-id="${escapeAttr(version.id)}" role="button" tabindex="0">
       <div class="version-column-head">
         <div class="version-column-title-block">
-          <button class="version-column-title" type="button" data-version-id="${escapeAttr(version.id)}">
+          <div class="version-column-title">
             ${escapeHtml(versionDisplayName(song, version))}
-          </button>
+          </div>
           ${renderVersionMetaLine(version)}
         </div>
         ${active ? `<span class="type-pill">Editing</span>` : ""}
@@ -1813,8 +1813,7 @@ function versionDisplayName(song, version) {
 function versionMetaLine(version) {
   const raw = version.raw_section_name || version.version_label || "";
   const original = raw.match(/\[([^\]]+)\]/)?.[1]?.trim();
-  const variant = raw.match(/\(([^)]*?)\)\s*$/)?.[1]?.trim();
-  return [original, variant].filter(Boolean).join(" · ");
+  return original || "";
 }
 
 function songOriginalTitleLine(song) {
@@ -1831,8 +1830,9 @@ function addSongMetaFromRaw(target, rawValue) {
   const raw = rawValue || "";
   const original = raw.match(/\[([^\]]+)\]/)?.[1]?.trim();
   const subtitle = raw.match(/\(([^)]*?)\)\s*$/)?.[1]?.trim();
+  const versionText = raw.replace(/\[[^\]]+\]/g, "").replace(/\([^)]*?\)\s*$/, "").trim();
   for (const value of [subtitle, original]) {
-    if (value && !/^통(?:일)?\s*\d+/.test(value)) target.add(value);
+    if (value && !/^통(?:일)?\s*\d+/.test(value) && value !== versionText) target.add(value);
   }
 }
 
