@@ -1820,12 +1820,20 @@ function versionMetaLine(version) {
 function songOriginalTitleLine(song) {
   const titles = new Set();
   if (song?.original_title) titles.add(song.original_title);
+  addSongMetaFromRaw(titles, song?.title);
   for (const version of song?.versions || []) {
-    const raw = version.raw_section_name || version.version_label || "";
-    const original = raw.match(/\[([^\]]+)\]/)?.[1]?.trim();
-    if (original) titles.add(original);
+    addSongMetaFromRaw(titles, version.raw_section_name || version.version_label || "");
   }
   return [...titles].join(" / ");
+}
+
+function addSongMetaFromRaw(target, rawValue) {
+  const raw = rawValue || "";
+  const original = raw.match(/\[([^\]]+)\]/)?.[1]?.trim();
+  const subtitle = raw.match(/\(([^)]*?)\)\s*$/)?.[1]?.trim();
+  for (const value of [subtitle, original]) {
+    if (value && !/^통(?:일)?\s*\d+/.test(value)) target.add(value);
+  }
 }
 
 function legacyHymnVersionName(song, version) {
