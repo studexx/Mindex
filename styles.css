@@ -164,6 +164,7 @@ h1, h2, h3, p { margin: 0; }
   background: color-mix(in srgb, var(--panel) 94%, var(--bg));
 }
 .version-column-head { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: var(--s2); border-bottom: 1px solid var(--line); padding-bottom: var(--s2); }
+.version-column-title-block { display: grid; min-width: 0; gap: 2px; }
 .version-column-title {
   min-width: 0;
   overflow: hidden;
@@ -178,6 +179,16 @@ h1, h2, h3, p { margin: 0; }
   white-space: nowrap;
 }
 .version-column-title:hover { color: var(--accent); }
+.version-column-subtitle {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink-4);
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .form-block, .copy-row, .slide-card, .empty-state { border: 1px solid var(--line); border-radius: var(--r); background: color-mix(in srgb, var(--panel) 96%, var(--bg)); box-shadow: var(--shadow); }
 .form-block {
   display: grid;

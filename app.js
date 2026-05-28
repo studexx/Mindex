@@ -1,7 +1,7 @@
 const PART_TYPES = [
   "Verse",
-  "Chorus",
   "Pre-Chorus",
+  "Chorus",
   "Bridge",
   "Coda",
   "Amen",
@@ -378,6 +378,10 @@ async function saveSongMeta(song) {
 
 async function saveForms(songId) {
   if (!songId) throw new Error("Select a version first.");
+  writeFormsToSelectedVersion();
+}
+
+function writeFormsToSelectedVersion() {
   state.forms = normalizeForms(state.forms);
   const version = getSelectedVersion();
   if (!version) throw new Error("Select a version first.");
@@ -401,6 +405,12 @@ function handleDetailClick(event) {
   const addButton = event.target.closest("[data-add-form]");
   if (addButton) {
     addForm(addButton.dataset.addForm);
+    return;
+  }
+
+  const addVersionButton = event.target.closest("[data-add-version]");
+  if (addVersionButton) {
+    addVersion();
     return;
   }
 
@@ -539,6 +549,52 @@ function addForm(type) {
     }),
   );
   state.forms = normalizeForms(state.forms);
+  state.draftSlides = [];
+  state.dirty.forms = true;
+  renderDetail();
+  updateSaveState();
+}
+
+function addVersion() {
+  const song = getSelectedSong();
+  if (!song) return;
+
+  try {
+    writeFormsToSelectedVersion();
+  } catch {
+    return;
+  }
+
+  const defaultName = `버전 ${(song.versions || []).length + 1}`;
+  const name = prompt("Version name", defaultName);
+  if (name === null) return;
+
+  const cleanName = name.trim() || defaultName;
+  const versionId = createLocalId();
+  const sourceForms = state.forms.map((form, index) =>
+    withLocalId({
+      id: createLocalId(),
+      song_id: versionId,
+      part_type: form.part_type,
+      part_number: form.part_number,
+      lyrics: form.lyrics || "",
+      sort_order: index + 1,
+    }),
+  );
+
+  song.versions = [
+    ...(song.versions || []),
+    {
+      id: versionId,
+      name: cleanName,
+      raw_section_name: cleanName,
+      hymn_no: null,
+      is_primary: false,
+      forms: sourceForms.map(({ _localId, ...form }) => form),
+    },
+  ];
+  state.selectedVersionId = versionId;
+  state.forms = normalizeForms(sourceForms);
   state.draftSlides = [];
   state.dirty.forms = true;
   renderDetail();
@@ -995,10 +1051,14 @@ function renderDetail() {
             <span>${escapeHtml(song.title || "Untitled Song")}</span>
             ${renderEmptyBadge(song)}
           </h2>
-          ${renderVersionSwitcher(song)}
+          ${state.activeTab === "forms" ? "" : renderVersionSwitcher(song)}
         </div>
         <div class="head-actions">
           <span class="dirty-pill" ${hasDirtyChanges() ? "" : "hidden"}>Unsaved changes</span>
+          <button class="btn secondary" type="button" data-add-version title="Add version">
+            <i data-lucide="copy-plus"></i>
+            <span>Version</span>
+          </button>
         </div>
       </header>
 
@@ -1078,9 +1138,12 @@ function renderVersionFormColumn(song, version) {
   return `
     <section class="version-form-column${active ? " active" : ""}">
       <div class="version-column-head">
-        <button class="version-column-title" type="button" data-version-id="${escapeAttr(version.id)}">
-          ${escapeHtml(versionDisplayName(song, version))}
-        </button>
+        <div class="version-column-title-block">
+          <button class="version-column-title" type="button" data-version-id="${escapeAttr(version.id)}">
+            ${escapeHtml(versionDisplayName(song, version))}
+          </button>
+          ${renderVersionMetaLine(version)}
+        </div>
         ${active ? `<span class="type-pill">Editing</span>` : ""}
       </div>
       ${
@@ -1182,6 +1245,11 @@ function renderReadonlyFormBlock(form) {
       <div class="form-preview-text">${escapeHtml(form.lyrics || "")}</div>
     </article>
   `;
+}
+
+function renderVersionMetaLine(version) {
+  const meta = versionMetaLine(version);
+  return meta ? `<div class="version-column-subtitle">${escapeHtml(meta)}</div>` : "";
 }
 
 function renderCopyTab() {
@@ -1738,6 +1806,13 @@ function versionDisplayName(song, version) {
   if (subtitleMatch) return subtitleMatch[1].trim();
   if (raw === canonicalTitle || raw === canonicalHymnNo) return "기본";
   return raw || "기본";
+}
+
+function versionMetaLine(version) {
+  const raw = version.raw_section_name || version.version_label || "";
+  const original = raw.match(/\[([^\]]+)\]/)?.[1]?.trim();
+  const variant = raw.match(/\(([^)]*?)\)\s*$/)?.[1]?.trim();
+  return [original, variant].filter(Boolean).join(" · ");
 }
 
 function legacyHymnVersionName(song, version) {
