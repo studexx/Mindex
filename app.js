@@ -1051,31 +1051,71 @@ function renderVersionSwitcher(song) {
 }
 
 function renderFormsTab(song) {
+  const versions = song.versions || [];
+  if (versions.length > 1) {
+    return `
+      <section class="panel">
+        <div class="version-form-grid">
+          ${versions.map((version) => renderVersionFormColumn(song, version)).join("")}
+        </div>
+      </section>
+    `;
+  }
+
   return `
     <section class="panel">
-      <div class="section-bar form-toolbar" aria-label="Add song form">
-        <div class="form-buttons">
-          ${PART_TYPES
-            .map(
-              (type) => `
-                <button class="btn secondary" type="button" data-add-form="${type}" title="Add ${type}">
-                  <i data-lucide="plus"></i>
-                  <span>${type}</span>
-                </button>
-              `,
-            )
-            .join("")}
-        </div>
-      </div>
-
-      <div class="form-list">
-        ${
-          state.forms.length
-            ? state.forms.map(renderFormBlock).join("")
-            : `<div class="empty-state">No form blocks</div>`
-        }
-      </div>
+      ${renderEditableForms()}
     </section>
+  `;
+}
+
+function renderVersionFormColumn(song, version) {
+  const active = version.id === getSelectedVersionId();
+  const forms = active
+    ? state.forms
+    : normalizeForms((version.forms || []).map((form) => ({ ...form, song_id: version.id })));
+
+  return `
+    <section class="version-form-column${active ? " active" : ""}">
+      <div class="version-column-head">
+        <button class="version-column-title" type="button" data-version-id="${escapeAttr(version.id)}">
+          ${escapeHtml(versionDisplayName(song, version))}
+        </button>
+        ${active ? `<span class="type-pill">Editing</span>` : ""}
+      </div>
+      ${
+        active
+          ? renderEditableForms()
+          : `<div class="form-list readonly">${forms.length ? forms.map(renderReadonlyFormBlock).join("") : `<div class="empty-state">No form blocks</div>`}</div>`
+      }
+    </section>
+  `;
+}
+
+function renderEditableForms() {
+  return `
+    <div class="section-bar form-toolbar" aria-label="Add song form">
+      <div class="form-buttons">
+        ${PART_TYPES
+          .map(
+            (type) => `
+              <button class="btn secondary" type="button" data-add-form="${type}" title="Add ${type}">
+                <i data-lucide="plus"></i>
+                <span>${type}</span>
+              </button>
+            `,
+          )
+          .join("")}
+      </div>
+    </div>
+
+    <div class="form-list">
+      ${
+        state.forms.length
+          ? state.forms.map(renderFormBlock).join("")
+          : `<div class="empty-state">No form blocks</div>`
+      }
+    </div>
   `;
 }
 
@@ -1127,6 +1167,19 @@ function renderFormBlock(form, index) {
         </div>
       </div>
       <textarea class="form-textarea" data-form-field="lyrics" data-index="${index}" rows="6" aria-label="${escapeAttr(label)} lyrics">${escapeHtml(form.lyrics || "")}</textarea>
+    </article>
+  `;
+}
+
+function renderReadonlyFormBlock(form) {
+  return `
+    <article class="form-block readonly">
+      <div class="form-head">
+        <div class="form-meta">
+          <span class="form-label-text">${escapeHtml(displayLabel(form))}</span>
+        </div>
+      </div>
+      <div class="form-preview-text">${escapeHtml(form.lyrics || "")}</div>
     </article>
   `;
 }
