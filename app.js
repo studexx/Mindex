@@ -1020,6 +1020,7 @@ function renderSongList() {
             <span class="song-title-text">${escapeHtml(song.title)}</span>
             ${renderEmptyBadge(song)}
           </span>
+          ${songOriginalTitleLine(song) ? `<span class="song-meta-line">${escapeHtml(songOriginalTitleLine(song))}</span>` : ""}
           ${song.versions?.length > 1 ? `<span class="song-count-badge">${song.versions.length}</span>` : ""}
         </button>
       `;
@@ -1051,6 +1052,7 @@ function renderDetail() {
             <span>${escapeHtml(song.title || "Untitled Song")}</span>
             ${renderEmptyBadge(song)}
           </h2>
+          ${songOriginalTitleLine(song) ? `<div class="editor-original-title">${escapeHtml(songOriginalTitleLine(song))}</div>` : ""}
           ${state.activeTab === "forms" ? "" : renderVersionSwitcher(song)}
         </div>
         <div class="head-actions">
@@ -1813,6 +1815,17 @@ function versionMetaLine(version) {
   const original = raw.match(/\[([^\]]+)\]/)?.[1]?.trim();
   const variant = raw.match(/\(([^)]*?)\)\s*$/)?.[1]?.trim();
   return [original, variant].filter(Boolean).join(" · ");
+}
+
+function songOriginalTitleLine(song) {
+  const titles = new Set();
+  if (song?.original_title) titles.add(song.original_title);
+  for (const version of song?.versions || []) {
+    const raw = version.raw_section_name || version.version_label || "";
+    const original = raw.match(/\[([^\]]+)\]/)?.[1]?.trim();
+    if (original) titles.add(original);
+  }
+  return [...titles].join(" / ");
 }
 
 function legacyHymnVersionName(song, version) {
