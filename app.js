@@ -1223,7 +1223,6 @@ function renderFormBlock(form, index) {
     <article class="form-block">
       <div class="form-head">
         <div class="form-meta">
-          <span class="form-label-text">${escapeHtml(label)}</span>
           <select class="form-type-select" data-form-field="part_type" data-index="${index}" aria-label="Form type">
             ${PART_TYPES.map(
               (type) =>

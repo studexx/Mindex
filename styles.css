@@ -236,13 +236,14 @@ h1, h2, h3, p { margin: 0; }
 }
 .form-type-select {
   width: auto;
-  min-width: 104px;
+  min-width: 116px;
   height: 24px;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--panel) 90%, var(--bg));
-  color: var(--ink-3);
+  border-color: color-mix(in srgb, var(--accent) 26%, var(--line));
+  background: color-mix(in srgb, var(--accent-soft) 34%, var(--panel));
+  color: var(--ink-2);
   font-size: 11px;
-  font-weight: 650;
+  font-weight: 720;
 }
 .form-actions { gap: var(--s1); opacity: .92; }
 .form-block:hover .form-actions, .form-block:focus-within .form-actions { opacity: 1; }
