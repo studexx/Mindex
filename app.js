@@ -97,8 +97,6 @@ function bindStaticEvents() {
     renderSongList();
   });
 
-  refs.sidebar.addEventListener("keydown", handleSongNavigationKeydown);
-
   refs.songList.addEventListener("click", (event) => {
     const item = event.target.closest("[data-song-id]");
     if (!item) return;
@@ -128,9 +126,13 @@ function bindStaticEvents() {
     }
 
     const isSave = (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s";
-    if (!isSave) return;
-    event.preventDefault();
-    saveAll();
+    if (isSave) {
+      event.preventDefault();
+      saveAll();
+      return;
+    }
+
+    handleSongNavigationKeydown(event);
   });
 
   window.addEventListener("beforeunload", (event) => {
@@ -142,6 +144,8 @@ function bindStaticEvents() {
 
 function handleSongNavigationKeydown(event) {
   if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+  if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
+  if (shouldKeepArrowKeyInFocusedControl(event.target)) return;
 
   const songs = getFilteredSongs();
   if (!songs.length) return;
@@ -157,6 +161,13 @@ function handleSongNavigationKeydown(event) {
   event.preventDefault();
   if (!nextSong || nextSong.id === state.selectedSongId) return;
   selectSong(nextSong.id);
+}
+
+function shouldKeepArrowKeyInFocusedControl(target) {
+  const element = target instanceof Element ? target : null;
+  if (!element) return false;
+  if (element === refs.searchInput) return false;
+  return Boolean(element.closest("textarea, select, input, [contenteditable='true']"));
 }
 
 function readTheme() {
@@ -301,6 +312,7 @@ async function selectSong(songId) {
   render();
   focusSelectedSong();
   await loadForms(state.selectedVersionId);
+  focusSelectedSong();
 }
 
 async function loadForms(versionId) {
