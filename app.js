@@ -1842,6 +1842,7 @@ function versionDisplayName(song, version) {
 function songOriginalTitleLine(song) {
   const titles = new Set();
   if (song?.original_title) titles.add(song.original_title);
+  if (song?.subtitle) titles.add(song.subtitle);
   addSongMetaFromRaw(titles, song?.title);
   for (const version of song?.versions || []) {
     addSongMetaFromRaw(titles, version.raw_section_name || version.version_label || "", versionDisplayName(song, version));
@@ -1922,6 +1923,8 @@ function getFilteredSongs() {
         song.title,
         song.title_normalized,
         song.normalized_title,
+        song.subtitle,
+        song.original_title,
         ...(song.versions || []).map((version) => versionDisplayName(song, version)),
         ...(song.versions || []).map((version) => version.raw_section_name),
         ...(song.alt_titles || []),
