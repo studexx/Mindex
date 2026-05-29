@@ -34,6 +34,8 @@ const TITLE_COLLATOR = new Intl.Collator("ko-KR", {
   sensitivity: "base",
 });
 
+const HANGUL_INITIALS = ["ㄱ", "ㄲ", "ㄴ", "ㄷ", "ㄸ", "ㄹ", "ㅁ", "ㅂ", "ㅃ", "ㅅ", "ㅆ", "ㅇ", "ㅈ", "ㅉ", "ㅊ", "ㅋ", "ㅌ", "ㅍ", "ㅎ"];
+
 const state = {
   client: null,
   config: { url: "", anonKey: "" },
@@ -1088,7 +1090,10 @@ function renderConnectionStatus() {
 
 function renderSongList() {
   const filtered = getFilteredSongs();
-  refs.songCount.textContent = `${filtered.length} ${filtered.length === 1 ? "song" : "songs"}`;
+  const hasSearch = Boolean(normalizeSearchValue(state.search));
+  refs.songCount.textContent = hasSearch
+    ? `${filtered.length} of ${state.songs.length} songs`
+    : `${filtered.length} ${filtered.length === 1 ? "song" : "songs"}`;
 
   if (!filtered.length) {
     refs.songList.innerHTML = `<div class="song-list-empty">No songs</div>`;
@@ -1098,6 +1103,7 @@ function renderSongList() {
   refs.songList.innerHTML = filtered
     .map((song) => {
       const active = song.id === state.selectedSongId ? " active" : "";
+      const metaLine = hasSearch ? songSearchHint(song) || songOriginalTitleLine(song) : songOriginalTitleLine(song);
       return `
         <button class="song-item${active}" type="button" data-song-id="${escapeAttr(song.id)}">
           <span class="song-title">
@@ -1105,7 +1111,7 @@ function renderSongList() {
             ${renderEmptyBadge(song)}
             ${song.versions?.length > 1 ? `<span class="song-count-badge">${song.versions.length}</span>` : ""}
           </span>
-          ${songOriginalTitleLine(song) ? `<span class="song-meta-line">${escapeHtml(songOriginalTitleLine(song))}</span>` : ""}
+          ${metaLine ? `<span class="song-meta-line">${escapeHtml(metaLine)}</span>` : ""}
         </button>
       `;
     })
@@ -2035,30 +2041,188 @@ function stripHymnNumber(value) {
 }
 
 function getFilteredSongs() {
-  const query = normalizeTitle(state.search);
-  if (!query) return [...state.songs].sort(sortSongs);
+  const tokens = getSearchTokens(state.search);
+  if (!tokens.length) return [...state.songs].sort(sortSongs);
 
-  return state.songs
-    .filter((song) => {
-      const haystack = [
-        song.title,
-        song.title_normalized,
-        song.normalized_title,
-        song.subtitle,
-        song.original_title,
-        ...(song.versions || []).map((version) => versionDisplayName(song, version)),
-        ...(song.versions || []).map((version) => version.raw_section_name),
-        ...(song.alt_titles || []),
-        song.category,
-        song.source,
-        ...(song.theme_tags || []),
-      ]
-        .filter(Boolean)
-        .map(normalizeTitle)
-        .join(" ");
-      return haystack.includes(query);
+  const matched = state.songs
+    .map((song) => ({ song, match: getSongSearchMatch(song, tokens) }))
+    .filter((item) => item.match);
+  const phraseMatched = matched.filter((item) => item.match.phraseMatched);
+  const results = phraseMatched.length ? phraseMatched : matched;
+
+  return results
+    .sort((a, b) => b.match.score - a.match.score || sortSongs(a.song, b.song))
+    .map((item) => item.song);
+}
+
+function songSearchHint(song) {
+  const tokens = getSearchTokens(state.search);
+  if (!tokens.length) return "";
+  const match = getSongSearchMatch(song, tokens);
+  if (!match?.field) return "";
+  const field = match.field;
+  const value = getSearchSnippet(field.text, tokens);
+
+  if (!value) return "";
+  if (field.kind === "title" || field.kind === "hymn") return "";
+  if (field.kind === "lyrics") return `Lyrics: ${value}`;
+  if (field.kind === "version") return `Version: ${value}`;
+  return value;
+}
+
+function getSongSearchMatch(song, tokens = getSearchTokens(state.search)) {
+  if (!tokens.length) return null;
+
+  const fields = getSongSearchFields(song);
+  const phrase = getSearchPhrase(tokens);
+  let bestMatch = null;
+
+  for (const field of fields) {
+    const matches = tokens.map((token) => matchSearchField(field, token));
+    if (matches.some((match) => !match)) continue;
+
+    const candidate = getSearchCandidate(field.text);
+    const phraseMatched = phrase.compact.length > 1 && candidate.compact.includes(phrase.compact);
+    const phraseBoost = phraseMatched ? (candidate.compact === phrase.compact ? 64 : 26) : 0;
+    const score = matches.reduce((sum, match) => sum + match.score, 0) + phraseBoost;
+
+    if (!bestMatch || score > bestMatch.score) {
+      bestMatch = { score, field, phraseMatched };
+    }
+  }
+
+  return bestMatch;
+}
+
+function getSongSearchFields(song) {
+  const fields = [
+    searchField("title", song.title, 120),
+    searchField("title", song.title_normalized, 108),
+    searchField("title", song.normalized_title, 108),
+    searchField("hymn", song.hymn_no, 125),
+    searchField("meta", song.subtitle, 88),
+    searchField("meta", song.original_title, 88),
+    ...cleanList(song.alt_titles).map((title) => searchField("meta", title, 78)),
+    searchField("meta", song.category, 44),
+    searchField("meta", song.source, 36),
+    ...cleanList(song.theme_tags).map((tag) => searchField("meta", tag, 38)),
+  ];
+
+  for (const version of song.versions || []) {
+    fields.push(searchField("version", versionDisplayName(song, version), 74));
+    fields.push(searchField("version", version.raw_section_name, 58));
+    fields.push(searchField("version", version.version_label, 52));
+    for (const form of version.forms || []) {
+      fields.push(searchField("lyrics", form.lyrics, 24));
+    }
+  }
+
+  return fields.filter((field) => field.text);
+}
+
+function searchField(kind, text, weight) {
+  return { kind, text: String(text || "").trim(), weight };
+}
+
+function matchSearchField(field, token) {
+  const candidate = getSearchCandidate(field.text);
+  const exact = Boolean(token.normalized && candidate.normalized === token.normalized) || Boolean(token.compact && candidate.compact === token.compact);
+  const prefix =
+    Boolean(token.normalized && candidate.normalized.startsWith(token.normalized)) ||
+    Boolean(token.compact && candidate.compact.startsWith(token.compact));
+  const normalHit = token.normalized && candidate.normalized.includes(token.normalized);
+  const compactHit = token.compact && candidate.compact.includes(token.compact);
+  const initialHit = token.initials.length > 1 && candidate.initials.includes(token.initials);
+
+  if (!exact && !prefix && !normalHit && !compactHit && !initialHit) return null;
+
+  let score = field.weight;
+  if (exact) score += 70;
+  else if (prefix) score += 44;
+  else if (normalHit || compactHit) score += 22;
+  else if (initialHit) score += 12;
+  if (field.kind === "lyrics") score -= 6;
+
+  return { field, score };
+}
+
+function getSearchTokens(value) {
+  const normalized = normalizeSearchValue(value);
+  if (!normalized) return [];
+  return normalized
+    .split(/\s+/)
+    .map((token) => getSearchCandidate(token))
+    .filter((token) => token.compact || token.initials);
+}
+
+function getSearchPhrase(tokens) {
+  return {
+    compact: tokens.map((token) => token.compact).join(""),
+  };
+}
+
+function getSearchCandidate(value) {
+  const normalized = normalizeSearchValue(value);
+  return {
+    normalized,
+    compact: compactSearchValue(normalized),
+    initials: getHangulInitials(normalized),
+  };
+}
+
+function normalizeSearchValue(value) {
+  return String(value || "")
+    .normalize("NFKC")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+}
+
+function compactSearchValue(value) {
+  return Array.from(normalizeSearchValue(value))
+    .filter(isSearchCharacter)
+    .join("");
+}
+
+function getHangulInitials(value) {
+  return Array.from(normalizeSearchValue(value))
+    .map((char) => {
+      const code = char.charCodeAt(0);
+      if (code >= 0xac00 && code <= 0xd7a3) return HANGUL_INITIALS[Math.floor((code - 0xac00) / 588)];
+      if (code >= 0x1100 && code <= 0x1112) return HANGUL_INITIALS[code - 0x1100];
+      if (isAsciiAlphaNumeric(code) || isHangulConsonant(code)) return char;
+      return "";
     })
-    .sort(sortSongs);
+    .join("");
+}
+
+function isSearchCharacter(char) {
+  const code = char.charCodeAt(0);
+  return (
+    isAsciiAlphaNumeric(code) ||
+    (code >= 0xac00 && code <= 0xd7a3) ||
+    (code >= 0x1100 && code <= 0x1112) ||
+    (code >= 0x3131 && code <= 0x318e) ||
+    (code >= 0x4e00 && code <= 0x9fff)
+  );
+}
+
+function isAsciiAlphaNumeric(code) {
+  return (code >= 48 && code <= 57) || (code >= 97 && code <= 122);
+}
+
+function isHangulConsonant(code) {
+  return code >= 0x3131 && code <= 0x314e;
+}
+
+function getSearchSnippet(value, tokens) {
+  const lines = String(value || "")
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const source = lines.length ? lines : [String(value || "").trim()].filter(Boolean);
+  const matched = source.find((line) => tokens.some((token) => matchSearchField(searchField("snippet", line, 0), token))) || source[0] || "";
+  return matched.length > 72 ? `${matched.slice(0, 70).trim()}...` : matched;
 }
 
 function sortSongs(a, b) {
