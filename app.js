@@ -151,6 +151,7 @@ function applyTheme(theme) {
   refs.themeBtn.title = theme === "dark" ? "Use light mode" : "Use dark mode";
   refs.themeBtn.innerHTML = `<i data-lucide="${theme === "dark" ? "sun" : "moon"}"></i>`;
   refreshIcons();
+  resizeFormTextareas();
 }
 
 function toggleTheme() {
@@ -540,6 +541,9 @@ function updateFormField(field) {
   form[key] = field.value;
   if (key === "part_type" && !PART_TYPES.includes(form.part_type)) {
     form.part_type = "Verse";
+  }
+  if (key === "lyrics") {
+    resizeFormTextarea(field);
   }
 
   invalidateDraftSlides();
@@ -1110,6 +1114,7 @@ function renderDetail() {
   `;
 
   refreshIcons();
+  resizeFormTextareas();
 }
 
 function renderEmptyBadge(song) {
@@ -1281,7 +1286,7 @@ function renderFormBlock(form, index) {
           </button>
         </div>
       </div>
-      <textarea class="form-textarea" data-form-field="lyrics" data-index="${index}" rows="6" aria-label="${escapeAttr(label)} lyrics">${escapeHtml(form.lyrics || "")}</textarea>
+      <textarea class="form-textarea" data-form-field="lyrics" data-index="${index}" rows="1" aria-label="${escapeAttr(label)} lyrics">${escapeHtml(form.lyrics || "")}</textarea>
     </article>
   `;
 }
@@ -2064,6 +2069,16 @@ function refreshIcons() {
   if (window.lucide) {
     window.lucide.createIcons();
   }
+}
+
+function resizeFormTextareas() {
+  document.querySelectorAll(".form-textarea").forEach(resizeFormTextarea);
+}
+
+function resizeFormTextarea(textarea) {
+  if (!textarea) return;
+  textarea.style.height = "auto";
+  textarea.style.height = `${textarea.scrollHeight}px`;
 }
 
 window.Mindex = {

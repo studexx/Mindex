@@ -127,13 +127,15 @@ h1, h2, h3, p { margin: 0; }
 .field input, .field select, .draft-select, .form-type-select { height: var(--h); padding: 0 var(--s2); }
 .field textarea, .form-textarea, .draft-textarea { width: 100%; min-height: 76px; padding: var(--s3); resize: vertical; line-height: 20px; }
 .form-textarea {
-  min-height: 128px;
+  min-height: 48px;
+  overflow: hidden;
   border-color: color-mix(in srgb, var(--line) 86%, transparent);
   background: color-mix(in srgb, var(--bg) 56%, var(--panel));
   font-size: 15px;
   font-weight: 580;
   line-height: 24px;
-  padding: 10px;
+  padding: 8px 10px;
+  resize: none;
 }
 .check-field input { width: 15px; height: 15px; }
 
@@ -152,7 +154,7 @@ h1, h2, h3, p { margin: 0; }
 }
 .form-buttons .btn:hover { border-color: var(--line); background: var(--panel-2); color: var(--ink-2); }
 .form-list, .copy-list, .slide-list { margin-top: var(--s1); }
-.form-list { grid-template-columns: minmax(0, 1fr); align-items: start; justify-items: start; gap: 10px; }
+.form-list { grid-template-columns: minmax(0, 1fr); align-items: start; gap: 8px; }
 .version-form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: var(--s4); }
 .version-form-column {
   display: grid;
@@ -231,13 +233,13 @@ h1, h2, h3, p { margin: 0; }
 .form-block, .copy-row, .slide-card, .empty-state { border: 1px solid var(--line); border-radius: var(--r); background: color-mix(in srgb, var(--panel) 96%, var(--bg)); box-shadow: var(--shadow); }
 .form-block {
   display: grid;
-  width: min(100%, 62ch);
+  width: 100%;
   min-width: 0;
-  gap: 9px;
+  gap: 7px;
   border-color: color-mix(in srgb, var(--line) 88%, transparent);
   background: color-mix(in srgb, var(--panel) 94%, var(--bg));
   box-shadow: var(--shadow-soft);
-  padding: 10px;
+  padding: 8px;
 }
 .form-block.readonly {
   background: color-mix(in srgb, var(--panel) 76%, var(--bg));
@@ -246,7 +248,7 @@ h1, h2, h3, p { margin: 0; }
 .form-list.readonly .form-label-text { border-color: var(--line); background: transparent; color: var(--ink-3); }
 .form-preview-text {
   width: 100%;
-  min-height: 64px;
+  min-height: 0;
   overflow-wrap: anywhere;
   border: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
   border-radius: var(--r);
@@ -255,7 +257,7 @@ h1, h2, h3, p { margin: 0; }
   font-size: 14px;
   font-weight: 540;
   line-height: 22px;
-  padding: 10px;
+  padding: 8px 10px;
   white-space: pre-wrap;
 }
 .copy-row, .slide-card { padding: var(--s4); }
