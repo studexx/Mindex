@@ -1161,7 +1161,7 @@ function renderDetail() {
         ${renderTab("ppt", "PPT Draft")}
       </nav>
 
-      ${renderVersionSwitcher(song)}
+      ${state.activeTab === "forms" ? "" : renderVersionSwitcher(song)}
       ${renderActiveTab(song)}
     </div>
   `;
