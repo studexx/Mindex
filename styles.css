@@ -76,10 +76,11 @@ h1, h2, h3, p { margin: 0; }
 .song-item:hover { border-color: color-mix(in srgb, var(--line) 64%, transparent); background: color-mix(in srgb, var(--panel-2) 42%, transparent); color: var(--ink-2); }
 .song-item.active { border-color: color-mix(in srgb, var(--accent) 26%, var(--line)); background: color-mix(in srgb, var(--accent-soft) 58%, var(--panel)); color: var(--ink); }
 .song-item.active::before { position: absolute; left: 0; top: 7px; bottom: 7px; width: 3px; border-radius: 999px; background: var(--accent); content: ""; }
-.song-title, .song-meta-line { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.song-title, .song-meta-line, .song-version-line { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .song-title { display: flex; min-width: 0; align-items: center; gap: var(--s1); font-weight: 560; line-height: 18px; }
 .song-title-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .song-meta-line { color: var(--ink-4); font-size: 10px; line-height: 18px; }
+.song-version-line { color: var(--ink-3); font-size: 10px; font-weight: 650; line-height: 17px; }
 .song-count-badge { position: absolute; top: 5px; right: var(--s2); min-width: 17px; height: 17px; border: 1px solid var(--line); border-radius: 999px; color: var(--ink-4); font-size: 10px; line-height: 15px; text-align: center; }
 .empty-badge {
   display: inline-flex;
@@ -109,6 +110,7 @@ h1, h2, h3, p { margin: 0; }
 .editor-title { display: grid; gap: var(--s2); min-width: 0; }
 .editor-title h2 { display: flex; min-width: 0; flex-wrap: wrap; align-items: center; gap: var(--s2); overflow-wrap: anywhere; font-size: 23px; font-weight: 760; line-height: 1.18; }
 .editor-original-title { color: var(--ink-4); font-size: 12px; font-weight: 650; line-height: 18px; }
+.editor-version-title { color: var(--ink-3); font-size: 12px; font-weight: 700; line-height: 18px; }
 .version-switcher { display: flex; flex-wrap: wrap; gap: var(--s1); }
 .version-pill { min-height: 26px; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--ink-3); font-size: 12px; line-height: 1; padding: 0 var(--s3); }
 .version-pill.active { border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); background: var(--accent-soft); color: var(--ink); }

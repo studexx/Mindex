@@ -1021,6 +1021,7 @@ function renderSongList() {
             ${renderEmptyBadge(song)}
           </span>
           ${songOriginalTitleLine(song) ? `<span class="song-meta-line">${escapeHtml(songOriginalTitleLine(song))}</span>` : ""}
+          ${songVersionLine(song) ? `<span class="song-version-line">${escapeHtml(songVersionLine(song))}</span>` : ""}
           ${song.versions?.length > 1 ? `<span class="song-count-badge">${song.versions.length}</span>` : ""}
         </button>
       `;
@@ -1053,6 +1054,7 @@ function renderDetail() {
             ${renderEmptyBadge(song)}
           </h2>
           ${songOriginalTitleLine(song) ? `<div class="editor-original-title">${escapeHtml(songOriginalTitleLine(song))}</div>` : ""}
+          ${songVersionLine(song) ? `<div class="editor-version-title">${escapeHtml(songVersionLine(song))}</div>` : ""}
           ${state.activeTab === "forms" ? "" : renderVersionSwitcher(song)}
         </div>
         <div class="head-actions">
@@ -1821,19 +1823,25 @@ function songOriginalTitleLine(song) {
   if (song?.original_title) titles.add(song.original_title);
   addSongMetaFromRaw(titles, song?.title);
   for (const version of song?.versions || []) {
-    addSongMetaFromRaw(titles, version.raw_section_name || version.version_label || "");
+    addSongMetaFromRaw(titles, version.raw_section_name || version.version_label || "", versionDisplayName(song, version));
   }
   return [...titles].join(" / ");
 }
 
-function addSongMetaFromRaw(target, rawValue) {
+function addSongMetaFromRaw(target, rawValue, versionName = "") {
   const raw = rawValue || "";
   const original = raw.match(/\[([^\]]+)\]/)?.[1]?.trim();
   const subtitle = raw.match(/\(([^)]*?)\)\s*$/)?.[1]?.trim();
   const versionText = raw.replace(/\[[^\]]+\]/g, "").replace(/\([^)]*?\)\s*$/, "").trim();
   for (const value of [subtitle, original]) {
-    if (value && !/^통(?:일)?\s*\d+/.test(value) && value !== versionText) target.add(value);
+    if (value && !/^통(?:일)?\s*\d+/.test(value) && value !== versionText && value !== versionName) target.add(value);
   }
+}
+
+function songVersionLine(song) {
+  const versions = song?.versions || [];
+  if (versions.length <= 1) return "";
+  return versions.map((version) => versionDisplayName(song, version)).filter(Boolean).join(" / ");
 }
 
 function legacyHymnVersionName(song, version) {
