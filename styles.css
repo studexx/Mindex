@@ -57,6 +57,7 @@ h1, h2, h3, p { margin: 0; }
 
 .status-pill, .dirty-pill, .type-pill { display: inline-flex; min-height: 24px; align-items: center; border: 1px solid var(--line); border-radius: 999px; padding: 0 var(--s2); }
 .status-pill.connected { border-color: color-mix(in srgb, var(--accent) 34%, var(--line)); color: var(--ink-2); }
+.status-pill.error { border-color: color-mix(in srgb, var(--danger) 28%, var(--line)); background: color-mix(in srgb, var(--danger) 8%, transparent); color: var(--danger); }
 .type-pill { border-color: var(--line-2); background: var(--panel-2); color: var(--ink-2); }
 .status-pill.unsaved, .dirty-pill { border-color: color-mix(in srgb, var(--warn) 22%, var(--line)); background: var(--warn-bg); color: var(--warn); }
 

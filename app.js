@@ -48,6 +48,7 @@ const state = {
   loading: false,
   saving: false,
   theme: "light",
+  connectionError: "",
   dirty: {
     song: false,
     forms: false,
@@ -70,7 +71,7 @@ function init() {
   if (state.client) {
     loadSongs();
   } else {
-    showToast("Connection settings are missing from the link.", "error");
+    showToast(state.connectionError || "Connection settings are missing from the link.", "error");
   }
 }
 
@@ -105,6 +106,7 @@ function bindStaticEvents() {
   });
 
   refs.detailPane.addEventListener("click", handleDetailClick);
+  refs.detailPane.addEventListener("keydown", handleDetailKeydown);
   refs.detailPane.addEventListener("input", handleDetailInput);
   refs.detailPane.addEventListener("change", handleDetailChange);
 
@@ -220,15 +222,27 @@ function rememberConfig(config) {
 }
 
 function connectClient() {
+  state.connectionError = "";
   if (!state.config.url || !state.config.anonKey) {
     state.client = null;
     return;
   }
 
-  state.client = window.supabase.createClient(state.config.url, state.config.anonKey, {
-    auth: { persistSession: false },
-    global: { headers: { "X-Client-Info": "mindex-prototype" } },
-  });
+  if (!window.supabase?.createClient) {
+    state.client = null;
+    state.connectionError = "Supabase library did not load.";
+    return;
+  }
+
+  try {
+    state.client = window.supabase.createClient(state.config.url, state.config.anonKey, {
+      auth: { persistSession: false },
+      global: { headers: { "X-Client-Info": "mindex-prototype" } },
+    });
+  } catch (error) {
+    state.client = null;
+    state.connectionError = error.message || "Supabase connection failed.";
+  }
 }
 
 async function loadSongs() {
@@ -237,20 +251,31 @@ async function loadSongs() {
   state.loading = true;
   renderConnectionStatus();
 
-  const { data, error } = await state.client
-    .from("mindex_songs")
-    .select("*")
-    .eq("is_active", true)
-    .order("title", { ascending: true });
+  let data = [];
+  let error = null;
 
-  state.loading = false;
+  try {
+    const response = await state.client
+      .from("mindex_songs")
+      .select("*")
+      .eq("is_active", true)
+      .order("title", { ascending: true });
+    data = response.data;
+    error = response.error;
+  } catch (caughtError) {
+    error = caughtError;
+  } finally {
+    state.loading = false;
+  }
 
   if (error) {
-    showToast(error.message, "error");
+    state.connectionError = error.message || "Could not load songs.";
+    showToast(state.connectionError, "error");
     render();
     return;
   }
 
+  state.connectionError = "";
   state.songs = (data || []).map(normalizeServerSong).sort(sortSongs);
   if (state.selectedSongId && !state.songs.some((song) => song.id === state.selectedSongId)) {
     state.selectedSongId = null;
@@ -472,6 +497,17 @@ function handleDetailClick(event) {
   if (deleteSongButton) {
     deleteSelectedSong();
   }
+}
+
+function handleDetailKeydown(event) {
+  if (event.key !== "Enter" && event.key !== " ") return;
+  if (event.target.closest("button, input, textarea, select, a")) return;
+
+  const versionTarget = event.target.closest(".version-form-column[data-version-id]");
+  if (!versionTarget) return;
+
+  event.preventDefault();
+  selectVersion(versionTarget.dataset.versionId);
 }
 
 function handleDetailInput(event) {
@@ -1014,9 +1050,17 @@ function renderConnectionStatus() {
   const hasClient = Boolean(state.client);
   const hasDirty = hasDirtyChanges();
   refs.connectionStatus.className = "status-pill";
+  refs.connectionStatus.title = "";
 
   if (state.loading) {
     refs.connectionStatus.textContent = "Loading";
+    return;
+  }
+
+  if (state.connectionError) {
+    refs.connectionStatus.textContent = "Error";
+    refs.connectionStatus.classList.add("error");
+    refs.connectionStatus.title = state.connectionError;
     return;
   }
 
@@ -1712,21 +1756,28 @@ async function copyText(text) {
     }
     showToast("Copied.");
   } catch (error) {
-    fallbackCopy(value);
-    showToast("Copied.");
+    try {
+      fallbackCopy(value);
+      showToast("Copied.");
+    } catch (fallbackError) {
+      showToast(fallbackError.message || "Copy failed.", "error");
+    }
   }
 }
 
 function fallbackCopy(text) {
   const textarea = document.createElement("textarea");
-  textarea.value = text;
-  textarea.setAttribute("readonly", "");
-  textarea.style.position = "fixed";
-  textarea.style.opacity = "0";
-  document.body.appendChild(textarea);
-  textarea.select();
-  document.execCommand("copy");
-  textarea.remove();
+  try {
+    textarea.value = text;
+    textarea.setAttribute("readonly", "");
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.appendChild(textarea);
+    textarea.select();
+    if (!document.execCommand("copy")) throw new Error("Copy failed.");
+  } finally {
+    textarea.remove();
+  }
 }
 
 function normalizeServerSong(row) {
