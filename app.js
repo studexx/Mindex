@@ -1105,8 +1105,6 @@ function renderSongList() {
             ${renderEmptyBadge(song)}
           </span>
           ${songOriginalTitleLine(song) ? `<span class="song-meta-line">${escapeHtml(songOriginalTitleLine(song))}</span>` : ""}
-          ${songVersionLine(song) ? `<span class="song-version-line">${escapeHtml(songVersionLine(song))}</span>` : ""}
-          ${song.versions?.length > 1 ? `<span class="song-count-badge">${song.versions.length}</span>` : ""}
         </button>
       `;
     })
