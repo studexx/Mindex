@@ -72,11 +72,11 @@ Mindex follows the system light/dark setting by default. Toggle manually with
 
 ## Form Label Rules
 
-- Allowed types: `Verse`, `Chorus`, `Pre-Chorus`, `Bridge`, `Coda`, `Amen`
+- Allowed types: `Verse`, `Chorus`, `Pre-Chorus`, `Bridge`, `Coda`
 - A single type has no number: `Verse`
 - Multiple blocks of the same type are numbered by structural order: `Verse 1`, `Verse 2`
 - `display_label` is calculated by the app from `part_type` and `part_number`
-- `Amen` is always its own form block
+- Hymn `Amen` endings use `Coda`
 
 ## PPT Draft
 

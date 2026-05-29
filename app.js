@@ -4,7 +4,6 @@ const PART_TYPES = [
   "Chorus",
   "Bridge",
   "Coda",
-  "Amen",
 ];
 
 const FORM_ADD_LABELS = {
@@ -13,7 +12,6 @@ const FORM_ADD_LABELS = {
   Chorus: "C",
   Bridge: "B",
   Coda: "Coda",
-  Amen: "Amen",
 };
 
 const OPENLYRICS_PART_CODES = {
@@ -22,7 +20,6 @@ const OPENLYRICS_PART_CODES = {
   "Pre-Chorus": "p",
   Bridge: "b",
   Coda: "e",
-  Amen: "e",
 };
 
 const STORAGE = {
