@@ -7,6 +7,15 @@ const PART_TYPES = [
   "Amen",
 ];
 
+const FORM_ADD_LABELS = {
+  Verse: "V",
+  "Pre-Chorus": "PC",
+  Chorus: "C",
+  Bridge: "B",
+  Coda: "Coda",
+  Amen: "Amen",
+};
+
 const OPENLYRICS_PART_CODES = {
   Verse: "v",
   Chorus: "c",
@@ -1168,7 +1177,7 @@ function renderEditableForms() {
             (type) => `
               <button class="btn secondary" type="button" data-add-form="${type}" title="Add ${type}">
                 <i data-lucide="plus"></i>
-                <span>${type}</span>
+                <span>${FORM_ADD_LABELS[type] || type}</span>
               </button>
             `,
           )
