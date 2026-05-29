@@ -1168,6 +1168,7 @@ function renderFormsTab(song) {
   if (versions.length > 1) {
     return `
       <section class="panel">
+        ${renderFormToolbar()}
         <div class="version-form-grid">
           ${versions.map((version) => renderVersionFormColumn(song, version)).join("")}
         </div>
@@ -1200,7 +1201,7 @@ function renderVersionFormColumn(song, version) {
       </div>
       ${
         active
-          ? renderEditableForms()
+          ? renderEditableFormList()
           : `<div class="form-list readonly">${forms.length ? forms.map(renderReadonlyFormBlock).join("") : `<div class="empty-state">No form blocks</div>`}</div>`
       }
     </section>
@@ -1208,6 +1209,13 @@ function renderVersionFormColumn(song, version) {
 }
 
 function renderEditableForms() {
+  return `
+    ${renderFormToolbar()}
+    ${renderEditableFormList()}
+  `;
+}
+
+function renderFormToolbar() {
   return `
     <div class="section-bar form-toolbar" aria-label="Add song form">
       <div class="form-add-control" data-form-toolbar>
@@ -1219,7 +1227,11 @@ function renderEditableForms() {
         </button>
       </div>
     </div>
+  `;
+}
 
+function renderEditableFormList() {
+  return `
     <div class="form-list">
       ${
         state.forms.length
