@@ -438,14 +438,6 @@ function handleDetailClick(event) {
     return;
   }
 
-  const addSelectedButton = event.target.closest("[data-add-selected-form]");
-  if (addSelectedButton) {
-    const toolbar = addSelectedButton.closest("[data-form-toolbar]");
-    const select = toolbar?.querySelector("[data-add-form-type]");
-    addForm(select?.value || "Verse");
-    return;
-  }
-
   const addVersionButton = event.target.closest("[data-add-version]");
   if (addVersionButton) {
     addVersion();
@@ -1218,13 +1210,17 @@ function renderEditableForms() {
 function renderFormToolbar() {
   return `
     <div class="section-bar form-toolbar" aria-label="Add song form">
-      <div class="form-add-control" data-form-toolbar>
-        <select class="add-form-select" data-add-form-type aria-label="Form type to add">
-          ${PART_TYPES.map((type) => `<option value="${type}">${FORM_ADD_LABELS[type] || type}</option>`).join("")}
-        </select>
-        <button class="icon-btn" type="button" data-add-selected-form title="Add selected form">
-          <i data-lucide="plus"></i>
-        </button>
+      <div class="form-buttons">
+        ${PART_TYPES
+          .map(
+            (type) => `
+              <button class="btn secondary" type="button" data-add-form="${type}" title="Add ${type}">
+                <i data-lucide="plus"></i>
+                <span>${FORM_ADD_LABELS[type] || type}</span>
+              </button>
+            `,
+          )
+          .join("")}
       </div>
     </div>
   `;
