@@ -503,7 +503,7 @@ function handleDetailKeydown(event) {
   if (event.key !== "Enter" && event.key !== " ") return;
   if (event.target.closest("button, input, textarea, select, a")) return;
 
-  const versionTarget = event.target.closest(".version-form-column[data-version-id]");
+  const versionTarget = event.target.closest(".version-picker[data-version-id]");
   if (!versionTarget) return;
 
   event.preventDefault();
@@ -1204,9 +1204,7 @@ function renderFormsTab(song) {
     return `
       <section class="panel">
         ${renderFormToolbar()}
-        <div class="version-form-grid">
-          ${versions.map((version) => renderVersionFormColumn(song, version)).join("")}
-        </div>
+        ${renderVersionCompare(song, versions)}
       </section>
     `;
   }
@@ -1216,6 +1214,66 @@ function renderFormsTab(song) {
       ${renderEditableForms()}
     </section>
   `;
+}
+
+function renderVersionCompare(song, versions) {
+  const versionForms = versions.map((version) => ({
+    version,
+    forms: getFormsForVersion(version),
+  }));
+  const maxRows = Math.max(0, ...versionForms.map((item) => item.forms.length));
+  const gridStyle = `grid-template-columns: repeat(${versions.length}, minmax(320px, 1fr));`;
+
+  return `
+    <div class="version-compare-grid">
+      <div class="version-compare-head" style="${gridStyle}">
+        ${versions.map((version) => renderVersionCompareHead(song, version)).join("")}
+      </div>
+      <div class="version-compare-rows">
+        ${
+          maxRows
+            ? Array.from({ length: maxRows }, (_, index) => `
+                <div class="version-compare-row" style="${gridStyle}">
+                  ${versionForms.map(({ version, forms }) => renderVersionCompareCell(version, forms[index], index)).join("")}
+                </div>
+              `).join("")
+            : `<div class="empty-state">No form blocks</div>`
+        }
+      </div>
+    </div>
+  `;
+}
+
+function renderVersionCompareHead(song, version) {
+  const active = version.id === getSelectedVersionId();
+  return `
+    <button class="version-compare-title${active ? " active" : ""}" type="button" data-version-id="${escapeAttr(version.id)}">
+      <span>${escapeHtml(versionDisplayName(song, version))}</span>
+      ${active ? `<span class="type-pill">Editing</span>` : ""}
+    </button>
+  `;
+}
+
+function renderVersionCompareCell(version, form, index) {
+  const active = version.id === getSelectedVersionId();
+  if (!form) {
+    return active
+      ? `<div class="empty-state version-empty-cell">No form block</div>`
+      : `<div class="empty-state version-empty-cell version-picker" data-version-id="${escapeAttr(version.id)}" role="button" tabindex="0">No form block</div>`;
+  }
+
+  if (active) return renderFormBlock(form, index);
+
+  return `
+    <div class="version-picker" data-version-id="${escapeAttr(version.id)}" role="button" tabindex="0">
+      ${renderReadonlyFormBlock(form)}
+    </div>
+  `;
+}
+
+function getFormsForVersion(version) {
+  if (version.id === getSelectedVersionId()) return state.forms;
+  return normalizeForms((version.forms || []).map((form) => ({ ...form, song_id: version.id })));
 }
 
 function renderVersionFormColumn(song, version) {
