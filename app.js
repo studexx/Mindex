@@ -1091,7 +1091,7 @@ function renderSongList() {
   refs.songCount.textContent = `${filtered.length} ${filtered.length === 1 ? "song" : "songs"}`;
 
   if (!filtered.length) {
-    refs.songList.innerHTML = `<div class="empty-state">No songs</div>`;
+    refs.songList.innerHTML = `<div class="song-list-empty">No songs</div>`;
     return;
   }
 
