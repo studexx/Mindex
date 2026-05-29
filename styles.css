@@ -110,6 +110,7 @@ h1, h2, h3, p { margin: 0; }
 .editor-title { display: grid; gap: var(--s2); min-width: 0; }
 .editor-title h2 { display: flex; min-width: 0; flex-wrap: wrap; align-items: center; gap: var(--s2); overflow-wrap: anywhere; font-size: 22px; font-weight: 620; line-height: 1.2; }
 .editor-original-title { color: var(--ink-4); font-size: 12px; font-weight: 650; line-height: 18px; }
+.editor-original-title.empty { visibility: hidden; }
 .version-switcher {
   display: flex;
   flex-wrap: wrap;

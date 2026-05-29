@@ -1134,6 +1134,7 @@ function renderDetail() {
     return;
   }
 
+  const originalTitleLine = songOriginalTitleLine(song);
   refs.detailPane.innerHTML = `
     <div class="editor-shell">
       <header class="editor-head">
@@ -1142,7 +1143,7 @@ function renderDetail() {
             <span>${escapeHtml(song.title || "Untitled Song")}</span>
             ${renderEmptyBadge(song)}
           </h2>
-          ${songOriginalTitleLine(song) ? `<div class="editor-original-title">${escapeHtml(songOriginalTitleLine(song))}</div>` : ""}
+          <div class="editor-original-title${originalTitleLine ? "" : " empty"}">${escapeHtml(originalTitleLine || "Metadata")}</div>
         </div>
         <div class="head-actions">
           <span class="dirty-pill" ${hasDirtyChanges() ? "" : "hidden"}>Unsaved changes</span>
