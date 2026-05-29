@@ -397,7 +397,7 @@ async function saveAll() {
   updateSaveState();
 
   try {
-    await saveForms(getSelectedVersionId());
+    writeFormsToSelectedVersion();
     await saveSongMeta(song);
     state.songs = state.songs.sort(sortSongs);
     state.dirty.song = false;
@@ -431,15 +431,10 @@ async function saveSongMeta(song) {
   Object.assign(song, normalizeServerSong(data));
 }
 
-async function saveForms(songId) {
-  if (!songId) throw new Error("Select a version first.");
-  writeFormsToSelectedVersion();
-}
-
 function writeFormsToSelectedVersion() {
   state.forms = normalizeForms(state.forms);
   const version = getSelectedVersion();
-  if (!version) throw new Error("Select a version first.");
+  if (!version) return;
   version.forms = state.forms.map((form, index) => ({
     id: form.id || createLocalId(),
     part_type: form.part_type,
@@ -2083,7 +2078,7 @@ function hasDirtyChanges() {
 }
 
 function updateSaveState() {
-  refs.saveAllBtn.disabled = !getSelectedVersionId() || !hasDirtyChanges() || state.saving;
+  refs.saveAllBtn.disabled = !getSelectedSong() || !hasDirtyChanges() || state.saving;
   renderConnectionStatus();
 
   const dirtyPill = refs.detailPane.querySelector(".dirty-pill");
