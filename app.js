@@ -1094,8 +1094,6 @@ function renderDetail() {
             ${renderEmptyBadge(song)}
           </h2>
           ${songOriginalTitleLine(song) ? `<div class="editor-original-title">${escapeHtml(songOriginalTitleLine(song))}</div>` : ""}
-          ${songVersionLine(song) ? `<div class="editor-version-title">${escapeHtml(songVersionLine(song))}</div>` : ""}
-          ${state.activeTab === "forms" ? "" : renderVersionSwitcher(song)}
         </div>
         <div class="head-actions">
           <span class="dirty-pill" ${hasDirtyChanges() ? "" : "hidden"}>Unsaved changes</span>
@@ -1112,6 +1110,7 @@ function renderDetail() {
         ${renderTab("ppt", "PPT Draft")}
       </nav>
 
+      ${renderVersionSwitcher(song)}
       ${renderActiveTab(song)}
     </div>
   `;
