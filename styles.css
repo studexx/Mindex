@@ -143,8 +143,8 @@ h1, h2, h3, p { margin: 0; }
 .section-bar { margin: 0; }
 .form-toolbar { border-bottom: 1px solid var(--line); padding-bottom: var(--s2); }
 .panel { display: grid; gap: var(--s3); }
-.form-buttons { gap: var(--s1); }
-.form-buttons .btn {
+.form-buttons, .form-add-control { gap: var(--s1); }
+.form-buttons .btn, .form-add-control .icon-btn {
   height: 30px;
   border-color: var(--line);
   background: color-mix(in srgb, var(--panel) 88%, var(--bg));
@@ -152,7 +152,19 @@ h1, h2, h3, p { margin: 0; }
   min-width: 44px;
   padding: 0 var(--s2);
 }
-.form-buttons .btn:hover { border-color: var(--line); background: var(--panel-2); color: var(--ink-2); }
+.form-buttons .btn:hover, .form-add-control .icon-btn:hover { border-color: var(--line); background: var(--panel-2); color: var(--ink-2); }
+.form-add-control { display: inline-flex; align-items: center; }
+.add-form-select {
+  width: 76px;
+  height: 30px;
+  border-color: var(--line);
+  border-radius: var(--r);
+  background: color-mix(in srgb, var(--panel) 88%, var(--bg));
+  color: var(--ink-3);
+  font-size: 12px;
+  font-weight: 720;
+  padding: 0 var(--s2);
+}
 .form-list, .copy-list, .slide-list { margin-top: var(--s1); }
 .form-list { grid-template-columns: minmax(0, 1fr); align-items: start; gap: 8px; }
 .version-form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: var(--s4); }
@@ -236,16 +248,16 @@ h1, h2, h3, p { margin: 0; }
 }
 .form-number-pill {
   display: inline-flex;
-  min-width: 24px;
-  height: 24px;
+  min-width: 30px;
+  height: 26px;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--line);
+  border: 1px solid color-mix(in srgb, var(--accent) 50%, var(--line));
   border-radius: 999px;
-  background: color-mix(in srgb, var(--panel) 82%, var(--bg));
-  color: var(--ink-3);
-  font-size: 11px;
-  font-weight: 760;
+  background: color-mix(in srgb, var(--accent-soft) 80%, var(--panel));
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 850;
   line-height: 1;
 }
 .form-type-select {

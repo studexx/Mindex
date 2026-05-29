@@ -82,6 +82,7 @@ function cacheRefs() {
   refs.searchInput = document.getElementById("searchInput");
   refs.songCount = document.getElementById("songCount");
   refs.songList = document.getElementById("songList");
+  refs.sidebar = document.querySelector(".sidebar");
   refs.detailPane = document.getElementById("detailPane");
   refs.toastRegion = document.getElementById("toastRegion");
 }
@@ -95,12 +96,13 @@ function bindStaticEvents() {
     renderSongList();
   });
 
+  refs.sidebar.addEventListener("keydown", handleSongNavigationKeydown);
+
   refs.songList.addEventListener("click", (event) => {
     const item = event.target.closest("[data-song-id]");
     if (!item) return;
     selectSong(item.dataset.songId);
   });
-  refs.songList.addEventListener("keydown", handleSongListKeydown);
 
   refs.detailPane.addEventListener("click", handleDetailClick);
   refs.detailPane.addEventListener("input", handleDetailInput);
@@ -136,7 +138,7 @@ function bindStaticEvents() {
   });
 }
 
-function handleSongListKeydown(event) {
+function handleSongNavigationKeydown(event) {
   if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
 
   const songs = getFilteredSongs();
@@ -149,9 +151,9 @@ function handleSongListKeydown(event) {
       ? Math.min(currentIndex + 1, songs.length - 1)
       : Math.max(currentIndex - 1, 0);
   const nextSong = songs[nextIndex];
-  if (!nextSong || nextSong.id === state.selectedSongId) return;
 
   event.preventDefault();
+  if (!nextSong || nextSong.id === state.selectedSongId) return;
   selectSong(nextSong.id);
 }
 
@@ -293,7 +295,7 @@ async function createSong() {
   const title = nextUntitledTitle();
   const defaultVersion = {
     id: createLocalId(),
-    name: "기본",
+    name: "Default",
     is_primary: true,
     forms: [],
   };
@@ -433,6 +435,14 @@ function handleDetailClick(event) {
   const addButton = event.target.closest("[data-add-form]");
   if (addButton) {
     addForm(addButton.dataset.addForm);
+    return;
+  }
+
+  const addSelectedButton = event.target.closest("[data-add-selected-form]");
+  if (addSelectedButton) {
+    const toolbar = addSelectedButton.closest("[data-form-toolbar]");
+    const select = toolbar?.querySelector("[data-add-form-type]");
+    addForm(select?.value || "Verse");
     return;
   }
 
@@ -596,7 +606,7 @@ function addVersion() {
     return;
   }
 
-  const defaultName = `버전 ${(song.versions || []).length + 1}`;
+  const defaultName = `Version ${(song.versions || []).length + 1}`;
   const name = prompt("Version name", defaultName);
   if (name === null) return;
 
@@ -1119,7 +1129,7 @@ function renderDetail() {
 }
 
 function renderEmptyBadge(song) {
-  return songHasLyrics(song) ? "" : `<span class="empty-badge">비어 있음</span>`;
+  return songHasLyrics(song) ? "" : `<span class="empty-badge">Empty</span>`;
 }
 
 function renderTab(id, label) {
@@ -1200,17 +1210,13 @@ function renderVersionFormColumn(song, version) {
 function renderEditableForms() {
   return `
     <div class="section-bar form-toolbar" aria-label="Add song form">
-      <div class="form-buttons">
-        ${PART_TYPES
-          .map(
-            (type) => `
-              <button class="btn secondary" type="button" data-add-form="${type}" title="Add ${type}">
-                <i data-lucide="plus"></i>
-                <span>${FORM_ADD_LABELS[type] || type}</span>
-              </button>
-            `,
-          )
-          .join("")}
+      <div class="form-add-control" data-form-toolbar>
+        <select class="add-form-select" data-add-form-type aria-label="Form type to add">
+          ${PART_TYPES.map((type) => `<option value="${type}">${FORM_ADD_LABELS[type] || type}</option>`).join("")}
+        </select>
+        <button class="icon-btn" type="button" data-add-selected-form title="Add selected form">
+          <i data-lucide="plus"></i>
+        </button>
       </div>
     </div>
 
@@ -1449,29 +1455,16 @@ function normalizeForms(forms) {
     sort_order: index + 1,
   }));
 
-  let verseNumber = 0;
-  const chorusNumbers = new Map();
-  const verseForms = next.filter((item) => item.part_type === "Verse");
-  const shouldNumberVerses = verseForms.length > 1;
-  const chorusForms = next.filter((item) => item.part_type === "Chorus");
-  const uniqueChorusLyrics = new Set(chorusForms.map((item) => normalizeLyricsForCopy(item.lyrics)));
-
+  const counts = next.reduce((map, form) => {
+    map.set(form.part_type, (map.get(form.part_type) || 0) + 1);
+    return map;
+  }, new Map());
+  const seen = new Map();
   return next.map((form) => {
-    if (form.part_type === "Verse") {
-      if (!shouldNumberVerses) return { ...form, part_number: null };
-      verseNumber += 1;
-      return { ...form, part_number: verseNumber };
-    }
-
-    if (form.part_type === "Chorus") {
-      if (uniqueChorusLyrics.size <= 1) return { ...form, part_number: null };
-
-      const key = normalizeLyricsForCopy(form.lyrics);
-      if (!chorusNumbers.has(key)) chorusNumbers.set(key, chorusNumbers.size + 1);
-      return { ...form, part_number: chorusNumbers.get(key) };
-    }
-
-    return { ...form, part_number: null };
+    if ((counts.get(form.part_type) || 0) <= 1) return { ...form, part_number: null };
+    const partNumber = (seen.get(form.part_type) || 0) + 1;
+    seen.set(form.part_type, partNumber);
+    return { ...form, part_number: partNumber };
   });
 }
 
@@ -1736,7 +1729,7 @@ function normalizeServerSong(row) {
     : [
         {
           id: row.id,
-          name: "기본",
+          name: "Default",
           is_primary: true,
           forms: [],
         },
@@ -1748,7 +1741,7 @@ function normalizeServerSong(row) {
     versions: versions.map((version, index) => ({
       ...version,
       id: version.id || `${row.id}:version:${index + 1}`,
-      name: version.name || version.version_label || `버전 ${index + 1}`,
+      name: normalizeGeneratedVersionName(version.name || version.version_label || `Version ${index + 1}`),
       is_primary: Boolean(version.is_primary) || index === 0,
       forms: Array.isArray(version.forms) ? version.forms : [],
     })),
@@ -1772,7 +1765,7 @@ function serializeSongMemo(song) {
     {
       versions: (song.versions || []).map((version, index) => ({
         id: version.id,
-        name: version.name || `버전 ${index + 1}`,
+        name: normalizeGeneratedVersionName(version.name || `Version ${index + 1}`),
         raw_section_name: version.raw_section_name || null,
         hymn_no: version.hymn_no || null,
         is_primary: Boolean(version.is_primary) || index === 0,
@@ -1825,9 +1818,9 @@ async function selectVersion(versionId) {
 function versionDisplayName(song, version) {
   const legacyName = legacyHymnVersionName(song, version);
   if (legacyName) return legacyName;
-  if (song?.hymn_no && (version.name === "기본" || version.curated_version_name === "기본")) return "새찬송가";
-  if (version.name) return version.name;
-  if (version.curated_version_name) return version.curated_version_name;
+  if (song?.hymn_no && isDefaultVersionName(version.name || version.curated_version_name)) return "새찬송가";
+  if (version.name) return displayVersionName(version.name);
+  if (version.curated_version_name) return displayVersionName(version.curated_version_name);
   const raw = version.raw_section_name || version.version_label || "";
   const canonicalTitle = song?.title || "";
   const canonicalHymnNo = song?.hymn_no ? `${song.hymn_no} ${canonicalTitle}` : canonicalTitle;
@@ -1842,8 +1835,8 @@ function versionDisplayName(song, version) {
   if (legacyMatch) return legacyMatch[0].replace(/\s+/g, " ").trim();
   const subtitleMatch = raw.match(/\(([^)]*?)\)\s*$/);
   if (subtitleMatch) return subtitleMatch[1].trim();
-  if (raw === canonicalTitle || raw === canonicalHymnNo) return "기본";
-  return raw || "기본";
+  if (raw === canonicalTitle || raw === canonicalHymnNo) return "Default";
+  return raw || "Default";
 }
 
 function songOriginalTitleLine(song) {
@@ -1871,8 +1864,25 @@ function songVersionLine(song) {
   if (versions.length <= 1) return "";
   return versions
     .map((version) => versionDisplayName(song, version))
-    .filter((name) => name && name !== "기본")
+    .filter((name) => name && !isDefaultVersionName(name))
     .join(" / ");
+}
+
+function normalizeGeneratedVersionName(name) {
+  const value = String(name || "").trim();
+  const koreanGenerated = value.match(/^버전\s*(\d+)$/);
+  if (koreanGenerated) return `Version ${koreanGenerated[1]}`;
+  if (value === "기본") return "Default";
+  return value;
+}
+
+function displayVersionName(name) {
+  return normalizeGeneratedVersionName(name) || "Default";
+}
+
+function isDefaultVersionName(name) {
+  const value = String(name || "").trim().toLowerCase();
+  return value === "default" || value === "기본";
 }
 
 function legacyHymnVersionName(song, version) {
