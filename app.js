@@ -1258,8 +1258,8 @@ function renderVersionCompareCell(version, form, index) {
   const active = version.id === getSelectedVersionId();
   if (!form) {
     return active
-      ? `<div class="empty-state version-empty-cell">No form block</div>`
-      : `<div class="empty-state version-empty-cell version-picker" data-version-id="${escapeAttr(version.id)}" role="button" tabindex="0">No form block</div>`;
+      ? `<div class="version-empty-cell" aria-hidden="true"></div>`
+      : `<div class="version-empty-cell version-picker" data-version-id="${escapeAttr(version.id)}" role="button" tabindex="0" aria-label="Select version"></div>`;
   }
 
   if (active) return renderFormBlock(form, index);
