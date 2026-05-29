@@ -1216,6 +1216,7 @@ function renderTextarea(label, field, value, className = "") {
 
 function renderFormBlock(form, index) {
   const label = displayLabel(form);
+  const partNumber = form.part_number ? String(form.part_number) : "";
   return `
     <article class="form-block">
       <div class="form-head">
@@ -1226,6 +1227,7 @@ function renderFormBlock(form, index) {
                 `<option value="${type}" ${form.part_type === type ? "selected" : ""}>${type}</option>`,
             ).join("")}
           </select>
+          ${partNumber ? `<span class="form-number-pill" aria-label="${escapeAttr(label)}">${escapeHtml(partNumber)}</span>` : ""}
         </div>
         <div class="form-actions">
           <button class="icon-btn" type="button" data-form-action="up" data-index="${index}" title="Move up" ${index === 0 ? "disabled" : ""}>
