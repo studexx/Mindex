@@ -100,6 +100,7 @@ function bindStaticEvents() {
     if (!item) return;
     selectSong(item.dataset.songId);
   });
+  refs.songList.addEventListener("keydown", handleSongListKeydown);
 
   refs.detailPane.addEventListener("click", handleDetailClick);
   refs.detailPane.addEventListener("input", handleDetailInput);
@@ -133,6 +134,25 @@ function bindStaticEvents() {
     event.preventDefault();
     event.returnValue = "";
   });
+}
+
+function handleSongListKeydown(event) {
+  if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+
+  const songs = getFilteredSongs();
+  if (!songs.length) return;
+
+  const foundIndex = songs.findIndex((song) => song.id === state.selectedSongId);
+  const currentIndex = foundIndex >= 0 ? foundIndex : event.key === "ArrowDown" ? -1 : songs.length;
+  const nextIndex =
+    event.key === "ArrowDown"
+      ? Math.min(currentIndex + 1, songs.length - 1)
+      : Math.max(currentIndex - 1, 0);
+  const nextSong = songs[nextIndex];
+  if (!nextSong || nextSong.id === state.selectedSongId) return;
+
+  event.preventDefault();
+  selectSong(nextSong.id);
 }
 
 function readTheme() {
@@ -252,6 +272,7 @@ async function selectSong(songId) {
   state.dirty.song = false;
   state.dirty.forms = false;
   render();
+  focusSelectedSong();
   await loadForms(state.selectedVersionId);
 }
 
@@ -1037,6 +1058,13 @@ function renderSongList() {
       `;
     })
     .join("");
+}
+
+function focusSelectedSong() {
+  if (!state.selectedSongId) return;
+  const selected = refs.songList.querySelector(`[data-song-id="${CSS.escape(state.selectedSongId)}"]`);
+  selected?.focus({ preventScroll: true });
+  selected?.scrollIntoView({ block: "nearest" });
 }
 
 function renderDetail() {
