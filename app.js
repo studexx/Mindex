@@ -1841,7 +1841,10 @@ function addSongMetaFromRaw(target, rawValue, versionName = "") {
 function songVersionLine(song) {
   const versions = song?.versions || [];
   if (versions.length <= 1) return "";
-  return versions.map((version) => versionDisplayName(song, version)).filter(Boolean).join(" / ");
+  return versions
+    .map((version) => versionDisplayName(song, version))
+    .filter((name) => name && name !== "기본")
+    .join(" / ");
 }
 
 function legacyHymnVersionName(song, version) {
