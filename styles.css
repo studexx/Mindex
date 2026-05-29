@@ -196,40 +196,6 @@ h1, h2, h3, p { margin: 0; }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.version-meta-editor {
-  display: grid;
-  gap: var(--s1);
-  border-bottom: 1px solid var(--line);
-  padding-bottom: var(--s2);
-}
-.version-meta-editor label {
-  display: grid;
-  min-width: 0;
-  align-items: center;
-  grid-template-columns: 52px minmax(0, 1fr);
-  gap: var(--s2);
-}
-.version-meta-editor span {
-  color: var(--ink-4);
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: .04em;
-  line-height: 1;
-  text-transform: uppercase;
-}
-.version-meta-editor input {
-  min-width: 0;
-  height: 28px;
-  border: 1px solid var(--line);
-  border-radius: var(--r);
-  background: color-mix(in srgb, var(--bg) 52%, var(--panel));
-  color: var(--ink-2);
-  font-size: 12px;
-  font-weight: 540;
-  outline: 0;
-  padding: 0 var(--s2);
-}
-.version-meta-editor input:focus { border-color: var(--line-2); color: var(--ink); }
 .form-block, .copy-row, .slide-card, .empty-state { border: 1px solid var(--line); border-radius: var(--r); background: color-mix(in srgb, var(--panel) 96%, var(--bg)); box-shadow: var(--shadow); }
 .form-block {
   display: grid;

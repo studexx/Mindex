@@ -467,12 +467,6 @@ function handleDetailInput(event) {
     return;
   }
 
-  const versionField = event.target.closest("[data-version-field]");
-  if (versionField) {
-    updateVersionField(versionField);
-    return;
-  }
-
   const draftField = event.target.closest("[data-draft-field]");
   if (draftField) {
     updateDraftField(draftField);
@@ -493,13 +487,6 @@ function handleDetailChange(event) {
       state.forms = normalizeForms(state.forms);
       renderDetail();
     }
-    return;
-  }
-
-  const versionField = event.target.closest("[data-version-field]");
-  if (versionField) {
-    updateVersionField(versionField);
-    renderDetail();
     return;
   }
 
@@ -548,17 +535,6 @@ function updateFormField(field) {
 
   invalidateDraftSlides();
   state.dirty.forms = true;
-  updateSaveState();
-}
-
-function updateVersionField(field) {
-  const version = getSelectedVersion();
-  if (!version) return;
-
-  const key = field.dataset.versionField;
-  version[key] = field.value;
-
-  state.dirty.song = true;
   updateSaveState();
 }
 
@@ -1190,25 +1166,10 @@ function renderVersionFormColumn(song, version) {
       </div>
       ${
         active
-          ? `${renderVersionMetaEditor(version)}${renderEditableForms()}`
+          ? renderEditableForms()
           : `<div class="form-list readonly">${forms.length ? forms.map(renderReadonlyFormBlock).join("") : `<div class="empty-state">No form blocks</div>`}</div>`
       }
     </section>
-  `;
-}
-
-function renderVersionMetaEditor(version) {
-  return `
-    <div class="version-meta-editor" aria-label="Version metadata">
-      <label>
-        <span>Version</span>
-        <input type="text" data-version-field="name" value="${escapeAttr(version.name || "")}" placeholder="버전명" />
-      </label>
-      <label>
-        <span>Meta</span>
-        <input type="text" data-version-field="raw_section_name" value="${escapeAttr(version.raw_section_name || "")}" placeholder="제목 (부제) [원제]" />
-      </label>
-    </div>
   `;
 }
 
