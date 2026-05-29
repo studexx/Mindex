@@ -1160,7 +1160,6 @@ function renderVersionFormColumn(song, version) {
           <div class="version-column-title">
             ${escapeHtml(versionDisplayName(song, version))}
           </div>
-          ${renderVersionMetaLine(song, version)}
         </div>
         ${active ? `<span class="type-pill">Editing</span>` : ""}
       </div>
@@ -1263,11 +1262,6 @@ function renderReadonlyFormBlock(form) {
       <div class="form-preview-text">${escapeHtml(form.lyrics || "")}</div>
     </article>
   `;
-}
-
-function renderVersionMetaLine(song, version) {
-  const meta = versionMetaLine(song, version);
-  return meta ? `<div class="version-column-subtitle">${escapeHtml(meta)}</div>` : "";
 }
 
 function renderCopyTab() {
@@ -1824,45 +1818,6 @@ function versionDisplayName(song, version) {
   if (subtitleMatch) return subtitleMatch[1].trim();
   if (raw === canonicalTitle || raw === canonicalHymnNo) return "기본";
   return raw || "기본";
-}
-
-function versionMetaLine(song, version) {
-  const meta = parseRawTitleMeta(version.raw_section_name || version.version_label || "");
-  const primaryVersion = (song?.versions || []).find((item) => item.is_primary) || (song?.versions || [])[0] || null;
-  const primaryMeta = parseRawTitleMeta(primaryVersion?.raw_section_name || primaryVersion?.version_label || "");
-  const baseline = {
-    subtitle: song?.subtitle || primaryMeta.subtitle,
-    original: song?.original_title || primaryMeta.original,
-  };
-  const displayName = versionDisplayName(song, version);
-  const values = [];
-
-  if (
-    meta.subtitle &&
-    !sameMetaValue(meta.subtitle, baseline.subtitle) &&
-    !sameMetaValue(meta.subtitle, displayName)
-  ) {
-    values.push(meta.subtitle);
-  }
-
-  if (meta.original && !sameMetaValue(meta.original, baseline.original)) {
-    values.push(meta.original);
-  }
-
-  return values.join(" / ");
-}
-
-function parseRawTitleMeta(rawValue) {
-  const raw = rawValue || "";
-  return {
-    subtitle: raw.match(/\(([^)]*?)\)\s*$/)?.[1]?.trim() || "",
-    original: raw.match(/\[([^\]]+)\]/)?.[1]?.trim() || "",
-  };
-}
-
-function sameMetaValue(left, right) {
-  if (!left || !right) return false;
-  return normalizeTitle(left) === normalizeTitle(right);
 }
 
 function songOriginalTitleLine(song) {

@@ -186,16 +186,6 @@ h1, h2, h3, p { margin: 0; }
   white-space: nowrap;
 }
 .version-form-column:hover .version-column-title { color: var(--accent); }
-.version-column-subtitle {
-  min-width: 0;
-  overflow: hidden;
-  color: var(--ink-4);
-  font-size: 10px;
-  font-weight: 650;
-  line-height: 16px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 .form-block, .copy-row, .slide-card, .empty-state { border: 1px solid var(--line); border-radius: var(--r); background: color-mix(in srgb, var(--panel) 96%, var(--bg)); box-shadow: var(--shadow); }
 .form-block {
   display: grid;
