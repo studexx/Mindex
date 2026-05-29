@@ -1103,6 +1103,7 @@ function renderSongList() {
           <span class="song-title">
             <span class="song-title-text">${escapeHtml(song.title)}</span>
             ${renderEmptyBadge(song)}
+            ${song.versions?.length > 1 ? `<span class="song-count-badge">${song.versions.length}</span>` : ""}
           </span>
           ${songOriginalTitleLine(song) ? `<span class="song-meta-line">${escapeHtml(songOriginalTitleLine(song))}</span>` : ""}
         </button>
