@@ -660,13 +660,8 @@ function runFormAction(action, index) {
 }
 
 function runCopyAction(action, index) {
-  if (action === "full") {
-    copyText(formatFullLyrics({ includeLabels: true }));
-    return;
-  }
-
   if (action === "plain") {
-    copyText(formatFullLyrics({ includeLabels: false }));
+    copyText(formatFullLyrics());
     return;
   }
 
@@ -972,10 +967,6 @@ function renderFormToolbar() {
           .join("")}
       </div>
       <div class="copy-actions" aria-label="Copy and export lyrics">
-        <button class="btn secondary" type="button" data-copy-action="full" ${hasForms ? "" : "disabled"} title="Copy blocks with labels">
-          <i data-lucide="copy"></i>
-          <span>Blocks</span>
-        </button>
         <button class="btn secondary" type="button" data-copy-action="plain" ${hasLyrics ? "" : "disabled"} title="Copy lyrics text">
           <i data-lucide="clipboard"></i>
           <span>Text</span>
@@ -1108,12 +1099,9 @@ function formatBlockForCopy(form) {
   return [displayLabel(form), form.lyrics || ""].filter(Boolean).join("\n");
 }
 
-function formatFullLyrics({ includeLabels }, forms = state.forms) {
+function formatFullLyrics(forms = state.forms) {
   return normalizeForms(forms)
-    .map((form) => {
-      if (includeLabels) return formatBlockForCopy(form);
-      return form.lyrics || "";
-    })
+    .map((form) => form.lyrics || "")
     .filter((block) => block.trim().length > 0)
     .join("\n\n");
 }
