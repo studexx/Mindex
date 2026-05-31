@@ -677,6 +677,15 @@ function runCopyAction(action, index) {
     return;
   }
 
+  if (action === "download-freeshow") {
+    try {
+      downloadTextFile(formatFreeShowShowJson(), getShowFileName(getSelectedSong(), getSelectedVersion()), "application/json");
+    } catch (error) {
+      showToast(error.message || "FreeShow file export failed.", "error");
+    }
+    return;
+  }
+
   if (action === "openlyrics") {
     try {
       copyText(formatOpenLyricsXml());
@@ -979,6 +988,10 @@ function renderFormToolbar() {
           <i data-lucide="brackets"></i>
           <span>FreeShow</span>
         </button>
+        <button class="btn secondary" type="button" data-copy-action="download-freeshow" ${hasLyrics ? "" : "disabled"} title="Download FreeShow .show">
+          <i data-lucide="presentation"></i>
+          <span>Show</span>
+        </button>
         <button class="btn secondary" type="button" data-copy-action="openlyrics" ${hasLyrics ? "" : "disabled"} title="Copy OpenLyrics XML">
           <i data-lucide="code-xml"></i>
           <span>XML</span>
@@ -1127,6 +1140,124 @@ function formatFreeShowQuickLyrics(song = getSelectedSong(), forms = state.forms
     .join("\n\n");
 }
 
+function formatFreeShowShowJson(song = getSelectedSong(), version = getSelectedVersion(), forms = state.forms) {
+  return JSON.stringify(buildFreeShowShow(song, version, forms), null, 2);
+}
+
+function buildFreeShowShow(song = getSelectedSong(), version = getSelectedVersion(), forms = state.forms) {
+  const copyableForms = getCopyableForms(forms);
+  if (!copyableForms.length) throw new Error("Lyrics are required for FreeShow .show.");
+
+  const now = Date.now();
+  const title = nullIfBlank(song?.title) || nullIfBlank(version?.name) || "Untitled Song";
+  const layoutId = "default";
+  const slides = {};
+  const layoutSlides = [];
+
+  copyableForms.forEach((form, formIndex) => {
+    const paragraphs = splitFreeShowParagraphs(form.lyrics);
+    const parentId = `slide_${formIndex + 1}`;
+    const childIds = paragraphs.slice(1).map((_, paragraphIndex) => `${parentId}_${paragraphIndex + 2}`);
+    slides[parentId] = buildFreeShowSlide({
+      group: displayLabel(form),
+      color: freeShowGroupColor(form.part_type),
+      lyrics: paragraphs[0] || "",
+      children: childIds,
+    });
+    childIds.forEach((childId, childIndex) => {
+      slides[childId] = buildFreeShowSlide({
+        group: null,
+        color: null,
+        lyrics: paragraphs[childIndex + 1] || "",
+        children: [],
+      });
+    });
+    layoutSlides.push({ id: parentId });
+  });
+
+  return {
+    name: title,
+    category: null,
+    settings: {
+      activeLayout: layoutId,
+      template: null,
+    },
+    timestamps: {
+      created: now,
+      modified: now,
+      used: null,
+    },
+    meta: {
+      number: song?.hymn_no ? String(song.hymn_no) : "",
+      title,
+      artist: "",
+      author: "",
+      composer: "",
+      publisher: "",
+      copyright: "",
+      CCLI: "",
+      year: "",
+      key: song?.default_key || "",
+      version: versionDisplayName(song, version || {}) || "",
+      source: song?.source || "",
+    },
+    slides,
+    layouts: {
+      [layoutId]: {
+        name: "Default",
+        notes: "",
+        slides: layoutSlides,
+      },
+    },
+    media: {},
+  };
+}
+
+function buildFreeShowSlide({ group, color, lyrics, children }) {
+  return {
+    group,
+    color,
+    settings: {},
+    children: children.length ? children : undefined,
+    notes: "",
+    items: [
+      {
+        type: "text",
+        lines: splitFreeShowLines(lyrics).map((line) => ({
+          align: "",
+          text: [{ value: line, style: "" }],
+        })),
+        style: "top:120px;left:50px;height:840px;width:1820px;",
+        align: "",
+        language: "",
+      },
+    ],
+  };
+}
+
+function splitFreeShowParagraphs(lyrics) {
+  const text = normalizeLyricsForCopy(lyrics);
+  if (!text) return [];
+  return text.split(/\n\s*\n/g).map((paragraph) => paragraph.trim()).filter(Boolean);
+}
+
+function splitFreeShowLines(lyrics) {
+  return String(lyrics || "")
+    .split("\n")
+    .map((line) => line.trimEnd())
+    .filter((line) => line.trim().length > 0);
+}
+
+function freeShowGroupColor(type) {
+  return {
+    Verse: "#4F7CAC",
+    "Pre-Chorus": "#C77D33",
+    Chorus: "#2F8F83",
+    Bridge: "#8E5DB7",
+    Coda: "#6B7280",
+  }[type] || "#6B7280";
+}
+
 function formatOpenLyricsXml(song = getSelectedSong(), forms = state.forms) {
   const copyableForms = getCopyableForms(forms);
   const namedForms = getOpenLyricsNamedForms(copyableForms);
@@ -1261,9 +1392,15 @@ function getXmlFileName(song) {
   return `mindex-${slug}-${date}.xml`;
 }
 
+function getShowFileName(song, version) {
+  const versionName = version ? versionDisplayName(song, version) : "";
+  const base = [song?.title || "song", versionName].filter(Boolean).join(" ");
+  return `${slugify(base)}.show`;
+}
+
 function slugify(value) {
   const slug = normalizeTitle(value)
-    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/[^0-9a-z가-힣]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 42);
 
@@ -1828,5 +1965,7 @@ window.Mindex = {
   computePartNumberSuggestion,
   formatFullLyrics,
   formatFreeShowQuickLyrics,
+  formatFreeShowShowJson,
+  buildFreeShowShow,
   formatOpenLyricsXml,
 };
