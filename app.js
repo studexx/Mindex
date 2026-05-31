@@ -674,15 +674,6 @@ function runCopyAction(action, index) {
     return;
   }
 
-  if (action === "openlyrics") {
-    try {
-      copyText(formatOpenLyricsXml());
-    } catch (error) {
-      showToast(error.message || "OpenLyrics XML failed.", "error");
-    }
-    return;
-  }
-
   if (action === "download-openlyrics") {
     try {
       downloadTextFile(formatOpenLyricsXml(), getXmlFileName(getSelectedSong()), "application/xml");
@@ -975,13 +966,9 @@ function renderFormToolbar() {
           <i data-lucide="presentation"></i>
           <span>Show</span>
         </button>
-        <button class="btn secondary" type="button" data-copy-action="openlyrics" ${hasLyrics ? "" : "disabled"} title="Copy OpenLyrics XML">
-          <i data-lucide="code-xml"></i>
-          <span>XML</span>
-        </button>
         <button class="btn secondary" type="button" data-copy-action="download-openlyrics" ${hasLyrics ? "" : "disabled"} title="Download OpenLyrics XML">
           <i data-lucide="download"></i>
-          <span>File</span>
+          <span>XML File</span>
         </button>
       </div>
     </div>
@@ -1096,7 +1083,7 @@ function displayLabel(form) {
 }
 
 function formatBlockForCopy(form) {
-  return [displayLabel(form), form.lyrics || ""].filter(Boolean).join("\n");
+  return [`[${displayLabel(form)}]`, form.lyrics || ""].filter(Boolean).join("\n");
 }
 
 function formatFullLyrics(forms = state.forms) {
