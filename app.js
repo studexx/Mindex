@@ -43,8 +43,6 @@ const state = {
   selectedSongId: null,
   selectedVersionId: null,
   forms: [],
-  draftSlides: [],
-  linesPerSlide: 4,
   search: "",
   activeTab: "forms",
   loading: false,
@@ -294,7 +292,6 @@ async function loadSongs() {
     state.selectedSongId = null;
     state.selectedVersionId = null;
     state.forms = [];
-    state.draftSlides = [];
   }
 
   render();
@@ -308,7 +305,6 @@ async function selectSong(songId) {
   state.selectedVersionId = getDefaultVersionId(getSelectedSong());
   state.activeTab = "forms";
   state.forms = [];
-  state.draftSlides = [];
   state.dirty.song = false;
   state.dirty.forms = false;
   render();
@@ -323,7 +319,6 @@ async function loadForms(versionId) {
 
   const version = getSelectedVersion();
   state.forms = normalizeForms((version?.forms || []).map((form) => withLocalId({ ...form, song_id: versionId })));
-  state.draftSlides = [];
   render();
 }
 
@@ -366,7 +361,6 @@ async function createSong() {
   state.selectedSongId = data.id;
   state.selectedVersionId = data.id;
   state.forms = [];
-  state.draftSlides = [];
   state.activeTab = "forms";
   state.dirty.song = false;
   state.dirty.forms = false;
@@ -390,7 +384,6 @@ async function deleteSelectedSong() {
   state.selectedSongId = null;
   state.selectedVersionId = null;
   state.forms = [];
-  state.draftSlides = [];
   state.dirty.song = false;
   state.dirty.forms = false;
   render();
@@ -461,7 +454,7 @@ function writeFormsToSelectedVersion() {
 function handleDetailClick(event) {
   const tabButton = event.target.closest("[data-tab]");
   if (tabButton) {
-    state.activeTab = tabButton.dataset.tab;
+    state.activeTab = ["forms", "copy"].includes(tabButton.dataset.tab) ? tabButton.dataset.tab : "forms";
     renderDetail();
     return;
   }
@@ -496,12 +489,6 @@ function handleDetailClick(event) {
     return;
   }
 
-  const draftAction = event.target.closest("[data-draft-action]");
-  if (draftAction) {
-    runDraftAction(draftAction.dataset.draftAction, Number(draftAction.dataset.index));
-    return;
-  }
-
   const deleteSongButton = event.target.closest("[data-delete-song]");
   if (deleteSongButton) {
     deleteSelectedSong();
@@ -532,10 +519,6 @@ function handleDetailInput(event) {
     return;
   }
 
-  const draftField = event.target.closest("[data-draft-field]");
-  if (draftField) {
-    updateDraftField(draftField);
-  }
 }
 
 function handleDetailChange(event) {
@@ -555,11 +538,6 @@ function handleDetailChange(event) {
     return;
   }
 
-  const option = event.target.closest("[data-draft-option]");
-  if (option) {
-    state.linesPerSlide = Number(option.value);
-    generateDraftSlides();
-  }
 }
 
 function updateSongField(field) {
@@ -577,7 +555,6 @@ function updateSongField(field) {
 
   if (key === "title") {
     updateEditorTitle(song);
-    invalidateDraftSlides();
   }
 
   state.dirty.song = true;
@@ -598,18 +575,8 @@ function updateFormField(field) {
     resizeFormTextarea(field);
   }
 
-  invalidateDraftSlides();
   state.dirty.forms = true;
   updateSaveState();
-}
-
-function updateDraftField(field) {
-  const slide = state.draftSlides[Number(field.dataset.index)];
-  if (!slide) return;
-
-  if (field.dataset.draftField === "text") {
-    slide.text_lines = field.value.split("\n");
-  }
 }
 
 function addForm(type) {
@@ -627,7 +594,6 @@ function addForm(type) {
     }),
   );
   state.forms = normalizeForms(state.forms);
-  state.draftSlides = [];
   state.dirty.forms = true;
   renderDetail();
   updateSaveState();
@@ -673,7 +639,6 @@ function addVersion() {
   ];
   state.selectedVersionId = versionId;
   state.forms = normalizeForms(sourceForms);
-  state.draftSlides = [];
   state.dirty.forms = true;
   renderDetail();
   updateSaveState();
@@ -701,7 +666,6 @@ function runFormAction(action, index) {
   }
 
   state.forms = normalizeForms(state.forms);
-  state.draftSlides = [];
   state.dirty.forms = true;
   renderDetail();
   updateSaveState();
@@ -757,294 +721,6 @@ function runCopyAction(action, index) {
     const form = state.forms[index];
     if (form) copyText(displayLabel(form));
   }
-}
-
-function runDraftAction(action, index) {
-  if (action === "generate") {
-    generateDraftSlides();
-    return;
-  }
-
-  if (action === "copy-json") {
-    copyText(JSON.stringify(getDraftPayload(), null, 2));
-    return;
-  }
-
-  if (action === "copy-text") {
-    copyText(formatDraftText());
-    return;
-  }
-
-  if (action === "export-pptx") {
-    exportDraftPptx();
-    return;
-  }
-
-  if (action === "copy-slide") {
-    const slide = state.draftSlides[index];
-    if (slide) copyText(formatSlideText(slide));
-    return;
-  }
-
-  if (action === "up" && index > 0) {
-    [state.draftSlides[index - 1], state.draftSlides[index]] = [
-      state.draftSlides[index],
-      state.draftSlides[index - 1],
-    ];
-  }
-
-  if (action === "down" && index < state.draftSlides.length - 1) {
-    [state.draftSlides[index + 1], state.draftSlides[index]] = [
-      state.draftSlides[index],
-      state.draftSlides[index + 1],
-    ];
-  }
-
-  if (action === "delete") {
-    state.draftSlides.splice(index, 1);
-  }
-
-  renderDetail();
-}
-
-function generateDraftSlides() {
-  const song = getSelectedSong();
-  if (!song) return;
-
-  const slides = [
-    {
-      id: createLocalId(),
-      slide_type: "title",
-      label: "Title",
-      text_lines: [song.title || ""],
-      song_id: song.id,
-    },
-  ];
-
-  normalizeForms(state.forms).forEach((form) => {
-    const chunks = splitLyricsForSlides(form.lyrics, state.linesPerSlide);
-    chunks.forEach((chunk, chunkIndex) => {
-      slides.push({
-        id: createLocalId(),
-        slide_type: "lyrics",
-        label: displayLabel(form),
-        text_lines: chunk,
-        song_id: song.id,
-        form_id: form.id || null,
-        chunk_index: chunkIndex + 1,
-      });
-    });
-  });
-
-  state.draftSlides = slides;
-  renderDetail();
-}
-
-function invalidateDraftSlides() {
-  if (state.draftSlides.length) {
-    state.draftSlides = [];
-  }
-}
-
-async function exportDraftPptx() {
-  const song = getSelectedSong();
-  if (!song) return;
-
-  if (!state.draftSlides.length) {
-    generateDraftSlides();
-  }
-
-  if (!state.draftSlides.length) {
-    showToast("Generate draft slides first.", "error");
-    return;
-  }
-
-  try {
-    const payload = getDraftPayload();
-    const pptx = buildPptxPresentation(payload);
-    await pptx.writeFile({ fileName: getPptxFileName(song) });
-    showToast("PPTX exported.");
-  } catch (error) {
-    showToast(error.message || "PPTX export failed.", "error");
-  }
-}
-
-function buildPptxPresentation(payload) {
-  const PptxGenJS = window.PptxGenJS;
-  if (!PptxGenJS) {
-    throw new Error("PptxGenJS is not loaded.");
-  }
-
-  const pptx = new PptxGenJS();
-  pptx.layout = "LAYOUT_WIDE";
-  pptx.author = "Mindex";
-  pptx.company = "Mindex";
-  pptx.subject = "Praise lyrics draft";
-  pptx.title = payload.title || "Mindex Praise Draft";
-  pptx.lang = "ko-KR";
-  pptx.theme = {
-    headFontFace: "Aptos Display",
-    bodyFontFace: "Malgun Gothic",
-    lang: "ko-KR",
-  };
-
-  payload.slides.forEach((draftSlide, index) => {
-    if (draftSlide.slide_type === "title") {
-      addTitleSlide(pptx, draftSlide, payload, index);
-    } else {
-      addLyricsSlide(pptx, draftSlide, payload, index);
-    }
-  });
-
-  return pptx;
-}
-
-function addTitleSlide(pptx, draftSlide, payload, index) {
-  const slide = pptx.addSlide();
-  slide.background = { color: "F7F9F7" };
-  addTemplateFooter(slide, payload, index, "2F6F68");
-  slide.addText("Mindex Worship Draft", {
-    x: 0.72,
-    y: 0.58,
-    w: 4.2,
-    h: 0.28,
-    margin: 0,
-    color: "2F6F68",
-    fontFace: "Aptos",
-    fontSize: 9,
-    bold: true,
-    breakLine: false,
-  });
-  slide.addText(cleanSlideText(draftSlide.text_lines).join("\n") || payload.title || "Untitled Song", {
-    x: 1.08,
-    y: 2.55,
-    w: 11.15,
-    h: 1.25,
-    margin: 0,
-    align: "center",
-    valign: "mid",
-    color: "20251F",
-    fontFace: "Malgun Gothic",
-    fontSize: 38,
-    bold: true,
-    breakLine: false,
-    fit: "shrink",
-  });
-  slide.addText("fixed template / text replacement", {
-    x: 1.08,
-    y: 4.02,
-    w: 11.15,
-    h: 0.32,
-    margin: 0,
-    align: "center",
-    color: "667064",
-    fontFace: "Aptos",
-    fontSize: 10,
-    breakLine: false,
-  });
-}
-
-function addLyricsSlide(pptx, draftSlide, payload, index) {
-  const lines = cleanSlideText(draftSlide.text_lines);
-  const slide = pptx.addSlide();
-  slide.background = { color: "111412" };
-  addTemplateFooter(slide, payload, index, "BFD7D2");
-  slide.addText(draftSlide.label || "Lyrics", {
-    x: 0.72,
-    y: 0.5,
-    w: 4.5,
-    h: 0.3,
-    margin: 0,
-    color: "BFD7D2",
-    fontFace: "Aptos",
-    fontSize: 10,
-    bold: true,
-    breakLine: false,
-  });
-  slide.addText(lines.join("\n"), {
-    x: 0.92,
-    y: 1.75,
-    w: 11.5,
-    h: 3.95,
-    margin: [0, 12, 0, 12],
-    align: "center",
-    valign: "mid",
-    color: "FFFFFF",
-    fontFace: "Malgun Gothic",
-    fontSize: getLyricsFontSize(lines),
-    bold: true,
-    breakLine: false,
-    fit: "shrink",
-  });
-}
-
-function addTemplateFooter(slide, payload, index, color) {
-  slide.addText(payload.title || "Mindex", {
-    x: 0.72,
-    y: 6.88,
-    w: 7.2,
-    h: 0.24,
-    margin: 0,
-    color,
-    transparency: 18,
-    fontFace: "Aptos",
-    fontSize: 7,
-    breakLine: false,
-  });
-  slide.addText(String(index + 1).padStart(2, "0"), {
-    x: 12,
-    y: 6.88,
-    w: 0.58,
-    h: 0.24,
-    margin: 0,
-    align: "right",
-    color,
-    transparency: 18,
-    fontFace: "Aptos",
-    fontSize: 7,
-    breakLine: false,
-  });
-}
-
-function getLyricsFontSize(lines) {
-  const visibleLines = lines.filter(Boolean);
-  const longest = visibleLines.reduce((max, line) => Math.max(max, Array.from(line).length), 0);
-  let size = 42;
-
-  if (visibleLines.length >= 4) size = 34;
-  if (visibleLines.length === 3) size = 38;
-  if (visibleLines.length <= 2) size = 44;
-  if (longest > 28) size -= Math.min(8, Math.ceil((longest - 28) / 4) * 2);
-
-  return Math.max(28, size);
-}
-
-function cleanSlideText(lines) {
-  return (lines || []).map((line) => String(line || "").trim()).filter(Boolean);
-}
-
-function splitLyricsForSlides(lyrics, maxLines = 4) {
-  const normalized = (lyrics || "").replace(/\r\n/g, "\n").trim();
-  if (!normalized) return [];
-
-  const paragraphs = normalized
-    .split(/\n\s*\n/g)
-    .map((part) => part.trim())
-    .filter(Boolean);
-
-  const chunks = [];
-  paragraphs.forEach((paragraph) => {
-    const lines = paragraph
-      .split("\n")
-      .map((line) => line.trimEnd())
-      .filter((line) => line.trim().length > 0);
-
-    for (let index = 0; index < lines.length; index += maxLines) {
-      chunks.push(lines.slice(index, index + maxLines));
-    }
-  });
-
-  return chunks;
 }
 
 function render() {
@@ -1164,7 +840,6 @@ function renderDetail() {
       <nav class="tabs" aria-label="Song editor tabs">
         ${renderTab("forms", "Forms")}
         ${renderTab("copy", "Copy")}
-        ${renderTab("ppt", "PPT Draft")}
       </nav>
 
       ${state.activeTab === "forms" ? "" : renderVersionSwitcher(song)}
@@ -1187,7 +862,6 @@ function renderTab(id, label) {
 
 function renderActiveTab(song) {
   if (state.activeTab === "copy") return renderCopyTab();
-  if (state.activeTab === "ppt") return renderDraftTab();
   return renderFormsTab(song);
 }
 
@@ -1250,7 +924,7 @@ function renderVersionCompare(song, versions) {
                   ${versionForms.map(({ version, forms }) => renderVersionCompareCell(version, forms[index], index)).join("")}
                 </div>
               `).join("")
-            : `<div class="empty-state">No form blocks</div>`
+            : ""
         }
       </div>
     </div>
@@ -1346,7 +1020,7 @@ function renderEditableFormList() {
       ${
         state.forms.length
           ? state.forms.map(renderFormBlock).join("")
-          : `<div class="empty-state">No form blocks</div>`
+          : ""
       }
     </div>
   `;
@@ -1477,91 +1151,6 @@ function renderCopyRow(form, index) {
           <i data-lucide="tag"></i>
           <span>Label</span>
         </button>
-      </div>
-    </article>
-  `;
-}
-
-function renderDraftTab() {
-  const canExportPptx = state.draftSlides.length > 0 || state.forms.length > 0;
-
-  return `
-    <section class="panel">
-      <div class="draft-control-row">
-        <label class="field">
-          <span>Lines per slide</span>
-          <select class="draft-select" data-draft-option="linesPerSlide">
-            ${[2, 3, 4]
-              .map(
-                (count) =>
-                  `<option value="${count}" ${state.linesPerSlide === count ? "selected" : ""}>${count}</option>`,
-              )
-              .join("")}
-          </select>
-        </label>
-        <div class="draft-actions">
-          <button class="btn primary" type="button" data-draft-action="generate">
-            <i data-lucide="file-plus-2"></i>
-            <span>Generate Draft</span>
-          </button>
-          <button class="btn secondary" type="button" data-draft-action="copy-json" ${state.draftSlides.length ? "" : "disabled"}>
-            <i data-lucide="braces"></i>
-            <span>Copy JSON</span>
-          </button>
-          <button class="btn secondary" type="button" data-draft-action="copy-text" ${state.draftSlides.length ? "" : "disabled"}>
-            <i data-lucide="clipboard"></i>
-            <span>Copy Text</span>
-          </button>
-          <button class="btn secondary" type="button" data-draft-action="export-pptx" ${canExportPptx ? "" : "disabled"}>
-            <i data-lucide="presentation"></i>
-            <span>Export PPTX</span>
-          </button>
-        </div>
-      </div>
-
-      <div class="slide-list">
-        ${
-          state.draftSlides.length
-            ? state.draftSlides.map(renderSlideCard).join("")
-            : `<div class="empty-state">No draft slides</div>`
-        }
-      </div>
-    </section>
-  `;
-}
-
-function renderSlideCard(slide, index) {
-  return `
-    <article class="slide-card">
-      <div class="slide-head">
-        <div class="slide-label">
-          <span class="type-pill">${escapeHtml(index + 1)}. ${escapeHtml(slide.label)}</span>
-          <span class="muted">${escapeHtml(slide.slide_type)}</span>
-        </div>
-        <div class="slide-actions">
-          <button class="icon-btn" type="button" data-draft-action="up" data-index="${index}" title="Move up" ${index === 0 ? "disabled" : ""}>
-            <i data-lucide="arrow-up"></i>
-          </button>
-          <button class="icon-btn" type="button" data-draft-action="down" data-index="${index}" title="Move down" ${index === state.draftSlides.length - 1 ? "disabled" : ""}>
-            <i data-lucide="arrow-down"></i>
-          </button>
-          <button class="icon-btn" type="button" data-draft-action="copy-slide" data-index="${index}" title="Copy slide">
-            <i data-lucide="copy"></i>
-          </button>
-          <button class="icon-btn danger" type="button" data-draft-action="delete" data-index="${index}" title="Delete slide">
-            <i data-lucide="trash-2"></i>
-          </button>
-        </div>
-      </div>
-      <div class="slide-grid">
-        <label class="field">
-          <span>Label</span>
-          <input type="text" value="${escapeAttr(slide.label)}" readonly />
-        </label>
-        <label class="field">
-          <span>Text lines</span>
-          <textarea class="draft-textarea" data-draft-field="text" data-index="${index}" rows="5">${escapeHtml((slide.text_lines || []).join("\n"))}</textarea>
-        </label>
       </div>
     </article>
   `;
@@ -1754,39 +1343,6 @@ function normalizeLyricsForCopy(lyrics) {
   return String(lyrics || "").replace(/\r\n?/g, "\n").trim();
 }
 
-function getDraftPayload() {
-  const song = getSelectedSong();
-  return {
-    song_id: song?.id || null,
-    title: song?.title || "",
-    template: "fixed-text-replacement",
-    template_version: "mindex-lyrics-v1",
-    lines_per_slide: state.linesPerSlide,
-    slides: state.draftSlides.map((slide, index) => ({
-      slide_index: index + 1,
-      slide_type: slide.slide_type,
-      label: slide.label,
-      text_lines: slide.text_lines || [],
-      form_id: slide.form_id || null,
-      chunk_index: slide.chunk_index || null,
-    })),
-  };
-}
-
-function formatDraftText() {
-  return state.draftSlides.map(formatSlideText).join("\n\n");
-}
-
-function formatSlideText(slide) {
-  return [`[${slide.label}]`, ...(slide.text_lines || [])].join("\n");
-}
-
-function getPptxFileName(song) {
-  const date = new Date().toISOString().slice(0, 10);
-  const slug = slugify(song.title || "song");
-  return `mindex-${slug}-${date}.pptx`;
-}
-
 function getXmlFileName(song) {
   const date = new Date().toISOString().slice(0, 10);
   const slug = slugify(song?.title || "song");
@@ -1935,7 +1491,6 @@ async function selectVersion(versionId) {
 
   state.selectedVersionId = versionId;
   state.forms = [];
-  state.draftSlides = [];
   state.dirty.song = false;
   state.dirty.forms = false;
   render();
@@ -2362,10 +1917,4 @@ window.Mindex = {
   formatFullLyrics,
   formatFreeShowQuickLyrics,
   formatOpenLyricsXml,
-  splitLyricsForSlides,
-  generateDraftSlides,
-  getDraftPayload,
-  buildPptxPresentation,
-  writePptxArrayBuffer: async (payload) =>
-    buildPptxPresentation(payload).write({ outputType: "arraybuffer" }),
 };
