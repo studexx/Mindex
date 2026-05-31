@@ -774,8 +774,8 @@ function renderSongList() {
         <button class="song-item${active}" type="button" data-song-id="${escapeAttr(song.id)}">
           <span class="song-title">
             <span class="song-title-text">${escapeHtml(song.title)}</span>
-            ${renderEmptyBadge(song)}
             ${song.versions?.length > 1 ? `<span class="song-count-badge">${song.versions.length}</span>` : ""}
+            ${renderEmptyBadge(song)}
           </span>
           ${metaLine ? `<span class="song-meta-line">${escapeHtml(metaLine)}</span>` : ""}
         </button>
@@ -814,7 +814,6 @@ function renderDetail() {
         <div class="editor-title">
           <h2 id="editorSongTitle">
             <span>${escapeHtml(song.title || "Untitled Song")}</span>
-            ${renderEmptyBadge(song)}
           </h2>
           <div class="editor-original-title${originalTitleLine ? "" : " empty"}">${escapeHtml(originalTitleLine || "Metadata")}</div>
         </div>
@@ -824,6 +823,7 @@ function renderDetail() {
             <i data-lucide="copy-plus"></i>
             <span>Version</span>
           </button>
+          ${renderEmptyBadge(song)}
         </div>
       </header>
 
