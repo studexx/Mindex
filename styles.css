@@ -89,15 +89,22 @@ h1, h2, h3, p { margin: 0; }
   flex: 0 0 auto;
   min-height: 18px;
   align-items: center;
-  border: 1px solid color-mix(in srgb, var(--warn) 28%, var(--line));
   border-radius: 999px;
-  background: var(--warn-bg);
-  color: var(--warn);
   font-size: 9px;
   font-weight: 760;
   line-height: 1;
   padding: 0 6px;
   white-space: nowrap;
+}
+.empty-badge.all-empty {
+  border: 1px solid color-mix(in srgb, var(--danger) 34%, var(--line));
+  background: color-mix(in srgb, var(--danger) 10%, var(--panel));
+  color: var(--danger);
+}
+.empty-badge.some-empty {
+  border: 1px solid color-mix(in srgb, var(--warn) 28%, var(--line));
+  background: var(--warn-bg);
+  color: var(--warn);
 }
 
 .detail-pane { min-width: 0; background: var(--bg); padding: var(--s5); }
