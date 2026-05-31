@@ -968,7 +968,7 @@ function renderFormToolbar() {
         </button>
         <button class="btn secondary" type="button" data-copy-action="download-openlyrics" ${hasLyrics ? "" : "disabled"} title="Download OpenLyrics XML">
           <i data-lucide="download"></i>
-          <span>XML File</span>
+          <span>XML</span>
         </button>
       </div>
     </div>
