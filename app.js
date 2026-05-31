@@ -967,7 +967,7 @@ function renderFormToolbar() {
           .join("")}
       </div>
       <div class="copy-actions" aria-label="Copy and export lyrics">
-        <button class="btn secondary" type="button" data-copy-action="plain" ${hasLyrics ? "" : "disabled"} title="Copy lyrics text">
+        <button class="btn secondary" type="button" data-copy-action="plain" ${hasLyrics ? "" : "disabled"} title="Copy text with form labels">
           <i data-lucide="clipboard"></i>
           <span>Text</span>
         </button>
@@ -1101,7 +1101,7 @@ function formatBlockForCopy(form) {
 
 function formatFullLyrics(forms = state.forms) {
   return normalizeForms(forms)
-    .map((form) => form.lyrics || "")
+    .map(formatBlockForCopy)
     .filter((block) => block.trim().length > 0)
     .join("\n\n");
 }
