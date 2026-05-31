@@ -14,14 +14,6 @@ const FORM_ADD_LABELS = {
   Coda: "Coda",
 };
 
-const OPENLYRICS_PART_CODES = {
-  Verse: "v",
-  Chorus: "c",
-  "Pre-Chorus": "p",
-  Bridge: "b",
-  Coda: "e",
-};
-
 const STORAGE = {
   url: "mindex.supabase.url",
   key: "mindex.supabase.anonKey",
@@ -674,15 +666,6 @@ function runCopyAction(action, index) {
     return;
   }
 
-  if (action === "download-openlyrics") {
-    try {
-      downloadTextFile(formatOpenLyricsXml(), getXmlFileName(getSelectedSong()), "application/xml");
-    } catch (error) {
-      showToast(error.message || "OpenLyrics XML failed.", "error");
-    }
-    return;
-  }
-
   if (action === "block") {
     const form = state.forms[index];
     if (form) copyText(formatBlockForCopy(form));
@@ -966,10 +949,6 @@ function renderFormToolbar() {
           <i data-lucide="presentation"></i>
           <span>Show</span>
         </button>
-        <button class="btn secondary" type="button" data-copy-action="download-openlyrics" ${hasLyrics ? "" : "disabled"} title="Download OpenLyrics XML">
-          <i data-lucide="download"></i>
-          <span>XML</span>
-        </button>
       </div>
     </div>
   `;
@@ -1211,138 +1190,12 @@ function freeShowGroupColor(type) {
   }[type] || "#6B7280";
 }
 
-function formatOpenLyricsXml(song = getSelectedSong(), forms = state.forms) {
-  const copyableForms = getCopyableForms(forms);
-  const namedForms = getOpenLyricsNamedForms(copyableForms);
-  const title = nullIfBlank(song?.title) || "Untitled Song";
-  const titles = [title, ...cleanList(song?.alt_titles)];
-  const themes = [...cleanList(song?.theme_tags), nullIfBlank(song?.category)].filter(Boolean);
-  const modifiedDate = new Date().toISOString();
-
-  if (!namedForms.length) {
-    throw new Error("Lyrics are required for OpenLyrics XML.");
-  }
-
-  const propertyLines = [
-    "  <properties>",
-    "    <titles>",
-    ...titles.map((item) => `      <title>${escapeXml(item)}</title>`),
-    "    </titles>",
-  ];
-
-  if (song?.default_key) {
-    propertyLines.push(`    <key>${escapeXml(song.default_key)}</key>`);
-  }
-
-  if (themes.length) {
-    propertyLines.push("    <themes>");
-    propertyLines.push(...themes.map((theme) => `      <theme>${escapeXml(theme)}</theme>`));
-    propertyLines.push("    </themes>");
-  }
-
-  if (song?.source) {
-    propertyLines.push("    <songbooks>");
-    propertyLines.push(`      <songbook name="${escapeXml(song.source)}"/>`);
-    propertyLines.push("    </songbooks>");
-  }
-
-  if (namedForms.length) {
-    propertyLines.push(`    <verseOrder>${namedForms.map((form) => form.openLyricsName).join(" ")}</verseOrder>`);
-  }
-
-  if (song?.memo || song?.tempo_note) {
-    propertyLines.push("    <comments>");
-    if (song.tempo_note) {
-      propertyLines.push(`      <comment>Tempo: ${escapeXml(song.tempo_note)}</comment>`);
-    }
-    if (song.memo) {
-      propertyLines.push(`      <comment>${escapeXml(song.memo)}</comment>`);
-    }
-    propertyLines.push("    </comments>");
-  }
-
-  propertyLines.push("  </properties>");
-
-  const lyricLines = [
-    "  <lyrics>",
-    ...namedForms.flatMap((form) => formatOpenLyricsVerse(form)),
-    "  </lyrics>",
-  ];
-
-  return [
-    '<?xml version="1.0" encoding="UTF-8"?>',
-    `<song xmlns="http://openlyrics.info/namespace/2009/song" version="0.9" createdIn="Mindex" modifiedIn="Mindex" modifiedDate="${escapeXml(modifiedDate)}">`,
-    ...propertyLines,
-    ...lyricLines,
-    "</song>",
-  ].join("\n");
-}
-
 function getCopyableForms(forms = state.forms) {
   return normalizeForms(forms).filter((form) => normalizeLyricsForCopy(form.lyrics).length > 0);
 }
 
-function getOpenLyricsNamedForms(forms) {
-  const normalized = normalizeForms(forms);
-  const codeCounts = normalized.reduce((acc, form) => {
-    const code = OPENLYRICS_PART_CODES[form.part_type] || "o";
-    acc[code] = (acc[code] || 0) + 1;
-    return acc;
-  }, {});
-  const seen = {};
-
-  return normalized.map((form) => {
-    const code = OPENLYRICS_PART_CODES[form.part_type] || "o";
-    seen[code] = (seen[code] || 0) + 1;
-    return {
-      ...form,
-      openLyricsName: codeCounts[code] === 1 ? code : `${code}${seen[code]}`,
-    };
-  });
-}
-
-function formatOpenLyricsVerse(form) {
-  return [
-    `    <verse name="${escapeXml(form.openLyricsName)}">`,
-    ...formatOpenLyricsLineGroups(form.lyrics),
-    "    </verse>",
-  ];
-}
-
-function formatOpenLyricsLineGroups(lyrics) {
-  const paragraphs = normalizeLyricsForCopy(lyrics)
-    .split(/\n\s*\n/g)
-    .map((paragraph) => paragraph.trim())
-    .filter(Boolean);
-
-  return paragraphs.flatMap((paragraph) => {
-    const lines = paragraph
-      .split("\n")
-      .map((line) => line.trimEnd())
-      .filter((line) => line.trim().length > 0);
-
-    if (!lines.length) return [];
-    if (lines.length === 1) return [`      <lines>${escapeXml(lines[0])}</lines>`];
-
-    return [
-      "      <lines>",
-      ...lines.map((line, index) => {
-        const suffix = index < lines.length - 1 ? "<br/>" : "";
-        return `        ${escapeXml(line)}${suffix}`;
-      }),
-      "      </lines>",
-    ];
-  });
-}
-
 function normalizeLyricsForCopy(lyrics) {
   return String(lyrics || "").replace(/\r\n?/g, "\n").trim();
-}
-
-function getXmlFileName(song) {
-  const date = new Date().toISOString().slice(0, 10);
-  const slug = slugify(song?.title || "song");
-  return `mindex-${slug}-${date}.xml`;
 }
 
 function getShowFileName(song, version) {
@@ -1884,10 +1737,6 @@ function escapeAttr(value) {
   return escapeHtml(value);
 }
 
-function escapeXml(value) {
-  return escapeHtml(value);
-}
-
 function showToast(message, type = "info") {
   const toast = document.createElement("div");
   toast.className = `toast ${type === "error" ? "error" : ""}`;
@@ -1920,5 +1769,4 @@ window.Mindex = {
   formatFullLyrics,
   formatFreeShowShowJson,
   buildFreeShowShow,
-  formatOpenLyricsXml,
 };

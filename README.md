@@ -91,12 +91,9 @@ The `Export PPTX` button uses PptxGenJS in the browser to create a fixed-templat
 `.pptx` draft. The generated deck is intentionally simple: one title slide and
 centered lyric slides with text replacement only.
 
-## Copy / Projection Text
+## Copy / Projection
 
-The Copy tab is the fastest export path for lyrics:
+The Forms view keeps only the current working exports:
 
-- `Labeled Blocks`: human-readable song form blocks (`Verse 1`, `Chorus`, etc.)
-- `ProPresenter Text`: plain lyrics with song form blocks separated by blank lines
-- `FreeShow Quick Lyrics`: FreeShow clipboard text using `[Verse]`, `[Chorus]`, etc.
-- `OpenLyrics XML`: OpenLP/OpenLyrics-compatible XML text
-- `XML File`: downloads the same OpenLyrics XML as a `.xml` file
+- `Text`: copies lyrics with song form labels such as `[Verse 1]` and `[Chorus]`
+- `Show`: downloads the selected version as a FreeShow `.show` file
