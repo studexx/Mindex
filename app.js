@@ -44,7 +44,6 @@ const state = {
   selectedVersionId: null,
   forms: [],
   search: "",
-  activeTab: "forms",
   loading: false,
   saving: false,
   theme: "light",
@@ -303,7 +302,6 @@ async function selectSong(songId) {
 
   state.selectedSongId = songId;
   state.selectedVersionId = getDefaultVersionId(getSelectedSong());
-  state.activeTab = "forms";
   state.forms = [];
   state.dirty.song = false;
   state.dirty.forms = false;
@@ -361,7 +359,6 @@ async function createSong() {
   state.selectedSongId = data.id;
   state.selectedVersionId = data.id;
   state.forms = [];
-  state.activeTab = "forms";
   state.dirty.song = false;
   state.dirty.forms = false;
   render();
@@ -452,13 +449,6 @@ function writeFormsToSelectedVersion() {
 }
 
 function handleDetailClick(event) {
-  const tabButton = event.target.closest("[data-tab]");
-  if (tabButton) {
-    state.activeTab = ["forms", "copy"].includes(tabButton.dataset.tab) ? tabButton.dataset.tab : "forms";
-    renderDetail();
-    return;
-  }
-
   const addButton = event.target.closest("[data-add-form]");
   if (addButton) {
     addForm(addButton.dataset.addForm);
@@ -837,13 +827,7 @@ function renderDetail() {
         </div>
       </header>
 
-      <nav class="tabs" aria-label="Song editor tabs">
-        ${renderTab("forms", "Forms")}
-        ${renderTab("copy", "Copy")}
-      </nav>
-
-      ${state.activeTab === "forms" ? "" : renderVersionSwitcher(song)}
-      ${renderActiveTab(song)}
+      ${renderFormsTab(song)}
     </div>
   `;
 
@@ -853,36 +837,6 @@ function renderDetail() {
 
 function renderEmptyBadge(song) {
   return songHasEmptyVersion(song) ? `<span class="empty-badge">Empty</span>` : "";
-}
-
-function renderTab(id, label) {
-  const active = state.activeTab === id ? " active" : "";
-  return `<button class="tab-button${active}" type="button" data-tab="${id}">${label}</button>`;
-}
-
-function renderActiveTab(song) {
-  if (state.activeTab === "copy") return renderCopyTab();
-  return renderFormsTab(song);
-}
-
-function renderVersionSwitcher(song) {
-  const versions = song.versions || [];
-  if (versions.length <= 1) return "";
-
-  return `
-    <div class="version-switcher" aria-label="Song versions">
-      ${versions
-        .map((version) => {
-          const active = version.id === getSelectedVersionId() ? " active" : "";
-          return `
-            <button class="version-pill${active}" type="button" data-version-id="${escapeAttr(version.id)}">
-              ${escapeHtml(versionDisplayName(song, version))}
-            </button>
-          `;
-        })
-        .join("")}
-    </div>
-  `;
 }
 
 function renderFormsTab(song) {
@@ -996,6 +950,8 @@ function renderEditableForms() {
 }
 
 function renderFormToolbar() {
+  const hasForms = state.forms.length > 0;
+  const hasLyrics = getCopyableForms().length > 0;
   return `
     <div class="section-bar form-toolbar" aria-label="Add song form">
       <div class="form-buttons">
@@ -1009,6 +965,28 @@ function renderFormToolbar() {
             `,
           )
           .join("")}
+      </div>
+      <div class="copy-actions" aria-label="Copy and export lyrics">
+        <button class="btn secondary" type="button" data-copy-action="full" ${hasForms ? "" : "disabled"} title="Copy blocks with labels">
+          <i data-lucide="copy"></i>
+          <span>Blocks</span>
+        </button>
+        <button class="btn secondary" type="button" data-copy-action="plain" ${hasLyrics ? "" : "disabled"} title="Copy lyrics text">
+          <i data-lucide="clipboard"></i>
+          <span>Text</span>
+        </button>
+        <button class="btn secondary" type="button" data-copy-action="freeshow" ${hasLyrics ? "" : "disabled"} title="Copy FreeShow text">
+          <i data-lucide="brackets"></i>
+          <span>FreeShow</span>
+        </button>
+        <button class="btn secondary" type="button" data-copy-action="openlyrics" ${hasLyrics ? "" : "disabled"} title="Copy OpenLyrics XML">
+          <i data-lucide="code-xml"></i>
+          <span>XML</span>
+        </button>
+        <button class="btn secondary" type="button" data-copy-action="download-openlyrics" ${hasLyrics ? "" : "disabled"} title="Download OpenLyrics XML">
+          <i data-lucide="download"></i>
+          <span>File</span>
+        </button>
       </div>
     </div>
   `;
@@ -1086,72 +1064,6 @@ function renderReadonlyFormBlock(form) {
         </div>
       </div>
       <div class="form-preview-text">${escapeHtml(form.lyrics || "")}</div>
-    </article>
-  `;
-}
-
-function renderCopyTab() {
-  const hasForms = state.forms.length > 0;
-  const hasLyrics = getCopyableForms().length > 0;
-  return `
-    <section class="panel">
-      <div class="copy-actions">
-        <button class="btn primary" type="button" data-copy-action="full" ${hasForms ? "" : "disabled"}>
-          <i data-lucide="copy"></i>
-          <span>Blocks</span>
-        </button>
-        <button class="btn secondary" type="button" data-copy-action="plain" ${hasLyrics ? "" : "disabled"}>
-          <i data-lucide="clipboard"></i>
-          <span>Text</span>
-        </button>
-        <button class="btn secondary" type="button" data-copy-action="freeshow" ${hasLyrics ? "" : "disabled"}>
-          <i data-lucide="brackets"></i>
-          <span>FreeShow</span>
-        </button>
-        <button class="btn secondary" type="button" data-copy-action="openlyrics" ${hasLyrics ? "" : "disabled"}>
-          <i data-lucide="code-xml"></i>
-          <span>XML</span>
-        </button>
-        <button class="btn secondary" type="button" data-copy-action="download-openlyrics" ${hasLyrics ? "" : "disabled"}>
-          <i data-lucide="download"></i>
-          <span>File</span>
-        </button>
-      </div>
-
-      <div class="copy-list">
-        ${
-          hasForms
-            ? state.forms.map(renderCopyRow).join("")
-            : `<div class="empty-state">No lyrics to copy</div>`
-        }
-      </div>
-    </section>
-  `;
-}
-
-function renderCopyRow(form, index) {
-  return `
-    <article class="copy-row">
-      <div>
-        <div class="copy-head">
-          <div class="copy-label">${escapeHtml(displayLabel(form))}</div>
-        </div>
-        <div class="copy-text">${escapeHtml(form.lyrics || "")}</div>
-      </div>
-      <div class="copy-buttons">
-        <button class="btn secondary" type="button" data-copy-action="block" data-index="${index}">
-          <i data-lucide="copy"></i>
-          <span>Block</span>
-        </button>
-        <button class="btn secondary" type="button" data-copy-action="lyrics" data-index="${index}">
-          <i data-lucide="text"></i>
-          <span>Lyrics</span>
-        </button>
-        <button class="btn secondary" type="button" data-copy-action="label" data-index="${index}">
-          <i data-lucide="tag"></i>
-          <span>Label</span>
-        </button>
-      </div>
     </article>
   `;
 }
