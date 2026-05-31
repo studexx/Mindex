@@ -670,11 +670,6 @@ function runCopyAction(action, index) {
     return;
   }
 
-  if (action === "freeshow") {
-    copyText(formatFreeShowQuickLyrics());
-    return;
-  }
-
   if (action === "download-freeshow") {
     try {
       downloadTextFile(formatFreeShowShowJson(), getShowFileName(getSelectedSong(), getSelectedVersion()), "application/json");
@@ -985,10 +980,6 @@ function renderFormToolbar() {
           <i data-lucide="clipboard"></i>
           <span>Text</span>
         </button>
-        <button class="btn secondary" type="button" data-copy-action="freeshow" ${hasLyrics ? "" : "disabled"} title="Copy FreeShow text">
-          <i data-lucide="brackets"></i>
-          <span>FreeShow</span>
-        </button>
         <button class="btn secondary" type="button" data-copy-action="download-freeshow" ${hasLyrics ? "" : "disabled"} title="Download FreeShow .show">
           <i data-lucide="presentation"></i>
           <span>Show</span>
@@ -1123,20 +1114,6 @@ function formatFullLyrics({ includeLabels }, forms = state.forms) {
       if (includeLabels) return formatBlockForCopy(form);
       return form.lyrics || "";
     })
-    .filter((block) => block.trim().length > 0)
-    .join("\n\n");
-}
-
-function formatFreeShowQuickLyrics(song = getSelectedSong(), forms = state.forms) {
-  const metadata = [];
-  const title = nullIfBlank(song?.title);
-  if (title) metadata.push(`Title=${title}`);
-
-  const blocks = getCopyableForms(forms).map((form) =>
-    [`[${form.part_type}]`, normalizeLyricsForCopy(form.lyrics)].filter(Boolean).join("\n"),
-  );
-
-  return [metadata.join("\n"), blocks.join("\n\n")]
     .filter((block) => block.trim().length > 0)
     .join("\n\n");
 }
@@ -1966,7 +1943,6 @@ window.Mindex = {
   displayLabel,
   computePartNumberSuggestion,
   formatFullLyrics,
-  formatFreeShowQuickLyrics,
   formatFreeShowShowJson,
   buildFreeShowShow,
   formatOpenLyricsXml,
