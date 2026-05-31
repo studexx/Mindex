@@ -1470,7 +1470,6 @@ function normalizeServerSong(row) {
 
   return {
     ...row,
-    title_normalized: row.title_normalized || row.title || "",
     versions: versions.map((version, index) => ({
       ...version,
       id: version.id || `${row.id}:version:${index + 1}`,
@@ -1702,8 +1701,6 @@ function getSongSearchMatch(song, tokens = getSearchTokens(state.search)) {
 function getSongSearchFields(song) {
   const fields = [
     searchField("title", song.title, 120),
-    searchField("title", song.title_normalized, 108),
-    searchField("title", song.normalized_title, 108),
     searchField("hymn", song.hymn_no, 125),
     searchField("meta", song.subtitle, 88),
     searchField("meta", song.original_title, 88),

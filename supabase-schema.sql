@@ -4,7 +4,6 @@ create table if not exists public.mindex_songs (
   id uuid primary key default gen_random_uuid(),
   title text not null,
   alt_titles text[] not null default '{}',
-  title_normalized text,
   hymn_no text,
   category text,
   source text,
@@ -18,30 +17,8 @@ create table if not exists public.mindex_songs (
 create index if not exists mindex_songs_title_idx
   on public.mindex_songs (title);
 
-create index if not exists mindex_songs_title_normalized_idx
-  on public.mindex_songs (title_normalized);
-
 create index if not exists mindex_songs_hymn_no_idx
   on public.mindex_songs (hymn_no);
-
-create or replace function public.set_mindex_songs_title_normalized()
-returns trigger
-language plpgsql
-as $$
-begin
-  new.title_normalized := new.title;
-  return new;
-end;
-$$;
-
-drop trigger if exists trg_set_mindex_songs_title_normalized
-on public.mindex_songs;
-
-create trigger trg_set_mindex_songs_title_normalized
-before insert or update of title
-on public.mindex_songs
-for each row
-execute function public.set_mindex_songs_title_normalized();
 
 -- Prototype collaboration policies.
 -- Use only with a browser-safe anon key and a project intended for shared editing.
