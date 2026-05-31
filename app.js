@@ -1177,7 +1177,7 @@ function renderDetail() {
 }
 
 function renderEmptyBadge(song) {
-  return songHasLyrics(song) ? "" : `<span class="empty-badge">Empty</span>`;
+  return songHasEmptyVersion(song) ? `<span class="empty-badge">Empty</span>` : "";
 }
 
 function renderTab(id, label) {
@@ -2229,12 +2229,12 @@ function sortSongs(a, b) {
   return TITLE_COLLATOR.compare(a.title || "", b.title || "");
 }
 
-function songHasLyrics(song) {
-  return Boolean(
-    (song?.versions || []).some((version) =>
-      (version.forms || []).some((form) => (form.lyrics || "").trim()),
-    ),
-  );
+function songHasEmptyVersion(song) {
+  return (song?.versions || []).some((version) => !versionHasLyrics(version));
+}
+
+function versionHasLyrics(version) {
+  return Boolean((version?.forms || []).some((form) => (form.lyrics || "").trim()));
 }
 
 function getSelectedSong() {
