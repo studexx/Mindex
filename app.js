@@ -334,7 +334,6 @@ async function createSong() {
   const payload = {
     title,
     alt_titles: [],
-    title_normalized: normalizeTitle(title),
     category: null,
     source: null,
     default_key: null,
@@ -419,7 +418,6 @@ async function saveAll() {
 async function saveSongMeta(song) {
   const payload = {
     title: song.title.trim(),
-    title_normalized: normalizeTitle(song.title),
     memo: serializeSongMemo(song),
   };
 
@@ -1472,7 +1470,7 @@ function normalizeServerSong(row) {
 
   return {
     ...row,
-    title_normalized: row.title_normalized || normalizeTitle(row.title),
+    title_normalized: row.title_normalized || row.title || "",
     versions: versions.map((version, index) => ({
       ...version,
       id: version.id || `${row.id}:version:${index + 1}`,
