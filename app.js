@@ -735,7 +735,7 @@ function renderSongList() {
   refs.songList.innerHTML = filtered
     .map((song) => {
       const active = song.id === state.selectedSongId ? " active" : "";
-      const metaLine = hasSearch ? songSearchHint(song) || songOriginalTitleLine(song) : songOriginalTitleLine(song);
+      const metaLine = hasSearch ? songSearchHint(song) || songTitleMetaLine(song) : songTitleMetaLine(song);
       return `
         <button class="song-item${active}" type="button" data-song-id="${escapeAttr(song.id)}">
           <span class="song-title">
@@ -773,7 +773,8 @@ function renderDetail() {
     return;
   }
 
-  const originalTitleLine = songOriginalTitleLine(song);
+  const titleMetaLine = songTitleMetaLine(song);
+  const supportMetaItems = songSupportMetaItems(song);
   refs.detailPane.innerHTML = `
     <div class="editor-shell">
       <header class="editor-head">
@@ -781,7 +782,10 @@ function renderDetail() {
           <h2 id="editorSongTitle">
             <span>${escapeHtml(song.title || "Untitled Song")}</span>
           </h2>
-          <div class="editor-original-title${originalTitleLine ? "" : " empty"}">${escapeHtml(originalTitleLine || "Metadata")}</div>
+          <div class="editor-meta-stack">
+            <div class="editor-title-meta${titleMetaLine ? "" : " empty"}">${escapeHtml(titleMetaLine || "Metadata")}</div>
+            ${supportMetaItems.length ? `<div class="editor-support-meta">${supportMetaItems.map((item) => `<span>${escapeHtml(item)}</span>`).join("")}</div>` : ""}
+          </div>
         </div>
         <div class="head-actions">
           <span class="dirty-pill" ${hasDirtyChanges() ? "" : "hidden"}>Unsaved changes</span>
@@ -1380,22 +1384,28 @@ function versionDisplayName(song, version) {
   return raw || "Default";
 }
 
-function songOriginalTitleLine(song) {
+function songTitleMetaLine(song) {
   const titles = new Set();
   const metadata = normalizeSongMetadata(song?.metadata);
-  if (song?.original_title) titles.add(song.original_title);
-  if (song?.subtitle) titles.add(song.subtitle);
-  if (metadata.otherTitle) titles.add(metadata.otherTitle);
+  for (const value of [song?.original_title, song?.subtitle, metadata.otherTitle]) {
+    const titleMeta = normalizeRawTitleMeta(value);
+    if (titleMeta) titles.add(titleMeta);
+  }
   addSongMetaFromRaw(titles, song?.title);
   for (const version of song?.versions || []) {
     addSongMetaFromRaw(titles, version.raw_section_name || version.version_label || "", versionDisplayName(song, version));
   }
-  for (const reference of cleanList(song?.scripture)) {
-    titles.add(reference);
-  }
-  if (metadata.credits) titles.add(metadata.credits);
-  if (metadata.album) titles.add([metadata.album, metadata.track ? `Track ${metadata.track}` : ""].filter(Boolean).join(" "));
   return [...titles].join(" / ");
+}
+
+function songSupportMetaItems(song) {
+  const metadata = normalizeSongMetadata(song?.metadata);
+  return [
+    ...cleanList(song?.scripture).map((reference) => `Scripture ${reference}`),
+    metadata.credits ? `Credits ${metadata.credits}` : "",
+    metadata.album ? `Album ${[metadata.album, metadata.track ? `Track ${metadata.track}` : ""].filter(Boolean).join(" ")}` : "",
+    metadata.sourceType ? `Type ${metadata.sourceType}` : "",
+  ].filter(Boolean);
 }
 
 function addSongMetaFromRaw(target, rawValue, versionName = "") {
@@ -1403,9 +1413,19 @@ function addSongMetaFromRaw(target, rawValue, versionName = "") {
   const original = raw.match(/\[([^\]]+)\]/)?.[1]?.trim();
   const subtitle = raw.match(/\(([^)]*?)\)\s*$/)?.[1]?.trim();
   const versionText = raw.replace(/\[[^\]]+\]/g, "").replace(/\([^)]*?\)\s*$/, "").trim();
-  for (const value of [subtitle, original]) {
+  for (const rawMeta of [subtitle, original]) {
+    const value = normalizeRawTitleMeta(rawMeta);
     if (value && !/^통(?:일)?\s*\d+/.test(value) && value !== versionText && value !== versionName) target.add(value);
   }
+}
+
+function normalizeRawTitleMeta(value) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  if (/^Psalm[_\s-]*\d+(?::[\d,-]+)?$/i.test(text)) return "";
+  const psalmTitle = text.match(/^Psalm\s*\d+(?::[\d,-]+)?\s*[–-]\s*(.+)$/i);
+  if (psalmTitle) return psalmTitle[1].trim();
+  return text;
 }
 
 function songVersionLine(song) {
