@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Mindex</title>
-    <link rel="stylesheet" href="./styles.css?v=mindex-scripture-1" />
+    <link rel="stylesheet" href="./styles.css?v=mindex-praise-filters-1" />
   </head>
   <body>
     <div class="app-shell">
@@ -42,6 +42,11 @@
             <i data-lucide="search"></i>
             <input id="searchInput" type="search" placeholder="Search title, lyrics, #..." autocomplete="off" />
           </div>
+          <div id="praiseFilter" class="praise-filter" aria-label="Praise filter">
+            <button class="filter-tab active" type="button" data-praise-filter="all">All</button>
+            <button class="filter-tab" type="button" data-praise-filter="hymns">Hymns</button>
+            <button class="filter-tab" type="button" data-praise-filter="ccm">CCM</button>
+          </div>
           <div id="songCount" class="sidebar-count">0 songs</div>
           <div id="songList" class="song-list" tabindex="0"></div>
         </aside>
@@ -54,6 +59,6 @@
 
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="./app.js?v=mindex-scripture-1"></script>
+    <script src="./app.js?v=mindex-praise-filters-1"></script>
   </body>
 </html>

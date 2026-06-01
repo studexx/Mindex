@@ -37,6 +37,7 @@ const state = {
   selectedSongId: null,
   selectedVersionId: null,
   selectedScriptureId: null,
+  praiseFilter: "all",
   forms: [],
   search: "",
   loading: false,
@@ -80,6 +81,8 @@ function cacheRefs() {
   refs.newSongBtn = document.getElementById("newSongBtn");
   refs.saveAllBtn = document.getElementById("saveAllBtn");
   refs.searchInput = document.getElementById("searchInput");
+  refs.praiseFilter = document.getElementById("praiseFilter");
+  refs.praiseFilterButtons = [...document.querySelectorAll("[data-praise-filter]")];
   refs.songCount = document.getElementById("songCount");
   refs.songList = document.getElementById("songList");
   refs.sidebar = document.querySelector(".sidebar");
@@ -99,6 +102,13 @@ function bindStaticEvents() {
   refs.searchInput.addEventListener("input", (event) => {
     state.search = event.target.value;
     renderSongList();
+  });
+  refs.praiseFilter.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-praise-filter]");
+    if (!button) return;
+    state.praiseFilter = button.dataset.praiseFilter;
+    renderSongList();
+    renderPraiseFilter();
   });
 
   refs.songList.addEventListener("click", (event) => {
@@ -877,6 +887,15 @@ function runCopyAction(action, index) {
     return;
   }
 
+  if (action === "download-xml") {
+    try {
+      downloadTextFile(formatSongXml(), getXmlFileName(getSelectedSong(), getSelectedVersion()), "application/xml");
+    } catch (error) {
+      showToast(error.message || "XML export failed.", "error");
+    }
+    return;
+  }
+
   if (action === "block") {
     const form = state.forms[index];
     if (form) copyText(formatBlockForCopy(form));
@@ -918,6 +937,16 @@ function renderModuleSwitcher() {
   refs.newSongBtn.title = state.module === "scripture" ? "New scripture" : "New song";
   refs.saveAllBtn.title = state.module === "scripture" ? "Save scripture" : "Save song";
   refs.saveAllBtn.setAttribute("aria-label", refs.saveAllBtn.title);
+  renderPraiseFilter();
+}
+
+function renderPraiseFilter() {
+  refs.praiseFilter.hidden = state.module !== "praise";
+  for (const button of refs.praiseFilterButtons) {
+    const active = button.dataset.praiseFilter === state.praiseFilter;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-pressed", String(active));
+  }
 }
 
 function renderConnectionStatus() {
@@ -961,8 +990,9 @@ function renderSongList() {
 
   const filtered = getFilteredSongs();
   const hasSearch = Boolean(normalizeSearchValue(state.search));
+  const filterBase = getSongsForPraiseFilter();
   refs.songCount.textContent = hasSearch
-    ? `${filtered.length} of ${state.songs.length} songs`
+    ? `${filtered.length} of ${filterBase.length} songs`
     : `${filtered.length} ${filtered.length === 1 ? "song" : "songs"}`;
 
   if (!filtered.length) {
@@ -1085,9 +1115,8 @@ function renderDetail() {
           <span class="dirty-pill" ${hasDirtyChanges() ? "" : "hidden"}>Unsaved changes</span>
           <button class="btn secondary" type="button" data-add-version title="Add version">
             <i data-lucide="copy-plus"></i>
-            <span>Version</span>
+            <span>Add Version</span>
           </button>
-          ${renderSongAttentionIcon(song)}
         </div>
       </header>
 
@@ -1344,6 +1373,10 @@ function renderFormToolbar() {
           <i data-lucide="presentation"></i>
           <span>Show</span>
         </button>
+        <button class="btn secondary" type="button" data-copy-action="download-xml" ${hasLyrics ? "" : "disabled"} title="Download XML">
+          <i data-lucide="file-code-2"></i>
+          <span>XML</span>
+        </button>
       </div>
     </div>
   `;
@@ -1505,6 +1538,24 @@ function formatFreeShowShowJson(song = getSelectedSong(), version = getSelectedV
   return JSON.stringify(buildFreeShowShow(song, version, forms), null, 2);
 }
 
+function formatSongXml(song = getSelectedSong(), version = getSelectedVersion(), forms = state.forms) {
+  const copyableForms = getCopyableForms(forms);
+  if (!copyableForms.length) throw new Error("Lyrics are required for XML.");
+  const versionName = versionDisplayName(song, version || {}) || "";
+  return [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    `<song title="${escapeXml(song?.title || "Untitled Song")}"${song?.hymn_no ? ` hymn-no="${escapeXml(song.hymn_no)}"` : ""} version="${escapeXml(versionName)}">`,
+    ...copyableForms.map((form) =>
+      [
+        `  <section type="${escapeXml(form.part_type)}" label="${escapeXml(displayLabel(form))}">`,
+        `    <lyrics>${escapeXml(normalizeLyricsForCopy(form.lyrics))}</lyrics>`,
+        "  </section>",
+      ].join("\n"),
+    ),
+    "</song>",
+  ].join("\n");
+}
+
 function buildFreeShowShow(song = getSelectedSong(), version = getSelectedVersion(), forms = state.forms) {
   const copyableForms = getCopyableForms(forms);
   if (!copyableForms.length) throw new Error("Lyrics are required for FreeShow .show.");
@@ -1631,6 +1682,12 @@ function getShowFileName(song, version) {
   const versionName = version ? versionDisplayName(song, version) : "";
   const base = [song?.title || "song", versionName].filter(Boolean).join(" ");
   return `${slugify(base)}.show`;
+}
+
+function getXmlFileName(song, version) {
+  const versionName = version ? versionDisplayName(song, version) : "";
+  const base = [song?.title || "song", versionName].filter(Boolean).join(" ");
+  return `${slugify(base)}.xml`;
 }
 
 function slugify(value) {
@@ -1834,7 +1891,7 @@ function songTitleMetaLine(song) {
   for (const value of [song?.subtitle, song?.original_title, metadata.otherTitle]) {
     addTitleMeta(titles, value);
   }
-  addSongMetaFromRaw(titles, song?.title);
+  addSongMetaFromRaw(titles, song?.title, "", { includeSubtitle: !song?.hymn_no });
   for (const version of song?.versions || []) {
     addSongMetaFromRaw(titles, version.name || version.curated_version_name || "", versionDisplayName(song, version));
     addSongMetaFromRaw(titles, version.raw_section_name || version.version_label || "", versionDisplayName(song, version));
@@ -1863,10 +1920,10 @@ function formatTrackNumber(track) {
   return /^\d+$/.test(value) ? String(Number(value)) : value;
 }
 
-function addSongMetaFromRaw(target, rawValue, versionName = "") {
+function addSongMetaFromRaw(target, rawValue, versionName = "", options = {}) {
   const raw = rawValue || "";
   const original = raw.match(/\[([^\]]+)\]/)?.[1]?.trim();
-  const subtitle = raw.match(/\(([^)]*?)\)\s*$/)?.[1]?.trim();
+  const subtitle = options.includeSubtitle === false ? "" : raw.match(/\(([^)]*?)\)\s*$/)?.[1]?.trim();
   const versionText = raw.replace(/\[[^\]]+\]/g, "").replace(/\([^)]*?\)\s*$/, "").trim();
   for (const rawMeta of [subtitle, original]) {
     const value = normalizeRawTitleMeta(rawMeta);
@@ -1947,9 +2004,10 @@ function stripHymnNumber(value) {
 
 function getFilteredSongs() {
   const tokens = getSearchTokens(state.search);
-  if (!tokens.length) return [...state.songs].sort(sortSongs);
+  const songs = getSongsForPraiseFilter();
+  if (!tokens.length) return [...songs].sort(sortSongs);
 
-  const matched = state.songs
+  const matched = songs
     .map((song) => ({ song, match: getSongSearchMatch(song, tokens) }))
     .filter((item) => item.match);
   const phraseMatched = matched.filter((item) => item.match.phraseMatched);
@@ -1958,6 +2016,12 @@ function getFilteredSongs() {
   return results
     .sort((a, b) => b.match.score - a.match.score || sortSongs(a.song, b.song))
     .map((item) => item.song);
+}
+
+function getSongsForPraiseFilter() {
+  if (state.praiseFilter === "hymns") return state.songs.filter((song) => song.hymn_no);
+  if (state.praiseFilter === "ccm") return state.songs.filter((song) => !song.hymn_no);
+  return state.songs;
 }
 
 function getFilteredScriptures() {
@@ -2316,6 +2380,15 @@ function escapeAttr(value) {
   return escapeHtml(value);
 }
 
+function escapeXml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&apos;");
+}
+
 function showToast(message, type = "info") {
   const toast = document.createElement("div");
   toast.className = `toast ${type === "error" ? "error" : ""}`;
@@ -2347,5 +2420,6 @@ window.Mindex = {
   computePartNumberSuggestion,
   formatFullLyrics,
   formatFreeShowShowJson,
+  formatSongXml,
   buildFreeShowShow,
 };
