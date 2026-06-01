@@ -101,6 +101,7 @@ const STORAGE = {
   theme: "mindex.theme",
   module: "mindex.ui.module",
   praiseFilter: "mindex.ui.praiseFilter",
+  scriptureFilter: "mindex.ui.scriptureFilter",
   selectedSongId: "mindex.ui.selectedSongId",
   selectedVersionId: "mindex.ui.selectedVersionId",
   selectedScriptureId: "mindex.ui.selectedScriptureId",
@@ -127,6 +128,7 @@ const state = {
   selectedScriptureId: null,
   selectedBookCode: null,
   praiseFilter: "all",
+  scriptureFilter: "all",
   listScroll: {},
   forms: [],
   search: "",
@@ -200,10 +202,16 @@ function bindStaticEvents() {
     const button = event.target.closest("[data-praise-filter]");
     if (!button) return;
     saveCurrentListScroll();
-    state.praiseFilter = button.dataset.praiseFilter;
+    if (state.module === "scripture") {
+      state.scriptureFilter = button.dataset.praiseFilter;
+      ensureSelectedBookForFilter();
+    } else {
+      state.praiseFilter = button.dataset.praiseFilter;
+    }
     persistUiState();
     renderSongList();
     renderPraiseFilter();
+    if (state.module === "scripture") renderDetail();
   });
   refs.songList.addEventListener("scroll", saveCurrentListScroll, { passive: true });
 
@@ -321,9 +329,11 @@ function toggleTheme() {
 function readUiState() {
   const moduleName = localStorage.getItem(STORAGE.module);
   const praiseFilter = localStorage.getItem(STORAGE.praiseFilter);
+  const scriptureFilter = localStorage.getItem(STORAGE.scriptureFilter);
 
   if (["praise", "scripture"].includes(moduleName)) state.module = moduleName;
   if (["all", "hymns", "ccm"].includes(praiseFilter)) state.praiseFilter = praiseFilter;
+  if (["all", "old", "new"].includes(scriptureFilter)) state.scriptureFilter = scriptureFilter;
 
   state.selectedSongId = localStorage.getItem(STORAGE.selectedSongId) || null;
   state.selectedVersionId = localStorage.getItem(STORAGE.selectedVersionId) || null;
@@ -334,6 +344,7 @@ function readUiState() {
 function persistUiState() {
   localStorage.setItem(STORAGE.module, state.module);
   localStorage.setItem(STORAGE.praiseFilter, state.praiseFilter);
+  localStorage.setItem(STORAGE.scriptureFilter, state.scriptureFilter);
   writeStorageValue(STORAGE.selectedSongId, state.selectedSongId);
   writeStorageValue(STORAGE.selectedVersionId, state.selectedVersionId);
   writeStorageValue(STORAGE.selectedScriptureId, state.selectedScriptureId);
@@ -542,7 +553,7 @@ async function loadScriptureBooks({ silent = false } = {}) {
     if (state.selectedBookCode && !state.scriptureBooks.some((book) => book.code === state.selectedBookCode)) {
       state.selectedBookCode = null;
     }
-    if (!state.selectedBookCode) state.selectedBookCode = state.scriptureBooks[0]?.code || null;
+    ensureSelectedBookForFilter();
     persistUiState();
     render();
   } catch (error) {
@@ -1145,9 +1156,24 @@ function renderModuleSwitcher() {
 }
 
 function renderPraiseFilter() {
-  refs.praiseFilter.hidden = state.module !== "praise";
+  refs.praiseFilter.hidden = false;
+  const filters = state.module === "scripture"
+    ? [
+        ["all", "All"],
+        ["old", "OT"],
+        ["new", "NT"],
+      ]
+    : [
+        ["all", "All"],
+        ["hymns", "Hymns"],
+        ["ccm", "CCM"],
+      ];
+  const activeFilter = state.module === "scripture" ? state.scriptureFilter : state.praiseFilter;
   for (const button of refs.praiseFilterButtons) {
-    const active = button.dataset.praiseFilter === state.praiseFilter;
+    const [value, label] = filters[refs.praiseFilterButtons.indexOf(button)] || filters[0];
+    button.dataset.praiseFilter = value;
+    button.textContent = label;
+    const active = value === activeFilter;
     button.classList.toggle("active", active);
     button.setAttribute("aria-pressed", String(active));
   }
@@ -1225,7 +1251,7 @@ function renderSongList() {
 }
 
 function renderScriptureList() {
-  const books = getBibleBooks();
+  const books = getBibleBooksForScriptureFilter();
   const filtered = getFilteredBibleBooks();
   const hasSearch = Boolean(normalizeSearchValue(state.search));
   refs.songCount.textContent = hasSearch
@@ -1264,7 +1290,7 @@ function focusSelectedSong() {
 
 function getListScrollKey() {
   const search = normalizeSearchValue(state.search);
-  if (state.module === "scripture") return `scripture:${search}`;
+  if (state.module === "scripture") return `scripture:${state.scriptureFilter}:${search}`;
   return `praise:${state.praiseFilter}:${search}`;
 }
 
@@ -2549,11 +2575,24 @@ function getBibleBooks() {
   return state.scriptureBooks.length ? state.scriptureBooks : BIBLE_BOOKS;
 }
 
-function getFilteredBibleBooks() {
+function getBibleBooksForScriptureFilter() {
   const books = getBibleBooks();
+  if (state.scriptureFilter === "old") return books.filter((book) => book.testament === "Old Testament");
+  if (state.scriptureFilter === "new") return books.filter((book) => book.testament === "New Testament");
+  return books;
+}
+
+function getFilteredBibleBooks() {
+  const books = getBibleBooksForScriptureFilter();
   const tokens = getSearchTokens(state.search);
   if (!tokens.length) return books;
   return books.filter((book) => getBibleBookSearchMatch(book, tokens));
+}
+
+function ensureSelectedBookForFilter() {
+  const books = getBibleBooksForScriptureFilter();
+  if (books.some((book) => book.code === state.selectedBookCode)) return;
+  state.selectedBookCode = books[0]?.code || null;
 }
 
 function getBibleBookSearchMatch(book, tokens = getSearchTokens(state.search)) {
