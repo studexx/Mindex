@@ -1377,7 +1377,10 @@ function renderScriptureDetail() {
       <div class="editor-shell scripture-editor scripture-taxonomy-editor">
         <header class="editor-head">
           <div class="editor-title">
-            <h2>${escapeHtml(selectedBook?.koreanName || "Bible Books")}</h2>
+            <h2>
+              ${renderScriptureBookMarker(selectedBook)}
+              <span>${escapeHtml(selectedBook?.koreanName || "Bible Books")}</span>
+            </h2>
             <div class="editor-meta-stack">
               <div class="editor-title-meta">${escapeHtml(selectedBook?.canonicalEnglishTitle || `${getBibleBooks().length} books`)}</div>
               <div class="editor-support-meta"><span>${escapeHtml(selectedBook ? bibleBookSupportMeta(selectedBook) : "Canonical order / Christian category / Jewish category / author")}</span></div>
@@ -1705,6 +1708,12 @@ function renderScriptureBookInfo(book) {
       </span>
     </div>
   `;
+}
+
+function renderScriptureBookMarker(book) {
+  if (!book?.code) return "";
+  const label = book.koreanName || book.canonicalEnglishTitle || book.englishName || book.code;
+  return `<span class="scripture-book-marker" title="${escapeAttr(label)}">${escapeHtml(book.code.toUpperCase())}</span>`;
 }
 
 function renderScriptureBookTaxonomy() {
@@ -2128,6 +2137,7 @@ function normalizeServerScripture(row) {
 }
 
 function normalizeServerScriptureBook(row) {
+  const shortName = cleanScriptureBookShortName(row.short_name);
   return {
     code: row.code || "",
     koreanName: row.korean_name || "",
@@ -2135,11 +2145,17 @@ function normalizeServerScriptureBook(row) {
     testament: row.testament || "",
     division: row.division || "",
     canonicalEnglishTitle: row.canonical_english_title || row.english_name || "",
-    shortName: row.short_name || "",
+    shortName,
     jewishCategory: row.jewish_category || "",
     author: row.author || "",
     sortOrder: Number(row.sort_order) || 999,
   };
+}
+
+function cleanScriptureBookShortName(value) {
+  const text = String(value || "").trim();
+  if (!text || /^\[.*\]$/.test(text) || /\bSHORT\b/i.test(text)) return "";
+  return text;
 }
 
 function normalizeServerSong(row) {
