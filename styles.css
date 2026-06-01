@@ -231,6 +231,34 @@ h1, h2, h3, p { margin: 0; }
 .scripture-editor { max-width: 960px; }
 .scripture-panel { gap: var(--s4); }
 .scripture-meta-grid { grid-template-columns: minmax(220px, 1.3fr) minmax(140px, .7fr) minmax(180px, .9fr) minmax(140px, .6fr); }
+.scripture-book-info {
+  display: flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
+  border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+  border-radius: var(--r);
+  padding: 7px 10px;
+  color: var(--ink-3);
+  font-size: 12px;
+  line-height: 1.2;
+}
+.scripture-book-info.empty { color: var(--ink-4); }
+.scripture-book-title { color: var(--ink); font-weight: 700; }
+.scripture-book-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 5px;
+}
+.scripture-book-chips span {
+  color: var(--ink-3);
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+}
 .scripture-textarea {
   border: 1px solid var(--line);
   border-radius: var(--r);

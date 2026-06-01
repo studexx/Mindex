@@ -15,78 +15,81 @@ const FORM_ADD_LABELS = {
 };
 
 const BIBLE_BOOKS = [
-  ["GEN", "창세기", "Genesis", "Old Testament", "Pentateuch"],
-  ["EXO", "출애굽기", "Exodus", "Old Testament", "Pentateuch"],
-  ["LEV", "레위기", "Leviticus", "Old Testament", "Pentateuch"],
-  ["NUM", "민수기", "Numbers", "Old Testament", "Pentateuch"],
-  ["DEU", "신명기", "Deuteronomy", "Old Testament", "Pentateuch"],
-  ["JOS", "여호수아", "Joshua", "Old Testament", "History"],
-  ["JDG", "사사기", "Judges", "Old Testament", "History"],
-  ["RUT", "룻기", "Ruth", "Old Testament", "History"],
-  ["1SA", "사무엘상", "1 Samuel", "Old Testament", "History"],
-  ["2SA", "사무엘하", "2 Samuel", "Old Testament", "History"],
-  ["1KI", "열왕기상", "1 Kings", "Old Testament", "History"],
-  ["2KI", "열왕기하", "2 Kings", "Old Testament", "History"],
-  ["1CH", "역대상", "1 Chronicles", "Old Testament", "History"],
-  ["2CH", "역대하", "2 Chronicles", "Old Testament", "History"],
-  ["EZR", "에스라", "Ezra", "Old Testament", "History"],
-  ["NEH", "느헤미야", "Nehemiah", "Old Testament", "History"],
-  ["EST", "에스더", "Esther", "Old Testament", "History"],
-  ["JOB", "욥기", "Job", "Old Testament", "Wisdom"],
-  ["PSA", "시편", "Psalms", "Old Testament", "Wisdom"],
-  ["PRO", "잠언", "Proverbs", "Old Testament", "Wisdom"],
-  ["ECC", "전도서", "Ecclesiastes", "Old Testament", "Wisdom"],
-  ["SNG", "아가", "Song of Songs", "Old Testament", "Wisdom"],
-  ["ISA", "이사야", "Isaiah", "Old Testament", "Major Prophets"],
-  ["JER", "예레미야", "Jeremiah", "Old Testament", "Major Prophets"],
-  ["LAM", "예레미야애가", "Lamentations", "Old Testament", "Major Prophets"],
-  ["EZK", "에스겔", "Ezekiel", "Old Testament", "Major Prophets"],
-  ["DAN", "다니엘", "Daniel", "Old Testament", "Major Prophets"],
-  ["HOS", "호세아", "Hosea", "Old Testament", "Minor Prophets"],
-  ["JOL", "요엘", "Joel", "Old Testament", "Minor Prophets"],
-  ["AMO", "아모스", "Amos", "Old Testament", "Minor Prophets"],
-  ["OBA", "오바댜", "Obadiah", "Old Testament", "Minor Prophets"],
-  ["JON", "요나", "Jonah", "Old Testament", "Minor Prophets"],
-  ["MIC", "미가", "Micah", "Old Testament", "Minor Prophets"],
-  ["NAM", "나훔", "Nahum", "Old Testament", "Minor Prophets"],
-  ["HAB", "하박국", "Habakkuk", "Old Testament", "Minor Prophets"],
-  ["ZEP", "스바냐", "Zephaniah", "Old Testament", "Minor Prophets"],
-  ["HAG", "학개", "Haggai", "Old Testament", "Minor Prophets"],
-  ["ZEC", "스가랴", "Zechariah", "Old Testament", "Minor Prophets"],
-  ["MAL", "말라기", "Malachi", "Old Testament", "Minor Prophets"],
-  ["MAT", "마태복음", "Matthew", "New Testament", "Gospels"],
-  ["MRK", "마가복음", "Mark", "New Testament", "Gospels"],
-  ["LUK", "누가복음", "Luke", "New Testament", "Gospels"],
-  ["JHN", "요한복음", "John", "New Testament", "Gospels"],
-  ["ACT", "사도행전", "Acts", "New Testament", "History"],
-  ["ROM", "로마서", "Romans", "New Testament", "Pauline Epistles"],
-  ["1CO", "고린도전서", "1 Corinthians", "New Testament", "Pauline Epistles"],
-  ["2CO", "고린도후서", "2 Corinthians", "New Testament", "Pauline Epistles"],
-  ["GAL", "갈라디아서", "Galatians", "New Testament", "Pauline Epistles"],
-  ["EPH", "에베소서", "Ephesians", "New Testament", "Pauline Epistles"],
-  ["PHP", "빌립보서", "Philippians", "New Testament", "Pauline Epistles"],
-  ["COL", "골로새서", "Colossians", "New Testament", "Pauline Epistles"],
-  ["1TH", "데살로니가전서", "1 Thessalonians", "New Testament", "Pauline Epistles"],
-  ["2TH", "데살로니가후서", "2 Thessalonians", "New Testament", "Pauline Epistles"],
-  ["1TI", "디모데전서", "1 Timothy", "New Testament", "Pauline Epistles"],
-  ["2TI", "디모데후서", "2 Timothy", "New Testament", "Pauline Epistles"],
-  ["TIT", "디도서", "Titus", "New Testament", "Pauline Epistles"],
-  ["PHM", "빌레몬서", "Philemon", "New Testament", "Pauline Epistles"],
-  ["HEB", "히브리서", "Hebrews", "New Testament", "General Epistles"],
-  ["JAS", "야고보서", "James", "New Testament", "General Epistles"],
-  ["1PE", "베드로전서", "1 Peter", "New Testament", "General Epistles"],
-  ["2PE", "베드로후서", "2 Peter", "New Testament", "General Epistles"],
-  ["1JN", "요한일서", "1 John", "New Testament", "General Epistles"],
-  ["2JN", "요한이서", "2 John", "New Testament", "General Epistles"],
-  ["3JN", "요한삼서", "3 John", "New Testament", "General Epistles"],
-  ["JUD", "유다서", "Jude", "New Testament", "General Epistles"],
-  ["REV", "요한계시록", "Revelation", "New Testament", "Apocalypse"],
-].map(([code, koreanName, englishName, testament, division], index) => ({
+  ["GEN", "창세기", "Genesis", "Old Testament", "Pentateuch", "Book of Genesis", "Torah", "Moses"],
+  ["EXO", "출애굽기", "Exodus", "Old Testament", "Pentateuch", "Book of Exodus", "Torah", "Moses"],
+  ["LEV", "레위기", "Leviticus", "Old Testament", "Pentateuch", "Book of Leviticus", "Torah", "Moses"],
+  ["NUM", "민수기", "Numbers", "Old Testament", "Pentateuch", "Book of Numbers", "Torah", "Moses"],
+  ["DEU", "신명기", "Deuteronomy", "Old Testament", "Pentateuch", "Book of Deuteronomy", "Torah", "Moses"],
+  ["JOS", "여호수아", "Joshua", "Old Testament", "Historical Books", "Book of Joshua", "Former Prophets, Nevi’im", "Joshua"],
+  ["JDG", "사사기", "Judges", "Old Testament", "Historical Books", "Book of Judges", "Former Prophets, Nevi’im", "Samuel"],
+  ["RUT", "룻기", "Ruth", "Old Testament", "Historical Books", "Book of Ruth", "Five Megillot, Ketuvim", "Samuel"],
+  ["1SA", "사무엘상", "1 Samuel", "Old Testament", "Historical Books", "Books of Samuel", "Former Prophets, Nevi’im", "Samuel"],
+  ["2SA", "사무엘하", "2 Samuel", "Old Testament", "Historical Books", "Books of Samuel", "Former Prophets, Nevi’im", "Samuel"],
+  ["1KI", "열왕기상", "1 Kings", "Old Testament", "Historical Books", "Books of Kings", "Former Prophets, Nevi’im", "Jeremiah"],
+  ["2KI", "열왕기하", "2 Kings", "Old Testament", "Historical Books", "Books of Kings", "Former Prophets, Nevi’im", "Jeremiah"],
+  ["1CH", "역대상", "1 Chronicles", "Old Testament", "Historical Books", "Books of Chronicles", "Historical Books, Ketuvim", "Chronicler, Jeremiah"],
+  ["2CH", "역대하", "2 Chronicles", "Old Testament", "Historical Books", "Books of Chronicles", "Historical Books, Ketuvim", "Chronicler, Jeremiah"],
+  ["EZR", "에스라", "Ezra", "Old Testament", "Historical Books", "Book of Ezra", "Historical Books, Ketuvim", "Chronicler, Ezra"],
+  ["NEH", "느헤미야", "Nehemiah", "Old Testament", "Historical Books", "Book of Nehemiah", "Historical Books, Ketuvim", "Chronicler, Nehemiah"],
+  ["EST", "에스더", "Esther", "Old Testament", "Historical Books", "Book of Esther", "Five Megillot, Ketuvim", "?"],
+  ["JOB", "욥기", "Job", "Old Testament", "Poetic Books", "Book of Job", "Ketuvim, Poetic Books", "?"],
+  ["PSA", "시편", "Psalms", "Old Testament", "Poetic Books", "Book of Psalms", "Ketuvim, Poetic Books", "David"],
+  ["PRO", "잠언", "Proverbs", "Old Testament", "Poetic Books", "Book of Proverbs", "Ketuvim, Poetic Books", "Solomon"],
+  ["ECC", "전도서", "Ecclesiastes", "Old Testament", "Poetic Books", "Ecclesiastes", "Five Megillot, Ketuvim", "Solomon"],
+  ["SNG", "아가", "Song of Songs", "Old Testament", "Poetic Books", "Song of Songs", "Five Megillot, Ketuvim", "Solomon"],
+  ["ISA", "이사야", "Isaiah", "Old Testament", "Major Prophets, Prophetic Books", "Book of Isaiah", "Latter Prophets, Nevi’im", "Isaiah"],
+  ["JER", "예레미야", "Jeremiah", "Old Testament", "Major Prophets, Prophetic Books", "Book of Jeremiah", "Latter Prophets, Nevi’im", "Jeremiah"],
+  ["LAM", "예레미야애가", "Lamentations", "Old Testament", "Major Prophets, Prophetic Books", "Book of Lamentations", "Five Megillot, Ketuvim", "Jeremiah"],
+  ["EZK", "에스겔", "Ezekiel", "Old Testament", "Major Prophets, Prophetic Books", "Book of Ezekiel", "Latter Prophets, Nevi’im", "Ezekiel"],
+  ["DAN", "다니엘", "Daniel", "Old Testament", "Major Prophets, Prophetic Books", "Book of Daniel", "Historical Books, Ketuvim", "Daniel"],
+  ["HOS", "호세아", "Hosea", "Old Testament", "Minor Prophets, Prophetic Books", "Book of Hosea", "Latter Prophets, Nevi’im, Trei Asar", "Hosea"],
+  ["JOL", "요엘", "Joel", "Old Testament", "Minor Prophets, Prophetic Books", "Book of Joel", "Latter Prophets, Nevi’im, Trei Asar", "Joel"],
+  ["AMO", "아모스", "Amos", "Old Testament", "Minor Prophets, Prophetic Books", "Book of Amos", "Latter Prophets, Nevi’im, Trei Asar", "Amos"],
+  ["OBA", "오바댜", "Obadiah", "Old Testament", "Minor Prophets, Prophetic Books", "Book of Obadiah", "Latter Prophets, Nevi’im, Trei Asar", "Obadiah"],
+  ["JON", "요나", "Jonah", "Old Testament", "Minor Prophets, Prophetic Books", "Book of Jonah", "Latter Prophets, Nevi’im, Trei Asar", "Jonah"],
+  ["MIC", "미가", "Micah", "Old Testament", "Minor Prophets, Prophetic Books", "Book of Micah", "Latter Prophets, Nevi’im, Trei Asar", "Micah"],
+  ["NAM", "나훔", "Nahum", "Old Testament", "Minor Prophets, Prophetic Books", "Book of Nahum", "Latter Prophets, Nevi’im, Trei Asar", "Nahum"],
+  ["HAB", "하박국", "Habakkuk", "Old Testament", "Minor Prophets, Prophetic Books", "Book of Habakkuk", "Latter Prophets, Nevi’im, Trei Asar", "Habakkuk"],
+  ["ZEP", "스바냐", "Zephaniah", "Old Testament", "Minor Prophets, Prophetic Books", "Book of Zephaniah", "Latter Prophets, Nevi’im, Trei Asar", "Zephaniah"],
+  ["HAG", "학개", "Haggai", "Old Testament", "Minor Prophets, Prophetic Books", "Book of Haggai", "Latter Prophets, Nevi’im, Trei Asar", "Haggai"],
+  ["ZEC", "스가랴", "Zechariah", "Old Testament", "Minor Prophets, Prophetic Books", "Book of Zechariah", "Latter Prophets, Nevi’im, Trei Asar", "Zechariah"],
+  ["MAL", "말라기", "Malachi", "Old Testament", "Minor Prophets, Prophetic Books", "Book of Malachi", "Latter Prophets, Nevi’im, Trei Asar", "Malachi"],
+  ["MAT", "마태복음", "Matthew", "New Testament", "Gospels", "Gospel of Matthew", "", "Matthew"],
+  ["MRK", "마가복음", "Mark", "New Testament", "Gospels", "Gospel of Mark", "", "Mark"],
+  ["LUK", "누가복음", "Luke", "New Testament", "Gospels", "Gospel of Luke", "", "Luke"],
+  ["JHN", "요한복음", "John", "New Testament", "Gospels", "Gospel of John", "", "John"],
+  ["ACT", "사도행전", "Acts", "New Testament", "Acts", "Acts of the Apostles", "", "Luke"],
+  ["ROM", "로마서", "Romans", "New Testament", "Pauline Epistles", "Epistle to the Romans", "", "Paul"],
+  ["1CO", "고린도전서", "1 Corinthians", "New Testament", "Pauline Epistles", "Epistles to the Corinthians", "", "Paul"],
+  ["2CO", "고린도후서", "2 Corinthians", "New Testament", "Pauline Epistles", "Epistles to the Corinthians", "", "Paul"],
+  ["GAL", "갈라디아서", "Galatians", "New Testament", "Pauline Epistles", "Epistle to the Galatians", "", "Paul"],
+  ["EPH", "에베소서", "Ephesians", "New Testament", "Pauline Epistles", "Epistle to the Ephesians", "", "Paul"],
+  ["PHP", "빌립보서", "Philippians", "New Testament", "Pauline Epistles", "Epistle to the Philippians", "", "Paul"],
+  ["COL", "골로새서", "Colossians", "New Testament", "Pauline Epistles", "Epistle to the Colossians", "", "Paul"],
+  ["1TH", "데살로니가전서", "1 Thessalonians", "New Testament", "Pauline Epistles", "Epistles to the Thessalonians", "", "Paul"],
+  ["2TH", "데살로니가후서", "2 Thessalonians", "New Testament", "Pauline Epistles", "Epistles to the Thessalonians", "", "Paul"],
+  ["1TI", "디모데전서", "1 Timothy", "New Testament", "Pauline Epistles", "Epistles to Timothy", "", "Paul"],
+  ["2TI", "디모데후서", "2 Timothy", "New Testament", "Pauline Epistles", "Epistles to Timothy", "", "Paul"],
+  ["TIT", "디도서", "Titus", "New Testament", "Pauline Epistles", "Epistle to Titus", "", "Paul"],
+  ["PHM", "빌레몬서", "Philemon", "New Testament", "Pauline Epistles", "Epistle to Philemon", "", "Paul"],
+  ["HEB", "히브리서", "Hebrews", "New Testament", "Pauline Epistles", "Epistle to the Hebrews", "", "?"],
+  ["JAS", "야고보서", "James", "New Testament", "Catholic Epistles", "Epistle of James", "", "James"],
+  ["1PE", "베드로전서", "1 Peter", "New Testament", "Catholic Epistles", "Epistles of Peter", "", "Peter"],
+  ["2PE", "베드로후서", "2 Peter", "New Testament", "Catholic Epistles", "Epistles of Peter", "", "Peter"],
+  ["1JN", "요한일서", "1 John", "New Testament", "Catholic Epistles", "Epistles of John", "", "John"],
+  ["2JN", "요한이서", "2 John", "New Testament", "Catholic Epistles", "Epistles of John", "", "John"],
+  ["3JN", "요한삼서", "3 John", "New Testament", "Catholic Epistles", "Epistles of John", "", "John"],
+  ["JUD", "유다서", "Jude", "New Testament", "Catholic Epistles", "Epistle of Jude", "", "Jude"],
+  ["REV", "요한계시록", "Revelation", "New Testament", "Apocalypse", "Book of Revelation", "", "John"],
+].map(([code, koreanName, englishName, testament, division, canonicalEnglishTitle, jewishCategory, author], index) => ({
   code,
   koreanName,
   englishName,
   testament,
   division,
+  canonicalEnglishTitle,
+  jewishCategory,
+  author,
   sortOrder: index + 1,
 }));
 
@@ -1301,6 +1304,7 @@ function renderDetail() {
 
 function renderScriptureDetail() {
   const scripture = getSelectedScripture();
+  const selectedBook = findBibleBookByCode(scripture?.book_code) || findBibleBookByName(scripture?.book);
 
   if (state.scriptureError) {
     refs.detailPane.innerHTML = `
@@ -1362,6 +1366,7 @@ function renderScriptureDetail() {
           ${renderScriptureInput("Reference", "reference", scripture.reference)}
           ${renderScriptureInput("Translation", "translation", scripture.translation)}
         </div>
+        ${renderScriptureBookInfo(selectedBook)}
         ${renderScriptureTextarea("Passage", "text", scripture.text)}
         <div class="scripture-foot">
           <span>${scriptureBlockCount(scripture)} ${scriptureBlockCount(scripture) === 1 ? "block" : "blocks"}</span>
@@ -1623,6 +1628,20 @@ function renderBibleBookOptions(testament, selectedCode) {
         .map((book) => `<option value="${book.code}" ${book.code === selectedCode ? "selected" : ""}>${escapeHtml(book.koreanName)}</option>`)
         .join("")}
     </optgroup>
+  `;
+}
+
+function renderScriptureBookInfo(book) {
+  const chips = book
+    ? [book.testament, book.division, book.jewishCategory, book.author ? `Author: ${book.author}` : ""].filter(Boolean)
+    : ["Book taxonomy"];
+  return `
+    <div class="scripture-book-info${book ? "" : " empty"}">
+      <span class="scripture-book-title">${escapeHtml(book?.canonicalEnglishTitle || "Select a book")}</span>
+      <span class="scripture-book-chips">
+        ${chips.map((chip) => `<span>${escapeHtml(chip)}</span>`).join("")}
+      </span>
+    </div>
   `;
 }
 
@@ -2282,6 +2301,11 @@ function getScriptureSearchMatch(scripture, tokens = getSearchTokens(state.searc
     searchField("meta", scripture.book, 112),
     searchField("meta", scripture.reference, 110),
     searchField("meta", scripture.translation, 70),
+    searchField("meta", findBibleBookByCode(scripture.book_code)?.englishName, 68),
+    searchField("meta", findBibleBookByCode(scripture.book_code)?.canonicalEnglishTitle, 68),
+    searchField("meta", findBibleBookByCode(scripture.book_code)?.division, 48),
+    searchField("meta", findBibleBookByCode(scripture.book_code)?.jewishCategory, 40),
+    searchField("meta", findBibleBookByCode(scripture.book_code)?.author, 36),
     searchField("lyrics", scripture.text, 48),
     searchField("meta", scripture.memo, 36),
   ].filter((field) => field.text);
@@ -2306,7 +2330,8 @@ function getScriptureSearchMatch(scripture, tokens = getSearchTokens(state.searc
 }
 
 function scriptureListMeta(scripture) {
-  return [scripture.book, scripture.reference, scripture.translation].filter(Boolean).join(" / ");
+  const book = findBibleBookByCode(scripture.book_code) || findBibleBookByName(scripture.book);
+  return [scripture.book, scripture.reference, scripture.translation, book?.division].filter(Boolean).join(" / ");
 }
 
 function findBibleBookByCode(code) {
@@ -2316,7 +2341,11 @@ function findBibleBookByCode(code) {
 function findBibleBookByName(name) {
   const value = normalizeTitle(name);
   if (!value) return null;
-  return BIBLE_BOOKS.find((book) => normalizeTitle(book.koreanName) === value || normalizeTitle(book.englishName) === value) || null;
+  return BIBLE_BOOKS.find((book) => (
+    normalizeTitle(book.koreanName) === value
+    || normalizeTitle(book.englishName) === value
+    || normalizeTitle(book.canonicalEnglishTitle) === value
+  )) || null;
 }
 
 function songSearchHint(song) {
