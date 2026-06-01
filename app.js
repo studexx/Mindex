@@ -1774,47 +1774,23 @@ function renderScriptureBookTaxonomy() {
 }
 
 function renderScriptureBookDetail(book) {
-  const groups = [
-    {
-      title: "Canonical",
-      items: [
-        ["Order", formatBookMarker(book.sortOrder)],
-        ["Testament", book.testament],
-      ],
-    },
-    {
-      title: "Classification",
-      items: [
-        ["Christian", book.division],
-        ["Jewish", book.jewishCategory],
-      ],
-    },
-    {
-      title: "Attribution",
-      items: [
-        ["Author", book.author],
-      ],
-    },
-  ].map((group) => ({
-    ...group,
-    items: group.items.filter(([, value]) => value),
-  })).filter((group) => group.items.length);
+  const details = [
+    ["Order", formatBookMarker(book.sortOrder)],
+    ["Christian", book.division],
+    ["Jewish", book.jewishCategory],
+    ["Author", book.author],
+  ].filter(([, value]) => value);
 
   return `
     <section class="taxonomy-book-detail">
-      ${groups.map((group) => `
-        <div class="taxonomy-detail-group">
-          <h3>${escapeHtml(group.title)}</h3>
-          <div class="taxonomy-detail-list">
-            ${group.items.map(([label, value]) => `
-              <div class="taxonomy-detail-item">
-                <span>${escapeHtml(label)}</span>
-                <strong>${escapeHtml(value)}</strong>
-              </div>
-            `).join("")}
+      <div class="taxonomy-detail-list">
+        ${details.map(([label, value]) => `
+          <div class="taxonomy-detail-item">
+            <span>${escapeHtml(label)}</span>
+            <strong>${escapeHtml(value)}</strong>
           </div>
-        </div>
-      `).join("")}
+        `).join("")}
+      </div>
     </section>
   `;
 }
@@ -2375,15 +2351,9 @@ function songHasPraiseType(song, type) {
   return songPraiseTypes(song).includes(type);
 }
 
-function songPraiseTypeLabel(song) {
-  const labels = songPraiseTypes(song).map((type) => (type === "hymn" ? "Hymn" : "CCM"));
-  return labels.length ? `Type ${labels.join(" / ")}` : "";
-}
-
 function songSupportMetaItems(song) {
   const metadata = normalizeSongMetadata(song?.metadata);
   return [
-    songPraiseTypeLabel(song),
     ...cleanList(song?.scripture).map((reference) => `Scripture ${reference}`),
     metadata.credits ? `Credits ${metadata.credits}` : "",
     metadata.album ? `Album ${formatAlbumMeta(metadata)}` : "",

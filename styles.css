@@ -377,24 +377,11 @@ h1, h2, h3, p { margin: 0; }
 }
 .taxonomy-book-detail {
   display: grid;
-  gap: var(--s4);
-}
-.taxonomy-detail-group {
-  display: grid;
-  gap: 6px;
-}
-.taxonomy-detail-group h3 {
-  color: var(--ink-4);
-  font-size: 10px;
-  font-weight: 780;
-  letter-spacing: .05em;
-  line-height: 1;
-  text-transform: uppercase;
+  gap: var(--s2);
 }
 .taxonomy-detail-list {
   display: grid;
   gap: 0;
-  border-top: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
 }
 .taxonomy-detail-item {
   display: grid;
