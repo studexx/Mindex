@@ -50,7 +50,7 @@ h1, h2, h3, p { margin: 0; }
 }
 .icon-btn { width: 34px; height: 34px; padding: 0; }
 .btn:hover, .icon-btn:hover { border-color: var(--line-2); background: var(--panel-2); color: var(--ink-2); }
-.btn.primary { border-color: var(--accent); background: var(--accent); color: #07100e; box-shadow: 0 1px 0 rgba(255, 255, 255, .12) inset; }
+.btn.primary, .icon-btn.primary { border-color: var(--accent); background: var(--accent); color: #07100e; box-shadow: 0 1px 0 rgba(255, 255, 255, .12) inset; }
 .btn.danger, .icon-btn.danger { border-color: color-mix(in srgb, var(--danger) 18%, var(--line)); color: var(--danger); }
 .btn:disabled, .icon-btn:disabled { border-color: var(--line); background: transparent; box-shadow: none; color: var(--ink-4); }
 .btn:focus-visible, .icon-btn:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 1px solid var(--line-2); outline-offset: 2px; }
@@ -87,24 +87,17 @@ h1, h2, h3, p { margin: 0; }
 .attention-icon {
   display: inline-flex;
   flex: 0 0 auto;
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--panel) 82%, var(--bg));
   color: var(--ink-4);
 }
-.attention-icon svg { width: 13px; height: 13px; stroke-width: 2; }
+.attention-icon svg { width: 15px; height: 15px; stroke-width: 2; }
 .attention-icon.all-empty {
-  border: 1px solid color-mix(in srgb, var(--danger) 34%, var(--line));
-  background: color-mix(in srgb, var(--danger) 10%, var(--panel));
   color: var(--danger);
 }
 .attention-icon.some-empty, .attention-icon.needs-review {
-  border: 1px solid color-mix(in srgb, var(--warn) 28%, var(--line));
-  background: var(--warn-bg);
   color: var(--warn);
 }
 

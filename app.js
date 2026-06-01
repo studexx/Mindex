@@ -1460,8 +1460,20 @@ function songSupportMetaItems(song) {
   return [
     ...cleanList(song?.scripture).map((reference) => `Scripture ${reference}`),
     metadata.credits ? `Credits ${metadata.credits}` : "",
-    metadata.album ? `Album ${[metadata.album, metadata.track ? `Track ${metadata.track}` : ""].filter(Boolean).join(" ")}` : "",
+    metadata.album ? `Album ${formatAlbumMeta(metadata)}` : "",
   ].filter(Boolean);
+}
+
+function formatAlbumMeta(metadata) {
+  const album = metadata.album || "";
+  const track = formatTrackNumber(metadata.track);
+  return track ? `${album} · #${track}` : album;
+}
+
+function formatTrackNumber(track) {
+  const value = String(track || "").trim();
+  if (!value) return "";
+  return /^\d+$/.test(value) ? String(Number(value)) : value;
 }
 
 function addSongMetaFromRaw(target, rawValue, versionName = "") {
