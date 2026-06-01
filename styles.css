@@ -64,28 +64,27 @@ h1, h2, h3, p { margin: 0; }
 .module-tab:hover { color: var(--ink-2); }
 .module-tab.active { background: var(--accent-soft); color: var(--ink); }
 .praise-filter {
-  display: inline-flex;
+  display: grid;
+  width: 100%;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--s1);
   margin-top: var(--s2);
-  border: 1px solid color-mix(in srgb, var(--line) 82%, transparent);
-  border-radius: var(--r);
-  background: color-mix(in srgb, var(--panel) 62%, var(--bg));
-  padding: 4px;
+  padding: 0;
 }
 .filter-tab {
   height: 26px;
-  border: 0;
+  border: 1px solid transparent;
   border-radius: calc(var(--r) - 2px);
   background: transparent;
   color: var(--ink-4);
   font-size: 10px;
   font-weight: 760;
   line-height: 1;
-  padding: 0 9px;
+  padding: 0;
   text-transform: uppercase;
 }
-.filter-tab:hover { color: var(--ink-2); }
-.filter-tab.active { background: var(--accent-soft); color: var(--ink); }
+.filter-tab:hover { border-color: color-mix(in srgb, var(--line) 70%, transparent); color: var(--ink-2); }
+.filter-tab.active { border-color: color-mix(in srgb, var(--accent) 26%, var(--line)); background: var(--accent-soft); color: var(--ink); }
 
 .topbar-actions, .head-actions, .form-buttons, .copy-actions, .form-actions, .section-bar, .form-head, .check-field {
   display: flex; align-items: center; gap: var(--s2);
