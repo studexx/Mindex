@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Mindex</title>
-    <link rel="stylesheet" href="./styles.css?v=mindex-hymn-list-1" />
+    <link rel="stylesheet" href="./styles.css?v=mindex-scripture-1" />
   </head>
   <body>
     <div class="app-shell">
@@ -16,6 +16,10 @@
             <p>Ministry Index</p>
           </div>
         </div>
+        <nav id="moduleSwitcher" class="module-switcher" aria-label="Mindex modules">
+          <button class="module-tab active" type="button" data-module="praise">Praise</button>
+          <button class="module-tab" type="button" data-module="scripture">Scripture</button>
+        </nav>
 
         <div class="topbar-actions">
           <span id="connectionStatus" class="status-pill">Disconnected</span>
@@ -33,7 +37,7 @@
       </header>
 
       <main class="workspace">
-        <aside class="sidebar" aria-label="Song list">
+        <aside class="sidebar" aria-label="Mindex list">
           <div class="search-wrap">
             <i data-lucide="search"></i>
             <input id="searchInput" type="search" placeholder="Search title, lyrics, #..." autocomplete="off" />
@@ -50,6 +54,6 @@
 
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="./app.js?v=mindex-hymn-list-1"></script>
+    <script src="./app.js?v=mindex-scripture-1"></script>
   </body>
 </html>

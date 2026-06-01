@@ -29,20 +29,25 @@ const TITLE_COLLATOR = new Intl.Collator("ko-KR", {
 const HANGUL_INITIALS = ["ㄱ", "ㄲ", "ㄴ", "ㄷ", "ㄸ", "ㄹ", "ㅁ", "ㅂ", "ㅃ", "ㅅ", "ㅆ", "ㅇ", "ㅈ", "ㅉ", "ㅊ", "ㅋ", "ㅌ", "ㅍ", "ㅎ"];
 
 const state = {
+  module: "praise",
   client: null,
   config: { url: "", anonKey: "" },
   songs: [],
+  scriptures: [],
   selectedSongId: null,
   selectedVersionId: null,
+  selectedScriptureId: null,
   forms: [],
   search: "",
   loading: false,
   saving: false,
   theme: "light",
   connectionError: "",
+  scriptureError: "",
   dirty: {
     song: false,
     forms: false,
+    scripture: false,
   },
 };
 
@@ -61,12 +66,15 @@ function init() {
 
   if (state.client) {
     loadSongs();
+    loadScriptures({ silent: true });
   } else {
     showToast(state.connectionError || "Connection settings are missing from the link.", "error");
   }
 }
 
 function cacheRefs() {
+  refs.moduleSwitcher = document.getElementById("moduleSwitcher");
+  refs.moduleButtons = [...document.querySelectorAll(".module-tab[data-module]")];
   refs.connectionStatus = document.getElementById("connectionStatus");
   refs.themeBtn = document.getElementById("themeBtn");
   refs.newSongBtn = document.getElementById("newSongBtn");
@@ -80,8 +88,13 @@ function cacheRefs() {
 }
 
 function bindStaticEvents() {
+  refs.moduleSwitcher.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-module]");
+    if (!button) return;
+    switchModule(button.dataset.module);
+  });
   refs.themeBtn.addEventListener("click", toggleTheme);
-  refs.newSongBtn.addEventListener("click", createSong);
+  refs.newSongBtn.addEventListener("click", createCurrentItem);
   refs.saveAllBtn.addEventListener("click", saveAll);
   refs.searchInput.addEventListener("input", (event) => {
     state.search = event.target.value;
@@ -89,9 +102,16 @@ function bindStaticEvents() {
   });
 
   refs.songList.addEventListener("click", (event) => {
-    const item = event.target.closest("[data-song-id]");
-    if (!item) return;
-    selectSong(item.dataset.songId);
+    const songItem = event.target.closest("[data-song-id]");
+    if (songItem) {
+      selectSong(songItem.dataset.songId);
+      return;
+    }
+
+    const scriptureItem = event.target.closest("[data-scripture-id]");
+    if (scriptureItem) {
+      selectScripture(scriptureItem.dataset.scriptureId);
+    }
   });
 
   refs.detailPane.addEventListener("click", handleDetailClick);
@@ -138,20 +158,22 @@ function handleSongNavigationKeydown(event) {
   if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
   if (shouldKeepArrowKeyInFocusedControl(event.target)) return;
 
-  const songs = getFilteredSongs();
-  if (!songs.length) return;
+  const items = state.module === "scripture" ? getFilteredScriptures() : getFilteredSongs();
+  if (!items.length) return;
 
-  const foundIndex = songs.findIndex((song) => song.id === state.selectedSongId);
-  const currentIndex = foundIndex >= 0 ? foundIndex : event.key === "ArrowDown" ? -1 : songs.length;
+  const selectedId = state.module === "scripture" ? state.selectedScriptureId : state.selectedSongId;
+  const foundIndex = items.findIndex((item) => item.id === selectedId);
+  const currentIndex = foundIndex >= 0 ? foundIndex : event.key === "ArrowDown" ? -1 : items.length;
   const nextIndex =
     event.key === "ArrowDown"
-      ? Math.min(currentIndex + 1, songs.length - 1)
+      ? Math.min(currentIndex + 1, items.length - 1)
       : Math.max(currentIndex - 1, 0);
-  const nextSong = songs[nextIndex];
+  const nextItem = items[nextIndex];
 
   event.preventDefault();
-  if (!nextSong || nextSong.id === state.selectedSongId) return;
-  selectSong(nextSong.id);
+  if (!nextItem || nextItem.id === selectedId) return;
+  if (state.module === "scripture") selectScripture(nextItem.id);
+  else selectSong(nextItem.id);
 }
 
 function shouldKeepArrowKeyInFocusedControl(target) {
@@ -247,6 +269,24 @@ function connectClient() {
   }
 }
 
+async function switchModule(moduleName) {
+  if (!["praise", "scripture"].includes(moduleName)) return;
+  if (moduleName === state.module) return;
+  if (hasDirtyChanges() && !confirm("Discard unsaved changes?")) return;
+
+  state.module = moduleName;
+  state.search = "";
+  refs.searchInput.value = "";
+  state.dirty.song = false;
+  state.dirty.forms = false;
+  state.dirty.scripture = false;
+  render();
+
+  if (moduleName === "scripture" && !state.scriptures.length && !state.scriptureError) {
+    await loadScriptures();
+  }
+}
+
 async function loadSongs() {
   if (!requireClient()) return;
 
@@ -288,6 +328,45 @@ async function loadSongs() {
   render();
 }
 
+async function loadScriptures({ silent = false } = {}) {
+  if (!requireClient()) return;
+
+  state.loading = true;
+  renderConnectionStatus();
+
+  let data = [];
+  let error = null;
+
+  try {
+    const response = await state.client
+      .from("mindex_scriptures")
+      .select("*")
+      .eq("is_active", true)
+      .order("title", { ascending: true });
+    data = response.data;
+    error = response.error;
+  } catch (caughtError) {
+    error = caughtError;
+  } finally {
+    state.loading = false;
+  }
+
+  if (error) {
+    state.scriptureError = error.message || "Could not load scripture.";
+    if (!silent && state.module === "scripture") showToast(state.scriptureError, "error");
+    render();
+    return;
+  }
+
+  state.scriptureError = "";
+  state.scriptures = (data || []).map(normalizeServerScripture).sort(sortScriptures);
+  if (state.selectedScriptureId && !state.scriptures.some((scripture) => scripture.id === state.selectedScriptureId)) {
+    state.selectedScriptureId = null;
+  }
+
+  render();
+}
+
 async function selectSong(songId) {
   if (songId === state.selectedSongId) return;
   if (hasDirtyChanges() && !confirm("Discard unsaved changes?")) return;
@@ -301,6 +380,18 @@ async function selectSong(songId) {
   focusSelectedSong();
   await loadForms(state.selectedVersionId);
   focusSelectedSong();
+}
+
+async function selectScripture(scriptureId) {
+  if (scriptureId === state.selectedScriptureId) return;
+  if (hasDirtyChanges() && !confirm("Discard unsaved changes?")) return;
+
+  state.selectedScriptureId = scriptureId;
+  state.dirty.song = false;
+  state.dirty.forms = false;
+  state.dirty.scripture = false;
+  render();
+  focusSelectedItem();
 }
 
 async function loadForms(versionId) {
@@ -351,6 +442,48 @@ async function createSong() {
   showToast("Song created.");
 }
 
+async function createCurrentItem() {
+  if (state.module === "scripture") {
+    await createScripture();
+    return;
+  }
+
+  await createSong();
+}
+
+async function createScripture() {
+  if (!requireClient()) return;
+  if (hasDirtyChanges() && !confirm("Discard unsaved changes?")) return;
+
+  const title = nextUntitledScriptureTitle();
+  const payload = {
+    title,
+    reference: "",
+    translation: "",
+    text: "",
+    memo: null,
+    is_active: true,
+  };
+
+  const { data, error } = await state.client
+    .from("mindex_scriptures")
+    .insert(payload)
+    .select("*")
+    .single();
+
+  if (error) {
+    showToast(error.message, "error");
+    return;
+  }
+
+  state.scriptureError = "";
+  state.scriptures = [normalizeServerScripture(data), ...state.scriptures].sort(sortScriptures);
+  state.selectedScriptureId = data.id;
+  state.dirty.scripture = false;
+  render();
+  showToast("Scripture created.");
+}
+
 async function deleteSelectedSong() {
   const song = getSelectedSong();
   if (!song || !requireClient()) return;
@@ -374,6 +507,11 @@ async function deleteSelectedSong() {
 }
 
 async function saveAll() {
+  if (state.module === "scripture") {
+    await saveScripture();
+    return;
+  }
+
   const song = getSelectedSong();
   if (!song || !requireClient() || state.saving) return;
 
@@ -392,6 +530,48 @@ async function saveAll() {
     state.songs = state.songs.sort(sortSongs);
     state.dirty.song = false;
     state.dirty.forms = false;
+    showToast("Saved.");
+    render();
+  } catch (error) {
+    showToast(error.message || "Save failed.", "error");
+  } finally {
+    state.saving = false;
+    updateSaveState();
+  }
+}
+
+async function saveScripture() {
+  const scripture = getSelectedScripture();
+  if (!scripture || !requireClient() || state.saving) return;
+
+  const title = (scripture.title || "").trim();
+  if (!title) {
+    showToast("Title is required.", "error");
+    return;
+  }
+
+  state.saving = true;
+  updateSaveState();
+
+  try {
+    const { data, error } = await state.client
+      .from("mindex_scriptures")
+      .update({
+        title,
+        reference: scripture.reference || "",
+        translation: scripture.translation || "",
+        text: scripture.text || "",
+        memo: scripture.memo || null,
+      })
+      .eq("id", scripture.id)
+      .select("*")
+      .single();
+
+    if (error) throw error;
+
+    Object.assign(scripture, normalizeServerScripture(data));
+    state.scriptures = state.scriptures.sort(sortScriptures);
+    state.dirty.scripture = false;
     showToast("Saved.");
     render();
   } catch (error) {
@@ -482,6 +662,12 @@ function handleDetailKeydown(event) {
 }
 
 function handleDetailInput(event) {
+  const scriptureField = event.target.closest("[data-scripture-field]");
+  if (scriptureField) {
+    updateScriptureField(scriptureField);
+    return;
+  }
+
   const songField = event.target.closest("[data-song-field]");
   if (songField) {
     updateSongField(songField);
@@ -497,6 +683,12 @@ function handleDetailInput(event) {
 }
 
 function handleDetailChange(event) {
+  const scriptureField = event.target.closest("[data-scripture-field]");
+  if (scriptureField) {
+    updateScriptureField(scriptureField);
+    return;
+  }
+
   const songField = event.target.closest("[data-song-field]");
   if (songField) {
     updateSongField(songField);
@@ -533,6 +725,21 @@ function updateSongField(field) {
   }
 
   state.dirty.song = true;
+  updateSaveState();
+}
+
+function updateScriptureField(field) {
+  const scripture = getSelectedScripture();
+  if (!scripture) return;
+
+  const key = field.dataset.scriptureField;
+  scripture[key] = field.value;
+
+  if (key === "title") {
+    updateEditorTitle(scripture);
+  }
+
+  state.dirty.scripture = true;
   updateSaveState();
 }
 
@@ -651,6 +858,11 @@ function runFormAction(action, index) {
 }
 
 function runCopyAction(action, index) {
+  if (state.module === "scripture") {
+    copyText(formatScriptureForCopy(getSelectedScripture()));
+    return;
+  }
+
   if (action === "plain") {
     copyText(formatFullLyrics());
     return;
@@ -684,11 +896,28 @@ function runCopyAction(action, index) {
 }
 
 function render() {
+  document.body.dataset.module = state.module;
+  renderModuleSwitcher();
   renderConnectionStatus();
   renderSongList();
   renderDetail();
   updateSaveState();
   refreshIcons();
+}
+
+function renderModuleSwitcher() {
+  for (const button of refs.moduleButtons) {
+    const active = button.dataset.module === state.module;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-pressed", String(active));
+  }
+  refs.searchInput.placeholder =
+    state.module === "scripture"
+      ? "Search scripture, reference..."
+      : "Search title, lyrics, #...";
+  refs.newSongBtn.title = state.module === "scripture" ? "New scripture" : "New song";
+  refs.saveAllBtn.title = state.module === "scripture" ? "Save scripture" : "Save song";
+  refs.saveAllBtn.setAttribute("aria-label", refs.saveAllBtn.title);
 }
 
 function renderConnectionStatus() {
@@ -725,6 +954,11 @@ function renderConnectionStatus() {
 }
 
 function renderSongList() {
+  if (state.module === "scripture") {
+    renderScriptureList();
+    return;
+  }
+
   const filtered = getFilteredSongs();
   const hasSearch = Boolean(normalizeSearchValue(state.search));
   refs.songCount.textContent = hasSearch
@@ -756,14 +990,62 @@ function renderSongList() {
     .join("");
 }
 
+function renderScriptureList() {
+  const filtered = getFilteredScriptures();
+  const hasSearch = Boolean(normalizeSearchValue(state.search));
+  refs.songCount.textContent = hasSearch
+    ? `${filtered.length} of ${state.scriptures.length} scriptures`
+    : `${filtered.length} ${filtered.length === 1 ? "scripture" : "scriptures"}`;
+
+  if (state.scriptureError) {
+    refs.songList.innerHTML = `<div class="song-list-empty">Run Scripture SQL first.</div>`;
+    return;
+  }
+
+  if (!filtered.length) {
+    refs.songList.innerHTML = `<div class="song-list-empty">No scriptures</div>`;
+    return;
+  }
+
+  refs.songList.innerHTML = filtered
+    .map((scripture) => {
+      const active = scripture.id === state.selectedScriptureId ? " active" : "";
+      const metaLine = scriptureListMeta(scripture);
+      return `
+        <button class="song-item${active}" type="button" data-scripture-id="${escapeAttr(scripture.id)}">
+          <span class="song-title">
+            <span class="song-title-text">${escapeHtml(scripture.title || "Untitled Scripture")}</span>
+          </span>
+          ${metaLine ? `<span class="song-meta-line">${escapeHtml(metaLine)}</span>` : ""}
+        </button>
+      `;
+    })
+    .join("");
+}
+
 function focusSelectedSong() {
-  if (!state.selectedSongId) return;
-  const selected = refs.songList.querySelector(`[data-song-id="${CSS.escape(state.selectedSongId)}"]`);
+  focusSelectedItem();
+}
+
+function focusSelectedItem() {
+  const selector =
+    state.module === "scripture" && state.selectedScriptureId
+      ? `[data-scripture-id="${CSS.escape(state.selectedScriptureId)}"]`
+      : state.selectedSongId
+        ? `[data-song-id="${CSS.escape(state.selectedSongId)}"]`
+        : "";
+  if (!selector) return;
+  const selected = refs.songList.querySelector(selector);
   selected?.focus({ preventScroll: true });
   selected?.scrollIntoView({ block: "nearest" });
 }
 
 function renderDetail() {
+  if (state.module === "scripture") {
+    renderScriptureDetail();
+    return;
+  }
+
   const song = getSelectedSong();
 
   if (!song) {
@@ -815,6 +1097,73 @@ function renderDetail() {
 
   refreshIcons();
   resizeFormTextareas();
+}
+
+function renderScriptureDetail() {
+  const scripture = getSelectedScripture();
+
+  if (state.scriptureError) {
+    refs.detailPane.innerHTML = `
+      <div class="empty-detail">
+        <div class="empty-detail-inner">
+          <h2>Mindex Scripture</h2>
+          <p>The Scripture table is not ready yet. Run the SQL in supabase-schema.sql.</p>
+        </div>
+      </div>
+    `;
+    refreshIcons();
+    return;
+  }
+
+  if (!scripture) {
+    refs.detailPane.innerHTML = `
+      <div class="empty-detail">
+        <div class="empty-detail-inner">
+          <h2>Mindex Scripture</h2>
+          <p>Select a scripture from the list.</p>
+        </div>
+      </div>
+    `;
+    refreshIcons();
+    return;
+  }
+
+  refs.detailPane.innerHTML = `
+    <div class="editor-shell scripture-editor">
+      <header class="editor-head">
+        <div class="editor-title">
+          <h2 id="editorSongTitle">
+            <span>${escapeHtml(scripture.title || "Untitled Scripture")}</span>
+          </h2>
+          <div class="editor-meta-stack">
+            <div class="editor-title-meta${scripture.reference ? "" : " empty"}">${escapeHtml(scripture.reference || "Reference")}</div>
+            <div class="editor-support-meta${scripture.translation ? "" : " empty"}">
+              ${scripture.translation ? `<span>${escapeHtml(scripture.translation)}</span>` : `<span>Translation</span>`}
+            </div>
+          </div>
+        </div>
+        <div class="head-actions">
+          <span class="dirty-pill" ${hasDirtyChanges() ? "" : "hidden"}>Unsaved changes</span>
+          <button class="btn secondary" type="button" data-copy-action="scripture" title="Copy scripture text">
+            <i data-lucide="clipboard"></i>
+            <span>Text</span>
+          </button>
+        </div>
+      </header>
+
+      <section class="panel scripture-panel">
+        <div class="meta-grid scripture-meta-grid">
+          ${renderScriptureInput("Title", "title", scripture.title)}
+          ${renderScriptureInput("Reference", "reference", scripture.reference)}
+          ${renderScriptureInput("Translation", "translation", scripture.translation)}
+        </div>
+        ${renderScriptureTextarea("Text", "text", scripture.text)}
+        ${renderScriptureTextarea("Memo", "memo", scripture.memo || "", "scripture-memo")}
+      </section>
+    </div>
+  `;
+
+  refreshIcons();
 }
 
 function renderSongAttentionIcon(song) {
@@ -1030,6 +1379,24 @@ function renderTextarea(label, field, value, className = "") {
   `;
 }
 
+function renderScriptureInput(label, field, value, className = "") {
+  return `
+    <label class="field ${className}">
+      <span>${label}</span>
+      <input type="text" data-scripture-field="${field}" value="${escapeAttr(value || "")}" />
+    </label>
+  `;
+}
+
+function renderScriptureTextarea(label, field, value, className = "") {
+  return `
+    <label class="field wide ${className}">
+      <span>${label}</span>
+      <textarea class="scripture-textarea" data-scripture-field="${field}" rows="${field === "text" ? "14" : "3"}">${escapeHtml(value || "")}</textarea>
+    </label>
+  `;
+}
+
 function renderFormBlock(form, index) {
   const label = displayLabel(form);
   const needsReview = formNeedsReview(form);
@@ -1126,6 +1493,12 @@ function formatFullLyrics(forms = state.forms) {
     .map(formatBlockForCopy)
     .filter((block) => block.trim().length > 0)
     .join("\n\n");
+}
+
+function formatScriptureForCopy(scripture) {
+  if (!scripture) return "";
+  const heading = [scripture.reference, scripture.translation].filter(Boolean).join(" ");
+  return [heading, scripture.text || ""].filter(Boolean).join("\n");
 }
 
 function formatFreeShowShowJson(song = getSelectedSong(), version = getSelectedVersion(), forms = state.forms) {
@@ -1314,6 +1687,18 @@ function fallbackCopy(text) {
   } finally {
     textarea.remove();
   }
+}
+
+function normalizeServerScripture(row) {
+  return {
+    id: row.id,
+    title: row.title || "Untitled Scripture",
+    reference: row.reference || "",
+    translation: row.translation || "",
+    text: row.text || "",
+    memo: row.memo || "",
+    is_active: row.is_active !== false,
+  };
 }
 
 function normalizeServerSong(row) {
@@ -1575,6 +1960,55 @@ function getFilteredSongs() {
     .map((item) => item.song);
 }
 
+function getFilteredScriptures() {
+  const tokens = getSearchTokens(state.search);
+  if (!tokens.length) return [...state.scriptures].sort(sortScriptures);
+
+  const matched = state.scriptures
+    .map((scripture) => ({ scripture, match: getScriptureSearchMatch(scripture, tokens) }))
+    .filter((item) => item.match);
+  const phraseMatched = matched.filter((item) => item.match.phraseMatched);
+  const results = phraseMatched.length ? phraseMatched : matched;
+
+  return results
+    .sort((a, b) => b.match.score - a.match.score || sortScriptures(a.scripture, b.scripture))
+    .map((item) => item.scripture);
+}
+
+function getScriptureSearchMatch(scripture, tokens = getSearchTokens(state.search)) {
+  if (!tokens.length) return null;
+
+  const fields = [
+    searchField("title", scripture.title, 120),
+    searchField("meta", scripture.reference, 110),
+    searchField("meta", scripture.translation, 70),
+    searchField("lyrics", scripture.text, 48),
+    searchField("meta", scripture.memo, 36),
+  ].filter((field) => field.text);
+  const phrase = getSearchPhrase(tokens);
+  let bestMatch = null;
+
+  for (const field of fields) {
+    const matches = tokens.map((token) => matchSearchField(field, token));
+    if (matches.some((match) => !match)) continue;
+
+    const candidate = getSearchCandidate(field.text);
+    const phraseMatched = phrase.compact.length > 1 && candidate.compact.includes(phrase.compact);
+    const phraseBoost = phraseMatched ? (candidate.compact === phrase.compact ? 64 : 26) : 0;
+    const score = matches.reduce((sum, match) => sum + match.score, 0) + phraseBoost;
+
+    if (!bestMatch || score > bestMatch.score) {
+      bestMatch = { score, field, phraseMatched };
+    }
+  }
+
+  return bestMatch;
+}
+
+function scriptureListMeta(scripture) {
+  return [scripture.reference, scripture.translation].filter(Boolean).join(" / ");
+}
+
 function songSearchHint(song) {
   const tokens = getSearchTokens(state.search);
   if (!tokens.length) return "";
@@ -1752,6 +2186,10 @@ function sortSongs(a, b) {
   return TITLE_COLLATOR.compare(a.title || "", b.title || "");
 }
 
+function sortScriptures(a, b) {
+  return TITLE_COLLATOR.compare(a.title || "", b.title || "");
+}
+
 function songEmptyStatus(song) {
   const versions = song?.versions || [];
   if (!versions.length) return null;
@@ -1768,6 +2206,10 @@ function getSelectedSong() {
   return state.songs.find((song) => song.id === state.selectedSongId) || null;
 }
 
+function getSelectedScripture() {
+  return state.scriptures.find((scripture) => scripture.id === state.selectedScriptureId) || null;
+}
+
 function requireClient() {
   if (state.client) return true;
   showToast("Open Mindex with a connection link first.", "error");
@@ -1775,11 +2217,12 @@ function requireClient() {
 }
 
 function hasDirtyChanges() {
-  return state.dirty.song || state.dirty.forms;
+  return state.dirty.song || state.dirty.forms || state.dirty.scripture;
 }
 
 function updateSaveState() {
-  refs.saveAllBtn.disabled = !getSelectedSong() || !hasDirtyChanges() || state.saving;
+  const selectedItem = state.module === "scripture" ? getSelectedScripture() : getSelectedSong();
+  refs.saveAllBtn.disabled = !selectedItem || !hasDirtyChanges() || state.saving;
   renderConnectionStatus();
 
   const dirtyPill = refs.detailPane.querySelector(".dirty-pill");
@@ -1834,6 +2277,15 @@ function nextUntitledTitle() {
   const titles = new Set(state.songs.map((song) => song.title));
   if (!titles.has(base)) return base;
 
+  let index = 2;
+  while (titles.has(`${base} ${index}`)) index += 1;
+  return `${base} ${index}`;
+}
+
+function nextUntitledScriptureTitle() {
+  const base = "Untitled Scripture";
+  const titles = new Set(state.scriptures.map((scripture) => scripture.title));
+  if (!titles.has(base)) return base;
   let index = 2;
   while (titles.has(`${base} ${index}`)) index += 1;
   return `${base} ${index}`;
