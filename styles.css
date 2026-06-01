@@ -404,6 +404,71 @@ h1, h2, h3, p { margin: 0; }
   font-size: 13px;
   font-weight: 720;
 }
+.bible-reader {
+  display: grid;
+  gap: var(--s3);
+  margin-top: var(--s4);
+}
+.bible-reader-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+}
+.bible-reader-controls label {
+  display: grid;
+  min-width: 140px;
+  gap: var(--s1);
+}
+.bible-reader-controls span {
+  color: var(--ink-4);
+  font-size: 10px;
+  font-weight: 760;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+}
+.bible-reader-controls select {
+  height: 30px;
+  border: 1px solid var(--line);
+  border-radius: calc(var(--r) - 2px);
+  background: color-mix(in srgb, var(--panel) 86%, var(--bg));
+  color: var(--ink);
+  padding: 0 var(--s2);
+}
+.bible-reader-note {
+  color: var(--ink-4);
+  font-size: 12px;
+  font-weight: 650;
+}
+.bible-verse-list {
+  display: grid;
+  gap: 6px;
+  padding-top: var(--s1);
+}
+.bible-section-title {
+  margin-top: var(--s2);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 760;
+}
+.bible-verse {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: var(--s2);
+  color: var(--ink-2);
+  font-size: 14px;
+  line-height: 1.65;
+}
+.bible-verse span {
+  color: var(--ink-4);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 760;
+  line-height: 23px;
+  text-align: right;
+}
+.bible-verse strong {
+  font-weight: 540;
+}
 .scripture-textarea {
   border: 1px solid var(--line);
   border-radius: var(--r);

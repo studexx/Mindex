@@ -123,3 +123,10 @@ verse rows to `mindex_bible_verses` keyed by `translation_id`, `book_code`,
 imports should use a server-side/service-role script. `Text` copies the passage
 with its heading. `Slides` copies blank-line separated passage blocks with
 `[Scripture n]` labels.
+
+Import EasySlides XML Bible files after running `supabase-schema.sql`:
+
+```sh
+python3 scripts/import_bible_xml.py "/path/to/성경(.xml).zip" --dry-run
+python3 scripts/import_bible_xml.py "/path/to/성경(.xml).zip"
+```
