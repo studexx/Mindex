@@ -1233,7 +1233,6 @@ function renderSongList() {
   refs.songList.innerHTML = filtered
     .map((song) => {
       const active = song.id === state.selectedSongId ? " active" : "";
-      const metaLine = hasSearch ? songSearchHint(song) || songTitleMetaLine(song) : songTitleMetaLine(song);
       const titleText = song.hymn_no ? stripHymnNumber(song.title) : song.title;
       return `
         <button class="song-item${active}" type="button" data-song-id="${escapeAttr(song.id)}">
@@ -1247,7 +1246,7 @@ function renderSongList() {
       `;
     })
     .join("");
-  restoreCurrentListScroll();
+  finishListRender();
 }
 
 function renderScriptureList() {
@@ -1281,7 +1280,12 @@ function renderScriptureList() {
       `;
     })
     .join("");
+  finishListRender();
+}
+
+function finishListRender() {
   restoreCurrentListScroll();
+  refreshIcons();
 }
 
 function getListScrollKey() {
