@@ -1271,40 +1271,46 @@ function normalizeServerSong(row) {
   return {
     ...row,
     scripture: cleanList(memo.scripture),
+    metadata: normalizeSongMetadata(memo.metadata),
     versions: versions.map((version, index) => ({
       ...version,
       id: version.id || `${row.id}:version:${index + 1}`,
       name: normalizeGeneratedVersionName(version.name || version.version_label || `Version ${index + 1}`),
       is_primary: Boolean(version.is_primary) || index === 0,
+      metadata: normalizeSongMetadata(version.metadata),
       forms: Array.isArray(version.forms) ? version.forms : [],
     })),
   };
 }
 
 function parseSongMemo(value) {
-  if (!value) return { versions: [], scripture: [] };
+  if (!value) return { versions: [], scripture: [], metadata: {} };
   try {
     const parsed = typeof value === "string" ? JSON.parse(value) : value;
     return {
       versions: Array.isArray(parsed?.versions) ? parsed.versions : [],
       scripture: cleanList(parsed?.scripture),
+      metadata: normalizeSongMetadata(parsed?.metadata),
     };
   } catch {
-    return { versions: [], scripture: [] };
+    return { versions: [], scripture: [], metadata: {} };
   }
 }
 
 function serializeSongMemo(song) {
   const scripture = cleanList(song.scripture);
+  const metadata = normalizeSongMetadata(song.metadata);
   return JSON.stringify(
     {
       ...(scripture.length ? { scripture } : {}),
+      ...(Object.keys(metadata).length ? { metadata } : {}),
       versions: (song.versions || []).map((version, index) => ({
         id: version.id,
         name: normalizeGeneratedVersionName(version.name || `Version ${index + 1}`),
         raw_section_name: version.raw_section_name || null,
         hymn_no: version.hymn_no || null,
         is_primary: Boolean(version.is_primary) || index === 0,
+        ...(Object.keys(normalizeSongMetadata(version.metadata)).length ? { metadata: normalizeSongMetadata(version.metadata) } : {}),
         forms: (version.forms || []).map((form, formIndex) => ({
           id: form.id || createLocalId(),
           part_type: form.part_type,
@@ -1376,8 +1382,10 @@ function versionDisplayName(song, version) {
 
 function songOriginalTitleLine(song) {
   const titles = new Set();
+  const metadata = normalizeSongMetadata(song?.metadata);
   if (song?.original_title) titles.add(song.original_title);
   if (song?.subtitle) titles.add(song.subtitle);
+  if (metadata.otherTitle) titles.add(metadata.otherTitle);
   addSongMetaFromRaw(titles, song?.title);
   for (const version of song?.versions || []) {
     addSongMetaFromRaw(titles, version.raw_section_name || version.version_label || "", versionDisplayName(song, version));
@@ -1385,6 +1393,8 @@ function songOriginalTitleLine(song) {
   for (const reference of cleanList(song?.scripture)) {
     titles.add(reference);
   }
+  if (metadata.credits) titles.add(metadata.credits);
+  if (metadata.album) titles.add([metadata.album, metadata.track ? `Track ${metadata.track}` : ""].filter(Boolean).join(" "));
   return [...titles].join(" / ");
 }
 
@@ -1513,12 +1523,21 @@ function getSongSearchFields(song) {
     searchField("meta", song.original_title, 88),
     ...cleanList(song.alt_titles).map((title) => searchField("meta", title, 78)),
     ...cleanList(song.scripture).map((reference) => searchField("meta", reference, 70)),
+    searchField("meta", song.metadata?.otherTitle, 78),
+    searchField("meta", song.metadata?.credits, 58),
+    searchField("meta", song.metadata?.album, 48),
+    searchField("meta", song.metadata?.track, 32),
+    searchField("meta", song.metadata?.sourceType, 32),
   ];
 
   for (const version of song.versions || []) {
     fields.push(searchField("version", versionDisplayName(song, version), 74));
     fields.push(searchField("version", version.raw_section_name, 58));
     fields.push(searchField("version", version.version_label, 52));
+    fields.push(searchField("version", version.metadata?.otherTitle, 58));
+    fields.push(searchField("version", version.metadata?.credits, 42));
+    fields.push(searchField("version", version.metadata?.album, 36));
+    fields.push(searchField("version", version.metadata?.sourceType, 30));
     for (const form of version.forms || []) {
       fields.push(searchField("lyrics", form.lyrics, 24));
     }
@@ -1687,6 +1706,18 @@ function parseList(value) {
 
 function cleanList(value) {
   return Array.isArray(value) ? value.map((item) => String(item).trim()).filter(Boolean) : [];
+}
+
+function normalizeSongMetadata(value) {
+  const source = value && typeof value === "object" ? value : {};
+  const metadata = {
+    otherTitle: nullIfBlank(source.otherTitle),
+    credits: nullIfBlank(source.credits),
+    album: nullIfBlank(source.album),
+    track: nullIfBlank(source.track),
+    sourceType: nullIfBlank(source.sourceType || source.type),
+  };
+  return Object.fromEntries(Object.entries(metadata).filter(([, item]) => item));
 }
 
 function nullIfBlank(value) {
