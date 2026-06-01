@@ -38,6 +38,7 @@ const state = {
   selectedVersionId: null,
   selectedScriptureId: null,
   praiseFilter: "all",
+  listScroll: {},
   forms: [],
   search: "",
   loading: false,
@@ -100,16 +101,19 @@ function bindStaticEvents() {
   refs.newSongBtn.addEventListener("click", createCurrentItem);
   refs.saveAllBtn.addEventListener("click", saveAll);
   refs.searchInput.addEventListener("input", (event) => {
+    saveCurrentListScroll();
     state.search = event.target.value;
     renderSongList();
   });
   refs.praiseFilter.addEventListener("click", (event) => {
     const button = event.target.closest("[data-praise-filter]");
     if (!button) return;
+    saveCurrentListScroll();
     state.praiseFilter = button.dataset.praiseFilter;
     renderSongList();
     renderPraiseFilter();
   });
+  refs.songList.addEventListener("scroll", saveCurrentListScroll, { passive: true });
 
   refs.songList.addEventListener("click", (event) => {
     const songItem = event.target.closest("[data-song-id]");
@@ -284,6 +288,7 @@ async function switchModule(moduleName) {
   if (moduleName === state.module) return;
   if (hasDirtyChanges() && !confirm("Discard unsaved changes?")) return;
 
+  saveCurrentListScroll();
   state.module = moduleName;
   state.search = "";
   refs.searchInput.value = "";
@@ -1018,6 +1023,7 @@ function renderSongList() {
       `;
     })
     .join("");
+  restoreCurrentListScroll();
 }
 
 function renderScriptureList() {
@@ -1051,10 +1057,30 @@ function renderScriptureList() {
       `;
     })
     .join("");
+  restoreCurrentListScroll();
 }
 
 function focusSelectedSong() {
   focusSelectedItem();
+}
+
+function getListScrollKey() {
+  const search = normalizeSearchValue(state.search);
+  if (state.module === "scripture") return `scripture:${search}`;
+  return `praise:${state.praiseFilter}:${search}`;
+}
+
+function saveCurrentListScroll() {
+  if (!refs.songList) return;
+  state.listScroll[getListScrollKey()] = refs.songList.scrollTop;
+}
+
+function restoreCurrentListScroll() {
+  if (!refs.songList) return;
+  const top = state.listScroll[getListScrollKey()] || 0;
+  requestAnimationFrame(() => {
+    refs.songList.scrollTop = top;
+  });
 }
 
 function focusSelectedItem() {
