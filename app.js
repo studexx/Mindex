@@ -1270,6 +1270,7 @@ function normalizeServerSong(row) {
 
   return {
     ...row,
+    scripture: cleanList(memo.scripture),
     versions: versions.map((version, index) => ({
       ...version,
       id: version.id || `${row.id}:version:${index + 1}`,
@@ -1281,20 +1282,23 @@ function normalizeServerSong(row) {
 }
 
 function parseSongMemo(value) {
-  if (!value) return { versions: [] };
+  if (!value) return { versions: [], scripture: [] };
   try {
     const parsed = typeof value === "string" ? JSON.parse(value) : value;
     return {
       versions: Array.isArray(parsed?.versions) ? parsed.versions : [],
+      scripture: cleanList(parsed?.scripture),
     };
   } catch {
-    return { versions: [] };
+    return { versions: [], scripture: [] };
   }
 }
 
 function serializeSongMemo(song) {
+  const scripture = cleanList(song.scripture);
   return JSON.stringify(
     {
+      ...(scripture.length ? { scripture } : {}),
       versions: (song.versions || []).map((version, index) => ({
         id: version.id,
         name: normalizeGeneratedVersionName(version.name || `Version ${index + 1}`),
@@ -1377,6 +1381,9 @@ function songOriginalTitleLine(song) {
   addSongMetaFromRaw(titles, song?.title);
   for (const version of song?.versions || []) {
     addSongMetaFromRaw(titles, version.raw_section_name || version.version_label || "", versionDisplayName(song, version));
+  }
+  for (const reference of cleanList(song?.scripture)) {
+    titles.add(reference);
   }
   return [...titles].join(" / ");
 }
@@ -1505,6 +1512,7 @@ function getSongSearchFields(song) {
     searchField("meta", song.subtitle, 88),
     searchField("meta", song.original_title, 88),
     ...cleanList(song.alt_titles).map((title) => searchField("meta", title, 78)),
+    ...cleanList(song.scripture).map((reference) => searchField("meta", reference, 70)),
   ];
 
   for (const version of song.versions || []) {
