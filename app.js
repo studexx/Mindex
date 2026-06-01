@@ -1212,7 +1212,7 @@ function renderSongList() {
       return `
         <button class="song-item${active}" type="button" data-song-id="${escapeAttr(song.id)}">
           <span class="song-title">
-            ${song.hymn_no ? `<span class="song-hymn-no">${escapeHtml(song.hymn_no)}</span>` : ""}
+            ${song.hymn_no ? `<span class="song-hymn-no">${escapeHtml(formatHymnMarker(song.hymn_no))}</span>` : ""}
             <span class="song-title-text">${escapeHtml(titleText)}</span>
             ${song.versions?.length > 1 ? `<span class="song-count-badge">${song.versions.length}</span>` : ""}
             ${renderSongAttentionIcon(song)}
@@ -1250,7 +1250,7 @@ function renderScriptureList() {
       return `
         <button class="song-item${active}" type="button" data-book-code="${escapeAttr(book.code)}">
           <span class="song-title">
-            <span class="song-hymn-no">${String(book.sortOrder).padStart(2, "0")}</span>
+            <span class="song-hymn-no">${formatBookMarker(book.sortOrder)}</span>
             <span class="song-title-text">${escapeHtml(book.koreanName || book.englishName)}</span>
           </span>
           ${metaLine ? `<span class="song-meta-line">${escapeHtml(metaLine)}</span>` : ""}
@@ -1380,7 +1380,7 @@ function renderScriptureDetail() {
             <h2>${escapeHtml(selectedBook?.koreanName || "Bible Books")}</h2>
             <div class="editor-meta-stack">
               <div class="editor-title-meta">${escapeHtml(selectedBook?.canonicalEnglishTitle || `${getBibleBooks().length} books`)}</div>
-              <div class="editor-support-meta"><span>${escapeHtml(selectedBook ? bibleBookListMeta(selectedBook) : "Canonical order / Christian category / Jewish category / author")}</span></div>
+              <div class="editor-support-meta"><span>${escapeHtml(selectedBook ? bibleBookSupportMeta(selectedBook) : "Canonical order / Christian category / Jewish category / author")}</span></div>
             </div>
           </div>
         </header>
@@ -1725,7 +1725,7 @@ function renderScriptureBookTaxonomy() {
 
 function renderScriptureBookDetail(book) {
   const details = [
-    ["Order", String(book.sortOrder)],
+    ["Order", formatBookMarker(book.sortOrder)],
     ["Testament", book.testament],
     ["Christian Category", book.division],
     ["Jewish Category", book.jewishCategory],
@@ -1735,14 +1735,7 @@ function renderScriptureBookDetail(book) {
 
   return `
     <section class="taxonomy-book-detail">
-      <div class="taxonomy-book-detail-head">
-        <div>
-          <div class="taxonomy-book-korean">${escapeHtml(book.koreanName)}</div>
-          <div class="taxonomy-book-english">${escapeHtml(book.canonicalEnglishTitle || book.englishName)}</div>
-        </div>
-        <span>${String(book.sortOrder).padStart(2, "0")}</span>
-      </div>
-      <div class="taxonomy-detail-grid">
+      <div class="taxonomy-detail-list">
         ${details.map(([label, value]) => `
           <div class="taxonomy-detail-item">
             <span>${escapeHtml(label)}</span>
@@ -2492,6 +2485,23 @@ function scriptureListMeta(scripture) {
 
 function bibleBookListMeta(book) {
   return [book.canonicalEnglishTitle || book.englishName, book.division, book.author].filter(Boolean).join(" / ");
+}
+
+function bibleBookSupportMeta(book) {
+  return [book.division, book.jewishCategory, book.author ? `Author ${book.author}` : ""].filter(Boolean).join(" / ");
+}
+
+function formatBookMarker(value) {
+  return formatNumericMarker(value, 2);
+}
+
+function formatHymnMarker(value) {
+  return formatNumericMarker(value, 3);
+}
+
+function formatNumericMarker(value, width) {
+  const text = String(value || "").trim();
+  return /^\d+$/.test(text) ? text.padStart(width, "0") : text;
 }
 
 function getBibleBooks() {

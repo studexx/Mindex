@@ -136,8 +136,8 @@ h1, h2, h3, p { margin: 0; }
 .song-title { display: flex; min-width: 0; align-items: center; gap: 6px; font-weight: 520; line-height: 18px; }
 .song-hymn-no {
   display: inline-flex;
-  min-width: 0;
-  flex: 0 0 auto;
+  width: 24px;
+  flex: 0 0 24px;
   justify-content: flex-start;
   color: var(--ink-4);
   font-size: 11px;
@@ -334,46 +334,18 @@ h1, h2, h3, p { margin: 0; }
 }
 .taxonomy-book-detail {
   display: grid;
-  gap: var(--s4);
-}
-.taxonomy-book-detail-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--s4);
-}
-.taxonomy-book-korean {
-  color: var(--ink);
-  font-size: 24px;
-  font-weight: 760;
-  line-height: 1.2;
-}
-.taxonomy-book-english {
-  margin-top: 4px;
-  color: var(--ink-3);
-  font-size: 14px;
-  font-weight: 650;
-}
-.taxonomy-book-detail-head > span {
-  color: var(--accent);
-  font-size: 26px;
-  font-weight: 800;
-  line-height: 1;
-}
-.taxonomy-detail-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: var(--s2);
+}
+.taxonomy-detail-list {
+  display: grid;
+  gap: 0;
 }
 .taxonomy-detail-item {
   display: grid;
-  min-height: 58px;
-  align-content: center;
-  gap: 3px;
-  border: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
-  border-radius: var(--r);
-  background: color-mix(in srgb, var(--panel) 84%, var(--bg));
-  padding: var(--s2) var(--s3);
+  grid-template-columns: minmax(120px, .32fr) minmax(0, 1fr);
+  gap: var(--s3);
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 64%, transparent);
+  padding: 10px 0;
 }
 .taxonomy-detail-item span {
   color: var(--ink-4);
