@@ -332,6 +332,61 @@ h1, h2, h3, p { margin: 0; }
   font-size: 13px;
   font-weight: 650;
 }
+.taxonomy-book-detail {
+  display: grid;
+  gap: var(--s4);
+}
+.taxonomy-book-detail-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s4);
+}
+.taxonomy-book-korean {
+  color: var(--ink);
+  font-size: 24px;
+  font-weight: 760;
+  line-height: 1.2;
+}
+.taxonomy-book-english {
+  margin-top: 4px;
+  color: var(--ink-3);
+  font-size: 14px;
+  font-weight: 650;
+}
+.taxonomy-book-detail-head > span {
+  color: var(--accent);
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1;
+}
+.taxonomy-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--s2);
+}
+.taxonomy-detail-item {
+  display: grid;
+  min-height: 58px;
+  align-content: center;
+  gap: 3px;
+  border: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
+  border-radius: var(--r);
+  background: color-mix(in srgb, var(--panel) 84%, var(--bg));
+  padding: var(--s2) var(--s3);
+}
+.taxonomy-detail-item span {
+  color: var(--ink-4);
+  font-size: 10px;
+  font-weight: 760;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+}
+.taxonomy-detail-item strong {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 720;
+}
 .scripture-textarea {
   border: 1px solid var(--line);
   border-radius: var(--r);

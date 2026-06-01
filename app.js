@@ -102,6 +102,7 @@ const STORAGE = {
   selectedSongId: "mindex.ui.selectedSongId",
   selectedVersionId: "mindex.ui.selectedVersionId",
   selectedScriptureId: "mindex.ui.selectedScriptureId",
+  selectedBookCode: "mindex.ui.selectedBookCode",
 };
 
 const SYSTEM_THEME_QUERY = window.matchMedia?.("(prefers-color-scheme: dark)") || null;
@@ -122,6 +123,7 @@ const state = {
   selectedSongId: null,
   selectedVersionId: null,
   selectedScriptureId: null,
+  selectedBookCode: null,
   praiseFilter: "all",
   listScroll: {},
   forms: [],
@@ -190,6 +192,7 @@ function bindStaticEvents() {
     saveCurrentListScroll();
     state.search = event.target.value;
     renderSongList();
+    if (state.module === "scripture") renderDetail();
   });
   refs.praiseFilter.addEventListener("click", (event) => {
     const button = event.target.closest("[data-praise-filter]");
@@ -212,6 +215,12 @@ function bindStaticEvents() {
     const scriptureItem = event.target.closest("[data-scripture-id]");
     if (scriptureItem) {
       selectScripture(scriptureItem.dataset.scriptureId);
+      return;
+    }
+
+    const bookItem = event.target.closest("[data-book-code]");
+    if (bookItem) {
+      selectScriptureBook(bookItem.dataset.bookCode);
     }
   });
 
@@ -259,11 +268,11 @@ function handleSongNavigationKeydown(event) {
   if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
   if (shouldKeepArrowKeyInFocusedControl(event.target)) return;
 
-  const items = state.module === "scripture" ? getFilteredScriptures() : getFilteredSongs();
+  const items = state.module === "scripture" ? getFilteredBibleBooks() : getFilteredSongs();
   if (!items.length) return;
 
-  const selectedId = state.module === "scripture" ? state.selectedScriptureId : state.selectedSongId;
-  const foundIndex = items.findIndex((item) => item.id === selectedId);
+  const selectedId = state.module === "scripture" ? state.selectedBookCode : state.selectedSongId;
+  const foundIndex = items.findIndex((item) => (state.module === "scripture" ? item.code : item.id) === selectedId);
   const currentIndex = foundIndex >= 0 ? foundIndex : event.key === "ArrowDown" ? -1 : items.length;
   const nextIndex =
     event.key === "ArrowDown"
@@ -272,8 +281,9 @@ function handleSongNavigationKeydown(event) {
   const nextItem = items[nextIndex];
 
   event.preventDefault();
-  if (!nextItem || nextItem.id === selectedId) return;
-  if (state.module === "scripture") selectScripture(nextItem.id);
+  const nextId = state.module === "scripture" ? nextItem?.code : nextItem?.id;
+  if (!nextId || nextId === selectedId) return;
+  if (state.module === "scripture") selectScriptureBook(nextId);
   else selectSong(nextItem.id);
 }
 
@@ -316,6 +326,7 @@ function readUiState() {
   state.selectedSongId = localStorage.getItem(STORAGE.selectedSongId) || null;
   state.selectedVersionId = localStorage.getItem(STORAGE.selectedVersionId) || null;
   state.selectedScriptureId = localStorage.getItem(STORAGE.selectedScriptureId) || null;
+  state.selectedBookCode = localStorage.getItem(STORAGE.selectedBookCode) || null;
 }
 
 function persistUiState() {
@@ -324,6 +335,7 @@ function persistUiState() {
   writeStorageValue(STORAGE.selectedSongId, state.selectedSongId);
   writeStorageValue(STORAGE.selectedVersionId, state.selectedVersionId);
   writeStorageValue(STORAGE.selectedScriptureId, state.selectedScriptureId);
+  writeStorageValue(STORAGE.selectedBookCode, state.selectedBookCode);
 }
 
 function writeStorageValue(key, value) {
@@ -525,6 +537,11 @@ async function loadScriptureBooks({ silent = false } = {}) {
 
     if (error) throw error;
     state.scriptureBooks = (data || []).map(normalizeServerScriptureBook).sort(sortBibleBooks);
+    if (state.selectedBookCode && !state.scriptureBooks.some((book) => book.code === state.selectedBookCode)) {
+      state.selectedBookCode = null;
+    }
+    if (!state.selectedBookCode) state.selectedBookCode = state.scriptureBooks[0]?.code || null;
+    persistUiState();
     render();
   } catch (error) {
     state.scriptureBooks = [];
@@ -555,6 +572,16 @@ async function selectScripture(scriptureId) {
   state.selectedScriptureId = scriptureId;
   state.dirty.song = false;
   state.dirty.forms = false;
+  state.dirty.scripture = false;
+  persistUiState();
+  render();
+  focusSelectedItem();
+}
+
+function selectScriptureBook(bookCode) {
+  if (bookCode === state.selectedBookCode) return;
+  state.selectedBookCode = bookCode;
+  state.selectedScriptureId = null;
   state.dirty.scripture = false;
   persistUiState();
   render();
@@ -1197,11 +1224,12 @@ function renderSongList() {
 }
 
 function renderScriptureList() {
-  const filtered = getFilteredScriptures();
+  const books = getBibleBooks();
+  const filtered = getFilteredBibleBooks();
   const hasSearch = Boolean(normalizeSearchValue(state.search));
   refs.songCount.textContent = hasSearch
-    ? `${filtered.length} of ${state.scriptures.length} scriptures`
-    : `${filtered.length} ${filtered.length === 1 ? "scripture" : "scriptures"}`;
+    ? `${filtered.length} of ${books.length} books`
+    : `${filtered.length} ${filtered.length === 1 ? "book" : "books"}`;
 
   if (state.scriptureError) {
     refs.songList.innerHTML = `<div class="song-list-empty">Run Scripture SQL first.</div>`;
@@ -1209,18 +1237,19 @@ function renderScriptureList() {
   }
 
   if (!filtered.length) {
-    refs.songList.innerHTML = `<div class="song-list-empty">No scriptures</div>`;
+    refs.songList.innerHTML = `<div class="song-list-empty">No books</div>`;
     return;
   }
 
   refs.songList.innerHTML = filtered
-    .map((scripture) => {
-      const active = scripture.id === state.selectedScriptureId ? " active" : "";
-      const metaLine = scriptureListMeta(scripture);
+    .map((book) => {
+      const active = book.code === state.selectedBookCode ? " active" : "";
+      const metaLine = bibleBookListMeta(book);
       return `
-        <button class="song-item${active}" type="button" data-scripture-id="${escapeAttr(scripture.id)}">
+        <button class="song-item${active}" type="button" data-book-code="${escapeAttr(book.code)}">
           <span class="song-title">
-            <span class="song-title-text">${escapeHtml(scripture.title || "Untitled Scripture")}</span>
+            <span class="song-hymn-no">${String(book.sortOrder).padStart(2, "0")}</span>
+            <span class="song-title-text">${escapeHtml(book.koreanName || book.englishName)}</span>
           </span>
           ${metaLine ? `<span class="song-meta-line">${escapeHtml(metaLine)}</span>` : ""}
         </button>
@@ -1255,8 +1284,8 @@ function restoreCurrentListScroll() {
 
 function focusSelectedItem() {
   const selector =
-    state.module === "scripture" && state.selectedScriptureId
-      ? `[data-scripture-id="${CSS.escape(state.selectedScriptureId)}"]`
+    state.module === "scripture" && state.selectedBookCode
+      ? `[data-book-code="${CSS.escape(state.selectedBookCode)}"]`
       : state.selectedSongId
         ? `[data-song-id="${CSS.escape(state.selectedSongId)}"]`
         : "";
@@ -1326,7 +1355,7 @@ function renderDetail() {
 
 function renderScriptureDetail() {
   const scripture = getSelectedScripture();
-  const selectedBook = findBibleBookByCode(scripture?.book_code) || findBibleBookByName(scripture?.book);
+  const selectedBook = findBibleBookByCode(scripture?.book_code) || findBibleBookByCode(state.selectedBookCode) || findBibleBookByName(scripture?.book);
 
   if (state.scriptureError) {
     refs.detailPane.innerHTML = `
@@ -1346,15 +1375,15 @@ function renderScriptureDetail() {
       <div class="editor-shell scripture-editor scripture-taxonomy-editor">
         <header class="editor-head">
           <div class="editor-title">
-            <h2>Bible Books</h2>
+            <h2>${escapeHtml(selectedBook?.koreanName || "Bible Books")}</h2>
             <div class="editor-meta-stack">
-              <div class="editor-title-meta">${getBibleBooks().length} books</div>
-              <div class="editor-support-meta"><span>Canonical order / Christian category / Jewish category / author</span></div>
+              <div class="editor-title-meta">${escapeHtml(selectedBook?.canonicalEnglishTitle || `${getBibleBooks().length} books`)}</div>
+              <div class="editor-support-meta"><span>${escapeHtml(selectedBook ? bibleBookListMeta(selectedBook) : "Canonical order / Christian category / Jewish category / author")}</span></div>
             </div>
           </div>
         </header>
         <section class="panel scripture-panel">
-          ${renderScriptureBookTaxonomy()}
+          ${selectedBook ? renderScriptureBookDetail(selectedBook) : renderScriptureBookTaxonomy()}
         </section>
       </div>
     `;
@@ -1690,6 +1719,37 @@ function renderScriptureBookTaxonomy() {
       </div>
     </section>
   `).join("");
+}
+
+function renderScriptureBookDetail(book) {
+  const details = [
+    ["Order", String(book.sortOrder)],
+    ["Testament", book.testament],
+    ["Christian Category", book.division],
+    ["Jewish Category", book.jewishCategory],
+    ["Author", book.author],
+    ["Short", book.shortName],
+  ].filter(([, value]) => value);
+
+  return `
+    <section class="taxonomy-book-detail">
+      <div class="taxonomy-book-detail-head">
+        <div>
+          <div class="taxonomy-book-korean">${escapeHtml(book.koreanName)}</div>
+          <div class="taxonomy-book-english">${escapeHtml(book.canonicalEnglishTitle || book.englishName)}</div>
+        </div>
+        <span>${String(book.sortOrder).padStart(2, "0")}</span>
+      </div>
+      <div class="taxonomy-detail-grid">
+        ${details.map(([label, value]) => `
+          <div class="taxonomy-detail-item">
+            <span>${escapeHtml(label)}</span>
+            <strong>${escapeHtml(value)}</strong>
+          </div>
+        `).join("")}
+      </div>
+    </section>
+  `;
 }
 
 function renderScriptureBookCard(book) {
@@ -2080,6 +2140,7 @@ function normalizeServerScriptureBook(row) {
     testament: row.testament || "",
     division: row.division || "",
     canonicalEnglishTitle: row.canonical_english_title || row.english_name || "",
+    shortName: row.short_name || "",
     jewishCategory: row.jewish_category || "",
     author: row.author || "",
     sortOrder: Number(row.sort_order) || 999,
@@ -2407,6 +2468,10 @@ function getScriptureSearchMatch(scripture, tokens = getSearchTokens(state.searc
 function scriptureListMeta(scripture) {
   const book = findBibleBookByCode(scripture.book_code) || findBibleBookByName(scripture.book);
   return [scripture.book, scripture.reference, scripture.translation, book?.division].filter(Boolean).join(" / ");
+}
+
+function bibleBookListMeta(book) {
+  return [book.canonicalEnglishTitle || book.englishName, book.division, book.author].filter(Boolean).join(" / ");
 }
 
 function getBibleBooks() {
