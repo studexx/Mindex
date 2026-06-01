@@ -1383,7 +1383,13 @@ function renderScriptureDetail() {
             </h2>
             <div class="editor-meta-stack">
               <div class="editor-title-meta">${escapeHtml(selectedBook?.canonicalEnglishTitle || `${getBibleBooks().length} books`)}</div>
-              <div class="editor-support-meta"><span>${escapeHtml(selectedBook ? bibleBookSupportMeta(selectedBook) : "Canonical order / Christian category / Jewish category / author")}</span></div>
+              <div class="editor-support-meta scripture-support-meta">
+                ${
+                  selectedBook
+                    ? bibleBookSupportMetaItems(selectedBook).map((item) => `<span>${escapeHtml(item)}</span>`).join("")
+                    : `<span>Canonical order</span><span>Christian category</span><span>Jewish category</span><span>Author</span>`
+                }
+              </div>
             </div>
           </div>
         </header>
@@ -2503,8 +2509,8 @@ function bibleBookListMeta(book) {
   return [book.canonicalEnglishTitle || book.englishName, book.division, book.author].filter(Boolean).join(" / ");
 }
 
-function bibleBookSupportMeta(book) {
-  return [book.division, book.jewishCategory, book.author ? `Author ${book.author}` : ""].filter(Boolean).join(" / ");
+function bibleBookSupportMetaItems(book) {
+  return [book.division, book.jewishCategory, book.author].filter(Boolean);
 }
 
 function formatBookMarker(value) {
