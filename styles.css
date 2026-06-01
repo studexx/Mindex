@@ -262,6 +262,10 @@ h1, h2, h3, p { margin: 0; }
   box-shadow: var(--shadow-soft);
   padding: 8px;
 }
+.form-block.needs-review {
+  border-color: color-mix(in srgb, var(--warn) 24%, var(--line));
+  background: color-mix(in srgb, var(--warn-bg) 18%, var(--panel));
+}
 .form-block.readonly {
   background: color-mix(in srgb, var(--panel) 76%, var(--bg));
   box-shadow: none;
@@ -297,6 +301,19 @@ h1, h2, h3, p { margin: 0; }
   font-weight: 760;
   line-height: 1;
   padding: 0 10px;
+}
+.review-pill {
+  display: inline-flex;
+  min-height: 20px;
+  align-items: center;
+  border: 1px solid color-mix(in srgb, var(--warn) 24%, var(--line));
+  border-radius: 999px;
+  background: var(--warn-bg);
+  color: var(--warn);
+  font-size: 10px;
+  font-weight: 720;
+  line-height: 1;
+  padding: 0 7px;
 }
 .form-type-select {
   width: auto;

@@ -543,6 +543,10 @@ function updateFormField(field) {
 
   const key = field.dataset.formField;
   form[key] = field.value;
+  if (key === "part_type" || key === "lyrics") {
+    delete form.review_status;
+    delete form.import_source;
+  }
   if (key === "part_type" && !PART_TYPES.includes(form.part_type)) {
     form.part_type = "Verse";
   }
@@ -985,8 +989,9 @@ function renderTextarea(label, field, value, className = "") {
 
 function renderFormBlock(form, index) {
   const label = displayLabel(form);
+  const needsReview = formNeedsReview(form);
   return `
-    <article class="form-block">
+    <article class="form-block${needsReview ? " needs-review" : ""}">
       <div class="form-head">
         <div class="form-meta">
           <select class="form-type-select" data-form-field="part_type" data-index="${index}" aria-label="Form type">
@@ -995,6 +1000,7 @@ function renderFormBlock(form, index) {
                 `<option value="${type}" ${form.part_type === type ? "selected" : ""}>${escapeHtml(form.part_type === type ? label : type)}</option>`,
             ).join("")}
           </select>
+          ${needsReview ? `<span class="review-pill">Needs review</span>` : ""}
         </div>
         <div class="form-actions">
           <button class="icon-btn" type="button" data-form-action="up" data-index="${index}" title="Move up" ${index === 0 ? "disabled" : ""}>
@@ -1017,11 +1023,13 @@ function renderFormBlock(form, index) {
 }
 
 function renderReadonlyFormBlock(form) {
+  const needsReview = formNeedsReview(form);
   return `
-    <article class="form-block readonly">
+    <article class="form-block readonly${needsReview ? " needs-review" : ""}">
       <div class="form-head">
         <div class="form-meta">
           <span class="form-label-text">${escapeHtml(displayLabel(form))}</span>
+          ${needsReview ? `<span class="review-pill">Needs review</span>` : ""}
         </div>
       </div>
       <div class="form-preview-text">${escapeHtml(form.lyrics || "")}</div>
@@ -1034,6 +1042,8 @@ function normalizeForms(forms) {
     ...withLocalId(form),
     part_type: PART_TYPES.includes(form.part_type) ? form.part_type : "Verse",
     lyrics: form.lyrics || "",
+    review_status: form.review_status || null,
+    import_source: form.import_source || null,
     sort_order: index + 1,
   }));
 
@@ -1058,6 +1068,10 @@ function computePartNumberSuggestion(forms, type) {
 function displayLabel(form) {
   if (form.part_number) return `${form.part_type} ${form.part_number}`;
   return form.part_type;
+}
+
+function formNeedsReview(form) {
+  return form?.review_status === "needs_review" || Boolean(form?.import_source);
 }
 
 function formatBlockForCopy(form) {
@@ -1321,6 +1335,8 @@ function serializeSongMemo(song) {
           part_number: form.part_number,
           lyrics: form.lyrics || "",
           sort_order: formIndex + 1,
+          ...(form.review_status ? { review_status: form.review_status } : {}),
+          ...(form.import_source ? { import_source: form.import_source } : {}),
         })),
       })),
     },
@@ -1404,7 +1420,6 @@ function songSupportMetaItems(song) {
     ...cleanList(song?.scripture).map((reference) => `Scripture ${reference}`),
     metadata.credits ? `Credits ${metadata.credits}` : "",
     metadata.album ? `Album ${[metadata.album, metadata.track ? `Track ${metadata.track}` : ""].filter(Boolean).join(" ")}` : "",
-    metadata.sourceType ? `Type ${metadata.sourceType}` : "",
   ].filter(Boolean);
 }
 
@@ -1556,7 +1571,6 @@ function getSongSearchFields(song) {
     searchField("meta", song.metadata?.credits, 58),
     searchField("meta", song.metadata?.album, 48),
     searchField("meta", song.metadata?.track, 32),
-    searchField("meta", song.metadata?.sourceType, 32),
   ];
 
   for (const version of song.versions || []) {
@@ -1566,7 +1580,6 @@ function getSongSearchFields(song) {
     fields.push(searchField("version", version.metadata?.otherTitle, 58));
     fields.push(searchField("version", version.metadata?.credits, 42));
     fields.push(searchField("version", version.metadata?.album, 36));
-    fields.push(searchField("version", version.metadata?.sourceType, 30));
     for (const form of version.forms || []) {
       fields.push(searchField("lyrics", form.lyrics, 24));
     }
@@ -1744,7 +1757,6 @@ function normalizeSongMetadata(value) {
     credits: nullIfBlank(source.credits),
     album: nullIfBlank(source.album),
     track: nullIfBlank(source.track),
-    sourceType: nullIfBlank(source.sourceType || source.type),
   };
   return Object.fromEntries(Object.entries(metadata).filter(([, item]) => item));
 }
