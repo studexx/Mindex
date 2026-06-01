@@ -18,6 +18,11 @@ const STORAGE = {
   url: "mindex.supabase.url",
   key: "mindex.supabase.anonKey",
   theme: "mindex.theme",
+  module: "mindex.ui.module",
+  praiseFilter: "mindex.ui.praiseFilter",
+  selectedSongId: "mindex.ui.selectedSongId",
+  selectedVersionId: "mindex.ui.selectedVersionId",
+  selectedScriptureId: "mindex.ui.selectedScriptureId",
 };
 
 const SYSTEM_THEME_QUERY = window.matchMedia?.("(prefers-color-scheme: dark)") || null;
@@ -62,6 +67,7 @@ function init() {
   applyTheme(readTheme());
   state.config = readConfig();
   rememberConfig(state.config);
+  readUiState();
   bindStaticEvents();
   connectClient();
   render();
@@ -110,6 +116,7 @@ function bindStaticEvents() {
     if (!button) return;
     saveCurrentListScroll();
     state.praiseFilter = button.dataset.praiseFilter;
+    persistUiState();
     renderSongList();
     renderPraiseFilter();
   });
@@ -219,6 +226,31 @@ function toggleTheme() {
   applyTheme(next);
 }
 
+function readUiState() {
+  const moduleName = localStorage.getItem(STORAGE.module);
+  const praiseFilter = localStorage.getItem(STORAGE.praiseFilter);
+
+  if (["praise", "scripture"].includes(moduleName)) state.module = moduleName;
+  if (["all", "hymns", "ccm"].includes(praiseFilter)) state.praiseFilter = praiseFilter;
+
+  state.selectedSongId = localStorage.getItem(STORAGE.selectedSongId) || null;
+  state.selectedVersionId = localStorage.getItem(STORAGE.selectedVersionId) || null;
+  state.selectedScriptureId = localStorage.getItem(STORAGE.selectedScriptureId) || null;
+}
+
+function persistUiState() {
+  localStorage.setItem(STORAGE.module, state.module);
+  localStorage.setItem(STORAGE.praiseFilter, state.praiseFilter);
+  writeStorageValue(STORAGE.selectedSongId, state.selectedSongId);
+  writeStorageValue(STORAGE.selectedVersionId, state.selectedVersionId);
+  writeStorageValue(STORAGE.selectedScriptureId, state.selectedScriptureId);
+}
+
+function writeStorageValue(key, value) {
+  if (value) localStorage.setItem(key, value);
+  else localStorage.removeItem(key);
+}
+
 function readConfig() {
   const params = readLinkParams();
   const injected = window.MINDEX_SUPABASE || {};
@@ -295,10 +327,15 @@ async function switchModule(moduleName) {
   state.dirty.song = false;
   state.dirty.forms = false;
   state.dirty.scripture = false;
+  persistUiState();
   render();
 
   if (moduleName === "scripture" && !state.scriptures.length && !state.scriptureError) {
     await loadScriptures();
+  }
+
+  if (moduleName === "praise" && state.selectedSongId && state.selectedVersionId && !state.forms.length) {
+    await loadForms(state.selectedVersionId);
   }
 }
 
@@ -340,6 +377,18 @@ async function loadSongs() {
     state.forms = [];
   }
 
+  const selectedSong = getSelectedSong();
+  if (selectedSong) {
+    const validVersionId = selectedSong.versions?.some((version) => version.id === state.selectedVersionId)
+      ? state.selectedVersionId
+      : getDefaultVersionId(selectedSong);
+    state.selectedVersionId = validVersionId;
+    persistUiState();
+    await loadForms(validVersionId);
+    return;
+  }
+
+  persistUiState();
   render();
 }
 
@@ -379,6 +428,7 @@ async function loadScriptures({ silent = false } = {}) {
     state.selectedScriptureId = null;
   }
 
+  persistUiState();
   render();
 }
 
@@ -391,6 +441,7 @@ async function selectSong(songId) {
   state.forms = [];
   state.dirty.song = false;
   state.dirty.forms = false;
+  persistUiState();
   render();
   focusSelectedSong();
   await loadForms(state.selectedVersionId);
@@ -405,6 +456,7 @@ async function selectScripture(scriptureId) {
   state.dirty.song = false;
   state.dirty.forms = false;
   state.dirty.scripture = false;
+  persistUiState();
   render();
   focusSelectedItem();
 }
@@ -453,6 +505,7 @@ async function createSong() {
   state.forms = [];
   state.dirty.song = false;
   state.dirty.forms = false;
+  persistUiState();
   render();
   showToast("Song created.");
 }
@@ -495,6 +548,7 @@ async function createScripture() {
   state.scriptures = [normalizeServerScripture(data), ...state.scriptures].sort(sortScriptures);
   state.selectedScriptureId = data.id;
   state.dirty.scripture = false;
+  persistUiState();
   render();
   showToast("Scripture created.");
 }
@@ -517,6 +571,7 @@ async function deleteSelectedSong() {
   state.forms = [];
   state.dirty.song = false;
   state.dirty.forms = false;
+  persistUiState();
   render();
   showToast("Song deleted.");
 }
@@ -847,6 +902,7 @@ function addVersion() {
   state.selectedVersionId = versionId;
   state.forms = normalizeForms(sourceForms);
   state.dirty.forms = true;
+  persistUiState();
   renderDetail();
   updateSaveState();
 }
@@ -1930,6 +1986,7 @@ async function selectVersion(versionId) {
   state.forms = [];
   state.dirty.song = false;
   state.dirty.forms = false;
+  persistUiState();
   render();
   await loadForms(versionId);
 }
