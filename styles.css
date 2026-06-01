@@ -78,7 +78,19 @@ h1, h2, h3, p { margin: 0; }
 .song-item.active { border-color: color-mix(in srgb, var(--accent) 26%, var(--line)); background: color-mix(in srgb, var(--accent-soft) 58%, var(--panel)); color: var(--ink); }
 .song-item.active::before { position: absolute; left: 0; top: 7px; bottom: 7px; width: 3px; border-radius: 999px; background: var(--accent); content: ""; }
 .song-title, .song-meta-line { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.song-title { display: flex; min-width: 0; align-items: center; gap: var(--s1); font-weight: 520; line-height: 18px; }
+.song-title { display: flex; min-width: 0; align-items: center; gap: 6px; font-weight: 520; line-height: 18px; }
+.song-hymn-no {
+  display: inline-flex;
+  min-width: 21px;
+  flex: 0 0 auto;
+  justify-content: flex-end;
+  color: var(--ink-4);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 720;
+  line-height: 18px;
+}
+.song-item.active .song-hymn-no { color: color-mix(in srgb, var(--accent) 58%, var(--ink-3)); }
 .song-title-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .song-title .attention-icon { margin-left: auto; }
 .song-meta-line { color: var(--ink-4); font-size: 10px; line-height: 18px; }

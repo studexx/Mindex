@@ -740,10 +740,12 @@ function renderSongList() {
     .map((song) => {
       const active = song.id === state.selectedSongId ? " active" : "";
       const metaLine = hasSearch ? songSearchHint(song) || songTitleMetaLine(song) : songTitleMetaLine(song);
+      const titleText = song.hymn_no ? stripHymnNumber(song.title) : song.title;
       return `
         <button class="song-item${active}" type="button" data-song-id="${escapeAttr(song.id)}">
           <span class="song-title">
-            <span class="song-title-text">${escapeHtml(song.title)}</span>
+            ${song.hymn_no ? `<span class="song-hymn-no">${escapeHtml(song.hymn_no)}</span>` : ""}
+            <span class="song-title-text">${escapeHtml(titleText)}</span>
             ${song.versions?.length > 1 ? `<span class="song-count-badge">${song.versions.length}</span>` : ""}
             ${renderSongAttentionIcon(song)}
           </span>
