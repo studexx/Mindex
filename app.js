@@ -14,6 +14,82 @@ const FORM_ADD_LABELS = {
   Coda: "Coda",
 };
 
+const BIBLE_BOOKS = [
+  ["GEN", "창세기", "Genesis", "Old Testament", "Pentateuch"],
+  ["EXO", "출애굽기", "Exodus", "Old Testament", "Pentateuch"],
+  ["LEV", "레위기", "Leviticus", "Old Testament", "Pentateuch"],
+  ["NUM", "민수기", "Numbers", "Old Testament", "Pentateuch"],
+  ["DEU", "신명기", "Deuteronomy", "Old Testament", "Pentateuch"],
+  ["JOS", "여호수아", "Joshua", "Old Testament", "History"],
+  ["JDG", "사사기", "Judges", "Old Testament", "History"],
+  ["RUT", "룻기", "Ruth", "Old Testament", "History"],
+  ["1SA", "사무엘상", "1 Samuel", "Old Testament", "History"],
+  ["2SA", "사무엘하", "2 Samuel", "Old Testament", "History"],
+  ["1KI", "열왕기상", "1 Kings", "Old Testament", "History"],
+  ["2KI", "열왕기하", "2 Kings", "Old Testament", "History"],
+  ["1CH", "역대상", "1 Chronicles", "Old Testament", "History"],
+  ["2CH", "역대하", "2 Chronicles", "Old Testament", "History"],
+  ["EZR", "에스라", "Ezra", "Old Testament", "History"],
+  ["NEH", "느헤미야", "Nehemiah", "Old Testament", "History"],
+  ["EST", "에스더", "Esther", "Old Testament", "History"],
+  ["JOB", "욥기", "Job", "Old Testament", "Wisdom"],
+  ["PSA", "시편", "Psalms", "Old Testament", "Wisdom"],
+  ["PRO", "잠언", "Proverbs", "Old Testament", "Wisdom"],
+  ["ECC", "전도서", "Ecclesiastes", "Old Testament", "Wisdom"],
+  ["SNG", "아가", "Song of Songs", "Old Testament", "Wisdom"],
+  ["ISA", "이사야", "Isaiah", "Old Testament", "Major Prophets"],
+  ["JER", "예레미야", "Jeremiah", "Old Testament", "Major Prophets"],
+  ["LAM", "예레미야애가", "Lamentations", "Old Testament", "Major Prophets"],
+  ["EZK", "에스겔", "Ezekiel", "Old Testament", "Major Prophets"],
+  ["DAN", "다니엘", "Daniel", "Old Testament", "Major Prophets"],
+  ["HOS", "호세아", "Hosea", "Old Testament", "Minor Prophets"],
+  ["JOL", "요엘", "Joel", "Old Testament", "Minor Prophets"],
+  ["AMO", "아모스", "Amos", "Old Testament", "Minor Prophets"],
+  ["OBA", "오바댜", "Obadiah", "Old Testament", "Minor Prophets"],
+  ["JON", "요나", "Jonah", "Old Testament", "Minor Prophets"],
+  ["MIC", "미가", "Micah", "Old Testament", "Minor Prophets"],
+  ["NAM", "나훔", "Nahum", "Old Testament", "Minor Prophets"],
+  ["HAB", "하박국", "Habakkuk", "Old Testament", "Minor Prophets"],
+  ["ZEP", "스바냐", "Zephaniah", "Old Testament", "Minor Prophets"],
+  ["HAG", "학개", "Haggai", "Old Testament", "Minor Prophets"],
+  ["ZEC", "스가랴", "Zechariah", "Old Testament", "Minor Prophets"],
+  ["MAL", "말라기", "Malachi", "Old Testament", "Minor Prophets"],
+  ["MAT", "마태복음", "Matthew", "New Testament", "Gospels"],
+  ["MRK", "마가복음", "Mark", "New Testament", "Gospels"],
+  ["LUK", "누가복음", "Luke", "New Testament", "Gospels"],
+  ["JHN", "요한복음", "John", "New Testament", "Gospels"],
+  ["ACT", "사도행전", "Acts", "New Testament", "History"],
+  ["ROM", "로마서", "Romans", "New Testament", "Pauline Epistles"],
+  ["1CO", "고린도전서", "1 Corinthians", "New Testament", "Pauline Epistles"],
+  ["2CO", "고린도후서", "2 Corinthians", "New Testament", "Pauline Epistles"],
+  ["GAL", "갈라디아서", "Galatians", "New Testament", "Pauline Epistles"],
+  ["EPH", "에베소서", "Ephesians", "New Testament", "Pauline Epistles"],
+  ["PHP", "빌립보서", "Philippians", "New Testament", "Pauline Epistles"],
+  ["COL", "골로새서", "Colossians", "New Testament", "Pauline Epistles"],
+  ["1TH", "데살로니가전서", "1 Thessalonians", "New Testament", "Pauline Epistles"],
+  ["2TH", "데살로니가후서", "2 Thessalonians", "New Testament", "Pauline Epistles"],
+  ["1TI", "디모데전서", "1 Timothy", "New Testament", "Pauline Epistles"],
+  ["2TI", "디모데후서", "2 Timothy", "New Testament", "Pauline Epistles"],
+  ["TIT", "디도서", "Titus", "New Testament", "Pauline Epistles"],
+  ["PHM", "빌레몬서", "Philemon", "New Testament", "Pauline Epistles"],
+  ["HEB", "히브리서", "Hebrews", "New Testament", "General Epistles"],
+  ["JAS", "야고보서", "James", "New Testament", "General Epistles"],
+  ["1PE", "베드로전서", "1 Peter", "New Testament", "General Epistles"],
+  ["2PE", "베드로후서", "2 Peter", "New Testament", "General Epistles"],
+  ["1JN", "요한일서", "1 John", "New Testament", "General Epistles"],
+  ["2JN", "요한이서", "2 John", "New Testament", "General Epistles"],
+  ["3JN", "요한삼서", "3 John", "New Testament", "General Epistles"],
+  ["JUD", "유다서", "Jude", "New Testament", "General Epistles"],
+  ["REV", "요한계시록", "Revelation", "New Testament", "Apocalypse"],
+].map(([code, koreanName, englishName, testament, division], index) => ({
+  code,
+  koreanName,
+  englishName,
+  testament,
+  division,
+  sortOrder: index + 1,
+}));
+
 const STORAGE = {
   url: "mindex.supabase.url",
   key: "mindex.supabase.anonKey",
@@ -525,6 +601,7 @@ async function createScripture() {
   const title = nextUntitledScriptureTitle();
   const payload = {
     title,
+    book_code: null,
     book: "",
     reference: "",
     translation: "",
@@ -628,6 +705,7 @@ async function saveScripture() {
       .from("mindex_scriptures")
       .update({
         title,
+        book_code: scripture.book_code || null,
         book: scripture.book || "",
         reference: scripture.reference || "",
         translation: scripture.translation || "",
@@ -805,6 +883,11 @@ function updateScriptureField(field) {
 
   const key = field.dataset.scriptureField;
   scripture[key] = field.value;
+  if (key === "book_code") {
+    const book = findBibleBookByCode(field.value);
+    scripture.book_code = field.value;
+    scripture.book = book?.koreanName || "";
+  }
 
   if (key === "title") {
     updateEditorTitle(scripture);
@@ -1275,7 +1358,7 @@ function renderScriptureDetail() {
       <section class="panel scripture-panel">
         <div class="meta-grid scripture-meta-grid">
           ${renderScriptureInput("Title", "title", scripture.title)}
-          ${renderScriptureInput("Book", "book", scripture.book)}
+          ${renderScriptureBookSelect(scripture)}
           ${renderScriptureInput("Reference", "reference", scripture.reference)}
           ${renderScriptureInput("Translation", "translation", scripture.translation)}
         </div>
@@ -1514,6 +1597,32 @@ function renderScriptureInput(label, field, value, className = "") {
       <span>${label}</span>
       <input type="text" data-scripture-field="${field}" value="${escapeAttr(value || "")}" />
     </label>
+  `;
+}
+
+function renderScriptureBookSelect(scripture) {
+  const value = scripture.book_code || findBibleBookByName(scripture.book)?.code || "";
+  return `
+    <label class="field">
+      <span>Book</span>
+      <select data-scripture-field="book_code">
+        <option value="">Select book</option>
+        ${renderBibleBookOptions("Old Testament", value)}
+        ${renderBibleBookOptions("New Testament", value)}
+      </select>
+    </label>
+  `;
+}
+
+function renderBibleBookOptions(testament, selectedCode) {
+  const label = testament === "Old Testament" ? "Old Testament" : "New Testament";
+  return `
+    <optgroup label="${label}">
+      ${BIBLE_BOOKS
+        .filter((book) => book.testament === testament)
+        .map((book) => `<option value="${book.code}" ${book.code === selectedCode ? "selected" : ""}>${escapeHtml(book.koreanName)}</option>`)
+        .join("")}
+    </optgroup>
   `;
 }
 
@@ -1869,10 +1978,12 @@ function fallbackCopy(text) {
 }
 
 function normalizeServerScripture(row) {
+  const book = findBibleBookByCode(row.book_code) || findBibleBookByName(row.book);
   return {
     id: row.id,
     title: row.title || "Untitled Scripture",
-    book: row.book || "",
+    book_code: row.book_code || book?.code || "",
+    book: row.book || book?.koreanName || "",
     reference: row.reference || "",
     translation: row.translation || "",
     text: row.text || "",
@@ -2196,6 +2307,16 @@ function getScriptureSearchMatch(scripture, tokens = getSearchTokens(state.searc
 
 function scriptureListMeta(scripture) {
   return [scripture.book, scripture.reference, scripture.translation].filter(Boolean).join(" / ");
+}
+
+function findBibleBookByCode(code) {
+  return BIBLE_BOOKS.find((book) => book.code === code) || null;
+}
+
+function findBibleBookByName(name) {
+  const value = normalizeTitle(name);
+  if (!value) return null;
+  return BIBLE_BOOKS.find((book) => normalizeTitle(book.koreanName) === value || normalizeTitle(book.englishName) === value) || null;
 }
 
 function songSearchHint(song) {

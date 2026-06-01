@@ -101,6 +101,8 @@ The Forms view keeps only the current working exports:
 - `Show`: downloads the selected version as a FreeShow `.show` file
 - `XML`: downloads the selected version as a simple XML file
 
-The Scripture view stores a title, reference, translation, passage text, and
-note. `Text` copies the passage with its heading. `Slides` copies blank-line
-separated passage blocks with `[Scripture n]` labels.
+The Scripture view stores a title, Bible book, reference, translation, passage
+text, and note. Bible books are classified by canonical order, testament, and
+division in `mindex_scripture_books`. `Text` copies the passage with its
+heading. `Slides` copies blank-line separated passage blocks with
+`[Scripture n]` labels.
