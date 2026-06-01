@@ -5,11 +5,6 @@ create table if not exists public.mindex_songs (
   title text not null,
   alt_titles text[] not null default '{}',
   hymn_no text,
-  category text,
-  source text,
-  default_key text,
-  tempo_note text,
-  theme_tags text[] not null default '{}',
   memo text,
   is_active boolean not null default true
 );

@@ -326,11 +326,6 @@ async function createSong() {
   const payload = {
     title,
     alt_titles: [],
-    category: null,
-    source: null,
-    default_key: null,
-    tempo_note: null,
-    theme_tags: [],
     memo: JSON.stringify({ versions: [defaultVersion] }),
     is_active: true,
   };
@@ -527,7 +522,7 @@ function updateSongField(field) {
   const key = field.dataset.songField;
   if (key === "is_active") {
     song[key] = field.checked;
-  } else if (key === "alt_titles" || key === "theme_tags") {
+  } else if (key === "alt_titles") {
     song[key] = parseList(field.value);
   } else {
     song[key] = field.value;
@@ -1129,9 +1124,9 @@ function buildFreeShowShow(song = getSelectedSong(), version = getSelectedVersio
       copyright: "",
       CCLI: "",
       year: "",
-      key: song?.default_key || "",
+      key: "",
       version: versionDisplayName(song, version || {}) || "",
-      source: song?.source || "",
+      source: "",
     },
     slides,
     layouts: {
@@ -1510,9 +1505,6 @@ function getSongSearchFields(song) {
     searchField("meta", song.subtitle, 88),
     searchField("meta", song.original_title, 88),
     ...cleanList(song.alt_titles).map((title) => searchField("meta", title, 78)),
-    searchField("meta", song.category, 44),
-    searchField("meta", song.source, 36),
-    ...cleanList(song.theme_tags).map((tag) => searchField("meta", tag, 38)),
   ];
 
   for (const version of song.versions || []) {
