@@ -629,6 +629,12 @@ function writeFormsToSelectedVersion() {
 }
 
 function handleDetailClick(event) {
+  const createScriptureButton = event.target.closest("[data-create-scripture]");
+  if (createScriptureButton) {
+    createScripture();
+    return;
+  }
+
   const addButton = event.target.closest("[data-add-form]");
   if (addButton) {
     addForm(addButton.dataset.addForm);
@@ -874,7 +880,12 @@ function runFormAction(action, index) {
 
 function runCopyAction(action, index) {
   if (state.module === "scripture") {
-    copyText(formatScriptureForCopy(getSelectedScripture()));
+    const scripture = getSelectedScripture();
+    if (action === "scripture-slides") {
+      copyText(formatScriptureSlidesForCopy(scripture));
+      return;
+    }
+    copyText(formatScriptureForCopy(scripture));
     return;
   }
 
@@ -1162,7 +1173,7 @@ function renderScriptureDetail() {
       <div class="empty-detail">
         <div class="empty-detail-inner">
           <h2>Mindex Scripture</h2>
-          <p>The Scripture table is not ready yet. Run the SQL in supabase-schema.sql.</p>
+          <p>Run the Scripture SQL in supabase-schema.sql.</p>
         </div>
       </div>
     `;
@@ -1176,6 +1187,10 @@ function renderScriptureDetail() {
         <div class="empty-detail-inner">
           <h2>Mindex Scripture</h2>
           <p>Select a scripture from the list.</p>
+          <button class="btn secondary empty-action" type="button" data-create-scripture>
+            <i data-lucide="plus"></i>
+            <span>New Scripture</span>
+          </button>
         </div>
       </div>
     `;
@@ -1203,6 +1218,10 @@ function renderScriptureDetail() {
             <i data-lucide="clipboard"></i>
             <span>Text</span>
           </button>
+          <button class="btn secondary" type="button" data-copy-action="scripture-slides" title="Copy scripture slide blocks">
+            <i data-lucide="copy"></i>
+            <span>Slides</span>
+          </button>
         </div>
       </header>
 
@@ -1212,8 +1231,11 @@ function renderScriptureDetail() {
           ${renderScriptureInput("Reference", "reference", scripture.reference)}
           ${renderScriptureInput("Translation", "translation", scripture.translation)}
         </div>
-        ${renderScriptureTextarea("Text", "text", scripture.text)}
-        ${renderScriptureTextarea("Memo", "memo", scripture.memo || "", "scripture-memo")}
+        ${renderScriptureTextarea("Passage", "text", scripture.text)}
+        <div class="scripture-foot">
+          <span>${scriptureBlockCount(scripture)} ${scriptureBlockCount(scripture) === 1 ? "block" : "blocks"}</span>
+        </div>
+        ${renderScriptureTextarea("Note", "memo", scripture.memo || "", "scripture-memo")}
       </section>
     </div>
   `;
@@ -1556,8 +1578,33 @@ function formatFullLyrics(forms = state.forms) {
 
 function formatScriptureForCopy(scripture) {
   if (!scripture) return "";
-  const heading = [scripture.reference, scripture.translation].filter(Boolean).join(" ");
-  return [heading, scripture.text || ""].filter(Boolean).join("\n");
+  return [scripture.title, scriptureHeading(scripture), scripture.text || ""].filter(Boolean).join("\n");
+}
+
+function formatScriptureSlidesForCopy(scripture) {
+  if (!scripture) return "";
+  const heading = scriptureHeading(scripture) || scripture.title || "Scripture";
+  const blocks = splitScriptureBlocks(scripture.text);
+  if (!blocks.length) return heading;
+  return blocks
+    .map((block, index) => [`[Scripture ${index + 1}]`, index === 0 ? heading : "", block].filter(Boolean).join("\n"))
+    .join("\n\n");
+}
+
+function scriptureHeading(scripture) {
+  return [scripture?.reference, scripture?.translation].filter(Boolean).join(" · ");
+}
+
+function splitScriptureBlocks(text) {
+  return String(text || "")
+    .replace(/\r\n?/g, "\n")
+    .split(/\n\s*\n/g)
+    .map((block) => block.trim())
+    .filter(Boolean);
+}
+
+function scriptureBlockCount(scripture) {
+  return splitScriptureBlocks(scripture?.text).length;
 }
 
 function formatFreeShowShowJson(song = getSelectedSong(), version = getSelectedVersion(), forms = state.forms) {
@@ -2445,6 +2492,8 @@ window.Mindex = {
   displayLabel,
   computePartNumberSuggestion,
   formatFullLyrics,
+  formatScriptureForCopy,
+  formatScriptureSlidesForCopy,
   formatFreeShowShowJson,
   formatSongXml,
   buildFreeShowShow,
