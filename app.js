@@ -104,7 +104,6 @@ function bindStaticEvents() {
     switchModule(button.dataset.module);
   });
   refs.themeBtn.addEventListener("click", toggleTheme);
-  refs.newSongBtn.addEventListener("click", createCurrentItem);
   refs.saveAllBtn.addEventListener("click", saveAll);
   refs.searchInput.addEventListener("input", (event) => {
     saveCurrentListScroll();
@@ -526,6 +525,7 @@ async function createScripture() {
   const title = nextUntitledScriptureTitle();
   const payload = {
     title,
+    book: "",
     reference: "",
     translation: "",
     text: "",
@@ -628,6 +628,7 @@ async function saveScripture() {
       .from("mindex_scriptures")
       .update({
         title,
+        book: scripture.book || "",
         reference: scripture.reference || "",
         translation: scripture.translation || "",
         text: scripture.text || "",
@@ -684,12 +685,6 @@ function writeFormsToSelectedVersion() {
 }
 
 function handleDetailClick(event) {
-  const createScriptureButton = event.target.closest("[data-create-scripture]");
-  if (createScriptureButton) {
-    createScripture();
-    return;
-  }
-
   const addButton = event.target.closest("[data-add-form]");
   if (addButton) {
     addForm(addButton.dataset.addForm);
@@ -1004,7 +999,7 @@ function renderModuleSwitcher() {
   }
   refs.searchInput.placeholder =
     state.module === "scripture"
-      ? "Search scripture, reference..."
+      ? "Search scripture, book, reference..."
       : "Search title, lyrics, #...";
   refs.newSongBtn.title = state.module === "scripture" ? "New scripture" : "New song";
   refs.saveAllBtn.title = state.module === "scripture" ? "Save scripture" : "Save song";
@@ -1243,10 +1238,6 @@ function renderScriptureDetail() {
         <div class="empty-detail-inner">
           <h2>Mindex Scripture</h2>
           <p>Select a scripture from the list.</p>
-          <button class="btn secondary empty-action" type="button" data-create-scripture>
-            <i data-lucide="plus"></i>
-            <span>New Scripture</span>
-          </button>
         </div>
       </div>
     `;
@@ -1284,6 +1275,7 @@ function renderScriptureDetail() {
       <section class="panel scripture-panel">
         <div class="meta-grid scripture-meta-grid">
           ${renderScriptureInput("Title", "title", scripture.title)}
+          ${renderScriptureInput("Book", "book", scripture.book)}
           ${renderScriptureInput("Reference", "reference", scripture.reference)}
           ${renderScriptureInput("Translation", "translation", scripture.translation)}
         </div>
@@ -1648,7 +1640,8 @@ function formatScriptureSlidesForCopy(scripture) {
 }
 
 function scriptureHeading(scripture) {
-  return [scripture?.reference, scripture?.translation].filter(Boolean).join(" · ");
+  const reference = scripture?.reference || scripture?.book || "";
+  return [reference, scripture?.translation].filter(Boolean).join(" · ");
 }
 
 function splitScriptureBlocks(text) {
@@ -1879,6 +1872,7 @@ function normalizeServerScripture(row) {
   return {
     id: row.id,
     title: row.title || "Untitled Scripture",
+    book: row.book || "",
     reference: row.reference || "",
     translation: row.translation || "",
     text: row.text || "",
@@ -2174,6 +2168,7 @@ function getScriptureSearchMatch(scripture, tokens = getSearchTokens(state.searc
 
   const fields = [
     searchField("title", scripture.title, 120),
+    searchField("meta", scripture.book, 112),
     searchField("meta", scripture.reference, 110),
     searchField("meta", scripture.translation, 70),
     searchField("lyrics", scripture.text, 48),
@@ -2200,7 +2195,7 @@ function getScriptureSearchMatch(scripture, tokens = getSearchTokens(state.searc
 }
 
 function scriptureListMeta(scripture) {
-  return [scripture.reference, scripture.translation].filter(Boolean).join(" / ");
+  return [scripture.book, scripture.reference, scripture.translation].filter(Boolean).join(" / ");
 }
 
 function songSearchHint(song) {

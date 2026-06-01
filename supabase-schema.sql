@@ -18,6 +18,7 @@ create index if not exists mindex_songs_hymn_no_idx
 create table if not exists public.mindex_scriptures (
   id uuid primary key default gen_random_uuid(),
   title text not null,
+  book text not null default '',
   reference text not null default '',
   translation text not null default '',
   text text not null default '',
@@ -30,6 +31,12 @@ create index if not exists mindex_scriptures_title_idx
 
 create index if not exists mindex_scriptures_reference_idx
   on public.mindex_scriptures (reference);
+
+alter table public.mindex_scriptures
+  add column if not exists book text not null default '';
+
+create index if not exists mindex_scriptures_book_idx
+  on public.mindex_scriptures (book);
 
 -- Prototype collaboration policies.
 -- Use only with a browser-safe anon key and a project intended for shared editing.
