@@ -514,6 +514,7 @@ h1, h2, h3, p { margin: 0; }
 .form-block, .empty-state { border: 1px solid var(--line); border-radius: var(--r); background: color-mix(in srgb, var(--panel) 96%, var(--bg)); box-shadow: var(--shadow); }
 .form-block {
   display: grid;
+  align-content: start;
   width: 100%;
   min-width: 0;
   gap: 7px;
