@@ -110,8 +110,16 @@ The Forms view keeps only the current working exports:
 - `XML`: downloads the selected version as a simple XML file
 
 The Scripture view stores a title, Bible book, reference, translation, passage
-text, and note. Bible books are classified by canonical order, testament,
-Christian category, Jewish category, canonical English title, and author in
-`mindex_scripture_books`. The Notion export source has been normalized into
-`data/scripture-books.csv`. `Text` copies the passage with its heading. `Slides`
-copies blank-line separated passage blocks with `[Scripture n]` labels.
+text, and note. Bible books are classified in `mindex_scripture_books`.
+`english_name` is the compact book name, such as `1 Samuel`;
+`canonical_english_title` is the formal full name, such as `First Book of
+Samuel`. Book metadata is prepared for broader corpora with `corpus`, `canon`,
+`book_group`, `osis_code`, `usfm_code`, and flexible `metadata`.
+
+The Notion export source has been normalized into `data/scripture-books.csv`.
+Future Bible XML imports should write a row to `mindex_bible_translations` and
+verse rows to `mindex_bible_verses` keyed by `translation_id`, `book_code`,
+`chapter`, and `verse`. These verse tables are read-only for browser links;
+imports should use a server-side/service-role script. `Text` copies the passage
+with its heading. `Slides` copies blank-line separated passage blocks with
+`[Scripture n]` labels.

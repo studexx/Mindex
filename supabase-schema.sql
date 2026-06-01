@@ -17,7 +17,7 @@ create index if not exists mindex_songs_hymn_no_idx
 
 create table if not exists public.mindex_scripture_books (
   code text primary key,
-  sort_order integer not null unique,
+  sort_order integer not null,
   testament text not null,
   division text not null,
   korean_name text not null,
@@ -27,6 +27,12 @@ create table if not exists public.mindex_scripture_books (
   aliases text[] not null default '{}',
   jewish_category text not null default '',
   author text not null default '',
+  corpus text not null default 'canonical',
+  canon text not null default 'protestant',
+  book_group text not null default '',
+  osis_code text not null default '',
+  usfm_code text not null default '',
+  metadata jsonb not null default '{}'::jsonb,
   is_active boolean not null default true
 );
 
@@ -38,6 +44,33 @@ alter table public.mindex_scripture_books
 
 alter table public.mindex_scripture_books
   add column if not exists author text not null default '';
+
+alter table public.mindex_scripture_books
+  add column if not exists corpus text not null default 'canonical';
+
+alter table public.mindex_scripture_books
+  add column if not exists canon text not null default 'protestant';
+
+alter table public.mindex_scripture_books
+  add column if not exists book_group text not null default '';
+
+alter table public.mindex_scripture_books
+  add column if not exists osis_code text not null default '';
+
+alter table public.mindex_scripture_books
+  add column if not exists usfm_code text not null default '';
+
+alter table public.mindex_scripture_books
+  add column if not exists metadata jsonb not null default '{}'::jsonb;
+
+alter table public.mindex_scripture_books
+  drop constraint if exists mindex_scripture_books_sort_order_key;
+
+create index if not exists mindex_scripture_books_scope_order_idx
+  on public.mindex_scripture_books (corpus, canon, sort_order);
+
+create index if not exists mindex_scripture_books_corpus_idx
+  on public.mindex_scripture_books (corpus);
 insert into public.mindex_scripture_books
   (code, sort_order, testament, division, korean_name, english_name, canonical_english_title, short_name, aliases, jewish_category, author)
 values
@@ -120,6 +153,14 @@ on conflict (code) do update set
   author = excluded.author,
   is_active = excluded.is_active;
 
+update public.mindex_scripture_books
+set
+  corpus = coalesce(nullif(corpus, ''), 'canonical'),
+  canon = coalesce(nullif(canon, ''), 'protestant'),
+  osis_code = coalesce(nullif(osis_code, ''), code),
+  usfm_code = coalesce(nullif(usfm_code, ''), code),
+  metadata = coalesce(metadata, '{}'::jsonb);
+
 create table if not exists public.mindex_scriptures (
   id uuid primary key default gen_random_uuid(),
   title text not null,
@@ -160,11 +201,46 @@ create index if not exists mindex_scriptures_book_idx
 create index if not exists mindex_scriptures_book_code_idx
   on public.mindex_scriptures (book_code);
 
+create table if not exists public.mindex_bible_translations (
+  id uuid primary key default gen_random_uuid(),
+  translation_key text not null unique,
+  name text not null,
+  language text not null default 'ko',
+  abbreviation text not null default '',
+  source text not null default '',
+  license text not null default '',
+  metadata jsonb not null default '{}'::jsonb,
+  is_active boolean not null default true
+);
+
+create table if not exists public.mindex_bible_verses (
+  id uuid primary key default gen_random_uuid(),
+  translation_id uuid not null references public.mindex_bible_translations (id) on delete cascade,
+  book_code text not null references public.mindex_scripture_books (code),
+  chapter integer not null check (chapter > 0),
+  verse integer not null check (verse > 0),
+  verse_end integer check (verse_end is null or verse_end >= verse),
+  text text not null,
+  paragraph_index integer,
+  section_title text not null default '',
+  metadata jsonb not null default '{}'::jsonb,
+  is_active boolean not null default true,
+  unique (translation_id, book_code, chapter, verse)
+);
+
+create index if not exists mindex_bible_verses_lookup_idx
+  on public.mindex_bible_verses (translation_id, book_code, chapter, verse);
+
+create index if not exists mindex_bible_verses_book_chapter_idx
+  on public.mindex_bible_verses (book_code, chapter);
+
 -- Prototype collaboration policies.
 -- Use only with a browser-safe anon key and a project intended for shared editing.
 alter table public.mindex_songs enable row level security;
 alter table public.mindex_scripture_books enable row level security;
 alter table public.mindex_scriptures enable row level security;
+alter table public.mindex_bible_translations enable row level security;
+alter table public.mindex_bible_verses enable row level security;
 
 drop policy if exists "mindex_songs_shared_read" on public.mindex_songs;
 create policy "mindex_songs_shared_read"
@@ -228,5 +304,19 @@ drop policy if exists "mindex_scriptures_shared_delete" on public.mindex_scriptu
 create policy "mindex_scriptures_shared_delete"
   on public.mindex_scriptures
   for delete
+  to anon
+  using (true);
+
+drop policy if exists "mindex_bible_translations_shared_read" on public.mindex_bible_translations;
+create policy "mindex_bible_translations_shared_read"
+  on public.mindex_bible_translations
+  for select
+  to anon
+  using (true);
+
+drop policy if exists "mindex_bible_verses_shared_read" on public.mindex_bible_verses;
+create policy "mindex_bible_verses_shared_read"
+  on public.mindex_bible_verses
+  for select
   to anon
   using (true);

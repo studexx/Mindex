@@ -1,67 +1,67 @@
-code,sort_order,testament,division,korean_name,english_name,canonical_english_title,short_name,aliases,jewish_category,author,is_active
-GEN,1,Old Testament,Pentateuch,창세기,Genesis,Book of Genesis,창,Genesis | 창 | Book of Genesis,Torah,Moses,true
-EXO,2,Old Testament,Pentateuch,출애굽기,Exodus,Book of Exodus,출,Exodus | 출 | Book of Exodus,Torah,Moses,true
-LEV,3,Old Testament,Pentateuch,레위기,Leviticus,Book of Leviticus,레,Leviticus | 레 | Book of Leviticus,Torah,Moses,true
-NUM,4,Old Testament,Pentateuch,민수기,Numbers,Book of Numbers,민,Numbers | 민 | Book of Numbers,Torah,Moses,true
-DEU,5,Old Testament,Pentateuch,신명기,Deuteronomy,Book of Deuteronomy,신,Deuteronomy | 신 | Book of Deuteronomy,Torah,Moses,true
-JOS,6,Old Testament,Historical Books,여호수아,Joshua,Book of Joshua,수,Joshua | 수 | Book of Joshua,"Former Prophets, Nevi’im",Joshua,true
-JDG,7,Old Testament,Historical Books,사사기,Judges,Book of Judges,삿,Judges | 삿 | Book of Judges,"Former Prophets, Nevi’im",Samuel,true
-RUT,8,Old Testament,Historical Books,룻기,Ruth,Book of Ruth,룻,Ruth | 룻 | Book of Ruth,"Five Megillot, Ketuvim",Samuel,true
-1SA,9,Old Testament,Historical Books,사무엘상,1 Samuel,First Book of Samuel,삼상,1 Samuel | 삼상 | First Book of Samuel,"Former Prophets, Nevi’im",Samuel,true
-2SA,10,Old Testament,Historical Books,사무엘하,2 Samuel,Second Book of Samuel,삼하,2 Samuel | 삼하 | Second Book of Samuel,"Former Prophets, Nevi’im",Samuel,true
-1KI,11,Old Testament,Historical Books,열왕기상,1 Kings,First Book of Kings,왕상,1 Kings | 왕상 | First Book of Kings,"Former Prophets, Nevi’im",Jeremiah,true
-2KI,12,Old Testament,Historical Books,열왕기하,2 Kings,Second Book of Kings,왕하,2 Kings | 왕하 | Second Book of Kings,"Former Prophets, Nevi’im",Jeremiah,true
-1CH,13,Old Testament,Historical Books,역대상,1 Chronicles,First Book of Chronicles,대상,1 Chronicles | 대상 | First Book of Chronicles,"Historical Books, Ketuvim","Chronicler, Jeremiah",true
-2CH,14,Old Testament,Historical Books,역대하,2 Chronicles,Second Book of Chronicles,대하,2 Chronicles | 대하 | Second Book of Chronicles,"Historical Books, Ketuvim","Chronicler, Jeremiah",true
-EZR,15,Old Testament,Historical Books,에스라,Ezra,Book of Ezra,스,Ezra | 스 | Book of Ezra,"Historical Books, Ketuvim","Chronicler, Ezra",true
-NEH,16,Old Testament,Historical Books,느헤미야,Nehemiah,Book of Nehemiah,느,Nehemiah | 느 | Book of Nehemiah,"Historical Books, Ketuvim","Chronicler, Nehemiah",true
-EST,17,Old Testament,Historical Books,에스더,Esther,Book of Esther,에,Esther | 에 | Book of Esther,"Five Megillot, Ketuvim",?,true
-JOB,18,Old Testament,Poetic Books,욥기,Job,Book of Job,욥,Job | 욥 | Book of Job,"Ketuvim, Poetic Books",?,true
-PSA,19,Old Testament,Poetic Books,시편,Psalms,Book of Psalms,시,Psalms | 시 | Book of Psalms | Psalm,"Ketuvim, Poetic Books",David,true
-PRO,20,Old Testament,Poetic Books,잠언,Proverbs,Book of Proverbs,잠,Proverbs | 잠 | Book of Proverbs,"Ketuvim, Poetic Books",Solomon,true
-ECC,21,Old Testament,Poetic Books,전도서,Ecclesiastes,Ecclesiastes,전,Ecclesiastes | 전,"Five Megillot, Ketuvim",Solomon,true
-SNG,22,Old Testament,Poetic Books,아가,Song of Songs,Song of Songs,아,Song of Songs | 아 | Song of Solomon,"Five Megillot, Ketuvim",Solomon,true
-ISA,23,Old Testament,"Major Prophets, Prophetic Books",이사야,Isaiah,Book of Isaiah,사,Isaiah | 사 | Book of Isaiah,"Latter Prophets, Nevi’im",Isaiah,true
-JER,24,Old Testament,"Major Prophets, Prophetic Books",예레미야,Jeremiah,Book of Jeremiah,렘,Jeremiah | 렘 | Book of Jeremiah,"Latter Prophets, Nevi’im",Jeremiah,true
-LAM,25,Old Testament,"Major Prophets, Prophetic Books",예레미야애가,Lamentations,Book of Lamentations,애,Lamentations | 애 | Book of Lamentations,"Five Megillot, Ketuvim",Jeremiah,true
-EZK,26,Old Testament,"Major Prophets, Prophetic Books",에스겔,Ezekiel,Book of Ezekiel,겔,Ezekiel | 겔 | Book of Ezekiel,"Latter Prophets, Nevi’im",Ezekiel,true
-DAN,27,Old Testament,"Major Prophets, Prophetic Books",다니엘,Daniel,Book of Daniel,단,Daniel | 단 | Book of Daniel,"Historical Books, Ketuvim",Daniel,true
-HOS,28,Old Testament,"Minor Prophets, Prophetic Books",호세아,Hosea,Book of Hosea,호,Hosea | 호 | Book of Hosea,"Latter Prophets, Nevi’im, Trei Asar",Hosea,true
-JOL,29,Old Testament,"Minor Prophets, Prophetic Books",요엘,Joel,Book of Joel,욜,Joel | 욜 | Book of Joel,"Latter Prophets, Nevi’im, Trei Asar",Joel,true
-AMO,30,Old Testament,"Minor Prophets, Prophetic Books",아모스,Amos,Book of Amos,암,Amos | 암 | Book of Amos,"Latter Prophets, Nevi’im, Trei Asar",Amos,true
-OBA,31,Old Testament,"Minor Prophets, Prophetic Books",오바댜,Obadiah,Book of Obadiah,옵,Obadiah | 옵 | Book of Obadiah,"Latter Prophets, Nevi’im, Trei Asar",Obadiah,true
-JON,32,Old Testament,"Minor Prophets, Prophetic Books",요나,Jonah,Book of Jonah,욘,Jonah | 욘 | Book of Jonah,"Latter Prophets, Nevi’im, Trei Asar",Jonah,true
-MIC,33,Old Testament,"Minor Prophets, Prophetic Books",미가,Micah,Book of Micah,미,Micah | 미 | Book of Micah,"Latter Prophets, Nevi’im, Trei Asar",Micah,true
-NAM,34,Old Testament,"Minor Prophets, Prophetic Books",나훔,Nahum,Book of Nahum,나,Nahum | 나 | Book of Nahum,"Latter Prophets, Nevi’im, Trei Asar",Nahum,true
-HAB,35,Old Testament,"Minor Prophets, Prophetic Books",하박국,Habakkuk,Book of Habakkuk,합,Habakkuk | 합 | Book of Habakkuk,"Latter Prophets, Nevi’im, Trei Asar",Habakkuk,true
-ZEP,36,Old Testament,"Minor Prophets, Prophetic Books",스바냐,Zephaniah,Book of Zephaniah,습,Zephaniah | 습 | Book of Zephaniah,"Latter Prophets, Nevi’im, Trei Asar",Zephaniah,true
-HAG,37,Old Testament,"Minor Prophets, Prophetic Books",학개,Haggai,Book of Haggai,학,Haggai | 학 | Book of Haggai,"Latter Prophets, Nevi’im, Trei Asar",Haggai,true
-ZEC,38,Old Testament,"Minor Prophets, Prophetic Books",스가랴,Zechariah,Book of Zechariah,슥,Zechariah | 슥 | Book of Zechariah,"Latter Prophets, Nevi’im, Trei Asar",Zechariah,true
-MAL,39,Old Testament,"Minor Prophets, Prophetic Books",말라기,Malachi,Book of Malachi,말,Malachi | 말 | Book of Malachi,"Latter Prophets, Nevi’im, Trei Asar",Malachi,true
-MAT,40,New Testament,Gospels,마태복음,Matthew,Gospel of Matthew,마,Matthew | 마 | Gospel of Matthew,,Matthew,true
-MRK,41,New Testament,Gospels,마가복음,Mark,Gospel of Mark,막,Mark | 막 | Gospel of Mark,,Mark,true
-LUK,42,New Testament,Gospels,누가복음,Luke,Gospel of Luke,눅,Luke | 눅 | Gospel of Luke,,Luke,true
-JHN,43,New Testament,Gospels,요한복음,John,Gospel of John,요,John | 요 | Gospel of John,,John,true
-ACT,44,New Testament,Acts,사도행전,Acts,Acts of the Apostles,행,Acts | 행 | Acts of the Apostles,,Luke,true
-ROM,45,New Testament,Pauline Epistles,로마서,Romans,Epistle to the Romans,롬,Romans | 롬 | Epistle to the Romans,,Paul,true
-1CO,46,New Testament,Pauline Epistles,고린도전서,1 Corinthians,First Epistle to the Corinthians,고전,1 Corinthians | 고전 | First Epistle to the Corinthians,,Paul,true
-2CO,47,New Testament,Pauline Epistles,고린도후서,2 Corinthians,Second Epistle to the Corinthians,고후,2 Corinthians | 고후 | Second Epistle to the Corinthians,,Paul,true
-GAL,48,New Testament,Pauline Epistles,갈라디아서,Galatians,Epistle to the Galatians,갈,Galatians | 갈 | Epistle to the Galatians,,Paul,true
-EPH,49,New Testament,Pauline Epistles,에베소서,Ephesians,Epistle to the Ephesians,엡,Ephesians | 엡 | Epistle to the Ephesians,,Paul,true
-PHP,50,New Testament,Pauline Epistles,빌립보서,Philippians,Epistle to the Philippians,빌,Philippians | 빌 | Epistle to the Philippians,,Paul,true
-COL,51,New Testament,Pauline Epistles,골로새서,Colossians,Epistle to the Colossians,골,Colossians | 골 | Epistle to the Colossians,,Paul,true
-1TH,52,New Testament,Pauline Epistles,데살로니가전서,1 Thessalonians,First Epistle to the Thessalonians,살전,1 Thessalonians | 살전 | First Epistle to the Thessalonians,,Paul,true
-2TH,53,New Testament,Pauline Epistles,데살로니가후서,2 Thessalonians,Second Epistle to the Thessalonians,살후,2 Thessalonians | 살후 | Second Epistle to the Thessalonians,,Paul,true
-1TI,54,New Testament,Pauline Epistles,디모데전서,1 Timothy,First Epistle to Timothy,딤전,1 Timothy | 딤전 | First Epistle to Timothy,,Paul,true
-2TI,55,New Testament,Pauline Epistles,디모데후서,2 Timothy,Second Epistle to Timothy,딤후,2 Timothy | 딤후 | Second Epistle to Timothy,,Paul,true
-TIT,56,New Testament,Pauline Epistles,디도서,Titus,Epistle to Titus,딛,Titus | 딛 | Epistle to Titus,,Paul,true
-PHM,57,New Testament,Pauline Epistles,빌레몬서,Philemon,Epistle to Philemon,몬,Philemon | 몬 | Epistle to Philemon,,Paul,true
-HEB,58,New Testament,Pauline Epistles,히브리서,Hebrews,Epistle to the Hebrews,히,Hebrews | 히 | Epistle to the Hebrews,,?,true
-JAS,59,New Testament,Catholic Epistles,야고보서,James,Epistle of James,약,James | 약 | Epistle of James,,James,true
-1PE,60,New Testament,Catholic Epistles,베드로전서,1 Peter,First Epistle of Peter,벧전,1 Peter | 벧전 | First Epistle of Peter,,Peter,true
-2PE,61,New Testament,Catholic Epistles,베드로후서,2 Peter,Second Epistle of Peter,벧후,2 Peter | 벧후 | Second Epistle of Peter,,Peter,true
-1JN,62,New Testament,Catholic Epistles,요한일서,1 John,First Epistle of John,요일,1 John | 요일 | First Epistle of John,,John,true
-2JN,63,New Testament,Catholic Epistles,요한이서,2 John,Second Epistle of John,요이,2 John | 요이 | Second Epistle of John,,John,true
-3JN,64,New Testament,Catholic Epistles,요한삼서,3 John,Third Epistle of John,요삼,3 John | 요삼 | Third Epistle of John,,John,true
-JUD,65,New Testament,Catholic Epistles,유다서,Jude,Epistle of Jude,유,Jude | 유 | Epistle of Jude,,Jude,true
-REV,66,New Testament,Apocalypse,요한계시록,Revelation,Book of Revelation,계,Revelation | 계 | Book of Revelation,,John,true
+code,sort_order,testament,division,korean_name,english_name,canonical_english_title,short_name,aliases,jewish_category,author,is_active,corpus,canon,book_group,osis_code,usfm_code,metadata
+GEN,1,Old Testament,Pentateuch,창세기,Genesis,Book of Genesis,창,Genesis | 창 | Book of Genesis,Torah,Moses,true,canonical,protestant,"",GEN,GEN,{}
+EXO,2,Old Testament,Pentateuch,출애굽기,Exodus,Book of Exodus,출,Exodus | 출 | Book of Exodus,Torah,Moses,true,canonical,protestant,"",EXO,EXO,{}
+LEV,3,Old Testament,Pentateuch,레위기,Leviticus,Book of Leviticus,레,Leviticus | 레 | Book of Leviticus,Torah,Moses,true,canonical,protestant,"",LEV,LEV,{}
+NUM,4,Old Testament,Pentateuch,민수기,Numbers,Book of Numbers,민,Numbers | 민 | Book of Numbers,Torah,Moses,true,canonical,protestant,"",NUM,NUM,{}
+DEU,5,Old Testament,Pentateuch,신명기,Deuteronomy,Book of Deuteronomy,신,Deuteronomy | 신 | Book of Deuteronomy,Torah,Moses,true,canonical,protestant,"",DEU,DEU,{}
+JOS,6,Old Testament,Historical Books,여호수아,Joshua,Book of Joshua,수,Joshua | 수 | Book of Joshua,"Former Prophets, Nevi’im",Joshua,true,canonical,protestant,"",JOS,JOS,{}
+JDG,7,Old Testament,Historical Books,사사기,Judges,Book of Judges,삿,Judges | 삿 | Book of Judges,"Former Prophets, Nevi’im",Samuel,true,canonical,protestant,"",JDG,JDG,{}
+RUT,8,Old Testament,Historical Books,룻기,Ruth,Book of Ruth,룻,Ruth | 룻 | Book of Ruth,"Five Megillot, Ketuvim",Samuel,true,canonical,protestant,"",RUT,RUT,{}
+1SA,9,Old Testament,Historical Books,사무엘상,1 Samuel,First Book of Samuel,삼상,1 Samuel | 삼상 | First Book of Samuel,"Former Prophets, Nevi’im",Samuel,true,canonical,protestant,"",1SA,1SA,{}
+2SA,10,Old Testament,Historical Books,사무엘하,2 Samuel,Second Book of Samuel,삼하,2 Samuel | 삼하 | Second Book of Samuel,"Former Prophets, Nevi’im",Samuel,true,canonical,protestant,"",2SA,2SA,{}
+1KI,11,Old Testament,Historical Books,열왕기상,1 Kings,First Book of Kings,왕상,1 Kings | 왕상 | First Book of Kings,"Former Prophets, Nevi’im",Jeremiah,true,canonical,protestant,"",1KI,1KI,{}
+2KI,12,Old Testament,Historical Books,열왕기하,2 Kings,Second Book of Kings,왕하,2 Kings | 왕하 | Second Book of Kings,"Former Prophets, Nevi’im",Jeremiah,true,canonical,protestant,"",2KI,2KI,{}
+1CH,13,Old Testament,Historical Books,역대상,1 Chronicles,First Book of Chronicles,대상,1 Chronicles | 대상 | First Book of Chronicles,"Historical Books, Ketuvim","Chronicler, Jeremiah",true,canonical,protestant,"",1CH,1CH,{}
+2CH,14,Old Testament,Historical Books,역대하,2 Chronicles,Second Book of Chronicles,대하,2 Chronicles | 대하 | Second Book of Chronicles,"Historical Books, Ketuvim","Chronicler, Jeremiah",true,canonical,protestant,"",2CH,2CH,{}
+EZR,15,Old Testament,Historical Books,에스라,Ezra,Book of Ezra,스,Ezra | 스 | Book of Ezra,"Historical Books, Ketuvim","Chronicler, Ezra",true,canonical,protestant,"",EZR,EZR,{}
+NEH,16,Old Testament,Historical Books,느헤미야,Nehemiah,Book of Nehemiah,느,Nehemiah | 느 | Book of Nehemiah,"Historical Books, Ketuvim","Chronicler, Nehemiah",true,canonical,protestant,"",NEH,NEH,{}
+EST,17,Old Testament,Historical Books,에스더,Esther,Book of Esther,에,Esther | 에 | Book of Esther,"Five Megillot, Ketuvim",?,true,canonical,protestant,"",EST,EST,{}
+JOB,18,Old Testament,Poetic Books,욥기,Job,Book of Job,욥,Job | 욥 | Book of Job,"Ketuvim, Poetic Books",?,true,canonical,protestant,"",JOB,JOB,{}
+PSA,19,Old Testament,Poetic Books,시편,Psalms,Book of Psalms,시,Psalms | 시 | Book of Psalms | Psalm,"Ketuvim, Poetic Books",David,true,canonical,protestant,"",PSA,PSA,{}
+PRO,20,Old Testament,Poetic Books,잠언,Proverbs,Book of Proverbs,잠,Proverbs | 잠 | Book of Proverbs,"Ketuvim, Poetic Books",Solomon,true,canonical,protestant,"",PRO,PRO,{}
+ECC,21,Old Testament,Poetic Books,전도서,Ecclesiastes,Ecclesiastes,전,Ecclesiastes | 전,"Five Megillot, Ketuvim",Solomon,true,canonical,protestant,"",ECC,ECC,{}
+SNG,22,Old Testament,Poetic Books,아가,Song of Songs,Song of Songs,아,Song of Songs | 아 | Song of Solomon,"Five Megillot, Ketuvim",Solomon,true,canonical,protestant,"",SNG,SNG,{}
+ISA,23,Old Testament,"Major Prophets, Prophetic Books",이사야,Isaiah,Book of Isaiah,사,Isaiah | 사 | Book of Isaiah,"Latter Prophets, Nevi’im",Isaiah,true,canonical,protestant,"",ISA,ISA,{}
+JER,24,Old Testament,"Major Prophets, Prophetic Books",예레미야,Jeremiah,Book of Jeremiah,렘,Jeremiah | 렘 | Book of Jeremiah,"Latter Prophets, Nevi’im",Jeremiah,true,canonical,protestant,"",JER,JER,{}
+LAM,25,Old Testament,"Major Prophets, Prophetic Books",예레미야애가,Lamentations,Book of Lamentations,애,Lamentations | 애 | Book of Lamentations,"Five Megillot, Ketuvim",Jeremiah,true,canonical,protestant,"",LAM,LAM,{}
+EZK,26,Old Testament,"Major Prophets, Prophetic Books",에스겔,Ezekiel,Book of Ezekiel,겔,Ezekiel | 겔 | Book of Ezekiel,"Latter Prophets, Nevi’im",Ezekiel,true,canonical,protestant,"",EZK,EZK,{}
+DAN,27,Old Testament,"Major Prophets, Prophetic Books",다니엘,Daniel,Book of Daniel,단,Daniel | 단 | Book of Daniel,"Historical Books, Ketuvim",Daniel,true,canonical,protestant,"",DAN,DAN,{}
+HOS,28,Old Testament,"Minor Prophets, Prophetic Books",호세아,Hosea,Book of Hosea,호,Hosea | 호 | Book of Hosea,"Latter Prophets, Nevi’im, Trei Asar",Hosea,true,canonical,protestant,"",HOS,HOS,{}
+JOL,29,Old Testament,"Minor Prophets, Prophetic Books",요엘,Joel,Book of Joel,욜,Joel | 욜 | Book of Joel,"Latter Prophets, Nevi’im, Trei Asar",Joel,true,canonical,protestant,"",JOL,JOL,{}
+AMO,30,Old Testament,"Minor Prophets, Prophetic Books",아모스,Amos,Book of Amos,암,Amos | 암 | Book of Amos,"Latter Prophets, Nevi’im, Trei Asar",Amos,true,canonical,protestant,"",AMO,AMO,{}
+OBA,31,Old Testament,"Minor Prophets, Prophetic Books",오바댜,Obadiah,Book of Obadiah,옵,Obadiah | 옵 | Book of Obadiah,"Latter Prophets, Nevi’im, Trei Asar",Obadiah,true,canonical,protestant,"",OBA,OBA,{}
+JON,32,Old Testament,"Minor Prophets, Prophetic Books",요나,Jonah,Book of Jonah,욘,Jonah | 욘 | Book of Jonah,"Latter Prophets, Nevi’im, Trei Asar",Jonah,true,canonical,protestant,"",JON,JON,{}
+MIC,33,Old Testament,"Minor Prophets, Prophetic Books",미가,Micah,Book of Micah,미,Micah | 미 | Book of Micah,"Latter Prophets, Nevi’im, Trei Asar",Micah,true,canonical,protestant,"",MIC,MIC,{}
+NAM,34,Old Testament,"Minor Prophets, Prophetic Books",나훔,Nahum,Book of Nahum,나,Nahum | 나 | Book of Nahum,"Latter Prophets, Nevi’im, Trei Asar",Nahum,true,canonical,protestant,"",NAM,NAM,{}
+HAB,35,Old Testament,"Minor Prophets, Prophetic Books",하박국,Habakkuk,Book of Habakkuk,합,Habakkuk | 합 | Book of Habakkuk,"Latter Prophets, Nevi’im, Trei Asar",Habakkuk,true,canonical,protestant,"",HAB,HAB,{}
+ZEP,36,Old Testament,"Minor Prophets, Prophetic Books",스바냐,Zephaniah,Book of Zephaniah,습,Zephaniah | 습 | Book of Zephaniah,"Latter Prophets, Nevi’im, Trei Asar",Zephaniah,true,canonical,protestant,"",ZEP,ZEP,{}
+HAG,37,Old Testament,"Minor Prophets, Prophetic Books",학개,Haggai,Book of Haggai,학,Haggai | 학 | Book of Haggai,"Latter Prophets, Nevi’im, Trei Asar",Haggai,true,canonical,protestant,"",HAG,HAG,{}
+ZEC,38,Old Testament,"Minor Prophets, Prophetic Books",스가랴,Zechariah,Book of Zechariah,슥,Zechariah | 슥 | Book of Zechariah,"Latter Prophets, Nevi’im, Trei Asar",Zechariah,true,canonical,protestant,"",ZEC,ZEC,{}
+MAL,39,Old Testament,"Minor Prophets, Prophetic Books",말라기,Malachi,Book of Malachi,말,Malachi | 말 | Book of Malachi,"Latter Prophets, Nevi’im, Trei Asar",Malachi,true,canonical,protestant,"",MAL,MAL,{}
+MAT,40,New Testament,Gospels,마태복음,Matthew,Gospel of Matthew,마,Matthew | 마 | Gospel of Matthew,,Matthew,true,canonical,protestant,"",MAT,MAT,{}
+MRK,41,New Testament,Gospels,마가복음,Mark,Gospel of Mark,막,Mark | 막 | Gospel of Mark,,Mark,true,canonical,protestant,"",MRK,MRK,{}
+LUK,42,New Testament,Gospels,누가복음,Luke,Gospel of Luke,눅,Luke | 눅 | Gospel of Luke,,Luke,true,canonical,protestant,"",LUK,LUK,{}
+JHN,43,New Testament,Gospels,요한복음,John,Gospel of John,요,John | 요 | Gospel of John,,John,true,canonical,protestant,"",JHN,JHN,{}
+ACT,44,New Testament,Acts,사도행전,Acts,Acts of the Apostles,행,Acts | 행 | Acts of the Apostles,,Luke,true,canonical,protestant,"",ACT,ACT,{}
+ROM,45,New Testament,Pauline Epistles,로마서,Romans,Epistle to the Romans,롬,Romans | 롬 | Epistle to the Romans,,Paul,true,canonical,protestant,"",ROM,ROM,{}
+1CO,46,New Testament,Pauline Epistles,고린도전서,1 Corinthians,First Epistle to the Corinthians,고전,1 Corinthians | 고전 | First Epistle to the Corinthians,,Paul,true,canonical,protestant,"",1CO,1CO,{}
+2CO,47,New Testament,Pauline Epistles,고린도후서,2 Corinthians,Second Epistle to the Corinthians,고후,2 Corinthians | 고후 | Second Epistle to the Corinthians,,Paul,true,canonical,protestant,"",2CO,2CO,{}
+GAL,48,New Testament,Pauline Epistles,갈라디아서,Galatians,Epistle to the Galatians,갈,Galatians | 갈 | Epistle to the Galatians,,Paul,true,canonical,protestant,"",GAL,GAL,{}
+EPH,49,New Testament,Pauline Epistles,에베소서,Ephesians,Epistle to the Ephesians,엡,Ephesians | 엡 | Epistle to the Ephesians,,Paul,true,canonical,protestant,"",EPH,EPH,{}
+PHP,50,New Testament,Pauline Epistles,빌립보서,Philippians,Epistle to the Philippians,빌,Philippians | 빌 | Epistle to the Philippians,,Paul,true,canonical,protestant,"",PHP,PHP,{}
+COL,51,New Testament,Pauline Epistles,골로새서,Colossians,Epistle to the Colossians,골,Colossians | 골 | Epistle to the Colossians,,Paul,true,canonical,protestant,"",COL,COL,{}
+1TH,52,New Testament,Pauline Epistles,데살로니가전서,1 Thessalonians,First Epistle to the Thessalonians,살전,1 Thessalonians | 살전 | First Epistle to the Thessalonians,,Paul,true,canonical,protestant,"",1TH,1TH,{}
+2TH,53,New Testament,Pauline Epistles,데살로니가후서,2 Thessalonians,Second Epistle to the Thessalonians,살후,2 Thessalonians | 살후 | Second Epistle to the Thessalonians,,Paul,true,canonical,protestant,"",2TH,2TH,{}
+1TI,54,New Testament,Pauline Epistles,디모데전서,1 Timothy,First Epistle to Timothy,딤전,1 Timothy | 딤전 | First Epistle to Timothy,,Paul,true,canonical,protestant,"",1TI,1TI,{}
+2TI,55,New Testament,Pauline Epistles,디모데후서,2 Timothy,Second Epistle to Timothy,딤후,2 Timothy | 딤후 | Second Epistle to Timothy,,Paul,true,canonical,protestant,"",2TI,2TI,{}
+TIT,56,New Testament,Pauline Epistles,디도서,Titus,Epistle to Titus,딛,Titus | 딛 | Epistle to Titus,,Paul,true,canonical,protestant,"",TIT,TIT,{}
+PHM,57,New Testament,Pauline Epistles,빌레몬서,Philemon,Epistle to Philemon,몬,Philemon | 몬 | Epistle to Philemon,,Paul,true,canonical,protestant,"",PHM,PHM,{}
+HEB,58,New Testament,Pauline Epistles,히브리서,Hebrews,Epistle to the Hebrews,히,Hebrews | 히 | Epistle to the Hebrews,,?,true,canonical,protestant,"",HEB,HEB,{}
+JAS,59,New Testament,Catholic Epistles,야고보서,James,Epistle of James,약,James | 약 | Epistle of James,,James,true,canonical,protestant,"",JAS,JAS,{}
+1PE,60,New Testament,Catholic Epistles,베드로전서,1 Peter,First Epistle of Peter,벧전,1 Peter | 벧전 | First Epistle of Peter,,Peter,true,canonical,protestant,"",1PE,1PE,{}
+2PE,61,New Testament,Catholic Epistles,베드로후서,2 Peter,Second Epistle of Peter,벧후,2 Peter | 벧후 | Second Epistle of Peter,,Peter,true,canonical,protestant,"",2PE,2PE,{}
+1JN,62,New Testament,Catholic Epistles,요한일서,1 John,First Epistle of John,요일,1 John | 요일 | First Epistle of John,,John,true,canonical,protestant,"",1JN,1JN,{}
+2JN,63,New Testament,Catholic Epistles,요한이서,2 John,Second Epistle of John,요이,2 John | 요이 | Second Epistle of John,,John,true,canonical,protestant,"",2JN,2JN,{}
+3JN,64,New Testament,Catholic Epistles,요한삼서,3 John,Third Epistle of John,요삼,3 John | 요삼 | Third Epistle of John,,John,true,canonical,protestant,"",3JN,3JN,{}
+JUD,65,New Testament,Catholic Epistles,유다서,Jude,Epistle of Jude,유,Jude | 유 | Epistle of Jude,,Jude,true,canonical,protestant,"",JUD,JUD,{}
+REV,66,New Testament,Apocalypse,요한계시록,Revelation,Book of Revelation,계,Revelation | 계 | Book of Revelation,,John,true,canonical,protestant,"",REV,REV,{}
