@@ -1378,8 +1378,8 @@ function renderScriptureDetail() {
         <header class="editor-head">
           <div class="editor-title">
             <h2>
-              ${renderScriptureBookMarker(selectedBook)}
               <span>${escapeHtml(selectedBook?.koreanName || "Bible Books")}</span>
+              ${renderScriptureBookMarker(selectedBook)}
             </h2>
             <div class="editor-meta-stack">
               <div class="editor-title-meta">${escapeHtml(selectedBook?.canonicalEnglishTitle || `${getBibleBooks().length} books`)}</div>
@@ -1711,9 +1711,9 @@ function renderScriptureBookInfo(book) {
 }
 
 function renderScriptureBookMarker(book) {
-  if (!book?.code) return "";
+  if (!book?.shortName) return "";
   const label = book.koreanName || book.canonicalEnglishTitle || book.englishName || book.code;
-  return `<span class="scripture-book-marker" title="${escapeAttr(label)}">${escapeHtml(book.code.toUpperCase())}</span>`;
+  return `<span class="scripture-book-marker" title="${escapeAttr(label)}">${escapeHtml(book.shortName)}</span>`;
 }
 
 function renderScriptureBookTaxonomy() {

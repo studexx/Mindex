@@ -261,18 +261,20 @@ h1, h2, h3, p { margin: 0; }
 }
 .scripture-book-marker {
   display: inline-flex;
-  min-width: 40px;
-  height: 26px;
+  min-width: 22px;
+  height: 22px;
   align-items: center;
   justify-content: center;
   border: 1px solid color-mix(in srgb, var(--accent) 36%, var(--line));
-  border-radius: var(--r);
+  border-radius: 999px;
   background: color-mix(in srgb, var(--accent-soft) 68%, var(--panel));
   color: var(--accent);
-  font-size: 11px;
-  font-weight: 820;
-  letter-spacing: .03em;
+  font-size: 10px;
+  font-weight: 780;
+  letter-spacing: 0;
   line-height: 1;
+  margin-left: 8px;
+  vertical-align: middle;
 }
 .scripture-taxonomy-editor { max-width: 1120px; }
 .taxonomy-section {
