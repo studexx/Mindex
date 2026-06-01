@@ -598,7 +598,7 @@ function selectScriptureBook(bookCode) {
   state.dirty.scripture = false;
   persistUiState();
   render();
-  focusSelectedItem();
+  requestAnimationFrame(focusSelectedItem);
 }
 
 async function loadForms(versionId) {
@@ -1317,7 +1317,18 @@ function focusSelectedItem() {
   if (!selector) return;
   const selected = refs.songList.querySelector(selector);
   selected?.focus({ preventScroll: true });
-  selected?.scrollIntoView({ block: "nearest" });
+  scrollListItemIntoView(selected);
+}
+
+function scrollListItemIntoView(item) {
+  if (!item || !refs.songList) return;
+  const listRect = refs.songList.getBoundingClientRect();
+  const itemRect = item.getBoundingClientRect();
+  if (itemRect.top < listRect.top) {
+    refs.songList.scrollTop -= listRect.top - itemRect.top + 8;
+  } else if (itemRect.bottom > listRect.bottom) {
+    refs.songList.scrollTop += itemRect.bottom - listRect.bottom + 8;
+  }
 }
 
 function renderDetail() {
