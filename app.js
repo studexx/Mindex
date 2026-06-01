@@ -1136,7 +1136,7 @@ function renderModuleSwitcher() {
   }
   refs.searchInput.placeholder =
     state.module === "scripture"
-      ? "Search scripture, book, reference..."
+      ? "Search book, category, author..."
       : "Search title, lyrics, #...";
   refs.newSongBtn.title = state.module === "scripture" ? "New scripture" : "New song";
   refs.saveAllBtn.title = state.module === "scripture" ? "Save scripture" : "Save song";
@@ -1739,24 +1739,47 @@ function renderScriptureBookTaxonomy() {
 }
 
 function renderScriptureBookDetail(book) {
-  const details = [
-    ["Order", formatBookMarker(book.sortOrder)],
-    ["Testament", book.testament],
-    ["Christian Category", book.division],
-    ["Jewish Category", book.jewishCategory],
-    ["Author", book.author],
-  ].filter(([, value]) => value);
+  const groups = [
+    {
+      title: "Canonical",
+      items: [
+        ["Order", formatBookMarker(book.sortOrder)],
+        ["Testament", book.testament],
+      ],
+    },
+    {
+      title: "Classification",
+      items: [
+        ["Christian", book.division],
+        ["Jewish", book.jewishCategory],
+      ],
+    },
+    {
+      title: "Attribution",
+      items: [
+        ["Author", book.author],
+      ],
+    },
+  ].map((group) => ({
+    ...group,
+    items: group.items.filter(([, value]) => value),
+  })).filter((group) => group.items.length);
 
   return `
     <section class="taxonomy-book-detail">
-      <div class="taxonomy-detail-list">
-        ${details.map(([label, value]) => `
-          <div class="taxonomy-detail-item">
-            <span>${escapeHtml(label)}</span>
-            <strong>${escapeHtml(value)}</strong>
+      ${groups.map((group) => `
+        <div class="taxonomy-detail-group">
+          <h3>${escapeHtml(group.title)}</h3>
+          <div class="taxonomy-detail-list">
+            ${group.items.map(([label, value]) => `
+              <div class="taxonomy-detail-item">
+                <span>${escapeHtml(label)}</span>
+                <strong>${escapeHtml(value)}</strong>
+              </div>
+            `).join("")}
           </div>
-        `).join("")}
-      </div>
+        </div>
+      `).join("")}
     </section>
   `;
 }
