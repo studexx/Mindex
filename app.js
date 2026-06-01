@@ -573,9 +573,9 @@ async function selectSong(songId) {
   state.dirty.forms = false;
   persistUiState();
   render();
-  focusSelectedSong();
+  focusSelectedItemAfterRender();
   await loadForms(state.selectedVersionId);
-  focusSelectedSong();
+  focusSelectedItemAfterRender();
 }
 
 async function selectScripture(scriptureId) {
@@ -588,7 +588,7 @@ async function selectScripture(scriptureId) {
   state.dirty.scripture = false;
   persistUiState();
   render();
-  focusSelectedItem();
+  focusSelectedItemAfterRender();
 }
 
 function selectScriptureBook(bookCode) {
@@ -598,7 +598,7 @@ function selectScriptureBook(bookCode) {
   state.dirty.scripture = false;
   persistUiState();
   render();
-  requestAnimationFrame(focusSelectedItem);
+  focusSelectedItemAfterRender();
 }
 
 async function loadForms(versionId) {
@@ -1284,10 +1284,6 @@ function renderScriptureList() {
   restoreCurrentListScroll();
 }
 
-function focusSelectedSong() {
-  focusSelectedItem();
-}
-
 function getListScrollKey() {
   const search = normalizeSearchValue(state.search);
   if (state.module === "scripture") return `scripture:${state.scriptureFilter}:${search}`;
@@ -1318,6 +1314,10 @@ function focusSelectedItem() {
   const selected = refs.songList.querySelector(selector);
   selected?.focus({ preventScroll: true });
   scrollListItemIntoView(selected);
+}
+
+function focusSelectedItemAfterRender() {
+  requestAnimationFrame(focusSelectedItem);
 }
 
 function scrollListItemIntoView(item) {
@@ -1786,7 +1786,6 @@ function renderScriptureBookTaxonomy() {
 
 function renderScriptureBookDetail(book) {
   const details = [
-    ["Order", formatBookMarker(book.sortOrder)],
     ["Christian", book.division],
     ["Jewish", book.jewishCategory],
     ["Author", book.author],
