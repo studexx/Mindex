@@ -1217,7 +1217,6 @@ function renderSongList() {
             ${song.versions?.length > 1 ? `<span class="song-count-badge">${song.versions.length}</span>` : ""}
             ${renderSongAttentionIcon(song)}
           </span>
-          ${metaLine ? `<span class="song-meta-line">${escapeHtml(metaLine)}</span>` : ""}
         </button>
       `;
     })
@@ -1246,14 +1245,12 @@ function renderScriptureList() {
   refs.songList.innerHTML = filtered
     .map((book) => {
       const active = book.code === state.selectedBookCode ? " active" : "";
-      const metaLine = bibleBookListMeta(book);
       return `
         <button class="song-item${active}" type="button" data-book-code="${escapeAttr(book.code)}">
           <span class="song-title">
             <span class="song-hymn-no">${formatBookMarker(book.sortOrder)}</span>
             <span class="song-title-text">${escapeHtml(book.koreanName || book.englishName)}</span>
           </span>
-          ${metaLine ? `<span class="song-meta-line">${escapeHtml(metaLine)}</span>` : ""}
         </button>
       `;
     })
