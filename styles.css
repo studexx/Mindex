@@ -95,6 +95,7 @@ h1, h2, h3, p { margin: 0; }
 .brand-block p, .sidebar-count, .field, .check-field, .section-bar h3, .status-pill, .dirty-pill, .type-pill, .muted {
   color: var(--ink-4); font-size: 9px; font-weight: 600; letter-spacing: .04em; line-height: 17px; text-transform: uppercase;
 }
+.brand-block p { text-transform: none; }
 
 .btn, .icon-btn {
   display: inline-flex; height: var(--h); align-items: center; justify-content: center; gap: var(--s2);
