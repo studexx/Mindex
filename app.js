@@ -1387,12 +1387,12 @@ function versionDisplayName(song, version) {
 function songTitleMetaLine(song) {
   const titles = new Set();
   const metadata = normalizeSongMetadata(song?.metadata);
-  for (const value of [song?.original_title, song?.subtitle, metadata.otherTitle]) {
-    const titleMeta = normalizeRawTitleMeta(value);
-    if (titleMeta) titles.add(titleMeta);
+  for (const value of [song?.subtitle, song?.original_title, metadata.otherTitle]) {
+    addTitleMeta(titles, value);
   }
   addSongMetaFromRaw(titles, song?.title);
   for (const version of song?.versions || []) {
+    addSongMetaFromRaw(titles, version.name || version.curated_version_name || "", versionDisplayName(song, version));
     addSongMetaFromRaw(titles, version.raw_section_name || version.version_label || "", versionDisplayName(song, version));
   }
   return [...titles].join(" / ");
@@ -1415,14 +1415,23 @@ function addSongMetaFromRaw(target, rawValue, versionName = "") {
   const versionText = raw.replace(/\[[^\]]+\]/g, "").replace(/\([^)]*?\)\s*$/, "").trim();
   for (const rawMeta of [subtitle, original]) {
     const value = normalizeRawTitleMeta(rawMeta);
-    if (value && !/^통(?:일)?\s*\d+/.test(value) && value !== versionText && value !== versionName) target.add(value);
+    if (value && !/^통(?:일)?\s*\d+/.test(value) && value !== versionText && value !== versionName) addTitleMeta(target, value);
   }
+}
+
+function addTitleMeta(target, value) {
+  const text = String(value || "").trim();
+  if (!text) return;
+  for (const existing of target) {
+    if (existing === text) return;
+    if (existing.length > 4 && text.length > 4 && (existing.includes(text) || text.includes(existing))) return;
+  }
+  target.add(text);
 }
 
 function normalizeRawTitleMeta(value) {
   const text = String(value || "").trim();
   if (!text) return "";
-  if (/^Psalm[_\s-]*\d+(?::[\d,-]+)?$/i.test(text)) return "";
   const psalmTitle = text.match(/^Psalm\s*\d+(?::[\d,-]+)?\s*[–-]\s*(.+)$/i);
   if (psalmTitle) return psalmTitle[1].trim();
   return text;
