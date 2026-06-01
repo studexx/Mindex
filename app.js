@@ -745,9 +745,9 @@ function renderSongList() {
           <span class="song-title">
             <span class="song-title-text">${escapeHtml(song.title)}</span>
             ${song.versions?.length > 1 ? `<span class="song-count-badge">${song.versions.length}</span>` : ""}
-            ${renderEmptyBadge(song)}
+            ${renderSongAttentionIcon(song)}
           </span>
-          ${metaLine ? `<span class="song-meta-line">${escapeHtml(metaLine)}</span>` : ""}
+          <span class="song-meta-line${metaLine ? "" : " empty"}">${escapeHtml(metaLine || "Metadata")}</span>
         </button>
       `;
     })
@@ -788,7 +788,13 @@ function renderDetail() {
           </h2>
           <div class="editor-meta-stack">
             <div class="editor-title-meta${titleMetaLine ? "" : " empty"}">${escapeHtml(titleMetaLine || "Metadata")}</div>
-            ${supportMetaItems.length ? `<div class="editor-support-meta">${supportMetaItems.map((item) => `<span>${escapeHtml(item)}</span>`).join("")}</div>` : ""}
+            <div class="editor-support-meta${supportMetaItems.length ? "" : " empty"}">
+              ${
+                supportMetaItems.length
+                  ? supportMetaItems.map((item) => `<span>${escapeHtml(item)}</span>`).join("")
+                  : `<span>Support metadata</span>`
+              }
+            </div>
           </div>
         </div>
         <div class="head-actions">
@@ -797,7 +803,7 @@ function renderDetail() {
             <i data-lucide="copy-plus"></i>
             <span>Version</span>
           </button>
-          ${renderEmptyBadge(song)}
+          ${renderSongAttentionIcon(song)}
         </div>
       </header>
 
@@ -809,28 +815,52 @@ function renderDetail() {
   resizeFormTextareas();
 }
 
-function renderEmptyBadge(song) {
-  const status = songEmptyStatus(song);
-  if (!status) return "";
-  const label = status === "all-empty" ? "Empty" : "Partial";
-  return `<span class="empty-badge ${status}">${label}</span>`;
+function renderSongAttentionIcon(song) {
+  const emptyStatus = songEmptyStatus(song);
+  const labels = [];
+  if (emptyStatus) labels.push(emptyStatus === "all-empty" ? "Empty" : "Partial");
+  if (songNeedsReview(song)) labels.push("Needs review");
+  if (!labels.length) return "";
+  const tone = emptyStatus === "all-empty" ? "all-empty" : labels.includes("Needs review") ? "needs-review" : "some-empty";
+  return renderAttentionIcon(labels.join(" / "), tone);
+}
+
+function renderAttentionIcon(label, tone = "needs-review") {
+  return `
+    <span class="attention-icon ${tone}" title="${escapeAttr(label)}" aria-label="${escapeAttr(label)}">
+      <i data-lucide="circle-alert"></i>
+    </span>
+  `;
+}
+
+function songNeedsReview(song) {
+  return (song?.versions || []).some((version) => (version.forms || []).some(formNeedsReview));
 }
 
 function renderFormsTab(song) {
   const versions = song.versions || [];
-  if (versions.length > 1) {
-    return `
-      <section class="panel">
-        ${renderFormToolbar()}
-        ${renderVersionCompare(song, versions)}
-      </section>
-    `;
-  }
-
   return `
     <section class="panel">
-      ${renderEditableForms()}
+      ${renderFormToolbar()}
+      ${
+        versions.length > 1
+          ? renderVersionCompare(song, versions)
+          : renderSingleVersionForms()
+      }
     </section>
+  `;
+}
+
+function renderSingleVersionForms() {
+  return `
+    <div class="version-compare-grid single-version">
+      <div class="version-compare-head" style="grid-template-columns: minmax(320px, 1fr);">
+        <div class="version-compare-title placeholder" aria-hidden="true">
+          <span>Version</span>
+        </div>
+      </div>
+      ${renderEditableFormList()}
+    </div>
   `;
 }
 
@@ -1000,7 +1030,7 @@ function renderFormBlock(form, index) {
                 `<option value="${type}" ${form.part_type === type ? "selected" : ""}>${escapeHtml(form.part_type === type ? label : type)}</option>`,
             ).join("")}
           </select>
-          ${needsReview ? `<span class="review-pill">Needs review</span>` : ""}
+          ${needsReview ? renderAttentionIcon("Needs review", "needs-review") : ""}
         </div>
         <div class="form-actions">
           <button class="icon-btn" type="button" data-form-action="up" data-index="${index}" title="Move up" ${index === 0 ? "disabled" : ""}>
@@ -1029,7 +1059,7 @@ function renderReadonlyFormBlock(form) {
       <div class="form-head">
         <div class="form-meta">
           <span class="form-label-text">${escapeHtml(displayLabel(form))}</span>
-          ${needsReview ? `<span class="review-pill">Needs review</span>` : ""}
+          ${needsReview ? renderAttentionIcon("Needs review", "needs-review") : ""}
         </div>
       </div>
       <div class="form-preview-text">${escapeHtml(form.lyrics || "")}</div>
