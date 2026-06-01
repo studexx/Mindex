@@ -804,7 +804,7 @@ function renderDetail() {
 function renderEmptyBadge(song) {
   const status = songEmptyStatus(song);
   if (!status) return "";
-  const label = status === "all-empty" ? "Empty" : "Some Empty";
+  const label = status === "all-empty" ? "Empty" : "Partial";
   return `<span class="empty-badge ${status}">${label}</span>`;
 }
 
