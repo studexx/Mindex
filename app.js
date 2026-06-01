@@ -747,7 +747,7 @@ function renderSongList() {
             ${song.versions?.length > 1 ? `<span class="song-count-badge">${song.versions.length}</span>` : ""}
             ${renderSongAttentionIcon(song)}
           </span>
-          <span class="song-meta-line${metaLine ? "" : " empty"}">${escapeHtml(metaLine || "Metadata")}</span>
+          ${metaLine ? `<span class="song-meta-line">${escapeHtml(metaLine)}</span>` : ""}
         </button>
       `;
     })
