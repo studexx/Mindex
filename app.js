@@ -14,6 +14,8 @@ const FORM_ADD_LABELS = {
   Coda: "Coda",
 };
 
+const PRAISE_TYPES = ["hymn", "ccm"];
+
 const BIBLE_BOOKS = [
   ["GEN", "창세기", "Genesis", "Old Testament", "Pentateuch", "Book of Genesis", "Torah", "Moses"],
   ["EXO", "출애굽기", "Exodus", "Old Testament", "Pentateuch", "Book of Exodus", "Torah", "Moses"],
@@ -2289,9 +2291,27 @@ function songTitleMetaLine(song) {
   return [...titles].join(" / ");
 }
 
+function songPraiseTypes(song) {
+  const explicitTypes = normalizePraiseTypes(song?.metadata?.praiseTypes);
+  const types = new Set(explicitTypes);
+  if (song?.hymn_no) types.add("hymn");
+  if (!song?.hymn_no && !explicitTypes.length) types.add("ccm");
+  return [...types];
+}
+
+function songHasPraiseType(song, type) {
+  return songPraiseTypes(song).includes(type);
+}
+
+function songPraiseTypeLabel(song) {
+  const labels = songPraiseTypes(song).map((type) => (type === "hymn" ? "Hymn" : "CCM"));
+  return labels.length ? `Type ${labels.join(" / ")}` : "";
+}
+
 function songSupportMetaItems(song) {
   const metadata = normalizeSongMetadata(song?.metadata);
   return [
+    songPraiseTypeLabel(song),
     ...cleanList(song?.scripture).map((reference) => `Scripture ${reference}`),
     metadata.credits ? `Credits ${metadata.credits}` : "",
     metadata.album ? `Album ${formatAlbumMeta(metadata)}` : "",
@@ -2409,8 +2429,8 @@ function getFilteredSongs() {
 }
 
 function getSongsForPraiseFilter() {
-  if (state.praiseFilter === "hymns") return state.songs.filter((song) => song.hymn_no);
-  if (state.praiseFilter === "ccm") return state.songs.filter((song) => !song.hymn_no);
+  if (state.praiseFilter === "hymns") return state.songs.filter((song) => songHasPraiseType(song, "hymn"));
+  if (state.praiseFilter === "ccm") return state.songs.filter((song) => songHasPraiseType(song, "ccm"));
   return state.songs;
 }
 
@@ -2569,6 +2589,7 @@ function getSongSearchFields(song) {
     ...cleanList(song.alt_titles).map((title) => searchField("meta", title, 78)),
     ...cleanList(song.scripture).map((reference) => searchField("meta", reference, 70)),
     searchField("meta", song.metadata?.otherTitle, 78),
+    ...songPraiseTypes(song).map((type) => searchField("meta", type, 40)),
     searchField("meta", song.metadata?.credits, 58),
     searchField("meta", song.metadata?.album, 48),
     searchField("meta", song.metadata?.track, 32),
@@ -2768,11 +2789,26 @@ function normalizeSongMetadata(value) {
   const source = value && typeof value === "object" ? value : {};
   const metadata = {
     otherTitle: nullIfBlank(source.otherTitle),
+    praiseTypes: normalizePraiseTypes(source.praiseTypes || source.categories || source.type),
     credits: nullIfBlank(source.credits),
     album: nullIfBlank(source.album),
     track: nullIfBlank(source.track),
   };
-  return Object.fromEntries(Object.entries(metadata).filter(([, item]) => item));
+  return Object.fromEntries(Object.entries(metadata).filter(([, item]) => (Array.isArray(item) ? item.length : item)));
+}
+
+function normalizePraiseTypes(value) {
+  const aliases = {
+    hymn: "hymn",
+    hymns: "hymn",
+    찬송가: "hymn",
+    ccm: "ccm",
+    contemporary: "ccm",
+    praise: "ccm",
+    찬양: "ccm",
+    복음성가: "ccm",
+  };
+  return [...new Set(parseList(value).map((item) => aliases[normalizeTitle(item)]).filter((item) => PRAISE_TYPES.includes(item)))];
 }
 
 function nullIfBlank(value) {

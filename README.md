@@ -80,6 +80,14 @@ Mindex follows the system light/dark setting by default. Toggle manually with
 - `display_label` is calculated by the app from `part_type` and `part_number`
 - Hymn `Amen` endings use `Coda`
 
+## Praise Classification
+
+`hymn_no` is only the hymn number metadata. The song list filters use praise
+types instead: `hymn`, `ccm`, or both. Existing songs are inferred so hymns still
+appear under `Hymns` and non-hymns under `CCM`. Songs that were CCM before hymn
+book inclusion can store `metadata.praiseTypes: ["ccm"]` in the song memo; with a
+`hymn_no`, they appear in both filters.
+
 ## PPT Draft
 
 The PPT Draft tab creates reviewable draft data:
