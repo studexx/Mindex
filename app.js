@@ -852,14 +852,25 @@ function renderFormsTab(song) {
 }
 
 function renderSingleVersionForms() {
+  const gridStyle = "grid-template-columns: minmax(320px, 1fr);";
   return `
     <div class="version-compare-grid single-version">
-      <div class="version-compare-head" style="grid-template-columns: minmax(320px, 1fr);">
+      <div class="version-compare-head" style="${gridStyle}">
         <div class="version-compare-title placeholder" aria-hidden="true">
           <span>Version</span>
         </div>
       </div>
-      ${renderEditableFormList()}
+      <div class="version-compare-rows">
+        ${
+          state.forms.length
+            ? state.forms.map((form, index) => `
+                <div class="version-compare-row" style="${gridStyle}">
+                  ${renderFormBlock(form, index)}
+                </div>
+              `).join("")
+            : ""
+        }
+      </div>
     </div>
   `;
 }
