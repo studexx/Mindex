@@ -1332,8 +1332,11 @@ function renderDetail() {
     refs.detailPane.innerHTML = `
       <div class="empty-detail">
         <div class="empty-detail-inner">
-          <h2>Mindex</h2>
-          <p>Select a song from the list.</p>
+          <p class="empty-verse">
+            Sing to the Lord a new song;<br />
+            sing to the Lord, all the earth.
+          </p>
+          <span>Psalm 96:1</span>
         </div>
       </div>
     `;
@@ -1388,6 +1391,22 @@ function renderScriptureDetail() {
         <div class="empty-detail-inner">
           <h2>Mindex Scripture</h2>
           <p>Run the Scripture SQL in supabase-schema.sql.</p>
+        </div>
+      </div>
+    `;
+    refreshIcons();
+    return;
+  }
+
+  if (!scripture && !selectedBook) {
+    refs.detailPane.innerHTML = `
+      <div class="empty-detail">
+        <div class="empty-detail-inner">
+          <p class="empty-verse">
+            Your word is a lamp for my feet,<br />
+            a light on my path.
+          </p>
+          <span>Psalm 119:105</span>
         </div>
       </div>
     `;
