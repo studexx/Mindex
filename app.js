@@ -117,6 +117,7 @@ const state = {
   client: null,
   config: { url: "", anonKey: "" },
   songs: [],
+  scriptureBooks: [],
   scriptures: [],
   selectedSongId: null,
   selectedVersionId: null,
@@ -153,6 +154,7 @@ function init() {
 
   if (state.client) {
     loadSongs();
+    loadScriptureBooks({ silent: true });
     loadScriptures({ silent: true });
   } else {
     showToast(state.connectionError || "Connection settings are missing from the link.", "error");
@@ -409,6 +411,7 @@ async function switchModule(moduleName) {
   render();
 
   if (moduleName === "scripture" && !state.scriptures.length && !state.scriptureError) {
+    if (!state.scriptureBooks.length) await loadScriptureBooks();
     await loadScriptures();
   }
 
@@ -508,6 +511,25 @@ async function loadScriptures({ silent = false } = {}) {
 
   persistUiState();
   render();
+}
+
+async function loadScriptureBooks({ silent = false } = {}) {
+  if (!requireClient()) return;
+
+  try {
+    const { data, error } = await state.client
+      .from("mindex_scripture_books")
+      .select("*")
+      .eq("is_active", true)
+      .order("sort_order", { ascending: true });
+
+    if (error) throw error;
+    state.scriptureBooks = (data || []).map(normalizeServerScriptureBook).sort(sortBibleBooks);
+    render();
+  } catch (error) {
+    state.scriptureBooks = [];
+    if (!silent && state.module === "scripture") showToast(error.message || "Could not load Bible books.", "error");
+  }
 }
 
 async function selectSong(songId) {
@@ -1321,11 +1343,19 @@ function renderScriptureDetail() {
 
   if (!scripture) {
     refs.detailPane.innerHTML = `
-      <div class="empty-detail">
-        <div class="empty-detail-inner">
-          <h2>Mindex Scripture</h2>
-          <p>Select a scripture from the list.</p>
-        </div>
+      <div class="editor-shell scripture-editor scripture-taxonomy-editor">
+        <header class="editor-head">
+          <div class="editor-title">
+            <h2>Bible Books</h2>
+            <div class="editor-meta-stack">
+              <div class="editor-title-meta">${getBibleBooks().length} books</div>
+              <div class="editor-support-meta"><span>Canonical order / Christian category / Jewish category / author</span></div>
+            </div>
+          </div>
+        </header>
+        <section class="panel scripture-panel">
+          ${renderScriptureBookTaxonomy()}
+        </section>
       </div>
     `;
     refreshIcons();
@@ -1623,8 +1653,9 @@ function renderBibleBookOptions(testament, selectedCode) {
   const label = testament === "Old Testament" ? "Old Testament" : "New Testament";
   return `
     <optgroup label="${label}">
-      ${BIBLE_BOOKS
+      ${getBibleBooks()
         .filter((book) => book.testament === testament)
+        .sort(sortBibleBooks)
         .map((book) => `<option value="${book.code}" ${book.code === selectedCode ? "selected" : ""}>${escapeHtml(book.koreanName)}</option>`)
         .join("")}
     </optgroup>
@@ -1642,6 +1673,36 @@ function renderScriptureBookInfo(book) {
         ${chips.map((chip) => `<span>${escapeHtml(chip)}</span>`).join("")}
       </span>
     </div>
+  `;
+}
+
+function renderScriptureBookTaxonomy() {
+  const groups = groupBibleBooksByTestament(getFilteredBibleBooks());
+  if (!groups.length) return `<div class="taxonomy-empty">No books match this search.</div>`;
+  return groups.map(({ testament, books }) => `
+    <section class="taxonomy-section">
+      <div class="taxonomy-section-head">
+        <h3>${escapeHtml(testament)}</h3>
+        <span>${books.length}</span>
+      </div>
+      <div class="taxonomy-grid">
+        ${books.map(renderScriptureBookCard).join("")}
+      </div>
+    </section>
+  `).join("");
+}
+
+function renderScriptureBookCard(book) {
+  const details = [book.division, book.jewishCategory, book.author ? `Author: ${book.author}` : ""].filter(Boolean);
+  return `
+    <article class="taxonomy-book-card">
+      <div class="taxonomy-book-order">${String(book.sortOrder).padStart(2, "0")}</div>
+      <div class="taxonomy-book-main">
+        <div class="taxonomy-book-title">${escapeHtml(book.koreanName)}</div>
+        <div class="taxonomy-book-subtitle">${escapeHtml(book.canonicalEnglishTitle || book.englishName)}</div>
+        <div class="taxonomy-book-meta">${details.map((detail) => `<span>${escapeHtml(detail)}</span>`).join("")}</div>
+      </div>
+    </article>
   `;
 }
 
@@ -2011,6 +2072,20 @@ function normalizeServerScripture(row) {
   };
 }
 
+function normalizeServerScriptureBook(row) {
+  return {
+    code: row.code || "",
+    koreanName: row.korean_name || "",
+    englishName: row.english_name || "",
+    testament: row.testament || "",
+    division: row.division || "",
+    canonicalEnglishTitle: row.canonical_english_title || row.english_name || "",
+    jewishCategory: row.jewish_category || "",
+    author: row.author || "",
+    sortOrder: Number(row.sort_order) || 999,
+  };
+}
+
 function normalizeServerSong(row) {
   const memo = parseSongMemo(row.memo);
   const versions = memo.versions.length
@@ -2334,17 +2409,50 @@ function scriptureListMeta(scripture) {
   return [scripture.book, scripture.reference, scripture.translation, book?.division].filter(Boolean).join(" / ");
 }
 
+function getBibleBooks() {
+  return state.scriptureBooks.length ? state.scriptureBooks : BIBLE_BOOKS;
+}
+
+function getFilteredBibleBooks() {
+  const books = getBibleBooks();
+  const tokens = getSearchTokens(state.search);
+  if (!tokens.length) return books;
+  return books.filter((book) => getBibleBookSearchMatch(book, tokens));
+}
+
+function getBibleBookSearchMatch(book, tokens = getSearchTokens(state.search)) {
+  if (!tokens.length) return null;
+  const fields = [
+    searchField("title", book.koreanName, 110),
+    searchField("meta", book.englishName, 90),
+    searchField("meta", book.canonicalEnglishTitle, 90),
+    searchField("meta", book.shortName, 80),
+    searchField("meta", book.testament, 55),
+    searchField("meta", book.division, 55),
+    searchField("meta", book.jewishCategory, 45),
+    searchField("meta", book.author, 40),
+  ].filter((field) => field.text);
+  return fields.some((field) => tokens.every((token) => matchSearchField(field, token)));
+}
+
+function groupBibleBooksByTestament(books) {
+  return ["Old Testament", "New Testament"]
+    .map((testament) => ({ testament, books: books.filter((book) => book.testament === testament).sort(sortBibleBooks) }))
+    .filter((group) => group.books.length);
+}
+
 function findBibleBookByCode(code) {
-  return BIBLE_BOOKS.find((book) => book.code === code) || null;
+  return getBibleBooks().find((book) => book.code === code) || null;
 }
 
 function findBibleBookByName(name) {
   const value = normalizeTitle(name);
   if (!value) return null;
-  return BIBLE_BOOKS.find((book) => (
+  return getBibleBooks().find((book) => (
     normalizeTitle(book.koreanName) === value
     || normalizeTitle(book.englishName) === value
     || normalizeTitle(book.canonicalEnglishTitle) === value
+    || normalizeTitle(book.shortName) === value
   )) || null;
 }
 
@@ -2527,6 +2635,10 @@ function sortSongs(a, b) {
 
 function sortScriptures(a, b) {
   return TITLE_COLLATOR.compare(a.title || "", b.title || "");
+}
+
+function sortBibleBooks(a, b) {
+  return (a.sortOrder || 999) - (b.sortOrder || 999);
 }
 
 function songEmptyStatus(song) {
