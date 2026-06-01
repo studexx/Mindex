@@ -824,6 +824,8 @@ function writeFormsToSelectedVersion() {
     part_number: form.part_number,
     lyrics: form.lyrics || "",
     sort_order: index + 1,
+    ...(form.review_status ? { review_status: form.review_status } : {}),
+    ...(form.import_source ? { import_source: form.import_source } : {}),
   }));
 }
 
@@ -1518,7 +1520,12 @@ function renderAttentionIcon(label, tone = "needs-review") {
 }
 
 function songNeedsReview(song) {
-  return (song?.versions || []).some((version) => (version.forms || []).some(formNeedsReview));
+  return (song?.versions || []).some((version) => versionNeedsFormReview(song, version));
+}
+
+function versionNeedsFormReview(song, version) {
+  const allowStructuralReview = !isHymnBookVersion(song, version);
+  return (version?.forms || []).some((form) => formNeedsReview(form, { allowStructuralReview }));
 }
 
 function renderFormsTab(song) {
@@ -1536,6 +1543,8 @@ function renderFormsTab(song) {
 }
 
 function renderSingleVersionForms() {
+  const song = getSelectedSong();
+  const version = getSelectedVersion();
   const gridStyle = "grid-template-columns: minmax(320px, 1fr);";
   return `
     <div class="version-compare-grid single-version">
@@ -1549,7 +1558,7 @@ function renderSingleVersionForms() {
           state.forms.length
             ? state.forms.map((form, index) => `
                 <div class="version-compare-row" style="${gridStyle}">
-                  ${renderFormBlock(form, index)}
+                  ${renderFormBlock(form, index, { song, version })}
                 </div>
               `).join("")
             : ""
@@ -1605,11 +1614,11 @@ function renderVersionCompareCell(version, form, index) {
       : `<div class="version-empty-cell version-picker" data-version-id="${escapeAttr(version.id)}" role="button" tabindex="0" aria-label="Select version"></div>`;
   }
 
-  if (active) return renderFormBlock(form, index);
+  if (active) return renderFormBlock(form, index, { song: getSelectedSong(), version });
 
   return `
     <div class="version-picker" data-version-id="${escapeAttr(version.id)}" role="button" tabindex="0">
-      ${renderReadonlyFormBlock(form)}
+      ${renderReadonlyFormBlock(form, { song: getSelectedSong(), version })}
     </div>
   `;
 }
@@ -1638,7 +1647,7 @@ function renderVersionFormColumn(song, version) {
       ${
         active
           ? renderEditableFormList()
-          : `<div class="form-list readonly">${forms.length ? forms.map(renderReadonlyFormBlock).join("") : `<div class="empty-state">No form blocks</div>`}</div>`
+          : `<div class="form-list readonly">${forms.length ? forms.map((form) => renderReadonlyFormBlock(form, { song, version })).join("") : `<div class="empty-state">No form blocks</div>`}</div>`
       }
     </section>
   `;
@@ -1832,9 +1841,11 @@ function renderScriptureTextarea(label, field, value, className = "") {
   `;
 }
 
-function renderFormBlock(form, index) {
+function renderFormBlock(form, index, options = {}) {
   const label = displayLabel(form);
-  const needsReview = formNeedsReview(form);
+  const needsReview = formNeedsReview(form, {
+    allowStructuralReview: !isHymnBookVersion(options.song || getSelectedSong(), options.version || getSelectedVersion()),
+  });
   return `
     <article class="form-block${needsReview ? " needs-review" : ""}">
       <div class="form-head">
@@ -1867,8 +1878,10 @@ function renderFormBlock(form, index) {
   `;
 }
 
-function renderReadonlyFormBlock(form) {
-  const needsReview = formNeedsReview(form);
+function renderReadonlyFormBlock(form, options = {}) {
+  const needsReview = formNeedsReview(form, {
+    allowStructuralReview: !isHymnBookVersion(options.song || getSelectedSong(), options.version || getSelectedVersion()),
+  });
   return `
     <article class="form-block readonly${needsReview ? " needs-review" : ""}">
       <div class="form-head">
@@ -1915,8 +1928,26 @@ function displayLabel(form) {
   return form.part_type;
 }
 
-function formNeedsReview(form) {
-  return form?.review_status === "needs_review" || Boolean(form?.import_source);
+function formNeedsReview(form, options = {}) {
+  const allowStructuralReview = options.allowStructuralReview !== false;
+  return form?.review_status === "needs_review" || Boolean(form?.import_source) || (allowStructuralReview && formLooksUnsplit(form));
+}
+
+function formLooksUnsplit(form) {
+  const lyrics = String(form?.lyrics || "").trim();
+  if (!lyrics) return false;
+  if (/\[(?:Verse|Chorus|Pre-Chorus|Bridge|Coda|Amen)(?:\s+\d+)?\]/i.test(lyrics)) return true;
+  return lyrics.split(/\n\s*\n/g).filter((block) => block.trim()).length >= 3;
+}
+
+function isHymnBookVersion(song, version) {
+  if (!song?.hymn_no || !version) return false;
+  const rawName = version.name || version.curated_version_name || "";
+  if (isDefaultVersionName(rawName)) return true;
+  const values = [version.name, version.curated_version_name, version.raw_section_name, version.version_label]
+    .map((value) => String(value || "").trim())
+    .filter(Boolean);
+  return values.some((value) => value === "새찬송가" || /^통일(?:\s|\d|$)/.test(value) || value.includes("통일 찬송가"));
 }
 
 function formatBlockForCopy(form) {
