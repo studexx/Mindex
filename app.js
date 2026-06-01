@@ -204,7 +204,7 @@ function bindStaticEvents() {
     saveCurrentListScroll();
     if (state.module === "scripture") {
       state.scriptureFilter = button.dataset.praiseFilter;
-      ensureSelectedBookForFilter();
+      clearSelectedBookOutsideFilter();
     } else {
       state.praiseFilter = button.dataset.praiseFilter;
     }
@@ -553,7 +553,7 @@ async function loadScriptureBooks({ silent = false } = {}) {
     if (state.selectedBookCode && !state.scriptureBooks.some((book) => book.code === state.selectedBookCode)) {
       state.selectedBookCode = null;
     }
-    ensureSelectedBookForFilter();
+    clearSelectedBookOutsideFilter();
     persistUiState();
     render();
   } catch (error) {
@@ -2567,10 +2567,10 @@ function getFilteredBibleBooks() {
   return books.filter((book) => getBibleBookSearchMatch(book, tokens));
 }
 
-function ensureSelectedBookForFilter() {
+function clearSelectedBookOutsideFilter() {
   const books = getBibleBooksForScriptureFilter();
   if (books.some((book) => book.code === state.selectedBookCode)) return;
-  state.selectedBookCode = books[0]?.code || null;
+  state.selectedBookCode = null;
 }
 
 function getBibleBookSearchMatch(book, tokens = getSearchTokens(state.search)) {
