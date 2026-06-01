@@ -299,10 +299,10 @@ h1, h2, h3, p { margin: 0; }
   font-weight: 780;
   letter-spacing: 0;
   line-height: 1;
-  margin-left: 8px;
   vertical-align: middle;
 }
 .scripture-taxonomy-editor { max-width: 1120px; }
+.scripture-taxonomy-editor .editor-title h2 { gap: 6px; }
 .taxonomy-section {
   display: grid;
   gap: var(--s2);
