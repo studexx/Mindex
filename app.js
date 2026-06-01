@@ -327,24 +327,24 @@ function toggleTheme() {
 }
 
 function readUiState() {
-  const moduleName = localStorage.getItem(STORAGE.module);
-  const praiseFilter = localStorage.getItem(STORAGE.praiseFilter);
-  const scriptureFilter = localStorage.getItem(STORAGE.scriptureFilter);
+  const moduleName = sessionStorage.getItem(STORAGE.module);
+  const praiseFilter = sessionStorage.getItem(STORAGE.praiseFilter);
+  const scriptureFilter = sessionStorage.getItem(STORAGE.scriptureFilter);
 
   if (["praise", "scripture"].includes(moduleName)) state.module = moduleName;
   if (["all", "hymns", "ccm"].includes(praiseFilter)) state.praiseFilter = praiseFilter;
   if (["all", "old", "new"].includes(scriptureFilter)) state.scriptureFilter = scriptureFilter;
 
-  state.selectedSongId = localStorage.getItem(STORAGE.selectedSongId) || null;
-  state.selectedVersionId = localStorage.getItem(STORAGE.selectedVersionId) || null;
-  state.selectedScriptureId = localStorage.getItem(STORAGE.selectedScriptureId) || null;
-  state.selectedBookCode = localStorage.getItem(STORAGE.selectedBookCode) || null;
+  state.selectedSongId = sessionStorage.getItem(STORAGE.selectedSongId) || null;
+  state.selectedVersionId = sessionStorage.getItem(STORAGE.selectedVersionId) || null;
+  state.selectedScriptureId = sessionStorage.getItem(STORAGE.selectedScriptureId) || null;
+  state.selectedBookCode = sessionStorage.getItem(STORAGE.selectedBookCode) || null;
 }
 
 function persistUiState() {
-  localStorage.setItem(STORAGE.module, state.module);
-  localStorage.setItem(STORAGE.praiseFilter, state.praiseFilter);
-  localStorage.setItem(STORAGE.scriptureFilter, state.scriptureFilter);
+  sessionStorage.setItem(STORAGE.module, state.module);
+  sessionStorage.setItem(STORAGE.praiseFilter, state.praiseFilter);
+  sessionStorage.setItem(STORAGE.scriptureFilter, state.scriptureFilter);
   writeStorageValue(STORAGE.selectedSongId, state.selectedSongId);
   writeStorageValue(STORAGE.selectedVersionId, state.selectedVersionId);
   writeStorageValue(STORAGE.selectedScriptureId, state.selectedScriptureId);
@@ -352,8 +352,8 @@ function persistUiState() {
 }
 
 function writeStorageValue(key, value) {
-  if (value) localStorage.setItem(key, value);
-  else localStorage.removeItem(key);
+  if (value) sessionStorage.setItem(key, value);
+  else sessionStorage.removeItem(key);
 }
 
 function readConfig() {
@@ -1404,15 +1404,8 @@ function renderScriptureDetail() {
               <span>${escapeHtml(selectedBook?.koreanName || "Bible Books")}</span>
               ${renderScriptureBookMarker(selectedBook)}
             </h2>
-            <div class="editor-meta-stack">
+            <div class="editor-meta-stack compact">
               <div class="editor-title-meta">${escapeHtml(selectedBook?.canonicalEnglishTitle || `${getBibleBooks().length} books`)}</div>
-              <div class="editor-support-meta scripture-support-meta">
-                ${
-                  selectedBook
-                    ? bibleBookSupportMetaItems(selectedBook).map((item) => `<span>${escapeHtml(item)}</span>`).join("")
-                    : `<span>Canonical order</span><span>Christian category</span><span>Jewish category</span><span>Author</span>`
-                }
-              </div>
             </div>
           </div>
         </header>
@@ -2552,10 +2545,6 @@ function scriptureListMeta(scripture) {
 
 function bibleBookListMeta(book) {
   return [book.canonicalEnglishTitle || book.englishName, book.division, book.author].filter(Boolean).join(" / ");
-}
-
-function bibleBookSupportMetaItems(book) {
-  return [book.division, book.jewishCategory, book.author].filter(Boolean);
 }
 
 function formatBookMarker(value) {
