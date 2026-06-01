@@ -1745,7 +1745,6 @@ function renderScriptureBookDetail(book) {
     ["Christian Category", book.division],
     ["Jewish Category", book.jewishCategory],
     ["Author", book.author],
-    ["Short", book.shortName],
   ].filter(([, value]) => value);
 
   return `
