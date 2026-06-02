@@ -1021,6 +1021,18 @@ function writeFormsToSelectedVersion() {
 }
 
 function handleDetailClick(event) {
+  const bibleReaderAction = event.target.closest("[data-bible-reader-action]");
+  if (bibleReaderAction) {
+    changeBibleChapter(Number(bibleReaderAction.dataset.bibleReaderAction) || 0);
+    return;
+  }
+
+  const bibleVerse = event.target.closest("[data-bible-verse]");
+  if (bibleVerse) {
+    selectBibleVerse(Number(bibleVerse.dataset.bibleVerse));
+    return;
+  }
+
   const addButton = event.target.closest("[data-add-form]");
   if (addButton) {
     addForm(addButton.dataset.addForm);
@@ -1059,6 +1071,13 @@ function handleDetailClick(event) {
 
 function handleDetailKeydown(event) {
   if (event.key !== "Enter" && event.key !== " ") return;
+  const bibleVerse = event.target.closest("[data-bible-verse]");
+  if (bibleVerse) {
+    event.preventDefault();
+    selectBibleVerse(Number(bibleVerse.dataset.bibleVerse));
+    return;
+  }
+
   if (event.target.closest("button, input, textarea, select, a")) return;
 
   const versionTarget = event.target.closest(".version-picker[data-version-id]");
@@ -1137,6 +1156,26 @@ function updateBibleReaderField(field) {
     persistUiState();
     renderDetail();
   }
+}
+
+function changeBibleChapter(delta) {
+  const chapters = getBibleChapterOptions();
+  if (!chapters.length || !delta) return;
+  const currentIndex = chapters.indexOf(state.selectedBibleChapter);
+  const nextIndex = currentIndex >= 0 ? currentIndex + delta : 0;
+  const nextChapter = chapters[nextIndex];
+  if (!nextChapter) return;
+  state.selectedBibleChapter = nextChapter;
+  state.selectedBibleVerse = null;
+  persistUiState();
+  renderDetail();
+}
+
+function selectBibleVerse(verse) {
+  if (!verse || verse < 1) return;
+  state.selectedBibleVerse = verse;
+  refs.detailPane?.querySelectorAll(".bible-verse.selected").forEach((node) => node.classList.remove("selected"));
+  refs.detailPane?.querySelector(`[data-bible-verse="${CSS.escape(String(verse))}"]`)?.classList.add("selected");
 }
 
 function updateSongField(field) {
@@ -1444,7 +1483,10 @@ function renderSongList() {
     : `${filtered.length} ${filtered.length === 1 ? "song" : "songs"}`;
 
   if (!filtered.length) {
-    refs.songList.innerHTML = `<div class="song-list-empty">No songs</div>`;
+    refs.songList.innerHTML = renderListEmptyState(
+      "No songs",
+      hasSearch ? "Try a different title, lyric, or number." : "Songs will appear here once connected.",
+    );
     return;
   }
 
@@ -1468,7 +1510,8 @@ function renderSongList() {
 }
 
 function renderScriptureList() {
-  const books = getBibleBooksForScriptureFilter();
+  const reference = parseBibleReference(state.search);
+  const books = reference ? getBibleBooks() : getBibleBooksForScriptureFilter();
   const filtered = getFilteredBibleBooks();
   const hasSearch = Boolean(normalizeSearchValue(state.search));
   refs.songCount.textContent = hasSearch
@@ -1481,7 +1524,10 @@ function renderScriptureList() {
   }
 
   if (!filtered.length) {
-    refs.songList.innerHTML = `<div class="song-list-empty">No books</div>`;
+    refs.songList.innerHTML = renderListEmptyState(
+      "No books",
+      "Try a book name or reference like 창 1:1 or Gen 1:1.",
+    );
     return;
   }
 
@@ -1499,6 +1545,15 @@ function renderScriptureList() {
     })
     .join("");
   finishListRender();
+}
+
+function renderListEmptyState(title, detail) {
+  return `
+    <div class="song-list-empty">
+      <strong>${escapeHtml(title)}</strong>
+      <span>${escapeHtml(detail)}</span>
+    </div>
+  `;
 }
 
 function finishListRender() {
@@ -2041,6 +2096,9 @@ function renderBibleReader(book) {
 
   const chapters = getBibleChapterOptions();
   const verses = state.bibleBookVerses.filter((verse) => Number(verse.chapter) === state.selectedBibleChapter);
+  const chapterIndex = chapters.indexOf(state.selectedBibleChapter);
+  const hasPreviousChapter = chapterIndex > 0;
+  const hasNextChapter = chapterIndex >= 0 && chapterIndex < chapters.length - 1;
   return `
     <section class="bible-reader" aria-label="${escapeAttr(book.koreanName)} Bible reader">
       <div class="bible-reader-controls">
@@ -2056,11 +2114,19 @@ function renderBibleReader(book) {
         </label>
         <label>
           <span>Chapter</span>
-          <select data-bible-reader-field="chapter" ${chapters.length ? "" : "disabled"}>
-            ${chapters.length
-              ? chapters.map((chapter) => `<option value="${chapter}" ${chapter === state.selectedBibleChapter ? "selected" : ""}>${chapter}</option>`).join("")
-              : `<option value="1">1</option>`}
-          </select>
+          <span class="bible-chapter-control">
+            <button class="icon-btn" type="button" data-bible-reader-action="-1" title="Previous chapter" aria-label="Previous chapter" ${hasPreviousChapter ? "" : "disabled"}>
+              <i data-lucide="chevron-left"></i>
+            </button>
+            <select data-bible-reader-field="chapter" ${chapters.length ? "" : "disabled"}>
+              ${chapters.length
+                ? chapters.map((chapter) => `<option value="${chapter}" ${chapter === state.selectedBibleChapter ? "selected" : ""}>${chapter}</option>`).join("")
+                : `<option value="1">1</option>`}
+            </select>
+            <button class="icon-btn" type="button" data-bible-reader-action="1" title="Next chapter" aria-label="Next chapter" ${hasNextChapter ? "" : "disabled"}>
+              <i data-lucide="chevron-right"></i>
+            </button>
+          </span>
         </label>
       </div>
       ${
@@ -2084,7 +2150,7 @@ function renderBibleVerseList(verses) {
         const selected = Number(verse.verse) === Number(state.selectedBibleVerse);
         return `
           ${sectionTitle ? `<div class="bible-section-title">${escapeHtml(sectionTitle)}</div>` : ""}
-          <p class="bible-verse${selected ? " selected" : ""}" data-bible-verse="${escapeAttr(String(verse.verse))}">
+          <p class="bible-verse${selected ? " selected" : ""}" data-bible-verse="${escapeAttr(String(verse.verse))}" role="button" tabindex="0" aria-label="Select verse ${escapeAttr(String(verse.verse))}">
             <span>${escapeHtml(String(verse.verse))}</span>
             <strong>${escapeHtml(verse.text || "")}</strong>
           </p>
@@ -2911,9 +2977,9 @@ function getBibleBooksForScriptureFilter() {
 }
 
 function getFilteredBibleBooks() {
-  const books = getBibleBooksForScriptureFilter();
   const reference = parseBibleReference(state.search);
-  if (reference) return books.filter((book) => book.code === reference.book.code);
+  if (reference) return [reference.book];
+  const books = getBibleBooksForScriptureFilter();
   const tokens = getSearchTokens(state.search);
   if (!tokens.length) return books;
   return books.filter((book) => getBibleBookSearchMatch(book, tokens));

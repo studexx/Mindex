@@ -152,7 +152,9 @@ h1, h2, h3, p { margin: 0; }
 .song-title .attention-icon { margin-left: auto; }
 .song-meta-line { color: var(--ink-4); font-size: 10px; line-height: 18px; }
 .song-count-badge { display: inline-flex; min-width: 16px; height: 16px; flex: 0 0 auto; align-items: center; justify-content: center; border: 1px solid var(--line); border-radius: 999px; color: var(--ink-4); font-size: 10px; line-height: 1; }
-.song-list-empty { padding: var(--s3) var(--s2); color: var(--ink-4); font-size: 12px; }
+.song-list-empty { display: grid; gap: 3px; padding: var(--s3) var(--s2); color: var(--ink-4); font-size: 11px; line-height: 1.35; }
+.song-list-empty strong { color: var(--ink-3); font-size: 12px; font-weight: 720; }
+.song-list-empty span { color: var(--ink-4); }
 .attention-icon {
   display: inline-flex;
   flex: 0 0 auto;
@@ -367,12 +369,22 @@ h1, h2, h3, p { margin: 0; }
   min-width: 140px;
   gap: var(--s1);
 }
-.bible-reader-controls span {
+.bible-reader-controls label > span:not(.bible-chapter-control) {
   color: var(--ink-4);
   font-size: 10px;
   font-weight: 760;
   letter-spacing: .03em;
   text-transform: uppercase;
+}
+.bible-chapter-control {
+  display: grid;
+  grid-template-columns: 30px minmax(62px, 1fr) 30px;
+  gap: var(--s1);
+}
+.bible-chapter-control .icon-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: calc(var(--r) - 2px);
 }
 .bible-reader-controls select {
   height: 30px;
@@ -408,6 +420,8 @@ h1, h2, h3, p { margin: 0; }
   line-height: 1.65;
   padding: 1px 4px;
 }
+.bible-verse:hover { background: color-mix(in srgb, var(--panel-2) 50%, transparent); }
+.bible-verse:focus-visible { outline: 1px solid var(--line-2); outline-offset: 2px; }
 .bible-verse.selected { background: color-mix(in srgb, var(--accent-soft) 46%, transparent); }
 .bible-verse span {
   color: var(--ink-4);
