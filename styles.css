@@ -118,7 +118,7 @@ h1, h2, h3, p { margin: 0; }
 .type-pill { border-color: var(--line-2); background: var(--panel-2); color: var(--ink-2); }
 .status-pill.unsaved, .dirty-pill { border-color: color-mix(in srgb, var(--warn) 22%, var(--line)); background: var(--warn-bg); color: var(--warn); }
 
-.workspace { display: grid; min-height: 0; flex: 1; grid-template-columns: minmax(250px, 312px) minmax(0, 1fr); }
+.workspace { display: grid; min-height: 0; flex: 1; grid-template-columns: minmax(232px, 284px) minmax(0, 1fr); }
 .sidebar { display: flex; min-height: 0; flex-direction: column; border-right: 1px solid var(--line); background: color-mix(in srgb, var(--panel) 90%, var(--bg)); padding: var(--s3); }
 .search-wrap { display: grid; height: var(--h); align-items: center; grid-template-columns: 18px 1fr; gap: var(--s2); padding: 0 var(--s2); }
 .search-wrap, .field input, .field textarea, .field select, .form-type-select, .form-textarea {
