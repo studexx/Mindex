@@ -275,6 +275,7 @@ const state = {
   selectedBibleTranslationId: null,
   selectedBibleChapter: 1,
   selectedBibleVerse: null,
+  selectedBibleVerses: [],
   praiseFilter: "all",
   scriptureFilter: "all",
   listScroll: {},
@@ -923,6 +924,7 @@ async function selectScriptureBook(bookCode, options = {}) {
     if (nextChapter !== state.selectedBibleChapter || nextVerse !== state.selectedBibleVerse) {
       state.selectedBibleChapter = nextChapter;
       state.selectedBibleVerse = nextVerse;
+      state.selectedBibleVerses = nextVerse ? [nextVerse] : [];
       persistUiState();
       await loadBibleBookVerses({ silent: true });
       focusSelectedBibleVerseAfterRender();
@@ -933,6 +935,7 @@ async function selectScriptureBook(bookCode, options = {}) {
   state.selectedScriptureId = null;
   state.selectedBibleChapter = nextChapter;
   state.selectedBibleVerse = nextVerse;
+  state.selectedBibleVerses = nextVerse ? [nextVerse] : [];
   state.bibleBookVerses = [];
   state.dirty.scripture = false;
   persistUiState();
@@ -1296,6 +1299,7 @@ function updateBibleReaderField(field) {
     state.selectedBibleTranslationId = field.value || null;
     state.selectedBibleChapter = 1;
     state.selectedBibleVerse = null;
+    state.selectedBibleVerses = [];
     state.bibleBookVerses = [];
     persistUiState();
     loadBibleBookVerses();
@@ -1304,6 +1308,7 @@ function updateBibleReaderField(field) {
   if (key === "chapter") {
     state.selectedBibleChapter = Number(field.value) || 1;
     state.selectedBibleVerse = null;
+    state.selectedBibleVerses = [];
     persistUiState();
     loadBibleBookVerses();
   }
@@ -1318,15 +1323,19 @@ function changeBibleChapter(delta) {
   if (!nextChapter) return;
   state.selectedBibleChapter = nextChapter;
   state.selectedBibleVerse = null;
+  state.selectedBibleVerses = [];
   persistUiState();
   loadBibleBookVerses();
 }
 
 function selectBibleVerse(verse) {
   if (!verse || verse < 1) return;
-  state.selectedBibleVerse = verse;
-  refs.detailPane?.querySelectorAll(".bible-verse.selected").forEach((node) => node.classList.remove("selected"));
-  refs.detailPane?.querySelector(`[data-bible-verse="${CSS.escape(String(verse))}"]`)?.classList.add("selected");
+  const selected = new Set(state.selectedBibleVerses);
+  if (selected.has(verse)) selected.delete(verse);
+  else selected.add(verse);
+  state.selectedBibleVerses = [...selected].sort((a, b) => a - b);
+  state.selectedBibleVerse = state.selectedBibleVerses[0] || null;
+  refs.detailPane?.querySelector(`[data-bible-verse="${CSS.escape(String(verse))}"]`)?.classList.toggle("selected", selected.has(verse));
 }
 
 function updateSongField(field) {
@@ -1749,9 +1758,13 @@ function focusSelectedItemAfterRender() {
 }
 
 function focusSelectedBibleVerseAfterRender() {
-  if (!state.selectedBibleVerse) return;
+  if (!state.selectedBibleVerses.length && state.selectedBibleVerse) {
+    state.selectedBibleVerses = [state.selectedBibleVerse];
+  }
+  const verseNumber = state.selectedBibleVerses[0] || state.selectedBibleVerse;
+  if (!verseNumber) return;
   requestAnimationFrame(() => {
-    const verse = refs.detailPane?.querySelector(`[data-bible-verse="${CSS.escape(String(state.selectedBibleVerse))}"]`);
+    const verse = refs.detailPane?.querySelector(`[data-bible-verse="${CSS.escape(String(verseNumber))}"]`);
     verse?.scrollIntoView({ block: "center", behavior: "smooth" });
   });
 }
@@ -1961,8 +1974,14 @@ function songNeedsReview(song) {
 }
 
 function versionNeedsFormReview(song, version) {
-  const allowStructuralReview = !isHymnBookVersion(song, version);
+  const allowStructuralReview = shouldReviewVersionStructure(song, version);
   return (version?.forms || []).some((form) => formNeedsReview(form, { allowStructuralReview }));
+}
+
+function shouldReviewVersionStructure(song, version, forms = version?.forms || []) {
+  if (isHymnBookVersion(song, version)) return false;
+  if (!forms.length) return false;
+  return forms.every((form) => form.part_type === "Verse");
 }
 
 function renderFormsTab(song) {
@@ -1982,12 +2001,14 @@ function renderFormsTab(song) {
 function renderSingleVersionForms() {
   const song = getSelectedSong();
   const version = getSelectedVersion();
+  const versionName = versionDisplayName(song, version || {});
   const gridStyle = "grid-template-columns: minmax(320px, 1fr);";
   return `
     <div class="version-compare-grid single-version">
       <div class="version-compare-head" style="${gridStyle}">
-        <div class="version-compare-title placeholder" aria-hidden="true">
-          <span>Version</span>
+        <div class="version-compare-title active">
+          <span>${escapeHtml(versionName)}</span>
+          <span class="type-pill">Editing</span>
         </div>
       </div>
       <div class="version-compare-rows">
@@ -2293,12 +2314,13 @@ function renderBibleVerseList(verses) {
   if (!state.bibleBookVerses.length) return `<div class="bible-reader-note">No verses loaded for this book.</div>`;
   if (!verses.length) return `<div class="bible-reader-note">No verses in this chapter.</div>`;
   let previousSection = "";
+  const selectedVerses = new Set(state.selectedBibleVerses.length ? state.selectedBibleVerses : [state.selectedBibleVerse].filter(Boolean));
   return `
     <div class="bible-verse-list">
       ${verses.map((verse) => {
         const sectionTitle = verse.section_title && verse.section_title !== previousSection ? verse.section_title : "";
         previousSection = verse.section_title || previousSection;
-        const selected = Number(verse.verse) === Number(state.selectedBibleVerse);
+        const selected = selectedVerses.has(Number(verse.verse));
         return `
           ${sectionTitle ? `<div class="bible-section-title">${escapeHtml(sectionTitle)}</div>` : ""}
           <p class="bible-verse${selected ? " selected" : ""}" data-bible-verse="${escapeAttr(String(verse.verse))}" role="button" tabindex="0" aria-label="Select verse ${escapeAttr(String(verse.verse))}">
@@ -2336,8 +2358,11 @@ function renderScriptureTextarea(label, field, value, className = "") {
 
 function renderFormBlock(form, index, options = {}) {
   const label = displayLabel(form);
+  const song = options.song || getSelectedSong();
+  const version = options.version || getSelectedVersion();
+  const versionForms = options.forms || (version?.id === getSelectedVersionId() ? state.forms : version?.forms || []);
   const needsReview = formNeedsReview(form, {
-    allowStructuralReview: !isHymnBookVersion(options.song || getSelectedSong(), options.version || getSelectedVersion()),
+    allowStructuralReview: shouldReviewVersionStructure(song, version, versionForms),
   });
   return `
     <article class="form-block${needsReview ? " needs-review" : ""}">
@@ -2372,8 +2397,11 @@ function renderFormBlock(form, index, options = {}) {
 }
 
 function renderReadonlyFormBlock(form, options = {}) {
+  const song = options.song || getSelectedSong();
+  const version = options.version || getSelectedVersion();
+  const versionForms = options.forms || (version?.id === getSelectedVersionId() ? state.forms : version?.forms || []);
   const needsReview = formNeedsReview(form, {
-    allowStructuralReview: !isHymnBookVersion(options.song || getSelectedSong(), options.version || getSelectedVersion()),
+    allowStructuralReview: shouldReviewVersionStructure(song, version, versionForms),
   });
   return `
     <article class="form-block readonly${needsReview ? " needs-review" : ""}">
@@ -2856,15 +2884,17 @@ function getSelectedVersion() {
 
 async function selectVersion(versionId) {
   if (!versionId || versionId === getSelectedVersionId()) return;
-  if (hasDirtyChanges() && !confirm("Discard unsaved changes?")) return;
 
+  writeFormsToSelectedVersion();
+  const dirtyState = { ...state.dirty };
   state.selectedVersionId = versionId;
   state.forms = [];
-  state.dirty.song = false;
-  state.dirty.forms = false;
+  state.dirty = dirtyState;
   persistUiState();
   render();
   await loadForms(versionId);
+  state.dirty = dirtyState;
+  updateSaveState();
 }
 
 function versionDisplayName(song, version) {
