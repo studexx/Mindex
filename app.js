@@ -16,6 +16,75 @@ const FORM_ADD_LABELS = {
 
 const PRAISE_TYPES = ["hymn", "ccm"];
 
+const BIBLE_CHAPTER_COUNTS = {
+  GEN: 50,
+  EXO: 40,
+  LEV: 27,
+  NUM: 36,
+  DEU: 34,
+  JOS: 24,
+  JDG: 21,
+  RUT: 4,
+  "1SA": 31,
+  "2SA": 24,
+  "1KI": 22,
+  "2KI": 25,
+  "1CH": 29,
+  "2CH": 36,
+  EZR: 10,
+  NEH: 13,
+  EST: 10,
+  JOB: 42,
+  PSA: 150,
+  PRO: 31,
+  ECC: 12,
+  SNG: 8,
+  ISA: 66,
+  JER: 52,
+  LAM: 5,
+  EZK: 48,
+  DAN: 12,
+  HOS: 14,
+  JOL: 3,
+  AMO: 9,
+  OBA: 1,
+  JON: 4,
+  MIC: 7,
+  NAM: 3,
+  HAB: 3,
+  ZEP: 3,
+  HAG: 2,
+  ZEC: 14,
+  MAL: 4,
+  MAT: 28,
+  MRK: 16,
+  LUK: 24,
+  JHN: 21,
+  ACT: 28,
+  ROM: 16,
+  "1CO": 16,
+  "2CO": 13,
+  GAL: 6,
+  EPH: 6,
+  PHP: 4,
+  COL: 4,
+  "1TH": 5,
+  "2TH": 3,
+  "1TI": 6,
+  "2TI": 4,
+  TIT: 3,
+  PHM: 1,
+  HEB: 13,
+  JAS: 5,
+  "1PE": 5,
+  "2PE": 3,
+  "1JN": 5,
+  "2JN": 1,
+  "3JN": 1,
+  JUD: 1,
+  REV: 22,
+};
+
 const BIBLE_BOOK_ALIASES = {
   GEN: ["gen", "ge", "gn"],
   EXO: ["exo", "exod", "ex"],
@@ -161,6 +230,8 @@ const BIBLE_BOOKS = [
   canonicalEnglishTitle,
   jewishCategory,
   author,
+  metadata: {},
+  chapterCount: BIBLE_CHAPTER_COUNTS[code] || 0,
   sortOrder: index + 1,
 }));
 
@@ -196,6 +267,7 @@ const state = {
   scriptures: [],
   bibleTranslations: [],
   bibleBookVerses: [],
+  bibleVerseCache: new Map(),
   selectedSongId: null,
   selectedVersionId: null,
   selectedScriptureId: null,
@@ -705,6 +777,19 @@ async function loadBibleBookVerses({ silent = false } = {}) {
     return;
   }
 
+  const chapters = getBibleChapterOptions();
+  if (chapters.length && !chapters.includes(state.selectedBibleChapter)) {
+    state.selectedBibleChapter = chapters[0];
+  }
+  const cacheKey = bibleVerseCacheKey(state.selectedBibleTranslationId, state.selectedBookCode, state.selectedBibleChapter);
+  if (state.bibleVerseCache.has(cacheKey)) {
+    state.bibleReaderError = "";
+    state.bibleBookVerses = state.bibleVerseCache.get(cacheKey);
+    persistUiState();
+    if (state.module === "scripture") render();
+    return;
+  }
+
   state.bibleReaderLoading = true;
   if (state.module === "scripture") render();
 
@@ -715,16 +800,13 @@ async function loadBibleBookVerses({ silent = false } = {}) {
       .eq("is_active", true)
       .eq("translation_id", state.selectedBibleTranslationId)
       .eq("book_code", state.selectedBookCode)
-      .order("chapter", { ascending: true })
+      .eq("chapter", state.selectedBibleChapter)
       .order("verse", { ascending: true });
 
     if (error) throw error;
     state.bibleReaderError = "";
     state.bibleBookVerses = data || [];
-    const chapters = getBibleChapterOptions();
-    if (!chapters.includes(state.selectedBibleChapter)) {
-      state.selectedBibleChapter = chapters[0] || 1;
-    }
+    state.bibleVerseCache.set(cacheKey, state.bibleBookVerses);
     persistUiState();
   } catch (error) {
     state.bibleBookVerses = [];
@@ -773,7 +855,7 @@ async function selectScriptureBook(bookCode, options = {}) {
       state.selectedBibleChapter = nextChapter;
       state.selectedBibleVerse = nextVerse;
       persistUiState();
-      render();
+      await loadBibleBookVerses({ silent: true });
       focusSelectedBibleVerseAfterRender();
     }
     return;
@@ -1154,7 +1236,7 @@ function updateBibleReaderField(field) {
     state.selectedBibleChapter = Number(field.value) || 1;
     state.selectedBibleVerse = null;
     persistUiState();
-    renderDetail();
+    loadBibleBookVerses();
   }
 }
 
@@ -1168,7 +1250,7 @@ function changeBibleChapter(delta) {
   state.selectedBibleChapter = nextChapter;
   state.selectedBibleVerse = null;
   persistUiState();
-  renderDetail();
+  loadBibleBookVerses();
 }
 
 function selectBibleVerse(verse) {
@@ -2564,6 +2646,7 @@ function normalizeServerScripture(row) {
 
 function normalizeServerScriptureBook(row) {
   const shortName = cleanScriptureBookShortName(row.short_name);
+  const metadata = row.metadata && typeof row.metadata === "object" ? row.metadata : {};
   return {
     code: row.code || "",
     koreanName: row.korean_name || "",
@@ -2575,6 +2658,8 @@ function normalizeServerScriptureBook(row) {
     aliases: cleanList(row.aliases),
     jewishCategory: row.jewish_category || "",
     author: row.author || "",
+    metadata,
+    chapterCount: Number(metadata.chapters || metadata.chapter_count || BIBLE_CHAPTER_COUNTS[row.code]) || 0,
     sortOrder: Number(row.sort_order) || 999,
   };
 }
@@ -2966,7 +3051,19 @@ function getBibleBooks() {
 }
 
 function getBibleChapterOptions() {
+  const selectedBook = findBibleBookByCode(state.selectedBookCode);
+  const chapterCount = getBibleChapterCount(selectedBook);
+  if (chapterCount) return Array.from({ length: chapterCount }, (_, index) => index + 1);
   return [...new Set(state.bibleBookVerses.map((verse) => Number(verse.chapter)).filter((chapter) => chapter > 0))].sort((a, b) => a - b);
+}
+
+function getBibleChapterCount(book) {
+  const count = Number(book?.chapterCount || book?.metadata?.chapters || BIBLE_CHAPTER_COUNTS[book?.code]);
+  return Number.isFinite(count) && count > 0 ? count : 0;
+}
+
+function bibleVerseCacheKey(translationId, bookCode, chapter) {
+  return [translationId, bookCode, chapter].join(":");
 }
 
 function getBibleBooksForScriptureFilter() {
