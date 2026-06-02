@@ -1677,6 +1677,7 @@ function renderSongList() {
     .map((song) => {
       const active = song.id === state.selectedSongId ? " active" : "";
       const titleText = song.hymn_no ? stripHymnNumber(song.title) : song.title;
+      const metaLine = songTitleMetaLine(song);
       return `
         <button class="song-item${active}" type="button" data-song-id="${escapeAttr(song.id)}">
           <span class="song-title">
@@ -1685,6 +1686,7 @@ function renderSongList() {
             ${song.versions?.length > 1 ? `<span class="song-count-badge">${song.versions.length}</span>` : ""}
             ${renderSongAttentionIcon(song)}
           </span>
+          ${metaLine ? `<span class="song-meta-line">${escapeHtml(metaLine)}</span>` : ""}
         </button>
       `;
     })
