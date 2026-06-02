@@ -2425,10 +2425,10 @@ function normalizeServerBibleTranslation(row) {
 
 function sortBibleTranslations(a, b) {
   const languageRank = (translation) => {
-    const language = normalizeTitle(translation.language);
-    const key = normalizeTitle(`${translation.translationKey} ${translation.name}`);
-    if (language.startsWith("ja") || key.includes("일본어") || /[ぁ-んァ-ン一-龯]/.test(key)) return 2;
-    if (language.startsWith("ko") || /[가-힣]/.test(key)) return 0;
+    const language = String(translation.language || "").trim().toLowerCase();
+    const label = `${translation.translationKey || ""} ${translation.name || ""} ${translation.abbreviation || ""}`;
+    if (language.startsWith("ja") || label.includes("일본어") || /[ぁ-んァ-ン一-龯]/.test(label)) return 2;
+    if (language.startsWith("ko") || /[가-힣]/.test(label)) return 0;
     return 1;
   };
   return languageRank(a) - languageRank(b)
