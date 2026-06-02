@@ -2947,6 +2947,7 @@ function versionDisplayName(song, version) {
   const legacyName = legacyHymnVersionName(song, version);
   if (legacyName) return legacyName;
   if (song?.hymn_no && isDefaultVersionName(version.name || version.curated_version_name)) return "새찬송가";
+  if (isRedundantSingleVersionName(song, version, version.name || version.curated_version_name)) return "Default";
   if (version.name) return displayVersionName(version.name);
   if (version.curated_version_name) return displayVersionName(version.curated_version_name);
   const raw = version.raw_section_name || version.version_label || "";
@@ -2965,6 +2966,24 @@ function versionDisplayName(song, version) {
   if (subtitleMatch) return subtitleMatch[1].trim();
   if (raw === canonicalTitle || raw === canonicalHymnNo) return "Default";
   return raw || "Default";
+}
+
+function isRedundantSingleVersionName(song, version, name) {
+  const versions = song?.versions || [];
+  if (versions.length !== 1) return false;
+  const value = normalizeTitle(stripTitleDecorations(name));
+  if (!value || isDefaultVersionName(name)) return false;
+  const title = normalizeTitle(song?.title);
+  const hymnTitle = normalizeTitle(song?.hymn_no ? `${song.hymn_no} ${song.title || ""}` : "");
+  const raw = normalizeTitle(stripTitleDecorations(version?.raw_section_name || version?.version_label || ""));
+  return value === title || value === hymnTitle || (raw && value === raw);
+}
+
+function stripTitleDecorations(value) {
+  return String(value || "")
+    .replace(/\[[^\]]+\]/g, "")
+    .replace(/\([^)]*?\)\s*$/g, "")
+    .trim();
 }
 
 function songTitleMetaLine(song) {
