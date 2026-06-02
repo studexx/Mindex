@@ -261,15 +261,15 @@ h1, h2, h3, p { margin: 0; }
 .scripture-meta-grid { grid-template-columns: minmax(220px, 1.3fr) minmax(140px, .7fr) minmax(180px, .9fr) minmax(140px, .6fr); }
 .scripture-book-info {
   display: flex;
-  min-height: 34px;
+  min-height: 28px;
   align-items: center;
   justify-content: space-between;
   gap: var(--s2);
   border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
   border-radius: var(--r);
-  padding: 7px 10px;
+  padding: 5px 9px;
   color: var(--ink-3);
-  font-size: 12px;
+  font-size: 11px;
   line-height: 1.2;
 }
 .scripture-book-info.empty { color: var(--ink-4); }
@@ -381,33 +381,45 @@ h1, h2, h3, p { margin: 0; }
   display: grid;
   gap: var(--s2);
 }
-.taxonomy-detail-list {
-  display: grid;
-  gap: 0;
+.taxonomy-detail-strip {
+  display: flex;
+  min-height: 30px;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
 }
-.taxonomy-detail-item {
-  display: grid;
-  grid-template-columns: minmax(120px, .32fr) minmax(0, 1fr);
-  gap: var(--s3);
-  border-bottom: 1px solid color-mix(in srgb, var(--line) 64%, transparent);
-  padding: 10px 0;
+.taxonomy-detail-pill {
+  display: inline-flex;
+  min-width: 0;
+  max-width: 100%;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+  border-radius: 999px;
+  padding: 5px 9px;
+  background: color-mix(in srgb, var(--panel) 70%, transparent);
 }
-.taxonomy-detail-item span {
+.taxonomy-detail-pill span {
+  flex: 0 0 auto;
   color: var(--ink-4);
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 760;
   letter-spacing: .03em;
   text-transform: uppercase;
 }
-.taxonomy-detail-item strong {
+.taxonomy-detail-pill strong {
+  min-width: 0;
+  overflow: hidden;
   color: var(--ink);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 720;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .bible-reader {
   display: grid;
   gap: var(--s3);
-  margin-top: var(--s4);
+  margin-top: var(--s1);
 }
 .bible-reader-controls {
   display: flex;

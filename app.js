@@ -588,7 +588,7 @@ async function loadBibleTranslations({ silent = false } = {}) {
 
     if (error) throw error;
     state.bibleReaderError = "";
-    state.bibleTranslations = (data || []).map(normalizeServerBibleTranslation);
+    state.bibleTranslations = (data || []).map(normalizeServerBibleTranslation).sort(sortBibleTranslations);
     if (state.selectedBibleTranslationId && !state.bibleTranslations.some((translation) => translation.id === state.selectedBibleTranslationId)) {
       state.selectedBibleTranslationId = null;
     }
@@ -1919,12 +1919,12 @@ function renderScriptureBookDetail(book) {
 
   return `
     <section class="taxonomy-book-detail">
-      <div class="taxonomy-detail-list">
+      <div class="taxonomy-detail-strip" aria-label="Book metadata">
         ${details.map(([label, value]) => `
-          <div class="taxonomy-detail-item">
+          <span class="taxonomy-detail-pill">
             <span>${escapeHtml(label)}</span>
             <strong>${escapeHtml(value)}</strong>
-          </div>
+          </span>
         `).join("")}
       </div>
       ${renderBibleReader(book)}
@@ -2421,6 +2421,19 @@ function normalizeServerBibleTranslation(row) {
     abbreviation: row.abbreviation || "",
     source: row.source || "",
   };
+}
+
+function sortBibleTranslations(a, b) {
+  const languageRank = (translation) => {
+    const language = normalizeTitle(translation.language);
+    const key = normalizeTitle(`${translation.translationKey} ${translation.name}`);
+    if (language.startsWith("ja") || key.includes("일본어") || /[ぁ-んァ-ン一-龯]/.test(key)) return 2;
+    if (language.startsWith("ko") || /[가-힣]/.test(key)) return 0;
+    return 1;
+  };
+  return languageRank(a) - languageRank(b)
+    || String(a.name || "").localeCompare(String(b.name || ""), "ko")
+    || String(a.translationKey || "").localeCompare(String(b.translationKey || ""), "ko");
 }
 
 function cleanScriptureBookShortName(value) {
