@@ -399,6 +399,7 @@ function bindStaticEvents() {
   refs.detailPane.addEventListener("keydown", handleDetailKeydown);
   refs.detailPane.addEventListener("input", handleDetailInput);
   refs.detailPane.addEventListener("change", handleDetailChange);
+  window.addEventListener("mousedown", handleMouseSideButtonNavigation, { capture: true });
 
   SYSTEM_THEME_QUERY?.addEventListener("change", () => {
     if (!localStorage.getItem(STORAGE.theme)) applyTheme(readTheme());
@@ -425,6 +426,7 @@ function bindStaticEvents() {
     }
 
     handleSongNavigationKeydown(event);
+    handleHorizontalNavigationKeydown(event);
   });
 
   window.addEventListener("beforeunload", (event) => {
@@ -466,10 +468,66 @@ function handleSongNavigationKeydown(event) {
   else selectSong(nextItem.id);
 }
 
+function handleHorizontalNavigationKeydown(event) {
+  if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+  if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
+  if (shouldKeepHorizontalNavigationInFocusedControl(event.target)) return;
+
+  const handled = navigateHorizontal(event.key === "ArrowRight" ? 1 : -1);
+  if (!handled) return;
+  event.preventDefault();
+}
+
+function handleMouseSideButtonNavigation(event) {
+  if (event.button !== 3 && event.button !== 4) return;
+  if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
+  if (shouldKeepHorizontalNavigationInFocusedControl(event.target)) return;
+
+  const handled = navigateHorizontal(event.button === 4 ? 1 : -1);
+  if (!handled) return;
+  event.preventDefault();
+  event.stopPropagation();
+}
+
+function navigateHorizontal(delta) {
+  if (!delta) return false;
+  if (state.module === "scripture") return navigateBibleChapter(delta);
+  return navigatePraiseVersion(delta);
+}
+
+function navigateBibleChapter(delta) {
+  if (!state.selectedBookCode) return false;
+  const chapters = getBibleChapterOptions();
+  const currentIndex = chapters.indexOf(state.selectedBibleChapter);
+  if (currentIndex < 0) return false;
+  const nextChapter = chapters[currentIndex + delta];
+  if (!nextChapter) return false;
+  changeBibleChapter(delta);
+  return true;
+}
+
+function navigatePraiseVersion(delta) {
+  const song = getSelectedSong();
+  const versions = song?.versions || [];
+  if (versions.length < 2) return false;
+  const currentIndex = versions.findIndex((version) => version.id === getSelectedVersionId());
+  if (currentIndex < 0) return false;
+  const nextVersion = versions[currentIndex + delta];
+  if (!nextVersion) return false;
+  selectVersion(nextVersion.id);
+  return true;
+}
+
 function shouldKeepArrowKeyInFocusedControl(target) {
   const element = target instanceof Element ? target : null;
   if (!element) return false;
   if (element === refs.searchInput) return false;
+  return Boolean(element.closest("textarea, select, input, [contenteditable='true']"));
+}
+
+function shouldKeepHorizontalNavigationInFocusedControl(target) {
+  const element = target instanceof Element ? target : null;
+  if (!element) return false;
   return Boolean(element.closest("textarea, select, input, [contenteditable='true']"));
 }
 
@@ -781,7 +839,10 @@ async function loadBibleBookVerses({ silent = false } = {}) {
   if (chapters.length && !chapters.includes(state.selectedBibleChapter)) {
     state.selectedBibleChapter = chapters[0];
   }
-  const cacheKey = bibleVerseCacheKey(state.selectedBibleTranslationId, state.selectedBookCode, state.selectedBibleChapter);
+  const selectedTranslationId = state.selectedBibleTranslationId;
+  const selectedBookCode = state.selectedBookCode;
+  const selectedChapter = state.selectedBibleChapter;
+  const cacheKey = bibleVerseCacheKey(selectedTranslationId, selectedBookCode, selectedChapter);
   if (state.bibleVerseCache.has(cacheKey)) {
     state.bibleReaderError = "";
     state.bibleBookVerses = state.bibleVerseCache.get(cacheKey);
@@ -798,23 +859,31 @@ async function loadBibleBookVerses({ silent = false } = {}) {
       .from("mindex_bible_verses")
       .select("book_code,chapter,verse,verse_end,text,section_title")
       .eq("is_active", true)
-      .eq("translation_id", state.selectedBibleTranslationId)
-      .eq("book_code", state.selectedBookCode)
-      .eq("chapter", state.selectedBibleChapter)
+      .eq("translation_id", selectedTranslationId)
+      .eq("book_code", selectedBookCode)
+      .eq("chapter", selectedChapter)
       .order("verse", { ascending: true });
 
     if (error) throw error;
+    state.bibleVerseCache.set(cacheKey, data || []);
+    if (cacheKey !== bibleVerseCacheKey(state.selectedBibleTranslationId, state.selectedBookCode, state.selectedBibleChapter)) {
+      return;
+    }
     state.bibleReaderError = "";
     state.bibleBookVerses = data || [];
-    state.bibleVerseCache.set(cacheKey, state.bibleBookVerses);
     persistUiState();
   } catch (error) {
+    if (cacheKey !== bibleVerseCacheKey(state.selectedBibleTranslationId, state.selectedBookCode, state.selectedBibleChapter)) {
+      return;
+    }
     state.bibleBookVerses = [];
     state.bibleReaderError = "Bible verses could not be loaded.";
     if (!silent && state.module === "scripture") showToast(error.message || state.bibleReaderError, "error");
   } finally {
-    state.bibleReaderLoading = false;
-    if (state.module === "scripture") render();
+    if (cacheKey === bibleVerseCacheKey(state.selectedBibleTranslationId, state.selectedBookCode, state.selectedBibleChapter)) {
+      state.bibleReaderLoading = false;
+      if (state.module === "scripture") render();
+    }
   }
 }
 
