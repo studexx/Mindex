@@ -637,6 +637,7 @@ h1, h2, h3, p { margin: 0; }
 .form-block:hover .form-actions, .form-block:focus-within .form-actions { opacity: 1; }
 .form-actions .icon-btn { width: 24px; height: 24px; border-color: var(--line); background: color-mix(in srgb, var(--panel) 80%, transparent); }
 .form-actions .icon-btn:hover { border-color: var(--line); background: var(--panel-2); }
+.form-actions .review-action { border-color: color-mix(in srgb, var(--accent) 24%, var(--line)); color: var(--accent); }
 #newSongBtn { display: none; }
 
 .toast-region { position: fixed; right: var(--s4); bottom: var(--s4); z-index: 20; display: grid; gap: var(--s2); width: min(360px, calc(100vw - 32px)); }

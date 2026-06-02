@@ -1172,7 +1172,8 @@ function writeFormsToSelectedVersion() {
     part_number: form.part_number,
     lyrics: form.lyrics || "",
     sort_order: index + 1,
-    ...(form.review_status ? { review_status: form.review_status } : {}),
+    ...(form.review_status && form.review_status !== "reviewed" ? { review_status: form.review_status } : {}),
+    ...(form.review_status === "reviewed" ? { review_status: "reviewed" } : {}),
     ...(form.import_source ? { import_source: form.import_source } : {}),
   }));
 }
@@ -1505,6 +1506,11 @@ function runFormAction(action, index) {
   if (action === "copy") {
     copyText(formatBlockForCopy(form));
     return;
+  }
+
+  if (action === "mark-reviewed") {
+    form.review_status = "reviewed";
+    delete form.import_source;
   }
 
   if (action === "delete") {
@@ -2405,6 +2411,11 @@ function renderFormBlock(form, index, options = {}) {
           ${needsReview ? renderAttentionIcon("Needs review", "needs-review") : ""}
         </div>
         <div class="form-actions">
+          ${needsReview ? `
+            <button class="icon-btn review-action" type="button" data-form-action="mark-reviewed" data-index="${index}" title="Mark reviewed">
+              <i data-lucide="check"></i>
+            </button>
+          ` : ""}
           <button class="icon-btn" type="button" data-form-action="up" data-index="${index}" title="Move up" ${index === 0 ? "disabled" : ""}>
             <i data-lucide="arrow-up"></i>
           </button>
@@ -2478,6 +2489,7 @@ function displayLabel(form) {
 }
 
 function formNeedsReview(form, options = {}) {
+  if (form?.review_status === "reviewed") return false;
   const allowStructuralReview = options.allowStructuralReview !== false;
   return form?.review_status === "needs_review" || Boolean(form?.import_source) || (allowStructuralReview && formLooksUnsplit(form));
 }
@@ -2901,7 +2913,8 @@ function serializeSongMemo(song) {
           part_number: form.part_number,
           lyrics: form.lyrics || "",
           sort_order: formIndex + 1,
-          ...(form.review_status ? { review_status: form.review_status } : {}),
+          ...(form.review_status && form.review_status !== "reviewed" ? { review_status: form.review_status } : {}),
+          ...(form.review_status === "reviewed" ? { review_status: "reviewed" } : {}),
           ...(form.import_source ? { import_source: form.import_source } : {}),
         })),
       })),
