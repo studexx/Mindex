@@ -412,8 +412,9 @@ h1, h2, h3, p { margin: 0; }
 }
 .bible-verse {
   display: grid;
-  grid-template-columns: 28px minmax(0, 1fr);
+  grid-template-columns: 28px minmax(0, 1fr) 24px;
   gap: var(--s2);
+  align-items: start;
   border-radius: var(--r);
   color: var(--ink-2);
   font-size: 14px;
@@ -434,6 +435,31 @@ h1, h2, h3, p { margin: 0; }
 .bible-verse.selected span { color: var(--accent); }
 .bible-verse strong {
   font-weight: 540;
+}
+.bible-verse-copy {
+  display: inline-grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border: 0;
+  border-radius: calc(var(--r) - 3px);
+  background: transparent;
+  color: var(--ink-4);
+  opacity: 0;
+  padding: 0;
+}
+.bible-verse:hover .bible-verse-copy,
+.bible-verse.selected .bible-verse-copy,
+.bible-verse-copy:focus-visible {
+  opacity: 1;
+}
+.bible-verse-copy:hover {
+  background: color-mix(in srgb, var(--panel-2) 86%, transparent);
+  color: var(--accent);
+}
+.bible-verse-copy svg {
+  width: 13px;
+  height: 13px;
 }
 .scripture-textarea {
   border: 1px solid var(--line);

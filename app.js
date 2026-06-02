@@ -426,6 +426,9 @@ function bindStaticEvents() {
       return;
     }
 
+    const isCopy = (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "c";
+    if (isCopy && copySelectedBibleVersesFromShortcut(event)) return;
+
     handleSongNavigationKeydown(event);
     handleHorizontalNavigationKeydown(event);
   });
@@ -1181,6 +1184,12 @@ function handleDetailClick(event) {
     return;
   }
 
+  const copyBibleVerse = event.target.closest("[data-copy-bible-verse]");
+  if (copyBibleVerse) {
+    copyBibleVerses([Number(copyBibleVerse.dataset.copyBibleVerse)]);
+    return;
+  }
+
   const bibleVerse = event.target.closest("[data-bible-verse]");
   if (bibleVerse) {
     selectBibleVerse(Number(bibleVerse.dataset.bibleVerse));
@@ -1225,14 +1234,14 @@ function handleDetailClick(event) {
 
 function handleDetailKeydown(event) {
   if (event.key !== "Enter" && event.key !== " ") return;
+  if (event.target.closest("button, input, textarea, select, a")) return;
+
   const bibleVerse = event.target.closest("[data-bible-verse]");
   if (bibleVerse) {
     event.preventDefault();
     selectBibleVerse(Number(bibleVerse.dataset.bibleVerse));
     return;
   }
-
-  if (event.target.closest("button, input, textarea, select, a")) return;
 
   const versionTarget = event.target.closest(".version-picker[data-version-id]");
   if (!versionTarget) return;
@@ -1336,6 +1345,20 @@ function selectBibleVerse(verse) {
   state.selectedBibleVerses = [...selected].sort((a, b) => a - b);
   state.selectedBibleVerse = state.selectedBibleVerses[0] || null;
   refs.detailPane?.querySelector(`[data-bible-verse="${CSS.escape(String(verse))}"]`)?.classList.toggle("selected", selected.has(verse));
+}
+
+function copySelectedBibleVersesFromShortcut(event) {
+  if (state.module !== "scripture" || !state.selectedBibleVerses.length) return false;
+  if (shouldKeepHorizontalNavigationInFocusedControl(event.target)) return false;
+  event.preventDefault();
+  copyBibleVerses(state.selectedBibleVerses);
+  return true;
+}
+
+function copyBibleVerses(verseNumbers) {
+  const text = formatBibleVersesForCopy(verseNumbers);
+  if (!text) return;
+  copyText(text);
 }
 
 function updateSongField(field) {
@@ -2326,6 +2349,9 @@ function renderBibleVerseList(verses) {
           <p class="bible-verse${selected ? " selected" : ""}" data-bible-verse="${escapeAttr(String(verse.verse))}" role="button" tabindex="0" aria-label="Select verse ${escapeAttr(String(verse.verse))}">
             <span>${escapeHtml(String(verse.verse))}</span>
             <strong>${escapeHtml(verse.text || "")}</strong>
+            <button class="bible-verse-copy" type="button" data-copy-bible-verse="${escapeAttr(String(verse.verse))}" title="Copy verse" aria-label="Copy verse ${escapeAttr(String(verse.verse))}">
+              <i data-lucide="copy"></i>
+            </button>
           </p>
         `;
       }).join("")}
@@ -2500,6 +2526,26 @@ function formatScriptureSlidesForCopy(scripture) {
 function scriptureHeading(scripture) {
   const reference = scripture?.reference || scripture?.book || "";
   return [reference, scripture?.translation].filter(Boolean).join(" · ");
+}
+
+function formatBibleVersesForCopy(verseNumbers = state.selectedBibleVerses) {
+  const verses = selectedBibleVerseRows(verseNumbers);
+  if (!verses.length) return "";
+  return verses.map(formatBibleVerseForCopy).join("\n");
+}
+
+function selectedBibleVerseRows(verseNumbers = state.selectedBibleVerses) {
+  const selected = new Set(verseNumbers.map(Number).filter((verse) => verse > 0));
+  if (!selected.size) return [];
+  return state.bibleBookVerses
+    .filter((verse) => Number(verse.chapter) === state.selectedBibleChapter && selected.has(Number(verse.verse)))
+    .sort((a, b) => Number(a.verse) - Number(b.verse));
+}
+
+function formatBibleVerseForCopy(verse) {
+  const book = findBibleBookByCode(state.selectedBookCode);
+  const reference = [book?.koreanName || state.selectedBookCode, `${state.selectedBibleChapter}:${verse.verse}`].filter(Boolean).join(" ");
+  return [reference, verse.text || ""].filter(Boolean).join(" ");
 }
 
 function splitScriptureBlocks(text) {
