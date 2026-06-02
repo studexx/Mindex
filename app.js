@@ -16,6 +16,75 @@ const FORM_ADD_LABELS = {
 
 const PRAISE_TYPES = ["hymn", "ccm"];
 
+const BIBLE_BOOK_ALIASES = {
+  GEN: ["gen", "ge", "gn"],
+  EXO: ["exo", "exod", "ex"],
+  LEV: ["lev", "le"],
+  NUM: ["num", "nu", "nm"],
+  DEU: ["deut", "deu", "dt"],
+  JOS: ["josh", "jos"],
+  JDG: ["judg", "jdg", "jg"],
+  RUT: ["ruth", "rut", "ru"],
+  "1SA": ["1 sam", "1sam", "1 sa", "1sa", "first samuel"],
+  "2SA": ["2 sam", "2sam", "2 sa", "2sa", "second samuel"],
+  "1KI": ["1 kgs", "1kgs", "1 ki", "1ki", "1 kings", "first kings"],
+  "2KI": ["2 kgs", "2kgs", "2 ki", "2ki", "2 kings", "second kings"],
+  "1CH": ["1 chr", "1chr", "1 ch", "1ch", "1 chronicles", "first chronicles"],
+  "2CH": ["2 chr", "2chr", "2 ch", "2ch", "2 chronicles", "second chronicles"],
+  EZR: ["ezra", "ezr"],
+  NEH: ["neh", "ne"],
+  EST: ["esth", "est"],
+  JOB: ["job", "jb"],
+  PSA: ["ps", "psa", "psalm", "psalms"],
+  PRO: ["prov", "pro", "pr"],
+  ECC: ["eccl", "ecc", "qoheleth"],
+  SNG: ["song", "songs", "sos", "song of solomon", "song of songs"],
+  ISA: ["isa", "is"],
+  JER: ["jer", "je"],
+  LAM: ["lam", "la"],
+  EZK: ["ezek", "ezk", "eze"],
+  DAN: ["dan", "da"],
+  HOS: ["hos", "ho"],
+  JOL: ["joel", "jol"],
+  AMO: ["amos", "amo", "am"],
+  OBA: ["obad", "oba", "ob"],
+  JON: ["jonah", "jon"],
+  MIC: ["mic", "mi"],
+  NAM: ["nah", "nam"],
+  HAB: ["hab"],
+  ZEP: ["zeph", "zep"],
+  HAG: ["hag"],
+  ZEC: ["zech", "zec"],
+  MAL: ["mal"],
+  MAT: ["matt", "mat", "mt"],
+  MRK: ["mark", "mrk", "mk"],
+  LUK: ["luke", "luk", "lk"],
+  JHN: ["john", "jhn", "jn"],
+  ACT: ["acts", "act", "ac"],
+  ROM: ["rom", "ro"],
+  "1CO": ["1 cor", "1cor", "1 co", "1co", "1 corinthians", "first corinthians"],
+  "2CO": ["2 cor", "2cor", "2 co", "2co", "2 corinthians", "second corinthians"],
+  GAL: ["gal"],
+  EPH: ["eph"],
+  PHP: ["phil", "php", "philip"],
+  COL: ["col"],
+  "1TH": ["1 thess", "1thess", "1 th", "1th", "1 thessalonians", "first thessalonians"],
+  "2TH": ["2 thess", "2thess", "2 th", "2th", "2 thessalonians", "second thessalonians"],
+  "1TI": ["1 tim", "1tim", "1 ti", "1ti", "1 timothy", "first timothy"],
+  "2TI": ["2 tim", "2tim", "2 ti", "2ti", "2 timothy", "second timothy"],
+  TIT: ["titus", "tit"],
+  PHM: ["philem", "phm"],
+  HEB: ["heb"],
+  JAS: ["james", "jas", "jam"],
+  "1PE": ["1 pet", "1pet", "1 pe", "1pe", "1 peter", "first peter"],
+  "2PE": ["2 pet", "2pet", "2 pe", "2pe", "2 peter", "second peter"],
+  "1JN": ["1 john", "1john", "1 jn", "1jn", "first john"],
+  "2JN": ["2 john", "2john", "2 jn", "2jn", "second john"],
+  "3JN": ["3 john", "3john", "3 jn", "3jn", "third john"],
+  JUD: ["jude", "jud"],
+  REV: ["rev", "revelation", "re"],
+};
+
 const BIBLE_BOOKS = [
   ["GEN", "창세기", "Genesis", "Old Testament", "Pentateuch", "Book of Genesis", "Torah", "Moses"],
   ["EXO", "출애굽기", "Exodus", "Old Testament", "Pentateuch", "Book of Exodus", "Torah", "Moses"],
@@ -133,6 +202,7 @@ const state = {
   selectedBookCode: null,
   selectedBibleTranslationId: null,
   selectedBibleChapter: 1,
+  selectedBibleVerse: null,
   praiseFilter: "all",
   scriptureFilter: "all",
   listScroll: {},
@@ -207,6 +277,7 @@ function bindStaticEvents() {
     renderSongList();
     if (state.module === "scripture") renderDetail();
   });
+  refs.searchInput.addEventListener("keydown", handleSearchKeydown);
   refs.praiseFilter.addEventListener("click", (event) => {
     const button = event.target.closest("[data-praise-filter]");
     if (!button) return;
@@ -239,7 +310,16 @@ function bindStaticEvents() {
 
     const bookItem = event.target.closest("[data-book-code]");
     if (bookItem) {
-      selectScriptureBook(bookItem.dataset.bookCode);
+      const reference = parseBibleReference(state.search);
+      if (reference?.book?.code === bookItem.dataset.bookCode) {
+        selectScriptureBook(bookItem.dataset.bookCode, {
+          chapter: reference.chapter,
+          verse: reference.verse,
+          force: true,
+        });
+      } else {
+        selectScriptureBook(bookItem.dataset.bookCode);
+      }
     }
   });
 
@@ -280,6 +360,14 @@ function bindStaticEvents() {
     event.preventDefault();
     event.returnValue = "";
   });
+}
+
+function handleSearchKeydown(event) {
+  if (event.key !== "Enter" || state.module !== "scripture") return;
+  const reference = parseBibleReference(state.search);
+  if (!reference) return;
+  event.preventDefault();
+  navigateToBibleReference(reference);
 }
 
 function handleSongNavigationKeydown(event) {
@@ -677,11 +765,23 @@ async function selectScripture(scriptureId) {
   focusSelectedItemAfterRender();
 }
 
-async function selectScriptureBook(bookCode) {
-  if (bookCode === state.selectedBookCode) return;
+async function selectScriptureBook(bookCode, options = {}) {
+  const nextChapter = Number(options.chapter) || 1;
+  const nextVerse = Number(options.verse) || null;
+  if (bookCode === state.selectedBookCode && !options.force) {
+    if (nextChapter !== state.selectedBibleChapter || nextVerse !== state.selectedBibleVerse) {
+      state.selectedBibleChapter = nextChapter;
+      state.selectedBibleVerse = nextVerse;
+      persistUiState();
+      render();
+      focusSelectedBibleVerseAfterRender();
+    }
+    return;
+  }
   state.selectedBookCode = bookCode;
   state.selectedScriptureId = null;
-  state.selectedBibleChapter = 1;
+  state.selectedBibleChapter = nextChapter;
+  state.selectedBibleVerse = nextVerse;
   state.bibleBookVerses = [];
   state.dirty.scripture = false;
   persistUiState();
@@ -689,6 +789,7 @@ async function selectScriptureBook(bookCode) {
   focusSelectedItemAfterRender();
   if (!state.bibleTranslations.length && !state.bibleReaderError) await loadBibleTranslations({ silent: true });
   await loadBibleBookVerses({ silent: true });
+  focusSelectedBibleVerseAfterRender();
 }
 
 async function loadForms(versionId) {
@@ -1024,6 +1125,7 @@ function updateBibleReaderField(field) {
   if (key === "translation") {
     state.selectedBibleTranslationId = field.value || null;
     state.selectedBibleChapter = 1;
+    state.selectedBibleVerse = null;
     state.bibleBookVerses = [];
     persistUiState();
     loadBibleBookVerses();
@@ -1031,6 +1133,7 @@ function updateBibleReaderField(field) {
   }
   if (key === "chapter") {
     state.selectedBibleChapter = Number(field.value) || 1;
+    state.selectedBibleVerse = null;
     persistUiState();
     renderDetail();
   }
@@ -1262,7 +1365,7 @@ function renderModuleSwitcher() {
   }
   refs.searchInput.placeholder =
     state.module === "scripture"
-      ? "Search book, category, author..."
+      ? "Search book or reference..."
       : "Search title, lyrics, #...";
   refs.newSongBtn.title = state.module === "scripture" ? "New scripture" : "New song";
   refs.saveAllBtn.title = state.module === "scripture" ? "Save scripture" : "Save song";
@@ -1437,6 +1540,14 @@ function focusSelectedItem() {
 
 function focusSelectedItemAfterRender() {
   requestAnimationFrame(focusSelectedItem);
+}
+
+function focusSelectedBibleVerseAfterRender() {
+  if (!state.selectedBibleVerse) return;
+  requestAnimationFrame(() => {
+    const verse = refs.detailPane?.querySelector(`[data-bible-verse="${CSS.escape(String(state.selectedBibleVerse))}"]`);
+    verse?.scrollIntoView({ block: "center", behavior: "smooth" });
+  });
 }
 
 function scrollListItemIntoView(item) {
@@ -1970,9 +2081,10 @@ function renderBibleVerseList(verses) {
       ${verses.map((verse) => {
         const sectionTitle = verse.section_title && verse.section_title !== previousSection ? verse.section_title : "";
         previousSection = verse.section_title || previousSection;
+        const selected = Number(verse.verse) === Number(state.selectedBibleVerse);
         return `
           ${sectionTitle ? `<div class="bible-section-title">${escapeHtml(sectionTitle)}</div>` : ""}
-          <p class="bible-verse">
+          <p class="bible-verse${selected ? " selected" : ""}" data-bible-verse="${escapeAttr(String(verse.verse))}">
             <span>${escapeHtml(String(verse.verse))}</span>
             <strong>${escapeHtml(verse.text || "")}</strong>
           </p>
@@ -2394,6 +2506,7 @@ function normalizeServerScriptureBook(row) {
     division: row.division || "",
     canonicalEnglishTitle: row.canonical_english_title || row.english_name || "",
     shortName,
+    aliases: cleanList(row.aliases),
     jewishCategory: row.jewish_category || "",
     author: row.author || "",
     sortOrder: Number(row.sort_order) || 999,
@@ -2799,6 +2912,8 @@ function getBibleBooksForScriptureFilter() {
 
 function getFilteredBibleBooks() {
   const books = getBibleBooksForScriptureFilter();
+  const reference = parseBibleReference(state.search);
+  if (reference) return books.filter((book) => book.code === reference.book.code);
   const tokens = getSearchTokens(state.search);
   if (!tokens.length) return books;
   return books.filter((book) => getBibleBookSearchMatch(book, tokens));
@@ -2817,6 +2932,8 @@ function getBibleBookSearchMatch(book, tokens = getSearchTokens(state.search)) {
     searchField("meta", book.englishName, 90),
     searchField("meta", book.canonicalEnglishTitle, 90),
     searchField("meta", book.shortName, 80),
+    ...(book.aliases || []).map((alias) => searchField("meta", alias, 78)),
+    ...(BIBLE_BOOK_ALIASES[book.code] || []).map((alias) => searchField("meta", alias, 78)),
     searchField("meta", book.testament, 55),
     searchField("meta", book.division, 55),
     searchField("meta", book.jewishCategory, 45),
@@ -2833,6 +2950,33 @@ function groupBibleBooksByTestament(books) {
 
 function findBibleBookByCode(code) {
   return getBibleBooks().find((book) => book.code === code) || null;
+}
+
+function findBibleBookByReferenceName(name) {
+  const value = normalizeReferenceBookName(name);
+  if (!value) return null;
+  return getBibleBooks().find((book) => getBibleBookReferenceNames(book).some((candidate) => normalizeReferenceBookName(candidate) === value)) || null;
+}
+
+function getBibleBookReferenceNames(book) {
+  if (!book) return [];
+  return [
+    book.code,
+    book.koreanName,
+    book.englishName,
+    book.canonicalEnglishTitle,
+    book.shortName,
+    ...(book.aliases || []),
+    ...(BIBLE_BOOK_ALIASES[book.code] || []),
+  ].filter(Boolean);
+}
+
+function normalizeReferenceBookName(value) {
+  return normalizeSearchValue(value)
+    .replace(/^(first|i)\s+/, "1")
+    .replace(/^(second|ii)\s+/, "2")
+    .replace(/^(third|iii)\s+/, "3")
+    .replace(/\s+/g, "");
 }
 
 function findBibleBookByName(name) {
@@ -2948,6 +3092,47 @@ function getSearchTokens(value) {
     .split(/\s+/)
     .map((token) => getSearchCandidate(token))
     .filter((token) => token.compact || token.initials);
+}
+
+function parseBibleReference(value) {
+  const text = normalizeReferenceInput(value);
+  if (!text) return null;
+  const match = text.match(/^(.+?)\s+(\d{1,3})(?::\s*(\d{1,3}))?$/);
+  if (!match) return null;
+  const book = findBibleBookByReferenceName(match[1]);
+  if (!book) return null;
+  const chapter = Number(match[2]);
+  const verse = match[3] ? Number(match[3]) : null;
+  if (!chapter || chapter < 1 || (verse !== null && verse < 1)) return null;
+  return { book, chapter, verse };
+}
+
+function normalizeReferenceInput(value) {
+  return String(value || "")
+    .normalize("NFKC")
+    .trim()
+    .replace(/[：.]/g, ":")
+    .replace(/\s*:\s*/g, ":")
+    .replace(/^([1-3])\s+([A-Za-z가-힣])/, "$1$2")
+    .replace(/([^\s\d])(\d{1,3})(?::\d{1,3})?$/u, (match, prefix) => {
+      const numberPart = match.slice(prefix.length);
+      return `${prefix} ${numberPart}`;
+    })
+    .replace(/\s+/g, " ");
+}
+
+function navigateToBibleReference(reference) {
+  if (!reference?.book) return;
+  state.search = "";
+  refs.searchInput.value = "";
+  state.scriptureFilter = reference.book.testament === "New Testament" ? "new" : "old";
+  renderPraiseFilter();
+  renderSongList();
+  selectScriptureBook(reference.book.code, {
+    chapter: reference.chapter,
+    verse: reference.verse,
+    force: true,
+  });
 }
 
 function getSearchPhrase(tokens) {

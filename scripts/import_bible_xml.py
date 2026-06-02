@@ -73,6 +73,15 @@ def clean_inline(value: str) -> str:
     return unicodedata.normalize("NFC", value.strip())
 
 
+def clean_verse_text(value: str) -> str:
+    value = html.unescape(value or "")
+    value = re.sub(r"<br\s*/?>", "\n", value, flags=re.IGNORECASE)
+    value = value.replace("\ufeff", "")
+    value = re.sub(r"[ \t\r\f\v]+", " ", value)
+    value = re.sub(r"\s*\n\s*", "\n", value)
+    return unicodedata.normalize("NFC", value.strip())
+
+
 def split_section_title(text: str) -> tuple[str, str]:
     match = re.match(r"^\s*<([^<>\n]{1,100})>\s*(.*)$", text, re.DOTALL)
     if not match:
@@ -135,7 +144,7 @@ def parse_xml_file(path: Path) -> dict:
                     continue
                 if verse <= 0:
                     continue
-                text = clean_inline(verse_body)
+                text = clean_verse_text(verse_body)
                 section_title, text = split_section_title(text)
                 verses.append({
                     "book_code": book_code,
