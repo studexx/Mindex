@@ -3191,7 +3191,6 @@ function navigateToBibleReference(reference) {
   if (!reference?.book) return;
   state.search = "";
   refs.searchInput.value = "";
-  state.scriptureFilter = reference.book.testament === "New Testament" ? "new" : "old";
   renderPraiseFilter();
   renderSongList();
   selectScriptureBook(reference.book.code, {
