@@ -198,9 +198,8 @@ h1, h2, h3, p { margin: 0; }
 .editor-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--s4); padding-bottom: var(--s1); }
 .editor-title { display: grid; gap: var(--s2); min-width: 0; }
 .editor-title h2 { display: flex; min-width: 0; flex-wrap: wrap; align-items: center; gap: var(--s2); overflow-wrap: anywhere; font-size: 22px; font-weight: 620; line-height: 1.2; }
-.editor-meta-stack { display: grid; grid-template-rows: 18px 18px; min-height: 41px; align-content: start; gap: 5px; }
-.editor-meta-stack.compact { grid-template-rows: 18px; min-height: 18px; }
-.editor-title-meta { color: var(--ink-4); font-size: 12px; font-weight: 650; line-height: 18px; }
+.editor-meta-stack { display: grid; grid-template-rows: 16px 16px; min-height: 34px; align-content: start; gap: 2px; }
+.editor-title-meta { color: var(--ink-4); font-size: 11px; font-weight: 650; line-height: 16px; }
 .editor-title-meta.empty { visibility: hidden; }
 .editor-support-meta { display: flex; min-width: 0; flex-wrap: wrap; gap: 6px; }
 .editor-support-meta.empty { visibility: hidden; }
@@ -214,9 +213,9 @@ h1, h2, h3, p { margin: 0; }
   border-radius: 0;
   background: transparent;
   color: var(--ink-3);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 680;
-  line-height: 16px;
+  line-height: 15px;
   padding: 0;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -259,34 +258,6 @@ h1, h2, h3, p { margin: 0; }
 .scripture-editor { max-width: 960px; }
 .scripture-panel { gap: var(--s4); }
 .scripture-meta-grid { grid-template-columns: minmax(220px, 1.3fr) minmax(140px, .7fr) minmax(180px, .9fr) minmax(140px, .6fr); }
-.scripture-book-info {
-  display: flex;
-  min-height: 28px;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--s2);
-  border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
-  border-radius: var(--r);
-  padding: 5px 9px;
-  color: var(--ink-3);
-  font-size: 11px;
-  line-height: 1.2;
-}
-.scripture-book-info.empty { color: var(--ink-4); }
-.scripture-book-title { color: var(--ink); font-weight: 700; }
-.scripture-book-chips {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 5px;
-}
-.scripture-book-chips span {
-  color: var(--ink-3);
-  font-size: 10px;
-  font-weight: 750;
-  letter-spacing: .02em;
-  text-transform: uppercase;
-}
 .scripture-book-marker {
   display: inline-flex;
   min-width: 22px;
@@ -380,41 +351,6 @@ h1, h2, h3, p { margin: 0; }
 .taxonomy-book-detail {
   display: grid;
   gap: var(--s2);
-}
-.taxonomy-detail-strip {
-  display: flex;
-  min-height: 30px;
-  align-items: center;
-  gap: 6px;
-  overflow: hidden;
-}
-.taxonomy-detail-pill {
-  display: inline-flex;
-  min-width: 0;
-  max-width: 100%;
-  align-items: center;
-  gap: 6px;
-  border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
-  border-radius: 999px;
-  padding: 5px 9px;
-  background: color-mix(in srgb, var(--panel) 70%, transparent);
-}
-.taxonomy-detail-pill span {
-  flex: 0 0 auto;
-  color: var(--ink-4);
-  font-size: 9px;
-  font-weight: 760;
-  letter-spacing: .03em;
-  text-transform: uppercase;
-}
-.taxonomy-detail-pill strong {
-  min-width: 0;
-  overflow: hidden;
-  color: var(--ink);
-  font-size: 12px;
-  font-weight: 720;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 .bible-reader {
   display: grid;

@@ -1483,16 +1483,7 @@ function renderDetail() {
           <h2 id="editorSongTitle">
             <span>${escapeHtml(song.title || "Untitled Song")}</span>
           </h2>
-          <div class="editor-meta-stack">
-            <div class="editor-title-meta${titleMetaLine ? "" : " empty"}">${escapeHtml(titleMetaLine || "Metadata")}</div>
-            <div class="editor-support-meta${supportMetaItems.length ? "" : " empty"}">
-              ${
-                supportMetaItems.length
-                  ? supportMetaItems.map((item) => `<span>${escapeHtml(item)}</span>`).join("")
-                  : `<span>Support metadata</span>`
-              }
-            </div>
-          </div>
+          ${renderEditorMeta(titleMetaLine, supportMetaItems)}
         </div>
         <div class="head-actions">
           <span class="dirty-pill" ${hasDirtyChanges() ? "" : "hidden"}>Unsaved changes</span>
@@ -1509,6 +1500,22 @@ function renderDetail() {
 
   refreshIcons();
   resizeFormTextareas();
+}
+
+function renderEditorMeta(primary, items = []) {
+  const supportItems = items.filter(Boolean);
+  return `
+    <div class="editor-meta-stack">
+      <div class="editor-title-meta${primary ? "" : " empty"}">${escapeHtml(primary || "Metadata")}</div>
+      <div class="editor-support-meta${supportItems.length ? "" : " empty"}">
+        ${
+          supportItems.length
+            ? supportItems.map((item) => `<span>${escapeHtml(item)}</span>`).join("")
+            : `<span>Support metadata</span>`
+        }
+      </div>
+    </div>
+  `;
 }
 
 function renderScriptureDetail() {
@@ -1545,6 +1552,8 @@ function renderScriptureDetail() {
   }
 
   if (!scripture) {
+    const titleMetaLine = selectedBook?.canonicalEnglishTitle || `${getBibleBooks().length} books`;
+    const supportMetaItems = scriptureBookSupportMetaItems(selectedBook);
     refs.detailPane.innerHTML = `
       <div class="editor-shell scripture-editor scripture-taxonomy-editor">
         <header class="editor-head">
@@ -1553,9 +1562,7 @@ function renderScriptureDetail() {
               <span>${escapeHtml(selectedBook?.koreanName || "Bible Books")}</span>
               ${renderScriptureBookMarker(selectedBook)}
             </h2>
-            <div class="editor-meta-stack compact">
-              <div class="editor-title-meta">${escapeHtml(selectedBook?.canonicalEnglishTitle || `${getBibleBooks().length} books`)}</div>
-            </div>
+            ${renderEditorMeta(titleMetaLine, supportMetaItems)}
           </div>
         </header>
         <section class="panel scripture-panel">
@@ -1567,6 +1574,12 @@ function renderScriptureDetail() {
     return;
   }
 
+  const titleMetaLine = scripture.reference || selectedBook?.canonicalEnglishTitle || "";
+  const supportMetaItems = [
+    scripture.translation,
+    selectedBook?.koreanName && scripture.book !== selectedBook.koreanName ? selectedBook.koreanName : "",
+    selectedBook?.division,
+  ].filter(Boolean);
   refs.detailPane.innerHTML = `
     <div class="editor-shell scripture-editor">
       <header class="editor-head">
@@ -1574,12 +1587,7 @@ function renderScriptureDetail() {
           <h2 id="editorSongTitle">
             <span>${escapeHtml(scripture.title || "Untitled Scripture")}</span>
           </h2>
-          <div class="editor-meta-stack">
-            <div class="editor-title-meta${scripture.reference ? "" : " empty"}">${escapeHtml(scripture.reference || "Reference")}</div>
-            <div class="editor-support-meta${scripture.translation ? "" : " empty"}">
-              ${scripture.translation ? `<span>${escapeHtml(scripture.translation)}</span>` : `<span>Translation</span>`}
-            </div>
-          </div>
+          ${renderEditorMeta(titleMetaLine, supportMetaItems)}
         </div>
         <div class="head-actions">
           <span class="dirty-pill" ${hasDirtyChanges() ? "" : "hidden"}>Unsaved changes</span>
@@ -1601,7 +1609,6 @@ function renderScriptureDetail() {
           ${renderScriptureInput("Reference", "reference", scripture.reference)}
           ${renderScriptureInput("Translation", "translation", scripture.translation)}
         </div>
-        ${renderScriptureBookInfo(selectedBook)}
         ${renderScriptureTextarea("Passage", "text", scripture.text)}
         <div class="scripture-foot">
           <span>${scriptureBlockCount(scripture)} ${scriptureBlockCount(scripture) === 1 ? "block" : "blocks"}</span>
@@ -1874,24 +1881,19 @@ function renderBibleBookOptions(testament, selectedCode) {
   `;
 }
 
-function renderScriptureBookInfo(book) {
-  const chips = book
-    ? [book.testament, book.division, book.jewishCategory, book.author ? `Author: ${book.author}` : ""].filter(Boolean)
-    : ["Book taxonomy"];
-  return `
-    <div class="scripture-book-info${book ? "" : " empty"}">
-      <span class="scripture-book-title">${escapeHtml(book?.canonicalEnglishTitle || "Select a book")}</span>
-      <span class="scripture-book-chips">
-        ${chips.map((chip) => `<span>${escapeHtml(chip)}</span>`).join("")}
-      </span>
-    </div>
-  `;
-}
-
 function renderScriptureBookMarker(book) {
   if (!book?.shortName) return "";
   const label = book.koreanName || book.canonicalEnglishTitle || book.englishName || book.code;
   return `<span class="scripture-book-marker" title="${escapeAttr(label)}">${escapeHtml(book.shortName)}</span>`;
+}
+
+function scriptureBookSupportMetaItems(book) {
+  if (!book) return [];
+  return [
+    book.division,
+    book.jewishCategory,
+    book.author ? `Author ${book.author}` : "",
+  ].filter(Boolean);
 }
 
 function renderScriptureBookTaxonomy() {
@@ -1911,22 +1913,8 @@ function renderScriptureBookTaxonomy() {
 }
 
 function renderScriptureBookDetail(book) {
-  const details = [
-    ["Christian", book.division],
-    ["Jewish", book.jewishCategory],
-    ["Author", book.author],
-  ].filter(([, value]) => value);
-
   return `
     <section class="taxonomy-book-detail">
-      <div class="taxonomy-detail-strip" aria-label="Book metadata">
-        ${details.map(([label, value]) => `
-          <span class="taxonomy-detail-pill">
-            <span>${escapeHtml(label)}</span>
-            <strong>${escapeHtml(value)}</strong>
-          </span>
-        `).join("")}
-      </div>
       ${renderBibleReader(book)}
     </section>
   `;
