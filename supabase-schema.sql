@@ -4,10 +4,38 @@ create table if not exists public.mindex_songs (
   id uuid primary key default gen_random_uuid(),
   title text not null,
   alt_titles text[] not null default '{}',
+  subtitle text,
+  original_title text,
   hymn_no text,
+  other_title text,
+  praise_types text[] not null default '{}',
+  artist text,
+  lyricist text,
+  composer text,
+  translator text,
+  album text,
+  track text,
+  scripture_refs text[] not null default '{}',
   memo text,
   is_active boolean not null default true
 );
+
+alter table public.mindex_songs
+  add column if not exists subtitle text;
+
+alter table public.mindex_songs
+  add column if not exists original_title text;
+
+alter table public.mindex_songs
+  add column if not exists other_title text,
+  add column if not exists praise_types text[] not null default '{}',
+  add column if not exists artist text,
+  add column if not exists lyricist text,
+  add column if not exists composer text,
+  add column if not exists translator text,
+  add column if not exists album text,
+  add column if not exists track text,
+  add column if not exists scripture_refs text[] not null default '{}';
 
 create index if not exists mindex_songs_title_idx
   on public.mindex_songs (title);
@@ -82,18 +110,18 @@ values
   ('JOS', 6, 'Old Testament', 'Historical Books', '여호수아', 'Joshua', 'Book of Joshua', '수', array['Joshua','수','Book of Joshua'], 'Former Prophets, Nevi’im', 'Joshua'),
   ('JDG', 7, 'Old Testament', 'Historical Books', '사사기', 'Judges', 'Book of Judges', '삿', array['Judges','삿','Book of Judges'], 'Former Prophets, Nevi’im', 'Samuel'),
   ('RUT', 8, 'Old Testament', 'Historical Books', '룻기', 'Ruth', 'Book of Ruth', '룻', array['Ruth','룻','Book of Ruth'], 'Five Megillot, Ketuvim', 'Samuel'),
-  ('1SA', 9, 'Old Testament', 'Historical Books', '사무엘상', '1 Samuel', 'First Book of Samuel', '삼상', array['1 Samuel','삼상','First Book of Samuel'], 'Former Prophets, Nevi’im', 'Samuel'),
-  ('2SA', 10, 'Old Testament', 'Historical Books', '사무엘하', '2 Samuel', 'Second Book of Samuel', '삼하', array['2 Samuel','삼하','Second Book of Samuel'], 'Former Prophets, Nevi’im', 'Samuel'),
+  ('1SA', 9, 'Old Testament', 'Historical Books', '사무엘상', '1 Samuel', 'First Book of Samuel', '삼상', array['1 Samuel','삼상','First Book of Samuel'], 'Former Prophets, Nevi’im', 'Samuel, Gad, Nathan'),
+  ('2SA', 10, 'Old Testament', 'Historical Books', '사무엘하', '2 Samuel', 'Second Book of Samuel', '삼하', array['2 Samuel','삼하','Second Book of Samuel'], 'Former Prophets, Nevi’im', 'Samuel, Gad, Nathan'),
   ('1KI', 11, 'Old Testament', 'Historical Books', '열왕기상', '1 Kings', 'First Book of Kings', '왕상', array['1 Kings','왕상','First Book of Kings'], 'Former Prophets, Nevi’im', 'Jeremiah'),
   ('2KI', 12, 'Old Testament', 'Historical Books', '열왕기하', '2 Kings', 'Second Book of Kings', '왕하', array['2 Kings','왕하','Second Book of Kings'], 'Former Prophets, Nevi’im', 'Jeremiah'),
-  ('1CH', 13, 'Old Testament', 'Historical Books', '역대상', '1 Chronicles', 'First Book of Chronicles', '대상', array['1 Chronicles','대상','First Book of Chronicles'], 'Historical Books, Ketuvim', 'Chronicler, Jeremiah'),
-  ('2CH', 14, 'Old Testament', 'Historical Books', '역대하', '2 Chronicles', 'Second Book of Chronicles', '대하', array['2 Chronicles','대하','Second Book of Chronicles'], 'Historical Books, Ketuvim', 'Chronicler, Jeremiah'),
-  ('EZR', 15, 'Old Testament', 'Historical Books', '에스라', 'Ezra', 'Book of Ezra', '스', array['Ezra','스','Book of Ezra'], 'Historical Books, Ketuvim', 'Chronicler, Ezra'),
-  ('NEH', 16, 'Old Testament', 'Historical Books', '느헤미야', 'Nehemiah', 'Book of Nehemiah', '느', array['Nehemiah','느','Book of Nehemiah'], 'Historical Books, Ketuvim', 'Chronicler, Nehemiah'),
-  ('EST', 17, 'Old Testament', 'Historical Books', '에스더', 'Esther', 'Book of Esther', '에', array['Esther','에','Book of Esther'], 'Five Megillot, Ketuvim', '?'),
-  ('JOB', 18, 'Old Testament', 'Poetic Books', '욥기', 'Job', 'Book of Job', '욥', array['Job','욥','Book of Job'], 'Ketuvim, Poetic Books', '?'),
-  ('PSA', 19, 'Old Testament', 'Poetic Books', '시편', 'Psalms', 'Book of Psalms', '시', array['Psalms','시','Book of Psalms','Psalm'], 'Ketuvim, Poetic Books', 'David'),
-  ('PRO', 20, 'Old Testament', 'Poetic Books', '잠언', 'Proverbs', 'Book of Proverbs', '잠', array['Proverbs','잠','Book of Proverbs'], 'Ketuvim, Poetic Books', 'Solomon'),
+  ('1CH', 13, 'Old Testament', 'Historical Books', '역대상', '1 Chronicles', 'First Book of Chronicles', '대상', array['1 Chronicles','대상','First Book of Chronicles'], 'Historical Books, Ketuvim', 'Ezra'),
+  ('2CH', 14, 'Old Testament', 'Historical Books', '역대하', '2 Chronicles', 'Second Book of Chronicles', '대하', array['2 Chronicles','대하','Second Book of Chronicles'], 'Historical Books, Ketuvim', 'Ezra'),
+  ('EZR', 15, 'Old Testament', 'Historical Books', '에스라', 'Ezra', 'Book of Ezra', '스', array['Ezra','스','Book of Ezra'], 'Historical Books, Ketuvim', 'Ezra'),
+  ('NEH', 16, 'Old Testament', 'Historical Books', '느헤미야', 'Nehemiah', 'Book of Nehemiah', '느', array['Nehemiah','느','Book of Nehemiah'], 'Historical Books, Ketuvim', 'Nehemiah'),
+  ('EST', 17, 'Old Testament', 'Historical Books', '에스더', 'Esther', 'Book of Esther', '에', array['Esther','에','Book of Esther'], 'Five Megillot, Ketuvim', 'Unknown'),
+  ('JOB', 18, 'Old Testament', 'Poetic Books', '욥기', 'Job', 'Book of Job', '욥', array['Job','욥','Book of Job'], 'Ketuvim, Poetic Books', 'Unknown'),
+  ('PSA', 19, 'Old Testament', 'Poetic Books', '시편', 'Psalms', 'Book of Psalms', '시', array['Psalms','시','Book of Psalms','Psalm'], 'Ketuvim, Poetic Books', 'David and others'),
+  ('PRO', 20, 'Old Testament', 'Poetic Books', '잠언', 'Proverbs', 'Book of Proverbs', '잠', array['Proverbs','잠','Book of Proverbs'], 'Ketuvim, Poetic Books', 'Solomon and others'),
   ('ECC', 21, 'Old Testament', 'Poetic Books', '전도서', 'Ecclesiastes', 'Ecclesiastes', '전', array['Ecclesiastes','전','Ecclesiastes'], 'Five Megillot, Ketuvim', 'Solomon'),
   ('SNG', 22, 'Old Testament', 'Poetic Books', '아가', 'Song of Songs', 'Song of Songs', '아', array['Song of Songs','아','Song of Songs','Song of Solomon'], 'Five Megillot, Ketuvim', 'Solomon'),
   ('ISA', 23, 'Old Testament', 'Major Prophets, Prophetic Books', '이사야', 'Isaiah', 'Book of Isaiah', '사', array['Isaiah','사','Book of Isaiah'], 'Latter Prophets, Nevi’im', 'Isaiah'),
@@ -131,7 +159,7 @@ values
   ('2TI', 55, 'New Testament', 'Pauline Epistles', '디모데후서', '2 Timothy', 'Second Epistle to Timothy', '딤후', array['2 Timothy','딤후','Second Epistle to Timothy'], '', 'Paul'),
   ('TIT', 56, 'New Testament', 'Pauline Epistles', '디도서', 'Titus', 'Epistle to Titus', '딛', array['Titus','딛','Epistle to Titus'], '', 'Paul'),
   ('PHM', 57, 'New Testament', 'Pauline Epistles', '빌레몬서', 'Philemon', 'Epistle to Philemon', '몬', array['Philemon','몬','Epistle to Philemon'], '', 'Paul'),
-  ('HEB', 58, 'New Testament', 'Pauline Epistles', '히브리서', 'Hebrews', 'Epistle to the Hebrews', '히', array['Hebrews','히','Epistle to the Hebrews'], '', '?'),
+  ('HEB', 58, 'New Testament', 'General Epistles', '히브리서', 'Hebrews', 'Epistle to the Hebrews', '히', array['Hebrews','히','Epistle to the Hebrews'], '', 'Unknown'),
   ('JAS', 59, 'New Testament', 'Catholic Epistles', '야고보서', 'James', 'Epistle of James', '약', array['James','약','Epistle of James'], '', 'James'),
   ('1PE', 60, 'New Testament', 'Catholic Epistles', '베드로전서', '1 Peter', 'First Epistle of Peter', '벧전', array['1 Peter','벧전','First Epistle of Peter'], '', 'Peter'),
   ('2PE', 61, 'New Testament', 'Catholic Epistles', '베드로후서', '2 Peter', 'Second Epistle of Peter', '벧후', array['2 Peter','벧후','Second Epistle of Peter'], '', 'Peter'),

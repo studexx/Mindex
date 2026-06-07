@@ -4,25 +4,19 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>MINDEX</title>
-    <link rel="stylesheet" href="./styles.css?v=mindex-ux-10" />
+    <link rel="stylesheet" href="./styles.css?v=mindex-service-29" />
   </head>
   <body>
     <div class="app-shell">
       <header class="topbar">
-        <div class="brand-block">
-          <div class="brand-mark">M</div>
-          <div class="brand-copy">
-            <h1>MINDEX</h1>
-            <p>Ministry Index</p>
-          </div>
-        </div>
+        <h1 class="brand-name">MINDE<span class="brand-accent">X</span></h1>
         <nav id="moduleSwitcher" class="module-switcher" aria-label="Mindex modules">
           <button class="module-tab active" type="button" data-module="praise">Praise</button>
           <button class="module-tab" type="button" data-module="scripture">Scripture</button>
+          <button class="module-tab" type="button" data-module="service">Service</button>
         </nav>
 
         <div class="topbar-actions">
-          <span id="connectionStatus" class="status-pill">Disconnected</span>
           <button id="themeBtn" class="icon-btn" type="button" title="Toggle dark mode">
             <i data-lucide="moon"></i>
           </button>
@@ -33,6 +27,7 @@
           <button id="saveAllBtn" class="icon-btn primary" type="button" title="Save song" aria-label="Save song" disabled>
             <i data-lucide="save"></i>
           </button>
+          <span id="connectionStatus" class="status-icon" title="Disconnected" hidden></span>
         </div>
       </header>
 
@@ -42,10 +37,10 @@
             <i data-lucide="search"></i>
             <input id="searchInput" type="search" placeholder="Search title, lyrics, #..." autocomplete="off" />
           </div>
-          <div id="praiseFilter" class="praise-filter" aria-label="Praise filter">
-            <button class="filter-tab active" type="button" data-praise-filter="all">All</button>
-            <button class="filter-tab" type="button" data-praise-filter="hymns">Hymns</button>
-            <button class="filter-tab" type="button" data-praise-filter="ccm">CCM</button>
+          <div id="listFilter" class="list-filter" aria-label="List filter">
+            <button class="filter-tab active" type="button" data-list-filter="all">All</button>
+            <button class="filter-tab" type="button" data-list-filter="hymns">Hymns</button>
+            <button class="filter-tab" type="button" data-list-filter="ccm">CCM</button>
           </div>
           <div id="songCount" class="sidebar-count">0 songs</div>
           <div id="songList" class="song-list" tabindex="0"></div>
@@ -59,6 +54,6 @@
 
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="./app.js?v=mindex-ux-10"></script>
+    <script src="./app.js?v=mindex-service-29"></script>
   </body>
 </html>

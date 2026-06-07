@@ -15,74 +15,157 @@ const FORM_ADD_LABELS = {
 };
 
 const PRAISE_TYPES = ["hymn", "ccm"];
+const PROMOTED_SONG_METADATA_COLUMNS = {
+  otherTitle: "other_title",
+  praiseTypes: "praise_types",
+  artist: "artist",
+  lyricist: "lyricist",
+  composer: "composer",
+  translator: "translator",
+  album: "album",
+  track: "track",
+};
+const META_SEPARATOR = "; ";
+const BIBLE_TEXT_SEARCH_PAGE_SIZE = 50;
 
-const BIBLE_CHAPTER_COUNTS = {
-  GEN: 50,
-  EXO: 40,
-  LEV: 27,
-  NUM: 36,
-  DEU: 34,
-  JOS: 24,
-  JDG: 21,
-  RUT: 4,
-  "1SA": 31,
-  "2SA": 24,
-  "1KI": 22,
-  "2KI": 25,
-  "1CH": 29,
-  "2CH": 36,
-  EZR: 10,
-  NEH: 13,
-  EST: 10,
-  JOB: 42,
-  PSA: 150,
-  PRO: 31,
-  ECC: 12,
-  SNG: 8,
-  ISA: 66,
-  JER: 52,
-  LAM: 5,
-  EZK: 48,
-  DAN: 12,
-  HOS: 14,
-  JOL: 3,
-  AMO: 9,
-  OBA: 1,
-  JON: 4,
-  MIC: 7,
-  NAM: 3,
-  HAB: 3,
-  ZEP: 3,
-  HAG: 2,
-  ZEC: 14,
-  MAL: 4,
-  MAT: 28,
-  MRK: 16,
-  LUK: 24,
-  JHN: 21,
-  ACT: 28,
-  ROM: 16,
-  "1CO": 16,
-  "2CO": 13,
-  GAL: 6,
-  EPH: 6,
-  PHP: 4,
-  COL: 4,
-  "1TH": 5,
-  "2TH": 3,
-  "1TI": 6,
-  "2TI": 4,
-  TIT: 3,
-  PHM: 1,
-  HEB: 13,
-  JAS: 5,
-  "1PE": 5,
-  "2PE": 3,
-  "1JN": 5,
-  "2JN": 1,
-  "3JN": 1,
-  JUD: 1,
-  REV: 22,
+const BIBLE_CHAPTER_COUNTS = {};
+
+const KOREAN_BIBLE_BOOK_ABBREVIATIONS = {
+  GEN: "창",
+  EXO: "출",
+  LEV: "레",
+  NUM: "민",
+  DEU: "신",
+  JOS: "수",
+  JDG: "삿",
+  RUT: "룻",
+  "1SA": "삼상",
+  "2SA": "삼하",
+  "1KI": "왕상",
+  "2KI": "왕하",
+  "1CH": "대상",
+  "2CH": "대하",
+  EZR: "스",
+  NEH: "느",
+  EST: "에",
+  JOB: "욥",
+  PSA: "시",
+  PRO: "잠",
+  ECC: "전",
+  SNG: "아",
+  ISA: "사",
+  JER: "렘",
+  LAM: "애",
+  EZK: "겔",
+  DAN: "단",
+  HOS: "호",
+  JOL: "욜",
+  AMO: "암",
+  OBA: "옵",
+  JON: "욘",
+  MIC: "미",
+  NAM: "나",
+  HAB: "합",
+  ZEP: "습",
+  HAG: "학",
+  ZEC: "슥",
+  MAL: "말",
+  MAT: "마",
+  MRK: "막",
+  LUK: "눅",
+  JHN: "요",
+  ACT: "행",
+  ROM: "롬",
+  "1CO": "고전",
+  "2CO": "고후",
+  GAL: "갈",
+  EPH: "엡",
+  PHP: "빌",
+  COL: "골",
+  "1TH": "살전",
+  "2TH": "살후",
+  "1TI": "딤전",
+  "2TI": "딤후",
+  TIT: "딛",
+  PHM: "몬",
+  HEB: "히",
+  JAS: "약",
+  "1PE": "벧전",
+  "2PE": "벧후",
+  "1JN": "요일",
+  "2JN": "요이",
+  "3JN": "요삼",
+  JUD: "유",
+  REV: "계",
+};
+
+const ENGLISH_BIBLE_BOOK_ABBREVIATIONS = {
+  GEN: "Gen",
+  EXO: "Exod",
+  LEV: "Lev",
+  NUM: "Num",
+  DEU: "Deut",
+  JOS: "Josh",
+  JDG: "Judg",
+  RUT: "Ruth",
+  "1SA": "1 Sam",
+  "2SA": "2 Sam",
+  "1KI": "1 Kgs",
+  "2KI": "2 Kgs",
+  "1CH": "1 Chr",
+  "2CH": "2 Chr",
+  EZR: "Ezra",
+  NEH: "Neh",
+  EST: "Esth",
+  JOB: "Job",
+  PSA: "Ps",
+  PRO: "Prov",
+  ECC: "Eccl",
+  SNG: "Song",
+  ISA: "Isa",
+  JER: "Jer",
+  LAM: "Lam",
+  EZK: "Ezek",
+  DAN: "Dan",
+  HOS: "Hos",
+  JOL: "Joel",
+  AMO: "Amos",
+  OBA: "Obad",
+  JON: "Jonah",
+  MIC: "Mic",
+  NAM: "Nah",
+  HAB: "Hab",
+  ZEP: "Zeph",
+  HAG: "Hag",
+  ZEC: "Zech",
+  MAL: "Mal",
+  MAT: "Matt",
+  MRK: "Mark",
+  LUK: "Luke",
+  JHN: "John",
+  ACT: "Acts",
+  ROM: "Rom",
+  "1CO": "1 Cor",
+  "2CO": "2 Cor",
+  GAL: "Gal",
+  EPH: "Eph",
+  PHP: "Phil",
+  COL: "Col",
+  "1TH": "1 Thess",
+  "2TH": "2 Thess",
+  "1TI": "1 Tim",
+  "2TI": "2 Tim",
+  TIT: "Titus",
+  PHM: "Philem",
+  HEB: "Heb",
+  JAS: "Jas",
+  "1PE": "1 Pet",
+  "2PE": "2 Pet",
+  "1JN": "1 John",
+  "2JN": "2 John",
+  "3JN": "3 John",
+  JUD: "Jude",
+  REV: "Rev",
 };
 
 const BIBLE_BOOK_ALIASES = {
@@ -154,86 +237,7 @@ const BIBLE_BOOK_ALIASES = {
   REV: ["rev", "revelation", "re"],
 };
 
-const BIBLE_BOOKS = [
-  ["GEN", "창세기", "Genesis", "Old Testament", "Pentateuch", "Book of Genesis", "Torah", "Moses"],
-  ["EXO", "출애굽기", "Exodus", "Old Testament", "Pentateuch", "Book of Exodus", "Torah", "Moses"],
-  ["LEV", "레위기", "Leviticus", "Old Testament", "Pentateuch", "Book of Leviticus", "Torah", "Moses"],
-  ["NUM", "민수기", "Numbers", "Old Testament", "Pentateuch", "Book of Numbers", "Torah", "Moses"],
-  ["DEU", "신명기", "Deuteronomy", "Old Testament", "Pentateuch", "Book of Deuteronomy", "Torah", "Moses"],
-  ["JOS", "여호수아", "Joshua", "Old Testament", "Historical Books", "Book of Joshua", "Former Prophets, Nevi’im", "Joshua"],
-  ["JDG", "사사기", "Judges", "Old Testament", "Historical Books", "Book of Judges", "Former Prophets, Nevi’im", "Samuel"],
-  ["RUT", "룻기", "Ruth", "Old Testament", "Historical Books", "Book of Ruth", "Five Megillot, Ketuvim", "Samuel"],
-  ["1SA", "사무엘상", "1 Samuel", "Old Testament", "Historical Books", "First Book of Samuel", "Former Prophets, Nevi’im", "Samuel"],
-  ["2SA", "사무엘하", "2 Samuel", "Old Testament", "Historical Books", "Second Book of Samuel", "Former Prophets, Nevi’im", "Samuel"],
-  ["1KI", "열왕기상", "1 Kings", "Old Testament", "Historical Books", "First Book of Kings", "Former Prophets, Nevi’im", "Jeremiah"],
-  ["2KI", "열왕기하", "2 Kings", "Old Testament", "Historical Books", "Second Book of Kings", "Former Prophets, Nevi’im", "Jeremiah"],
-  ["1CH", "역대상", "1 Chronicles", "Old Testament", "Historical Books", "First Book of Chronicles", "Historical Books, Ketuvim", "Chronicler, Jeremiah"],
-  ["2CH", "역대하", "2 Chronicles", "Old Testament", "Historical Books", "Second Book of Chronicles", "Historical Books, Ketuvim", "Chronicler, Jeremiah"],
-  ["EZR", "에스라", "Ezra", "Old Testament", "Historical Books", "Book of Ezra", "Historical Books, Ketuvim", "Chronicler, Ezra"],
-  ["NEH", "느헤미야", "Nehemiah", "Old Testament", "Historical Books", "Book of Nehemiah", "Historical Books, Ketuvim", "Chronicler, Nehemiah"],
-  ["EST", "에스더", "Esther", "Old Testament", "Historical Books", "Book of Esther", "Five Megillot, Ketuvim", "?"],
-  ["JOB", "욥기", "Job", "Old Testament", "Poetic Books", "Book of Job", "Ketuvim, Poetic Books", "?"],
-  ["PSA", "시편", "Psalms", "Old Testament", "Poetic Books", "Book of Psalms", "Ketuvim, Poetic Books", "David"],
-  ["PRO", "잠언", "Proverbs", "Old Testament", "Poetic Books", "Book of Proverbs", "Ketuvim, Poetic Books", "Solomon"],
-  ["ECC", "전도서", "Ecclesiastes", "Old Testament", "Poetic Books", "Ecclesiastes", "Five Megillot, Ketuvim", "Solomon"],
-  ["SNG", "아가", "Song of Songs", "Old Testament", "Poetic Books", "Song of Songs", "Five Megillot, Ketuvim", "Solomon"],
-  ["ISA", "이사야", "Isaiah", "Old Testament", "Major Prophets, Prophetic Books", "Book of Isaiah", "Latter Prophets, Nevi’im", "Isaiah"],
-  ["JER", "예레미야", "Jeremiah", "Old Testament", "Major Prophets, Prophetic Books", "Book of Jeremiah", "Latter Prophets, Nevi’im", "Jeremiah"],
-  ["LAM", "예레미야애가", "Lamentations", "Old Testament", "Major Prophets, Prophetic Books", "Book of Lamentations", "Five Megillot, Ketuvim", "Jeremiah"],
-  ["EZK", "에스겔", "Ezekiel", "Old Testament", "Major Prophets, Prophetic Books", "Book of Ezekiel", "Latter Prophets, Nevi’im", "Ezekiel"],
-  ["DAN", "다니엘", "Daniel", "Old Testament", "Major Prophets, Prophetic Books", "Book of Daniel", "Historical Books, Ketuvim", "Daniel"],
-  ["HOS", "호세아", "Hosea", "Old Testament", "Minor Prophets, Prophetic Books", "Book of Hosea", "Latter Prophets, Nevi’im, Trei Asar", "Hosea"],
-  ["JOL", "요엘", "Joel", "Old Testament", "Minor Prophets, Prophetic Books", "Book of Joel", "Latter Prophets, Nevi’im, Trei Asar", "Joel"],
-  ["AMO", "아모스", "Amos", "Old Testament", "Minor Prophets, Prophetic Books", "Book of Amos", "Latter Prophets, Nevi’im, Trei Asar", "Amos"],
-  ["OBA", "오바댜", "Obadiah", "Old Testament", "Minor Prophets, Prophetic Books", "Book of Obadiah", "Latter Prophets, Nevi’im, Trei Asar", "Obadiah"],
-  ["JON", "요나", "Jonah", "Old Testament", "Minor Prophets, Prophetic Books", "Book of Jonah", "Latter Prophets, Nevi’im, Trei Asar", "Jonah"],
-  ["MIC", "미가", "Micah", "Old Testament", "Minor Prophets, Prophetic Books", "Book of Micah", "Latter Prophets, Nevi’im, Trei Asar", "Micah"],
-  ["NAM", "나훔", "Nahum", "Old Testament", "Minor Prophets, Prophetic Books", "Book of Nahum", "Latter Prophets, Nevi’im, Trei Asar", "Nahum"],
-  ["HAB", "하박국", "Habakkuk", "Old Testament", "Minor Prophets, Prophetic Books", "Book of Habakkuk", "Latter Prophets, Nevi’im, Trei Asar", "Habakkuk"],
-  ["ZEP", "스바냐", "Zephaniah", "Old Testament", "Minor Prophets, Prophetic Books", "Book of Zephaniah", "Latter Prophets, Nevi’im, Trei Asar", "Zephaniah"],
-  ["HAG", "학개", "Haggai", "Old Testament", "Minor Prophets, Prophetic Books", "Book of Haggai", "Latter Prophets, Nevi’im, Trei Asar", "Haggai"],
-  ["ZEC", "스가랴", "Zechariah", "Old Testament", "Minor Prophets, Prophetic Books", "Book of Zechariah", "Latter Prophets, Nevi’im, Trei Asar", "Zechariah"],
-  ["MAL", "말라기", "Malachi", "Old Testament", "Minor Prophets, Prophetic Books", "Book of Malachi", "Latter Prophets, Nevi’im, Trei Asar", "Malachi"],
-  ["MAT", "마태복음", "Matthew", "New Testament", "Gospels", "Gospel of Matthew", "", "Matthew"],
-  ["MRK", "마가복음", "Mark", "New Testament", "Gospels", "Gospel of Mark", "", "Mark"],
-  ["LUK", "누가복음", "Luke", "New Testament", "Gospels", "Gospel of Luke", "", "Luke"],
-  ["JHN", "요한복음", "John", "New Testament", "Gospels", "Gospel of John", "", "John"],
-  ["ACT", "사도행전", "Acts", "New Testament", "Acts", "Acts of the Apostles", "", "Luke"],
-  ["ROM", "로마서", "Romans", "New Testament", "Pauline Epistles", "Epistle to the Romans", "", "Paul"],
-  ["1CO", "고린도전서", "1 Corinthians", "New Testament", "Pauline Epistles", "First Epistle to the Corinthians", "", "Paul"],
-  ["2CO", "고린도후서", "2 Corinthians", "New Testament", "Pauline Epistles", "Second Epistle to the Corinthians", "", "Paul"],
-  ["GAL", "갈라디아서", "Galatians", "New Testament", "Pauline Epistles", "Epistle to the Galatians", "", "Paul"],
-  ["EPH", "에베소서", "Ephesians", "New Testament", "Pauline Epistles", "Epistle to the Ephesians", "", "Paul"],
-  ["PHP", "빌립보서", "Philippians", "New Testament", "Pauline Epistles", "Epistle to the Philippians", "", "Paul"],
-  ["COL", "골로새서", "Colossians", "New Testament", "Pauline Epistles", "Epistle to the Colossians", "", "Paul"],
-  ["1TH", "데살로니가전서", "1 Thessalonians", "New Testament", "Pauline Epistles", "First Epistle to the Thessalonians", "", "Paul"],
-  ["2TH", "데살로니가후서", "2 Thessalonians", "New Testament", "Pauline Epistles", "Second Epistle to the Thessalonians", "", "Paul"],
-  ["1TI", "디모데전서", "1 Timothy", "New Testament", "Pauline Epistles", "First Epistle to Timothy", "", "Paul"],
-  ["2TI", "디모데후서", "2 Timothy", "New Testament", "Pauline Epistles", "Second Epistle to Timothy", "", "Paul"],
-  ["TIT", "디도서", "Titus", "New Testament", "Pauline Epistles", "Epistle to Titus", "", "Paul"],
-  ["PHM", "빌레몬서", "Philemon", "New Testament", "Pauline Epistles", "Epistle to Philemon", "", "Paul"],
-  ["HEB", "히브리서", "Hebrews", "New Testament", "Pauline Epistles", "Epistle to the Hebrews", "", "?"],
-  ["JAS", "야고보서", "James", "New Testament", "Catholic Epistles", "Epistle of James", "", "James"],
-  ["1PE", "베드로전서", "1 Peter", "New Testament", "Catholic Epistles", "First Epistle of Peter", "", "Peter"],
-  ["2PE", "베드로후서", "2 Peter", "New Testament", "Catholic Epistles", "Second Epistle of Peter", "", "Peter"],
-  ["1JN", "요한일서", "1 John", "New Testament", "Catholic Epistles", "First Epistle of John", "", "John"],
-  ["2JN", "요한이서", "2 John", "New Testament", "Catholic Epistles", "Second Epistle of John", "", "John"],
-  ["3JN", "요한삼서", "3 John", "New Testament", "Catholic Epistles", "Third Epistle of John", "", "John"],
-  ["JUD", "유다서", "Jude", "New Testament", "Catholic Epistles", "Epistle of Jude", "", "Jude"],
-  ["REV", "요한계시록", "Revelation", "New Testament", "Apocalypse", "Book of Revelation", "", "John"],
-].map(([code, koreanName, englishName, testament, division, canonicalEnglishTitle, jewishCategory, author], index) => ({
-  code,
-  koreanName,
-  englishName,
-  testament,
-  division,
-  canonicalEnglishTitle,
-  jewishCategory,
-  author,
-  metadata: {},
-  chapterCount: BIBLE_CHAPTER_COUNTS[code] || 0,
-  sortOrder: index + 1,
-}));
+const BIBLE_BOOKS = [];
 
 const STORAGE = {
   url: "mindex.supabase.url",
@@ -242,8 +246,10 @@ const STORAGE = {
   module: "mindex.ui.module",
   praiseFilter: "mindex.ui.praiseFilter",
   scriptureFilter: "mindex.ui.scriptureFilter",
+  serviceFilter: "mindex.ui.serviceFilter",
   bibleTranslationId: "mindex.ui.bibleTranslationId",
   bibleChapter: "mindex.ui.bibleChapter",
+  bibleCopyReference: "mindex.ui.bibleCopyReference",
   selectedSongId: "mindex.ui.selectedSongId",
   selectedVersionId: "mindex.ui.selectedVersionId",
   selectedScriptureId: "mindex.ui.selectedScriptureId",
@@ -268,6 +274,15 @@ const state = {
   bibleTranslations: [],
   bibleBookVerses: [],
   bibleVerseCache: new Map(),
+  bibleTextSearchQuery: "",
+  bibleTextSearchAllResults: [],
+  bibleTextSearchResults: [],
+  bibleTextSearchLoading: false,
+  bibleTextSearchError: "",
+  bibleTextSearchRequestId: "",
+  bibleTextSearchTotal: null,
+  bibleTextSearchPage: 0,
+  applyingBrowserHistory: false,
   selectedSongId: null,
   selectedVersionId: null,
   selectedScriptureId: null,
@@ -276,8 +291,19 @@ const state = {
   selectedBibleChapter: 1,
   selectedBibleVerse: null,
   selectedBibleVerses: [],
+  lastSelectedBibleVerse: null,
+  bibleDragSelection: null,
+  suppressBibleVerseClick: false,
+  bibleCopyReference: true,
   praiseFilter: "all",
   scriptureFilter: "all",
+  serviceTypes: [],
+  services: [],
+  serviceItems: {},
+  selectedServiceTypeId: null,
+  selectedServiceId: null,
+  serviceFilter: "all",
+  serviceError: "",
   listScroll: {},
   forms: [],
   search: "",
@@ -288,14 +314,22 @@ const state = {
   scriptureError: "",
   bibleReaderError: "",
   bibleReaderLoading: false,
+  metadataPopupOpen: false,
   dirty: {
     song: false,
     forms: false,
     scripture: false,
+    service: false,
   },
 };
 
 const refs = {};
+const bibleBookLookupCache = {
+  books: null,
+  byCode: new Map(),
+  byName: new Map(),
+  byReferenceName: new Map(),
+};
 
 document.addEventListener("DOMContentLoaded", init);
 
@@ -308,12 +342,14 @@ function init() {
   bindStaticEvents();
   connectClient();
   render();
+  syncBrowserHistory({ replace: true });
 
   if (state.client) {
     loadSongs();
     loadScriptureBooks({ silent: true });
     loadScriptures({ silent: true });
     loadBibleTranslations({ silent: true });
+    loadServiceData({ silent: true });
   } else {
     showToast(state.connectionError || "Connection settings are missing from the link.", "error");
   }
@@ -327,8 +363,8 @@ function cacheRefs() {
   refs.newSongBtn = document.getElementById("newSongBtn");
   refs.saveAllBtn = document.getElementById("saveAllBtn");
   refs.searchInput = document.getElementById("searchInput");
-  refs.praiseFilter = document.getElementById("praiseFilter");
-  refs.praiseFilterButtons = [...document.querySelectorAll("[data-praise-filter]")];
+  refs.listFilter = document.getElementById("listFilter");
+  refs.listFilterButtons = [...document.querySelectorAll("[data-list-filter]")];
   refs.songCount = document.getElementById("songCount");
   refs.songList = document.getElementById("songList");
   refs.sidebar = document.querySelector(".sidebar");
@@ -347,24 +383,45 @@ function bindStaticEvents() {
   refs.searchInput.addEventListener("input", (event) => {
     saveCurrentListScroll();
     state.search = event.target.value;
+    if (shouldClearBibleTextSearchOnInput()) {
+      clearBibleTextSearch();
+    }
     renderSongList();
     if (state.module === "scripture") renderDetail();
+    if (state.module === "service") renderServiceDetail();
   });
   refs.searchInput.addEventListener("keydown", handleSearchKeydown);
-  refs.praiseFilter.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-praise-filter]");
+  refs.listFilter.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-list-filter]");
     if (!button) return;
     saveCurrentListScroll();
-    if (state.module === "scripture") {
-      state.scriptureFilter = button.dataset.praiseFilter;
+    if (state.module === "service") {
+      if (!confirmDiscardServiceChanges()) return;
+      state.serviceFilter = button.dataset.listFilter;
+      state.selectedServiceTypeId = null;
+      state.selectedServiceId = null;
+      render();
+      syncBrowserHistory();
+      return;
+    } else if (state.module === "scripture") {
+      state.scriptureFilter = button.dataset.listFilter;
       clearSelectedBookOutsideFilter();
     } else {
-      state.praiseFilter = button.dataset.praiseFilter;
+      state.praiseFilter = button.dataset.listFilter;
+      const selectedSong = getSelectedSong();
+      if (selectedSong && !state.dirty.forms) {
+        const preferredVersionId = getPreferredVersionId(selectedSong);
+        if (preferredVersionId && preferredVersionId !== state.selectedVersionId) {
+          state.selectedVersionId = preferredVersionId;
+          loadForms(preferredVersionId);
+        }
+      }
     }
     persistUiState();
     renderSongList();
-    renderPraiseFilter();
+    renderListFilter();
     if (state.module === "scripture") renderDetail();
+    syncBrowserHistory();
   });
   refs.songList.addEventListener("scroll", saveCurrentListScroll, { passive: true });
 
@@ -394,13 +451,34 @@ function bindStaticEvents() {
         selectScriptureBook(bookItem.dataset.bookCode);
       }
     }
+
+    const serviceTypeItem = event.target.closest("[data-service-type-id]");
+    if (serviceTypeItem) {
+      if (!confirmDiscardServiceChanges()) return;
+      state.selectedServiceTypeId = serviceTypeItem.dataset.serviceTypeId;
+      state.selectedServiceId = null;
+      renderServiceList();
+      renderServiceDetail();
+      syncBrowserHistory();
+      return;
+    }
+
+    const serviceItem = event.target.closest("[data-service-id]");
+    if (serviceItem) {
+      selectService(serviceItem.dataset.serviceId);
+      return;
+    }
   });
 
   refs.detailPane.addEventListener("click", handleDetailClick);
   refs.detailPane.addEventListener("keydown", handleDetailKeydown);
   refs.detailPane.addEventListener("input", handleDetailInput);
   refs.detailPane.addEventListener("change", handleDetailChange);
+  refs.detailPane.addEventListener("pointerdown", handleDetailPointerDown);
+  refs.detailPane.addEventListener("pointerover", handleDetailPointerOver);
+  window.addEventListener("pointerup", handleWindowPointerUp);
   window.addEventListener("mousedown", handleMouseSideButtonNavigation, { capture: true });
+  window.addEventListener("popstate", handleBrowserHistoryPop);
 
   SYSTEM_THEME_QUERY?.addEventListener("change", () => {
     if (!localStorage.getItem(STORAGE.theme)) applyTheme(readTheme());
@@ -429,6 +507,13 @@ function bindStaticEvents() {
     const isCopy = (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "c";
     if (isCopy && copySelectedBibleVersesFromShortcut(event)) return;
 
+    if (event.key === "Escape" && state.metadataPopupOpen) {
+      event.preventDefault();
+      state.metadataPopupOpen = false;
+      renderDetail();
+      return;
+    }
+
     handleSongNavigationKeydown(event);
     handleHorizontalNavigationKeydown(event);
   });
@@ -440,12 +525,20 @@ function bindStaticEvents() {
   });
 }
 
-function handleSearchKeydown(event) {
+async function handleSearchKeydown(event) {
   if (event.key !== "Enter" || state.module !== "scripture") return;
   const reference = parseBibleReference(state.search);
-  if (!reference) return;
   event.preventDefault();
-  navigateToBibleReference(reference);
+  if (reference) {
+    navigateToBibleReference(reference);
+    return;
+  }
+  const book = findBibleBookByReferenceName(state.search) || findBibleBookByName(state.search);
+  if (book) {
+    navigateToBibleBook(book);
+    return;
+  }
+  await runBibleTextSearch(state.search);
 }
 
 function handleSongNavigationKeydown(event) {
@@ -453,16 +546,37 @@ function handleSongNavigationKeydown(event) {
   if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
   if (shouldKeepArrowKeyInFocusedControl(event.target)) return;
 
+  const down = event.key === "ArrowDown";
+
+  if (state.module === "service") {
+    if (!confirmDiscardServiceChanges()) return;
+    const types = getFilteredServiceTypes();
+    if (!types.length) return;
+    const currentIndex = types.findIndex((t) => t.id === state.selectedServiceTypeId);
+    const nextIndex = down
+      ? Math.min(currentIndex < 0 ? 0 : currentIndex + 1, types.length - 1)
+      : Math.max(currentIndex < 0 ? types.length - 1 : currentIndex - 1, 0);
+    const next = types[nextIndex];
+    if (!next || next.id === state.selectedServiceTypeId) return;
+    event.preventDefault();
+    state.selectedServiceTypeId = next.id;
+    state.selectedServiceId = null;
+    renderServiceList();
+    renderServiceDetail();
+    syncBrowserHistory();
+    refs.songList.querySelector(".song-item.active")?.scrollIntoView({ block: "nearest" });
+    return;
+  }
+
   const items = state.module === "scripture" ? getFilteredBibleBooks() : getFilteredSongs();
   if (!items.length) return;
 
   const selectedId = state.module === "scripture" ? state.selectedBookCode : state.selectedSongId;
   const foundIndex = items.findIndex((item) => (state.module === "scripture" ? item.code : item.id) === selectedId);
-  const currentIndex = foundIndex >= 0 ? foundIndex : event.key === "ArrowDown" ? -1 : items.length;
-  const nextIndex =
-    event.key === "ArrowDown"
-      ? Math.min(currentIndex + 1, items.length - 1)
-      : Math.max(currentIndex - 1, 0);
+  const currentIndex = foundIndex >= 0 ? foundIndex : down ? -1 : items.length;
+  const nextIndex = down
+    ? Math.min(currentIndex + 1, items.length - 1)
+    : Math.max(currentIndex - 1, 0);
   const nextItem = items[nextIndex];
 
   event.preventDefault();
@@ -470,6 +584,9 @@ function handleSongNavigationKeydown(event) {
   if (!nextId || nextId === selectedId) return;
   if (state.module === "scripture") selectScriptureBook(nextId);
   else selectSong(nextItem.id);
+  requestAnimationFrame(() => {
+    refs.songList.querySelector(".song-item.active")?.scrollIntoView({ block: "nearest" });
+  });
 }
 
 function handleHorizontalNavigationKeydown(event) {
@@ -496,7 +613,22 @@ function handleMouseSideButtonNavigation(event) {
 function navigateHorizontal(delta) {
   if (!delta) return false;
   if (state.module === "scripture") return navigateBibleChapter(delta);
+  if (state.module === "service") return navigateServiceDate(delta);
   return navigatePraiseVersion(delta);
+}
+
+function navigateServiceDate(delta) {
+  if (!state.selectedServiceTypeId) return false;
+  if (!confirmDiscardServiceChanges()) return false;
+  const services = state.services.filter((s) => s.type_id === state.selectedServiceTypeId);
+  if (!services.length) return false;
+  const currentIndex = services.findIndex((s) => s.id === state.selectedServiceId);
+  const nextIndex = currentIndex < 0 ? (delta > 0 ? 0 : services.length - 1) : currentIndex + delta;
+  if (nextIndex < 0 || nextIndex >= services.length) return false;
+  const next = services[nextIndex];
+  if (!next || next.id === state.selectedServiceId) return false;
+  selectService(next.id);
+  return true;
 }
 
 function navigateBibleChapter(delta) {
@@ -561,11 +693,14 @@ function readUiState() {
   const moduleName = sessionStorage.getItem(STORAGE.module);
   const praiseFilter = sessionStorage.getItem(STORAGE.praiseFilter);
   const scriptureFilter = sessionStorage.getItem(STORAGE.scriptureFilter);
+  const serviceFilter = sessionStorage.getItem(STORAGE.serviceFilter);
   const bibleChapter = Number(sessionStorage.getItem(STORAGE.bibleChapter));
+  const bibleCopyReference = sessionStorage.getItem(STORAGE.bibleCopyReference);
 
-  if (["praise", "scripture"].includes(moduleName)) state.module = moduleName;
+  if (["praise", "scripture", "service"].includes(moduleName)) state.module = moduleName;
   if (["all", "hymns", "ccm"].includes(praiseFilter)) state.praiseFilter = praiseFilter;
   if (["all", "old", "new"].includes(scriptureFilter)) state.scriptureFilter = scriptureFilter;
+  if (["all", "public", "ministry"].includes(serviceFilter)) state.serviceFilter = serviceFilter;
 
   state.selectedSongId = sessionStorage.getItem(STORAGE.selectedSongId) || null;
   state.selectedVersionId = sessionStorage.getItem(STORAGE.selectedVersionId) || null;
@@ -573,23 +708,105 @@ function readUiState() {
   state.selectedBookCode = sessionStorage.getItem(STORAGE.selectedBookCode) || null;
   state.selectedBibleTranslationId = sessionStorage.getItem(STORAGE.bibleTranslationId) || null;
   state.selectedBibleChapter = Number.isFinite(bibleChapter) && bibleChapter > 0 ? bibleChapter : 1;
+  state.bibleCopyReference = bibleCopyReference !== "false";
 }
 
 function persistUiState() {
   sessionStorage.setItem(STORAGE.module, state.module);
   sessionStorage.setItem(STORAGE.praiseFilter, state.praiseFilter);
   sessionStorage.setItem(STORAGE.scriptureFilter, state.scriptureFilter);
+  sessionStorage.setItem(STORAGE.serviceFilter, state.serviceFilter);
   writeStorageValue(STORAGE.selectedSongId, state.selectedSongId);
   writeStorageValue(STORAGE.selectedVersionId, state.selectedVersionId);
   writeStorageValue(STORAGE.selectedScriptureId, state.selectedScriptureId);
   writeStorageValue(STORAGE.selectedBookCode, state.selectedBookCode);
   writeStorageValue(STORAGE.bibleTranslationId, state.selectedBibleTranslationId);
   writeStorageValue(STORAGE.bibleChapter, state.selectedBibleChapter > 0 ? String(state.selectedBibleChapter) : "");
+  sessionStorage.setItem(STORAGE.bibleCopyReference, String(state.bibleCopyReference));
 }
 
 function writeStorageValue(key, value) {
   if (value) sessionStorage.setItem(key, value);
   else sessionStorage.removeItem(key);
+}
+
+function currentBrowserHistorySnapshot() {
+  return {
+    module: state.module,
+    search: state.search,
+    praiseFilter: state.praiseFilter,
+    scriptureFilter: state.scriptureFilter,
+    serviceFilter: state.serviceFilter,
+    selectedSongId: state.selectedSongId,
+    selectedVersionId: state.selectedVersionId,
+    selectedScriptureId: state.selectedScriptureId,
+    selectedBookCode: state.selectedBookCode,
+    selectedBibleTranslationId: state.selectedBibleTranslationId,
+    selectedBibleChapter: state.selectedBibleChapter,
+    selectedBibleVerse: state.selectedBibleVerse,
+    selectedServiceTypeId: state.selectedServiceTypeId,
+    selectedServiceId: state.selectedServiceId,
+    bibleTextSearchQuery: state.bibleTextSearchQuery,
+    bibleTextSearchPage: state.bibleTextSearchPage,
+  };
+}
+
+function syncBrowserHistory({ replace = false } = {}) {
+  if (state.applyingBrowserHistory || !window.history?.pushState) return;
+  const snapshot = currentBrowserHistorySnapshot();
+  const current = history.state?.mindex;
+  if (current && JSON.stringify(current) === JSON.stringify(snapshot)) return;
+  history[replace ? "replaceState" : "pushState"]({ mindex: snapshot }, "", window.location.href);
+}
+
+async function handleBrowserHistoryPop(event) {
+  const snapshot = event.state?.mindex;
+  if (!snapshot) return;
+  if (hasDirtyChanges() && !confirm("Discard unsaved changes?")) {
+    syncBrowserHistory({ replace: true });
+    return;
+  }
+  await applyBrowserHistorySnapshot(snapshot);
+}
+
+async function applyBrowserHistorySnapshot(snapshot) {
+  state.applyingBrowserHistory = true;
+  try {
+    state.module = ["praise", "scripture", "service"].includes(snapshot.module) ? snapshot.module : "praise";
+    state.search = snapshot.search || "";
+    refs.searchInput.value = state.search;
+    if (["all", "hymns", "ccm"].includes(snapshot.praiseFilter)) state.praiseFilter = snapshot.praiseFilter;
+    if (["all", "old", "new"].includes(snapshot.scriptureFilter)) state.scriptureFilter = snapshot.scriptureFilter;
+    if (["all", "public", "ministry"].includes(snapshot.serviceFilter)) state.serviceFilter = snapshot.serviceFilter;
+    state.selectedSongId = snapshot.selectedSongId || null;
+    state.selectedVersionId = snapshot.selectedVersionId || null;
+    state.selectedScriptureId = snapshot.selectedScriptureId || null;
+    state.selectedBookCode = snapshot.selectedBookCode || null;
+    state.selectedBibleTranslationId = snapshot.selectedBibleTranslationId || state.selectedBibleTranslationId;
+    state.selectedBibleChapter = Number(snapshot.selectedBibleChapter) || 1;
+    state.selectedBibleVerse = Number(snapshot.selectedBibleVerse) || null;
+    state.selectedBibleVerses = state.selectedBibleVerse ? [state.selectedBibleVerse] : [];
+    state.lastSelectedBibleVerse = state.selectedBibleVerse || null;
+    state.selectedServiceTypeId = snapshot.selectedServiceTypeId || null;
+    state.selectedServiceId = snapshot.selectedServiceId || null;
+    clearBibleTextSearch();
+    state.bibleTextSearchQuery = snapshot.bibleTextSearchQuery || "";
+    state.bibleTextSearchPage = Math.max(0, Number(snapshot.bibleTextSearchPage) || 0);
+    persistUiState();
+    render();
+    if (state.module === "praise" && state.selectedVersionId) await loadForms(state.selectedVersionId);
+    if (state.module === "scripture" && state.bibleTextSearchQuery) {
+      state.search = state.bibleTextSearchQuery;
+      refs.searchInput.value = state.search;
+      await runBibleTextSearch(state.bibleTextSearchQuery, { page: state.bibleTextSearchPage });
+    } else if (state.module === "scripture" && state.selectedBookCode) {
+      await loadBibleBookVerses({ silent: true });
+      focusSelectedBibleVerseAfterRender();
+    }
+    if (state.module === "service" && state.selectedServiceId) await loadServiceItems(state.selectedServiceId);
+  } finally {
+    state.applyingBrowserHistory = false;
+  }
 }
 
 function readConfig() {
@@ -657,7 +874,7 @@ function connectClient() {
 }
 
 async function switchModule(moduleName) {
-  if (!["praise", "scripture"].includes(moduleName)) return;
+  if (!["praise", "scripture", "service"].includes(moduleName)) return;
   if (moduleName === state.module) return;
   if (hasDirtyChanges() && !confirm("Discard unsaved changes?")) return;
 
@@ -665,11 +882,14 @@ async function switchModule(moduleName) {
   state.module = moduleName;
   state.search = "";
   refs.searchInput.value = "";
+  clearBibleTextSearch();
   state.dirty.song = false;
   state.dirty.forms = false;
   state.dirty.scripture = false;
+  state.dirty.service = false;
   persistUiState();
   render();
+  syncBrowserHistory();
 
   if (moduleName === "scripture" && !state.scriptures.length && !state.scriptureError) {
     if (!state.scriptureBooks.length) await loadScriptureBooks();
@@ -678,6 +898,10 @@ async function switchModule(moduleName) {
 
   if (moduleName === "praise" && state.selectedSongId && state.selectedVersionId && !state.forms.length) {
     await loadForms(state.selectedVersionId);
+  }
+
+  if (moduleName === "service" && !state.serviceTypes.length && !state.serviceError) {
+    await loadServiceData();
   }
 }
 
@@ -723,7 +947,7 @@ async function loadSongs() {
   if (selectedSong) {
     const validVersionId = selectedSong.versions?.some((version) => version.id === state.selectedVersionId)
       ? state.selectedVersionId
-      : getDefaultVersionId(selectedSong);
+      : getPreferredVersionId(selectedSong);
     state.selectedVersionId = validVersionId;
     persistUiState();
     await loadForms(validVersionId);
@@ -798,6 +1022,64 @@ async function loadScriptureBooks({ silent = false } = {}) {
   }
 }
 
+async function loadServiceData({ silent = false } = {}) {
+  if (!requireClient()) {
+    state.serviceError = "No connection.";
+    render();
+    return;
+  }
+  try {
+    const typesRes = await state.client.from("mindex_service_types").select("*").order("sort_order");
+    if (typesRes.error) throw typesRes.error;
+    const servicesRes = await state.client.from("mindex_services").select("*").order("date");
+    if (servicesRes.error) throw servicesRes.error;
+    const itemsRes = await state.client
+      .from("mindex_service_items")
+      .select("id,service_id,sort_order,label,raw_title,song_id")
+      .order("service_id")
+      .order("sort_order");
+    if (itemsRes.error) throw itemsRes.error;
+    state.serviceTypes = typesRes.data || [];
+    state.services = servicesRes.data || [];
+    state.serviceItems = groupServiceItems(itemsRes.data || []);
+    state.dirty.service = false;
+    state.serviceError = "";
+    render();
+  } catch (err) {
+    console.error("[Service] loadServiceData failed:", err);
+    state.serviceError = err.message || String(err) || "Could not load service data.";
+    if (!silent && state.module === "service") showToast(state.serviceError, "error");
+    render();
+  }
+}
+
+function groupServiceItems(items) {
+  return items.reduce((grouped, item) => {
+    const serviceId = item.service_id;
+    if (!serviceId) return grouped;
+    if (!grouped[serviceId]) grouped[serviceId] = [];
+    grouped[serviceId].push(normalizeServiceItem(item));
+    return grouped;
+  }, {});
+}
+
+async function loadServiceItems(serviceId) {
+  if (!requireClient() || !serviceId) return;
+  if (state.serviceItems[serviceId]) return; // already loaded
+  try {
+    const { data, error } = await state.client
+      .from("mindex_service_items")
+      .select("*")
+      .eq("service_id", serviceId)
+      .order("sort_order");
+    if (error) throw error;
+    state.serviceItems[serviceId] = normalizeServiceItems(data || []);
+    renderServiceDetail();
+  } catch (err) {
+    showToast(err.message || "Could not load items.", "error");
+  }
+}
+
 async function loadBibleTranslations({ silent = false } = {}) {
   if (!requireClient()) return;
 
@@ -818,6 +1100,7 @@ async function loadBibleTranslations({ silent = false } = {}) {
       state.selectedBibleTranslationId = state.bibleTranslations[0].id;
     }
     persistUiState();
+    syncBrowserHistory({ replace: true });
     if (state.selectedBookCode && state.selectedBibleTranslationId) {
       await loadBibleBookVerses({ silent: true });
     } else if (state.module === "scripture") {
@@ -891,17 +1174,108 @@ async function loadBibleBookVerses({ silent = false } = {}) {
   }
 }
 
+async function runBibleTextSearch(value, options = {}) {
+  const query = String(value || "").trim();
+  if (!query) {
+    clearBibleTextSearch();
+    renderDetail();
+    return;
+  }
+  if (!requireClient()) return;
+  if (!state.bibleTranslations.length && !state.bibleReaderError) await loadBibleTranslations({ silent: true });
+
+  const page = Math.max(0, Number(options.page) || 0);
+  state.bibleTextSearchQuery = query;
+  state.bibleTextSearchAllResults = [];
+  state.bibleTextSearchResults = [];
+  state.bibleTextSearchError = "";
+  state.bibleTextSearchTotal = null;
+  state.bibleTextSearchPage = page;
+  state.selectedScriptureId = null;
+
+  if (!state.selectedBibleTranslationId) {
+    state.bibleTextSearchError = "No Bible translation is selected.";
+    renderDetail();
+    return;
+  }
+
+  const requestId = [state.selectedBibleTranslationId, query, Date.now()].join(":");
+  state.bibleTextSearchRequestId = requestId;
+  state.bibleTextSearchLoading = true;
+  persistUiState();
+  syncBrowserHistory();
+  renderDetail();
+
+  try {
+    const { rows, count } = await fetchBibleTextSearchRows(query, state.selectedBibleTranslationId);
+    if (state.bibleTextSearchRequestId !== requestId) return;
+    state.bibleTextSearchAllResults = rows.map(normalizeServerBibleVerse).sort(sortBibleVerseRows);
+    state.bibleTextSearchTotal = Number.isFinite(count) ? count : state.bibleTextSearchAllResults.length;
+    setBibleTextSearchPage(page);
+  } catch (error) {
+    if (state.bibleTextSearchRequestId !== requestId) return;
+    state.bibleTextSearchAllResults = [];
+    state.bibleTextSearchResults = [];
+    state.bibleTextSearchTotal = null;
+    state.bibleTextSearchError = error.message || "Bible text search failed.";
+  } finally {
+    if (state.bibleTextSearchRequestId === requestId) {
+      state.bibleTextSearchLoading = false;
+      renderDetail();
+    }
+  }
+}
+
+async function fetchBibleTextSearchRows(query, translationId) {
+  const pageSize = 1000;
+  const rows = [];
+  let totalCount = null;
+
+  for (let offset = 0; ; offset += pageSize) {
+    const { data, error, count } = await state.client
+      .from("mindex_bible_verses")
+      .select("id,book_code,chapter,verse,verse_end,text,section_title", { count: "exact" })
+      .eq("is_active", true)
+      .eq("translation_id", translationId)
+      .ilike("text", `%${escapePostgrestLikePattern(query)}%`)
+      .range(offset, offset + pageSize - 1);
+
+    if (error) throw error;
+    if (Number.isFinite(count)) totalCount = count;
+    rows.push(...(data || []));
+    if (!data?.length || data.length < pageSize || (Number.isFinite(totalCount) && rows.length >= totalCount)) break;
+  }
+
+  return { rows, count: Number.isFinite(totalCount) ? totalCount : rows.length };
+}
+
+function setBibleTextSearchPage(page) {
+  const total = state.bibleTextSearchAllResults.length;
+  const maxPage = Math.max(0, Math.ceil(total / BIBLE_TEXT_SEARCH_PAGE_SIZE) - 1);
+  state.bibleTextSearchPage = Math.min(Math.max(0, Number(page) || 0), maxPage);
+  const start = state.bibleTextSearchPage * BIBLE_TEXT_SEARCH_PAGE_SIZE;
+  state.bibleTextSearchResults = state.bibleTextSearchAllResults.slice(start, start + BIBLE_TEXT_SEARCH_PAGE_SIZE);
+}
+
+function changeBibleTextSearchPage(delta) {
+  if (!delta) return;
+  setBibleTextSearchPage(state.bibleTextSearchPage + delta);
+  syncBrowserHistory();
+  renderDetail();
+}
+
 async function selectSong(songId) {
   if (songId === state.selectedSongId) return;
   if (hasDirtyChanges() && !confirm("Discard unsaved changes?")) return;
 
   state.selectedSongId = songId;
-  state.selectedVersionId = getDefaultVersionId(getSelectedSong());
+  state.selectedVersionId = getPreferredVersionId(getSelectedSong());
   state.forms = [];
   state.dirty.song = false;
   state.dirty.forms = false;
   persistUiState();
   render();
+  syncBrowserHistory();
   focusSelectedItemAfterRender();
   await loadForms(state.selectedVersionId);
   focusSelectedItemAfterRender();
@@ -917,18 +1291,22 @@ async function selectScripture(scriptureId) {
   state.dirty.scripture = false;
   persistUiState();
   render();
+  syncBrowserHistory();
   focusSelectedItemAfterRender();
 }
 
 async function selectScriptureBook(bookCode, options = {}) {
   const nextChapter = Number(options.chapter) || 1;
   const nextVerse = Number(options.verse) || null;
+  clearBibleTextSearch();
   if (bookCode === state.selectedBookCode && !options.force) {
     if (nextChapter !== state.selectedBibleChapter || nextVerse !== state.selectedBibleVerse) {
       state.selectedBibleChapter = nextChapter;
       state.selectedBibleVerse = nextVerse;
       state.selectedBibleVerses = nextVerse ? [nextVerse] : [];
+      state.lastSelectedBibleVerse = nextVerse || null;
       persistUiState();
+      syncBrowserHistory();
       await loadBibleBookVerses({ silent: true });
       focusSelectedBibleVerseAfterRender();
     }
@@ -939,10 +1317,12 @@ async function selectScriptureBook(bookCode, options = {}) {
   state.selectedBibleChapter = nextChapter;
   state.selectedBibleVerse = nextVerse;
   state.selectedBibleVerses = nextVerse ? [nextVerse] : [];
+  state.lastSelectedBibleVerse = nextVerse || null;
   state.bibleBookVerses = [];
   state.dirty.scripture = false;
   persistUiState();
   render();
+  syncBrowserHistory();
   focusSelectedItemAfterRender();
   if (!state.bibleTranslations.length && !state.bibleReaderError) await loadBibleTranslations({ silent: true });
   await loadBibleBookVerses({ silent: true });
@@ -999,6 +1379,7 @@ async function createSong() {
 }
 
 async function createCurrentItem() {
+  if (state.module === "service") return;
   if (state.module === "scripture") {
     await createScripture();
     return;
@@ -1067,6 +1448,10 @@ async function deleteSelectedSong() {
 }
 
 async function saveAll() {
+  if (state.module === "service") {
+    await saveService();
+    return;
+  }
   if (state.module === "scripture") {
     await saveScripture();
     return;
@@ -1144,11 +1529,80 @@ async function saveScripture() {
   }
 }
 
+async function saveService() {
+  const service = state.services.find((svc) => svc.id === state.selectedServiceId);
+  if (!service || !requireClient() || state.saving) return;
+
+  const items = normalizeServiceItems(getServiceItems(service.id));
+  const invalid = items.find((item) => !String(item.raw_title || "").trim());
+  if (invalid) {
+    showToast("Service item text is required.", "error");
+    return;
+  }
+
+  state.saving = true;
+  updateSaveState();
+
+  try {
+    const { error: deleteError } = await state.client
+      .from("mindex_service_items")
+      .delete()
+      .eq("service_id", service.id);
+    if (deleteError) throw deleteError;
+
+    if (items.length) {
+      const rows = items.map((item, index) => ({
+        service_id: service.id,
+        sort_order: index + 1,
+        label: nullIfBlank(item.label),
+        raw_title: String(item.raw_title || "").trim(),
+        song_id: item.song_id || null,
+      }));
+      const { data, error } = await state.client
+        .from("mindex_service_items")
+        .insert(rows)
+        .select("id,service_id,sort_order,label,raw_title,song_id")
+        .order("sort_order");
+      if (error) throw error;
+      state.serviceItems[service.id] = normalizeServiceItems(data || []);
+    } else {
+      state.serviceItems[service.id] = [];
+    }
+
+    state.dirty.service = false;
+    showToast("Service saved.");
+    render();
+  } catch (error) {
+    showToast(error.message || "Service save failed.", "error");
+  } finally {
+    state.saving = false;
+    updateSaveState();
+  }
+}
+
 async function saveSongMeta(song) {
+  const metadata = normalizeSongMetadata(song.metadata);
+  const hasPromotedColumns = hasPromotedSongMetadataColumns(song);
+  const hasScriptureRefsColumn = hasSongColumn(song, "scripture_refs");
   const payload = {
-    title: song.title.trim(),
-    memo: serializeSongMemo(song),
+    title: cleanSongTitleForSave(song),
+    alt_titles: cleanList(song.alt_titles),
+    subtitle: nullIfBlank(song.subtitle),
+    original_title: nullIfBlank(song.original_title),
+    hymn_no: nullIfBlank(song.hymn_no),
+    memo: serializeSongMemo(song, {
+      omitPromotedMetadata: hasPromotedColumns,
+      omitScripture: hasScriptureRefsColumn,
+    }),
   };
+
+  if (hasPromotedColumns) {
+    Object.assign(payload, promotedSongMetadataPayload(song, metadata));
+  }
+
+  if (hasScriptureRefsColumn) {
+    payload.scripture_refs = cleanList(song.scripture);
+  }
 
   const { data, error } = await state.client
     .from("mindex_songs")
@@ -1179,6 +1633,61 @@ function writeFormsToSelectedVersion() {
 }
 
 function handleDetailClick(event) {
+  const copyServiceDraftButton = event.target.closest("[data-copy-service-draft]");
+  if (copyServiceDraftButton) {
+    copyServicePptDraft(copyServiceDraftButton.dataset.copyServiceDraft);
+    return;
+  }
+
+  const serviceItemAction = event.target.closest("[data-service-item-action]");
+  if (serviceItemAction) {
+    runServiceItemAction(
+      serviceItemAction.dataset.serviceItemAction,
+      Number(serviceItemAction.dataset.serviceItemIndex),
+      serviceItemAction.dataset.serviceItemLabel || "",
+      serviceItemAction.dataset.serviceItemTitle || "",
+    );
+    return;
+  }
+
+  const copyServiceButton = event.target.closest("[data-copy-service]");
+  if (copyServiceButton) {
+    copyService(copyServiceButton.dataset.copyService);
+    return;
+  }
+
+  const serviceTypeCard = event.target.closest("[data-select-service-type]");
+  if (serviceTypeCard) {
+    if (!confirmDiscardServiceChanges()) return;
+    state.selectedServiceTypeId = serviceTypeCard.dataset.selectServiceType;
+    state.selectedServiceId = null;
+    renderServiceList();
+    renderServiceDetail();
+    syncBrowserHistory();
+    return;
+  }
+
+  const serviceDateCard = event.target.closest(".service-date-card[data-service-id]");
+  if (serviceDateCard) {
+    selectService(serviceDateCard.dataset.serviceId);
+    renderServiceList();
+    return;
+  }
+
+  const closeMetadata = event.target.closest("[data-close-metadata]");
+  if (closeMetadata || (state.metadataPopupOpen && event.target.matches(".metadata-popover-layer"))) {
+    state.metadataPopupOpen = false;
+    renderDetail();
+    return;
+  }
+
+  const openMetadata = event.target.closest("[data-open-metadata]");
+  if (openMetadata) {
+    state.metadataPopupOpen = true;
+    renderDetail();
+    return;
+  }
+
   const bibleReaderAction = event.target.closest("[data-bible-reader-action]");
   if (bibleReaderAction) {
     changeBibleChapter(Number(bibleReaderAction.dataset.bibleReaderAction) || 0);
@@ -1191,9 +1700,34 @@ function handleDetailClick(event) {
     return;
   }
 
+  const copyBibleSearchResult = event.target.closest("[data-copy-bible-search-result]");
+  if (copyBibleSearchResult) {
+    copyBibleSearchResultAt(Number(copyBibleSearchResult.dataset.copyBibleSearchResult));
+    return;
+  }
+
+  const bibleSearchResult = event.target.closest("[data-bible-search-result]");
+  if (bibleSearchResult) {
+    navigateToBibleSearchResult(Number(bibleSearchResult.dataset.bibleSearchResult));
+    return;
+  }
+
+  const bibleSearchPage = event.target.closest("[data-bible-search-page]");
+  if (bibleSearchPage) {
+    changeBibleTextSearchPage(Number(bibleSearchPage.dataset.bibleSearchPage || 0));
+    return;
+  }
+
   const bibleVerse = event.target.closest("[data-bible-verse]");
   if (bibleVerse) {
-    selectBibleVerse(Number(bibleVerse.dataset.bibleVerse));
+    if (state.suppressBibleVerseClick) {
+      state.suppressBibleVerseClick = false;
+      return;
+    }
+    selectBibleVerse(Number(bibleVerse.dataset.bibleVerse), {
+      additive: event.metaKey || event.ctrlKey,
+      range: event.shiftKey,
+    });
     return;
   }
 
@@ -1205,7 +1739,7 @@ function handleDetailClick(event) {
 
   const addVersionButton = event.target.closest("[data-add-version]");
   if (addVersionButton) {
-    addVersion();
+    addVersion(addVersionButton.dataset.sourceVersionId);
     return;
   }
 
@@ -1240,7 +1774,17 @@ function handleDetailKeydown(event) {
   const bibleVerse = event.target.closest("[data-bible-verse]");
   if (bibleVerse) {
     event.preventDefault();
-    selectBibleVerse(Number(bibleVerse.dataset.bibleVerse));
+    selectBibleVerse(Number(bibleVerse.dataset.bibleVerse), {
+      additive: event.metaKey || event.ctrlKey,
+      range: event.shiftKey,
+    });
+    return;
+  }
+
+  const bibleSearchResult = event.target.closest("[data-bible-search-result]");
+  if (bibleSearchResult) {
+    event.preventDefault();
+    navigateToBibleSearchResult(Number(bibleSearchResult.dataset.bibleSearchResult));
     return;
   }
 
@@ -1251,7 +1795,55 @@ function handleDetailKeydown(event) {
   selectVersion(versionTarget.dataset.versionId);
 }
 
+function handleDetailPointerDown(event) {
+  if (state.module !== "scripture" || event.button !== 0) return;
+  if (event.target.closest("button, input, textarea, select, a")) return;
+
+  const bibleVerse = event.target.closest("[data-bible-verse]");
+  if (!bibleVerse) return;
+
+  const verse = Number(bibleVerse.dataset.bibleVerse);
+  if (!verse) return;
+  state.bibleDragSelection = {
+    start: verse,
+    last: verse,
+    additive: event.metaKey || event.ctrlKey,
+    base: new Set(state.selectedBibleVerses),
+    moved: false,
+  };
+}
+
+function handleDetailPointerOver(event) {
+  const drag = state.bibleDragSelection;
+  if (!drag) return;
+  const bibleVerse = event.target.closest("[data-bible-verse]");
+  if (!bibleVerse) return;
+
+  const verse = Number(bibleVerse.dataset.bibleVerse);
+  if (!verse || verse === drag.last) return;
+  drag.last = verse;
+  drag.moved = true;
+  applyBibleVerseDragSelection(drag);
+}
+
+function handleWindowPointerUp() {
+  const drag = state.bibleDragSelection;
+  if (!drag) return;
+  state.suppressBibleVerseClick = drag.moved;
+  if (drag.moved) {
+    state.lastSelectedBibleVerse = drag.start;
+    state.selectedBibleVerse = state.selectedBibleVerses[0] || null;
+  }
+  state.bibleDragSelection = null;
+}
+
 function handleDetailInput(event) {
+  const serviceField = event.target.closest("[data-service-item-field]");
+  if (serviceField) {
+    updateServiceItemField(serviceField);
+    return;
+  }
+
   const scriptureField = event.target.closest("[data-scripture-field]");
   if (scriptureField) {
     updateScriptureField(scriptureField);
@@ -1264,6 +1856,12 @@ function handleDetailInput(event) {
     return;
   }
 
+  const songMetaField = event.target.closest("[data-song-meta-field]");
+  if (songMetaField) {
+    updateSongMetadataField(songMetaField);
+    return;
+  }
+
   const formField = event.target.closest("[data-form-field]");
   if (formField) {
     updateFormField(formField);
@@ -1273,6 +1871,12 @@ function handleDetailInput(event) {
 }
 
 function handleDetailChange(event) {
+  const serviceField = event.target.closest("[data-service-item-field]");
+  if (serviceField) {
+    updateServiceItemField(serviceField);
+    return;
+  }
+
   const bibleReaderField = event.target.closest("[data-bible-reader-field]");
   if (bibleReaderField) {
     updateBibleReaderField(bibleReaderField);
@@ -1291,6 +1895,12 @@ function handleDetailChange(event) {
     return;
   }
 
+  const songMetaField = event.target.closest("[data-song-meta-field]");
+  if (songMetaField) {
+    updateSongMetadataField(songMetaField);
+    return;
+  }
+
   const formField = event.target.closest("[data-form-field]");
   if (formField) {
     updateFormField(formField);
@@ -1305,13 +1915,24 @@ function handleDetailChange(event) {
 
 function updateBibleReaderField(field) {
   const key = field.dataset.bibleReaderField;
+  if (key === "copy_reference") {
+    state.bibleCopyReference = field.checked;
+    persistUiState();
+    return;
+  }
   if (key === "translation") {
     state.selectedBibleTranslationId = field.value || null;
     state.selectedBibleChapter = 1;
     state.selectedBibleVerse = null;
     state.selectedBibleVerses = [];
+    state.lastSelectedBibleVerse = null;
     state.bibleBookVerses = [];
     persistUiState();
+    syncBrowserHistory();
+    if (isBibleTextSearchActive()) {
+      runBibleTextSearch(state.bibleTextSearchQuery, { page: 0 });
+      return;
+    }
     loadBibleBookVerses();
     return;
   }
@@ -1319,7 +1940,9 @@ function updateBibleReaderField(field) {
     state.selectedBibleChapter = Number(field.value) || 1;
     state.selectedBibleVerse = null;
     state.selectedBibleVerses = [];
+    state.lastSelectedBibleVerse = null;
     persistUiState();
+    syncBrowserHistory();
     loadBibleBookVerses();
   }
 }
@@ -1334,18 +1957,61 @@ function changeBibleChapter(delta) {
   state.selectedBibleChapter = nextChapter;
   state.selectedBibleVerse = null;
   state.selectedBibleVerses = [];
+  state.lastSelectedBibleVerse = null;
   persistUiState();
+  syncBrowserHistory();
   loadBibleBookVerses();
 }
 
-function selectBibleVerse(verse) {
+function selectBibleVerse(verse, options = {}) {
   if (!verse || verse < 1) return;
-  const selected = new Set(state.selectedBibleVerses);
-  if (selected.has(verse)) selected.delete(verse);
-  else selected.add(verse);
+  const additive = Boolean(options.additive);
+  const range = Boolean(options.range);
+  const selected = new Set(additive ? state.selectedBibleVerses : []);
+
+  if (range) {
+    const anchor = Number(state.lastSelectedBibleVerse || state.selectedBibleVerse || state.selectedBibleVerses.at(-1) || verse);
+    const rangeVerses = bibleVerseRange(anchor, verse);
+    if (!additive) selected.clear();
+    rangeVerses.forEach((item) => selected.add(item));
+  } else if (additive) {
+    if (selected.has(verse)) selected.delete(verse);
+    else selected.add(verse);
+    state.lastSelectedBibleVerse = verse;
+  } else {
+    selected.clear();
+    selected.add(verse);
+    state.lastSelectedBibleVerse = verse;
+  }
+
   state.selectedBibleVerses = [...selected].sort((a, b) => a - b);
   state.selectedBibleVerse = state.selectedBibleVerses[0] || null;
-  refs.detailPane?.querySelector(`[data-bible-verse="${CSS.escape(String(verse))}"]`)?.classList.toggle("selected", selected.has(verse));
+  syncBibleVerseSelectionClasses();
+}
+
+function applyBibleVerseDragSelection(drag) {
+  const selected = new Set(drag.additive ? [...drag.base] : []);
+  bibleVerseRange(drag.start, drag.last).forEach((verse) => selected.add(verse));
+  state.selectedBibleVerses = [...selected].sort((a, b) => a - b);
+  state.selectedBibleVerse = state.selectedBibleVerses[0] || null;
+  syncBibleVerseSelectionClasses();
+}
+
+function bibleVerseRange(start, end) {
+  const [from, to] = [Number(start), Number(end)].sort((a, b) => a - b);
+  return state.bibleBookVerses
+    .filter((verse) => Number(verse.chapter) === state.selectedBibleChapter)
+    .map((verse) => Number(verse.verse))
+    .filter((verse) => verse >= from && verse <= to)
+    .sort((a, b) => a - b);
+}
+
+function syncBibleVerseSelectionClasses() {
+  const selected = new Set(state.selectedBibleVerses);
+  refs.detailPane?.querySelectorAll("[data-bible-verse]").forEach((node) => {
+    node.classList.toggle("selected", selected.has(Number(node.dataset.bibleVerse)));
+    node.setAttribute("aria-selected", String(selected.has(Number(node.dataset.bibleVerse))));
+  });
 }
 
 function copySelectedBibleVersesFromShortcut(event) {
@@ -1362,6 +2028,23 @@ function copyBibleVerses(verseNumbers) {
   copyText(text);
 }
 
+function copyBibleSearchResultAt(index) {
+  const verse = state.bibleTextSearchResults[index];
+  if (!verse) return;
+  copyText(formatBibleSearchResultForCopy(verse));
+}
+
+function navigateToBibleSearchResult(index) {
+  const verse = state.bibleTextSearchResults[index];
+  if (!verse) return;
+  resetScriptureSearchInput();
+  selectScriptureBook(verse.book_code, {
+    chapter: verse.chapter,
+    verse: verse.verse,
+    force: true,
+  });
+}
+
 function updateSongField(field) {
   const song = getSelectedSong();
   if (!song) return;
@@ -1371,6 +2054,8 @@ function updateSongField(field) {
     song[key] = field.checked;
   } else if (key === "alt_titles") {
     song[key] = parseList(field.value);
+  } else if (key === "scripture") {
+    song.scripture = parseList(field.value);
   } else {
     song[key] = field.value;
   }
@@ -1379,6 +2064,22 @@ function updateSongField(field) {
     updateEditorTitle(song);
   }
 
+  state.dirty.song = true;
+  updateSaveState();
+}
+
+function updateSongMetadataField(field) {
+  const song = getSelectedSong();
+  if (!song) return;
+
+  const key = field.dataset.songMetaField;
+  const metadata = normalizeSongMetadata(song.metadata);
+  if (key === "praiseTypes") {
+    metadata.praiseTypes = normalizePraiseTypes(parseList(field.value));
+  } else {
+    metadata[key] = field.value;
+  }
+  song.metadata = normalizeSongMetadata(metadata);
   state.dirty.song = true;
   updateSaveState();
 }
@@ -1445,7 +2146,7 @@ function addForm(type) {
   updateSaveState();
 }
 
-function addVersion() {
+function addVersion(sourceVersionId = getSelectedVersionId()) {
   const song = getSelectedSong();
   if (!song) return;
 
@@ -1455,13 +2156,18 @@ function addVersion() {
     return;
   }
 
-  const defaultName = `Version ${(song.versions || []).length + 1}`;
+  const versions = song.versions || [];
+  const sourceVersion = versions.find((version) => version.id === sourceVersionId) || getSelectedVersion() || versions[0] || {
+    id: getSelectedVersionId(),
+    forms: state.forms,
+  };
+  const defaultName = `Version ${versions.length + 1}`;
   const name = prompt("Version name", defaultName);
   if (name === null) return;
 
   const cleanName = name.trim() || defaultName;
   const versionId = createLocalId();
-  const sourceForms = state.forms.map((form, index) =>
+  const sourceForms = getFormsForVersion(sourceVersion).map((form, index) =>
     withLocalId({
       id: createLocalId(),
       song_id: versionId,
@@ -1520,6 +2226,55 @@ function runFormAction(action, index) {
   state.forms = normalizeForms(state.forms);
   state.dirty.forms = true;
   renderDetail();
+  updateSaveState();
+}
+
+function updateServiceItemField(field) {
+  const items = getServiceItems(state.selectedServiceId);
+  const index = Number(field.dataset.serviceItemIndex);
+  const item = items[index];
+  if (!item) return;
+
+  const key = field.dataset.serviceItemField;
+  if (key === "label" || key === "raw_title") {
+    item[key] = field.value;
+  }
+  state.serviceItems[state.selectedServiceId] = normalizeServiceItems(items);
+  state.dirty.service = true;
+  updateSaveState();
+}
+
+function runServiceItemAction(action, index, label = "", title = "") {
+  const serviceId = state.selectedServiceId;
+  if (!serviceId) return;
+  const items = normalizeServiceItems(getServiceItems(serviceId));
+
+  if (action === "add") {
+    items.push(normalizeServiceItem({
+      service_id: serviceId,
+      sort_order: items.length + 1,
+      label,
+      raw_title: title,
+    }, items.length));
+  }
+
+  const item = items[index];
+  if (action === "up" && item && index > 0) {
+    [items[index - 1], items[index]] = [items[index], items[index - 1]];
+  }
+  if (action === "down" && item && index < items.length - 1) {
+    [items[index + 1], items[index]] = [items[index], items[index + 1]];
+  }
+  if (action === "duplicate" && item) {
+    items.splice(index + 1, 0, normalizeServiceItem({ ...item, id: createLocalId() }, index + 1));
+  }
+  if (action === "delete" && item) {
+    items.splice(index, 1);
+  }
+
+  state.serviceItems[serviceId] = normalizeServiceItems(items);
+  state.dirty.service = true;
+  renderServiceDetail();
   updateSaveState();
 }
 
@@ -1593,74 +2348,104 @@ function renderModuleSwitcher() {
   }
   refs.searchInput.placeholder =
     state.module === "scripture"
-      ? "Search book or reference..."
-      : "Search title, lyrics, #...";
-  refs.newSongBtn.title = state.module === "scripture" ? "New scripture" : "New song";
-  refs.saveAllBtn.title = state.module === "scripture" ? "Save scripture" : "Save song";
+      ? "Search book, reference, or text..."
+      : state.module === "service"
+        ? "Search setlist, date, worship leader..."
+        : "Search title, lyrics, #...";
+  refs.newSongBtn.title =
+    state.module === "scripture"
+      ? "New scripture"
+      : state.module === "service"
+        ? "Service items are edited in the detail pane"
+        : "New song";
+  refs.newSongBtn.disabled = state.module === "service";
+  refs.saveAllBtn.title =
+    state.module === "scripture"
+      ? "Save scripture"
+      : state.module === "service"
+        ? "Save service"
+        : "Save song";
   refs.saveAllBtn.setAttribute("aria-label", refs.saveAllBtn.title);
-  renderPraiseFilter();
+  renderListFilter();
 }
 
-function renderPraiseFilter() {
-  refs.praiseFilter.hidden = false;
+const SERVICE_CATEGORIES = {
+  public: ["sunday-main","sunday-afternoon","wednesday","friday","monthly","dawn","omer"],
+  ministry: ["children","youth","young-adult"],
+};
+
+function renderListFilter() {
+  if (state.module === "service") {
+    refs.listFilter.hidden = false;
+    refs.listFilter.setAttribute("aria-label", "Service filter");
+    const filters = [["all","전체"],["public","공예배"],["ministry","부서예배"]];
+    const active = state.serviceFilter || "all";
+    refs.listFilterButtons.forEach((btn, i) => {
+      const [val, lbl] = filters[i] || filters[0];
+      btn.dataset.listFilter = val;
+      btn.textContent = lbl;
+      btn.classList.toggle("active", val === active);
+      btn.setAttribute("aria-pressed", String(val === active));
+    });
+    return;
+  }
+
+  refs.listFilter.hidden = false;
+  refs.listFilter.setAttribute("aria-label", state.module === "scripture" ? "Scripture filter" : "Praise filter");
   const filters = state.module === "scripture"
-    ? [
-        ["all", "All"],
-        ["old", "OT"],
-        ["new", "NT"],
-      ]
-    : [
-        ["all", "All"],
-        ["hymns", "Hymns"],
-        ["ccm", "CCM"],
-      ];
+    ? [["all", "All"], ["old", "OT"], ["new", "NT"]]
+    : [["all", "All"], ["hymns", "Hymns"], ["ccm", "CCM"]];
   const activeFilter = state.module === "scripture" ? state.scriptureFilter : state.praiseFilter;
-  for (const button of refs.praiseFilterButtons) {
-    const [value, label] = filters[refs.praiseFilterButtons.indexOf(button)] || filters[0];
-    button.dataset.praiseFilter = value;
+  refs.listFilterButtons.forEach((button, index) => {
+    const [value, label] = filters[index] || filters[0];
+    button.dataset.listFilter = value;
     button.textContent = label;
     const active = value === activeFilter;
     button.classList.toggle("active", active);
     button.setAttribute("aria-pressed", String(active));
-  }
+  });
 }
 
 function renderConnectionStatus() {
   const hasClient = Boolean(state.client);
   const hasDirty = hasDirtyChanges();
-  refs.connectionStatus.className = "status-pill";
-  refs.connectionStatus.title = "";
+  function setStatusIcon(icon, cls, title) {
+    refs.connectionStatus.className = "status-icon" + (cls ? " " + cls : "");
+    refs.connectionStatus.title = title;
+    refs.connectionStatus.innerHTML = `<i data-lucide="${icon}"></i>`;
+    refreshIcons();
+  }
 
   if (state.loading) {
-    refs.connectionStatus.textContent = "Loading";
+    setStatusIcon("loader-2", "", "Loading…");
     return;
   }
 
   if (state.connectionError) {
-    refs.connectionStatus.textContent = "Error";
-    refs.connectionStatus.classList.add("error");
-    refs.connectionStatus.title = state.connectionError;
+    setStatusIcon("database", "error", state.connectionError);
     return;
   }
 
   if (!hasClient) {
-    refs.connectionStatus.textContent = "Disconnected";
+    setStatusIcon("database", "", "Disconnected");
     return;
   }
 
   if (hasDirty) {
-    refs.connectionStatus.textContent = "Unsaved";
-    refs.connectionStatus.classList.add("unsaved");
+    setStatusIcon("database", "unsaved", "Unsaved changes");
     return;
   }
 
-  refs.connectionStatus.textContent = "Connected";
-  refs.connectionStatus.classList.add("connected");
+  setStatusIcon("database", "connected", "Connected");
 }
 
 function renderSongList() {
   if (state.module === "scripture") {
     renderScriptureList();
+    return;
+  }
+  if (state.module === "service") {
+    renderServiceList();
     return;
   }
 
@@ -1682,17 +2467,17 @@ function renderSongList() {
   refs.songList.innerHTML = filtered
     .map((song) => {
       const active = song.id === state.selectedSongId ? " active" : "";
-      const titleText = song.hymn_no ? stripHymnNumber(song.title) : song.title;
-      const metaLine = songTitleMetaLine(song);
+      const muted = song._outOfFilter ? " muted" : "";
+      const view = songListView(song);
       return `
-        <button class="song-item${active}" type="button" data-song-id="${escapeAttr(song.id)}">
+        <button class="song-item${active}${muted}" type="button" data-song-id="${escapeAttr(song.id)}">
           <span class="song-title">
-            ${song.hymn_no ? `<span class="song-hymn-no">${escapeHtml(formatHymnMarker(song.hymn_no))}</span>` : ""}
-            <span class="song-title-text">${escapeHtml(titleText)}</span>
+            ${view.showHymnMarker ? `<span class="song-hymn-no">${escapeHtml(formatHymnMarker(song.hymn_no))}</span>` : ""}
+            <span class="song-title-text">${escapeHtml(view.title)}</span>
             ${song.versions?.length > 1 ? `<span class="song-count-badge">${song.versions.length}</span>` : ""}
             ${renderSongAttentionIcon(song)}
           </span>
-          ${metaLine ? `<span class="song-meta-line">${escapeHtml(metaLine)}</span>` : ""}
+          ${view.meta ? `<span class="song-meta-line">${escapeHtml(view.meta)}</span>` : ""}
         </button>
       `;
     })
@@ -1755,6 +2540,7 @@ function finishListRender() {
 function getListScrollKey() {
   const search = normalizeSearchValue(state.search);
   if (state.module === "scripture") return `scripture:${state.scriptureFilter}:${search}`;
+  if (state.module === "service") return `service:${state.serviceFilter}:${search}`;
   return `praise:${state.praiseFilter}:${search}`;
 }
 
@@ -1816,6 +2602,10 @@ function renderDetail() {
     renderScriptureDetail();
     return;
   }
+  if (state.module === "service") {
+    renderServiceDetail();
+    return;
+  }
 
   const song = getSelectedSong();
 
@@ -1842,20 +2632,21 @@ function renderDetail() {
       <header class="editor-head">
         <div class="editor-title">
           <h2 id="editorSongTitle">
-            <span>${escapeHtml(song.title || "Untitled Song")}</span>
+            <span>${escapeHtml((song.hymn_no ? stripHymnNumber(song.title) : song.title) || "Untitled Song")}</span>
+            ${song.hymn_no ? `<span class="scripture-book-marker">${escapeHtml(song.hymn_no)}</span>` : ""}
           </h2>
           ${renderEditorMeta(titleMetaLine, supportMetaItems)}
         </div>
         <div class="head-actions">
           <span class="dirty-pill" ${hasDirtyChanges() ? "" : "hidden"}>Unsaved changes</span>
-          <button class="btn secondary" type="button" data-add-version title="Add version">
-            <i data-lucide="copy-plus"></i>
-            <span>Add Version</span>
+          <button class="icon-btn quiet" type="button" data-open-metadata title="Edit metadata" aria-label="Edit metadata">
+            <i data-lucide="sliders-horizontal"></i>
           </button>
         </div>
       </header>
 
       ${renderFormsTab(song)}
+      ${state.metadataPopupOpen ? renderSongMetadataDialog(song) : ""}
     </div>
   `;
 
@@ -1865,18 +2656,70 @@ function renderDetail() {
 
 function renderEditorMeta(primary, items = []) {
   const supportItems = items.filter(Boolean);
+  if (!primary && !supportItems.length) return "";
   return `
     <div class="editor-meta-stack">
       <div class="editor-title-meta${primary ? "" : " empty"}">${escapeHtml(primary || "Metadata")}</div>
       <div class="editor-support-meta${supportItems.length ? "" : " empty"}">
         ${
           supportItems.length
-            ? supportItems.map((item) => `<span>${escapeHtml(item)}</span>`).join("")
+            ? supportItems.map(renderMetaItem).join("")
             : `<span>Support metadata</span>`
         }
       </div>
     </div>
   `;
+}
+
+function renderMetaItem(item) {
+  if (item && typeof item === "object" && "label" in item) {
+    return `
+      <span class="meta-attribute">
+        <span class="meta-attribute-label">${escapeHtml(item.label)}:</span>
+        <strong>${escapeHtml(item.value)}</strong>
+      </span>
+    `;
+  }
+  return `<span>${escapeHtml(item)}</span>`;
+}
+
+
+function renderSongMetadataDialog(song) {
+  const metadata = normalizeSongMetadata(song?.metadata);
+  return `
+    <div class="metadata-popover-layer">
+      <section class="metadata-popover" role="dialog" aria-label="Song metadata">
+        <header class="metadata-popover-head">
+          <h3>Metadata</h3>
+          <button class="icon-btn" type="button" data-close-metadata title="Close metadata" aria-label="Close metadata">
+            <i data-lucide="x"></i>
+          </button>
+        </header>
+        <div class="metadata-popover-grid">
+          ${renderInput("Title", "title", (song.hymn_no ? stripHymnNumber(song.title) : song.title) || "", "compact meta-title")}
+          ${renderInput("Subtitle", "subtitle", song.subtitle || "", "compact")}
+          ${renderInput("Original", "original_title", song.original_title || "", "compact")}
+          ${renderMetadataInput("Artist", "artist", metadata.artist || "", "compact")}
+          ${renderMetadataInput("Lyricist", "lyricist", metadata.lyricist || "", "compact")}
+          ${renderMetadataInput("Composer", "composer", metadata.composer || "", "compact")}
+          ${renderMetadataInput("Album", "album", metadata.album || "", "compact meta-album")}
+          ${renderMetadataInput("Track", "track", metadata.track || "", "compact meta-track")}
+          ${renderInput("References", "scripture", joinMetaItems(cleanList(song.scripture)), "compact meta-ref")}
+        </div>
+        <p class="metadata-popover-note">Use semicolons for multiple references.</p>
+      </section>
+    </div>
+  `;
+}
+
+function metaAttribute(label, value) {
+  const text = String(value || "").trim();
+  return text ? { label, value: text } : null;
+}
+
+function metaAttributeText(label, value) {
+  const text = String(value || "").trim();
+  return text ? `${label}: ${text}` : "";
 }
 
 function renderScriptureDetail() {
@@ -1892,6 +2735,12 @@ function renderScriptureDetail() {
         </div>
       </div>
     `;
+    refreshIcons();
+    return;
+  }
+
+  if (isBibleTextSearchActive()) {
+    refs.detailPane.innerHTML = renderBibleTextSearchDetail();
     refreshIcons();
     return;
   }
@@ -1937,9 +2786,9 @@ function renderScriptureDetail() {
 
   const titleMetaLine = scripture.reference || selectedBook?.canonicalEnglishTitle || "";
   const supportMetaItems = [
-    scripture.translation,
-    selectedBook?.koreanName && scripture.book !== selectedBook.koreanName ? selectedBook.koreanName : "",
-    selectedBook?.division,
+    metaAttribute("Translation", scripture.translation),
+    selectedBook?.koreanName && scripture.book !== selectedBook.koreanName ? metaAttribute("Book", selectedBook.koreanName) : null,
+    metaAttribute("Christian", selectedBook?.division),
   ].filter(Boolean);
   refs.detailPane.innerHTML = `
     <div class="editor-shell scripture-editor">
@@ -1989,7 +2838,7 @@ function renderSongAttentionIcon(song) {
   if (songNeedsReview(song)) labels.push("Needs review");
   if (!labels.length) return "";
   const tone = emptyStatus === "all-empty" ? "all-empty" : labels.includes("Needs review") ? "needs-review" : "some-empty";
-  return renderAttentionIcon(labels.join(" / "), tone);
+  return renderAttentionIcon(joinMetaItems(labels), tone);
 }
 
 function renderAttentionIcon(label, tone = "needs-review") {
@@ -2019,7 +2868,7 @@ function renderFormsTab(song) {
   const versions = song.versions || [];
   return `
     <section class="panel">
-      ${renderFormToolbar()}
+      ${renderFormToolbar(song)}
       ${
         versions.length > 1
           ? renderVersionCompare(song, versions)
@@ -2039,7 +2888,7 @@ function renderSingleVersionForms() {
       <div class="version-compare-head" style="${gridStyle}">
         <div class="version-compare-title active">
           <span>${escapeHtml(versionName)}</span>
-          <span class="type-pill">Editing</span>
+          ${renderAddVersionButton(version?.id)}
         </div>
       </div>
       <div class="version-compare-rows">
@@ -2085,13 +2934,21 @@ function renderVersionCompare(song, versions) {
   `;
 }
 
+function renderAddVersionButton(sourceVersionId) {
+  return `
+    <button class="version-add-btn" type="button" data-add-version data-source-version-id="${escapeAttr(sourceVersionId || "")}" title="Duplicate as new version" aria-label="Duplicate as new version">
+      <i data-lucide="copy-plus"></i>
+    </button>
+  `;
+}
+
 function renderVersionCompareHead(song, version) {
   const active = version.id === getSelectedVersionId();
   return `
-    <button class="version-compare-title${active ? " active" : ""}" type="button" data-version-id="${escapeAttr(version.id)}">
+    <div class="version-compare-title version-picker${active ? " active" : ""}" data-version-id="${escapeAttr(version.id)}" role="button" tabindex="0">
       <span>${escapeHtml(versionDisplayName(song, version))}</span>
-      ${active ? `<span class="type-pill">Editing</span>` : ""}
-    </button>
+      ${renderAddVersionButton(version.id)}
+    </div>
   `;
 }
 
@@ -2117,39 +2974,8 @@ function getFormsForVersion(version) {
   return normalizeForms((version.forms || []).map((form) => ({ ...form, song_id: version.id })));
 }
 
-function renderVersionFormColumn(song, version) {
-  const active = version.id === getSelectedVersionId();
-  const forms = active
-    ? state.forms
-    : normalizeForms((version.forms || []).map((form) => ({ ...form, song_id: version.id })));
 
-  return `
-    <section class="version-form-column${active ? " active" : ""}" data-version-id="${escapeAttr(version.id)}" role="button" tabindex="0">
-      <div class="version-column-head">
-        <div class="version-column-title-block">
-          <div class="version-column-title">
-            ${escapeHtml(versionDisplayName(song, version))}
-          </div>
-        </div>
-        ${active ? `<span class="type-pill">Editing</span>` : ""}
-      </div>
-      ${
-        active
-          ? renderEditableFormList()
-          : `<div class="form-list readonly">${forms.length ? forms.map((form) => renderReadonlyFormBlock(form, { song, version })).join("") : `<div class="empty-state">No form blocks</div>`}</div>`
-      }
-    </section>
-  `;
-}
-
-function renderEditableForms() {
-  return `
-    ${renderFormToolbar()}
-    ${renderEditableFormList()}
-  `;
-}
-
-function renderFormToolbar() {
+function renderFormToolbar(song) {
   const hasForms = state.forms.length > 0;
   const hasLyrics = getCopyableForms().length > 0;
   return `
@@ -2166,19 +2992,21 @@ function renderFormToolbar() {
           )
           .join("")}
       </div>
-      <div class="copy-actions" aria-label="Copy and export lyrics">
-        <button class="btn secondary" type="button" data-copy-action="plain" ${hasLyrics ? "" : "disabled"} title="Copy text with form labels">
-          <i data-lucide="clipboard"></i>
-          <span>Text</span>
-        </button>
-        <button class="btn secondary" type="button" data-copy-action="download-freeshow" ${hasLyrics ? "" : "disabled"} title="Download FreeShow .show">
-          <i data-lucide="presentation"></i>
-          <span>Show</span>
-        </button>
-        <button class="btn secondary" type="button" data-copy-action="download-xml" ${hasLyrics ? "" : "disabled"} title="Download XML">
-          <i data-lucide="file-code-2"></i>
-          <span>XML</span>
-        </button>
+      <div class="toolbar-output-stack">
+        <div class="copy-actions" aria-label="Copy and export lyrics">
+          <button class="btn secondary" type="button" data-copy-action="plain" ${hasLyrics ? "" : "disabled"} title="Copy text with form labels">
+            <i data-lucide="clipboard"></i>
+            <span>Text</span>
+          </button>
+          <button class="btn secondary" type="button" data-copy-action="download-freeshow" ${hasLyrics ? "" : "disabled"} title="Download FreeShow .show">
+            <i data-lucide="presentation"></i>
+            <span>Show</span>
+          </button>
+          <button class="btn secondary" type="button" data-copy-action="download-xml" ${hasLyrics ? "" : "disabled"} title="Download XML">
+            <i data-lucide="file-code-2"></i>
+            <span>XML</span>
+          </button>
+        </div>
       </div>
     </div>
   `;
@@ -2210,6 +3038,24 @@ function renderTextarea(label, field, value, className = "") {
     <label class="field ${className}">
       <span>${label}</span>
       <textarea data-song-field="${field}" rows="4">${escapeHtml(value)}</textarea>
+    </label>
+  `;
+}
+
+function renderMetadataInput(label, field, value, className = "") {
+  return `
+    <label class="field ${className}">
+      <span>${label}</span>
+      <input type="text" data-song-meta-field="${field}" value="${escapeAttr(value)}" />
+    </label>
+  `;
+}
+
+function renderMetadataTextarea(label, field, value, className = "") {
+  return `
+    <label class="field ${className}">
+      <span>${label}</span>
+      <textarea data-song-meta-field="${field}" rows="3">${escapeHtml(value)}</textarea>
     </label>
   `;
 }
@@ -2259,9 +3105,9 @@ function renderScriptureBookMarker(book) {
 function scriptureBookSupportMetaItems(book) {
   if (!book) return [];
   return [
-    book.division,
-    book.jewishCategory,
-    book.author ? `Author ${book.author}` : "",
+    metaAttribute("Christian", book.division),
+    metaAttribute("Jewish", book.jewishCategory),
+    metaAttribute("Author", book.author),
   ].filter(Boolean);
 }
 
@@ -2279,6 +3125,106 @@ function renderScriptureBookTaxonomy() {
       </div>
     </section>
   `).join("");
+}
+
+function renderBibleTextSearchDetail() {
+  const translation = getSelectedBibleTranslation();
+  const totalCount = Number.isFinite(state.bibleTextSearchTotal) ? state.bibleTextSearchTotal : state.bibleTextSearchResults.length;
+  const supportMetaItems = [
+    metaAttribute("Translation", translation?.abbreviation || translation?.name),
+    !state.bibleTextSearchLoading ? metaAttribute("Results", String(totalCount)) : null,
+  ].filter(Boolean);
+  return `
+    <div class="editor-shell scripture-editor bible-search-editor">
+      <header class="editor-head">
+        <div class="editor-title">
+          <h2>
+            <span>Search Results</span>
+          </h2>
+          ${renderEditorMeta(`"${state.bibleTextSearchQuery}"`, supportMetaItems)}
+        </div>
+      </header>
+      <section class="panel scripture-panel">
+        ${renderBibleTextSearchControls()}
+        ${renderBibleTextSearchResults()}
+      </section>
+    </div>
+  `;
+}
+
+function renderBibleTextSearchControls() {
+  if (!state.bibleTranslations.length) return "";
+  return `
+    <div class="bible-reader-controls bible-search-controls">
+      <label>
+        <span>Translation</span>
+        <select data-bible-reader-field="translation">
+          ${state.bibleTranslations.map((translation) => `
+            <option value="${escapeAttr(translation.id)}" ${translation.id === state.selectedBibleTranslationId ? "selected" : ""}>
+              ${escapeHtml(translation.abbreviation || translation.name)}
+            </option>
+          `).join("")}
+        </select>
+      </label>
+      ${renderBibleCopyReferenceToggle()}
+    </div>
+  `;
+}
+
+function renderBibleTextSearchResults() {
+  if (state.bibleTextSearchLoading) return renderBibleVerseSkeleton();
+  if (state.bibleTextSearchError) return `<div class="bible-reader-note">${escapeHtml(state.bibleTextSearchError)}</div>`;
+  if (!state.bibleTextSearchResults.length) {
+    return `<div class="bible-reader-note">No verses found for "${escapeHtml(state.bibleTextSearchQuery)}".</div>`;
+  }
+
+  const translation = getSelectedBibleTranslation();
+  const totalCount = Number.isFinite(state.bibleTextSearchTotal) ? state.bibleTextSearchTotal : state.bibleTextSearchResults.length;
+  const shownCount = state.bibleTextSearchResults.length;
+  const firstResult = totalCount && shownCount ? state.bibleTextSearchPage * BIBLE_TEXT_SEARCH_PAGE_SIZE + 1 : 0;
+  const lastResult = firstResult ? firstResult + shownCount - 1 : 0;
+  return `
+    <div class="bible-search-summary">
+      <span>${escapeHtml(formatBibleSearchRange(firstResult, lastResult, totalCount))}</span>
+      ${renderBibleSearchPagination(totalCount)}
+    </div>
+    <div class="bible-verse-list bible-search-results">
+      ${state.bibleTextSearchResults.map((verse, index) => {
+        const book = findBibleBookByCode(verse.book_code);
+        const reference = formatBibleVerseReference(book, verse.chapter, verse.verse, translation);
+        return `
+          <p class="bible-verse bible-search-result" data-bible-search-result="${index}" role="button" tabindex="0" aria-label="Open ${escapeAttr(reference)}">
+            <span class="bible-search-reference">${escapeHtml(reference)}</span>
+            <strong>${highlightBibleSearchText(verse.text || "", state.bibleTextSearchQuery)}</strong>
+            <button class="bible-verse-copy" type="button" data-copy-bible-search-result="${index}" title="Copy verse" aria-label="Copy ${escapeAttr(reference)}">
+              <i data-lucide="copy"></i>
+            </button>
+          </p>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
+
+function formatBibleSearchRange(firstResult, lastResult, totalCount) {
+  if (!totalCount) return "0 results";
+  return `${firstResult}-${lastResult} of ${totalCount} results`;
+}
+
+function renderBibleSearchPagination(totalCount) {
+  const hasPrevious = state.bibleTextSearchPage > 0;
+  const hasNext = (state.bibleTextSearchPage + 1) * BIBLE_TEXT_SEARCH_PAGE_SIZE < totalCount;
+  if (!hasPrevious && !hasNext) return "";
+  return `
+    <span class="bible-search-pagination">
+      <button class="icon-btn" type="button" data-bible-search-page="-1" title="Previous results" aria-label="Previous results" ${hasPrevious ? "" : "disabled"}>
+        <i data-lucide="chevron-left"></i>
+      </button>
+      <button class="icon-btn" type="button" data-bible-search-page="1" title="Next results" aria-label="Next results" ${hasNext ? "" : "disabled"}>
+        <i data-lucide="chevron-right"></i>
+      </button>
+    </span>
+  `;
 }
 
 function renderScriptureBookDetail(book) {
@@ -2331,13 +3277,33 @@ function renderBibleReader(book) {
             </button>
           </span>
         </label>
+        ${renderBibleCopyReferenceToggle()}
       </div>
       ${
         state.bibleReaderLoading
-          ? `<div class="bible-reader-note">Loading verses...</div>`
+          ? renderBibleVerseSkeleton()
           : renderBibleVerseList(verses)
       }
     </section>
+  `;
+}
+
+function renderBibleCopyReferenceToggle() {
+  return `
+    <label class="bible-copy-option">
+      <input type="checkbox" data-bible-reader-field="copy_reference" ${state.bibleCopyReference ? "checked" : ""} />
+      <span>Copy reference</span>
+    </label>
+  `;
+}
+
+function renderBibleVerseSkeleton() {
+  return `
+    <div class="bible-verse-list bible-verse-list-loading" aria-busy="true" aria-label="Loading verses">
+      ${Array.from({ length: 6 }, (_, index) => `
+        <p class="bible-verse-placeholder" style="--line-width: ${index % 3 === 0 ? "82%" : index % 3 === 1 ? "68%" : "74%"}"></p>
+      `).join("")}
+    </div>
   `;
 }
 
@@ -2354,7 +3320,7 @@ function renderBibleVerseList(verses) {
         const selected = selectedVerses.has(Number(verse.verse));
         return `
           ${sectionTitle ? `<div class="bible-section-title">${escapeHtml(sectionTitle)}</div>` : ""}
-          <p class="bible-verse${selected ? " selected" : ""}" data-bible-verse="${escapeAttr(String(verse.verse))}" role="button" tabindex="0" aria-label="Select verse ${escapeAttr(String(verse.verse))}">
+          <p class="bible-verse${selected ? " selected" : ""}" data-bible-verse="${escapeAttr(String(verse.verse))}" role="button" tabindex="0" aria-selected="${selected ? "true" : "false"}" aria-label="Select verse ${escapeAttr(String(verse.verse))}">
             <span>${escapeHtml(String(verse.verse))}</span>
             <strong>${escapeHtml(verse.text || "")}</strong>
             <button class="bible-verse-copy" type="button" data-copy-bible-verse="${escapeAttr(String(verse.verse))}" title="Copy verse" aria-label="Copy verse ${escapeAttr(String(verse.verse))}">
@@ -2368,14 +3334,14 @@ function renderBibleVerseList(verses) {
 }
 
 function renderScriptureBookCard(book) {
-  const details = [book.division, book.jewishCategory, book.author ? `Author: ${book.author}` : ""].filter(Boolean);
+  const details = scriptureBookSupportMetaItems(book);
   return `
     <article class="taxonomy-book-card">
       <div class="taxonomy-book-order">${String(book.sortOrder).padStart(2, "0")}</div>
       <div class="taxonomy-book-main">
         <div class="taxonomy-book-title">${escapeHtml(book.koreanName)}</div>
         <div class="taxonomy-book-subtitle">${escapeHtml(book.canonicalEnglishTitle || book.englishName)}</div>
-        <div class="taxonomy-book-meta">${details.map((detail) => `<span>${escapeHtml(detail)}</span>`).join("")}</div>
+        <div class="taxonomy-book-meta">${details.map(renderMetaItem).join("")}</div>
       </div>
     </article>
   `;
@@ -2524,7 +3490,10 @@ function formatFullLyrics(forms = state.forms) {
 
 function formatScriptureForCopy(scripture) {
   if (!scripture) return "";
-  return [scripture.title, scriptureHeading(scripture), scripture.text || ""].filter(Boolean).join("\n");
+  const book = findBibleBookByCode(scripture.book_code) || findBibleBookByName(scripture.book);
+  const translation = findBibleTranslation(scripture.translation) || getSelectedBibleTranslation();
+  const reference = formatScriptureReferenceForCopy(scripture.reference, book, translation) || scripture.title || scripture.book || "";
+  return joinScriptureReferenceAndText(reference, scripture.text);
 }
 
 function formatScriptureSlidesForCopy(scripture) {
@@ -2558,8 +3527,83 @@ function selectedBibleVerseRows(verseNumbers = state.selectedBibleVerses) {
 
 function formatBibleVerseForCopy(verse) {
   const book = findBibleBookByCode(state.selectedBookCode);
-  const reference = [book?.koreanName || state.selectedBookCode, `${state.selectedBibleChapter}:${verse.verse}`].filter(Boolean).join(" ");
-  return [reference, verse.text || ""].filter(Boolean).join(" ");
+  const reference = formatBibleVerseReference(book, state.selectedBibleChapter, verse.verse, getSelectedBibleTranslation());
+  return state.bibleCopyReference ? joinScriptureReferenceAndText(reference, verse.text) : collapseInlineText(verse.text);
+}
+
+function formatBibleSearchResultForCopy(verse) {
+  const book = findBibleBookByCode(verse.book_code);
+  const reference = formatBibleVerseReference(book, verse.chapter, verse.verse, getSelectedBibleTranslation());
+  return state.bibleCopyReference ? joinScriptureReferenceAndText(reference, verse.text) : collapseInlineText(verse.text);
+}
+
+function formatBibleVerseReference(book, chapter, verse, translation) {
+  return [scriptureBookCopyName(book, translation), `${chapter}:${verse}`].filter(Boolean).join(" ");
+}
+
+function formatScriptureReferenceForCopy(reference, book, translation) {
+  const text = String(reference || "").trim();
+  if (!text) return "";
+  const copyName = scriptureBookCopyName(book, translation);
+  if (!copyName) return text;
+  const bookNames = [
+    book?.koreanName,
+    book?.englishName,
+    book?.canonicalEnglishTitle,
+    book?.shortName,
+    book?.code,
+  ].map((item) => String(item || "").trim()).filter(Boolean);
+  for (const name of bookNames.sort((a, b) => b.length - a.length)) {
+    if (text === name) return copyName;
+    if (text.startsWith(`${name} `)) return `${copyName}${text.slice(name.length)}`;
+  }
+  return text;
+}
+
+function scriptureBookCopyName(book, translation = getSelectedBibleTranslation()) {
+  if (isKoreanBibleTranslation(translation)) {
+    return book?.shortName || KOREAN_BIBLE_BOOK_ABBREVIATIONS[book?.code] || makeKoreanBibleBookAbbreviation(book?.koreanName) || book?.koreanName || book?.code || "";
+  }
+  return ENGLISH_BIBLE_BOOK_ABBREVIATIONS[book?.code] || book?.englishName || book?.canonicalEnglishTitle || book?.code || "";
+}
+
+function makeKoreanBibleBookAbbreviation(name) {
+  const text = String(name || "").trim();
+  if (!text) return "";
+  return text
+    .replace(/(?:복음|서|기|애가|행전)$/u, "")
+    .replace(/전서$/u, "전")
+    .replace(/후서$/u, "후")
+    .slice(0, 2)
+    .replace(/[상하]$/u, "");
+}
+
+function collapseInlineText(value) {
+  return String(value || "").replace(/\s+/g, " ").trim();
+}
+
+function highlightBibleSearchText(text, query) {
+  const source = String(text || "");
+  const needle = String(query || "").trim();
+  if (!needle) return escapeHtml(source);
+
+  const pattern = needle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  if (!pattern) return escapeHtml(source);
+
+  const regex = new RegExp(pattern, "gi");
+  let output = "";
+  let lastIndex = 0;
+  for (const match of source.matchAll(regex)) {
+    output += escapeHtml(source.slice(lastIndex, match.index));
+    output += `<mark>${escapeHtml(match[0])}</mark>`;
+    lastIndex = match.index + match[0].length;
+  }
+  output += escapeHtml(source.slice(lastIndex));
+  return output;
+}
+
+function joinScriptureReferenceAndText(reference, text) {
+  return [String(reference || "").trim(), collapseInlineText(text)].filter(Boolean).join("   ");
 }
 
 function splitScriptureBlocks(text) {
@@ -2801,6 +3845,18 @@ function normalizeServerScripture(row) {
   };
 }
 
+function normalizeServerBibleVerse(row) {
+  return {
+    id: row.id || [row.book_code, row.chapter, row.verse].join(":"),
+    book_code: row.book_code || "",
+    chapter: Number(row.chapter) || 0,
+    verse: Number(row.verse) || 0,
+    verse_end: Number(row.verse_end) || null,
+    text: row.text || "",
+    section_title: row.section_title || "",
+  };
+}
+
 function normalizeServerScriptureBook(row) {
   const shortName = cleanScriptureBookShortName(row.short_name);
   const metadata = row.metadata && typeof row.metadata === "object" ? row.metadata : {};
@@ -2845,6 +3901,28 @@ function sortBibleTranslations(a, b) {
     || String(a.translationKey || "").localeCompare(String(b.translationKey || ""), "ko");
 }
 
+function getSelectedBibleTranslation() {
+  return state.bibleTranslations.find((translation) => translation.id === state.selectedBibleTranslationId) || null;
+}
+
+function findBibleTranslation(value) {
+  const key = normalizeTitle(value);
+  if (!key) return null;
+  return state.bibleTranslations.find((translation) => [
+    translation.id,
+    translation.translationKey,
+    translation.name,
+    translation.abbreviation,
+  ].some((item) => normalizeTitle(item) === key)) || null;
+}
+
+function isKoreanBibleTranslation(translation) {
+  if (!translation) return true;
+  const language = String(translation.language || "").trim().toLowerCase();
+  const label = `${translation.translationKey || ""} ${translation.name || ""} ${translation.abbreviation || ""}`;
+  return language.startsWith("ko") || /[가-힣]/.test(label);
+}
+
 function cleanScriptureBookShortName(value) {
   const text = String(value || "").trim();
   if (!text || /^\[.*\]$/.test(text) || /\bSHORT\b/i.test(text)) return "";
@@ -2853,6 +3931,8 @@ function cleanScriptureBookShortName(value) {
 
 function normalizeServerSong(row) {
   const memo = parseSongMemo(row.memo);
+  const scriptureRefs = cleanList(row.scripture_refs).length ? cleanList(row.scripture_refs) : cleanList(memo.scripture);
+  const metadata = mergePromotedSongMetadata(row, memo.metadata);
   const versions = memo.versions.length
     ? memo.versions
     : [
@@ -2866,8 +3946,8 @@ function normalizeServerSong(row) {
 
   return {
     ...row,
-    scripture: cleanList(memo.scripture),
-    metadata: normalizeSongMetadata(memo.metadata),
+    scripture: scriptureRefs,
+    metadata,
     versions: versions.map((version, index) => ({
       ...version,
       id: version.id || `${row.id}:version:${index + 1}`,
@@ -2893,41 +3973,91 @@ function parseSongMemo(value) {
   }
 }
 
-function serializeSongMemo(song) {
-  const scripture = cleanList(song.scripture);
-  const metadata = normalizeSongMetadata(song.metadata);
+function serializeSongMemo(song, options = {}) {
+  const scripture = options.omitScripture ? [] : cleanList(song.scripture);
+  const metadata = options.omitPromotedMetadata
+    ? omitPromotedSongMetadata(song, normalizeSongMetadata(song.metadata))
+    : normalizeSongMetadata(song.metadata);
   return JSON.stringify(
     {
       ...(scripture.length ? { scripture } : {}),
       ...(Object.keys(metadata).length ? { metadata } : {}),
-      versions: (song.versions || []).map((version, index) => ({
-        id: version.id,
-        name: normalizeGeneratedVersionName(version.name || `Version ${index + 1}`),
-        raw_section_name: version.raw_section_name || null,
-        hymn_no: version.hymn_no || null,
-        is_primary: Boolean(version.is_primary) || index === 0,
-        ...(Object.keys(normalizeSongMetadata(version.metadata)).length ? { metadata: normalizeSongMetadata(version.metadata) } : {}),
-        forms: (version.forms || []).map((form, formIndex) => ({
-          id: form.id || createLocalId(),
-          part_type: form.part_type,
-          part_number: form.part_number,
-          lyrics: form.lyrics || "",
-          sort_order: formIndex + 1,
-          ...(form.review_status && form.review_status !== "reviewed" ? { review_status: form.review_status } : {}),
-          ...(form.review_status === "reviewed" ? { review_status: "reviewed" } : {}),
-          ...(form.import_source ? { import_source: form.import_source } : {}),
-        })),
-      })),
+      versions: (song.versions || []).map((version, index) => {
+        const versionMetadata = normalizeSongMetadata(version.metadata);
+        return {
+          id: version.id,
+          name: normalizeGeneratedVersionName(version.name || `Version ${index + 1}`),
+          raw_section_name: version.raw_section_name || null,
+          hymn_no: version.hymn_no || null,
+          is_primary: Boolean(version.is_primary) || index === 0,
+          ...(Object.keys(versionMetadata).length ? { metadata: versionMetadata } : {}),
+          forms: (version.forms || []).map((form, formIndex) => ({
+            id: form.id || createLocalId(),
+            part_type: form.part_type,
+            part_number: form.part_number,
+            lyrics: form.lyrics || "",
+            sort_order: formIndex + 1,
+            ...(form.review_status && form.review_status !== "reviewed" ? { review_status: form.review_status } : {}),
+            ...(form.review_status === "reviewed" ? { review_status: "reviewed" } : {}),
+            ...(form.import_source ? { import_source: form.import_source } : {}),
+          })),
+        };
+      }),
     },
     null,
     0,
   );
 }
 
+function hasSongColumn(song, column) {
+  return Boolean(song && Object.prototype.hasOwnProperty.call(song, column));
+}
+
+function hasPromotedSongMetadataColumns(song) {
+  return Object.values(PROMOTED_SONG_METADATA_COLUMNS).some((column) => hasSongColumn(song, column));
+}
+
+function mergePromotedSongMetadata(row, memoMetadata) {
+  const metadata = normalizeSongMetadata(memoMetadata);
+  for (const [key, column] of Object.entries(PROMOTED_SONG_METADATA_COLUMNS)) {
+    if (!hasSongColumn(row, column)) continue;
+    if (key === "praiseTypes") {
+      const types = normalizePraiseTypes(row[column]);
+      if (types.length) metadata.praiseTypes = types;
+      continue;
+    }
+    const value = nullIfBlank(row[column]);
+    if (value) metadata[key] = value;
+  }
+  return normalizeSongMetadata(metadata);
+}
+
+function promotedSongMetadataPayload(song, metadata) {
+  const payload = {};
+  for (const [key, column] of Object.entries(PROMOTED_SONG_METADATA_COLUMNS)) {
+    if (!hasSongColumn(song, column)) continue;
+    payload[column] = key === "praiseTypes" ? cleanList(metadata[key]) : metadata[key] || null;
+  }
+  return payload;
+}
+
+function omitPromotedSongMetadata(song, metadata) {
+  const next = { ...metadata };
+  for (const [key, column] of Object.entries(PROMOTED_SONG_METADATA_COLUMNS)) {
+    if (!hasSongColumn(song, column)) continue;
+    delete next[key];
+  }
+  return normalizeSongMetadata(next);
+}
+
 function getDefaultVersionId(song) {
   if (!song) return null;
   const versions = song.versions || [];
   return versions.find((version) => version.is_primary)?.id || versions[0]?.id || song.id;
+}
+
+function getPreferredVersionId(song) {
+  return getPraiseFilterListVersion(song)?.id || getDefaultVersionId(song);
 }
 
 function getSelectedVersionId() {
@@ -2953,6 +4083,7 @@ async function selectVersion(versionId) {
   state.dirty = dirtyState;
   persistUiState();
   render();
+  syncBrowserHistory();
   await loadForms(versionId);
   state.dirty = dirtyState;
   updateSaveState();
@@ -3009,10 +4140,40 @@ function songTitleMetaLine(song) {
   }
   addSongMetaFromRaw(titles, song?.title, "", { includeSubtitle: !song?.hymn_no });
   for (const version of song?.versions || []) {
-    addSongMetaFromRaw(titles, version.name || version.curated_version_name || "", versionDisplayName(song, version));
-    addSongMetaFromRaw(titles, version.raw_section_name || version.version_label || "", versionDisplayName(song, version));
+    const displayName = versionDisplayName(song, version);
+    addSongMetaFromRaw(titles, version.name || version.curated_version_name || "", displayName);
+    addSongMetaFromRaw(titles, version.raw_section_name || version.version_label || "", displayName);
   }
-  return [...titles].join(" / ");
+  return joinMetaItems([...titles]);
+}
+
+function songListView(song) {
+  const listVersion = getPraiseFilterListVersion(song);
+  const title = listVersion ? versionRawName(listVersion) : song?.hymn_no ? stripHymnNumber(song.title) : song?.title || "";
+  const canonicalMeta = songTitleMetaLine(song);
+  return {
+    listVersion,
+    title,
+    meta: listVersion ? joinMetaItems([song.title, canonicalMeta]) : canonicalMeta,
+    showHymnMarker: Boolean(song?.hymn_no && !listVersion),
+  };
+}
+
+function getPraiseFilterListVersion(song) {
+  if (state.praiseFilter !== "ccm" || !song?.hymn_no || !songHasPraiseType(song, "ccm")) return null;
+  const canonicalTitle = stripHymnNumber(song.title || "");
+  return (song.versions || []).find((version) => {
+    const name = versionRawName(version);
+    return name && !isDefaultVersionName(name) && !isHymnVersionName(name) && name !== canonicalTitle;
+  }) || null;
+}
+
+function versionRawName(version) {
+  return normalizeGeneratedVersionName(version?.name || version?.curated_version_name || "") || "";
+}
+
+function isHymnVersionName(name) {
+  return /^새찬송가$/i.test(name) || /^통(?:일)?\s*\d+/i.test(name) || /^\d+\s+/.test(name);
 }
 
 function songPraiseTypes(song) {
@@ -3029,11 +4190,21 @@ function songHasPraiseType(song, type) {
 
 function songSupportMetaItems(song) {
   const metadata = normalizeSongMetadata(song?.metadata);
+  const structuredCreditItems = songCreditMetaItems(metadata);
   return [
-    ...cleanList(song?.scripture).map((reference) => `Scripture ${reference}`),
-    metadata.credits ? `Credits ${metadata.credits}` : "",
-    metadata.album ? `Album ${formatAlbumMeta(metadata)}` : "",
+    metaAttribute("Scripture", cleanList(song?.scripture).join(" · ") || null),
+    metaAttribute("Artist", metadata.artist),
+    ...structuredCreditItems,
+    metaAttribute("Translator", metadata.translator),
+    metaAttribute("Album", metadata.album ? formatAlbumMeta(metadata) : ""),
   ].filter(Boolean);
+}
+
+function songCreditMetaItems(metadata) {
+  const lyricist = String(metadata?.lyricist || "").trim();
+  const composer = String(metadata?.composer || "").trim();
+  if (lyricist && composer && lyricist === composer) return [metaAttribute("Words/Music", lyricist)];
+  return [metaAttribute("Lyricist", lyricist), metaAttribute("Composer", composer)].filter(Boolean);
 }
 
 function formatAlbumMeta(metadata) {
@@ -3077,14 +4248,6 @@ function normalizeRawTitleMeta(value) {
   return text;
 }
 
-function songVersionLine(song) {
-  const versions = song?.versions || [];
-  if (versions.length <= 1) return "";
-  return versions
-    .map((version) => versionDisplayName(song, version))
-    .filter((name) => name && !isDefaultVersionName(name))
-    .join(" / ");
-}
 
 function normalizeGeneratedVersionName(name) {
   const value = String(name || "").trim();
@@ -3127,23 +4290,32 @@ function legacyTitleFromRaw(version) {
 }
 
 function stripHymnNumber(value) {
-  return (value || "").replace(/^\d+\s+/, "").trim();
+  return (value || "").replace(/^\d+\.?\s*/, "").trim();
+}
+
+function cleanSongTitleForSave(song) {
+  const title = String(song?.title || "").trim();
+  return song?.hymn_no ? stripHymnNumber(title) : title;
 }
 
 function getFilteredSongs() {
   const tokens = getSearchTokens(state.search);
-  const songs = getSongsForPraiseFilter();
-  if (!tokens.length) return [...songs].sort(sortSongs);
+  const filterSongs = getSongsForPraiseFilter();
+  if (!tokens.length) return [...filterSongs].sort(sortSongsForCurrentList);
 
-  const matched = songs
-    .map((song) => ({ song, match: getSongSearchMatch(song, tokens) }))
+  const filterSet = new Set(filterSongs.map((s) => s.id));
+  const allMatched = state.songs
+    .map((song) => ({ song, match: getSongSearchMatch(song, tokens), inFilter: filterSet.has(song.id) }))
     .filter((item) => item.match);
-  const phraseMatched = matched.filter((item) => item.match.phraseMatched);
-  const results = phraseMatched.length ? phraseMatched : matched;
+  const phraseMatched = allMatched.filter((item) => item.match.phraseMatched);
+  const results = phraseMatched.length ? phraseMatched : allMatched;
 
   return results
-    .sort((a, b) => b.match.score - a.match.score || sortSongs(a.song, b.song))
-    .map((item) => item.song);
+    .sort((a, b) => {
+      if (a.inFilter !== b.inFilter) return a.inFilter ? -1 : 1;
+      return b.match.score - a.match.score || sortSongsForCurrentList(a.song, b.song);
+    })
+    .map((item) => ({ ...item.song, _outOfFilter: !item.inFilter }));
 }
 
 function getSongsForPraiseFilter() {
@@ -3152,34 +4324,25 @@ function getSongsForPraiseFilter() {
   return state.songs;
 }
 
-function getFilteredScriptures() {
-  const tokens = getSearchTokens(state.search);
-  if (!tokens.length) return [...state.scriptures].sort(sortScriptures);
-
-  const matched = state.scriptures
-    .map((scripture) => ({ scripture, match: getScriptureSearchMatch(scripture, tokens) }))
-    .filter((item) => item.match);
-  const phraseMatched = matched.filter((item) => item.match.phraseMatched);
-  const results = phraseMatched.length ? phraseMatched : matched;
-
-  return results
-    .sort((a, b) => b.match.score - a.match.score || sortScriptures(a.scripture, b.scripture))
-    .map((item) => item.scripture);
+function joinMetaItems(items) {
+  return cleanList(items).join(META_SEPARATOR);
 }
+
 
 function getScriptureSearchMatch(scripture, tokens = getSearchTokens(state.search)) {
   if (!tokens.length) return null;
 
+  const book = findBibleBookByCode(scripture.book_code);
   const fields = [
     searchField("title", scripture.title, 120),
     searchField("meta", scripture.book, 112),
     searchField("meta", scripture.reference, 110),
     searchField("meta", scripture.translation, 70),
-    searchField("meta", findBibleBookByCode(scripture.book_code)?.englishName, 68),
-    searchField("meta", findBibleBookByCode(scripture.book_code)?.canonicalEnglishTitle, 68),
-    searchField("meta", findBibleBookByCode(scripture.book_code)?.division, 48),
-    searchField("meta", findBibleBookByCode(scripture.book_code)?.jewishCategory, 40),
-    searchField("meta", findBibleBookByCode(scripture.book_code)?.author, 36),
+    searchField("meta", book?.englishName, 68),
+    searchField("meta", book?.canonicalEnglishTitle, 68),
+    searchField("meta", book?.division, 48),
+    searchField("meta", book?.jewishCategory, 40),
+    searchField("meta", book?.author, 36),
     searchField("lyrics", scripture.text, 48),
     searchField("meta", scripture.memo, 36),
   ].filter((field) => field.text);
@@ -3190,7 +4353,7 @@ function getScriptureSearchMatch(scripture, tokens = getSearchTokens(state.searc
     const matches = tokens.map((token) => matchSearchField(field, token));
     if (matches.some((match) => !match)) continue;
 
-    const candidate = getSearchCandidate(field.text);
+    const candidate = field.candidate;
     const phraseMatched = phrase.compact.length > 1 && candidate.compact.includes(phrase.compact);
     const phraseBoost = phraseMatched ? (candidate.compact === phrase.compact ? 64 : 26) : 0;
     const score = matches.reduce((sum, match) => sum + match.score, 0) + phraseBoost;
@@ -3203,14 +4366,6 @@ function getScriptureSearchMatch(scripture, tokens = getSearchTokens(state.searc
   return bestMatch;
 }
 
-function scriptureListMeta(scripture) {
-  const book = findBibleBookByCode(scripture.book_code) || findBibleBookByName(scripture.book);
-  return [scripture.book, scripture.reference, scripture.translation, book?.division].filter(Boolean).join(" / ");
-}
-
-function bibleBookListMeta(book) {
-  return [book.canonicalEnglishTitle || book.englishName, book.division, book.author].filter(Boolean).join(" / ");
-}
 
 function formatBookMarker(value) {
   return formatNumericMarker(value, 2);
@@ -3245,6 +4400,43 @@ function bibleVerseCacheKey(translationId, bookCode, chapter) {
   return [translationId, bookCode, chapter].join(":");
 }
 
+function sortBibleVerseRows(a, b) {
+  const bookA = findBibleBookByCode(a.book_code);
+  const bookB = findBibleBookByCode(b.book_code);
+  return (
+    Number(bookA?.sortOrder || 999) - Number(bookB?.sortOrder || 999) ||
+    Number(a.chapter) - Number(b.chapter) ||
+    Number(a.verse) - Number(b.verse)
+  );
+}
+
+function isBibleTextSearchActive() {
+  return Boolean(state.bibleTextSearchQuery);
+}
+
+function shouldClearBibleTextSearchOnInput() {
+  return (
+    state.module === "scripture" &&
+    isBibleTextSearchActive() &&
+    normalizeSearchValue(state.search) !== normalizeSearchValue(state.bibleTextSearchQuery)
+  );
+}
+
+function clearBibleTextSearch() {
+  state.bibleTextSearchQuery = "";
+  state.bibleTextSearchAllResults = [];
+  state.bibleTextSearchResults = [];
+  state.bibleTextSearchLoading = false;
+  state.bibleTextSearchError = "";
+  state.bibleTextSearchRequestId = "";
+  state.bibleTextSearchTotal = null;
+  state.bibleTextSearchPage = 0;
+}
+
+function escapePostgrestLikePattern(value) {
+  return String(value || "").replace(/[\\%_]/g, (match) => `\\${match}`);
+}
+
 function getBibleBooksForScriptureFilter() {
   const books = getBibleBooks();
   if (state.scriptureFilter === "old") return books.filter((book) => book.testament === "Old Testament");
@@ -3256,6 +4448,7 @@ function getFilteredBibleBooks() {
   const reference = parseBibleReference(state.search);
   if (reference) return [reference.book];
   const books = getBibleBooksForScriptureFilter();
+  if (isBibleTextSearchActive()) return books;
   const tokens = getSearchTokens(state.search);
   if (!tokens.length) return books;
   return books.filter((book) => getBibleBookSearchMatch(book, tokens));
@@ -3291,13 +4484,13 @@ function groupBibleBooksByTestament(books) {
 }
 
 function findBibleBookByCode(code) {
-  return getBibleBooks().find((book) => book.code === code) || null;
+  return getBibleBookLookups().byCode.get(code) || null;
 }
 
 function findBibleBookByReferenceName(name) {
   const value = normalizeReferenceBookName(name);
   if (!value) return null;
-  return getBibleBooks().find((book) => getBibleBookReferenceNames(book).some((candidate) => normalizeReferenceBookName(candidate) === value)) || null;
+  return getBibleBookLookups().byReferenceName.get(value) || null;
 }
 
 function getBibleBookReferenceNames(book) {
@@ -3324,28 +4517,34 @@ function normalizeReferenceBookName(value) {
 function findBibleBookByName(name) {
   const value = normalizeTitle(name);
   if (!value) return null;
-  return getBibleBooks().find((book) => (
-    normalizeTitle(book.koreanName) === value
-    || normalizeTitle(book.englishName) === value
-    || normalizeTitle(book.canonicalEnglishTitle) === value
-    || normalizeTitle(book.shortName) === value
-  )) || null;
+  return getBibleBookLookups().byName.get(value) || null;
 }
 
-function songSearchHint(song) {
-  const tokens = getSearchTokens(state.search);
-  if (!tokens.length) return "";
-  const match = getSongSearchMatch(song, tokens);
-  if (!match?.field) return "";
-  const field = match.field;
-  const value = getSearchSnippet(field.text, tokens);
+function getBibleBookLookups() {
+  const books = getBibleBooks();
+  if (bibleBookLookupCache.books === books) return bibleBookLookupCache;
 
-  if (!value) return "";
-  if (field.kind === "title" || field.kind === "hymn") return "";
-  if (field.kind === "lyrics") return `Lyrics: ${value}`;
-  if (field.kind === "version") return `Version: ${value}`;
-  return value;
+  const byCode = new Map();
+  const byName = new Map();
+  const byReferenceName = new Map();
+  for (const book of books) {
+    byCode.set(book.code, book);
+    for (const name of [book.koreanName, book.englishName, book.canonicalEnglishTitle, book.shortName]) {
+      const normalizedName = normalizeTitle(name);
+      if (normalizedName && !byName.has(normalizedName)) byName.set(normalizedName, book);
+    }
+    for (const name of getBibleBookReferenceNames(book)) {
+      const referenceName = normalizeReferenceBookName(name);
+      if (referenceName && !byReferenceName.has(referenceName)) byReferenceName.set(referenceName, book);
+    }
+  }
+  bibleBookLookupCache.books = books;
+  bibleBookLookupCache.byCode = byCode;
+  bibleBookLookupCache.byName = byName;
+  bibleBookLookupCache.byReferenceName = byReferenceName;
+  return bibleBookLookupCache;
 }
+
 
 function getSongSearchMatch(song, tokens = getSearchTokens(state.search)) {
   if (!tokens.length) return null;
@@ -3358,9 +4557,10 @@ function getSongSearchMatch(song, tokens = getSearchTokens(state.search)) {
     const matches = tokens.map((token) => matchSearchField(field, token));
     if (matches.some((match) => !match)) continue;
 
-    const candidate = getSearchCandidate(field.text);
+    const candidate = field.candidate;
     const phraseMatched = phrase.compact.length > 1 && candidate.compact.includes(phrase.compact);
-    const phraseBoost = phraseMatched ? (candidate.compact === phrase.compact ? 64 : 26) : 0;
+    const exactMatch = phrase.compact.length > 1 && candidate.compact === phrase.compact;
+    const phraseBoost = exactMatch ? 200 : phraseMatched ? 26 : 0;
     const score = matches.reduce((sum, match) => sum + match.score, 0) + phraseBoost;
 
     if (!bestMatch || score > bestMatch.score) {
@@ -3372,6 +4572,7 @@ function getSongSearchMatch(song, tokens = getSearchTokens(state.search)) {
 }
 
 function getSongSearchFields(song) {
+  const metadata = normalizeSongMetadata(song?.metadata);
   const fields = [
     searchField("title", song.title, 120),
     searchField("hymn", song.hymn_no, 125),
@@ -3379,20 +4580,27 @@ function getSongSearchFields(song) {
     searchField("meta", song.original_title, 88),
     ...cleanList(song.alt_titles).map((title) => searchField("meta", title, 78)),
     ...cleanList(song.scripture).map((reference) => searchField("meta", reference, 70)),
-    searchField("meta", song.metadata?.otherTitle, 78),
+    searchField("meta", metadata.otherTitle, 78),
     ...songPraiseTypes(song).map((type) => searchField("meta", type, 40)),
-    searchField("meta", song.metadata?.credits, 58),
-    searchField("meta", song.metadata?.album, 48),
-    searchField("meta", song.metadata?.track, 32),
+    searchField("meta", metadata.artist, 62),
+    searchField("meta", metadata.lyricist, 58),
+    searchField("meta", metadata.composer, 58),
+    searchField("meta", metadata.translator, 54),
+    searchField("meta", metadata.album, 48),
+    searchField("meta", metadata.track, 32),
   ];
 
   for (const version of song.versions || []) {
+    const versionMetadata = normalizeSongMetadata(version.metadata);
     fields.push(searchField("version", versionDisplayName(song, version), 74));
     fields.push(searchField("version", version.raw_section_name, 58));
     fields.push(searchField("version", version.version_label, 52));
-    fields.push(searchField("version", version.metadata?.otherTitle, 58));
-    fields.push(searchField("version", version.metadata?.credits, 42));
-    fields.push(searchField("version", version.metadata?.album, 36));
+    fields.push(searchField("version", versionMetadata.otherTitle, 58));
+    fields.push(searchField("version", versionMetadata.artist, 46));
+    fields.push(searchField("version", versionMetadata.lyricist, 42));
+    fields.push(searchField("version", versionMetadata.composer, 42));
+    fields.push(searchField("version", versionMetadata.translator, 38));
+    fields.push(searchField("version", versionMetadata.album, 36));
     for (const form of version.forms || []) {
       fields.push(searchField("lyrics", form.lyrics, 24));
     }
@@ -3402,11 +4610,13 @@ function getSongSearchFields(song) {
 }
 
 function searchField(kind, text, weight) {
-  return { kind, text: String(text || "").trim(), weight };
+  const fieldText = String(text || "").trim();
+  return { kind, text: fieldText, weight, candidate: fieldText ? getSearchCandidate(fieldText) : null };
 }
 
 function matchSearchField(field, token) {
-  const candidate = getSearchCandidate(field.text);
+  const candidate = field.candidate;
+  if (!candidate) return null;
   const exact = Boolean(token.normalized && candidate.normalized === token.normalized) || Boolean(token.compact && candidate.compact === token.compact);
   const prefix =
     Boolean(token.normalized && candidate.normalized.startsWith(token.normalized)) ||
@@ -3465,15 +4675,26 @@ function normalizeReferenceInput(value) {
 
 function navigateToBibleReference(reference) {
   if (!reference?.book) return;
-  state.search = "";
-  refs.searchInput.value = "";
-  renderPraiseFilter();
-  renderSongList();
+  resetScriptureSearchInput();
   selectScriptureBook(reference.book.code, {
     chapter: reference.chapter,
     verse: reference.verse,
     force: true,
   });
+}
+
+function navigateToBibleBook(book) {
+  if (!book?.code) return;
+  resetScriptureSearchInput();
+  selectScriptureBook(book.code, { force: true });
+}
+
+function resetScriptureSearchInput() {
+  state.search = "";
+  refs.searchInput.value = "";
+  clearBibleTextSearch();
+  renderListFilter();
+  renderSongList();
 }
 
 function getSearchPhrase(tokens) {
@@ -3550,6 +4771,18 @@ function sortSongs(a, b) {
   return TITLE_COLLATOR.compare(a.title || "", b.title || "");
 }
 
+function sortSongsForCurrentList(a, b) {
+  if (state.praiseFilter === "hymns") {
+    const aNo = parseInt(a.hymn_no, 10);
+    const bNo = parseInt(b.hymn_no, 10);
+    if (!isNaN(aNo) && !isNaN(bNo)) return aNo - bNo;
+    if (!isNaN(aNo)) return -1;
+    if (!isNaN(bNo)) return 1;
+  }
+  const titleCompare = TITLE_COLLATOR.compare(songListView(a).title, songListView(b).title);
+  return titleCompare || sortSongs(a, b);
+}
+
 function sortScriptures(a, b) {
   return TITLE_COLLATOR.compare(a.title || "", b.title || "");
 }
@@ -3585,10 +4818,18 @@ function requireClient() {
 }
 
 function hasDirtyChanges() {
-  return state.dirty.song || state.dirty.forms || state.dirty.scripture;
+  return state.dirty.song || state.dirty.forms || state.dirty.scripture || state.dirty.service;
 }
 
 function updateSaveState() {
+  if (state.module === "service") {
+    const selectedService = state.services.find((svc) => svc.id === state.selectedServiceId);
+    refs.saveAllBtn.disabled = !selectedService || !state.dirty.service || state.saving;
+    renderConnectionStatus();
+    const dirtyPill = refs.detailPane.querySelector(".dirty-pill");
+    if (dirtyPill) dirtyPill.hidden = !state.dirty.service;
+    return;
+  }
   const selectedItem = state.module === "scripture" ? getSelectedScripture() : getSelectedSong();
   refs.saveAllBtn.disabled = !selectedItem || !hasDirtyChanges() || state.saving;
   renderConnectionStatus();
@@ -3607,7 +4848,7 @@ function updateEditorTitle(song) {
 function parseList(value) {
   if (Array.isArray(value)) return cleanList(value);
   return String(value || "")
-    .split(",")
+    .split(/[\n,;]+/)
     .map((item) => item.trim())
     .filter(Boolean);
 }
@@ -3621,7 +4862,10 @@ function normalizeSongMetadata(value) {
   const metadata = {
     otherTitle: nullIfBlank(source.otherTitle),
     praiseTypes: normalizePraiseTypes(source.praiseTypes || source.categories || source.type),
-    credits: nullIfBlank(source.credits),
+    artist: nullIfBlank(source.artist || source.performer),
+    lyricist: nullIfBlank(source.lyricist),
+    composer: nullIfBlank(source.composer),
+    translator: nullIfBlank(source.translator),
     album: nullIfBlank(source.album),
     track: nullIfBlank(source.track),
   };
@@ -3731,6 +4975,487 @@ function resizeFormTextarea(textarea) {
   textarea.style.height = "auto";
   textarea.style.height = `${textarea.scrollHeight}px`;
 }
+
+// ─── Service module ───────────────────────────────────────────────────────────
+
+const SERVICE_QUICK_ITEMS = [
+  { label: "", name: "Song" },
+  { label: "성경봉독", name: "Scripture" },
+  { label: "대표기도", name: "Prayer" },
+  { label: "설교", name: "Sermon" },
+  { label: "특송", name: "Special" },
+  { label: "봉헌", name: "Offering" },
+  { label: "결단", name: "Response" },
+];
+
+const SERVICE_ORDER_TEMPLATE_FALLBACKS = {
+  "sunday-main": ["사도신경", "찬양", "참회기도", "기도", "성경봉독", "특송", "설교", "결단기도", "봉헌", "봉헌기도", "교회소식", "송영", "축도"],
+  "sunday-afternoon": ["찬양", "묵도", "찬송", "기도", "성경봉독", "설교", "결단기도", "교회소식", "송영", "축도"],
+  wednesday: ["찬양", "기도", "교회소식", "성경봉독", "설교", "결단찬양", "결단기도", "축도"],
+  friday: ["찬양", "기도", "특송", "교회소식", "성경봉독", "설교", "결단찬양", "기도회", "찬양", "통성기도", "자율기도"],
+  monthly: ["찬양", "기도", "성경봉독", "특송", "설교", "결단찬양", "기도", "봉헌", "봉헌기도", "교회소식", "축도"],
+  dawn: ["찬양", "기도", "성경봉독", "설교", "기도"],
+  omer: ["찬양", "기도", "특송", "결단"],
+  children: ["사도신경", "찬양", "예배의 부름", "성경봉독", "설교", "결단기도", "봉헌", "봉헌찬양", "봉헌기도", "나래파송", "주기도문", "광고", "교제"],
+  youth: ["사도신경", "찬양", "통성기도", "대표기도", "봉헌", "봉헌찬양", "봉헌기도", "성경봉독", "설교", "결단찬양", "결단기도", "주기도문", "광고", "교제"],
+  "young-adult": ["사도신경", "대표기도", "찬양", "통성기도", "성경봉독", "설교", "결단찬양", "결단기도", "봉헌", "봉헌찬양", "봉헌기도", "광고", "파송찬양", "축도", "교제"],
+};
+
+function normalizeServiceItem(item = {}, index = 0) {
+  return {
+    id: item.id || createLocalId(),
+    service_id: item.service_id || state.selectedServiceId || null,
+    sort_order: Number(item.sort_order) || index + 1,
+    label: item.label || "",
+    raw_title: item.raw_title || "",
+    song_id: item.song_id || null,
+  };
+}
+
+function normalizeServiceItems(items) {
+  return [...(items || [])]
+    .map(normalizeServiceItem)
+    .sort((a, b) => a.sort_order - b.sort_order)
+    .map((item, index) => ({ ...item, sort_order: index + 1 }));
+}
+
+function confirmDiscardServiceChanges() {
+  if (!state.dirty.service) return true;
+  return window.confirm("Discard unsaved service changes?");
+}
+
+function getFilteredServiceTypes() {
+  const f = state.serviceFilter;
+  let types = state.serviceTypes;
+  if (f === "public") types = types.filter((t) => SERVICE_CATEGORIES.public.includes(t.id));
+  else if (f === "ministry") types = types.filter((t) => SERVICE_CATEGORIES.ministry.includes(t.id));
+  const q = normalizeSearchValue(state.search);
+  if (!q) return types;
+  return types.filter((t) => getServicesByType(t.id).some((s) => serviceMatchesSearch(s, q)));
+}
+
+function getServicesByType(typeId) {
+  return sortServicesByDate(state.services.filter((s) => s.type_id === typeId));
+}
+
+function sortServicesByDate(services, direction = "asc") {
+  const weight = direction === "desc" ? -1 : 1;
+  return [...services].sort((a, b) => {
+    const dateCompare = String(a.date || "").localeCompare(String(b.date || ""));
+    if (dateCompare) return dateCompare * weight;
+    return serviceTypeSortOrder(a.type_id) - serviceTypeSortOrder(b.type_id);
+  });
+}
+
+function serviceTypeSortOrder(typeId) {
+  return state.serviceTypes.find((type) => type.id === typeId)?.sort_order || 999;
+}
+
+function serviceTypeName(typeId) {
+  return state.serviceTypes.find((type) => type.id === typeId)?.name || typeId || "";
+}
+
+function serviceTypeById(typeId) {
+  return state.serviceTypes.find((type) => type.id === typeId) || null;
+}
+
+function serviceOrderTemplate(typeId) {
+  const template = serviceTypeById(typeId)?.order_template;
+  if (Array.isArray(template) && template.length) return template.filter((step) => step && typeof step === "object");
+  return (SERVICE_ORDER_TEMPLATE_FALLBACKS[typeId] || []).map((label, index) => ({
+    label,
+    name: label,
+    phase: index < 4 ? "Gathering" : index < 8 ? "Word/Response" : "Sending",
+    required: !["찬양", "특송", "결단찬양", "통성기도", "교제", "기도회"].includes(label),
+    flex: ["찬양", "특송", "결단찬양", "통성기도", "교제", "기도회", "기도"].includes(label),
+    repeatable: label === "찬양" || label === "기도",
+    source: "Fallback",
+  }));
+}
+
+function serviceQuickItemsForType(typeId) {
+  const template = serviceOrderTemplate(typeId);
+  if (!template.length) return SERVICE_QUICK_ITEMS;
+  const byLabel = new Map();
+  for (const step of template) {
+    const label = String(step.label || "").trim();
+    if (!label || byLabel.has(label)) continue;
+    byLabel.set(label, {
+      label,
+      name: step.name || label,
+      title: step.default_text || "",
+      flex: step.flex === true,
+      repeatable: step.repeatable === true,
+      required: step.required === true,
+    });
+  }
+  return [...byLabel.values()];
+}
+
+function getServiceItems(serviceId) {
+  return state.serviceItems[serviceId] || [];
+}
+
+function serviceMatchesSearch(svc, q) {
+  if (!q) return true;
+  const norm = (s) => normalizeSearchValue(s);
+  const worshipLeader = norm(svc.leader || "");
+  const tags = norm((svc.tags || []).join(" "));
+  const date = svc.date || "";
+  const d = new Date(date + "T00:00:00");
+  const dateFmt = `${d.getMonth()+1}/${d.getDate()}`;
+  const type = norm(serviceTypeName(svc.type_id));
+  const items = norm(getServiceItems(svc.id).map((item) => `${item.label || ""} ${item.raw_title || ""}`).join(" "));
+  return worshipLeader.includes(q) || date.includes(q) || tags.includes(q) || dateFmt.includes(q) || type.includes(q) || items.includes(q);
+}
+
+function getFilteredServicesForType(typeId) {
+  const q = normalizeSearchValue(state.search);
+  const all = getServicesByType(typeId);
+  return q ? all.filter((s) => serviceMatchesSearch(s, q)) : all;
+}
+
+function getFilteredServices() {
+  const allowedTypes = new Set(getFilteredServiceTypes().map((type) => type.id));
+  const q = normalizeSearchValue(state.search);
+  return sortServicesByDate(
+    state.services.filter((service) => allowedTypes.has(service.type_id) && (!q || serviceMatchesSearch(service, q))),
+  );
+}
+
+function getServiceDashboardServices() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const end = new Date(today);
+  end.setDate(today.getDate() + 7);
+  const upcoming = getFilteredServices().filter((service) => {
+    const serviceDate = new Date(`${service.date}T00:00:00`);
+    return serviceDate >= today && serviceDate <= end;
+  });
+  if (upcoming.length) return upcoming;
+  return sortServicesByDate(getFilteredServices(), "desc").slice(0, 8);
+}
+
+function renderServiceList() {
+  if (state.serviceError || !state.serviceTypes.length) {
+    refs.songCount.textContent = "";
+    refs.songList.innerHTML = state.serviceError
+      ? renderListEmptyState("Service unavailable", state.serviceError)
+      : renderListEmptyState("Loading…", "");
+    return;
+  }
+
+  const types = getFilteredServiceTypes();
+  const q = normalizeSearchValue(state.search);
+  const serviceTotal = types.reduce((sum, type) => sum + (q ? getFilteredServicesForType(type.id).length : getServicesByType(type.id).length), 0);
+  refs.songCount.textContent = `${types.length} types · ${serviceTotal} services`;
+
+  refs.songList.innerHTML = types.map((t) => {
+    const active = t.id === state.selectedServiceTypeId ? " active" : "";
+    const count = q ? getFilteredServicesForType(t.id).length : getServicesByType(t.id).length;
+    return `
+      <button class="song-item${active}" type="button" data-service-type-id="${escapeAttr(t.id)}">
+        <span class="song-title">
+          <span class="song-title-text">${escapeHtml(t.name)}</span>
+          ${count ? `<span class="song-count-badge">${count}</span>` : ""}
+        </span>
+      </button>`;
+  }).join("");
+
+  finishListRender();
+}
+
+function renderServiceDetail() {
+  const serviceId = state.selectedServiceId;
+
+  if (!state.selectedServiceTypeId) {
+    renderServiceDashboard();
+    return;
+  }
+
+  if (!serviceId) {
+    const services = sortServicesByDate(getFilteredServicesForType(state.selectedServiceTypeId), "desc");
+    const typeName = serviceTypeName(state.selectedServiceTypeId);
+    const q = normalizeSearchValue(state.search);
+    refs.detailPane.innerHTML = `
+      <div class="service-date-list">
+        <div class="service-section-head">
+          <h2 class="service-date-list-title">${escapeHtml(typeName)}</h2>
+          <span class="service-search-count">${services.length}${q ? " results" : " services"}</span>
+        </div>
+        ${services.length ? `<div class="service-date-grid">
+          ${services.map((service) => renderServiceDateCard(service)).join("")}
+        </div>` : `<p class="service-no-results">검색 결과가 없습니다.</p>`}
+      </div>`;
+    refreshIcons();
+    return;
+  }
+
+  const svc = state.services.find((s) => s.id === serviceId);
+  if (!svc) return;
+
+  const items = state.serviceItems[serviceId];
+  if (!items) {
+    refs.detailPane.innerHTML = `<div class="empty-detail"><div class="empty-detail-inner"><p>Loading…</p></div></div>`;
+    loadServiceItems(serviceId);
+    return;
+  }
+
+  const dateStr = formatServiceDate(svc);
+  const typeName = serviceTypeName(svc.type_id);
+  const note = (svc.tags || []).join(", ");
+  const typeObj = serviceTypeById(svc.type_id);
+
+  const sorted = normalizeServiceItems(items);
+  const itemAddHtml = serviceQuickItemsForType(svc.type_id).map((item) => `
+    <button class="svc-add-chip" type="button" data-service-item-action="add" data-service-item-label="${escapeAttr(item.label || "")}" data-service-item-title="${escapeAttr(item.title || "")}">
+      <i data-lucide="plus"></i>
+      <span>${escapeHtml(item.label || item.name || "Song")}</span>
+    </button>`).join("");
+  const itemsHtml = sorted.map((it, index) => renderServiceEditorItem(it, index, sorted.length)).join("");
+
+  const fixedItems = typeObj?.fixed_items || [];
+  const fixedHtml = fixedItems.length
+    ? `<div class="svc-fixed">
+        <div class="svc-fixed-title">Fixed</div>
+        ${fixedItems.map((it) =>
+        `<div class="svc-item svc-item--labeled">
+          <span class="svc-label">${escapeHtml(it.label)}</span>
+          <span class="svc-title">${escapeHtml(it.raw_title)}</span>
+        </div>`).join("")}
+      </div>`
+    : "";
+
+  refs.detailPane.innerHTML = `
+    <div class="service-viewer">
+      <div class="svc-header">
+        <div class="svc-header-date">
+          <span class="svc-type-name">${escapeHtml(typeName)}${note ? `<span class="svc-note"> · ${escapeHtml(note)}</span>` : ""}</span>
+          <h2 class="svc-date-text">${escapeHtml(dateStr)}</h2>
+        </div>
+        <div class="svc-header-meta">
+          ${svc.leader ? `<span class="svc-worship-leader">Lead: ${escapeHtml(svc.leader)}</span>` : ""}
+          <button class="btn secondary svc-copy-btn" type="button" data-copy-service="${escapeAttr(svc.id)}" title="Copy service setlist">
+            <i data-lucide="clipboard"></i>
+            <span>Text</span>
+          </button>
+          <button class="btn secondary svc-copy-btn" type="button" data-copy-service-draft="${escapeAttr(svc.id)}" title="Copy PPT draft">
+            <i data-lucide="presentation"></i>
+            <span>Draft</span>
+          </button>
+          <span class="dirty-pill" ${state.dirty.service ? "" : "hidden"}>Unsaved changes</span>
+        </div>
+      </div>
+      ${renderServiceOrderTemplate(typeObj)}
+      <div class="svc-add-row">${itemAddHtml}</div>
+      <div class="svc-items svc-editor-items">${itemsHtml || `<p class="service-no-results">예배 순서를 추가해 주세요.</p>`}</div>
+      ${fixedHtml}
+    </div>`;
+  refreshIcons();
+  updateSaveState();
+}
+
+function renderServiceOrderTemplate(typeObj) {
+  const template = serviceOrderTemplate(typeObj?.id);
+  if (!template.length) return "";
+  return `
+    <section class="svc-template-guide" aria-label="Service order guide">
+      <div class="svc-template-head">
+        <span>Order Guide</span>
+        <small>Required / Flex / Repeatable</small>
+      </div>
+      <div class="svc-template-flow">
+        ${template.map((step, index) => renderServiceTemplateStep(step, index)).join("")}
+      </div>
+    </section>`;
+}
+
+function renderServiceTemplateStep(step, index) {
+  const label = step.label || step.name || `Step ${index + 1}`;
+  const badges = [
+    step.required ? "Req" : "",
+    step.flex ? "Flex" : "",
+    step.repeatable ? (step.default_count ? `x${step.default_count}` : "Repeat") : "",
+  ].filter(Boolean);
+  return `
+    <button
+      class="svc-template-step"
+      type="button"
+      data-service-item-action="add"
+      data-service-item-label="${escapeAttr(step.label || "")}"
+      data-service-item-title="${escapeAttr(step.default_text || "")}"
+      title="${escapeAttr([step.name, step.notes, step.source ? `Source: ${step.source}` : ""].filter(Boolean).join(" · "))}"
+    >
+      <span class="svc-template-step-label">${escapeHtml(label)}</span>
+      ${badges.length ? `<span class="svc-template-badges">${badges.map((badge) => `<em>${escapeHtml(badge)}</em>`).join("")}</span>` : ""}
+    </button>`;
+}
+
+function renderServiceEditorItem(item, index, total) {
+  return `
+    <article class="svc-edit-item">
+      <span class="svc-edit-order">${index + 1}</span>
+      <input
+        class="svc-edit-label"
+        type="text"
+        data-service-item-field="label"
+        data-service-item-index="${index}"
+        value="${escapeAttr(item.label || "")}"
+        placeholder="찬양"
+        aria-label="Service item label"
+      />
+      <div class="svc-edit-title-wrap">
+        <input
+          class="svc-edit-title"
+          type="text"
+          data-service-item-field="raw_title"
+          data-service-item-index="${index}"
+          value="${escapeAttr(item.raw_title || "")}"
+          placeholder="${item.label ? "내용" : "찬양 제목"}"
+          aria-label="Service item text"
+        />
+      </div>
+      <div class="svc-edit-actions">
+        <button class="icon-btn" type="button" data-service-item-action="up" data-service-item-index="${index}" ${index === 0 ? "disabled" : ""} title="Move up" aria-label="Move up"><i data-lucide="arrow-up"></i></button>
+        <button class="icon-btn" type="button" data-service-item-action="down" data-service-item-index="${index}" ${index === total - 1 ? "disabled" : ""} title="Move down" aria-label="Move down"><i data-lucide="arrow-down"></i></button>
+        <button class="icon-btn" type="button" data-service-item-action="duplicate" data-service-item-index="${index}" title="Duplicate" aria-label="Duplicate"><i data-lucide="copy"></i></button>
+        <button class="icon-btn danger" type="button" data-service-item-action="delete" data-service-item-index="${index}" title="Delete" aria-label="Delete"><i data-lucide="trash-2"></i></button>
+      </div>
+    </article>`;
+}
+
+function renderServiceDashboard() {
+  if (!state.serviceTypes.length) {
+    refs.detailPane.innerHTML = `
+      <div class="empty-detail"><div class="empty-detail-inner">
+        <p class="empty-verse">Ascribe to the Lord the glory due his name;<br>worship the Lord in the splendor of his holiness.</p>
+        <span>PSALM 29:2</span>
+      </div></div>`;
+    return;
+  }
+
+  const services = getServiceDashboardServices();
+  const q = normalizeSearchValue(state.search);
+  refs.detailPane.innerHTML = `
+    <div class="service-dashboard">
+      <section class="service-dashboard-section">
+        <div class="service-section-head">
+          <h2 class="service-date-list-title">${q ? "Search Results" : "This Week"}</h2>
+          <span class="service-search-count">${services.length} services</span>
+        </div>
+        ${services.length ? `<div class="service-date-grid service-date-grid--dashboard">
+          ${services.map((service) => renderServiceDateCard(service, { showType: true })).join("")}
+        </div>` : `<p class="service-no-results">예정된 예배가 없습니다.</p>`}
+      </section>
+      <section class="service-dashboard-section">
+        <div class="service-section-head">
+          <h2 class="service-date-list-title">Service Types</h2>
+        </div>
+        <div class="service-type-picker">
+          ${getFilteredServiceTypes().map((t) => `
+            <button class="service-type-card" type="button" data-select-service-type="${escapeAttr(t.id)}">
+              <span>${escapeHtml(t.name)}</span>
+              <small>${getFilteredServicesForType(t.id).length}</small>
+            </button>`).join("")}
+        </div>
+      </section>
+    </div>`;
+  refreshIcons();
+}
+
+function renderServiceDateCard(service, options = {}) {
+  const preview = serviceItemPreview(service.id);
+  const note = (service.tags || []).join(", ");
+  return `
+    <button class="service-date-card" type="button" data-service-id="${escapeAttr(service.id)}">
+      <span class="service-date-card-date">${escapeHtml(formatServiceDate(service, { compact: true }))}</span>
+      ${options.showType ? `<span class="service-date-card-type">${escapeHtml(serviceTypeName(service.type_id))}</span>` : ""}
+      ${service.leader ? `<span class="service-date-card-leader">Lead: ${escapeHtml(service.leader)}</span>` : ""}
+      ${note ? `<span class="service-date-card-note">${escapeHtml(note)}</span>` : ""}
+      ${preview ? `<span class="service-date-card-preview">${escapeHtml(preview)}</span>` : ""}
+    </button>`;
+}
+
+function formatServiceDate(service, options = {}) {
+  const weekdays = ["일","월","화","수","목","금","토"];
+  const start = new Date(`${service.date}T00:00:00`);
+  const startText = options.compact
+    ? `${start.getMonth() + 1}/${start.getDate()} ${weekdays[start.getDay()]}`
+    : `${start.getMonth() + 1}월 ${start.getDate()}일 (${weekdays[start.getDay()]})`;
+  if (!service.date_end) return startText;
+  const end = new Date(`${service.date_end}T00:00:00`);
+  const endText = options.compact
+    ? `${end.getMonth() + 1}/${end.getDate()} ${weekdays[end.getDay()]}`
+    : `${end.getMonth() + 1}월 ${end.getDate()}일 (${weekdays[end.getDay()]})`;
+  return `${startText} - ${endText}`;
+}
+
+function serviceItemPreview(serviceId) {
+  const items = getServiceItems(serviceId)
+    .filter((item) => item.raw_title && item.raw_title !== "-")
+    .slice(0, 3)
+    .map((item) => item.raw_title);
+  return items.join(" · ");
+}
+
+function splitHymnNo(raw) {
+  const match = /^(통\s*\d+|\d+)\s+/.exec(raw || "");
+  return match ? { no: match[1].replace(/\s+/, " "), title: raw.slice(match[0].length) } : { no: null, title: raw || "—" };
+}
+
+function formatServiceForCopy(serviceId) {
+  const service = state.services.find((svc) => svc.id === serviceId);
+  if (!service) return "";
+  const typeName = serviceTypeName(service.type_id);
+  const tags = (service.tags || []).join("; ");
+  const header = [`${typeName} ${formatServiceDate(service)}`, tags].filter(Boolean).join(" / ");
+  const meta = service.leader ? [`Worship Leader: ${service.leader}`] : [];
+  const lines = normalizeServiceItems(getServiceItems(serviceId))
+    .sort((a, b) => a.sort_order - b.sort_order)
+    .map((item, index) => `${item.label ? `${item.label}/ ` : `${index + 1}. `}${item.raw_title || "-"}`);
+  const typeObj = state.serviceTypes.find((type) => type.id === service.type_id);
+  const fixed = (typeObj?.fixed_items || []).map((item) => `${item.label}/ ${item.raw_title}`);
+  return [header, ...meta, "", ...lines, ...(fixed.length ? ["", ...fixed] : [])].join("\n");
+}
+
+function copyService(serviceId) {
+  const text = formatServiceForCopy(serviceId);
+  if (!text) return;
+  copyText(text);
+}
+
+function formatServicePptDraft(serviceId) {
+  const service = state.services.find((svc) => svc.id === serviceId);
+  if (!service) return "";
+  const typeName = serviceTypeName(service.type_id);
+  const header = [typeName, formatServiceDate(service)].filter(Boolean).join("\n");
+  const slides = normalizeServiceItems(getServiceItems(serviceId))
+    .sort((a, b) => a.sort_order - b.sort_order)
+    .map((item, index) => {
+      const label = item.label || `찬양 ${index + 1}`;
+      return [label, item.raw_title || "-"].join("\n");
+    });
+  return [header, ...slides].join("\n\n---\n\n");
+}
+
+function copyServicePptDraft(serviceId) {
+  const text = formatServicePptDraft(serviceId);
+  if (!text) return;
+  copyText(text);
+}
+
+function selectService(id) {
+  if (id !== state.selectedServiceId && !confirmDiscardServiceChanges()) return;
+  state.selectedServiceId = id;
+  const service = state.services.find((svc) => svc.id === id);
+  if (service) state.selectedServiceTypeId = service.type_id;
+  renderServiceDetail();
+  renderServiceList();
+  syncBrowserHistory();
+  if (id) loadServiceItems(id);
+}
+
+// ─── end Service module ───────────────────────────────────────────────────────
 
 window.Mindex = {
   normalizeTitle,

@@ -23,17 +23,17 @@ The app also reads a local injected config if you host it somewhere private:
 <script>
   window.MINDEX_SUPABASE = {
     url: "https://project.supabase.co",
-    anonKey: "eyJ..."
+    anonKey: "<ANON_KEY>"
   };
 </script>
 ```
 
 ## Run
 
-Use any static server from this folder:
+Use the included no-cache server (changes reflect on Cmd+R):
 
 ```sh
-python3 -m http.server 4173
+python3 serve.py
 ```
 
 Then open:
@@ -57,6 +57,13 @@ enter through a prepared link.
 
 The app still remembers a link-provided config in browser `localStorage` after
 it loads.
+
+## Data Source
+
+Content data lives in Supabase. Do not keep lyrics, Bible text, worship setlists,
+or other ministry content in generated seed files. Repository files should define
+schema, import tools, and UI behavior; content changes should be written to the
+database.
 
 ## GitHub Pages
 
@@ -85,21 +92,28 @@ Mindex follows the system light/dark setting by default. Toggle manually with
 `hymn_no` is only the hymn number metadata. The song list filters use praise
 types instead: `hymn`, `ccm`, or both. Existing songs are inferred so hymns still
 appear under `Hymns` and non-hymns under `CCM`. Songs that were CCM before hymn
-book inclusion can store `metadata.praiseTypes: ["ccm"]` in the song memo; with a
-`hymn_no`, they appear in both filters.
+book inclusion can store `ccm` in `praise_types`; with a `hymn_no`, they appear in
+both filters.
 
-## PPT Draft
+## Praise Metadata
 
-The PPT Draft tab creates reviewable draft data:
+Song metadata uses direct `mindex_songs` columns for fields that are edited often.
+The app still reads older `mindex_songs.memo.metadata` values as a fallback, then
+saves promoted fields back to columns when those columns exist.
+Currently supported promoted fields are:
 
-- one `title` slide
-- multiple `lyrics` slides
-- stable fields: `slide_type`, `label`, `text_lines`, `form_id`, `chunk_index`
-- a fixed template marker: `template_version: "mindex-lyrics-v1"`
+- `other_title`
+- `praise_types`
+- `artist`
+- `lyricist`
+- `composer`
+- `credits`
+- `album`
+- `track`
+- `scripture_refs`
 
-The `Export PPTX` button uses PptxGenJS in the browser to create a fixed-template
-`.pptx` draft. The generated deck is intentionally simple: one title slide and
-centered lyric slides with text replacement only.
+When `lyricist` and `composer` are identical, the app displays them as
+`Words/Music`.
 
 ## Copy / Projection
 
@@ -113,8 +127,8 @@ The Scripture view stores a title, Bible book, reference, translation, passage
 text, and note. Bible books are classified in `mindex_scripture_books`.
 `english_name` is the compact book name, such as `1 Samuel`;
 `canonical_english_title` is the formal full name, such as `First Book of
-Samuel`. Book metadata is prepared for broader corpora with `corpus`, `canon`,
-`book_group`, `osis_code`, `usfm_code`, and flexible `metadata`.
+Samuel`. Book metadata is prepared for broader corpora with optional `corpus`,
+`canon`, `book_group`, `osis_code`, `usfm_code`, and flexible `metadata` columns.
 
 The Notion export source has been normalized into `data/scripture-books.csv`.
 Future Bible XML imports should write a row to `mindex_bible_translations` and
