@@ -988,6 +988,10 @@ h1, h2, h3, p { margin: 0; }
 .svc-date-text { font-size: 20px; font-weight: 540; line-height: 1.2; color: var(--ink); margin: 0; }
 .svc-header-meta { display: flex; align-items: center; justify-content: flex-end; gap: var(--s2); flex-wrap: wrap; }
 .svc-praise-lead { color: var(--ink-4); font-size: 11px; font-weight: 500; }
+.svc-meta-fields { display: flex; align-items: center; gap: var(--s2); }
+.svc-meta-input { height: 28px; border: 0; border-radius: calc(var(--r) - 2px); background: color-mix(in srgb, var(--panel-2) 60%, transparent); color: var(--ink-3); font: inherit; font-size: 12px; font-weight: 500; padding: 0 var(--s2); outline: none; width: 110px; }
+.svc-meta-input:focus { background: var(--panel-2); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 38%, var(--line-soft)); color: var(--ink); }
+.svc-meta-input::placeholder { color: var(--ink-4); }
 .svc-items { display: flex; flex-direction: column; }
 .svc-template-guide { display: flex; flex-direction: column; gap: 6px; border: 0; border-radius: var(--r); background: transparent; padding: 0; }
 .svc-template-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s3); color: var(--ink-4); font-size: 10px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; }
@@ -1019,7 +1023,18 @@ h1, h2, h3, p { margin: 0; }
 .svc-no { flex-shrink: 0; width: 18px; font-size: 10px; font-weight: 600; color: var(--ink-4); text-align: right; }
 .svc-label { flex-shrink: 0; font-size: 10px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--accent); min-width: 52px; text-align: right; }
 .svc-title { font-size: 14px; color: var(--ink); line-height: 1.4; }
-.service-search-count { font-size: 12px; font-weight: 500; color: var(--ink-4); margin-left: var(--s2); }
+.service-search-count { font-size: 12px; font-weight: 500; color: var(--ink-4); }
+.service-section-head-actions { display: flex; align-items: center; gap: var(--s2); }
+.svc-new-btn { width: 28px; height: 28px; }
+.svc-new-form { display: flex; flex-direction: column; gap: var(--s2); padding: var(--s3); border-radius: var(--r); background: color-mix(in srgb, var(--panel) 82%, var(--bg)); }
+.svc-new-form-fields { display: flex; flex-wrap: wrap; gap: var(--s2); align-items: flex-end; }
+.svc-new-field { display: flex; flex-direction: column; gap: 4px; }
+.svc-new-label { font-size: 10px; font-weight: 650; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-4); }
+.svc-new-input { height: 30px; border: 0; border-radius: calc(var(--r) - 2px); background: var(--bg); color: var(--ink); font: inherit; font-size: 13px; font-weight: 500; padding: 0 var(--s2); outline: none; box-shadow: 0 0 0 1px var(--line-soft); }
+.svc-new-input:focus { box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 55%, var(--line-soft)); }
+.svc-new-input[type=date] { width: 140px; }
+.svc-new-input:not([type=date]) { width: 120px; }
+.svc-new-form-actions { display: flex; gap: var(--s2); }
 .service-no-results { font-size: 13px; color: var(--ink-4); margin: 0; padding: var(--s3) 0; }
 .svc-note { font-size: 11px; color: var(--ink-4); font-style: italic; }
 .service-date-card-note { font-size: 10px; color: var(--ink-4); font-style: italic; margin-top: 1px; }

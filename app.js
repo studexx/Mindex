@@ -305,6 +305,7 @@ const state = {
   selectedServiceId: null,
   serviceFilter: "all",
   serviceError: "",
+  newServiceForm: null,
   listScroll: {},
   forms: [],
   search: "",
@@ -1621,6 +1622,16 @@ async function saveService() {
       state.serviceItems[service.id] = [];
     }
 
+    // Save service metadata (leader, tags)
+    const { error: metaError } = await state.client
+      .from("mindex_services")
+      .update({
+        leader: nullIfBlank(service.leader),
+        tags: service.tags || [],
+      })
+      .eq("id", service.id);
+    if (metaError) throw metaError;
+
     state.dirty.service = false;
     showToast("Service saved.");
     render();
@@ -1694,6 +1705,34 @@ function handleDetailClick(event) {
   const copyServiceDraftButton = event.target.closest("[data-copy-service-draft]");
   if (copyServiceDraftButton) {
     copyServicePptDraft(copyServiceDraftButton.dataset.copyServiceDraft);
+    return;
+  }
+
+  const newServiceBtn = event.target.closest("[data-new-service]");
+  if (newServiceBtn) {
+    if (!confirmDiscardServiceChanges()) return;
+    const typeId = newServiceBtn.dataset.newService;
+    state.newServiceForm = { type_id: typeId, date: "", leader: "", tags: "" };
+    renderServiceDetail();
+    return;
+  }
+
+  const cancelNewServiceBtn = event.target.closest("[data-cancel-new-service]");
+  if (cancelNewServiceBtn) {
+    state.newServiceForm = null;
+    renderServiceDetail();
+    return;
+  }
+
+  const createServiceBtn = event.target.closest("[data-create-service]");
+  if (createServiceBtn) {
+    createService();
+    return;
+  }
+
+  const deleteServiceBtn = event.target.closest("[data-delete-service]");
+  if (deleteServiceBtn) {
+    deleteService(deleteServiceBtn.dataset.deleteService);
     return;
   }
 
@@ -1905,6 +1944,18 @@ function handleWindowPointerUp() {
 }
 
 function handleDetailInput(event) {
+  const serviceMetaField = event.target.closest("[data-service-meta-field]");
+  if (serviceMetaField) {
+    updateServiceMetaField(serviceMetaField);
+    return;
+  }
+
+  const newServiceField = event.target.closest("[data-new-service-field]");
+  if (newServiceField) {
+    updateNewServiceFormField(newServiceField);
+    return;
+  }
+
   const serviceDefaultField = event.target.closest("[data-service-default-field]");
   if (serviceDefaultField) {
     updateServiceDefaultItemField(serviceDefaultField);
@@ -1944,6 +1995,18 @@ function handleDetailInput(event) {
 }
 
 function handleDetailChange(event) {
+  const serviceMetaField = event.target.closest("[data-service-meta-field]");
+  if (serviceMetaField) {
+    updateServiceMetaField(serviceMetaField);
+    return;
+  }
+
+  const newServiceField = event.target.closest("[data-new-service-field]");
+  if (newServiceField) {
+    updateNewServiceFormField(newServiceField);
+    return;
+  }
+
   const serviceDefaultField = event.target.closest("[data-service-default-field]");
   if (serviceDefaultField) {
     updateServiceDefaultItemField(serviceDefaultField);
@@ -2306,6 +2369,27 @@ function runFormAction(action, index) {
   state.dirty.forms = true;
   renderDetail();
   updateSaveState();
+}
+
+function updateServiceMetaField(field) {
+  const service = state.services.find((s) => s.id === state.selectedServiceId);
+  if (!service) return;
+  const key = field.dataset.serviceMetaField;
+  if (key === "leader") {
+    service.leader = field.value;
+  } else if (key === "tags") {
+    service.tags = field.value.split(",").map((t) => t.trim()).filter(Boolean);
+  }
+  state.dirty.service = true;
+  updateSaveState();
+}
+
+function updateNewServiceFormField(field) {
+  if (!state.newServiceForm) return;
+  const key = field.dataset.newServiceField;
+  if (["date", "leader", "tags"].includes(key)) {
+    state.newServiceForm[key] = field.value;
+  }
 }
 
 function updateServiceItemField(field) {
@@ -5627,18 +5711,44 @@ function renderServiceDetail() {
   }
 
   if (!serviceId) {
-    const services = sortServicesByDate(getFilteredServicesForType(state.selectedServiceTypeId), "desc");
-    const typeName = serviceTypeName(state.selectedServiceTypeId);
+    const typeId = state.selectedServiceTypeId;
+    const services = sortServicesByDate(getFilteredServicesForType(typeId), "desc");
+    const typeName = serviceTypeName(typeId);
     const q = normalizeSearchValue(state.search);
+    const form = state.newServiceForm;
     refs.detailPane.innerHTML = `
       <div class="service-date-list">
         <div class="service-section-head">
           <h2 class="service-date-list-title">${escapeHtml(typeName)}</h2>
-          <span class="service-search-count">${services.length}${q ? " results" : " services"}</span>
+          <div class="service-section-head-actions">
+            <span class="service-search-count">${services.length}${q ? " results" : " services"}</span>
+            ${!q ? `<button class="icon-btn svc-new-btn" type="button" data-new-service="${escapeAttr(typeId)}" title="새 예배 추가" aria-label="새 예배 추가"><i data-lucide="plus"></i></button>` : ""}
+          </div>
         </div>
+        ${form ? `
+        <div class="svc-new-form">
+          <div class="svc-new-form-fields">
+            <div class="svc-new-field">
+              <label class="svc-new-label">날짜</label>
+              <input class="svc-new-input" type="date" data-new-service-field="date" value="${escapeAttr(form.date)}" required />
+            </div>
+            <div class="svc-new-field">
+              <label class="svc-new-label">인도자</label>
+              <input class="svc-new-input" type="text" data-new-service-field="leader" value="${escapeAttr(form.leader)}" placeholder="이름 칭호" />
+            </div>
+            <div class="svc-new-field">
+              <label class="svc-new-label">비고</label>
+              <input class="svc-new-input" type="text" data-new-service-field="tags" value="${escapeAttr(form.tags)}" placeholder="쉼표로 구분" />
+            </div>
+          </div>
+          <div class="svc-new-form-actions">
+            <button class="btn primary" type="button" data-create-service>추가</button>
+            <button class="btn secondary" type="button" data-cancel-new-service>취소</button>
+          </div>
+        </div>` : ""}
         ${services.length ? `<div class="service-date-grid">
           ${services.map((service) => renderServiceDateCard(service)).join("")}
-        </div>` : `<p class="service-no-results">검색 결과가 없습니다.</p>`}
+        </div>` : `<p class="service-no-results">${q ? "검색 결과가 없습니다." : "등록된 예배가 없습니다."}</p>`}
       </div>`;
     refreshIcons();
     return;
@@ -5656,23 +5766,30 @@ function renderServiceDetail() {
 
   const dateStr = formatServiceDate(svc);
   const typeName = serviceTypeName(svc.type_id);
-  const note = (svc.tags || []).join(", ");
   const typeObj = serviceTypeById(svc.type_id);
 
   const sorted = normalizeServiceItems(items);
   const itemsHtml = sorted.map((it, index) => renderServiceEditorItem(it, index, sorted.length)).join("");
   const defaultsHtml = renderServiceDefaultItems(typeObj);
-  const praiseLead = serviceLeaderLabel(svc);
 
   refs.detailPane.innerHTML = `
     <div class="service-viewer">
       <div class="svc-header">
         <div class="svc-header-date">
-          <span class="svc-type-name">${escapeHtml(typeName)}${note ? `<span class="svc-note"> · ${escapeHtml(note)}</span>` : ""}</span>
+          <span class="svc-type-name">${escapeHtml(typeName)}</span>
           <h2 class="svc-date-text">${escapeHtml(dateStr)}</h2>
         </div>
         <div class="svc-header-meta">
-          ${praiseLead ? `<span class="svc-praise-lead">찬양 인도: ${escapeHtml(praiseLead)}</span>` : ""}
+          <div class="svc-meta-fields">
+            <input class="svc-meta-input" type="text" data-service-meta-field="leader"
+              value="${escapeAttr(svc.leader || "")}"
+              placeholder="찬양 인도자"
+              aria-label="찬양 인도자" />
+            <input class="svc-meta-input" type="text" data-service-meta-field="tags"
+              value="${escapeAttr((svc.tags || []).join(", "))}"
+              placeholder="비고"
+              aria-label="비고" />
+          </div>
           <button class="btn secondary svc-copy-btn" type="button" data-copy-service="${escapeAttr(svc.id)}" title="Copy service setlist">
             <i data-lucide="clipboard"></i>
             <span>Text</span>
@@ -5680,6 +5797,9 @@ function renderServiceDetail() {
           <button class="btn secondary svc-copy-btn" type="button" data-copy-service-draft="${escapeAttr(svc.id)}" title="Copy PPT draft">
             <i data-lucide="presentation"></i>
             <span>Draft</span>
+          </button>
+          <button class="icon-btn danger" type="button" data-delete-service="${escapeAttr(svc.id)}" title="예배 삭제" aria-label="예배 삭제">
+            <i data-lucide="trash-2"></i>
           </button>
           <span class="dirty-pill" ${state.dirty.service ? "" : "hidden"}>Unsaved changes</span>
         </div>
@@ -5924,6 +6044,74 @@ function copyServicePptDraft(serviceId) {
   const text = formatServicePptDraft(serviceId);
   if (!text) return;
   copyText(text);
+}
+
+async function createService() {
+  if (!state.newServiceForm || !requireClient()) return;
+  const { type_id, date, leader, tags } = state.newServiceForm;
+  if (!date) { showToast("날짜를 입력해주세요.", "error"); return; }
+
+  try {
+    const payload = {
+      type_id,
+      date,
+      leader: nullIfBlank(leader),
+      tags: tags ? tags.split(",").map((t) => t.trim()).filter(Boolean) : [],
+    };
+    const { data, error } = await state.client
+      .from("mindex_services")
+      .insert(payload)
+      .select("*")
+      .single();
+    if (error) throw error;
+    state.services.push(data);
+    state.services = sortServicesByDate(state.services, "asc");
+    state.serviceItems[data.id] = [];
+    state.newServiceForm = null;
+    state.selectedServiceId = data.id;
+    state.selectedServiceTypeId = data.type_id;
+    renderServiceList();
+    renderServiceDetail();
+    syncBrowserHistory();
+    showToast("예배가 추가되었습니다.");
+  } catch (e) {
+    showToast(e.message || "예배 생성 실패.", "error");
+  }
+}
+
+async function deleteService(serviceId) {
+  if (!serviceId || !requireClient()) return;
+  const svc = state.services.find((s) => s.id === serviceId);
+  if (!svc) return;
+  const label = `${serviceTypeName(svc.type_id)} ${formatServiceDate(svc)}`;
+  if (!window.confirm(`"${label}" 예배를 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`)) return;
+
+  try {
+    const { error: itemsErr } = await state.client
+      .from("mindex_service_items")
+      .delete()
+      .eq("service_id", serviceId);
+    if (itemsErr) throw itemsErr;
+
+    const { error: svcErr } = await state.client
+      .from("mindex_services")
+      .delete()
+      .eq("id", serviceId);
+    if (svcErr) throw svcErr;
+
+    state.services = state.services.filter((s) => s.id !== serviceId);
+    delete state.serviceItems[serviceId];
+    if (state.selectedServiceId === serviceId) {
+      state.selectedServiceId = null;
+      state.dirty.service = false;
+    }
+    renderServiceList();
+    renderServiceDetail();
+    syncBrowserHistory();
+    showToast("예배가 삭제되었습니다.");
+  } catch (e) {
+    showToast(e.message || "예배 삭제 실패.", "error");
+  }
 }
 
 function selectService(id) {
