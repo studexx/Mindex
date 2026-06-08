@@ -23,11 +23,11 @@
 - `mindex_service_items` — 예배별 곡 순서. 실제 콘티 데이터의 원본은 Supabase.
 
 ### 데이터 특성
-- `leader`: 찬양 인도자 이름. 예배 전체 주관자/설교자처럼 강조하지 말고 보조 메타로 표시.
+- `leader`: 찬양 인도자. `이름 칭호` 형식으로 저장/표시한다. 무호칭은 기본 `청년`, 어린이부/청소년부 무호칭은 `선생님`.
 - `tags`: 비고 (["온세대 찬양예배"], ["어린이주일예배"] 등)
 - `raw_title`: 원문 그대로 보존 ("502 빛의 사자들이여", "나는 예배자입니다 + 소원")
 - `label`: 역할 태그 ("2부 특송", "결단", "기도 1", "파송", null=본찬양)
-- `fixed_items`: 예배 종류별 고정 항목 (파송, 폐회 등) — `mindex_service_types.fixed_items`에 JSON
+- `fixed_items`: 수정 불가가 아니라 예배 종류별 기본 컴포넌트. 같은 type의 모든 예배에 자동 적용하며, UI에서는 `Every Service`로 편집한다. 저장은 `mindex_service_types.fixed_items` JSON.
 
 ### UI 구조
 - 사이드바: 예배 종류 목록 (전체/공예배/부서예배 필터)
@@ -49,7 +49,7 @@
 - 송리스트의 느낌표/검수 아이콘은 제목 흐름에 붙이지 말고 오른쪽 끝 정렬로 유지.
 - 부제/원제/메타 보조 텍스트는 굵게 두지 말고, 11-12px 정도로 읽히게 처리.
 - 송폼 선택부는 선택/비선택 상태에서 텍스트 위치와 굵기가 과하게 튀지 않게 보수적으로 유지.
-- `index.html` 캐시 키는 현재 `mindex-service-29`.
+- `index.html` 캐시 키는 현재 `mindex-service-37`.
 
 ### 이번에 받은 Service PPT 예시
 - 주일예배 1-4부: `Sun_2026-05-31_1st.pptx` 등
@@ -98,4 +98,4 @@
 ---
 
 ## 현재 버전 스트링
-`mindex-service-29` (index.html 내 CSS/JS 쿼리 파라미터)
+`mindex-service-37` (index.html 내 CSS/JS 쿼리 파라미터)

@@ -300,6 +300,7 @@ const state = {
   serviceTypes: [],
   services: [],
   serviceItems: {},
+  dirtyServiceTypeIds: new Set(),
   selectedServiceTypeId: null,
   selectedServiceId: null,
   serviceFilter: "all",
@@ -425,7 +426,34 @@ function bindStaticEvents() {
   });
   refs.songList.addEventListener("scroll", saveCurrentListScroll, { passive: true });
 
-  refs.songList.addEventListener("click", (event) => {
+  refs.songList.addEventListener("click", async (event) => {
+    const globalSongItem = event.target.closest("[data-global-song-id]");
+    if (globalSongItem) {
+      await openGlobalSongResult(globalSongItem.dataset.globalSongId);
+      return;
+    }
+
+    const globalBookItem = event.target.closest("[data-global-book-code]");
+    if (globalBookItem) {
+      await openGlobalBookResult(globalBookItem.dataset.globalBookCode, {
+        chapter: globalBookItem.dataset.globalChapter,
+        verse: globalBookItem.dataset.globalVerse,
+      });
+      return;
+    }
+
+    const globalBibleTextItem = event.target.closest("[data-global-bible-text]");
+    if (globalBibleTextItem) {
+      await openGlobalBibleTextResult();
+      return;
+    }
+
+    const globalServiceItem = event.target.closest("[data-global-service-id]");
+    if (globalServiceItem) {
+      await openGlobalServiceResult(globalServiceItem.dataset.globalServiceId);
+      return;
+    }
+
     const songItem = event.target.closest("[data-song-id]");
     if (songItem) {
       selectSong(songItem.dataset.songId);
@@ -526,19 +554,18 @@ function bindStaticEvents() {
 }
 
 async function handleSearchKeydown(event) {
-  if (event.key !== "Enter" || state.module !== "scripture") return;
-  const reference = parseBibleReference(state.search);
+  if (event.key !== "Enter") return;
+
+  const scriptureShortcut = await getScriptureSearchShortcut(state.search);
+  if (scriptureShortcut && (state.module !== "scripture" || scriptureShortcut.type !== "text")) {
+    event.preventDefault();
+    await runScriptureSearchShortcut(scriptureShortcut);
+    return;
+  }
+
+  if (state.module !== "scripture") return;
   event.preventDefault();
-  if (reference) {
-    navigateToBibleReference(reference);
-    return;
-  }
-  const book = findBibleBookByReferenceName(state.search) || findBibleBookByName(state.search);
-  if (book) {
-    navigateToBibleBook(book);
-    return;
-  }
-  await runBibleTextSearch(state.search);
+  await runScriptureSearchShortcut(scriptureShortcut || { type: "text", query: state.search });
 }
 
 function handleSongNavigationKeydown(event) {
@@ -873,23 +900,28 @@ function connectClient() {
   }
 }
 
-async function switchModule(moduleName) {
+async function switchModule(moduleName, options = {}) {
   if (!["praise", "scripture", "service"].includes(moduleName)) return;
   if (moduleName === state.module) return;
   if (hasDirtyChanges() && !confirm("Discard unsaved changes?")) return;
 
+  const clearSearch = options.clearSearch !== false;
+  const syncHistory = options.syncHistory !== false;
   saveCurrentListScroll();
   state.module = moduleName;
-  state.search = "";
-  refs.searchInput.value = "";
-  clearBibleTextSearch();
+  if (clearSearch) {
+    state.search = "";
+    refs.searchInput.value = "";
+    clearBibleTextSearch();
+  }
   state.dirty.song = false;
   state.dirty.forms = false;
   state.dirty.scripture = false;
   state.dirty.service = false;
+  state.dirtyServiceTypeIds.clear();
   persistUiState();
   render();
-  syncBrowserHistory();
+  if (syncHistory) syncBrowserHistory();
 
   if (moduleName === "scripture" && !state.scriptures.length && !state.scriptureError) {
     if (!state.scriptureBooks.length) await loadScriptureBooks();
@@ -1042,6 +1074,7 @@ async function loadServiceData({ silent = false } = {}) {
     state.serviceTypes = typesRes.data || [];
     state.services = servicesRes.data || [];
     state.serviceItems = groupServiceItems(itemsRes.data || []);
+    state.dirtyServiceTypeIds.clear();
     state.dirty.service = false;
     state.serviceError = "";
     render();
@@ -1544,6 +1577,25 @@ async function saveService() {
   updateSaveState();
 
   try {
+    if (state.dirtyServiceTypeIds.has(service.type_id)) {
+      const typeObj = serviceTypeById(service.type_id);
+      const fixedItems = serializeServiceDefaultItems(service.type_id);
+      const { data: typeData, error: typeError } = await state.client
+        .from("mindex_service_types")
+        .update({ fixed_items: fixedItems })
+        .eq("id", service.type_id)
+        .select("*")
+        .single();
+      if (typeError) {
+        const message = /policy|permission|rls/i.test(typeError.message || "")
+          ? "Service defaults need mindex_service_types update permission. Run the service type write-policy SQL."
+          : typeError.message;
+        throw new Error(message);
+      }
+      if (typeObj && typeData) Object.assign(typeObj, typeData);
+      state.dirtyServiceTypeIds.delete(service.type_id);
+    }
+
     const { error: deleteError } = await state.client
       .from("mindex_service_items")
       .delete()
@@ -1633,9 +1685,24 @@ function writeFormsToSelectedVersion() {
 }
 
 function handleDetailClick(event) {
+  const openSongBtn = event.target.closest("[data-open-song]");
+  if (openSongBtn) {
+    openGlobalSongResult(openSongBtn.dataset.openSong);
+    return;
+  }
+
   const copyServiceDraftButton = event.target.closest("[data-copy-service-draft]");
   if (copyServiceDraftButton) {
     copyServicePptDraft(copyServiceDraftButton.dataset.copyServiceDraft);
+    return;
+  }
+
+  const serviceDefaultAction = event.target.closest("[data-service-default-action]");
+  if (serviceDefaultAction) {
+    runServiceDefaultItemAction(
+      serviceDefaultAction.dataset.serviceDefaultAction,
+      Number(serviceDefaultAction.dataset.serviceDefaultIndex),
+    );
     return;
   }
 
@@ -1838,6 +1905,12 @@ function handleWindowPointerUp() {
 }
 
 function handleDetailInput(event) {
+  const serviceDefaultField = event.target.closest("[data-service-default-field]");
+  if (serviceDefaultField) {
+    updateServiceDefaultItemField(serviceDefaultField);
+    return;
+  }
+
   const serviceField = event.target.closest("[data-service-item-field]");
   if (serviceField) {
     updateServiceItemField(serviceField);
@@ -1871,6 +1944,12 @@ function handleDetailInput(event) {
 }
 
 function handleDetailChange(event) {
+  const serviceDefaultField = event.target.closest("[data-service-default-field]");
+  if (serviceDefaultField) {
+    updateServiceDefaultItemField(serviceDefaultField);
+    return;
+  }
+
   const serviceField = event.target.closest("[data-service-item-field]");
   if (serviceField) {
     updateServiceItemField(serviceField);
@@ -2244,6 +2323,18 @@ function updateServiceItemField(field) {
   updateSaveState();
 }
 
+function updateServiceDefaultItemField(field) {
+  const typeId = state.selectedServiceTypeId;
+  const index = Number(field.dataset.serviceDefaultIndex);
+  const key = field.dataset.serviceDefaultField;
+  if (!typeId || !Number.isFinite(index) || !["label", "raw_title"].includes(key)) return;
+
+  const items = getServiceDefaultItems(typeId);
+  if (!items[index]) return;
+  items[index][key] = field.value;
+  setServiceDefaultItems(typeId, items);
+}
+
 function runServiceItemAction(action, index, label = "", title = "") {
   const serviceId = state.selectedServiceId;
   if (!serviceId) return;
@@ -2276,6 +2367,34 @@ function runServiceItemAction(action, index, label = "", title = "") {
   state.dirty.service = true;
   renderServiceDetail();
   updateSaveState();
+}
+
+function runServiceDefaultItemAction(action, index) {
+  const typeId = state.selectedServiceTypeId;
+  if (!typeId) return;
+
+  const items = getServiceDefaultItems(typeId);
+  const item = items[index];
+  if (!item && action !== "add") return;
+
+  if (action === "add") {
+    items.push(normalizeServiceDefaultItem({ label: "", raw_title: "" }, items.length));
+  }
+  if (action === "up" && item && index > 0) {
+    [items[index - 1], items[index]] = [items[index], items[index - 1]];
+  }
+  if (action === "down" && item && index < items.length - 1) {
+    [items[index + 1], items[index]] = [items[index], items[index + 1]];
+  }
+  if (action === "duplicate" && item) {
+    items.splice(index + 1, 0, normalizeServiceDefaultItem({ ...item, id: createLocalId() }, index + 1));
+  }
+  if (action === "delete" && item) {
+    items.splice(index, 1);
+  }
+
+  setServiceDefaultItems(typeId, items);
+  renderServiceDetail();
 }
 
 function runCopyAction(action, index) {
@@ -2348,10 +2467,17 @@ function renderModuleSwitcher() {
   }
   refs.searchInput.placeholder =
     state.module === "scripture"
-      ? "Search book, reference, or text..."
+      ? "Book, ref, text..."
       : state.module === "service"
-        ? "Search setlist, date, worship leader..."
-        : "Search title, lyrics, #...";
+        ? "Setlist, date, praise lead..."
+        : "Title, lyrics, #...";
+  refs.searchInput.title =
+    state.module === "scripture"
+      ? "Search or jump: 창 1:1, Gen 1:1, 히브리서, 태초"
+      : state.module === "service"
+        ? "Search setlists by song, date, tag, or praise lead."
+        : "Search songs by title, lyrics, hymn number, or metadata.";
+  refs.searchInput.setAttribute("aria-label", refs.searchInput.title);
   refs.newSongBtn.title =
     state.module === "scripture"
       ? "New scripture"
@@ -2440,6 +2566,11 @@ function renderConnectionStatus() {
 }
 
 function renderSongList() {
+  if (isGlobalSearchActive()) {
+    renderGlobalSearchList();
+    return;
+  }
+
   if (state.module === "scripture") {
     renderScriptureList();
     return;
@@ -2485,6 +2616,217 @@ function renderSongList() {
   finishListRender();
 }
 
+function isGlobalSearchActive() {
+  return Boolean(normalizeSearchValue(state.search));
+}
+
+function renderGlobalSearchList() {
+  const results = getGlobalSearchResults();
+  const total = results.praise.length + results.scripture.length + results.service.length;
+  refs.songCount.textContent = `${total} ${total === 1 ? "result" : "results"}`;
+
+  if (!total) {
+    refs.songList.innerHTML = renderListEmptyState("No results", "Search songs, books, references, Bible text, or services.");
+    return;
+  }
+
+  refs.songList.innerHTML = [
+    renderGlobalSearchSection("Praise", results.praise.map(renderGlobalPraiseResult).join("")),
+    renderGlobalSearchSection("Scripture", results.scripture.map(renderGlobalScriptureResult).join("")),
+    renderGlobalSearchSection("Service", results.service.map(renderGlobalServiceResult).join("")),
+  ].filter(Boolean).join("");
+  finishListRender();
+}
+
+function renderGlobalSearchSection(title, itemsHtml) {
+  if (!itemsHtml) return "";
+  return `
+    <section class="global-search-section">
+      <h3 class="global-search-heading">${escapeHtml(title)}</h3>
+      ${itemsHtml}
+    </section>
+  `;
+}
+
+function getGlobalSearchResults() {
+  const query = normalizeSearchValue(state.search);
+  const tokens = getSearchTokens(query);
+  return {
+    praise: getGlobalPraiseResults(tokens),
+    scripture: getGlobalScriptureResults(query, tokens),
+    service: getGlobalServiceResults(query),
+  };
+}
+
+function getGlobalPraiseResults(tokens) {
+  if (!tokens.length) return [];
+  return state.songs
+    .map((song) => ({ song, match: getSongSearchMatch(song, tokens) }))
+    .filter((item) => item.match)
+    .sort((a, b) => b.match.score - a.match.score || sortSongsForCurrentList(a.song, b.song))
+    .slice(0, 8)
+    .map((item) => item.song);
+}
+
+function getGlobalScriptureResults(query, tokens) {
+  if (!query) return [];
+
+  const results = [];
+  const reference = parseBibleReference(query);
+  const exactBook = findBibleBookByReferenceName(query) || findBibleBookByName(query);
+
+  if (reference) {
+    results.push({ kind: "reference", book: reference.book, chapter: reference.chapter, verse: reference.verse });
+  }
+
+  const bookMatches = getBibleBooks()
+    .map((book) => ({ book, match: getBibleBookSearchMatch(book, tokens) }))
+    .filter((item) => item.match)
+    .sort((a, b) => sortBibleBooks(a.book, b.book))
+    .slice(0, reference ? 4 : 5)
+    .map((item) => ({ kind: "book", book: item.book }));
+
+  for (const match of bookMatches) {
+    if (results.some((result) => result.book.code === match.book.code)) continue;
+    results.push(match);
+  }
+
+  if (!reference && !exactBook) results.push({ kind: "text", query: state.search });
+  return results.slice(0, 6);
+}
+
+function getGlobalServiceResults(query) {
+  if (!query) return [];
+  return sortServicesByDate(state.services.filter((service) => serviceMatchesSearch(service, query)), "desc").slice(0, 8);
+}
+
+function renderGlobalPraiseResult(song) {
+  const view = songListView(song);
+  return `
+    <button class="song-item global-search-result" type="button" data-global-song-id="${escapeAttr(song.id)}">
+      <span class="song-title">
+        ${view.showHymnMarker ? `<span class="song-hymn-no">${escapeHtml(formatHymnMarker(song.hymn_no))}</span>` : ""}
+        <span class="song-title-text">${escapeHtml(view.title)}</span>
+        ${song.versions?.length > 1 ? `<span class="song-count-badge">${song.versions.length}</span>` : ""}
+        ${renderSongAttentionIcon(song)}
+      </span>
+      ${view.meta ? `<span class="song-meta-line">${escapeHtml(view.meta)}</span>` : ""}
+    </button>
+  `;
+}
+
+function renderGlobalScriptureResult(result) {
+  if (result.kind === "text") {
+    return `
+      <button class="song-item global-search-result" type="button" data-global-bible-text="true">
+        <span class="song-title">
+          <span class="song-title-text">Search Bible text</span>
+        </span>
+        <span class="song-meta-line">${escapeHtml(String(result.query || "").trim())}</span>
+      </button>
+    `;
+  }
+
+  const book = result.book;
+  const suffix = result.kind === "reference"
+    ? ` ${result.chapter}${result.verse ? `:${result.verse}` : ""}`
+    : "";
+  const marker = formatBookMarker(book.sortOrder);
+  const meta = [book.englishName, book.testament].filter(Boolean).join(META_SEPARATOR);
+  return `
+    <button
+      class="song-item global-search-result"
+      type="button"
+      data-global-book-code="${escapeAttr(book.code)}"
+      ${result.chapter ? `data-global-chapter="${escapeAttr(result.chapter)}"` : ""}
+      ${result.verse ? `data-global-verse="${escapeAttr(result.verse)}"` : ""}
+    >
+      <span class="song-title">
+        <span class="song-hymn-no">${escapeHtml(marker)}</span>
+        <span class="song-title-text">${escapeHtml(`${book.koreanName || book.englishName}${suffix}`)}</span>
+      </span>
+      ${meta ? `<span class="song-meta-line">${escapeHtml(meta)}</span>` : ""}
+    </button>
+  `;
+}
+
+function renderGlobalServiceResult(service) {
+  const meta = [
+    serviceTypeName(service.type_id),
+    serviceLeaderLabel(service) ? `찬양 인도: ${serviceLeaderLabel(service)}` : "",
+  ].filter(Boolean).join(META_SEPARATOR);
+  const preview = serviceItemPreview(service.id);
+  return `
+    <button class="song-item global-search-result" type="button" data-global-service-id="${escapeAttr(service.id)}">
+      <span class="song-title">
+        <span class="song-title-text">${escapeHtml(formatServiceDate(service))}</span>
+      </span>
+      <span class="song-meta-line">${escapeHtml([meta, preview].filter(Boolean).join(" · "))}</span>
+    </button>
+  `;
+}
+
+async function openGlobalSongResult(songId) {
+  if (!songId) return;
+  if (state.module !== "praise") {
+    await switchModule("praise", { clearSearch: false, syncHistory: false });
+    if (state.module !== "praise") return;
+  }
+  await selectSong(songId);
+  if (state.selectedSongId !== songId) return;
+  clearGlobalSearchInput();
+  renderSongList();
+  syncBrowserHistory();
+}
+
+async function openGlobalBookResult(bookCode, options = {}) {
+  if (!bookCode) return;
+  if (state.module !== "scripture") {
+    await switchModule("scripture", { clearSearch: false, syncHistory: false });
+    if (state.module !== "scripture") return;
+  }
+  clearGlobalSearchInput();
+  await selectScriptureBook(bookCode, {
+    chapter: toPositiveNumber(options.chapter),
+    verse: toPositiveNumber(options.verse),
+    force: Boolean(options.chapter || options.verse),
+  });
+}
+
+async function openGlobalBibleTextResult() {
+  const query = state.search;
+  if (!normalizeSearchValue(query)) return;
+  if (state.module !== "scripture") {
+    await switchModule("scripture", { clearSearch: false, syncHistory: false });
+    if (state.module !== "scripture") return;
+  }
+  await runBibleTextSearch(query);
+}
+
+async function openGlobalServiceResult(serviceId) {
+  if (!serviceId) return;
+  if (state.module !== "service") {
+    await switchModule("service", { clearSearch: false, syncHistory: false });
+    if (state.module !== "service") return;
+  }
+  selectService(serviceId);
+  if (state.selectedServiceId !== serviceId) return;
+  clearGlobalSearchInput();
+  renderServiceList();
+  syncBrowserHistory();
+}
+
+function clearGlobalSearchInput() {
+  state.search = "";
+  if (refs.searchInput) refs.searchInput.value = "";
+  clearBibleTextSearch();
+}
+
+function toPositiveNumber(value) {
+  const number = Number(value);
+  return Number.isFinite(number) && number > 0 ? number : null;
+}
+
 function renderScriptureList() {
   const reference = parseBibleReference(state.search);
   const books = reference ? getBibleBooks() : getBibleBooksForScriptureFilter();
@@ -2502,7 +2844,9 @@ function renderScriptureList() {
   if (!filtered.length) {
     refs.songList.innerHTML = renderListEmptyState(
       "No books",
-      "Try a book name or reference like 창 1:1 or Gen 1:1.",
+      hasSearch && !reference
+        ? "Press Enter to search Bible text."
+        : "Try a book name or reference like 창 1:1 or Gen 1:1.",
     );
     return;
   }
@@ -2539,6 +2883,7 @@ function finishListRender() {
 
 function getListScrollKey() {
   const search = normalizeSearchValue(state.search);
+  if (isGlobalSearchActive()) return `global:${search}`;
   if (state.module === "scripture") return `scripture:${state.scriptureFilter}:${search}`;
   if (state.module === "service") return `service:${state.serviceFilter}:${search}`;
   return `praise:${state.praiseFilter}:${search}`;
@@ -3153,22 +3498,7 @@ function renderBibleTextSearchDetail() {
 }
 
 function renderBibleTextSearchControls() {
-  if (!state.bibleTranslations.length) return "";
-  return `
-    <div class="bible-reader-controls bible-search-controls">
-      <label>
-        <span>Translation</span>
-        <select data-bible-reader-field="translation">
-          ${state.bibleTranslations.map((translation) => `
-            <option value="${escapeAttr(translation.id)}" ${translation.id === state.selectedBibleTranslationId ? "selected" : ""}>
-              ${escapeHtml(translation.abbreviation || translation.name)}
-            </option>
-          `).join("")}
-        </select>
-      </label>
-      ${renderBibleCopyReferenceToggle()}
-    </div>
-  `;
+  return renderBibleReaderControls({ className: "bible-search-controls" });
 }
 
 function renderBibleTextSearchResults() {
@@ -3250,35 +3580,9 @@ function renderBibleReader(book) {
   const hasNextChapter = chapterIndex >= 0 && chapterIndex < chapters.length - 1;
   return `
     <section class="bible-reader" aria-label="${escapeAttr(book.koreanName)} Bible reader">
-      <div class="bible-reader-controls">
-        <label>
-          <span>Translation</span>
-          <select data-bible-reader-field="translation">
-            ${state.bibleTranslations.map((translation) => `
-              <option value="${escapeAttr(translation.id)}" ${translation.id === state.selectedBibleTranslationId ? "selected" : ""}>
-                ${escapeHtml(translation.abbreviation || translation.name)}
-              </option>
-            `).join("")}
-          </select>
-        </label>
-        <label>
-          <span>Chapter</span>
-          <span class="bible-chapter-control">
-            <button class="icon-btn" type="button" data-bible-reader-action="-1" title="Previous chapter" aria-label="Previous chapter" ${hasPreviousChapter ? "" : "disabled"}>
-              <i data-lucide="chevron-left"></i>
-            </button>
-            <select data-bible-reader-field="chapter" ${chapters.length ? "" : "disabled"}>
-              ${chapters.length
-                ? chapters.map((chapter) => `<option value="${chapter}" ${chapter === state.selectedBibleChapter ? "selected" : ""}>${chapter}</option>`).join("")
-                : `<option value="1">1</option>`}
-            </select>
-            <button class="icon-btn" type="button" data-bible-reader-action="1" title="Next chapter" aria-label="Next chapter" ${hasNextChapter ? "" : "disabled"}>
-              <i data-lucide="chevron-right"></i>
-            </button>
-          </span>
-        </label>
-        ${renderBibleCopyReferenceToggle()}
-      </div>
+      ${renderBibleReaderControls({
+        chapterControl: renderBibleChapterControl(chapters, hasPreviousChapter, hasNextChapter),
+      })}
       ${
         state.bibleReaderLoading
           ? renderBibleVerseSkeleton()
@@ -3288,11 +3592,58 @@ function renderBibleReader(book) {
   `;
 }
 
+function renderBibleReaderControls(options = {}) {
+  if (!state.bibleTranslations.length) return "";
+  return `
+    <div class="bible-reader-controls ${escapeAttr(options.className || "")}">
+      ${renderBibleTranslationControl()}
+      ${options.chapterControl || ""}
+      ${renderBibleCopyReferenceToggle()}
+    </div>
+  `;
+}
+
+function renderBibleTranslationControl() {
+  return `
+    <label class="bible-control">
+      <span>Translation</span>
+      <select data-bible-reader-field="translation">
+        ${state.bibleTranslations.map((translation) => `
+          <option value="${escapeAttr(translation.id)}" ${translation.id === state.selectedBibleTranslationId ? "selected" : ""}>
+            ${escapeHtml(translation.abbreviation || translation.name)}
+          </option>
+        `).join("")}
+      </select>
+    </label>
+  `;
+}
+
+function renderBibleChapterControl(chapters, hasPreviousChapter, hasNextChapter) {
+  return `
+    <label class="bible-control bible-control--chapter">
+      <span>Chapter</span>
+      <span class="bible-chapter-control">
+        <button class="icon-btn" type="button" data-bible-reader-action="-1" title="Previous chapter" aria-label="Previous chapter" ${hasPreviousChapter ? "" : "disabled"}>
+          <i data-lucide="chevron-left"></i>
+        </button>
+        <select data-bible-reader-field="chapter" ${chapters.length ? "" : "disabled"}>
+          ${chapters.length
+            ? chapters.map((chapter) => `<option value="${chapter}" ${chapter === state.selectedBibleChapter ? "selected" : ""}>${chapter}</option>`).join("")
+            : `<option value="1">1</option>`}
+        </select>
+        <button class="icon-btn" type="button" data-bible-reader-action="1" title="Next chapter" aria-label="Next chapter" ${hasNextChapter ? "" : "disabled"}>
+          <i data-lucide="chevron-right"></i>
+        </button>
+      </span>
+    </label>
+  `;
+}
+
 function renderBibleCopyReferenceToggle() {
   return `
-    <label class="bible-copy-option">
+    <label class="bible-copy-option" title="Include reference when copying verses">
       <input type="checkbox" data-bible-reader-field="copy_reference" ${state.bibleCopyReference ? "checked" : ""} />
-      <span>Copy reference</span>
+      <span>Reference</span>
     </label>
   `;
 }
@@ -4433,6 +4784,45 @@ function clearBibleTextSearch() {
   state.bibleTextSearchPage = 0;
 }
 
+async function getScriptureSearchShortcut(value) {
+  const query = String(value || "").trim();
+  if (!query) return null;
+  await ensureBibleBookLookups();
+
+  const reference = parseBibleReference(query);
+  if (reference) return { type: "reference", reference };
+
+  const book = findBibleBookByReferenceName(query) || findBibleBookByName(query);
+  if (book) return { type: "book", book };
+
+  if (state.module === "scripture") return { type: "text", query };
+  return null;
+}
+
+async function ensureBibleBookLookups() {
+  if (getBibleBooks().length || !state.client || state.scriptureError) return;
+  await loadScriptureBooks({ silent: true });
+}
+
+async function runScriptureSearchShortcut(shortcut) {
+  if (!shortcut) return;
+
+  if (state.module !== "scripture") {
+    await switchModule("scripture", { clearSearch: false, syncHistory: false });
+    if (state.module !== "scripture") return;
+  }
+
+  if (shortcut.type === "reference") {
+    navigateToBibleReference(shortcut.reference);
+    return;
+  }
+  if (shortcut.type === "book") {
+    navigateToBibleBook(shortcut.book);
+    return;
+  }
+  await runBibleTextSearch(shortcut.query);
+}
+
 function escapePostgrestLikePattern(value) {
   return String(value || "").replace(/[\\%_]/g, (match) => `\\${match}`);
 }
@@ -4501,6 +4891,8 @@ function getBibleBookReferenceNames(book) {
     book.englishName,
     book.canonicalEnglishTitle,
     book.shortName,
+    KOREAN_BIBLE_BOOK_ABBREVIATIONS[book.code],
+    ENGLISH_BIBLE_BOOK_ABBREVIATIONS[book.code],
     ...(book.aliases || []),
     ...(BIBLE_BOOK_ALIASES[book.code] || []),
   ].filter(Boolean);
@@ -4978,16 +5370,6 @@ function resizeFormTextarea(textarea) {
 
 // ─── Service module ───────────────────────────────────────────────────────────
 
-const SERVICE_QUICK_ITEMS = [
-  { label: "", name: "Song" },
-  { label: "성경봉독", name: "Scripture" },
-  { label: "대표기도", name: "Prayer" },
-  { label: "설교", name: "Sermon" },
-  { label: "특송", name: "Special" },
-  { label: "봉헌", name: "Offering" },
-  { label: "결단", name: "Response" },
-];
-
 const SERVICE_ORDER_TEMPLATE_FALLBACKS = {
   "sunday-main": ["사도신경", "찬양", "참회기도", "기도", "성경봉독", "특송", "설교", "결단기도", "봉헌", "봉헌기도", "교회소식", "송영", "축도"],
   "sunday-afternoon": ["찬양", "묵도", "찬송", "기도", "성경봉독", "설교", "결단기도", "교회소식", "송영", "축도"],
@@ -5012,11 +5394,37 @@ function normalizeServiceItem(item = {}, index = 0) {
   };
 }
 
+function normalizeServiceDefaultItem(item = {}, index = 0) {
+  return {
+    id: item.id || createLocalId(),
+    sort_order: Number(item.sort_order) || index + 1,
+    label: item.label || "",
+    raw_title: item.raw_title || item.title || item.default_text || "",
+  };
+}
+
 function normalizeServiceItems(items) {
   return [...(items || [])]
     .map(normalizeServiceItem)
     .sort((a, b) => a.sort_order - b.sort_order)
     .map((item, index) => ({ ...item, sort_order: index + 1 }));
+}
+
+function normalizeServiceDefaultItems(items) {
+  return [...(items || [])]
+    .map(normalizeServiceDefaultItem)
+    .sort((a, b) => a.sort_order - b.sort_order)
+    .map((item, index) => ({ ...item, sort_order: index + 1 }));
+}
+
+function serializeServiceDefaultItems(typeId) {
+  return getServiceDefaultItems(typeId)
+    .filter((item) => String(item.label || item.raw_title || "").trim())
+    .map((item, index) => ({
+      sort_order: index + 1,
+      label: nullIfBlank(item.label),
+      raw_title: String(item.raw_title || "").trim(),
+    }));
 }
 
 function confirmDiscardServiceChanges() {
@@ -5073,40 +5481,85 @@ function serviceOrderTemplate(typeId) {
   }));
 }
 
-function serviceQuickItemsForType(typeId) {
-  const template = serviceOrderTemplate(typeId);
-  if (!template.length) return SERVICE_QUICK_ITEMS;
-  const byLabel = new Map();
-  for (const step of template) {
-    const label = String(step.label || "").trim();
-    if (!label || byLabel.has(label)) continue;
-    byLabel.set(label, {
-      label,
-      name: step.name || label,
-      title: step.default_text || "",
-      flex: step.flex === true,
-      repeatable: step.repeatable === true,
-      required: step.required === true,
-    });
-  }
-  return [...byLabel.values()];
-}
-
 function getServiceItems(serviceId) {
   return state.serviceItems[serviceId] || [];
+}
+
+function getServiceDefaultItems(typeId) {
+  return normalizeServiceDefaultItems(serviceTypeById(typeId)?.fixed_items || []);
+}
+
+function setServiceDefaultItems(typeId, items) {
+  const typeObj = serviceTypeById(typeId);
+  if (!typeObj) return;
+  typeObj.fixed_items = normalizeServiceDefaultItems(items);
+  state.dirtyServiceTypeIds.add(typeId);
+  state.dirty.service = true;
+  updateSaveState();
+}
+
+function getServiceOutputItems(serviceId) {
+  const service = state.services.find((svc) => svc.id === serviceId);
+  const items = normalizeServiceItems(getServiceItems(serviceId));
+  if (!service) return items;
+  const defaults = getServiceDefaultItems(service.type_id).map((item, index) => ({
+    ...item,
+    sort_order: items.length + index + 1,
+  }));
+  return normalizeServiceItems([...items, ...defaults]);
+}
+
+function normalizeServiceLeader(rawLeader, typeId) {
+  const raw = String(rawLeader || "").replace(/\s+/g, " ").trim();
+  if (!raw) return "";
+
+  const titleRules = [
+    ["목사님", "목사"],
+    ["목사", "목사"],
+    ["전도사님", "전도사"],
+    ["전도사", "전도사"],
+    ["집사님", "집사"],
+    ["집사", "집사"],
+    ["장로님", "장로"],
+    ["장로", "장로"],
+    ["권사님", "권사"],
+    ["권사", "권사"],
+    ["선생님", "선생님"],
+    ["선생", "선생님"],
+    ["청년", "청년"],
+  ];
+
+  for (const [suffix, title] of titleRules) {
+    if (!raw.endsWith(suffix)) continue;
+    const name = raw.slice(0, -suffix.length).trim();
+    return name ? `${name} ${title}` : title;
+  }
+
+  return `${raw} ${defaultServiceLeaderTitle(typeId)}`;
+}
+
+function defaultServiceLeaderTitle(typeId) {
+  return typeId === "children" || typeId === "youth" ? "선생님" : "청년";
+}
+
+function serviceLeaderLabel(service) {
+  return normalizeServiceLeader(service?.leader, service?.type_id);
 }
 
 function serviceMatchesSearch(svc, q) {
   if (!q) return true;
   const norm = (s) => normalizeSearchValue(s);
-  const worshipLeader = norm(svc.leader || "");
+  const praiseLead = norm([svc.leader, serviceLeaderLabel(svc)].filter(Boolean).join(" "));
   const tags = norm((svc.tags || []).join(" "));
   const date = svc.date || "";
   const d = new Date(date + "T00:00:00");
   const dateFmt = `${d.getMonth()+1}/${d.getDate()}`;
   const type = norm(serviceTypeName(svc.type_id));
-  const items = norm(getServiceItems(svc.id).map((item) => `${item.label || ""} ${item.raw_title || ""}`).join(" "));
-  return worshipLeader.includes(q) || date.includes(q) || tags.includes(q) || dateFmt.includes(q) || type.includes(q) || items.includes(q);
+  const items = norm([
+    ...getServiceItems(svc.id),
+    ...getServiceDefaultItems(svc.type_id),
+  ].map((item) => `${item.label || ""} ${item.raw_title || ""}`).join(" "));
+  return praiseLead.includes(q) || date.includes(q) || tags.includes(q) || dateFmt.includes(q) || type.includes(q) || items.includes(q);
 }
 
 function getFilteredServicesForType(typeId) {
@@ -5207,24 +5660,9 @@ function renderServiceDetail() {
   const typeObj = serviceTypeById(svc.type_id);
 
   const sorted = normalizeServiceItems(items);
-  const itemAddHtml = serviceQuickItemsForType(svc.type_id).map((item) => `
-    <button class="svc-add-chip" type="button" data-service-item-action="add" data-service-item-label="${escapeAttr(item.label || "")}" data-service-item-title="${escapeAttr(item.title || "")}">
-      <i data-lucide="plus"></i>
-      <span>${escapeHtml(item.label || item.name || "Song")}</span>
-    </button>`).join("");
   const itemsHtml = sorted.map((it, index) => renderServiceEditorItem(it, index, sorted.length)).join("");
-
-  const fixedItems = typeObj?.fixed_items || [];
-  const fixedHtml = fixedItems.length
-    ? `<div class="svc-fixed">
-        <div class="svc-fixed-title">Fixed</div>
-        ${fixedItems.map((it) =>
-        `<div class="svc-item svc-item--labeled">
-          <span class="svc-label">${escapeHtml(it.label)}</span>
-          <span class="svc-title">${escapeHtml(it.raw_title)}</span>
-        </div>`).join("")}
-      </div>`
-    : "";
+  const defaultsHtml = renderServiceDefaultItems(typeObj);
+  const praiseLead = serviceLeaderLabel(svc);
 
   refs.detailPane.innerHTML = `
     <div class="service-viewer">
@@ -5234,7 +5672,7 @@ function renderServiceDetail() {
           <h2 class="svc-date-text">${escapeHtml(dateStr)}</h2>
         </div>
         <div class="svc-header-meta">
-          ${svc.leader ? `<span class="svc-worship-leader">Lead: ${escapeHtml(svc.leader)}</span>` : ""}
+          ${praiseLead ? `<span class="svc-praise-lead">찬양 인도: ${escapeHtml(praiseLead)}</span>` : ""}
           <button class="btn secondary svc-copy-btn" type="button" data-copy-service="${escapeAttr(svc.id)}" title="Copy service setlist">
             <i data-lucide="clipboard"></i>
             <span>Text</span>
@@ -5247,12 +5685,29 @@ function renderServiceDetail() {
         </div>
       </div>
       ${renderServiceOrderTemplate(typeObj)}
-      <div class="svc-add-row">${itemAddHtml}</div>
+      ${defaultsHtml}
       <div class="svc-items svc-editor-items">${itemsHtml || `<p class="service-no-results">예배 순서를 추가해 주세요.</p>`}</div>
-      ${fixedHtml}
     </div>`;
   refreshIcons();
   updateSaveState();
+}
+
+function renderServiceDefaultItems(typeObj) {
+  const typeId = typeObj?.id;
+  const items = getServiceDefaultItems(typeId);
+  if (!typeId || !items.length) return "";
+  return `
+    <section class="svc-default-section" aria-label="Every service components">
+      <div class="svc-default-head">
+        <span>Every Service</span>
+        <button class="icon-btn" type="button" data-service-default-action="add" data-service-default-index="${items.length}" title="Add default component" aria-label="Add default component">
+          <i data-lucide="plus"></i>
+        </button>
+      </div>
+      <div class="svc-items svc-default-items">
+        ${items.map((item, index) => renderServiceDefaultEditorItem(item, index, items.length)).join("")}
+      </div>
+    </section>`;
 }
 
 function renderServiceOrderTemplate(typeObj) {
@@ -5261,8 +5716,7 @@ function renderServiceOrderTemplate(typeObj) {
   return `
     <section class="svc-template-guide" aria-label="Service order guide">
       <div class="svc-template-head">
-        <span>Order Guide</span>
-        <small>Required / Flex / Repeatable</small>
+        <span>Components</span>
       </div>
       <div class="svc-template-flow">
         ${template.map((step, index) => renderServiceTemplateStep(step, index)).join("")}
@@ -5272,14 +5726,9 @@ function renderServiceOrderTemplate(typeObj) {
 
 function renderServiceTemplateStep(step, index) {
   const label = step.label || step.name || `Step ${index + 1}`;
-  const badges = [
-    step.required ? "Req" : "",
-    step.flex ? "Flex" : "",
-    step.repeatable ? (step.default_count ? `x${step.default_count}` : "Repeat") : "",
-  ].filter(Boolean);
   return `
     <button
-      class="svc-template-step"
+      class="svc-template-step${step.required ? " is-required" : ""}${step.flex ? " is-flex" : ""}"
       type="button"
       data-service-item-action="add"
       data-service-item-label="${escapeAttr(step.label || "")}"
@@ -5287,7 +5736,6 @@ function renderServiceTemplateStep(step, index) {
       title="${escapeAttr([step.name, step.notes, step.source ? `Source: ${step.source}` : ""].filter(Boolean).join(" · "))}"
     >
       <span class="svc-template-step-label">${escapeHtml(label)}</span>
-      ${badges.length ? `<span class="svc-template-badges">${badges.map((badge) => `<em>${escapeHtml(badge)}</em>`).join("")}</span>` : ""}
     </button>`;
 }
 
@@ -5314,12 +5762,46 @@ function renderServiceEditorItem(item, index, total) {
           placeholder="${item.label ? "내용" : "찬양 제목"}"
           aria-label="Service item text"
         />
+        ${item.song_id ? `<button class="icon-btn svc-song-link" type="button" data-open-song="${escapeAttr(item.song_id)}" title="Praise에서 열기" aria-label="Praise에서 열기"><i data-lucide="music"></i></button>` : ""}
       </div>
       <div class="svc-edit-actions">
         <button class="icon-btn" type="button" data-service-item-action="up" data-service-item-index="${index}" ${index === 0 ? "disabled" : ""} title="Move up" aria-label="Move up"><i data-lucide="arrow-up"></i></button>
         <button class="icon-btn" type="button" data-service-item-action="down" data-service-item-index="${index}" ${index === total - 1 ? "disabled" : ""} title="Move down" aria-label="Move down"><i data-lucide="arrow-down"></i></button>
         <button class="icon-btn" type="button" data-service-item-action="duplicate" data-service-item-index="${index}" title="Duplicate" aria-label="Duplicate"><i data-lucide="copy"></i></button>
         <button class="icon-btn danger" type="button" data-service-item-action="delete" data-service-item-index="${index}" title="Delete" aria-label="Delete"><i data-lucide="trash-2"></i></button>
+      </div>
+    </article>`;
+}
+
+function renderServiceDefaultEditorItem(item, index, total) {
+  return `
+    <article class="svc-edit-item svc-edit-item--default">
+      <span class="svc-edit-order">${index + 1}</span>
+      <input
+        class="svc-edit-label"
+        type="text"
+        data-service-default-field="label"
+        data-service-default-index="${index}"
+        value="${escapeAttr(item.label || "")}"
+        placeholder="구성"
+        aria-label="Default service component label"
+      />
+      <div class="svc-edit-title-wrap">
+        <input
+          class="svc-edit-title"
+          type="text"
+          data-service-default-field="raw_title"
+          data-service-default-index="${index}"
+          value="${escapeAttr(item.raw_title || "")}"
+          placeholder="매 예배에 적용할 내용"
+          aria-label="Default service component text"
+        />
+      </div>
+      <div class="svc-edit-actions">
+        <button class="icon-btn" type="button" data-service-default-action="up" data-service-default-index="${index}" ${index === 0 ? "disabled" : ""} title="Move up" aria-label="Move up"><i data-lucide="arrow-up"></i></button>
+        <button class="icon-btn" type="button" data-service-default-action="down" data-service-default-index="${index}" ${index === total - 1 ? "disabled" : ""} title="Move down" aria-label="Move down"><i data-lucide="arrow-down"></i></button>
+        <button class="icon-btn" type="button" data-service-default-action="duplicate" data-service-default-index="${index}" title="Duplicate" aria-label="Duplicate"><i data-lucide="copy"></i></button>
+        <button class="icon-btn danger" type="button" data-service-default-action="delete" data-service-default-index="${index}" title="Delete" aria-label="Delete"><i data-lucide="trash-2"></i></button>
       </div>
     </article>`;
 }
@@ -5366,11 +5848,12 @@ function renderServiceDashboard() {
 function renderServiceDateCard(service, options = {}) {
   const preview = serviceItemPreview(service.id);
   const note = (service.tags || []).join(", ");
+  const praiseLead = serviceLeaderLabel(service);
   return `
     <button class="service-date-card" type="button" data-service-id="${escapeAttr(service.id)}">
       <span class="service-date-card-date">${escapeHtml(formatServiceDate(service, { compact: true }))}</span>
       ${options.showType ? `<span class="service-date-card-type">${escapeHtml(serviceTypeName(service.type_id))}</span>` : ""}
-      ${service.leader ? `<span class="service-date-card-leader">Lead: ${escapeHtml(service.leader)}</span>` : ""}
+      ${praiseLead ? `<span class="service-date-card-leader">찬양 인도: ${escapeHtml(praiseLead)}</span>` : ""}
       ${note ? `<span class="service-date-card-note">${escapeHtml(note)}</span>` : ""}
       ${preview ? `<span class="service-date-card-preview">${escapeHtml(preview)}</span>` : ""}
     </button>`;
@@ -5409,13 +5892,12 @@ function formatServiceForCopy(serviceId) {
   const typeName = serviceTypeName(service.type_id);
   const tags = (service.tags || []).join("; ");
   const header = [`${typeName} ${formatServiceDate(service)}`, tags].filter(Boolean).join(" / ");
-  const meta = service.leader ? [`Worship Leader: ${service.leader}`] : [];
-  const lines = normalizeServiceItems(getServiceItems(serviceId))
+  const praiseLead = serviceLeaderLabel(service);
+  const meta = praiseLead ? [`찬양 인도: ${praiseLead}`] : [];
+  const lines = getServiceOutputItems(serviceId)
     .sort((a, b) => a.sort_order - b.sort_order)
     .map((item, index) => `${item.label ? `${item.label}/ ` : `${index + 1}. `}${item.raw_title || "-"}`);
-  const typeObj = state.serviceTypes.find((type) => type.id === service.type_id);
-  const fixed = (typeObj?.fixed_items || []).map((item) => `${item.label}/ ${item.raw_title}`);
-  return [header, ...meta, "", ...lines, ...(fixed.length ? ["", ...fixed] : [])].join("\n");
+  return [header, ...meta, "", ...lines].join("\n");
 }
 
 function copyService(serviceId) {
@@ -5429,7 +5911,7 @@ function formatServicePptDraft(serviceId) {
   if (!service) return "";
   const typeName = serviceTypeName(service.type_id);
   const header = [typeName, formatServiceDate(service)].filter(Boolean).join("\n");
-  const slides = normalizeServiceItems(getServiceItems(serviceId))
+  const slides = getServiceOutputItems(serviceId)
     .sort((a, b) => a.sort_order - b.sort_order)
     .map((item, index) => {
       const label = item.label || `찬양 ${index + 1}`;
