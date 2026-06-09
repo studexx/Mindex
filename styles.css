@@ -1017,6 +1017,10 @@ h1, h2, h3, p { margin: 0; }
 .svc-edit-actions { display: flex; align-items: center; gap: 4px; opacity: .72; }
 .svc-edit-item:hover .svc-edit-actions, .svc-edit-item:focus-within .svc-edit-actions { opacity: 1; }
 .svc-edit-actions .icon-btn { width: 28px; height: 28px; }
+.svc-group { display: flex; flex-direction: column; gap: 2px; }
+.svc-group-head { display: flex; align-items: center; gap: var(--s2); padding: 4px var(--s2); }
+.svc-group-label { font-size: 12px; font-weight: 600; color: var(--accent); }
+.svc-edit-item--sub { grid-template-columns: minmax(180px, 1fr) auto; padding-left: calc(24px + var(--s2) * 2); background: color-mix(in srgb, var(--panel) 60%, var(--bg)); }
 .svc-item { display: flex; align-items: baseline; gap: var(--s2); padding: 5px 0; border-bottom: 0; }
 .svc-item:last-child { border-bottom: 0; }
 .svc-item--labeled { gap: var(--s3); }
@@ -1040,3 +1044,29 @@ h1, h2, h3, p { margin: 0; }
 .service-date-card-note { font-size: 10px; color: var(--ink-4); font-style: italic; margin-top: 1px; }
 .svc-hymn-no { flex-shrink: 0; font-size: 10px; font-weight: 650; color: var(--ink-4); letter-spacing: .02em; }
 .svc-copy-btn { height: 28px; padding: 0 var(--s2); }
+
+/* ── 교회력 캘린더 뷰 ────────────────────────────────────────── */
+.cal-view { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+.cal-header { flex-shrink: 0; padding: var(--s4) var(--s4) var(--s2); display: flex; align-items: baseline; gap: var(--s3); border-bottom: 1px solid var(--line); }
+.cal-title { font-size: 17px; font-weight: 700; color: var(--ink); letter-spacing: -.02em; }
+.cal-subtitle { font-size: 11px; color: var(--ink-4); font-weight: 500; }
+.cal-table-wrap { flex: 1; overflow: auto; }
+.cal-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.cal-table thead { position: sticky; top: 0; z-index: 2; }
+.cal-table th { background: var(--panel-2); color: var(--ink-3); font-size: 10px; font-weight: 650; letter-spacing: .05em; text-transform: uppercase; padding: 7px 10px; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.cal-th-date { width: 90px; }
+.cal-th-lit { min-width: 180px; }
+.cal-th-note { min-width: 130px; }
+.cal-th-person { width: 110px; }
+.cal-month-row td { background: var(--panel-2); color: var(--accent); font-size: 11px; font-weight: 700; padding: 8px 12px; border-top: 1px solid var(--line); letter-spacing: -.01em; }
+.cal-row td { border-bottom: 1px solid var(--line-soft); vertical-align: middle; }
+.cal-row:hover td { background: color-mix(in srgb, var(--accent) 4%, transparent); }
+.cal-row.is-today td { background: color-mix(in srgb, var(--accent) 6%, var(--panel)); }
+.cal-row.is-today .cal-date { color: var(--accent); font-weight: 700; }
+.cal-row.is-past td { opacity: .65; }
+.cal-row.is-special td { background: color-mix(in srgb, var(--accent-soft, #e8f3ee) 40%, var(--panel)); }
+.cal-date { padding: 7px 10px; font-size: 11px; font-weight: 600; color: var(--ink-3); white-space: nowrap; }
+.cal-lit { padding: 7px 10px; font-weight: 500; color: var(--ink); }
+.cal-cell { padding: 7px 10px; color: var(--ink-2); outline: none; cursor: text; min-width: 60px; white-space: pre-wrap; word-break: keep-all; }
+.cal-cell:empty::before { content: attr(data-placeholder, "—"); color: var(--ink-4); pointer-events: none; }
+.cal-cell:focus { background: var(--panel); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 55%, transparent); border-radius: 3px; color: var(--ink); }

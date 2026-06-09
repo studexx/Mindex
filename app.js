@@ -306,6 +306,8 @@ const state = {
   serviceFilter: "all",
   serviceError: "",
   newServiceForm: null,
+  calendarData: [],
+  calendarLoaded: false,
   listScroll: {},
   forms: [],
   search: "",
@@ -402,6 +404,7 @@ function bindStaticEvents() {
       state.serviceFilter = button.dataset.listFilter;
       state.selectedServiceTypeId = null;
       state.selectedServiceId = null;
+      if (state.serviceFilter === "calendar" && !state.calendarLoaded) loadCalendarData();
       render();
       syncBrowserHistory();
       return;
@@ -505,6 +508,30 @@ function bindStaticEvents() {
   refs.detailPane.addEventListener("change", handleDetailChange);
   refs.detailPane.addEventListener("pointerdown", handleDetailPointerDown);
   refs.detailPane.addEventListener("pointerover", handleDetailPointerOver);
+
+  // Calendar inline-edit
+  refs.detailPane.addEventListener("focusin", (e) => {
+    const cell = e.target.closest(".cal-cell");
+    if (cell) cell.dataset.initialValue = cell.textContent;
+  });
+  refs.detailPane.addEventListener("focusout", (e) => {
+    const cell = e.target.closest(".cal-cell");
+    if (!cell) return;
+    const id = cell.dataset.calId;
+    const field = cell.dataset.calField;
+    const newVal = cell.textContent.replace(/\n/g, " ").trim();
+    const oldVal = cell.dataset.initialValue || "";
+    if (newVal !== oldVal) saveCalendarCell(id, field, newVal);
+  });
+  refs.detailPane.addEventListener("keydown", (e) => {
+    const cell = e.target.closest(".cal-cell");
+    if (!cell) return;
+    if (e.key === "Enter") { e.preventDefault(); cell.blur(); }
+    if (e.key === "Escape") {
+      cell.textContent = cell.dataset.initialValue || "";
+      cell.blur();
+    }
+  }, true);
   window.addEventListener("pointerup", handleWindowPointerUp);
   window.addEventListener("mousedown", handleMouseSideButtonNavigation, { capture: true });
   window.addEventListener("popstate", handleBrowserHistoryPop);
@@ -1085,6 +1112,110 @@ async function loadServiceData({ silent = false } = {}) {
     if (!silent && state.module === "service") showToast(state.serviceError, "error");
     render();
   }
+}
+
+async function loadCalendarData({ silent = false } = {}) {
+  if (!state.client) return;
+  try {
+    const { data, error } = await state.client
+      .from("mindex_sunday_calendar")
+      .select("*")
+      .order("date");
+    if (error) throw error;
+    state.calendarData = data || [];
+    state.calendarLoaded = true;
+    if (state.serviceFilter === "calendar") renderCalendarView();
+  } catch (e) {
+    if (!silent) showToast(e.message || "교회력 로드 실패", "error");
+  }
+}
+
+async function saveCalendarCell(id, field, value) {
+  if (!state.client) return false;
+  const { error } = await state.client
+    .from("mindex_sunday_calendar")
+    .update({ [field]: value })
+    .eq("id", id);
+  if (error) { showToast(error.message || "저장 실패", "error"); return false; }
+  const row = state.calendarData.find((r) => r.id === id);
+  if (row) row[field] = value;
+  return true;
+}
+
+function renderCalendarView() {
+  if (!state.calendarLoaded) {
+    refs.detailPane.innerHTML = `<div class="empty-detail"><div class="empty-detail-inner"><p class="empty-verse">Loading…</p></div></div>`;
+    return;
+  }
+  if (!state.calendarData.length) {
+    refs.detailPane.innerHTML = `<div class="empty-detail"><div class="empty-detail-inner"><p class="empty-verse">교회력 데이터가 없습니다.</p></div></div>`;
+    return;
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+  const KO_MONTH = ["","1월","2월","3월","4월","5월","6월","7월","8월","9월","10월","11월","12월"];
+  const DOW = ["일","월","화","수","목","금","토"];
+
+  let tbodyHtml = "";
+  let prevMonth = "";
+  for (const row of state.calendarData) {
+    const ym = row.date.slice(0, 7);
+    if (ym !== prevMonth) {
+      const [y, m] = ym.split("-");
+      tbodyHtml += `<tr class="cal-month-row"><td colspan="9">${y}년 ${KO_MONTH[parseInt(m)]}</td></tr>`;
+      prevMonth = ym;
+    }
+    const d = new Date(row.date + "T00:00:00");
+    const dateLabel = `${d.getMonth()+1}/${d.getDate()} (${DOW[d.getDay()]})`;
+    const isToday = row.date === today;
+    const isPast = row.date < today;
+    const isSpecial = (row.church_schedule || "").includes("온세대 찬양예배");
+    const rowCls = ["cal-row", isToday ? "is-today" : isPast ? "is-past" : "", isSpecial ? "is-special" : ""].filter(Boolean).join(" ");
+
+    const editField = (field) => {
+      const val = escapeHtml(row[field] || "");
+      return `<td class="cal-cell" data-cal-id="${row.id}" data-cal-field="${field}" contenteditable="plaintext-only">${val}</td>`;
+    };
+
+    tbodyHtml += `
+      <tr class="${rowCls}">
+        <td class="cal-date">${dateLabel}</td>
+        <td class="cal-lit">${escapeHtml(row.liturgical || "")}</td>
+        ${editField("note")}
+        ${editField("church_schedule")}
+        ${editField("preacher")}
+        ${editField("nursery_prayer")}
+        ${editField("children_prayer")}
+        ${editField("youth_prayer")}
+        ${editField("young_adult_prayer")}
+      </tr>`;
+  }
+
+  refs.detailPane.innerHTML = `
+    <div class="cal-view">
+      <div class="cal-header">
+        <h2 class="cal-title">교육부서 교회력</h2>
+        <span class="cal-subtitle">${state.calendarData.length}주 · 클릭하여 편집</span>
+      </div>
+      <div class="cal-table-wrap">
+        <table class="cal-table">
+          <thead>
+            <tr>
+              <th class="cal-th-date">날짜</th>
+              <th class="cal-th-lit">교회력</th>
+              <th class="cal-th-note">기념주일</th>
+              <th class="cal-th-note">교회 일정</th>
+              <th class="cal-th-person">설교</th>
+              <th class="cal-th-person">유치부 🙏</th>
+              <th class="cal-th-person">어린이부 🙏</th>
+              <th class="cal-th-person">청소년부 🙏</th>
+              <th class="cal-th-person">청년부 🙏</th>
+            </tr>
+          </thead>
+          <tbody>${tbodyHtml}</tbody>
+        </table>
+      </div>
+    </div>`;
 }
 
 function groupServiceItems(items) {
@@ -2476,6 +2607,13 @@ function runServiceDefaultItemAction(action, index) {
   if (action === "delete" && item) {
     items.splice(index, 1);
   }
+  if (action === "sort") {
+    const template = serviceOrderTemplate(typeId);
+    const labelOrder = new Map(template.map((step, i) => [step.label, i]));
+    const ranked = items.map((it) => ({ it, rank: labelOrder.has(it.label) ? labelOrder.get(it.label) : Infinity }));
+    ranked.sort((a, b) => a.rank - b.rank || items.indexOf(a.it) - items.indexOf(b.it));
+    items.splice(0, items.length, ...ranked.map((r) => r.it));
+  }
 
   setServiceDefaultItems(typeId, items);
   renderServiceDetail();
@@ -2588,14 +2726,19 @@ function renderListFilter() {
   if (state.module === "service") {
     refs.listFilter.hidden = false;
     refs.listFilter.setAttribute("aria-label", "Service filter");
-    const filters = [["all","전체"],["public","공예배"],["ministry","부서예배"]];
+    const filters = [["all","전체"],["public","공예배"],["ministry","부서예배"],["calendar","교회력"]];
     const active = state.serviceFilter || "all";
     refs.listFilterButtons.forEach((btn, i) => {
-      const [val, lbl] = filters[i] || filters[0];
-      btn.dataset.listFilter = val;
-      btn.textContent = lbl;
-      btn.classList.toggle("active", val === active);
-      btn.setAttribute("aria-pressed", String(val === active));
+      if (i < filters.length) {
+        const [val, lbl] = filters[i];
+        btn.dataset.listFilter = val;
+        btn.textContent = lbl;
+        btn.hidden = false;
+        btn.classList.toggle("active", val === active);
+        btn.setAttribute("aria-pressed", String(val === active));
+      } else {
+        btn.hidden = true;
+      }
     });
     return;
   }
@@ -2607,12 +2750,17 @@ function renderListFilter() {
     : [["all", "All"], ["hymns", "Hymns"], ["ccm", "CCM"]];
   const activeFilter = state.module === "scripture" ? state.scriptureFilter : state.praiseFilter;
   refs.listFilterButtons.forEach((button, index) => {
-    const [value, label] = filters[index] || filters[0];
-    button.dataset.listFilter = value;
-    button.textContent = label;
-    const active = value === activeFilter;
-    button.classList.toggle("active", active);
-    button.setAttribute("aria-pressed", String(active));
+    if (index < filters.length) {
+      const [value, label] = filters[index];
+      button.dataset.listFilter = value;
+      button.textContent = label;
+      button.hidden = false;
+      const active = value === activeFilter;
+      button.classList.toggle("active", active);
+      button.setAttribute("aria-pressed", String(active));
+    } else {
+      button.hidden = true;
+    }
   });
 }
 
@@ -5674,6 +5822,13 @@ function getServiceDashboardServices() {
 }
 
 function renderServiceList() {
+  if (state.serviceFilter === "calendar") {
+    const n = state.calendarData.length;
+    refs.songCount.textContent = n ? `${n}주` : "";
+    refs.songList.innerHTML = "";
+    return;
+  }
+
   if (state.serviceError || !state.serviceTypes.length) {
     refs.songCount.textContent = "";
     refs.songList.innerHTML = state.serviceError
@@ -5703,6 +5858,11 @@ function renderServiceList() {
 }
 
 function renderServiceDetail() {
+  if (state.serviceFilter === "calendar") {
+    renderCalendarView();
+    return;
+  }
+
   const serviceId = state.selectedServiceId;
 
   if (!state.selectedServiceTypeId) {
@@ -5769,7 +5929,7 @@ function renderServiceDetail() {
   const typeObj = serviceTypeById(svc.type_id);
 
   const sorted = normalizeServiceItems(items);
-  const itemsHtml = sorted.map((it, index) => renderServiceEditorItem(it, index, sorted.length)).join("");
+  const itemsHtml = renderServiceItemGroups(sorted);
   const defaultsHtml = renderServiceDefaultItems(typeObj);
 
   refs.detailPane.innerHTML = `
@@ -5820,9 +5980,14 @@ function renderServiceDefaultItems(typeObj) {
     <section class="svc-default-section" aria-label="Every service components">
       <div class="svc-default-head">
         <span>Every Service</span>
-        <button class="icon-btn" type="button" data-service-default-action="add" data-service-default-index="${items.length}" title="Add default component" aria-label="Add default component">
-          <i data-lucide="plus"></i>
-        </button>
+        <div style="display:flex;gap:4px">
+          <button class="icon-btn" type="button" data-service-default-action="sort" data-service-default-index="0" title="Sort by service order" aria-label="Sort by service order">
+            <i data-lucide="arrow-up-down"></i>
+          </button>
+          <button class="icon-btn" type="button" data-service-default-action="add" data-service-default-index="${items.length}" title="Add default component" aria-label="Add default component">
+            <i data-lucide="plus"></i>
+          </button>
+        </div>
       </div>
       <div class="svc-items svc-default-items">
         ${items.map((item, index) => renderServiceDefaultEditorItem(item, index, items.length)).join("")}
@@ -5859,10 +6024,69 @@ function renderServiceTemplateStep(step, index) {
     </button>`;
 }
 
-function renderServiceEditorItem(item, index, total) {
+function renderServiceItemGroups(items) {
+  if (!items.length) return `<p class="service-no-results">예배 순서를 추가해 주세요.</p>`;
+  const total = items.length;
+
+  // Group consecutive items with the same non-empty label
+  const groups = [];
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    const label = item.label || "";
+    const last = groups[groups.length - 1];
+    if (label && last && last.label === label) {
+      last.entries.push({ item, realIndex: i });
+    } else {
+      groups.push({ label, entries: [{ item, realIndex: i }] });
+    }
+  }
+
+  let html = "";
+  let groupNum = 0;
+  for (const group of groups) {
+    groupNum++;
+    if (group.entries.length === 1) {
+      html += renderServiceEditorItem(group.entries[0].item, group.entries[0].realIndex, total, groupNum);
+    } else {
+      // Group header
+      html += `<div class="svc-group">
+        <div class="svc-group-head">
+          <span class="svc-edit-order">${groupNum}</span>
+          <span class="svc-group-label">${escapeHtml(group.label)}</span>
+        </div>`;
+      for (const { item, realIndex } of group.entries) {
+        html += `
+        <article class="svc-edit-item svc-edit-item--sub">
+          <div class="svc-edit-title-wrap">
+            <input
+              class="svc-edit-title"
+              type="text"
+              data-service-item-field="raw_title"
+              data-service-item-index="${realIndex}"
+              value="${escapeAttr(item.raw_title || "")}"
+              placeholder="찬양 제목"
+              aria-label="Service item text"
+            />
+            ${item.song_id ? `<button class="icon-btn svc-song-link" type="button" data-open-song="${escapeAttr(item.song_id)}" title="Praise에서 열기" aria-label="Praise에서 열기"><i data-lucide="music"></i></button>` : ""}
+          </div>
+          <div class="svc-edit-actions">
+            <button class="icon-btn" type="button" data-service-item-action="up" data-service-item-index="${realIndex}" ${realIndex === 0 ? "disabled" : ""} title="Move up" aria-label="Move up"><i data-lucide="arrow-up"></i></button>
+            <button class="icon-btn" type="button" data-service-item-action="down" data-service-item-index="${realIndex}" ${realIndex === total - 1 ? "disabled" : ""} title="Move down" aria-label="Move down"><i data-lucide="arrow-down"></i></button>
+            <button class="icon-btn" type="button" data-service-item-action="duplicate" data-service-item-index="${realIndex}" title="Duplicate" aria-label="Duplicate"><i data-lucide="copy"></i></button>
+            <button class="icon-btn danger" type="button" data-service-item-action="delete" data-service-item-index="${realIndex}" title="Delete" aria-label="Delete"><i data-lucide="trash-2"></i></button>
+          </div>
+        </article>`;
+      }
+      html += `</div>`;
+    }
+  }
+  return html;
+}
+
+function renderServiceEditorItem(item, index, total, groupNum) {
   return `
     <article class="svc-edit-item">
-      <span class="svc-edit-order">${index + 1}</span>
+      <span class="svc-edit-order">${groupNum ?? index + 1}</span>
       <input
         class="svc-edit-label"
         type="text"
