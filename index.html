@@ -11,24 +11,16 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="MINDEX" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <link rel="stylesheet" href="./styles.css?v=mindex-service-44" />
+    <link rel="stylesheet" href="./styles.css?v=mindex-service-45" />
   </head>
   <body>
     <div class="app-shell">
       <header class="topbar">
         <h1 class="brand-name">MINDE<span class="brand-accent">X</span></h1>
-        <div class="topbar-center">
-          <nav id="moduleSwitcher" class="module-switcher" aria-label="Mindex modules">
-            <button class="module-tab active" type="button" data-module="praise">Praise</button>
-            <button class="module-tab" type="button" data-module="scripture">Scripture</button>
-            <button class="module-tab" type="button" data-module="service">Service</button>
-          </nav>
-          <div class="search-wrap global-search-wrap">
-            <i data-lucide="search"></i>
-            <input id="searchInput" type="search" placeholder="Search title, lyrics, #..." autocomplete="off" />
-          </div>
+        <div class="search-wrap global-search-wrap">
+          <i data-lucide="search"></i>
+          <input id="searchInput" type="search" placeholder="Search title, lyrics, #..." autocomplete="off" />
         </div>
-
         <div class="topbar-actions">
           <button id="themeBtn" class="icon-btn" type="button" title="Toggle dark mode">
             <i data-lucide="moon"></i>
@@ -46,6 +38,11 @@
 
       <main class="workspace">
         <aside class="sidebar" aria-label="Mindex list">
+          <nav id="moduleSwitcher" class="module-switcher" aria-label="Mindex modules">
+            <button class="module-tab active" type="button" data-module="praise">Praise</button>
+            <button class="module-tab" type="button" data-module="scripture">Scripture</button>
+            <button class="module-tab" type="button" data-module="service">Service</button>
+          </nav>
           <div id="listFilter" class="list-filter" aria-label="List filter">
             <button class="filter-tab active" type="button" data-list-filter="all">All</button>
             <button class="filter-tab" type="button" data-list-filter="hymns">Hymns</button>
@@ -64,6 +61,6 @@
 
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="./app.js?v=mindex-service-44"></script>
+    <script src="./app.js?v=mindex-service-45"></script>
   </body>
 </html>
