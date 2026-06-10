@@ -5930,8 +5930,6 @@ function renderServiceDetail() {
 
   const sorted = normalizeServiceItems(items);
   const itemsHtml = renderServiceItemGroups(sorted);
-  const defaultsHtml = renderServiceDefaultItems(typeObj);
-
   refs.detailPane.innerHTML = `
     <div class="service-viewer">
       <div class="svc-header">
@@ -5965,7 +5963,6 @@ function renderServiceDetail() {
         </div>
       </div>
       ${renderServiceOrderTemplate(typeObj)}
-      ${defaultsHtml}
       <div class="svc-items svc-editor-items">${itemsHtml || `<p class="service-no-results">예배 순서를 추가해 주세요.</p>`}</div>
     </div>`;
   refreshIcons();
