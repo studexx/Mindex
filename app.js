@@ -978,7 +978,6 @@ async function loadSongs() {
     const response = await state.client
       .from("mindex_songs")
       .select("*")
-      .eq("is_active", true)
       .order("title", { ascending: true });
     data = response.data;
     error = response.error;
