@@ -14,6 +14,11 @@ because it is read only by the browser:
 https://<github-user>.github.io/<repo-name>/#supabaseUrl=<PROJECT_URL>&supabaseAnonKey=<ANON_KEY>
 ```
 
+The app keeps the collaboration config and the current app location in the URL
+hash. Copying the link from the top-right link button preserves the active
+module, filters, selected song/service/book, and Bible chapter where possible,
+so a fresh browser can open the same workspace without relying on local storage.
+
 Use only the Supabase anon key in browser links. Never put a service role key in
 GitHub, GitHub Pages, screenshots, issues, or shared URLs.
 
@@ -56,7 +61,8 @@ Settings are intentionally not shown in the app UI because collaborators should
 enter through a prepared link.
 
 The app still remembers a link-provided config in browser `localStorage` after
-it loads.
+it loads, but shared links should remain self-contained and not depend on that
+browser-local copy.
 
 ## Data Source
 
@@ -102,18 +108,36 @@ The app still reads older `mindex_songs.memo.metadata` values as a fallback, the
 saves promoted fields back to columns when those columns exist.
 Currently supported promoted fields are:
 
-- `other_title`
 - `praise_types`
 - `artist`
 - `lyricist`
 - `composer`
-- `credits`
+- `translator`
 - `album`
 - `track`
 - `scripture_refs`
 
 When `lyricist` and `composer` are identical, the app displays them as
 `Words/Music`.
+
+Run `scripts/db-maintenance-2026-06-23.sql` when the Supabase schema needs the
+current app columns, indexes, and ordered table-browsing views. The legacy
+`mindex_songs.memo.versions` payload can be copied into relational
+`mindex_song_versions` / `mindex_version_units` rows with:
+
+```sh
+python3 scripts/backfill_song_versions_from_memo.py
+python3 scripts/backfill_song_versions_from_memo.py --apply
+```
+
+Only add `--clear-memo-versions` after verifying the relational rows in the app.
+
+## Presenter Media
+
+Presenter video slides should store only a file path or public URL in service
+item text, not video bytes in the database. Use browser-friendly H.264 `.mp4`
+for the safest church-computer playback; `1920x1080` at `30fps` is the practical
+default unless the output chain is known to be 4K.
 
 ## Copy / Projection
 

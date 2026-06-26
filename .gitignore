@@ -1,6 +1,16 @@
 .DS_Store
 node_modules/
+__pycache__/
+*.pyc
 .env
 .env.*
+mindex.local.js
 .claude/
-scripts/
+scripts/*
+!scripts/audit_mindex_content.py
+!scripts/backfill_song_versions_from_memo.py
+!scripts/db-maintenance-2026-06-23.sql
+!scripts/service-schema.sql
+!scripts/sync_service_ppt_skeletons.py
+output/
+backups/

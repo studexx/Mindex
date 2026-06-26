@@ -1,0 +1,9 @@
+Paperlogy webfont files
+
+Source: https://github.com/fonts-archive/Paperlogy
+Upstream distribution: https://freesentation.blog/paperlogyfont
+License: SIL Open Font License 1.1
+
+Mindex ships all Paperlogy weights 1-9.
+Interface CSS should prefer odd weights for deliberate styling:
+1 Thin, 3 Light, 5 Medium, 7 Bold, and 9 Black.
