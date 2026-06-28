@@ -14,8 +14,11 @@ from urllib.error import HTTPError
 ROOT = Path(__file__).resolve().parents[1]
 HANDOFF_PATH = ROOT / "HANDOFF.md"
 ENV_PATHS = (
+    ROOT / ".env.supabase.local",
     ROOT / ".env.supabase",
+    ROOT.parent / "INDEX" / ".env.supabase.local",
     ROOT.parent / "INDEX" / ".env.supabase",
+    Path.home() / "Documents" / "INDEX" / ".env.supabase.local",
     Path.home() / "Documents" / "INDEX" / ".env.supabase",
 )
 TEST_PATTERNS = re.compile(r"\b(test|dummy|sample|probe|debug)\b", re.IGNORECASE)
@@ -35,15 +38,26 @@ def read_env_file(path: Path) -> dict[str, str]:
 
 
 def read_config() -> tuple[str, str]:
-    url = os.environ.get("SUPABASE_URL", "")
-    key = os.environ.get("SUPABASE_ANON_KEY") or os.environ.get("SUPABASE_KEY", "")
+    url = os.environ.get("MINDEX_SUPABASE_URL") or os.environ.get("SUPABASE_URL", "")
+    key = (
+        os.environ.get("MINDEX_SUPABASE_ANON_KEY")
+        or os.environ.get("SUPABASE_ANON_KEY")
+        or os.environ.get("SUPABASE_KEY")
+        or ""
+    )
     if url and key:
         return url, key
 
     for path in ENV_PATHS:
         values = read_env_file(path)
-        url = values.get("SUPABASE_URL", "")
-        key = values.get("SUPABASE_ANON_KEY") or values.get("SUPABASE_KEY") or values.get("SUPABASE_SERVICE_ROLE_KEY", "")
+        url = values.get("MINDEX_SUPABASE_URL") or values.get("SUPABASE_URL", "")
+        key = (
+            values.get("MINDEX_SUPABASE_ANON_KEY")
+            or values.get("SUPABASE_ANON_KEY")
+            or values.get("SUPABASE_KEY")
+            or values.get("SUPABASE_SERVICE_ROLE_KEY")
+            or ""
+        )
         if url and key:
             return url, key
 
@@ -51,7 +65,10 @@ def read_config() -> tuple[str, str]:
     url_match = re.search(r"https://[a-z]+\.supabase\.co", text)
     if not url_match:
         raise RuntimeError("Supabase config not found. Set SUPABASE_URL and SUPABASE_ANON_KEY.")
-    raise RuntimeError("Supabase key not found. Set SUPABASE_ANON_KEY, SUPABASE_KEY, or use a local .env.supabase file.")
+    raise RuntimeError(
+        "Supabase key not found. Set SUPABASE_ANON_KEY, SUPABASE_KEY, "
+        "or use a local .env.supabase.local/.env.supabase file."
+    )
 
 
 def fetch_rows(supa_url: str, supa_key: str, table: str, select: str = "*") -> list[dict[str, Any]]:
@@ -129,6 +146,20 @@ def block_text_issues(row: dict[str, Any], row_id: str, fields: tuple[str, ...])
     return issues
 
 
+def service_item_raw_title_issues(row: dict[str, Any], row_id: str) -> list[dict[str, Any]]:
+    value = row.get("raw_title")
+    if not isinstance(value, str):
+        return []
+    issues: list[dict[str, Any]] = []
+    if value != value.strip():
+        issues.append({"type": "edge-space", "id": row_id, "field": "raw_title", "value": value})
+    if "\ufffd" in value:
+        issues.append({"type": "replacement-char", "id": row_id, "field": "raw_title"})
+    if "\n" not in value and re.search(r"[ \t]{2,}", value):
+        issues.append({"type": "double-space", "id": row_id, "field": "raw_title", "value": value})
+    return issues
+
+
 def audit(supa_url: str, supa_key: str) -> tuple[dict[str, int], list[dict[str, Any]], list[dict[str, Any]]]:
     songs = fetch_rows(supa_url, supa_key, "mindex_songs")
     scriptures = fetch_rows(supa_url, supa_key, "mindex_scriptures")
@@ -147,14 +178,12 @@ def audit(supa_url: str, supa_key: str) -> tuple[dict[str, int], list[dict[str, 
     book_codes = {row["code"] for row in books}
     translation_ids = {row["id"] for row in translations}
 
-    expected_columns = (
+    optional_columns = (
         ("mindex_song_versions", "praise_types"),
-        ("mindex_service_items", "assignee"),
-        ("mindex_service_items", "version_id"),
     )
-    for table, column in expected_columns:
+    for table, column in optional_columns:
         if not column_exists(supa_url, supa_key, table, column):
-            warnings.append({"type": "missing-expected-column", "table": table, "column": column})
+            warnings.append({"type": "missing-optional-column", "table": table, "column": column})
 
     seen_song_titles: dict[str, list[str]] = {}
     for row in songs:
@@ -200,7 +229,8 @@ def audit(supa_url: str, supa_key: str) -> tuple[dict[str, int], list[dict[str, 
             issues.append({"type": "service-item-missing-service", "id": row_id, "service_id": row.get("service_id")})
         if row.get("song_id") and row.get("song_id") not in song_ids:
             issues.append({"type": "service-item-missing-song", "id": row_id, "song_id": row.get("song_id"), "raw_title": row.get("raw_title")})
-        issues.extend(edge_text_issues(row, row_id, ("label", "raw_title")))
+        issues.extend(edge_text_issues(row, row_id, ("label",)))
+        issues.extend(service_item_raw_title_issues(row, row_id))
 
     for row in translations:
         row_id = row["id"]

@@ -28,6 +28,7 @@ const PROMOTED_SONG_METADATA_COLUMNS = {
 };
 const META_SEPARATOR = "; ";
 const BIBLE_TEXT_SEARCH_PAGE_SIZE = 50;
+const TABLE_COLUMN_SUPPORT_CACHE = new Map();
 
 const BIBLE_CHAPTER_COUNTS = {};
 
@@ -337,6 +338,7 @@ const state = {
   dirtyServiceTypeIds: new Set(),
   serviceItemAssigneeSupported: false,
   serviceItemVersionSupported: false,
+  serviceItemMemoSupported: false,
   homeVerseIndex: Math.floor(Math.random() * 3),
   selectedServiceTypeId: null,
   selectedServiceId: null,
@@ -352,6 +354,21 @@ const state = {
     index: 0,
     black: false,
     jumpDraft: "",
+    screens: [],
+    selectedScreenId: null,
+    liveScripture: {
+      reference: "",
+      draft: "",
+      active: false,
+      slide: null,
+    },
+  },
+  serviceMusic: {
+    audio: null,
+    objectUrl: "",
+    fileName: "",
+    playing: false,
+    volumeLevel: 3,
   },
   calendarData: [],
   calendarLoaded: false,
@@ -421,6 +438,7 @@ function init() {
 
 function cacheRefs() {
   refs.brandHome = document.getElementById("brandHome");
+  refs.brandNameHome = document.getElementById("brandNameHome");
   refs.sidebarToggleBtn = document.getElementById("sidebarToggleBtn");
   refs.moduleButtons = [...document.querySelectorAll(".module-tab[data-module]")];
   refs.connectionStatus = document.getElementById("connectionStatus");
@@ -439,6 +457,7 @@ function cacheRefs() {
 
 function bindStaticEvents() {
   refs.brandHome?.addEventListener("click", goHome);
+  refs.brandNameHome?.addEventListener("click", goHome);
   refs.sidebarToggleBtn?.addEventListener("click", () => {
     document.body.classList.toggle("sidebar-collapsed");
     syncSidebarCollapsedState();
@@ -448,16 +467,17 @@ function bindStaticEvents() {
   });
   refs.themeBtn.addEventListener("click", toggleTheme);
   refs.saveAllBtn.addEventListener("click", saveAll);
-  refs.searchInput.addEventListener("input", (event) => {
-    saveCurrentListScroll();
-    state.search = event.target.value;
-    if (shouldClearBibleTextSearchOnInput()) {
-      clearBibleTextSearch();
-    }
-    renderSongList();
-    if (state.module === "scripture") renderDetail();
-    if (state.module === "service") renderServiceDetail();
-  });
+	  refs.searchInput.addEventListener("input", (event) => {
+	    saveCurrentListScroll();
+	    state.search = event.target.value;
+	    if (shouldClearBibleTextSearchOnInput()) {
+	      clearBibleTextSearch();
+	    }
+	    renderSongList();
+	    if (state.module === "home") renderDetail();
+	    if (state.module === "scripture") renderDetail();
+	    if (state.module === "service") renderServiceDetail();
+	  });
   refs.searchInput.addEventListener("keydown", handleSearchKeydown);
   refs.listFilter.addEventListener("click", (event) => {
     const button = event.target.closest("[data-list-filter]");
@@ -566,6 +586,18 @@ function bindStaticEvents() {
       if (!confirmDiscardServiceChanges()) return;
       state.selectedServiceTypeId = serviceTypeItem.dataset.serviceTypeId;
       state.selectedServiceId = null;
+      renderServiceList();
+      renderServiceDetail();
+      syncBrowserHistory();
+      return;
+    }
+
+    const serviceTemplatesItem = event.target.closest("[data-service-templates]");
+    if (serviceTemplatesItem) {
+      if (!confirmDiscardServiceChanges()) return;
+      state.selectedServiceTypeId = SERVICE_TEMPLATES_PANEL_ID;
+      state.selectedServiceId = null;
+      state.newServiceForm = null;
       renderServiceList();
       renderServiceDetail();
       syncBrowserHistory();
@@ -694,6 +726,33 @@ async function handleSearchKeydown(event) {
   if (scriptureShortcut && (state.module !== "scripture" || scriptureShortcut.type !== "text")) {
     event.preventDefault();
     await runScriptureSearchShortcut(scriptureShortcut);
+    return;
+  }
+
+  if (state.module === "home") {
+    const results = getGlobalSearchResults();
+    const firstSong = results.praise[0];
+    const firstScripture = results.scripture[0];
+    const firstService = results.service[0];
+    event.preventDefault();
+    if (firstSong) {
+      await openGlobalSongResult(firstSong.id);
+      return;
+    }
+    if (firstScripture?.kind === "text") {
+      await openGlobalBibleTextResult();
+      return;
+    }
+    if (firstScripture?.book) {
+      await openGlobalBookResult(firstScripture.book.code, {
+        chapter: firstScripture.chapter,
+        verse: firstScripture.verse,
+      });
+      return;
+    }
+    if (firstService) {
+      await openGlobalServiceResult(firstService.id);
+    }
     return;
   }
 
@@ -1499,6 +1558,9 @@ async function loadServiceData({ silent = false } = {}) {
     state.serviceItemVersionSupported =
       (itemsRes.data || []).some((item) => Object.prototype.hasOwnProperty.call(item, "version_id")) ||
       await detectServiceItemVersionSupport();
+    state.serviceItemMemoSupported =
+      (itemsRes.data || []).some((item) => Object.prototype.hasOwnProperty.call(item, "memo")) ||
+      await detectServiceItemMemoSupport();
     state.serviceItems = groupServiceItems(itemsRes.data || []);
     state.dirtyServiceTypeIds.clear();
     state.dirty.service = false;
@@ -1571,6 +1633,10 @@ async function detectServiceItemVersionSupport() {
   return detectServiceItemColumnSupport("version_id");
 }
 
+async function detectServiceItemMemoSupport() {
+  return detectServiceItemColumnSupport("memo");
+}
+
 async function detectSongVersionPraiseTypesSupport() {
   return detectTableColumnSupport("mindex_song_versions", "praise_types");
 }
@@ -1580,14 +1646,19 @@ async function detectServiceItemColumnSupport(column) {
 }
 
 async function detectTableColumnSupport(table, column) {
-  if (!state.client || !/^[a-z_][a-z0-9_]*$/i.test(column)) return false;
+  if (!state.client || !/^[a-z_][a-z0-9_]*$/i.test(table) || !/^[a-z_][a-z0-9_]*$/i.test(column)) return false;
+  const cacheKey = `${table}.${column}`;
+  if (TABLE_COLUMN_SUPPORT_CACHE.has(cacheKey)) return TABLE_COLUMN_SUPPORT_CACHE.get(cacheKey);
   try {
     const { error } = await state.client
       .from(table)
       .select(column)
       .limit(1);
-    return !error;
+    const supported = !error;
+    TABLE_COLUMN_SUPPORT_CACHE.set(cacheKey, supported);
+    return supported;
   } catch {
+    TABLE_COLUMN_SUPPORT_CACHE.set(cacheKey, false);
     return false;
   }
 }
@@ -1808,6 +1879,9 @@ async function loadServiceItems(serviceId) {
     }
     if ((data || []).some((item) => Object.prototype.hasOwnProperty.call(item, "version_id")) || await detectServiceItemVersionSupport()) {
       state.serviceItemVersionSupported = true;
+    }
+    if ((data || []).some((item) => Object.prototype.hasOwnProperty.call(item, "memo")) || await detectServiceItemMemoSupport()) {
+      state.serviceItemMemoSupported = true;
     }
     state.serviceItems[serviceId] = normalizeServiceItems(data || []);
     renderServiceDetail();
@@ -2185,7 +2259,6 @@ async function createReferenceLink(options = {}) {
     is_active: true,
   };
   if (state.referenceGroupSupported) payload.group_name = nullIfBlank(options.groupName || "");
-  else payload.category = nullIfBlank(options.groupName || "");
 
   state.saving = true;
   updateSaveState();
@@ -2337,7 +2410,6 @@ async function saveReferenceLinks() {
     payload.forEach((row, index) => {
       const groupName = nullIfBlank(links[index].group_name);
       if (state.referenceGroupSupported) row.group_name = groupName;
-      else row.category = groupName;
     });
     const { data, error } = await state.client
       .from("mindex_reference_links")
@@ -2525,41 +2597,30 @@ async function saveScripture() {
 
 async function saveService() {
   const service = state.services.find((svc) => svc.id === state.selectedServiceId);
-  if (!service || !requireClient() || state.saving) return;
+  if (!requireClient() || state.saving) return;
 
-  const items = normalizeServiceItems(getServiceItems(service.id));
+  const items = service ? normalizeServiceItems(getServiceItems(service.id)) : [];
   const storableItems = items.filter((item) => String(item.label || item.raw_title || "").trim());
   const droppedCount = items.length - storableItems.length;
   if (droppedCount > 0) showToast(`빈 항목 ${droppedCount}개가 저장에서 제외됩니다.`, "info");
   if (!state.serviceItemAssigneeSupported && storableItems.some((item) => String(item.assignee || "").trim())) {
     showToast("담당 칸은 assignee 컬럼 추가 전까지 서버에 저장되지 않습니다.", "info");
   }
+  if (!state.serviceItemMemoSupported && storableItems.some((item) => String(item.memo || "").trim())) {
+    showToast("섹션 메모와 슬라이드 편집은 memo 컬럼 추가 전까지 서버에 저장되지 않습니다.", "info");
+  }
 
   state.saving = true;
   updateSaveState();
 
   try {
-    for (const typeId of [...state.dirtyServiceTypeIds]) {
-      const typeObj = serviceTypeById(typeId);
-      if (!typeObj) {
-        state.dirtyServiceTypeIds.delete(typeId);
-        continue;
-      }
-      const fixedItems = serializeServiceDefaultItems(typeId);
-      const { data: typeData, error: typeError } = await state.client
-        .from("mindex_service_types")
-        .update({ fixed_items: fixedItems })
-        .eq("id", typeId)
-        .select("*")
-        .single();
-      if (typeError) {
-        const message = /policy|permission|rls/i.test(typeError.message || "")
-          ? "Service defaults could not be saved with the current database permissions."
-          : typeError.message;
-        throw new Error(message);
-      }
-      if (typeObj && typeData) Object.assign(typeObj, typeData);
-      state.dirtyServiceTypeIds.delete(typeId);
+    await saveDirtyServiceTypes();
+
+    if (!service) {
+      state.dirty.service = false;
+      showToast("Service templates saved.");
+      render();
+      return;
     }
 
     const { error: deleteError } = await state.client
@@ -2577,6 +2638,7 @@ async function saveService() {
         raw_title: normalizeServiceItemRawTitle(item.label, item.raw_title),
         song_id: item.song_id || null,
         ...(state.serviceItemVersionSupported ? { version_id: item.version_id || null } : {}),
+        ...(state.serviceItemMemoSupported ? { memo: nullIfBlank(item.memo) } : {}),
       }));
       const { data, error } = await state.client
         .from("mindex_service_items")
@@ -2586,6 +2648,9 @@ async function saveService() {
       if (error) throw error;
       if ((data || []).some((item) => Object.prototype.hasOwnProperty.call(item, "assignee"))) {
         state.serviceItemAssigneeSupported = true;
+      }
+      if ((data || []).some((item) => Object.prototype.hasOwnProperty.call(item, "memo"))) {
+        state.serviceItemMemoSupported = true;
       }
       state.serviceItems[service.id] = normalizeServiceItems(data || []);
     } else {
@@ -2611,6 +2676,32 @@ async function saveService() {
   } finally {
     state.saving = false;
     updateSaveState();
+  }
+}
+
+async function saveDirtyServiceTypes() {
+  for (const typeId of [...state.dirtyServiceTypeIds]) {
+    const typeObj = serviceTypeById(typeId);
+    if (!typeObj) {
+      state.dirtyServiceTypeIds.delete(typeId);
+      continue;
+    }
+    const fixedItems = serializeServiceDefaultItems(typeId);
+    const orderTemplate = serializeServiceOrderTemplate(typeId);
+    const { data: typeData, error: typeError } = await state.client
+      .from("mindex_service_types")
+      .update({ fixed_items: fixedItems, order_template: orderTemplate })
+      .eq("id", typeId)
+      .select("*")
+      .single();
+    if (typeError) {
+      const message = /policy|permission|rls/i.test(typeError.message || "")
+        ? "Service templates could not be saved with the current database permissions."
+        : typeError.message;
+      throw new Error(message);
+    }
+    if (typeObj && typeData) Object.assign(typeObj, typeData);
+    state.dirtyServiceTypeIds.delete(typeId);
   }
 }
 
@@ -2844,6 +2935,33 @@ function writeFormsToSelectedVersion() {
 }
 
 function handleDetailClick(event) {
+  const globalSongItem = event.target.closest("[data-global-song-id]");
+  if (globalSongItem) {
+    void openGlobalSongResult(globalSongItem.dataset.globalSongId);
+    return;
+  }
+
+  const globalBookItem = event.target.closest("[data-global-book-code]");
+  if (globalBookItem) {
+    void openGlobalBookResult(globalBookItem.dataset.globalBookCode, {
+      chapter: globalBookItem.dataset.globalChapter,
+      verse: globalBookItem.dataset.globalVerse,
+    });
+    return;
+  }
+
+  const globalBibleTextItem = event.target.closest("[data-global-bible-text]");
+  if (globalBibleTextItem) {
+    void openGlobalBibleTextResult();
+    return;
+  }
+
+  const globalServiceItem = event.target.closest("[data-global-service-id]");
+  if (globalServiceItem) {
+    void openGlobalServiceResult(globalServiceItem.dataset.globalServiceId);
+    return;
+  }
+
   const homeModule = event.target.closest("[data-home-module]");
   if (homeModule) {
     void switchModule(homeModule.dataset.homeModule);
@@ -2896,6 +3014,18 @@ function handleDetailClick(event) {
     return;
   }
 
+  const serviceTemplatesBtn = event.target.closest("[data-service-templates]");
+  if (serviceTemplatesBtn) {
+    if (!confirmDiscardServiceChanges()) return;
+    state.selectedServiceTypeId = SERVICE_TEMPLATES_PANEL_ID;
+    state.selectedServiceId = null;
+    state.newServiceForm = null;
+    renderServiceList();
+    renderServiceDetail();
+    syncBrowserHistory();
+    return;
+  }
+
   const deleteServiceBtn = event.target.closest("[data-delete-service]");
   if (deleteServiceBtn) {
     deleteService(deleteServiceBtn.dataset.deleteService);
@@ -2922,6 +3052,12 @@ function handleDetailClick(event) {
     return;
   }
 
+  const serviceSetlistApply = event.target.closest("[data-service-setlist-apply]");
+  if (serviceSetlistApply) {
+    void applyServiceSetlistComposer(serviceSetlistApply.dataset.serviceSetlistApply);
+    return;
+  }
+
   const serviceSongCreate = event.target.closest("[data-service-song-create]");
   if (serviceSongCreate) {
     createPraiseSongFromServiceItem(Number(serviceSongCreate.dataset.serviceSongCreate));
@@ -2930,9 +3066,25 @@ function handleDetailClick(event) {
 
   const presenterAction = event.target.closest("[data-presenter-action]");
   if (presenterAction) {
+    if (presenterAction.dataset.presenterAction === "detect-screens") {
+      void requestPresenterScreens();
+      return;
+    }
     runPresenterAction(presenterAction.dataset.presenterAction, presenterAction.dataset.serviceId, {
       index: presenterAction.dataset.presenterIndex,
     });
+    return;
+  }
+
+  const serviceMusicAction = event.target.closest("[data-service-music-action]");
+  if (serviceMusicAction) {
+    runServiceMusicAction(serviceMusicAction.dataset.serviceMusicAction);
+    return;
+  }
+
+  const liveScriptureAction = event.target.closest("[data-live-scripture-action]");
+  if (liveScriptureAction) {
+    void runLiveScriptureAction(liveScriptureAction.dataset.liveScriptureAction, liveScriptureAction.dataset.serviceId);
     return;
   }
 
@@ -3154,6 +3306,18 @@ function handleDetailKeydown(event) {
     }
   }
 
+  const liveScriptureInput = event.target.closest("[data-live-scripture-input]");
+  if (liveScriptureInput) {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      void runLiveScriptureAction("show", liveScriptureInput.dataset.serviceId);
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      void runLiveScriptureAction("clear", liveScriptureInput.dataset.serviceId);
+    }
+    return;
+  }
+
   const referenceField = event.target.closest("[data-reference-field]");
   if (referenceField && (event.key === "Enter" || event.key === "Escape")) {
     event.preventDefault();
@@ -3250,11 +3414,24 @@ function handleWindowPointerUp() {
   if (drag.moved) {
     state.lastSelectedBibleVerse = drag.start;
     state.selectedBibleVerse = state.selectedBibleVerses[0] || null;
+    clearNativeTextSelection();
   }
   state.bibleDragSelection = null;
 }
 
 function handleDetailInput(event) {
+  const liveScriptureInput = event.target.closest("[data-live-scripture-input]");
+  if (liveScriptureInput) {
+    updateLiveScriptureDraft(liveScriptureInput.value);
+    return;
+  }
+
+  const serviceTypeTemplateField = event.target.closest("[data-service-type-template-field]");
+  if (serviceTypeTemplateField) {
+    updateServiceTypeTemplateField(serviceTypeTemplateField);
+    return;
+  }
+
   const serviceMetaField = event.target.closest("[data-service-meta-field]");
   if (serviceMetaField) {
     updateServiceMetaField(serviceMetaField);
@@ -3318,6 +3495,25 @@ function handleDetailInput(event) {
 }
 
 function handleDetailChange(event) {
+  const serviceMusicFile = event.target.closest("[data-service-music-file]");
+  if (serviceMusicFile) {
+    loadServiceMusicFile(serviceMusicFile.files?.[0]);
+    serviceMusicFile.value = "";
+    return;
+  }
+
+  const serviceTypeTemplateField = event.target.closest("[data-service-type-template-field]");
+  if (serviceTypeTemplateField) {
+    updateServiceTypeTemplateField(serviceTypeTemplateField);
+    return;
+  }
+
+  const serviceMusicVolume = event.target.closest("[data-service-music-volume]");
+  if (serviceMusicVolume) {
+    setServiceMusicVolume(serviceMusicVolume.value);
+    return;
+  }
+
   const presenterJumpInput = event.target.closest("[data-presenter-jump-input]");
   if (presenterJumpInput) {
     jumpPresenterToSlideInput(presenterJumpInput);
@@ -3364,6 +3560,12 @@ function handleDetailChange(event) {
   const bibleReaderField = event.target.closest("[data-bible-reader-field]");
   if (bibleReaderField) {
     updateBibleReaderField(bibleReaderField);
+    return;
+  }
+
+  const presenterScreenSelect = event.target.closest("[data-presenter-screen-select]");
+  if (presenterScreenSelect) {
+    state.presenter.selectedScreenId = presenterScreenSelect.value || null;
     return;
   }
 
@@ -3506,10 +3708,16 @@ function syncBibleVerseSelectionClasses() {
 function copySelectedBibleVersesFromShortcut(event) {
   if (state.module !== "scripture" || !state.selectedBibleVerses.length) return false;
   if (shouldKeepHorizontalNavigationInFocusedControl(event.target)) return false;
-  if (getSelectedTextWithin(refs.detailPane)) return false;
+  if (state.selectedBibleVerses.length === 1 && getSelectedTextWithin(refs.detailPane)) return false;
   event.preventDefault();
   copyBibleVerses(state.selectedBibleVerses);
   return true;
+}
+
+function clearNativeTextSelection() {
+  const selection = window.getSelection?.();
+  if (!selection || selection.isCollapsed) return;
+  selection.removeAllRanges();
 }
 
 function getSelectedTextWithin(root) {
@@ -3839,6 +4047,13 @@ function updateServiceItemField(field) {
     item[key] = key === "raw_title" ? normalizeServiceItemRawTitle(item.label, field.value) : field.value;
     if (key === "raw_title") applyServiceSongSelection(item);
   }
+  if (key === "memo_note" || key === "slide_overrides" || key === "form_hint") {
+    const parsed = parseServiceItemMemo(item.memo);
+    if (key === "memo_note") parsed.note = field.value;
+    if (key === "slide_overrides") parsed.slides = parseServiceSlideOverrideInput(field.value);
+    if (key === "form_hint") parsed.formHint = field.value;
+    item.memo = serializeServiceItemMemo(parsed);
+  }
   if (key === "label") {
     item.raw_title = normalizeServiceItemRawTitle(item.label, item.raw_title);
     applyServiceSongSelection(item);
@@ -3850,19 +4065,58 @@ function updateServiceItemField(field) {
   updateSaveState();
 }
 
-function applyServiceSongSelection(item) {
-  if (!item || !isSongServiceLabel(item.label)) {
-    if (item) {
-      item.song_id = null;
-      item.version_id = null;
+function parseServiceItemMemo(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return { note: "", slides: [], formHint: "", templateKey: "", templateVariant: "" };
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return {
+        note: String(parsed.note || parsed.memo || "").trim(),
+        slides: Array.isArray(parsed.slides)
+          ? parsed.slides.map((slide) => String(slide || "").trim()).filter(Boolean)
+          : [],
+        formHint: String(parsed.formHint || parsed.form_hint || parsed.forms || "").trim(),
+        templateKey: String(parsed.templateKey || parsed.template_key || "").trim(),
+        templateVariant: String(parsed.templateVariant || parsed.template_variant || "").trim(),
+      };
     }
-    return;
+  } catch {
+    // Plain-text notes from older rows stay valid.
   }
-  const song = findServicePraiseSong(item.raw_title);
-  if (!song) return;
-  item.song_id = song.id;
-  const version = getServiceItemVersion(song, item, state.services.find((service) => service.id === state.selectedServiceId));
-  item.version_id = version?.id || getDefaultVersionId(song) || null;
+  return { note: raw, slides: [], formHint: "", templateKey: "", templateVariant: "" };
+}
+
+function parseServiceSlideOverrideInput(value) {
+  return String(value || "")
+    .split(/\n\s*---+\s*\n/g)
+    .map((block) => block.trim())
+    .filter(Boolean);
+}
+
+function formatServiceSlideOverrideInput(memo) {
+  return parseServiceItemMemo(memo).slides.join("\n---\n");
+}
+
+function serializeServiceItemMemo(value = {}) {
+  const note = String(value.note || "").trim();
+  const slides = Array.isArray(value.slides)
+    ? value.slides.map((slide) => String(slide || "").trim()).filter(Boolean)
+    : [];
+  const formHint = String(value.formHint || value.form_hint || "").trim();
+  const templateKey = String(value.templateKey || value.template_key || "").trim();
+  const templateVariant = String(value.templateVariant || value.template_variant || "").trim();
+  if (!slides.length && !formHint && !templateKey && !templateVariant) return note;
+  const payload = { note };
+  if (formHint) payload.formHint = formHint;
+  if (templateKey) payload.templateKey = templateKey;
+  if (templateVariant) payload.templateVariant = templateVariant;
+  if (slides.length) payload.slides = slides;
+  return JSON.stringify(payload);
+}
+
+function applyServiceSongSelection(item) {
+  applyServiceSongSelectionWithService(item, state.services.find((service) => service.id === state.selectedServiceId));
 }
 
 async function createPraiseSongFromServiceItem(index) {
@@ -3993,6 +4247,76 @@ function runServiceItemAction(action, index, label = "", title = "") {
   refreshPresenterForService(serviceId);
   renderServiceDetail();
   updateSaveState();
+}
+
+async function applyServiceSetlistComposer(serviceId = state.selectedServiceId) {
+  if (!serviceId) return;
+  const root = [...(refs.detailPane?.querySelectorAll("[data-service-setlist]") || [])]
+    .find((node) => node.dataset.serviceSetlist === serviceId);
+  if (!root) return;
+
+  const label = root.querySelector("[data-service-setlist-label]")?.value?.trim() || "찬양";
+  const assignee = root.querySelector("[data-service-setlist-assignee]")?.value?.trim() || "";
+  const lines = root.querySelector("[data-service-setlist-lines]")?.value || "";
+  const titles = parseServiceSetlistLines(lines);
+  if (!titles.length) {
+    showToast("콘티에 곡명을 입력해 주세요.", "error");
+    return;
+  }
+
+  const service = state.services.find((svc) => svc.id === serviceId);
+  const items = normalizeServiceItems(getServiceItems(serviceId));
+  if (!state.songs.length && state.client) {
+    await loadSongs();
+  }
+  const nextItems = titles.map((title, offset) => {
+    const item = normalizeServiceItem({
+      service_id: serviceId,
+      sort_order: items.length + offset + 1,
+      label,
+      assignee,
+      raw_title: title,
+    }, items.length + offset);
+    applyServiceSongSelectionWithService(item, service);
+    return item;
+  });
+
+  state.serviceItems[serviceId] = normalizeServiceItemsInCurrentOrder([...items, ...nextItems]);
+  state.dirty.service = true;
+  refreshPresenterForService(serviceId);
+  renderServiceDetail();
+  updateSaveState();
+  showToast(`콘티 ${titles.length}곡을 추가했습니다.`);
+}
+
+function parseServiceSetlistLines(value) {
+  return String(value || "")
+    .split(/\r?\n/)
+    .flatMap((line) => line.split(/\s+\+\s+|\s*\+\s*/))
+    .map(cleanServiceSetlistTitle)
+    .filter(Boolean);
+}
+
+function cleanServiceSetlistTitle(value) {
+  return String(value || "")
+    .replace(/^\s*(?:\d+[\).]|[-*•])\s*/, "")
+    .replace(/^\s*(?:찬양|찬송|특송|결단찬양|봉헌찬양|파송찬양)\s*[/：:]\s*/u, "")
+    .trim();
+}
+
+function applyServiceSongSelectionWithService(item, service = null) {
+  if (!item || !isSongServiceLabel(item.label)) {
+    if (item) {
+      item.song_id = null;
+      item.version_id = null;
+    }
+    return;
+  }
+  const song = findServicePraiseSong(item.raw_title);
+  if (!song) return;
+  item.song_id = song.id;
+  const version = getServiceItemVersion(song, item, service || state.services.find((svc) => svc.id === state.selectedServiceId));
+  item.version_id = version?.id || getDefaultVersionId(song) || null;
 }
 
 function runServiceDefaultItemAction(action, index) {
@@ -4261,6 +4585,7 @@ function renderModuleSwitcher() {
   const homeActive = state.module === "home";
   refs.brandHome?.setAttribute("aria-disabled", String(homeActive));
   refs.brandHome?.setAttribute("aria-current", homeActive ? "page" : "false");
+  refs.brandNameHome?.setAttribute("aria-current", homeActive ? "page" : "false");
   syncSidebarCollapsedState();
   if (state.module === "service") {
     refs.searchInput.placeholder = "Search date, song...";
@@ -4315,10 +4640,22 @@ const SERVICE_CATEGORIES = {
   special: ["holy-week-dawn","omer"],
 };
 
+const CHROMAKEY_SERVICE_TYPES = new Set(["sunday-second", "sunday-main", "sunday-afternoon", "wednesday", "monthly"]);
+const WORSHIP_BACKGROUND_BASE = "assets/worship-backgrounds";
+const WORSHIP_BACKGROUND_GROUPS = {
+  children: "C",
+  youth: "B",
+  "young-adult": "A",
+};
+const WORSHIP_SEASON_BACKGROUNDS = {
+  palm: "26-S4.jpg",
+  easter: "26-S5.jpg",
+  pentecost: "26-S6.jpg",
+};
+
 function presenterServiceUsesChromakey(service) {
   const typeId = String(service?.type_id || "");
-  if (typeId === "sunday-first") return false;
-  return !SERVICE_CATEGORIES.ministry.includes(typeId);
+  return CHROMAKEY_SERVICE_TYPES.has(typeId);
 }
 
 function presenterOutputTheme(typeId) {
@@ -4328,6 +4665,35 @@ function presenterOutputTheme(typeId) {
   if (id === "young-adult") return "young-adult";
   if (id === "sunday-first") return "formal";
   return "chromakey";
+}
+
+function presenterBackgroundForService(service) {
+  if (!service || presenterServiceUsesChromakey(service)) return "";
+  const season = presenterSeasonBackgroundKey(service);
+  if (season) return `${WORSHIP_BACKGROUND_BASE}/${WORSHIP_SEASON_BACKGROUNDS[season]}`;
+  const group = WORSHIP_BACKGROUND_GROUPS[service.type_id] || "A";
+  const slot = presenterBackgroundSlotForDate(service.date);
+  return `${WORSHIP_BACKGROUND_BASE}/26-${group}${slot}.jpg`;
+}
+
+function presenterSeasonBackgroundKey(service) {
+  const tags = Array.isArray(service?.tags) ? service.tags.map((tag) => String(tag).replace(/\s+/g, "")) : [];
+  const haystack = [serviceDisplayTypeName(service), ...tags].join(" ");
+  if (/종려|수난/.test(haystack)) return "palm";
+  if (/부활/.test(haystack)) return "easter";
+  if (/성령강림/.test(haystack)) return "pentecost";
+  return "";
+}
+
+const WORSHIP_BACKGROUND_SLOTS_AVAILABLE = 3;
+
+function presenterBackgroundSlotForDate(value) {
+  const month = parseLocalDate(value).getMonth() + 1;
+  // 2-month windows: Jan-Feb, Mar-Apr, May-Jun, Jul-Aug, Sep-Oct, Nov-Dec.
+  const bucket = Math.floor((month - 1) / 2);
+  // Only WORSHIP_BACKGROUND_SLOTS_AVAILABLE images exist per group so far;
+  // cycle through them until the remaining bucket images are added.
+  return (bucket % WORSHIP_BACKGROUND_SLOTS_AVAILABLE) + 1;
 }
 
 const SERVICE_RECURRENCE = {
@@ -4725,6 +5091,11 @@ function renderHomeSidebarCard(module) {
 }
 
 function renderHomeDetail() {
+  if (isGlobalSearchActive()) {
+    renderHomeSearchDetail();
+    return;
+  }
+
   const modules = homeModuleCards();
   const service = modules.find((module) => module.id === "service");
   const secondaryModules = ["calendar", "praise", "scripture", "references"]
@@ -4743,6 +5114,35 @@ function renderHomeDetail() {
           ${secondaryModules.map((module) => renderHomeCompactCard(module, { wide: true })).join("")}
         </div>
       </section>
+    </div>
+  `;
+  refreshIcons();
+}
+
+function renderHomeSearchDetail() {
+  const results = getGlobalSearchResults();
+  const total = results.praise.length + results.scripture.length + results.service.length;
+  refs.detailPane.innerHTML = `
+    <div class="home-search-screen">
+      <header class="home-search-head">
+        <span>통합검색</span>
+        <strong>${escapeHtml(state.search.trim())}</strong>
+        <small>${total} ${total === 1 ? "result" : "results"}</small>
+      </header>
+      ${total ? `
+        <div class="home-search-results">
+          ${renderGlobalSearchSection("Praise", results.praise.map(renderGlobalPraiseResult).join(""))}
+          ${renderGlobalSearchSection("Scripture", results.scripture.map(renderGlobalScriptureResult).join(""))}
+          ${renderGlobalSearchSection("Service", results.service.map(renderGlobalServiceResult).join(""))}
+        </div>
+      ` : `
+        <div class="empty-detail">
+          <div class="empty-detail-inner">
+            <h2>No results</h2>
+            <p>Search praise, scripture, or worship.</p>
+          </div>
+        </div>
+      `}
     </div>
   `;
   refreshIcons();
@@ -5195,7 +5595,6 @@ function renderReferenceSetupNotice() {
   return `
     <div class="reference-setup-notice">
       <strong>No references</strong>
-      <span>Add sites with the plus button.</span>
     </div>
   `;
 }
@@ -5261,7 +5660,7 @@ function renderReferenceEditorRow(link, index = 0, total = 1) {
         </label>
         <label>
           <span>Group</span>
-          <input data-reference-id="${escapeAttr(link.id)}" data-reference-field="group_name" value="${escapeAttr(link.group_name)}" placeholder="Hymn, Bible, Worship..." />
+          <input data-reference-id="${escapeAttr(link.id)}" data-reference-field="group_name" value="${escapeAttr(link.group_name)}" placeholder="Group" />
         </label>
       </div>
       <div class="reference-editor-actions">
@@ -7960,6 +8359,7 @@ const SERVICE_ORDER_TEMPLATE_FALLBACKS = {
   youth: ["사도신경", "찬양", "통성기도", "대표기도", "봉헌", "봉헌찬양", "봉헌기도", "성경봉독", "설교", "결단찬양", "결단기도", "주기도문", "광고", "교제"],
   "young-adult": ["사도신경", "대표기도", "찬양", "통성기도", "성경봉독", "설교", "결단찬양", "결단기도", "봉헌", "봉헌찬양", "봉헌기도", "광고", "파송찬양", "축도", "교제"],
 };
+const SERVICE_TEMPLATES_PANEL_ID = "__templates";
 
 function normalizeServiceItem(item = {}, index = 0) {
   const label = item.label || "";
@@ -7972,6 +8372,7 @@ function normalizeServiceItem(item = {}, index = 0) {
     raw_title: normalizeServiceItemRawTitle(label, item.raw_title || ""),
     song_id: item.song_id || null,
     version_id: item.version_id || item.song_version_id || null,
+    memo: item.memo || "",
   };
 }
 
@@ -8104,7 +8505,9 @@ function serviceTypeById(typeId) {
 function serviceOrderTemplate(typeId) {
   const template = serviceTypeById(typeId)?.order_template;
   if (Array.isArray(template) && template.length) return template.filter((step) => step && typeof step === "object");
-  return (SERVICE_ORDER_TEMPLATE_FALLBACKS[typeId] || []).map((label, index) => ({
+  const fallbackLabels = ["예배 준비 영상", ...(SERVICE_ORDER_TEMPLATE_FALLBACKS[typeId] || [])]
+    .filter((label, index, labels) => labels.indexOf(label) === index);
+  return fallbackLabels.map((label, index) => ({
     label,
     name: label,
     phase: index < 4 ? "Gathering" : index < 8 ? "Word/Response" : "Sending",
@@ -8113,6 +8516,112 @@ function serviceOrderTemplate(typeId) {
     repeatable: label === "찬양" || label === "기도",
     source: "Fallback",
   }));
+}
+
+function serializeServiceOrderTemplate(typeId) {
+  const typeObj = serviceTypeById(typeId);
+  const current = Array.isArray(typeObj?.order_template) ? typeObj.order_template : [];
+  const fallback = serviceOrderTemplate(typeId);
+  return (current.length ? current : fallback)
+    .map((step, index) => ({
+      label: nullIfBlank(step.label || step.name || ""),
+      name: nullIfBlank(step.name || step.label || ""),
+      phase: nullIfBlank(step.phase),
+      required: Boolean(step.required),
+      flex: Boolean(step.flex),
+      repeatable: Boolean(step.repeatable),
+      default_text: nullIfBlank(step.default_text),
+      notes: nullIfBlank(step.notes),
+      sort_order: index + 1,
+    }))
+    .filter((step) => step.label || step.name);
+}
+
+function serviceOrderTemplateInputValue(typeId) {
+  return serviceOrderTemplate(typeId)
+    .map((step) => cleanList([step.label || step.name, step.default_text]).join(" | "))
+    .join("\n");
+}
+
+function updateServiceTypeTemplateField(field) {
+  const typeId = field.dataset.serviceTypeId;
+  const typeObj = serviceTypeById(typeId);
+  if (!typeObj) return;
+  const lines = String(field.value || "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  typeObj.order_template = lines.map((line, index) => {
+    const parts = line.split(/\s*\|\s*/);
+    const labelPart = parts.shift();
+    const defaultTextPart = parts.join(" | ");
+    const label = String(labelPart || "").trim();
+    return {
+      label,
+      name: label,
+      phase: index < 4 ? "Gathering" : index < 8 ? "Word/Response" : "Sending",
+      required: !["찬양", "특송", "결단찬양", "통성기도", "교제", "기도회"].includes(label),
+      flex: ["찬양", "특송", "결단찬양", "통성기도", "교제", "기도회", "기도"].includes(label),
+      repeatable: label === "찬양" || label === "기도",
+      default_text: String(defaultTextPart || "").trim(),
+      sort_order: index + 1,
+    };
+  });
+  state.dirtyServiceTypeIds.add(typeId);
+  state.dirty.service = true;
+  updateSaveState();
+}
+
+function serviceSectionTemplateMeta(typeId, label, memo = "") {
+  const parsed = parseServiceItemMemo(memo);
+  const explicitName = String(parsed.templateKey || "").trim();
+  const explicitVariant = String(parsed.templateVariant || "").trim();
+  if (explicitName || explicitVariant) {
+    return {
+      name: explicitName || String(label || "").trim(),
+      variant: explicitVariant,
+    };
+  }
+
+  const normalized = compactSearchValue(label);
+  const serviceGroup = serviceTypeGroupKey(typeId);
+  const publicVariant = serviceGroup === "ministry" ? "부서예배" : "대예배";
+  if (normalized === compactSearchValue("사도신경")) {
+    return { name: "사도신경", variant: publicVariant };
+  }
+  if (typeId === "sunday-main" && isMainPraiseLabel(label)) {
+    return { name: "입례 찬양", variant: "3부" };
+  }
+  if (isMainPraiseLabel(label)) {
+    return { name: "찬양", variant: serviceGroup === "ministry" ? "부서" : "" };
+  }
+  return null;
+}
+
+function renderServiceTemplateBadge(typeId, itemOrStep = {}) {
+  const meta = serviceSectionTemplateMeta(typeId, itemOrStep.label || itemOrStep.name, itemOrStep.memo);
+  if (!meta?.name && !meta?.variant) return "";
+  const text = cleanList([meta.name, meta.variant]).join(" · ");
+  if (!text) return "";
+  return `<span class="svc-template-badge">${escapeHtml(text)}</span>`;
+}
+
+function serviceItemFormHint(item) {
+  return parseServiceItemMemo(item?.memo).formHint || "";
+}
+
+function renderServiceFormHintInput(item, index, options = {}) {
+  if (!item || item._isDefault) return "";
+  return `
+    <input
+      class="svc-form-hint${options.compact ? " compact" : ""}"
+      type="text"
+      data-service-item-field="form_hint"
+      data-service-item-index="${index}"
+      value="${escapeAttr(serviceItemFormHint(item))}"
+      placeholder="${escapeAttr(options.placeholder || "송폼/범위")}"
+      aria-label="Section form hint"
+    />`;
 }
 
 function getServiceItems(serviceId) {
@@ -8399,14 +8908,18 @@ function renderServiceList() {
               <span>추가</span>
             </button>`}
         </div>
-        ${q ? (services.length
-          ? `<div class="service-sidebar-stack">${services.map(renderServiceSidebarCard).join("")}</div>`
-          : `<p class="service-no-results">검색 결과가 없습니다.</p>`) : `
-          <div class="service-type-groups">
-            ${groupedTypes.map((group) => `
-              <div class="service-type-group">
-                <span class="service-type-group-label">${escapeHtml(serviceTypeGroupLabel(group.key))}</span>
-                <div class="service-type-picker service-type-picker--sidebar">
+	        ${q ? (services.length
+	          ? `<div class="service-sidebar-stack">${services.map(renderServiceSidebarCard).join("")}</div>`
+	          : `<p class="service-no-results">검색 결과가 없습니다.</p>`) : `
+	          <button class="service-type-row service-type-row--templates${state.selectedServiceTypeId === SERVICE_TEMPLATES_PANEL_ID && !state.selectedServiceId ? " active" : ""}" type="button" data-service-templates>
+	            <span>템플릿</span>
+	            <small>예배 · 섹션</small>
+	          </button>
+	          <div class="service-type-groups">
+	            ${groupedTypes.map((group) => `
+	              <div class="service-type-group">
+	                <span class="service-type-group-label">${escapeHtml(serviceTypeGroupLabel(group.key))}</span>
+	                <div class="service-type-picker service-type-picker--sidebar">
                   ${group.types.map(renderServiceSidebarType).join("")}
                 </div>
               </div>
@@ -8443,6 +8956,93 @@ function renderServiceSidebarType(type) {
     </button>`;
 }
 
+function renderServiceTemplatesDetail() {
+  const types = [...state.serviceTypes].sort((a, b) => serviceTypeSortOrder(a.id) - serviceTypeSortOrder(b.id));
+  const sectionTemplates = collectServiceSectionTemplates(types);
+  refs.detailPane.innerHTML = `
+    <div class="service-templates">
+      <div class="service-section-head">
+        <h2 class="service-date-list-title">템플릿</h2>
+        <div class="service-section-head-actions">
+          <span class="service-search-count">예배 ${types.length} · 섹션 ${sectionTemplates.length}</span>
+        </div>
+      </div>
+      <div class="svc-template-editor-grid">
+        <section class="svc-template-panel">
+          <div class="svc-template-panel-head">
+            <h3>예배 템플릿</h3>
+            <small>한 줄에 한 순서</small>
+          </div>
+          <div class="svc-template-card-list">
+            ${types.map(renderServiceOrderTemplateEditor).join("")}
+          </div>
+        </section>
+        <section class="svc-template-panel">
+          <div class="svc-template-panel-head">
+            <h3>섹션 템플릿</h3>
+            <small>현재 규칙 기준</small>
+          </div>
+          <div class="svc-section-template-list">
+            ${sectionTemplates.length
+              ? sectionTemplates.map(renderServiceSectionTemplateCard).join("")
+              : `<p class="service-no-results">섹션 템플릿 후보가 없습니다.</p>`}
+          </div>
+        </section>
+      </div>
+    </div>`;
+  finishDetailRender();
+}
+
+function renderServiceOrderTemplateEditor(type) {
+  const lines = serviceOrderTemplate(type.id).length;
+  const rows = Math.max(4, Math.min(14, lines + 1));
+  return `
+    <details class="svc-template-card">
+      <summary>
+        <span>${escapeHtml(serviceTypeDisplayName(type.id))}</span>
+        <small>${lines} sections</small>
+      </summary>
+      <textarea
+        class="svc-template-textarea"
+        data-service-type-template-field="order_template"
+        data-service-type-id="${escapeAttr(type.id)}"
+        rows="${rows}"
+        spellcheck="false"
+        aria-label="${escapeAttr(`${serviceTypeDisplayName(type.id)} order template`)}"
+      >${escapeHtml(serviceOrderTemplateInputValue(type.id))}</textarea>
+    </details>`;
+}
+
+function collectServiceSectionTemplates(types = state.serviceTypes) {
+  const byKey = new Map();
+  for (const type of types) {
+    for (const step of serviceOrderTemplate(type.id)) {
+      const meta = serviceSectionTemplateMeta(type.id, step.label || step.name, step.memo || step.notes || "");
+      if (!meta?.name && !meta?.variant) continue;
+      const key = `${meta.name || ""}::${meta.variant || ""}`;
+      const existing = byKey.get(key) || {
+        name: meta.name || "",
+        variant: meta.variant || "",
+        serviceTypes: new Set(),
+      };
+      existing.serviceTypes.add(serviceTypeDisplayName(type.id));
+      byKey.set(key, existing);
+    }
+  }
+  return [...byKey.values()]
+    .map((item) => ({ ...item, serviceTypes: [...item.serviceTypes].sort((a, b) => a.localeCompare(b, "ko")) }))
+    .sort((a, b) => cleanList([a.name, a.variant]).join(" ").localeCompare(cleanList([b.name, b.variant]).join(" "), "ko"));
+}
+
+function renderServiceSectionTemplateCard(template) {
+  const title = cleanList([template.name, template.variant]).join(" · ");
+  return `
+    <article class="svc-section-template-card">
+      <strong>${escapeHtml(title || "섹션")}</strong>
+      <small>${escapeHtml(template.serviceTypes.join(" · "))}</small>
+    </article>`;
+}
+
 function startExpectedService(typeId, date, options = {}) {
   if (!typeId || !date) return;
   if (!options.skipConfirm && !confirmDiscardServiceChanges()) return;
@@ -8461,12 +9061,17 @@ function renderServiceDetail() {
     state.selectedServiceTypeId = selectedService.type_id;
   }
 
-  if (!state.selectedServiceTypeId) {
-    renderServiceDashboard();
-    return;
-  }
+	  if (!state.selectedServiceTypeId) {
+	    renderServiceDashboard();
+	    return;
+	  }
 
-  if (!serviceId) {
+	  if (state.selectedServiceTypeId === SERVICE_TEMPLATES_PANEL_ID) {
+	    renderServiceTemplatesDetail();
+	    return;
+	  }
+
+	  if (!serviceId) {
     const typeId = state.selectedServiceTypeId;
     const actualServices = getFilteredServicesForType(typeId);
     const q = normalizeSearchValue(state.search);
@@ -8561,6 +9166,7 @@ function renderServiceDetail() {
         <div class="svc-workbench">
           <div class="svc-workbench-main">
             ${renderServiceMetaEditor(svc)}
+            ${renderServiceSetlistComposer(svc)}
             ${renderServiceOrderTemplate(typeObj)}
             ${merged.length ? renderServiceEditorHeader(svc.type_id) : ""}
             <div class="svc-items svc-editor-items">${itemsHtml || `<p class="service-no-results">예배 순서를 추가해 주세요.</p>`}</div>
@@ -8648,13 +9254,40 @@ function renderServiceOrderTemplate(typeObj) {
         <small>${template.length}</small>
       </summary>
       <div class="svc-template-flow">
-        ${template.map((step, index) => renderServiceTemplateStep(step, index)).join("")}
+        ${template.map((step, index) => renderServiceTemplateStep(step, index, typeObj?.id)).join("")}
       </div>
     </details>`;
 }
 
-function renderServiceTemplateStep(step, index) {
+function renderServiceSetlistComposer(service) {
+  if (!service) return "";
+  const assigneePlaceholder = serviceUsesPraiseLeader(service.type_id) ? "찬양 인도자" : "담당자";
+  return `
+    <details class="svc-setlist-composer" data-service-setlist="${escapeAttr(service.id)}">
+      <summary>
+        <span>콘티 입력</span>
+      </summary>
+      <div class="svc-setlist-grid">
+        <label>
+          <span>섹션</span>
+          <input type="text" data-service-setlist-label value="찬양" placeholder="찬양" />
+        </label>
+        <label>
+          <span>담당</span>
+          <input type="text" data-service-setlist-assignee placeholder="${escapeAttr(assigneePlaceholder)}" />
+        </label>
+        <label class="svc-setlist-lines">
+          <span>콘티</span>
+          <textarea data-service-setlist-lines rows="4" placeholder="주만 의지해&#10;마음 속에 근심 있는 사람&#10;갈 길을 밝히 보이시니"></textarea>
+        </label>
+        <button class="svc-setlist-apply" type="button" data-service-setlist-apply="${escapeAttr(service.id)}">반영</button>
+      </div>
+    </details>`;
+}
+
+function renderServiceTemplateStep(step, index, typeId = "") {
   const label = step.label || step.name || `Step ${index + 1}`;
+  const badge = renderServiceTemplateBadge(typeId, step);
   return `
     <button
       class="svc-template-step${step.required ? " is-required" : ""}${step.flex ? " is-flex" : ""}"
@@ -8665,6 +9298,7 @@ function renderServiceTemplateStep(step, index) {
       title="${escapeAttr([step.name, step.notes, step.source ? `Source: ${step.source}` : ""].filter(Boolean).join(" · "))}"
     >
       <span class="svc-template-step-label">${escapeHtml(label)}</span>
+      ${badge}
     </button>`;
 }
 
@@ -8700,17 +9334,24 @@ function renderServiceItemGroups(items) {
     if (group.entries.length === 1) {
       html += renderServiceEditorItem(group.entries[0].item, group.entries[0].mergedIndex, items, groupNum);
     } else {
-      // Group header
+      const groupFirst = group.entries[0].item;
+      const groupFirstIndex = groupFirst._origIndex;
       html += `<div class="svc-group${group.kind === "main-praise" ? " svc-group--praise" : ""}">
         <div class="svc-group-head">
           <span class="svc-edit-order">${groupNum}</span>
-          <span class="svc-group-label">${escapeHtml(group.label)}</span>
+          <span class="svc-group-label-wrap">
+            <span class="svc-group-label">${escapeHtml(group.label)}</span>
+            ${renderServiceTemplateBadge(selectedService?.type_id, groupFirst)}
+            ${renderServiceFormHintInput(groupFirst, groupFirstIndex, { compact: true, placeholder: "송폼/범위" })}
+          </span>
           ${group.assignee ? `<span class="svc-group-assignee">${escapeHtml(group.assignee)}</span>` : ""}
-        </div>`;
+        </div>
+        ${renderServiceItemMemoEditor(groupFirst, groupFirstIndex, { compact: true })}`;
       for (const { item, mergedIndex } of group.entries) {
         const origIndex = item._origIndex;
         const upDisabled = findAdjacentSameType(items, mergedIndex, -1) === -1;
         const downDisabled = findAdjacentSameType(items, mergedIndex, 1) === -1;
+        const localNumber = group.entries.findIndex((entry) => entry.item === item && entry.mergedIndex === mergedIndex) + 1;
         html += `
         <article class="svc-edit-item svc-edit-item--sub${group.kind === "main-praise" ? " svc-edit-item--praise-sub" : ""}">
           ${group.kind === "main-praise" ? "" : `
@@ -8722,20 +9363,22 @@ function renderServiceItemGroups(items) {
             value="${escapeAttr(item.assignee || "")}"
             placeholder="${escapeAttr(inferOrderSheetAssignee(item))}"
             aria-label="Service item assignee"
-          />`}
-          <div class="svc-edit-title-wrap">
-            <input
-              class="svc-edit-title"
-              type="text"
+	          />`}
+	          <div class="svc-edit-title-wrap">
+	            <span class="svc-subsection-chip">${escapeHtml(`${group.label} ${localNumber}`)}</span>
+	            <input
+	              class="svc-edit-title"
+	              type="text"
               data-service-item-field="raw_title"
               data-service-item-index="${origIndex}"
               value="${escapeAttr(item.raw_title || "")}"
               placeholder="찬양 제목"
               ${isSongServiceLabel(item.label) ? `list="servicePraiseOptions"` : ""}
-              aria-label="Service item text"
-            />
-            ${renderServiceItemLinkControl(item, origIndex)}
-          </div>
+	              aria-label="Service item text"
+	            />
+	            ${group.kind === "main-praise" ? renderServiceFormHintInput(item, origIndex, { compact: true, placeholder: "송폼" }) : ""}
+	            ${renderServiceItemLinkControl(item, origIndex)}
+	          </div>
           <div class="svc-edit-actions">
             <button class="icon-btn" type="button" data-service-item-action="up" data-service-item-index="${origIndex}" ${upDisabled ? "disabled" : ""} title="Move up" aria-label="Move up"><i data-lucide="arrow-up"></i></button>
             <button class="icon-btn" type="button" data-service-item-action="down" data-service-item-index="${origIndex}" ${downDisabled ? "disabled" : ""} title="Move down" aria-label="Move down"><i data-lucide="arrow-down"></i></button>
@@ -8771,15 +9414,19 @@ function renderServiceEditorItem(item, mergedIndex, mergedItems, groupNum) {
   return `
     <article class="svc-edit-item${isDefault ? " svc-edit-item--default" : ""}">
       <span class="svc-edit-order">${groupNum || mergedIndex + 1}</span>
-      <input
-        class="svc-edit-label"
-        type="text"
-        ${fieldAttr}="label"
-        ${indexAttr}="${origIndex}"
-        value="${escapeAttr(item.label || "")}"
-        placeholder="${isDefault ? "구성" : "찬양"}"
-        aria-label="${isDefault ? "Default service component label" : "Service item label"}"
-      />
+      <span class="svc-edit-section-cell">
+        <input
+          class="svc-edit-label"
+          type="text"
+          ${fieldAttr}="label"
+          ${indexAttr}="${origIndex}"
+          value="${escapeAttr(item.label || "")}"
+          placeholder="${isDefault ? "구성" : "찬양"}"
+          aria-label="${isDefault ? "Default service component label" : "Service item label"}"
+        />
+        ${!isDefault ? renderServiceTemplateBadge(state.services.find((service) => service.id === state.selectedServiceId)?.type_id, item) : ""}
+        ${!isDefault ? renderServiceFormHintInput(item, origIndex) : ""}
+      </span>
       <input
         class="svc-edit-assignee"
         type="text"
@@ -8808,13 +9455,47 @@ function renderServiceEditorItem(item, mergedIndex, mergedItems, groupNum) {
         <button class="icon-btn" type="button" ${actionAttr}="duplicate" ${indexAttr}="${origIndex}" title="Duplicate" aria-label="Duplicate"><i data-lucide="copy"></i></button>
         <button class="icon-btn danger" type="button" ${actionAttr}="delete" ${indexAttr}="${origIndex}" title="Delete" aria-label="Delete"><i data-lucide="trash-2"></i></button>
       </div>
-    </article>`;
+    </article>
+    ${!isDefault ? renderServiceItemMemoEditor(item, origIndex) : ""}`;
+}
+
+function renderServiceItemMemoEditor(item, index, options = {}) {
+  const parsed = parseServiceItemMemo(item?.memo);
+  const hasContent = Boolean(parsed.note || parsed.slides.length);
+  return `
+    <details class="svc-item-note${options.compact ? " compact" : ""}"${hasContent ? " open" : ""}>
+      <summary>
+        <span>메모 · 슬라이드 편집</span>
+        ${hasContent ? `<small>적용됨</small>` : ""}
+      </summary>
+      <div class="svc-item-note-grid">
+        <label>
+          <span>메모</span>
+          <input
+            type="text"
+            data-service-item-field="memo_note"
+            data-service-item-index="${index}"
+            value="${escapeAttr(parsed.note)}"
+            placeholder="카메라 2 · 조명 낮게 · 마이크 4"
+          />
+        </label>
+        <label>
+          <span>슬라이드 직접 지정</span>
+          <textarea
+            data-service-item-field="slide_overrides"
+            data-service-item-index="${index}"
+            rows="3"
+            placeholder="Verse 1&#10;가사 두 줄&#10;---&#10;Chorus&#10;후렴 두 줄"
+          >${escapeHtml(formatServiceSlideOverrideInput(item?.memo))}</textarea>
+        </label>
+      </div>
+    </details>`;
 }
 
 function renderServicePraiseLinkControl(item, index) {
   if (!isSongServiceLabel(item?.label)) return "";
   if (item?.song_id) {
-    return `<button class="icon-btn svc-song-link" type="button" data-open-song="${escapeAttr(item.song_id)}" title="Praise에서 열기" aria-label="Praise에서 열기"><i data-lucide="music"></i></button>`;
+    return `<button class="svc-item-link" type="button" data-open-song="${escapeAttr(item.song_id)}" title="Praise에서 열기" aria-label="Praise에서 열기">Praise</button>`;
   }
   const title = String(item?.raw_title || "").trim();
   if (!title) return "";
@@ -8833,14 +9514,15 @@ function renderServiceScriptureLinkControl(item) {
   if (!isScriptureServiceLabel(item?.label)) return "";
   const reference = normalizeServiceItemReferenceSpacing(item?.raw_title);
   if (!parseBibleReference(reference)) return "";
-  return `<button class="icon-btn svc-song-link" type="button" data-open-scripture-reference="${escapeAttr(reference)}" title="Scripture에서 열기" aria-label="Scripture에서 열기"><i data-lucide="book-open"></i></button>`;
+  return `<button class="svc-item-link" type="button" data-open-scripture-reference="${escapeAttr(reference)}" title="Scripture에서 열기" aria-label="Scripture에서 열기">Scripture</button>`;
 }
 
 function renderServiceDashboard() {
   if (!state.serviceTypes.length) {
     refs.detailPane.innerHTML = `
       <div class="empty-detail"><div class="empty-detail-inner">
-        <p class="empty-verse">예배 데이터를 불러올 수 없습니다.</p>
+        <p class="empty-verse">Wait for the LORD; be strong and take heart and wait for the LORD.</p>
+        <span>Psalm 27:14</span>
       </div></div>`;
     return;
   }
@@ -9036,10 +9718,53 @@ function songServiceOptionLabel(song) {
   return [no, title].filter(Boolean).join(" ");
 }
 
+const SERVICE_PRAISE_TITLE_ALIASES = new Map([
+  [normalizeTitle("내 안에 부어주소서"), "내 안에 부어 주소서"],
+  [normalizeTitle("능력의 이름 예수"), "예수 예수"],
+  [normalizeTitle("하나님의 뜻 이뤄지네 꿈꾸는 어린이부"), "하나님의 뜻 이뤄지네"],
+  [normalizeTitle("모든 이름 위에 뛰어난 이름"), "이 땅 위에 오신"],
+]);
+
+function servicePraiseLookupCandidates(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return [];
+  const hymnless = stripHymnNo(raw).title || raw;
+  const withoutPrefix = hymnless
+    .replace(/^\s*(?:response|찬양|찬송|특송|결단찬양|봉헌찬양|파송찬양)\s*[/：:-]?\s*/i, "")
+    .trim();
+  const primary = withoutPrefix
+    .split(/\s*[+＋]\s*/)[0]
+    .replace(/^\s*메들리\s*[(（]\s*/u, "")
+    .trim();
+  const candidates = [
+    hymnless,
+    withoutPrefix,
+    primary,
+    stripTitleDecorations(withoutPrefix),
+    stripTitleDecorations(primary),
+  ];
+  for (const match of withoutPrefix.matchAll(/[(\[（]([^)\]）]+)[)\]）]/g)) {
+    candidates.push(match[1]);
+  }
+  const expanded = [];
+  for (const candidate of candidates) {
+    const text = String(candidate || "").trim();
+    if (!text) continue;
+    expanded.push(text);
+    const alias = SERVICE_PRAISE_TITLE_ALIASES.get(normalizeTitle(text));
+    if (alias) expanded.push(alias);
+  }
+  return [...new Set(expanded)];
+}
+
 function findServicePraiseSong(value) {
-  const lookup = normalizeTitle(stripTitleDecorations(stripHymnNo(value).title || value));
-  const compactLookup = compactSearchValue(stripTitleDecorations(stripHymnNo(value).title || value));
-  if (!lookup && !compactLookup) return null;
+  const lookups = servicePraiseLookupCandidates(value)
+    .map((candidate) => ({
+      lookup: normalizeTitle(candidate),
+      compact: compactSearchValue(candidate),
+    }))
+    .filter((candidate) => candidate.lookup || candidate.compact);
+  if (!lookups.length) return null;
   return state.songs.find((song) => {
     const names = [
       songServiceOptionLabel(song),
@@ -9051,7 +9776,9 @@ function findServicePraiseSong(value) {
     ];
     return names.some((name) => {
       const stripped = stripTitleDecorations(stripHymnNo(name).title || name);
-      return normalizeTitle(stripped) === lookup || compactSearchValue(stripped) === compactLookup;
+      const normalized = normalizeTitle(stripped);
+      const compact = compactSearchValue(stripped);
+      return lookups.some((candidate) => normalized === candidate.lookup || compact === candidate.compact);
     });
   }) || null;
 }
@@ -9203,6 +9930,8 @@ function copyServiceOrderSheet(serviceId) {
 
 function printServiceOrderSheet(serviceId) {
   if (!serviceId) return;
+  const drawer = document.querySelector("details.svc-edit-drawer");
+  if (drawer) drawer.open = true;
   refreshServiceOrderSheetPreview(serviceId);
   window.print();
 }
@@ -9276,6 +10005,28 @@ function renderOrderSheetCopy(title, dateLabel, rows) {
     </section>`;
 }
 
+function renderPresenterScreenControl() {
+  if (!window.getScreenDetails || !window.isSecureContext) return "";
+  if (state.presenter.screens.length > 1) {
+    return `
+      <label class="svc-presenter-screen-select" title="Choose which display to present on">
+        <i data-lucide="monitor"></i>
+        <select data-presenter-screen-select>
+          <option value="">Auto</option>
+          ${state.presenter.screens.map((screen) => `
+            <option value="${escapeAttr(screen.key)}" ${state.presenter.selectedScreenId === screen.key ? "selected" : ""}>
+              ${escapeHtml(screen.label)}
+            </option>
+          `).join("")}
+        </select>
+      </label>`;
+  }
+  return `
+    <button class="icon-btn" type="button" data-presenter-action="detect-screens" title="Detect displays" aria-label="Detect displays">
+      <i data-lucide="monitor"></i>
+    </button>`;
+}
+
 function renderServicePresenterControls(service, slides, active, index) {
   const count = slides.length;
   const safeIndex = clampPresenterIndex(index, count);
@@ -9291,6 +10042,7 @@ function renderServicePresenterControls(service, slides, active, index) {
           <i data-lucide="screen-share"></i>
           <span>Present</span>
         </button>
+        ${renderPresenterScreenControl()}
         <div class="svc-presenter-main" aria-live="polite">
           <span class="svc-slide-counter">
             <input class="svc-slide-jump-input" type="number" inputmode="numeric" min="1" max="${escapeAttr(count || 1)}" value="${escapeAttr(jumpInputValue)}" data-presenter-jump-input data-service-id="${escapeAttr(service.id)}" aria-label="Slide number" ${count ? "" : "disabled"} />
@@ -9299,6 +10051,8 @@ function renderServicePresenterControls(service, slides, active, index) {
           </span>
         </div>
         <div class="svc-presenter-actions">
+          ${renderServiceMusicPlayer()}
+          ${renderLiveScriptureControl(service.id)}
           <button class="icon-btn" type="button" data-presenter-action="prev" data-service-id="${escapeAttr(service.id)}" ${count ? "" : "disabled"} title="Previous slide" aria-label="Previous slide">
             <i data-lucide="chevron-left"></i>
           </button>
@@ -9312,6 +10066,202 @@ function renderServicePresenterControls(service, slides, active, index) {
       </div>
       ${renderPresenterSlideBoard(slides, safeIndex, service.id)}
     </section>`;
+}
+
+function renderServiceMusicPlayer() {
+  const music = state.serviceMusic;
+  const fileLabel = music.fileName ? music.fileName : "음악";
+  const volumeOptions = Array.from({ length: 6 }, (_, level) =>
+    `<option value="${level}"${level === music.volumeLevel ? " selected" : ""}>${level}</option>`).join("");
+  return `
+    <span class="svc-music-player" title="예배 전후 음악">
+      <input class="svc-music-file" type="file" accept="audio/*" data-service-music-file hidden />
+      <button class="svc-music-name" type="button" data-service-music-action="choose" title="음악 파일 선택">
+        <i data-lucide="music"></i>
+        <span>${escapeHtml(fileLabel)}</span>
+      </button>
+      <button class="icon-btn svc-music-toggle${music.playing ? " is-active" : ""}" type="button" data-service-music-action="toggle" title="${music.playing ? "음악 정지" : "음악 재생"}" aria-label="${music.playing ? "음악 정지" : "음악 재생"}" ${music.objectUrl ? "" : "disabled"}>
+        <i data-lucide="${music.playing ? "pause" : "play"}"></i>
+      </button>
+      <select class="svc-music-volume" data-service-music-volume aria-label="음악 볼륨">
+        ${volumeOptions}
+      </select>
+    </span>`;
+}
+
+function renderLiveScriptureControl(serviceId) {
+  const live = state.presenter.liveScripture || {};
+  return `
+    <span class="svc-live-scripture${live.active ? " is-active" : ""}" title="설교 중 실시간 성구 송출">
+      <input class="svc-live-scripture-input" type="text" value="${escapeAttr(live.draft || live.reference || "")}" data-live-scripture-input data-service-id="${escapeAttr(serviceId)}" placeholder="성구 입력" />
+      <button class="icon-btn svc-live-scripture-show" type="button" data-live-scripture-action="show" data-service-id="${escapeAttr(serviceId)}" title="성구 송출" aria-label="성구 송출">
+        <i data-lucide="send"></i>
+      </button>
+      <button class="icon-btn svc-live-scripture-clear" type="button" data-live-scripture-action="clear" data-service-id="${escapeAttr(serviceId)}" title="성구 숨김" aria-label="성구 숨김" ${live.active ? "" : "disabled"}>
+        <i data-lucide="eye-off"></i>
+      </button>
+    </span>`;
+}
+
+function getServiceMusicAudio() {
+  if (!state.serviceMusic.audio) {
+    const audio = new Audio();
+    audio.loop = true;
+    audio.preload = "auto";
+    state.serviceMusic.audio = audio;
+  }
+  state.serviceMusic.audio.volume = state.serviceMusic.volumeLevel / 5;
+  return state.serviceMusic.audio;
+}
+
+function runServiceMusicAction(action) {
+  if (action === "choose") {
+    document.querySelector("[data-service-music-file]")?.click();
+    return;
+  }
+  if (action !== "toggle") return;
+  const audio = getServiceMusicAudio();
+  if (!state.serviceMusic.objectUrl) {
+    showToast("음악 파일을 먼저 선택해 주세요.", "error");
+    return;
+  }
+  if (state.serviceMusic.playing) {
+    audio.pause();
+    state.serviceMusic.playing = false;
+    renderPresenterControlState();
+    return;
+  }
+  audio.play()
+    .then(() => {
+      state.serviceMusic.playing = true;
+      renderPresenterControlState();
+    })
+    .catch(() => showToast("브라우저가 음악 재생을 막았습니다. 다시 눌러 주세요.", "error"));
+}
+
+function loadServiceMusicFile(file) {
+  if (!file) return;
+  const audio = getServiceMusicAudio();
+  if (state.serviceMusic.objectUrl) URL.revokeObjectURL(state.serviceMusic.objectUrl);
+  state.serviceMusic.objectUrl = URL.createObjectURL(file);
+  state.serviceMusic.fileName = file.name || "음악";
+  state.serviceMusic.playing = false;
+  audio.pause();
+  audio.src = state.serviceMusic.objectUrl;
+  audio.volume = state.serviceMusic.volumeLevel / 5;
+  renderPresenterControlState();
+}
+
+function setServiceMusicVolume(value) {
+  const level = Math.min(Math.max(Number(value) || 0, 0), 5);
+  state.serviceMusic.volumeLevel = level;
+  getServiceMusicAudio().volume = level / 5;
+  renderPresenterControlState();
+}
+
+function updateLiveScriptureDraft(value) {
+  state.presenter.liveScripture.draft = String(value || "");
+}
+
+async function runLiveScriptureAction(action, serviceId = state.selectedServiceId) {
+  if (action === "clear") {
+    state.presenter.liveScripture = { reference: "", draft: state.presenter.liveScripture.draft || "", active: false, slide: null };
+    publishPresenterState({ force: true });
+    renderPresenterControlState(serviceId);
+    return;
+  }
+  if (action !== "show") return;
+
+  const input = document.querySelector("[data-live-scripture-input]");
+  const query = String(input?.value || state.presenter.liveScripture.draft || "").trim();
+  state.presenter.liveScripture.draft = query;
+  if (!query) {
+    showToast("성구를 입력해 주세요.", "error");
+    return;
+  }
+
+  try {
+    if (serviceId) preparePresenterService(serviceId);
+    const slide = await buildLiveScriptureSlide(query);
+    if (!slide) return;
+    state.presenter.liveScripture = {
+      reference: slide.title,
+      draft: query,
+      active: true,
+      slide,
+    };
+    publishPresenterState({ force: true });
+    renderPresenterControlState(serviceId);
+  } catch (error) {
+    showToast(error.message || "성구를 불러오지 못했습니다.", "error");
+  }
+}
+
+async function buildLiveScriptureSlide(query) {
+  if (!requireClient()) return null;
+  await ensureBibleBookLookups();
+  if (!state.bibleTranslations.length && !state.bibleReaderError) await loadBibleTranslations({ silent: true });
+
+  const reference = parseBibleReference(query);
+  if (!reference) {
+    showToast("성구 형식을 확인해 주세요.", "error");
+    return null;
+  }
+  const translation = selectedPresenterBibleTranslation();
+  if (!translation?.id) {
+    showToast("사용 가능한 역본이 없습니다.", "error");
+    return null;
+  }
+
+  let request = state.client
+    .from("mindex_bible_verses")
+    .select("book_code,chapter,verse,text")
+    .eq("is_active", true)
+    .eq("translation_id", translation.id)
+    .eq("book_code", reference.book.code)
+    .eq("chapter", reference.chapter)
+    .order("verse", { ascending: true });
+
+  if (reference.verse !== null) {
+    request = request
+      .gte("verse", reference.verse)
+      .lte("verse", reference.verseEnd || reference.verse);
+  }
+
+  const { data, error } = await request;
+  if (error) throw error;
+  const verses = data || [];
+  if (!verses.length) {
+    showToast("해당 성구를 찾지 못했습니다.", "error");
+    return null;
+  }
+
+  const title = formatLiveScriptureReference(reference);
+  return {
+    id: `live-scripture:${Date.now()}`,
+    type: "component",
+    label: "성구",
+    title,
+    marker: title,
+    text: verses.map((verse) => `${verse.verse}   ${verse.text}`).join("\n"),
+    live: true,
+  };
+}
+
+function selectedPresenterBibleTranslation() {
+  return state.bibleTranslations.find((translation) => translation.id === state.selectedBibleTranslationId)
+    || state.bibleTranslations.find((translation) => /개역개정|KRV|Korean/i.test(`${translation.name || ""} ${translation.code || ""}`))
+    || state.bibleTranslations[0]
+    || null;
+}
+
+function formatLiveScriptureReference(reference) {
+  const bookName = KOREAN_BIBLE_BOOK_ABBREVIATIONS[reference.book.code] || reference.book.koreanName || reference.book.code;
+  if (reference.verse === null) return `${bookName} ${reference.chapter}장`;
+  const verseRange = reference.verseEnd && reference.verseEnd !== reference.verse
+    ? `${reference.verse}-${reference.verseEnd}`
+    : `${reference.verse}`;
+  return `${bookName} ${reference.chapter}:${verseRange}`;
 }
 
 function renderPresenterSlideBoard(slides, index, serviceId) {
@@ -9453,8 +10403,6 @@ function renderPresenterBoardSubgroup(subgroup, activeIndex, serviceId, options 
 
 function renderPresenterSlideThumb(slide, slideIndex, activeIndex, serviceId, options = {}) {
   const active = slideIndex === activeIndex;
-  const marker = presenterSlideMarker(slide);
-  const title = presenterSlideThumbCaption(slide);
   return `
     <span class="svc-slide-thumb-wrap${options.formDivider ? " has-form-divider" : ""}">
       ${options.formDivider ? `<span class="svc-slide-form-divider" aria-hidden="true">/</span>` : ""}
@@ -9466,77 +10414,54 @@ function renderPresenterSlideThumb(slide, slideIndex, activeIndex, serviceId, op
       aria-label="Go to slide ${slideIndex + 1}">
       <span class="svc-slide-thumb-no">${slideIndex + 1}</span>
       <span class="svc-slide-thumb-frame svc-slide-thumb-frame--${escapeAttr(slide?.type || "component")}">
-        ${renderPresenterSlideMiniPreview(slide)}
+        ${renderPresenterSlideMiniPreview(slide, serviceId)}
       </span>
-      ${renderPresenterSlideThumbCaption(slide, marker, title)}
     </button>
     </span>`;
 }
 
-function renderPresenterSlideThumbCaption(slide, marker, title) {
-  if (slide?.type === "lyrics") {
-    const formMarker = String(slide.marker || "").trim();
-    return `
-      <span class="svc-slide-thumb-caption svc-slide-thumb-caption--lyrics${formMarker ? "" : " is-empty"}">
-        ${formMarker ? `<span>${escapeHtml(formMarker)}</span>` : ""}
-      </span>`;
+function renderPresenterSlideMiniPreview(slide, serviceId = state.presenter.serviceId) {
+  const service = state.services.find((svc) => svc.id === serviceId);
+  const chromakey = presenterServiceUsesChromakey(service);
+  const backgroundImage = presenterBackgroundForService(service);
+  const theme = presenterOutputTheme(service?.type_id);
+  const bgStyle = backgroundImage && !chromakey ? ` style="--presenter-bg-image: url('${escapeAttr(backgroundImage)}')"` : "";
+  if (!slide) {
+    return `<span class="svc-slide-mini-output${chromakey ? "" : " no-chromakey"}" data-output-theme="${escapeAttr(theme)}"${bgStyle}></span>`;
   }
+  const type = slide.type || "component";
+  const meta = renderPresenterSlideMiniMeta(slide);
+  const body = renderPresenterSlideMiniBody(slide);
   return `
-    <span class="svc-slide-thumb-caption${marker ? "" : " no-marker"}">
-      ${marker ? `<span>${escapeHtml(marker)}</span>` : ""}
-      <strong>${escapeHtml(title || "Untitled")}</strong>
+    <span class="svc-slide-mini-output${chromakey ? "" : " no-chromakey"}${backgroundImage && !chromakey ? " has-background" : ""}" data-output-theme="${escapeAttr(theme)}"${bgStyle}>
+      <span class="svc-slide-mini-live svc-slide-mini-live--${escapeAttr(type)}">
+        ${meta}
+        ${body}
+      </span>
     </span>`;
 }
 
-function presenterSlideThumbCaption(slide) {
-  if (!slide) return "";
-  if (slide.type === "lyrics") return slide.title || "";
-  if (slide.type === "video") return slide.title || presenterSlideMainText(slide);
-  return presenterSlideMainText(slide) || slide.title || "";
+function renderPresenterSlideMiniMeta(slide) {
+  if (!slide || slide.type === "lyrics" || slide.type === "song-title" || slide.type === "video" || slide.type === "ready") return "";
+  const marker = [slide.marker, slide.label].filter(Boolean).join(" · ");
+  return marker ? `<span class="svc-slide-mini-live-meta">${escapeHtml(marker)}</span>` : "";
 }
 
-function renderPresenterSlideMiniPreview(slide) {
-  if (!slide) return `<span class="svc-slide-mini-text"><span>Ready</span></span>`;
-  if (slide.type === "ready") {
-    return `<span class="svc-slide-mini-ready"><span>Ready</span></span>`;
-  }
+function renderPresenterSlideMiniBody(slide) {
   if (slide.type === "video") {
     const source = normalizePresenterMediaSource(slide.videoSrc || slide.text);
     return `
       <span class="svc-slide-mini-video">
-        <span>Video</span>
         <small>${escapeHtml(source ? presenterMediaFileName(source) : (slide.title || "Media"))}</small>
       </span>`;
   }
-  const meta = slide.type === "lyrics" ? "" : renderPresenterMiniMeta(slide);
-  const lines = presenterSlidePreviewLines(slide, slide.type === "lyrics" ? 2 : 3);
-  return `
-    ${meta}
-    <span class="svc-slide-mini-text">
-      ${lines.length ? lines.map((line) => `<span>${escapeHtml(line)}</span>`).join("") : `<span>${escapeHtml(slide.title || "Slide")}</span>`}
-    </span>`;
-}
-
-function renderPresenterMiniMeta(slide) {
-  const marker = [slide?.marker, slide?.label].filter(Boolean).join(" · ");
-  return marker ? `<span class="svc-slide-mini-meta">${escapeHtml(marker)}</span>` : "";
+  return `<span class="svc-slide-mini-live-text">${renderPresenterSlideText(slide)}</span>`;
 }
 
 function presenterMediaFileName(source) {
   const text = String(source || "").split(/[?#]/)[0];
   const parts = text.split("/");
   return parts[parts.length - 1] || source;
-}
-
-function presenterSlidePreviewLines(slide, maxLines = 3) {
-  if (!slide) return [];
-  if (slide.type === "video") return [slide.videoSrc || "Video"].filter(Boolean);
-  const text = presenterSlideMainText(slide);
-  return String(text || "")
-    .split(/\n/)
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .slice(0, maxLines);
 }
 
 function isPresenterFormBoundary(previous, current) {
@@ -9607,6 +10532,13 @@ function runPresenterAction(action, serviceId = state.selectedServiceId, options
   }
 
   state.presenter.jumpDraft = "";
+  if (["next", "prev", "first", "last", "jump"].includes(action)) {
+    state.presenter.liveScripture = {
+      ...state.presenter.liveScripture,
+      active: false,
+      slide: null,
+    };
+  }
 
   if (action === "next") {
     movePresenterSlide(1);
@@ -9642,8 +10574,19 @@ async function openPresenterOutput(serviceId = state.selectedServiceId) {
   preparePresenterService(serviceId);
   publishPresenterState();
 
+  // Resolve the target display BEFORE creating the window. Chrome appears to
+  // associate a popup's fullscreen target with whichever screen it was
+  // created on; moving an already-open window with moveTo/resizeTo and then
+  // requesting fullscreen can snap back to the origin screen. Opening the
+  // window with left/top already set to the target display avoids that.
+  const targetRect = await resolvePresenterTargetScreenRect();
+  if (!state.presenter.screens.length) void requestPresenterScreens();
+
   const url = presenterOutputUrl();
-  const outputWindow = window.open(url, "mindexPresenterOutput", "popup=yes,width=1280,height=720");
+  const features = targetRect
+    ? `popup=yes,left=${targetRect.left},top=${targetRect.top},width=${targetRect.width},height=${targetRect.height}`
+    : "popup=yes,width=1280,height=720";
+  const outputWindow = window.open(url, "mindexPresenterOutput", features);
   if (!outputWindow) {
     showToast("Output window was blocked by the browser.", "error");
     return;
@@ -9652,14 +10595,13 @@ async function openPresenterOutput(serviceId = state.selectedServiceId) {
   state.presenter.outputWindow = outputWindow;
   startPresenterOutputWindowMonitor(serviceId);
   outputWindow.focus();
-  requestOutputFullscreen(outputWindow);
+  if (!targetRect) await positionPresenterOutputWindow(outputWindow);
   outputWindow.addEventListener?.("load", () => {
     publishPresenterState();
     requestOutputFullscreen(outputWindow);
   }, { once: true });
-  await positionPresenterOutputWindow(outputWindow);
+  requestOutputFullscreen(outputWindow);
   window.setTimeout(() => publishPresenterState(), 250);
-  window.setTimeout(() => requestOutputFullscreen(outputWindow), 500);
   renderPresenterControlState(serviceId);
 }
 
@@ -9713,6 +10655,7 @@ function preparePresenterService(serviceId = state.selectedServiceId) {
     state.presenter.index = 0;
     state.presenter.black = false;
     state.presenter.jumpDraft = "";
+    state.presenter.liveScripture = { reference: "", draft: "", active: false, slide: null };
   }
   state.presenter.serviceId = serviceId;
   state.presenter.slides = slides;
@@ -9761,11 +10704,17 @@ function buildServicePresenterSlides(serviceId) {
     .sort((a, b) => a.sort_order - b.sort_order)
     .flatMap((item, index) => buildPresenterSlidesForServiceItem(item, service, index))
     .filter(Boolean);
+  if (slides[0] && isPresenterPreparationSlide(slides[0])) return slides;
   return [presenterReadySlide(service), ...slides];
+}
+
+function isPresenterPreparationSlide(slide) {
+  return /예배\s*준비|대기/i.test(`${slide.sectionLabel || ""} ${slide.title || ""}`);
 }
 
 function presenterReadySlide(service) {
   const title = "예배 준비";
+  const serviceName = serviceDisplayTypeName(service) || "예배";
   return {
     id: `${service?.id || "service"}:ready`,
     sectionId: `${service?.id || "service"}:ready`,
@@ -9778,7 +10727,7 @@ function presenterReadySlide(service) {
     label: "준비",
     title,
     marker: "",
-    text: "",
+    text: `잠시 후\n${serviceName}\n가 시작됩니다`,
     sort: -1,
   };
 }
@@ -9810,6 +10759,12 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
       sort: index,
     }];
   }
+
+  const customSlides = buildPresenterCustomSlides(item, section, index);
+  if (customSlides.length) return customSlides;
+
+  const scriptureTextSlides = buildPresenterScriptureTextSlides(item, section, index);
+  if (scriptureTextSlides.length) return scriptureTextSlides;
 
   if (song && forms.length) {
     const lyricsSlides = forms.flatMap((form, formIndex) => {
@@ -9847,6 +10802,88 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
   }];
 }
 
+function buildPresenterCustomSlides(item, section, index) {
+  const slides = parseServiceItemMemo(item?.memo).slides;
+  if (!slides.length) return [];
+  const label = item.label || "";
+  return slides.map((block, blockIndex) => {
+    const parsed = parsePresenterCustomSlideBlock(block);
+    return {
+      id: `${item.id || index}:custom:${blockIndex}`,
+      ...section,
+      type: isSongServiceLabel(label) ? "lyrics" : "component",
+      label,
+      title: section.sectionTitle || item.raw_title || label || "Slide",
+      marker: parsed.marker,
+      formKey: `custom:${blockIndex}`,
+      text: parsed.text,
+      sort: index + blockIndex / 100,
+    };
+  }).filter((slide) => String(slide.text || "").trim());
+}
+
+function parsePresenterCustomSlideBlock(block) {
+  const lines = String(block || "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  if (!lines.length) return { marker: "", text: "" };
+  const first = lines[0];
+  const bracketed = first.match(/^\[([^\]]+)\]$/)?.[1]?.trim();
+  const markerCandidate = bracketed || first;
+  if (/^(Verse|Chorus|Pre-Chorus|Bridge|Coda|Amen|Lyrics)(?:\s+\d+)?$/i.test(markerCandidate)) {
+    return { marker: normalizePresenterCustomMarker(markerCandidate), text: lines.slice(1).join("\n") };
+  }
+  return { marker: "", text: lines.join("\n") };
+}
+
+function normalizePresenterCustomMarker(value) {
+  return String(value || "")
+    .replace(/^pre[\s-]?chorus/i, "Pre-Chorus")
+    .replace(/^verse/i, "Verse")
+    .replace(/^chorus/i, "Chorus")
+    .replace(/^bridge/i, "Bridge")
+    .replace(/^coda/i, "Coda")
+    .replace(/^amen/i, "Amen")
+    .replace(/^lyrics/i, "Lyrics");
+}
+
+function buildPresenterScriptureTextSlides(item, section, index) {
+  if (!isScriptureBodyServiceItem(item)) return [];
+  const payload = parsePresenterScriptureTextPayload(item.raw_title);
+  if (!payload.verses.length) return [];
+  return payload.verses.map((verse, verseIndex) => ({
+    id: `${item.id || index}:scripture:${verse.number || verseIndex + 1}`,
+    ...section,
+    type: "component",
+    label: item.label || "본문",
+    title: payload.reference || section.sectionTitle || "본문",
+    marker: payload.reference || "",
+    text: verse.number ? `${verse.number}   ${verse.text}` : verse.text,
+    sort: index + verseIndex / 100,
+  }));
+}
+
+function isScriptureBodyServiceItem(item) {
+  const label = String(item?.label || "").replace(/\s+/g, "");
+  return label === "본문" || label === "성경본문";
+}
+
+function parsePresenterScriptureTextPayload(value) {
+  const lines = String(value || "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const verses = [];
+  let reference = "";
+  for (const line of lines) {
+    const match = line.match(/^(\d{1,3})\s{3,}(.+)$/);
+    if (match) {
+      verses.push({ number: match[1], text: match[2].trim() });
+    } else if (!reference) {
+      reference = line;
+    }
+  }
+  return { reference, verses };
+}
+
 function shouldIncludeSongTitleSlide(item, label) {
   return Boolean(item?.song_id && (isSongServiceLabel(label) || isMainPraiseServiceItem(item, { allowUnlabeled: true })));
 }
@@ -9874,16 +10911,19 @@ function presenterFormMarker(form) {
 
 function presenterSectionForServiceItem(item, index, displayText) {
   const label = String(item?.label || "").trim();
+  const formHint = serviceItemFormHint(item);
   const { no, title } = splitHymnNo(displayText);
   const sectionTitle = [no, title].filter(Boolean).join(" ") || displayText || label || `Component ${index + 1}`;
+  const sectionLabelText = cleanList([label, formHint]).join(" · ");
   return {
     sectionId: item?.id || `section:${index}:${normalizeTitle([label, displayText].filter(Boolean).join(" "))}`,
     sectionIndex: index + 1,
     sectionLabel: label,
+    sectionFormHint: formHint,
     sectionRole: isMainPraiseServiceItem(item, { allowUnlabeled: true }) ? "main-praise" : "",
     sectionTitle,
     sectionAssignee: item?.assignee || "",
-    sectionName: [label, sectionTitle].filter(Boolean).join(" / "),
+    sectionName: [sectionLabelText, sectionTitle].filter(Boolean).join(" / "),
   };
 }
 
@@ -10011,9 +11051,11 @@ function presenterStatePayload(serviceId = state.presenter.serviceId) {
     serviceTitle: [serviceDisplayTypeName(service), service ? formatServiceDate(service) : ""].filter(Boolean).join(" · "),
     chromakey: presenterServiceUsesChromakey(service),
     outputTheme: presenterOutputTheme(service?.type_id),
+    backgroundImage: presenterBackgroundForService(service),
     slides,
     index: clampPresenterIndex(state.presenter.index, slides.length),
     black: Boolean(state.presenter.black),
+    liveScripture: state.presenter.liveScripture?.active ? state.presenter.liveScripture : null,
     updatedAt: Date.now(),
   };
 }
@@ -10058,12 +11100,59 @@ function presenterOutputUrl() {
   return url.toString();
 }
 
+function presenterScreenKey(screen) {
+  return `${screen.left ?? 0},${screen.top ?? 0}`;
+}
+
+async function requestPresenterScreens() {
+  if (!window.getScreenDetails || !window.isSecureContext) return;
+  try {
+    const details = await window.getScreenDetails();
+    const apply = () => {
+      state.presenter.screens = [...(details.screens || [])].map((screen, index) => ({
+        key: presenterScreenKey(screen),
+        label: screen.isPrimary ? `Display ${index + 1} (Primary)` : `Display ${index + 1}`,
+        isPrimary: Boolean(screen.isPrimary),
+      }));
+      if (state.presenter.serviceId) renderPresenterControlState(state.presenter.serviceId);
+    };
+    apply();
+    details.addEventListener?.("screenschange", apply);
+  } catch {
+    showToast("Couldn't access display info. Check browser permission.", "error");
+  }
+}
+
+function findPresenterTargetScreen(screens, currentScreen) {
+  const selectedKey = state.presenter.selectedScreenId;
+  return (selectedKey && screens.find((screen) => presenterScreenKey(screen) === selectedKey))
+    || screens.find((screen) => !screen.isPrimary)
+    || screens.find((screen) => screen !== currentScreen);
+}
+
+async function resolvePresenterTargetScreenRect() {
+  if (!window.getScreenDetails || !window.isSecureContext) return null;
+  try {
+    const details = await window.getScreenDetails();
+    const target = findPresenterTargetScreen([...(details.screens || [])], details.currentScreen);
+    if (!target) return null;
+    return {
+      left: target.availLeft ?? target.left ?? 0,
+      top: target.availTop ?? target.top ?? 0,
+      width: target.availWidth || target.width || 1280,
+      height: target.availHeight || target.height || 720,
+    };
+  } catch {
+    return null;
+  }
+}
+
 async function positionPresenterOutputWindow(outputWindow) {
   if (!outputWindow || !window.getScreenDetails || !window.isSecureContext) return;
   try {
     const details = await window.getScreenDetails();
     const screens = [...(details.screens || [])];
-    const target = screens.find((screen) => !screen.isPrimary) || screens.find((screen) => screen !== details.currentScreen);
+    const target = findPresenterTargetScreen(screens, details.currentScreen);
     if (!target) return;
     const left = target.availLeft ?? target.left ?? 0;
     const top = target.availTop ?? target.top ?? 0;
@@ -10251,15 +11340,29 @@ function normalizePresenterPayload(payload) {
     serviceTitle: payload?.serviceTitle || "",
     chromakey: payload?.chromakey !== false,
     outputTheme: payload?.outputTheme || presenterOutputTheme(payload?.serviceType),
+    backgroundImage: payload?.backgroundImage || "",
     slides,
     index: clampPresenterIndex(payload?.index, slides.length),
     black: Boolean(payload?.black),
+    liveScripture: normalizeLiveScripturePayload(payload?.liveScripture),
     updatedAt: Number(payload?.updatedAt) || Date.now(),
+  };
+}
+
+function normalizeLiveScripturePayload(value) {
+  if (!value?.active || !value?.slide) return null;
+  return {
+    reference: value.reference || value.slide.title || "",
+    active: true,
+    slide: value.slide,
   };
 }
 
 function applyPresenterActionToPayload(payload, action, options = {}) {
   const next = normalizePresenterPayload(payload);
+  if (["next", "prev", "first", "last", "jump"].includes(action)) {
+    next.liveScripture = null;
+  }
   if (action === "next" && next.slides.length) {
     next.index = Math.min(next.index + 1, next.slides.length - 1);
     next.black = false;
@@ -10286,11 +11389,19 @@ function renderPresenterOutput(payload) {
   const root = document.getElementById("presenterOutputRoot");
   if (!root) return;
   const slides = Array.isArray(payload?.slides) ? payload.slides : [];
-  const slide = slides[clampPresenterIndex(payload?.index, slides.length)];
+  const liveSlide = payload?.liveScripture?.active ? payload.liveScripture.slide : null;
+  const slide = liveSlide || slides[clampPresenterIndex(payload?.index, slides.length)];
+  const backgroundImage = payload?.backgroundImage || "";
   root.classList.toggle("is-black", Boolean(payload?.black));
   root.classList.toggle("no-chromakey", payload?.chromakey === false);
+  root.classList.toggle("has-background", Boolean(backgroundImage && payload?.chromakey === false));
   root.dataset.serviceType = payload?.serviceType || "";
   root.dataset.outputTheme = payload?.outputTheme || presenterOutputTheme(payload?.serviceType);
+  if (backgroundImage && payload?.chromakey === false) {
+    root.style.setProperty("--presenter-bg-image", `url("${backgroundImage}")`);
+  } else {
+    root.style.removeProperty("--presenter-bg-image");
+  }
 
   if (payload?.black) {
     root.innerHTML = "";
@@ -10318,7 +11429,6 @@ function renderPresenterSlideMeta(slide) {
 }
 
 function renderPresenterSlideBody(slide) {
-  if (slide.type === "ready") return "";
   if (slide.type === "video") return renderPresenterVideoSlide(slide);
   return `<div class="presenter-slide-text">${renderPresenterSlideText(slide)}</div>`;
 }
@@ -10335,7 +11445,7 @@ function renderPresenterVideoSlide(slide) {
 
 function renderPresenterSlideText(slide) {
   const baseText = slide.text || slide.title;
-  const text = slide.type === "song-title" && baseText ? `♪ ${baseText}` : slide.type === "lyrics" ? slide.text : baseText;
+  const text = slide.type === "lyrics" ? slide.text : baseText;
   return String(text || "")
     .split(/\n/)
     .map((line) => `<span style="--line-chars: ${presenterLineCharEstimate(line)}">${escapeHtml(line || " ")}</span>`)

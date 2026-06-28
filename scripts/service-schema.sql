@@ -60,6 +60,7 @@ create table if not exists public.mindex_service_items (
   raw_title text not null default '',
   song_id uuid,         -- references mindex_songs(id), nullable (unmatched stays raw)
   version_id text,      -- optional mindex_song_versions.id for exact presenter output
+  memo text,            -- section notes, form hints, and optional presenter slide overrides
   created_at timestamptz not null default now()
 );
 
@@ -73,6 +74,9 @@ alter table public.mindex_service_items
 
 alter table public.mindex_service_items
   add column if not exists version_id text;
+
+alter table public.mindex_service_items
+  add column if not exists memo text;
 
 -- RLS: prototype collaboration via browser-safe anon key.
 alter table public.mindex_service_types enable row level security;

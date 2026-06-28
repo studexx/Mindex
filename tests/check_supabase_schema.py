@@ -1,0 +1,159 @@
+from __future__ import annotations
+
+import json
+import os
+import re
+from pathlib import Path
+from typing import Any
+from urllib.error import HTTPError
+from urllib.parse import quote
+from urllib.request import Request, urlopen
+
+
+ROOT = Path(__file__).resolve().parents[1]
+ENV_PATHS = (
+    ROOT / ".env.supabase.local",
+    ROOT / ".env.supabase",
+    ROOT.parent / "INDEX" / ".env.supabase.local",
+    ROOT.parent / "INDEX" / ".env.supabase",
+    Path.home() / "Documents" / "INDEX" / ".env.supabase.local",
+    Path.home() / "Documents" / "INDEX" / ".env.supabase",
+)
+
+REQUIRED_TABLES: dict[str, tuple[str, ...]] = {
+    "mindex_songs": ("id", "title", "hymn_no", "praise_types", "scripture_refs", "memo"),
+    "mindex_canonical_songs": ("id", "title", "normalized_title", "source_count"),
+    "mindex_song_versions": ("id", "canonical_song_id", "version_order", "version_label"),
+    "mindex_version_units": ("id", "version_id", "unit_order", "unit_label", "unit_kind", "text"),
+    "mindex_scriptures": ("id", "title", "book_code", "reference", "translation", "text", "is_active"),
+    "mindex_scripture_books": ("code", "korean_name", "english_name", "sort_order", "is_active"),
+    "mindex_bible_translations": ("id", "translation_key", "name", "abbreviation", "language"),
+    "mindex_bible_verses": ("id", "translation_id", "book_code", "chapter", "verse", "text"),
+    "mindex_service_types": ("id", "name", "sort_order", "fixed_items", "order_template"),
+    "mindex_services": ("id", "type_id", "date", "date_end", "leader", "tags"),
+    "mindex_service_items": ("id", "service_id", "sort_order", "label", "raw_title", "song_id", "assignee", "version_id"),
+    "mindex_reference_links": ("id", "title", "url", "sort_order"),
+    "mindex_sunday_calendar": ("id", "date"),
+}
+
+OPTIONAL_COLUMNS: dict[str, tuple[str, ...]] = {
+    "mindex_song_versions": ("praise_types",),
+    "mindex_service_items": ("memo",),
+    "mindex_reference_links": ("group_name",),
+}
+
+SHOULD_HAVE_ROWS = (
+    "mindex_songs",
+    "mindex_scripture_books",
+    "mindex_service_types",
+    "mindex_services",
+    "mindex_service_items",
+)
+
+
+def read_env_file(path: Path) -> dict[str, str]:
+    if not path.exists():
+        return {}
+    values: dict[str, str] = {}
+    for line in path.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        values[key.strip()] = value.strip().strip("\"'")
+    return values
+
+
+def read_config() -> tuple[str, str]:
+    url = os.environ.get("MINDEX_SUPABASE_URL") or os.environ.get("SUPABASE_URL", "")
+    key = (
+        os.environ.get("MINDEX_SUPABASE_ANON_KEY")
+        or os.environ.get("SUPABASE_ANON_KEY")
+        or os.environ.get("SUPABASE_KEY")
+        or ""
+    )
+    if url and key:
+        return url, key
+
+    for path in ENV_PATHS:
+        values = read_env_file(path)
+        url = values.get("MINDEX_SUPABASE_URL") or values.get("SUPABASE_URL", "")
+        key = (
+            values.get("MINDEX_SUPABASE_ANON_KEY")
+            or values.get("SUPABASE_ANON_KEY")
+            or values.get("SUPABASE_KEY")
+            or values.get("SUPABASE_SERVICE_ROLE_KEY")
+            or ""
+        )
+        if url and key:
+            return url, key
+    raise RuntimeError("Supabase config not found for Mindex.")
+
+
+def request_json(supa_url: str, supa_key: str, table: str, select: str, headers: dict[str, str] | None = None) -> list[dict[str, Any]]:
+    req = Request(
+        f"{supa_url}/rest/v1/{table}?select={quote(select, safe='*,():')}&limit=1",
+        headers={
+            "apikey": supa_key,
+            "Authorization": f"Bearer {supa_key}",
+            **(headers or {}),
+        },
+    )
+    with urlopen(req, timeout=30) as response:
+        return json.load(response)
+
+
+def table_count(supa_url: str, supa_key: str, table: str, column: str = "id") -> int:
+    req = Request(
+        f"{supa_url}/rest/v1/{table}?select={quote(column)}&limit=1",
+        headers={
+            "apikey": supa_key,
+            "Authorization": f"Bearer {supa_key}",
+            "Prefer": "count=exact",
+        },
+    )
+    with urlopen(req, timeout=30) as response:
+        content_range = response.headers.get("Content-Range", "")
+    match = re.search(r"/(\d+)$", content_range)
+    return int(match.group(1)) if match else 0
+
+
+def main() -> int:
+    supa_url, supa_key = read_config()
+    issues: list[dict[str, Any]] = []
+    warnings: list[dict[str, Any]] = []
+    counts: dict[str, int] = {}
+
+    for table, columns in REQUIRED_TABLES.items():
+        select = ",".join(columns)
+        try:
+            request_json(supa_url, supa_key, table, select)
+        except HTTPError as error:
+            body = error.read().decode("utf-8", errors="replace")
+            issues.append({"type": "schema-query-failed", "table": table, "status": error.code, "body": body[:300]})
+            continue
+
+        try:
+            counts[table] = table_count(supa_url, supa_key, table, columns[0])
+        except HTTPError as error:
+            body = error.read().decode("utf-8", errors="replace")
+            warnings.append({"type": "count-query-failed", "table": table, "status": error.code, "body": body[:300]})
+
+    for table, columns in OPTIONAL_COLUMNS.items():
+        for column in columns:
+            try:
+                request_json(supa_url, supa_key, table, column)
+            except HTTPError as error:
+                body = error.read().decode("utf-8", errors="replace")
+                warnings.append({"type": "missing-optional-column", "table": table, "column": column, "status": error.code, "body": body[:300]})
+
+    for table in SHOULD_HAVE_ROWS:
+        if counts.get(table, 0) == 0:
+            warnings.append({"type": "empty-production-table", "table": table})
+
+    print(json.dumps({"counts": counts, "issues": issues, "warnings": warnings}, ensure_ascii=False, indent=2))
+    return 1 if issues else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
