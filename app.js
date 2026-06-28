@@ -1101,7 +1101,7 @@ async function applyBrowserHistorySnapshot(snapshot) {
 
 function readConfig(params = readLinkParams()) {
   const injected = window.MINDEX_SUPABASE || {};
-  return {
+  const config = {
     url:
       params.get("supabaseUrl") ||
       params.get("supabase_url") ||
@@ -1119,6 +1119,33 @@ function readConfig(params = readLinkParams()) {
       safeStorageGet("local", STORAGE.key) ||
       "",
   };
+  return sanitizeSupabaseConfig(config);
+}
+
+function sanitizeSupabaseConfig(config = {}) {
+  const url = String(config.url || "").trim();
+  const anonKey = String(config.anonKey || "").trim();
+  return {
+    url: isPlaceholderSupabaseValue(url) ? "" : url,
+    anonKey: isPlaceholderSupabaseValue(anonKey) ? "" : anonKey,
+  };
+}
+
+function isPlaceholderSupabaseValue(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (!normalized) return false;
+  return [
+    "anon_key",
+    "anon-key",
+    "<anon_key>",
+    "<anon-key>",
+    "<anon key>",
+    "supabase_anon_key",
+    "<supabase_anon_key>",
+    "project_url",
+    "<project_url>",
+    "<project-url>",
+  ].includes(normalized);
 }
 
 function readLinkParams() {
@@ -1250,6 +1277,7 @@ function connectClient() {
   state.connectionError = "";
   if (!state.config.url || !state.config.anonKey) {
     state.client = null;
+    state.connectionError = "Open Mindex with a Supabase connection link.";
     return;
   }
 
@@ -10443,7 +10471,7 @@ function renderPresenterSlideMiniPreview(slide, serviceId = state.presenter.serv
 
 function renderPresenterSlideMiniMeta(slide) {
   if (!slide || slide.type === "lyrics" || slide.type === "song-title" || slide.type === "video" || slide.type === "ready") return "";
-  const marker = [slide.marker, slide.label].filter(Boolean).join(" · ");
+  const marker = presenterVisibleMeta(slide);
   return marker ? `<span class="svc-slide-mini-live-meta">${escapeHtml(marker)}</span>` : "";
 }
 
@@ -11238,7 +11266,7 @@ function initPresenterOutput() {
   document.title = "MINDEX Output";
   document.body.className = "presenter-output-body";
   document.body.innerHTML = `
-    <main id="presenterOutputRoot" class="presenter-output-root" aria-live="polite"></main>
+    <main id="presenterOutputRoot" class="presenter-output-root no-chromakey" aria-live="polite"></main>
   `;
 
   let currentPayload = null;
@@ -11338,7 +11366,7 @@ function normalizePresenterPayload(payload) {
     serviceId: payload?.serviceId || null,
     serviceType: payload?.serviceType || "",
     serviceTitle: payload?.serviceTitle || "",
-    chromakey: payload?.chromakey !== false,
+    chromakey: payload ? payload.chromakey !== false : false,
     outputTheme: payload?.outputTheme || presenterOutputTheme(payload?.serviceType),
     backgroundImage: payload?.backgroundImage || "",
     slides,
@@ -11423,9 +11451,17 @@ function renderPresenterOutput(payload) {
 
 function renderPresenterSlideMeta(slide) {
   if (slide.type === "lyrics" || slide.type === "song-title" || slide.type === "video" || slide.type === "ready") return "";
-  const marker = [slide.marker, slide.label].filter(Boolean).join(" · ");
+  const marker = presenterVisibleMeta(slide);
   if (!marker) return "";
   return `<div class="presenter-slide-meta">${escapeHtml(marker)}</div>`;
+}
+
+function presenterVisibleMeta(slide) {
+  const marker = [slide?.marker, slide?.label].filter(Boolean).join(" · ").trim();
+  if (!marker) return "";
+  const body = String(slide?.text || slide?.title || "").trim();
+  if (body && normalizeTitle(marker) === normalizeTitle(body)) return "";
+  return marker;
 }
 
 function renderPresenterSlideBody(slide) {
