@@ -8,6 +8,7 @@ mindex.local.js
 .claude/
 scripts/*
 !scripts/audit_mindex_content.py
+!scripts/activities-schema.sql
 !scripts/backfill_song_versions_from_memo.py
 !scripts/db-maintenance-2026-06-23.sql
 !scripts/service-item-memo-2026-06-26.sql

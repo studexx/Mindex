@@ -42,6 +42,18 @@ OPTIONAL_COLUMNS: dict[str, tuple[str, ...]] = {
     "mindex_reference_links": ("group_name",),
 }
 
+OPTIONAL_TABLES: dict[str, tuple[str, ...]] = {
+    "mindex_activity_events": ("id", "title", "date", "status", "location", "memo"),
+    "mindex_activity_teams": ("id", "event_id", "name", "color", "score", "sort_order"),
+    "mindex_activity_games": ("id", "event_id", "title", "game_type", "status", "sort_order", "owner", "location", "supplies", "memo", "config"),
+    "mindex_activity_score_events": ("id", "event_id", "game_id", "team_id", "points", "reason", "created_at"),
+    "mindex_activity_puzzle_boards": ("id", "game_id", "title", "rows", "cols", "image_url"),
+    "mindex_activity_puzzle_pieces": ("id", "board_id", "label", "row_no", "col_no", "found", "found_by_team_id", "found_at", "points", "sort_order"),
+    "mindex_activity_quiz_questions": ("id", "game_id", "question_type", "prompt", "answer", "points", "sort_order", "memo"),
+    "mindex_activity_quiz_choices": ("id", "question_id", "label", "is_correct", "sort_order"),
+    "mindex_activity_physical_games": ("game_id", "duration_seconds", "scoring_rule"),
+}
+
 SHOULD_HAVE_ROWS = (
     "mindex_songs",
     "mindex_scripture_books",
@@ -146,6 +158,13 @@ def main() -> int:
             except HTTPError as error:
                 body = error.read().decode("utf-8", errors="replace")
                 warnings.append({"type": "missing-optional-column", "table": table, "column": column, "status": error.code, "body": body[:300]})
+
+    for table, columns in OPTIONAL_TABLES.items():
+        try:
+            request_json(supa_url, supa_key, table, ",".join(columns))
+        except HTTPError as error:
+            body = error.read().decode("utf-8", errors="replace")
+            warnings.append({"type": "missing-optional-table", "table": table, "status": error.code, "body": body[:300]})
 
     for table in SHOULD_HAVE_ROWS:
         if counts.get(table, 0) == 0:
