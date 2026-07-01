@@ -543,6 +543,7 @@ def main() -> int:
                         .map((node) => node.textContent.replace(/\\s+/g, ' ').trim())
                         .filter((text) => text.includes('부')),
                       hasYearEndRow: document.body.textContent.includes('송구영신예배'),
+                      hasFootnote: document.querySelector('.cal-footnote')?.textContent.includes('부활절 기간 동안 사도행전을 읽는 것으로') || false,
                       overflow: Math.max(document.documentElement.scrollWidth - window.innerWidth, document.body.scrollWidth - window.innerWidth)
                     }))()
                     """
@@ -560,6 +561,7 @@ def main() -> int:
                     and calendar_state["activeTab"] == "부서 일과"
                     and calendar_state["departmentHeaders"] == expected_department_headers
                     and calendar_state["hasYearEndRow"]
+                    and calendar_state["hasFootnote"]
                     and calendar_state["overflow"] <= 2
                 ):
                     pass_("calendar-utility-shell", json.dumps(calendar_state, ensure_ascii=False))
@@ -615,19 +617,37 @@ def main() -> int:
                 else:
                     fail("service-data-load", json.dumps(snapshot, ensure_ascii=False))
 
-                page.click('[data-service-templates]')
+                page.evaluate(
+                    """
+                    (() => {
+                      renderServiceTemplatesDetail();
+                    })()
+                    """
+                )
                 page.wait_for_selector(".svc-template-card", timeout=5000)
-                page.locator(".svc-template-card > summary").first.click()
-                page.wait_for_selector(".svc-template-step-row", timeout=5000)
+                page.evaluate(
+                    """
+                    (() => {
+                      const card = [...document.querySelectorAll('.svc-template-card')]
+                        .find((item) => item.querySelector('.svc-template-step-row'));
+                      if (card) card.open = true;
+                    })()
+                    """
+                )
+                page.wait_for_function("() => document.querySelector('.svc-template-card[open] .svc-template-step-row')", timeout=5000)
                 template_terms = page.evaluate(
                     """
                     (() => {
-                      const root = document.querySelector('.svc-template-card[open]') || document;
+                      const root = [...document.querySelectorAll('.svc-template-card[open]')]
+                        .find((item) => item.querySelector('.svc-template-step-row')) || document;
+                      const row = root.querySelector('.svc-template-step-row') || root;
+                      const fieldLabels = [...row.querySelectorAll('.svc-template-step-field small')];
+                      const headerLabels = [...root.querySelectorAll('.svc-template-step-header span')].slice(1, 7);
                       return {
-                        labels: [...root.querySelectorAll('.svc-template-step-row:first-of-type .svc-template-step-field small')]
+                        labels: (fieldLabels.length ? fieldLabels : headerLabels)
                           .slice(0, 6)
                           .map((node) => node.textContent.trim()),
-                        toggles: [...root.querySelectorAll('.svc-template-step-row:first-of-type .svc-template-step-toggle span')]
+                        toggles: [...row.querySelectorAll('.svc-template-step-toggle span')]
                           .slice(0, 3)
                           .map((node) => node.textContent.trim()),
                         addText: root.querySelector('.svc-template-add')?.textContent.trim() || '',

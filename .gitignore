@@ -13,6 +13,7 @@ scripts/*
 !scripts/db-maintenance-2026-06-23.sql
 !scripts/service-item-memo-2026-06-26.sql
 !scripts/service-schema.sql
+!scripts/calendar-lectionary-2026.sql
 !scripts/sync_service_ppt_skeletons.py
 !scripts/youtube-live-source-rpc.sql
 !scripts/youtube_live_source.py

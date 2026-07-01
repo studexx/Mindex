@@ -337,6 +337,10 @@ const CALENDAR_LECTIONARY_FIELDS = [
   ["second_reading", "둘째 읽기", ""],
   ["gospel", "복음서", ""],
 ];
+const CALENDAR_LECTIONARY_FOOTNOTE = [
+  "* 부활절 기간 동안 사도행전을 읽는 것으로 구약성경의 교훈을 대체할 수 있습니다.",
+  "오순절 날에 민수기 구절이 첫째 읽기로 선택되면, 사도행전 구절이 둘째 읽기로 사용됩니다.",
+];
 const LINK_CONFIG_KEYS = ["supabaseUrl", "supabase_url", "url", "supabaseAnonKey", "supabase_anon_key", "anonKey", "anon_key", "key"];
 const LINK_ROUTE_KEYS = [
   "module", "search", "praiseFilter", "scriptureFilter", "serviceFilter",
@@ -2137,6 +2141,7 @@ function renderCalendarView() {
           <tbody>${tbodyHtml}</tbody>
         </table>
       </div>
+      <p class="cal-footnote">${CALENDAR_LECTIONARY_FOOTNOTE.map((line) => escapeHtml(line)).join("<br />")}</p>
     </div>`;
   scrollCalendarToTargetMonth();
 }

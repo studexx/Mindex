@@ -4546,6 +4546,15 @@ body[data-theme="dark"] .cal-view {
   color: var(--accent-ink);
 }
 .cal-table-wrap { flex: 1; min-height: 0; overflow: auto; padding: var(--s1) 0 var(--s4); }
+.cal-footnote {
+  flex-shrink: 0;
+  margin: 0;
+  padding-top: 8px;
+  color: var(--cal-soft);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.45;
+}
 .cal-table { width: 100%; min-width: 1060px; border-collapse: separate; border-spacing: 0 2px; font-size: 12px; line-height: 1.38; }
 .cal-table thead { position: sticky; top: 0; z-index: 2; }
 .cal-table th { background: var(--cal-header-bg); color: var(--cal-muted); font-size: 10px; font-weight: 700; letter-spacing: .04em; padding: 8px 8px; text-align: left; border-bottom: 0; white-space: nowrap; }
