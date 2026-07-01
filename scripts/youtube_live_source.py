@@ -51,6 +51,24 @@ class RestClient:
             detail = error.read().decode(errors="replace")
             raise RuntimeError(f"GET {table} failed ({error.code}): {detail}") from error
 
+    def rpc(self, name: str, payload: dict[str, Any]) -> Any:
+        data = json.dumps(payload).encode("utf-8")
+        request = Request(
+            f"{self.url}/rest/v1/rpc/{name}",
+            data=data,
+            headers={
+                **self.headers,
+                "Content-Type": "application/json",
+            },
+            method="POST",
+        )
+        try:
+            with urlopen(request, timeout=30) as response:
+                return json.loads(response.read().decode() or "null")
+        except HTTPError as error:
+            detail = error.read().decode(errors="replace")
+            raise RuntimeError(f"RPC {name} failed ({error.code}): {detail}") from error
+
 
 def read_env_file(path: Path) -> dict[str, str]:
     values: dict[str, str] = {}
@@ -109,33 +127,8 @@ def scheduled_start_at(service_date: date) -> str:
     return datetime.combine(service_date, START_TIME, tzinfo=KST).isoformat()
 
 
-def first_exact_label(items: list[dict[str, Any]], label: str) -> dict[str, Any] | None:
-    for item in sorted(items, key=lambda row: row.get("sort_order") or 0):
-        if (item.get("label") or "") == label:
-            return item
-    return None
-
-
 def clean_text(value: Any) -> str:
     return " ".join(str(value or "").split())
-
-
-def compact_identity(value: str) -> str:
-    return "".join(ch for ch in value if ch.isalnum())
-
-
-def looks_like_preacher(candidate: str, sermon_title: str) -> bool:
-    if not candidate:
-        return False
-    if candidate[0] in "\"'“”‘’":
-        return False
-
-    candidate_key = compact_identity(candidate)
-    title_key = compact_identity(sermon_title)
-    if title_key and len(candidate_key) >= 2:
-        if candidate_key in title_key or title_key in candidate_key:
-            return False
-    return True
 
 
 def retry_marker_path(state_dir: Path, service_date: date) -> Path:
@@ -169,82 +162,30 @@ def resolve_live_source(
     service_type: str = SERVICE_TYPE,
 ) -> dict[str, Any]:
     date_text = service_date.isoformat()
-    services = client.get(
-        "mindex_services",
-        {
-            "select": "id,type_id,date,date_end,leader,tags,raw_text,created_at",
-            "type_id": f"eq.{service_type}",
-            "date": f"eq.{date_text}",
-            "order": "created_at.asc",
-        },
-    )
+    raw_result = client.rpc("get_youtube_live_source", {"service_date": date_text})
+    if isinstance(raw_result, list):
+        if not raw_result:
+            raise RuntimeError("RPC get_youtube_live_source returned no rows.")
+        raw_result = raw_result[0]
+    if not isinstance(raw_result, dict):
+        raise RuntimeError("RPC get_youtube_live_source returned an unexpected payload.")
 
-    service = services[0] if services else None
-    calendar_rows = client.get(
-        "mindex_sunday_calendar",
-        {
-            "select": "date,preacher,church_schedule,note,liturgical",
-            "date": f"eq.{date_text}",
-            "limit": "1",
-        },
-    )
-    calendar = calendar_rows[0] if calendar_rows else None
-    items: list[dict[str, Any]] = []
-
-    if service:
-        items = client.get(
-            "mindex_service_items",
-            {
-                "select": "sort_order,label,assignee,raw_title,memo",
-                "service_id": f"eq.{service['id']}",
-                "order": "sort_order.asc",
-            },
-        )
-
-    scripture_item = first_exact_label(items, "성경봉독")
-    sermon_item = first_exact_label(items, "설교")
-    passage = clean_text(scripture_item.get("raw_title")) if scripture_item else ""
-    sermon_title = clean_text(sermon_item.get("raw_title")) if sermon_item else ""
-    warnings = []
-    sermon_assignee = clean_text(sermon_item.get("assignee")) if sermon_item else ""
-    preacher = ""
-    if looks_like_preacher(sermon_assignee, sermon_title):
-        preacher = sermon_assignee
-    elif sermon_assignee:
-        warnings.append({"code": "ignored_sermon_assignee", "value": sermon_assignee})
-    preacher = preacher or clean_text(service.get("leader") if service else "")
-    preacher = preacher or clean_text(calendar.get("preacher") if calendar else "")
-
-    result = {
-        "ready": False,
+    service_date_text = clean_text(raw_result.get("serviceDate") or raw_result.get("date") or date_text)
+    return {
+        "ready": bool(raw_result.get("ready")),
         "serviceType": service_type,
-        "date": date_text,
+        "date": service_date_text,
+        "serviceDate": service_date_text,
         "timezone": "UTC+09:00",
         "startTime": START_TIME.isoformat(),
-        "scheduledStartTime": scheduled_start_at(service_date),
-        "sermonTitle": sermon_title,
-        "passage": passage,
-        "preacher": preacher,
-        "serviceId": service.get("id") if service else None,
-        "missing": [],
-        "warnings": warnings,
-        "source": {
-            "service": service,
-            "scriptureItem": scripture_item,
-            "sermonItem": sermon_item,
-            "calendar": calendar,
-        },
+        "scheduledStartTime": clean_text(raw_result.get("scheduledStartTime")) or scheduled_start_at(service_date),
+        "sermonTitle": clean_text(raw_result.get("sermonTitle")),
+        "passage": clean_text(raw_result.get("passage")),
+        "preacher": clean_text(raw_result.get("preacher")),
+        "serviceId": raw_result.get("serviceId"),
+        "missing": raw_result.get("missing") or [],
+        "warnings": raw_result.get("warnings") or [],
     }
-
-    if len(services) > 1:
-        result["warnings"].append({"code": "multiple_services", "count": len(services)})
-    if not service:
-        result["missing"].append("service")
-    for field in REQUIRED_FIELDS:
-        if not result[field]:
-            result["missing"].append(field)
-    result["ready"] = not result["missing"]
-    return result
 
 
 def main() -> int:

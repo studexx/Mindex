@@ -20,28 +20,13 @@ from scripts.youtube_live_source import (
 
 
 class FakeClient:
-    def __init__(self, rows_by_table: dict[str, list[dict[str, object]]]) -> None:
-        self.rows_by_table = rows_by_table
+    def __init__(self, result: object) -> None:
+        self.result = result
+        self.calls: list[tuple[str, dict[str, object]]] = []
 
-    def get(self, table: str, params: dict[str, str]) -> list[dict[str, object]]:
-        rows = self.rows_by_table.get(table, [])
-        if table == "mindex_services":
-            service_type = params.get("type_id", "").removeprefix("eq.")
-            service_date = params.get("date", "").removeprefix("eq.")
-            return [
-                row for row in rows
-                if row.get("type_id") == service_type and row.get("date") == service_date
-            ]
-        if table == "mindex_service_items":
-            service_id = params.get("service_id", "").removeprefix("eq.")
-            return [
-                row for row in rows
-                if row.get("service_id") == service_id
-            ]
-        if table == "mindex_sunday_calendar":
-            service_date = params.get("date", "").removeprefix("eq.")
-            return [row for row in rows if row.get("date") == service_date]
-        return rows
+    def rpc(self, name: str, payload: dict[str, object]) -> object:
+        self.calls.append((name, payload))
+        return self.result
 
 
 class YoutubeLiveSourceTests(unittest.TestCase):
@@ -78,119 +63,63 @@ class YoutubeLiveSourceTests(unittest.TestCase):
             clear_retry_marker(state_dir, service_date)
             self.assertFalse(has_retry_marker(state_dir, service_date))
 
-    def test_resolve_live_source_uses_exact_sermon_label_only(self) -> None:
+    def test_resolve_live_source_uses_stable_rpc_contract(self) -> None:
         client = FakeClient({
-            "mindex_services": [{
-                "id": "service-1",
-                "type_id": "sunday-main",
-                "date": "2026-07-05",
-                "leader": "",
-            }],
-            "mindex_service_items": [
-                {
-                    "service_id": "service-1",
-                    "sort_order": 10,
-                    "label": "성경봉독",
-                    "raw_title": "요 9:1-7",
-                    "assignee": "",
-                },
-                {
-                    "service_id": "service-1",
-                    "sort_order": 20,
-                    "label": "설교 전 찬양",
-                    "raw_title": "주님 말씀하시면",
-                    "assignee": "",
-                },
-                {
-                    "service_id": "service-1",
-                    "sort_order": 30,
-                    "label": "설교",
-                    "raw_title": "눈을 뜨시오",
-                    "assignee": "김남영 목사",
-                },
-            ],
-            "mindex_sunday_calendar": [],
+            "serviceDate": "2026-07-05",
+            "scheduledStartTime": "2026-07-05T10:45:00+09:00",
+            "sermonTitle": "눈을 뜨시오",
+            "passage": "요 9:1-7",
+            "preacher": "김남영 목사",
+            "serviceId": "service-1",
+            "ready": True,
+            "missing": [],
+            "warnings": [],
         })
 
         result = resolve_live_source(client, date(2026, 7, 5))
 
+        self.assertEqual(client.calls, [("get_youtube_live_source", {"service_date": "2026-07-05"})])
         self.assertTrue(result["ready"])
+        self.assertEqual(result["date"], "2026-07-05")
+        self.assertEqual(result["serviceDate"], "2026-07-05")
+        self.assertEqual(result["scheduledStartTime"], "2026-07-05T10:45:00+09:00")
         self.assertEqual(result["sermonTitle"], "눈을 뜨시오")
         self.assertEqual(result["passage"], "요 9:1-7")
         self.assertEqual(result["preacher"], "김남영 목사")
+        self.assertEqual(result["serviceId"], "service-1")
 
-    def test_resolve_live_source_preacher_falls_back_to_service_then_calendar(self) -> None:
-        rows = {
-            "mindex_services": [{
-                "id": "service-1",
-                "type_id": "sunday-main",
-                "date": "2026-07-05",
-                "leader": "인도자 목사",
-            }],
-            "mindex_service_items": [
-                {
-                    "service_id": "service-1",
-                    "sort_order": 10,
-                    "label": "성경봉독",
-                    "raw_title": "요 9:1-7",
-                    "assignee": "",
-                },
-                {
-                    "service_id": "service-1",
-                    "sort_order": 20,
-                    "label": "설교",
-                    "raw_title": "눈을 뜨시오",
-                    "assignee": "",
-                },
-            ],
-            "mindex_sunday_calendar": [{
-                "date": "2026-07-05",
-                "preacher": "교회력 목사",
-            }],
-        }
+    def test_resolve_live_source_normalizes_missing_and_warning_arrays(self) -> None:
+        result = resolve_live_source(FakeClient({
+            "serviceDate": "2026-07-05",
+            "scheduledStartTime": "2026-07-05T10:45:00+09:00",
+            "sermonTitle": "",
+            "passage": "",
+            "preacher": "",
+            "serviceId": None,
+            "ready": False,
+            "missing": ["sermonTitle", "passage", "preacher"],
+            "warnings": [{"code": "ignored_sermon_assignee", "value": "‘ 역대급"}],
+        }), date(2026, 7, 5))
 
-        self.assertEqual(
-            resolve_live_source(FakeClient(rows), date(2026, 7, 5))["preacher"],
-            "인도자 목사",
-        )
-        rows["mindex_services"][0]["leader"] = ""
-        self.assertEqual(
-            resolve_live_source(FakeClient(rows), date(2026, 7, 5))["preacher"],
-            "교회력 목사",
-        )
+        self.assertFalse(result["ready"])
+        self.assertEqual(result["missing"], ["sermonTitle", "passage", "preacher"])
+        self.assertEqual(result["warnings"][0]["code"], "ignored_sermon_assignee")
 
-    def test_resolve_live_source_ignores_title_fragment_assignee(self) -> None:
-        client = FakeClient({
-            "mindex_services": [{
-                "id": "service-1",
-                "type_id": "sunday-main",
-                "date": "2026-06-28",
-                "leader": "김석범 목사",
-            }],
-            "mindex_service_items": [
-                {
-                    "service_id": "service-1",
-                    "sort_order": 10,
-                    "label": "성경봉독",
-                    "raw_title": "에 9:20-32",
-                    "assignee": "",
-                },
-                {
-                    "service_id": "service-1",
-                    "sort_order": 20,
-                    "label": "설교",
-                    "raw_title": "역대급 감사",
-                    "assignee": "‘ 역대급",
-                },
-            ],
-            "mindex_sunday_calendar": [],
-        })
-
-        result = resolve_live_source(client, date(2026, 6, 28))
+    def test_resolve_live_source_accepts_single_row_rpc_payloads(self) -> None:
+        result = resolve_live_source(FakeClient([{
+            "serviceDate": "2026-07-05",
+            "scheduledStartTime": "2026-07-05T10:45:00+09:00",
+            "sermonTitle": "눈을 뜨시오",
+            "passage": "요 9:1-7",
+            "preacher": "김남영 목사",
+            "serviceId": "service-1",
+            "ready": True,
+            "missing": [],
+            "warnings": [],
+        }]), date(2026, 7, 5))
 
         self.assertTrue(result["ready"])
-        self.assertEqual(result["preacher"], "김석범 목사")
-        self.assertEqual(result["warnings"][0]["code"], "ignored_sermon_assignee")
+        self.assertEqual(result["preacher"], "김남영 목사")
 
 
 if __name__ == "__main__":

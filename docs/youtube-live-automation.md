@@ -15,11 +15,12 @@ GitHub cron uses UTC:
 
 ## Source Rules
 
-- Service: `mindex_services.type_id === "sunday-main"`
+- Source RPC: `get_youtube_live_source(service_date date)`
+- Service: `sunday-main`
 - Service date: current UTC+9 calendar day for scheduled runs
 - Start time: `10:45` UTC+9
-- Passage: `mindex_service_items.label === "성경봉독"` `raw_title`
-- Sermon title: `mindex_service_items.label === "설교"` `raw_title`
+- Passage: exact `성경봉독` item `raw_title`
+- Sermon title: exact `설교` item `raw_title`
 - Preacher: sermon item `assignee`, then service `leader`, then Sunday calendar `preacher`
 - Required fields: `sermonTitle`, `passage`, `preacher`
 
@@ -32,15 +33,7 @@ falls back to the service leader or Sunday calendar preacher.
 
 ## Stable DB Contract
 
-The current workflow reads the service tables directly because the live source is
-small and read-only. If the worship data model changes from flat service items to
-typed service components, keep the workflow stable by moving this extraction into
-one database contract, preferably:
-
-- RPC: `get_youtube_live_source(service_date date)`
-- or view: `mindex_youtube_live_source`
-
-The contract should return:
+The workflow reads only the stable RPC contract:
 
 - `serviceDate`
 - `scheduledStartTime`
@@ -50,6 +43,16 @@ The contract should return:
 - `serviceId`
 - `ready`
 - `missing`
+- `warnings`
+
+The RPC owns all table details and fallback rules so GitHub Actions does not
+depend on the internal service table structure.
+
+Apply the RPC with:
+
+```text
+scripts/youtube-live-source-rpc.sql
+```
 
 ## YouTube Title
 
