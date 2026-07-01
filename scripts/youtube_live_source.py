@@ -24,6 +24,7 @@ SERVICE_TYPE = "sunday-main"
 START_TIME = time(10, 45)
 REQUIRED_FIELDS = ("sermonTitle", "passage", "preacher")
 DEFAULT_STATE_DIR = ROOT / "output" / "youtube-live-source"
+DEFAULT_PREACHER = "김남영 위임목사"
 
 
 @dataclass(frozen=True)
@@ -171,8 +172,27 @@ def resolve_live_source(
         raise RuntimeError("RPC get_youtube_live_source returned an unexpected payload.")
 
     service_date_text = clean_text(raw_result.get("serviceDate") or raw_result.get("date") or date_text)
+    warnings = raw_result.get("warnings") or []
+    missing = raw_result.get("missing") or []
+    raw_preacher = clean_text(raw_result.get("preacher"))
+    preacher_source = clean_text(raw_result.get("preacherSource"))
+    preacher = raw_preacher
+    if not preacher_source:
+        if raw_preacher and raw_preacher != DEFAULT_PREACHER:
+            warnings = [
+                *warnings,
+                {
+                    "code": "ignored_untrusted_preacher",
+                    "value": raw_preacher,
+                    "fallback": DEFAULT_PREACHER,
+                },
+            ]
+        preacher = DEFAULT_PREACHER
+        preacher_source = "default_senior_pastor"
+        missing = [item for item in missing if item not in ("preacher", "preacherSource")]
+    ready = len(missing) == 0
     return {
-        "ready": bool(raw_result.get("ready")),
+        "ready": ready,
         "serviceType": service_type,
         "date": service_date_text,
         "serviceDate": service_date_text,
@@ -181,10 +201,11 @@ def resolve_live_source(
         "scheduledStartTime": clean_text(raw_result.get("scheduledStartTime")) or scheduled_start_at(service_date),
         "sermonTitle": clean_text(raw_result.get("sermonTitle")),
         "passage": clean_text(raw_result.get("passage")),
-        "preacher": clean_text(raw_result.get("preacher")),
+        "preacher": preacher,
+        "preacherSource": preacher_source,
         "serviceId": raw_result.get("serviceId"),
-        "missing": raw_result.get("missing") or [],
-        "warnings": raw_result.get("warnings") or [],
+        "missing": missing,
+        "warnings": warnings,
     }
 
 

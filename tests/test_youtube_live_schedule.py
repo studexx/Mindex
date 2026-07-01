@@ -29,11 +29,8 @@ class YoutubeLiveScheduleTests(unittest.TestCase):
             "눈을 뜨시오 (요 9:1–7) | 김남영 목사 | 검단우리교회 주일예배 | 2026-07-05",
         )
 
-    def test_live_description_contains_required_fields(self) -> None:
-        description = live_description(SOURCE)
-        self.assertIn("설교: 눈을 뜨시오", description)
-        self.assertIn("본문: 요 9:1–7", description)
-        self.assertIn("설교자: 김남영 목사", description)
+    def test_live_description_is_empty(self) -> None:
+        self.assertEqual(live_description(SOURCE), "")
 
     def test_normalize_passage_uses_en_dash_for_ranges(self) -> None:
         self.assertEqual(normalize_passage("에 9:20-32"), "에 9:20–32")

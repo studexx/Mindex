@@ -70,6 +70,7 @@ class YoutubeLiveSourceTests(unittest.TestCase):
             "sermonTitle": "눈을 뜨시오",
             "passage": "요 9:1-7",
             "preacher": "김남영 목사",
+            "preacherSource": "sermon_assignee",
             "serviceId": "service-1",
             "ready": True,
             "missing": [],
@@ -86,6 +87,7 @@ class YoutubeLiveSourceTests(unittest.TestCase):
         self.assertEqual(result["sermonTitle"], "눈을 뜨시오")
         self.assertEqual(result["passage"], "요 9:1-7")
         self.assertEqual(result["preacher"], "김남영 목사")
+        self.assertEqual(result["preacherSource"], "sermon_assignee")
         self.assertEqual(result["serviceId"], "service-1")
 
     def test_resolve_live_source_normalizes_missing_and_warning_arrays(self) -> None:
@@ -95,6 +97,7 @@ class YoutubeLiveSourceTests(unittest.TestCase):
             "sermonTitle": "",
             "passage": "",
             "preacher": "",
+            "preacherSource": "",
             "serviceId": None,
             "ready": False,
             "missing": ["sermonTitle", "passage", "preacher"],
@@ -102,11 +105,30 @@ class YoutubeLiveSourceTests(unittest.TestCase):
         }), date(2026, 7, 5))
 
         self.assertFalse(result["ready"])
-        self.assertEqual(result["missing"], ["sermonTitle", "passage", "preacher"])
+        self.assertEqual(result["missing"], ["sermonTitle", "passage"])
         self.assertEqual(result["warnings"][0]["code"], "ignored_sermon_assignee")
+        self.assertEqual(result["preacher"], "김남영 위임목사")
+        self.assertEqual(result["preacherSource"], "default_senior_pastor")
 
     def test_resolve_live_source_accepts_single_row_rpc_payloads(self) -> None:
         result = resolve_live_source(FakeClient([{
+            "serviceDate": "2026-07-05",
+            "scheduledStartTime": "2026-07-05T10:45:00+09:00",
+            "sermonTitle": "눈을 뜨시오",
+            "passage": "요 9:1-7",
+            "preacher": "김남영 목사",
+            "preacherSource": "sermon_assignee",
+            "serviceId": "service-1",
+            "ready": True,
+            "missing": [],
+            "warnings": [],
+        }]), date(2026, 7, 5))
+
+        self.assertTrue(result["ready"])
+        self.assertEqual(result["preacher"], "김남영 목사")
+
+    def test_resolve_live_source_defaults_preacher_when_source_is_missing(self) -> None:
+        result = resolve_live_source(FakeClient({
             "serviceDate": "2026-07-05",
             "scheduledStartTime": "2026-07-05T10:45:00+09:00",
             "sermonTitle": "눈을 뜨시오",
@@ -116,10 +138,29 @@ class YoutubeLiveSourceTests(unittest.TestCase):
             "ready": True,
             "missing": [],
             "warnings": [],
-        }]), date(2026, 7, 5))
+        }), date(2026, 7, 5))
 
         self.assertTrue(result["ready"])
-        self.assertEqual(result["preacher"], "김남영 목사")
+        self.assertEqual(result["preacher"], "김남영 위임목사")
+        self.assertEqual(result["preacherSource"], "default_senior_pastor")
+
+    def test_resolve_live_source_ignores_untrusted_preacher_without_source(self) -> None:
+        result = resolve_live_source(FakeClient({
+            "serviceDate": "2026-07-05",
+            "scheduledStartTime": "2026-07-05T10:45:00+09:00",
+            "sermonTitle": "눈을 뜨시오",
+            "passage": "요 9:1-7",
+            "preacher": "김석범 목사",
+            "serviceId": "service-1",
+            "ready": True,
+            "missing": [],
+            "warnings": [],
+        }), date(2026, 7, 5))
+
+        self.assertTrue(result["ready"])
+        self.assertEqual(result["preacher"], "김남영 위임목사")
+        self.assertEqual(result["preacherSource"], "default_senior_pastor")
+        self.assertEqual(result["warnings"][0]["code"], "ignored_untrusted_preacher")
 
 
 if __name__ == "__main__":

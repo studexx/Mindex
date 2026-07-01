@@ -69,16 +69,7 @@ def live_title(source: dict[str, Any]) -> str:
 
 
 def live_description(source: dict[str, Any]) -> str:
-    return "\n".join(
-        [
-            "검단우리교회 주일예배",
-            "",
-            f"설교: {clean_text(source.get('sermonTitle'))}",
-            f"본문: {normalize_passage(source.get('passage'))}",
-            f"설교자: {clean_text(source.get('preacher'))}",
-            f"일시: {clean_text(source.get('date'))} 10:45",
-        ]
-    )
+    return ""
 
 
 def parse_rfc3339(value: str) -> datetime:
@@ -414,6 +405,7 @@ def main() -> int:
         "sermonTitle": source.get("sermonTitle"),
         "passage": source.get("passage"),
         "preacher": source.get("preacher"),
+        "preacherSource": source.get("preacherSource"),
         "serviceId": source.get("serviceId"),
     }
     print(json.dumps(result, ensure_ascii=False, indent=2))

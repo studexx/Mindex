@@ -198,7 +198,8 @@ declare
   v_sermon_title text := '';
   v_passage text := '';
   v_sermon_assignee text := '';
-  v_preacher text := '';
+  v_preacher text := '김남영 위임목사';
+  v_preacher_source text := 'default_senior_pastor';
   v_assignee_key text := '';
   v_title_key text := '';
   v_missing jsonb := '[]'::jsonb;
@@ -263,11 +264,27 @@ begin
       ));
     else
       v_preacher := v_sermon_assignee;
+      v_preacher_source := 'sermon_assignee';
     end if;
   end if;
 
-  v_preacher := coalesce(nullif(v_preacher, ''), btrim(regexp_replace(coalesce(v_service.leader, ''), '[[:space:]]+', ' ', 'g')));
-  v_preacher := coalesce(nullif(v_preacher, ''), btrim(regexp_replace(coalesce(v_calendar.preacher, ''), '[[:space:]]+', ' ', 'g')));
+  if v_preacher = ''
+    and btrim(regexp_replace(coalesce(v_service.leader, ''), '[[:space:]]+', ' ', 'g')) <> ''
+  then
+    v_warnings := v_warnings || jsonb_build_array(jsonb_build_object(
+      'code', 'ignored_service_leader_for_preacher',
+      'value', btrim(regexp_replace(coalesce(v_service.leader, ''), '[[:space:]]+', ' ', 'g'))
+    ));
+  end if;
+
+  if v_preacher = ''
+    and btrim(regexp_replace(coalesce(v_calendar.preacher, ''), '[[:space:]]+', ' ', 'g')) <> ''
+  then
+    v_warnings := v_warnings || jsonb_build_array(jsonb_build_object(
+      'code', 'ignored_calendar_preacher_for_preacher',
+      'value', btrim(regexp_replace(coalesce(v_calendar.preacher, ''), '[[:space:]]+', ' ', 'g'))
+    ));
+  end if;
 
   if v_service_count > 1 then
     v_warnings := v_warnings || jsonb_build_array(jsonb_build_object(
@@ -297,6 +314,7 @@ begin
     'sermonTitle', v_sermon_title,
     'passage', v_passage,
     'preacher', v_preacher,
+    'preacherSource', v_preacher_source,
     'serviceId', v_service.id,
     'ready', jsonb_array_length(v_missing) = 0,
     'missing', v_missing,

@@ -21,7 +21,8 @@ GitHub cron uses UTC:
 - Start time: `10:45` UTC+9
 - Passage: exact `성경봉독` item `raw_title`
 - Sermon title: exact `설교` item `raw_title`
-- Preacher: sermon item `assignee`, then service `leader`, then Sunday calendar `preacher`
+- Preacher: default `김남영 위임목사`; override only when the exact sermon item
+  `assignee` contains a trusted preacher name
 - Required fields: `sermonTitle`, `passage`, `preacher`
 
 The labels are intentionally exact matches. A nearby label such as `설교 전 찬양`
@@ -29,7 +30,9 @@ must not be treated as the sermon item.
 
 If the sermon item `assignee` looks like a sermon-title fragment instead of a
 preacher name, the workflow ignores it, emits `ignored_sermon_assignee`, and
-falls back to the service leader or Sunday calendar preacher.
+uses the default senior pastor. It intentionally does not use `service.leader`
+or `mindex_sunday_calendar.preacher` as preacher fallbacks because those fields
+can represent worship leaders or planning data.
 
 ## Stable DB Contract
 
@@ -40,6 +43,7 @@ The workflow reads only the stable RPC contract:
 - `sermonTitle`
 - `passage`
 - `preacher`
+- `preacherSource`
 - `serviceId`
 - `ready`
 - `missing`
@@ -57,8 +61,15 @@ scripts/youtube-live-source-rpc.sql
 ## YouTube Title
 
 ```text
-설교 제목 (본문) | 김남영 목사 | 검단우리교회 주일예배 | YYYY-MM-DD
+설교 제목 (본문) | 설교자 | 검단우리교회 주일예배 | YYYY-MM-DD
 ```
+
+The YouTube description is intentionally empty.
+
+The default preacher is `김남영 위임목사`. If the exact `설교` service item
+assignee contains a trusted different preacher, that assignee overrides the
+default. This matches the normal yearly pattern while still allowing guest
+preachers to be reflected when Mindex has explicit data.
 
 ## GitHub Secrets
 
@@ -110,6 +121,10 @@ assets/youtube_live_thumbnail.jpg
 The workflow sets `YOUTUBE_LIVE_THUMBNAIL_PATH` to this file. The
 `YOUTUBE_LIVE_THUMBNAIL_B64` secret remains supported as a fallback for other
 deployments.
+
+Thumbnail upload uses YouTube API quota. If quota is exhausted, reservation
+creation can still succeed while thumbnail upload fails; retry thumbnail upload
+after quota reset.
 
 ## Manual Test
 
