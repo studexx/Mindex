@@ -317,6 +317,7 @@ const CALENDAR_MIN_DATE = "2025-11-30";
 const SUPABASE_PAGE_SIZE = 1000;
 const UI_SCRIPTURE_PREFIX = "Mindex UI:";
 const UI_VERSE_SLOTS = ["home", "activities", "praise", "scripture"];
+const LOADING_MESSAGE = "Loading...";
 const DB_CONNECTION_EMPTY_VERSE = {
   reference: "Psalm 27:14",
   text: "Wait for the LORD; be strong and take heart and wait for the LORD.",
@@ -596,6 +597,8 @@ function init() {
     loadBibleTranslations({ silent: true });
     loadServiceData({ silent: true });
     loadReferenceLinks({ silent: true });
+    if (state.module === "activities") loadActivities({ silent: true });
+    if (state.module === "calendar") loadCalendarData({ silent: true });
   } else if (state.connectionError) {
     showToast(state.connectionError, "error");
   }
@@ -2066,7 +2069,7 @@ function renderCalendarView() {
     return;
   }
   if (!state.calendarLoaded) {
-    refs.detailPane.innerHTML = `<div class="empty-detail"><div class="empty-detail-inner"><p class="empty-verse">Loading…</p></div></div>`;
+    refs.detailPane.innerHTML = renderLoadingDetail();
     return;
   }
   const calendarRows = getCalendarDisplayRows();
@@ -5691,6 +5694,20 @@ function renderConnectionEmptyDetail(message = DB_CONNECTION_EMPTY_MESSAGE) {
     `;
 }
 
+function renderLoadingDetail() {
+  return `
+      <div class="empty-detail">
+        <div class="empty-detail-inner">
+          <p class="empty-verse">${escapeHtml(LOADING_MESSAGE)}</p>
+        </div>
+      </div>
+    `;
+}
+
+function renderLoadingList() {
+  return renderListEmptyState(LOADING_MESSAGE, "");
+}
+
 function isConnectionUnavailableMessage(message) {
   const text = String(message || "").trim().toLowerCase();
   if (!text) return false;
@@ -5983,7 +6000,7 @@ function renderActivitiesList() {
     return;
   }
   if (!state.activityLoaded) {
-    refs.songList.innerHTML = renderListEmptyState("Loading…", "");
+    refs.songList.innerHTML = renderLoadingList();
     return;
   }
 
@@ -6419,6 +6436,12 @@ function renderDetail() {
 
   const song = getSelectedSong();
 
+  if (!song && state.loading && !state.songs.length) {
+    refs.detailPane.innerHTML = renderLoadingDetail();
+    refreshIcons();
+    return;
+  }
+
   if (!song) {
     refs.detailPane.innerHTML = renderModuleEmptyDetail("praise", "Praise", "Select a song.");
     refreshIcons();
@@ -6475,6 +6498,12 @@ function renderActivitiesDetail() {
 
   if (state.activityError && state.activityError !== "setup") {
     refs.detailPane.innerHTML = renderUnavailableDetail("activities", "Activities", state.activityError);
+    refreshIcons();
+    return;
+  }
+
+  if (!state.activityLoaded) {
+    refs.detailPane.innerHTML = renderLoadingDetail();
     refreshIcons();
     return;
   }
@@ -6603,6 +6632,12 @@ function activityGameTypeLabel(type) {
 function renderReferencesDetail() {
   if (!state.client) {
     refs.detailPane.innerHTML = renderConnectionEmptyDetail();
+    refreshIcons();
+    return;
+  }
+
+  if (!state.referenceLinksLoaded) {
+    refs.detailPane.innerHTML = renderLoadingDetail();
     refreshIcons();
     return;
   }
@@ -10067,7 +10102,7 @@ function renderServiceList() {
       ? (isConnectionUnavailableMessage(state.serviceError)
         ? renderListEmptyState("연결 대기", state.connectionError || state.serviceError)
         : renderListEmptyState("Service unavailable", state.serviceError))
-      : renderListEmptyState("Loading…", "");
+      : renderLoadingList();
     return;
   }
 
@@ -10368,7 +10403,7 @@ function renderServiceDetail() {
 
   const items = state.serviceItems[serviceId];
   if (!items) {
-    refs.detailPane.innerHTML = `<div class="empty-detail"><div class="empty-detail-inner"><p class="empty-verse">Loading…</p></div></div>`;
+    refs.detailPane.innerHTML = renderLoadingDetail();
     loadServiceItems(serviceId);
     return;
   }
@@ -10832,7 +10867,7 @@ function renderServiceDashboard() {
   if (!state.serviceTypes.length) {
     refs.detailPane.innerHTML = state.serviceError
       ? renderUnavailableDetail("service", "Worship", state.serviceError)
-      : `<div class="empty-detail"><div class="empty-detail-inner"><p class="empty-verse">Loading…</p></div></div>`;
+      : renderLoadingDetail();
     return;
   }
 
@@ -11297,7 +11332,9 @@ function renderOrderSheetsDetail() {
   }
 
   if (state.serviceError || !state.serviceTypes.length) {
-    refs.detailPane.innerHTML = renderUnavailableDetail("service", "Order Sheet", state.serviceError || "Service data unavailable.");
+    refs.detailPane.innerHTML = state.serviceError
+      ? renderUnavailableDetail("service", "Order Sheet", state.serviceError)
+      : renderLoadingDetail();
     refreshIcons();
     return;
   }
