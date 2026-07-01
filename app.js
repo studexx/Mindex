@@ -318,11 +318,12 @@ const SUPABASE_PAGE_SIZE = 1000;
 const UI_SCRIPTURE_PREFIX = "Mindex UI:";
 const UI_VERSE_SLOTS = ["home", "activities", "praise", "scripture"];
 const LOADING_MESSAGE = "Loading...";
+const CONNECTION_LIST_TITLE = "Connection unavailable";
 const DB_CONNECTION_EMPTY_VERSE = {
   reference: "Psalm 27:14",
   text: "Wait for the LORD; be strong and take heart and wait for the LORD.",
 };
-const DB_CONNECTION_EMPTY_MESSAGE = "연결 정보를 기다리고 있습니다.";
+const DB_CONNECTION_EMPTY_MESSAGE = "Waiting for database connection.";
 const CALENDAR_DETAIL_TABS = ["departments", "lectionary"];
 const CALENDAR_DEPARTMENT_FIELDS = [
   ["nursery_prayer", "유치부", "기도자"],
@@ -2025,8 +2026,8 @@ async function loadCalendarData({ silent = false } = {}) {
     state.calendarLoaded = true;
     state.calendarError = "";
   } catch (e) {
-    state.calendarError = e.message || "교회력 로드 실패";
-    if (!silent) showToast(e.message || "교회력 로드 실패", "error");
+    state.calendarError = e.message || "Could not load calendar.";
+    if (!silent) showToast(e.message || "Could not load calendar.", "error");
   } finally {
     state.calendarLoading = false;
     if (state.module === "calendar") {
@@ -2042,7 +2043,7 @@ async function saveCalendarCell(id, field, value) {
     .from("mindex_sunday_calendar")
     .update({ [field]: value })
     .eq("id", id);
-  if (error) { showToast(error.message || "저장 실패", "error"); return false; }
+  if (error) { showToast(error.message || "Save failed.", "error"); return false; }
   const row = state.calendarData.find((r) => r.id === id);
   if (row) row[field] = value;
   return true;
@@ -2062,7 +2063,7 @@ function renderCalendarView() {
       : `
         <div class="empty-detail">
           <div class="empty-detail-inner">
-            <p class="empty-verse">교회력 로드 실패</p>
+            <p class="empty-verse">Calendar unavailable</p>
             <span>${escapeHtml(state.calendarError)}</span>
           </div>
         </div>`;
@@ -5214,7 +5215,7 @@ function renderConnectionStatus() {
   }
 
   if (state.loading) {
-    setStatusIcon("loader-2", "", "불러오는 중");
+    setStatusIcon("loader-2", "", LOADING_MESSAGE);
     return;
   }
 
@@ -5249,7 +5250,7 @@ function renderSongList() {
 
   if (state.connectionError && !["calendar", "references", "order-sheets"].includes(state.module)) {
     refs.songCount.textContent = "";
-    refs.songList.innerHTML = renderListEmptyState("연결 대기", state.connectionError);
+    refs.songList.innerHTML = renderConnectionList(state.connectionError);
     return;
   }
 
@@ -5277,7 +5278,7 @@ function renderSongList() {
 
   if (!state.client) {
     refs.songCount.textContent = "";
-    refs.songList.innerHTML = renderListEmptyState("연결 대기", DB_CONNECTION_EMPTY_MESSAGE);
+    refs.songList.innerHTML = renderConnectionList();
     return;
   }
 
@@ -5708,6 +5709,10 @@ function renderLoadingList() {
   return renderListEmptyState(LOADING_MESSAGE, "");
 }
 
+function renderConnectionList(message = DB_CONNECTION_EMPTY_MESSAGE) {
+  return renderListEmptyState(CONNECTION_LIST_TITLE, message);
+}
+
 function isConnectionUnavailableMessage(message) {
   const text = String(message || "").trim().toLowerCase();
   if (!text) return false;
@@ -5981,7 +5986,7 @@ function renderActivitiesList() {
   const query = normalizeSearchValue(state.search);
   if (!state.client) {
     refs.songCount.textContent = "";
-    refs.songList.innerHTML = renderListEmptyState("연결 대기", DB_CONNECTION_EMPTY_MESSAGE);
+    refs.songList.innerHTML = renderConnectionList();
     return;
   }
 
@@ -5995,7 +6000,7 @@ function renderActivitiesList() {
   }
   if (state.activityError && state.activityError !== "setup") {
     refs.songList.innerHTML = isConnectionUnavailableMessage(state.activityError)
-      ? renderListEmptyState("연결 대기", state.connectionError || state.activityError)
+      ? renderConnectionList(state.connectionError || state.activityError)
       : renderListEmptyState("Activities unavailable", state.activityError);
     return;
   }
@@ -6245,7 +6250,7 @@ function formatActivityDate(value) {
 function renderScriptureList() {
   if (!state.client) {
     refs.songCount.textContent = "";
-    refs.songList.innerHTML = renderListEmptyState("연결 대기", DB_CONNECTION_EMPTY_MESSAGE);
+    refs.songList.innerHTML = renderConnectionList();
     return;
   }
 
@@ -6259,7 +6264,7 @@ function renderScriptureList() {
 
   if (state.scriptureError) {
     refs.songList.innerHTML = isConnectionUnavailableMessage(state.scriptureError)
-      ? renderListEmptyState("연결 대기", state.connectionError || state.scriptureError)
+      ? renderConnectionList(state.connectionError || state.scriptureError)
       : renderListEmptyState("Scripture unavailable", state.scriptureError);
     return;
   }
@@ -10086,13 +10091,13 @@ function getServiceSidebarServices() {
 function renderServiceList() {
   if (!state.client) {
     refs.songCount.textContent = "";
-    refs.songList.innerHTML = renderListEmptyState("연결 대기", DB_CONNECTION_EMPTY_MESSAGE);
+    refs.songList.innerHTML = renderConnectionList();
     return;
   }
 
   if (state.connectionError) {
     refs.songCount.textContent = "";
-    refs.songList.innerHTML = renderListEmptyState("연결 대기", state.connectionError);
+    refs.songList.innerHTML = renderConnectionList(state.connectionError);
     return;
   }
 
@@ -10100,7 +10105,7 @@ function renderServiceList() {
     refs.songCount.textContent = "";
     refs.songList.innerHTML = state.serviceError
       ? (isConnectionUnavailableMessage(state.serviceError)
-        ? renderListEmptyState("연결 대기", state.connectionError || state.serviceError)
+        ? renderConnectionList(state.connectionError || state.serviceError)
         : renderListEmptyState("Service unavailable", state.serviceError))
       : renderLoadingList();
     return;
