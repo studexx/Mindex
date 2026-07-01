@@ -72,7 +72,7 @@ Optional:
 
 - `YOUTUBE_LIVE_STREAM_ID`
 - `YOUTUBE_LIVE_PLAYLIST_ID`, overrides playlist title lookup
-- `YOUTUBE_LIVE_THUMBNAIL_B64`
+- `YOUTUBE_LIVE_THUMBNAIL_B64`, fallback only when a committed thumbnail path is not used
 
 ## GitHub Variables
 
@@ -98,24 +98,18 @@ workflow looks up the playlist by `YOUTUBE_LIVE_PLAYLIST_TITLE_TEMPLATE`.
 
 ## Thumbnail
 
-The live thumbnail should be stored as a GitHub secret, not committed to the
-repository.
+The live thumbnail is committed as a repository asset because it is not
+sensitive and is larger than the GitHub Actions secret size limit.
 
-Current prepared local files:
-
-```text
-assets/youtube/live_thumbnail.jpg
-assets/youtube/live_thumbnail.b64
-```
-
-Set `YOUTUBE_LIVE_THUMBNAIL_B64` to the contents of
-`assets/youtube/live_thumbnail.b64`.
-
-Set `YOUTUBE_LIVE_THUMBNAIL_EXT` to:
+Current workflow path:
 
 ```text
-.jpg
+assets/youtube_live_thumbnail.jpg
 ```
+
+The workflow sets `YOUTUBE_LIVE_THUMBNAIL_PATH` to this file. The
+`YOUTUBE_LIVE_THUMBNAIL_B64` secret remains supported as a fallback for other
+deployments.
 
 ## Manual Test
 
