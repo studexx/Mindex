@@ -6,6 +6,7 @@ from scripts.youtube_live_schedule import (
     is_same_service_date,
     live_description,
     live_title,
+    normalize_passage,
     playlist_title_for_source,
     scheduled_end_time,
     validate_title,
@@ -33,6 +34,10 @@ class YoutubeLiveScheduleTests(unittest.TestCase):
         self.assertIn("설교: 눈을 뜨시오", description)
         self.assertIn("본문: 요 9:1–7", description)
         self.assertIn("설교자: 김남영 목사", description)
+
+    def test_normalize_passage_uses_en_dash_for_ranges(self) -> None:
+        self.assertEqual(normalize_passage("에 9:20-32"), "에 9:20–32")
+        self.assertEqual(normalize_passage("창 21:8~21"), "창 21:8–21")
 
     def test_scheduled_end_time_defaults_from_start(self) -> None:
         self.assertEqual(scheduled_end_time(SOURCE, 90), "2026-07-05T12:15:00+09:00")

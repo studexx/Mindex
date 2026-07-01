@@ -53,9 +53,16 @@ def clean_text(value: Any) -> str:
     return " ".join(str(value or "").split())
 
 
+def normalize_passage(value: Any) -> str:
+    passage = clean_text(value)
+    passage = passage.replace("~", "–")
+    passage = re.sub(r"(?<=\d)\s*-\s*(?=\d)", "–", passage)
+    return passage
+
+
 def live_title(source: dict[str, Any]) -> str:
     title = clean_text(source.get("sermonTitle"))
-    passage = clean_text(source.get("passage"))
+    passage = normalize_passage(source.get("passage"))
     preacher = clean_text(source.get("preacher"))
     service_date = clean_text(source.get("date"))
     return f"{title} ({passage}) | {preacher} | {SERVICE_LABEL} | {service_date}"
@@ -67,7 +74,7 @@ def live_description(source: dict[str, Any]) -> str:
             "검단우리교회 주일예배",
             "",
             f"설교: {clean_text(source.get('sermonTitle'))}",
-            f"본문: {clean_text(source.get('passage'))}",
+            f"본문: {normalize_passage(source.get('passage'))}",
             f"설교자: {clean_text(source.get('preacher'))}",
             f"일시: {clean_text(source.get('date'))} 10:45",
         ]
