@@ -103,6 +103,8 @@ Service/Worship structure:
 - Praise elements should link to Mindex Praise records.
 - Scripture elements should link to Mindex Scripture records or normalized references.
 - Activity elements should later link to Activity/Game records.
+- Detailed Worship terminology, template/type semantics, and examples live in
+  `/Users/parkjihun/Mindex/docs/thread-worship-presenter.md`.
 
 Activities structure:
 
