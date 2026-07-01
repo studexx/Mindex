@@ -3927,7 +3927,7 @@ body[data-module="service"] .detail-pane {
 }
 .order-sheet-service {
   display: grid;
-  gap: 2px;
+  gap: 3px;
   border: 0;
   border-radius: var(--r);
   background: transparent;
@@ -3949,11 +3949,18 @@ body[data-module="service"] .detail-pane {
   font-weight: 650;
   line-height: 17px;
 }
+.order-sheet-service span,
 .order-sheet-service small {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.order-sheet-service span {
+  color: var(--ink-2);
+  font-size: 12px;
+  font-weight: 570;
+  line-height: 16px;
 }
 .order-sheet-service small {
   color: var(--ink-4);
@@ -3988,6 +3995,13 @@ body[data-module="service"] .detail-pane {
   font-weight: 500;
   line-height: 1.2;
 }
+.svc-print-panel-head p {
+  margin-top: 3px;
+  color: var(--ink-4);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+}
 .svc-print-actions {
   display: flex;
   align-items: center;
@@ -3999,6 +4013,7 @@ body[data-module="service"] .detail-pane {
 }
 .order-sheet-a4 {
   display: grid;
+  width: 100%;
   aspect-ratio: 297 / 210;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0;
@@ -4052,6 +4067,7 @@ body[data-module="service"] .detail-pane {
   border: 1px solid #111;
   padding: .8mm 1.4mm;
   vertical-align: middle;
+  overflow-wrap: anywhere;
   word-break: keep-all;
 }
 .order-sheet-table th {

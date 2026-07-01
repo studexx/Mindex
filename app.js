@@ -11299,11 +11299,13 @@ function renderServiceOrderSheetPanel(service) {
   const rows = serviceOrderSheetRows(service.id);
   const title = serviceOrderSheetTitle(service);
   const dateLabel = formatServiceOrderSheetDate(service);
+  const panelMeta = [dateLabel, `${formatCount(rows.length)} ${rows.length === 1 ? "row" : "rows"}`].filter(Boolean).join(" · ");
   return `
     <aside class="svc-print-panel" aria-label="Order sheet">
       <div class="svc-print-panel-head">
         <div>
-          <h3>순서지</h3>
+          <h3>${escapeHtml(title)}</h3>
+          <p>${escapeHtml(panelMeta)}</p>
         </div>
         <div class="svc-print-actions">
           <button class="icon-btn" type="button" data-copy-service-order="${escapeAttr(service.id)}" aria-label="Copy order sheet text">
@@ -11348,6 +11350,20 @@ function renderOrderSheetsDetail() {
   const selected = services.find((service) => service.id === state.selectedServiceId) || services[0] || null;
   if (selected && state.selectedServiceId !== selected.id) state.selectedServiceId = selected.id;
   const serviceCountLabel = `${formatCount(services.length)} ${services.length === 1 ? "service" : "services"}`;
+  const serviceListItems = services.map((service) => {
+    const title = serviceOrderSheetTitle(service);
+    const dateLabel = formatServiceDate(service, { compact: true });
+    const rowCount = serviceOrderSheetRows(service.id).length;
+    const preview = serviceItemPreview(service.id) || "No items";
+    const meta = [`${formatCount(rowCount)} ${rowCount === 1 ? "row" : "rows"}`, preview].join(" · ");
+    return `
+      <button class="order-sheet-service${selected?.id === service.id ? " active" : ""}" type="button" data-order-sheet-service="${escapeAttr(service.id)}">
+        <strong>${escapeHtml(dateLabel || title)}</strong>
+        <span>${escapeHtml(title)}</span>
+        <small>${escapeHtml(meta)}</small>
+      </button>
+    `;
+  }).join("");
 
   refs.detailPane.innerHTML = `
     <div class="order-sheet-tool">
@@ -11360,12 +11376,7 @@ function renderOrderSheetsDetail() {
       ${services.length ? `
         <div class="order-sheet-tool-layout">
           <aside class="order-sheet-service-list" aria-label="Order sheet services">
-            ${services.map((service) => `
-              <button class="order-sheet-service${selected?.id === service.id ? " active" : ""}" type="button" data-order-sheet-service="${escapeAttr(service.id)}">
-                <strong>${escapeHtml(formatServiceDate(service, { compact: true }))}</strong>
-                <small>${escapeHtml(serviceItemPreview(service.id) || "Review")}</small>
-              </button>
-            `).join("")}
+            ${serviceListItems}
           </aside>
           <div class="order-sheet-preview-shell">
             ${selected ? renderServiceOrderSheetPanel(selected) : ""}
@@ -11380,7 +11391,7 @@ function renderOrderSheetCopy(title, dateLabel, rows) {
   return `
     <section class="order-sheet-copy">
       <header class="order-sheet-header">
-        <h4>❦ ${escapeHtml(title)} ❦</h4>
+        <h4>${escapeHtml(title)}</h4>
         ${dateLabel ? `<span>${escapeHtml(dateLabel)}</span>` : ""}
       </header>
       <table class="order-sheet-table">
