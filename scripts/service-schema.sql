@@ -12,12 +12,26 @@ create table if not exists public.mindex_sunday_calendar (
   nursery_prayer text not null default '',
   children_prayer text not null default '',
   youth_prayer text not null default '',
-  young_adult_prayer text not null default ''
+  young_adult_prayer text not null default '',
+  youth_offering_prayer text not null default '',
+  liturgical_color text not null default '',
+  first_reading text not null default '',
+  psalm text not null default '',
+  second_reading text not null default '',
+  gospel text not null default ''
 );
 create index if not exists mindex_sunday_calendar_date on public.mindex_sunday_calendar(date);
 
 alter table public.mindex_sunday_calendar
   add column if not exists church_schedule text not null default '';
+
+alter table public.mindex_sunday_calendar
+  add column if not exists youth_offering_prayer text not null default '',
+  add column if not exists liturgical_color text not null default '',
+  add column if not exists first_reading text not null default '',
+  add column if not exists psalm text not null default '',
+  add column if not exists second_reading text not null default '',
+  add column if not exists gospel text not null default '';
 
 alter table public.mindex_sunday_calendar enable row level security;
 drop policy if exists "mindex_sunday_calendar_read" on public.mindex_sunday_calendar;
@@ -43,11 +57,15 @@ create table if not exists public.mindex_services (
   type_id text not null references public.mindex_service_types(id),
   date date not null,
   date_end date,        -- for date-range entries (e.g. youth "12/28–01/04")
+  title text,           -- optional one-off service name, e.g. 고난주간 특별새벽기도회
   leader text,
   tags text[] not null default '{}',  -- e.g. ['온세대 찬양예배', '2·3부 통합']
   raw_text text,        -- original raw block, preserved
   created_at timestamptz not null default now()
 );
+
+alter table public.mindex_services
+  add column if not exists title text;
 
 create index if not exists mindex_services_type_date on public.mindex_services(type_id, date);
 

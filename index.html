@@ -16,13 +16,13 @@
     <div class="app-shell">
       <header class="topbar">
         <div class="brand-cluster">
-          <button id="sidebarToggleBtn" class="top-left-tool" type="button" aria-label="Toggle sidebar" title="Toggle sidebar">
+          <button id="sidebarToggleBtn" class="top-left-tool" type="button" aria-label="Toggle sidebar">
             <i data-lucide="panel-left"></i>
           </button>
-          <button id="brandHome" class="brand-home" type="button" aria-label="Go to Mindex home" title="Go to home">
+          <button id="brandHome" class="brand-home" type="button" aria-label="Go to Mindex home">
             <i data-lucide="home"></i>
           </button>
-          <button id="brandNameHome" class="brand-name" type="button" aria-label="Go to Mindex home" title="Go to home">MINDE<span class="brand-accent">X</span></button>
+          <button id="brandNameHome" class="brand-name" type="button" aria-label="Go to Mindex home">MINDE<span class="brand-accent">X</span></button>
         </div>
         <nav class="primary-switcher" aria-label="Mindex areas">
           <button class="top-module-entry presenter-entry module-tab module-tab--primary" type="button" data-module="service" aria-label="Open worship tools">
@@ -43,17 +43,17 @@
           </button>
         </nav>
         <div class="topbar-actions">
-          <button id="themeBtn" class="icon-btn" type="button" title="Toggle dark mode">
+          <button id="themeBtn" class="icon-btn" type="button">
             <i data-lucide="moon"></i>
           </button>
-          <button id="newSongBtn" class="btn secondary" type="button" title="New song">
+          <button id="newSongBtn" class="btn secondary" type="button">
             <i data-lucide="plus"></i>
             <span>New</span>
           </button>
-          <button id="saveAllBtn" class="icon-btn primary" type="button" title="Save song" aria-label="Save song" disabled>
+          <button id="saveAllBtn" class="icon-btn primary" type="button" aria-label="Save song" disabled>
             <i data-lucide="save"></i>
           </button>
-          <span id="connectionStatus" class="status-icon" title="Disconnected" hidden></span>
+          <span id="connectionStatus" class="status-icon" hidden></span>
         </div>
       </header>
 
@@ -67,7 +67,7 @@
             <button class="filter-tab active" type="button" data-list-filter="all">All</button>
             <button class="filter-tab" type="button" data-list-filter="hymns">Hymns</button>
             <button class="filter-tab" type="button" data-list-filter="ccm">CCM</button>
-            <button class="filter-tab" type="button" data-list-filter="children" hidden>Children</button>
+            <button class="filter-tab" type="button" data-list-filter="children" hidden>Kids</button>
           </div>
           <div id="songCount" class="sidebar-count">0 songs</div>
           <div id="songList" class="song-list" tabindex="0"></div>
@@ -83,7 +83,7 @@
     <script src="./vendor/supabase-js.min.js"></script>
     <script>
       window.MINDEX_SUPABASE = {
-        url: "https://tdulobbnppmpiqxqbvqy.supabase.co",
+        url: "https://tdulobbnppmpiqqxbvqy.supabase.co",
         anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRkdWxvYmJucHBtcGlxcXhidnF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4MDIzMzEsImV4cCI6MjA5MTM3ODMzMX0.YAt_95hVvli9tysfynGPzILeR-jiuup931t3AJE3ypM"
       };
     </script>

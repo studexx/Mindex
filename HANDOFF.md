@@ -98,10 +98,11 @@ Service/Worship structure:
 - Service types should use stable keys such as `sun_1st`, `sun_2nd`, `sun_3rd`, `sunday_afternoon`, `wednesday`, `friday`, `moon`, etc.
 - Special seasonal or temporary services can be grouped as special services instead of being promoted to permanent top-level categories.
 - First Friday prayer meeting of each month is replaced by monthly first-day worship where applicable.
-- Worship items should be components, not loose text whenever possible.
-- Praise components should link to Mindex Praise records.
-- Scripture components should link to Mindex Scripture records or normalized references.
-- Activity components should later link to Activity/Game records.
+- Worship hierarchy is `Service > Section > Element > Slide`.
+- Worship elements should be structured records, not loose text whenever possible.
+- Praise elements should link to Mindex Praise records.
+- Scripture elements should link to Mindex Scripture records or normalized references.
+- Activity elements should later link to Activity/Game records.
 
 Activities structure:
 
@@ -137,17 +138,17 @@ Current output concepts:
   - Department worship backgrounds can rotate by two-month theme cycles.
 - Youth and young adult department worship can use public-worship backgrounds where specified.
 
-Presenter components:
+Presenter elements:
 
-- Preparation video / waiting slide should be the first component.
+- Preparation video / waiting slide should be the first element.
 - Praise section should group consecutive praise songs under one praise section when they belong to one led praise block.
 - Praise leader belongs next to the praise section, not as the main worship leader.
 - Hymns in 1st/2nd service may not have a praise leader.
 - Scripture reading should be linked to scripture data and displayed with proper reference formatting.
-- Apostles’ Creed is a faith-confession component whose content is the Apostles’ Creed.
-- PPTX/Keynote import/reference should be a component type, not a replacement for Mindex data.
-- Blank screen should remain an available component.
-- Video should be an available component.
+- Apostles’ Creed is a faith-confession element whose content is the Apostles’ Creed.
+- PPTX/Keynote import/reference should be an element type, not a replacement for Mindex data.
+- Blank screen should remain an available element.
+- Video should be an available element.
 - Live scripture lookup during sermon is required eventually.
 - Pre/post worship music player and volume control are desired in the controller UI.
 
@@ -168,9 +169,9 @@ Presenter UI:
 
 PPT/reference rule:
 
-- Existing worship PPTs are reference material for layout and service component structure.
-- For past services, each PPT section/slide sequence should map closely to Mindex components.
-- If slide numbers are not continuous within a block, treat them as separate components unless the PPT clearly groups them.
+- Existing worship PPTs are reference material for layout and service element structure.
+- For past services, each PPT section/slide sequence should map closely to Mindex sections/elements.
+- If slide numbers are not continuous within a block, treat them as separate elements unless the PPT clearly groups them.
 - For complex cases such as intergenerational praise worship or 3rd-service special music, expect exceptions and manual slide editing.
 
 ## Praise Database Rules
@@ -288,7 +289,7 @@ References:
 Order Sheets:
 
 - Order-sheet generation is a home utility, not the core Worship controller.
-- Friday prayer meeting order sheet uses A4 split into two horizontal halves.
+- Friday prayer meeting order sheet uses landscape A4 split into two vertical halves.
 - It should be generated from database/service data.
 
 ## Activities Direction
@@ -419,7 +420,7 @@ App smoke:
 
 ```bash
 cd /Users/parkjihun/Mindex
-python3 tests/smoke_playwright.py
+python3 tests/smoke_app.py
 ```
 
 Presenter-specific checks:
@@ -476,7 +477,7 @@ Deployment sanity:
 Use three focused threads:
 
 1. Presenter / Worship
-   - Live service operation, service components, templates, presenter output, order/PPT matching.
+   - Live service operation, service elements, templates, presenter output, order/PPT matching.
 
 2. Database / Praise / Scripture
    - Song metadata, song forms, hymn/CCM/children tagging, Bible search/copy, scripture metadata.

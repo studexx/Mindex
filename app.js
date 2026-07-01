@@ -31,6 +31,7 @@ const LIST_INPUT_SEPARATOR = ", ";
 const BIBLE_TEXT_SEARCH_PAGE_SIZE = 50;
 const TABLE_COLUMN_SUPPORT_CACHE = new Map();
 let presenterThumbClickTimer = null;
+let songLoadPromise = null;
 
 const BIBLE_CHAPTER_COUNTS = {};
 
@@ -271,17 +272,40 @@ const TITLE_COLLATOR = new Intl.Collator("ko-KR", {
 });
 
 const HANGUL_INITIALS = ["ㄱ", "ㄲ", "ㄴ", "ㄷ", "ㄸ", "ㄹ", "ㅁ", "ㅂ", "ㅃ", "ㅅ", "ㅆ", "ㅇ", "ㅈ", "ㅉ", "ㅊ", "ㅋ", "ㅌ", "ㅍ", "ㅎ"];
-const CONTENT_MODULES = ["service", "activities", "calendar", "praise", "scripture", "references", "order-sheets"];
+const CONTENT_MODULES = ["service", "activities", "praise", "scripture", "calendar", "references", "order-sheets"];
 const ROUTE_MODULES = ["home", ...CONTENT_MODULES];
 const SERVICE_FILTERS = ["all", "public", "ministry", "special"];
-const SERVICE_COMPONENT_LABELS = {
-  blank: "Blank",
-  video: "Video",
-  praise: "Praise",
-  scripture: "Scripture",
+const SERVICE_ELEMENT_LABELS = {
+  blank: "빈 화면",
+  video: "동영상",
+  image: "이미지",
+  praise: "찬양",
+  scripture: "말씀",
   activity: "Activity",
-  template: "Template",
+  template: "슬라이드 템플릿",
   pptx: "PPTX",
+  pdf: "PDF",
+};
+const PRESENTER_ELEMENT_TYPES = {
+  BLANK: "blank",
+  PLAIN_TEXT: "plain_text",
+  TITLE_ASSIGNEE: "title_assignee",
+  BODY_TEXT: "body_text",
+  PRAISE: "praise",
+  SCRIPTURE_READING: "scripture_reading",
+  SCRIPTURE_TEXT: "scripture_text",
+  IMAGE: "image",
+  VIDEO: "video",
+  FREEFORM: "freeform",
+  PPT: "ppt",
+  PDF: "pdf",
+};
+const PRESENTER_SLIDE_LAYOUTS = {
+  BLANK: "blank",
+  CENTER_TEXT: "center_text",
+  LOWER_BAR_TEXT: "lower_bar_text",
+  MEDIA: "media",
+  FILE: "file",
 };
 const ACTIVITY_GAME_TYPE_LABELS = {
   puzzle_hunt: "Puzzle Hunt",
@@ -293,6 +317,26 @@ const CALENDAR_MIN_DATE = "2025-11-30";
 const SUPABASE_PAGE_SIZE = 1000;
 const UI_SCRIPTURE_PREFIX = "Mindex UI:";
 const UI_VERSE_SLOTS = ["home", "activities", "praise", "scripture"];
+const DB_CONNECTION_EMPTY_VERSE = {
+  reference: "Psalm 27:14",
+  text: "Wait for the LORD; be strong and take heart and wait for the LORD.",
+};
+const DB_CONNECTION_EMPTY_MESSAGE = "연결 정보를 기다리고 있습니다.";
+const CALENDAR_DETAIL_TABS = ["departments", "lectionary"];
+const CALENDAR_DEPARTMENT_FIELDS = [
+  ["nursery_prayer", "유치부", "기도자"],
+  ["children_prayer", "어린이부", "기도자"],
+  ["youth_prayer", "청소년부", "기도자"],
+  ["youth_offering_prayer", "청소년부", "봉헌기도자"],
+  ["preacher", "청소년부", "설교자"],
+];
+const CALENDAR_LECTIONARY_FIELDS = [
+  ["liturgical_color", "색깔", ""],
+  ["first_reading", "첫째 읽기", ""],
+  ["psalm", "시편", ""],
+  ["second_reading", "둘째 읽기", ""],
+  ["gospel", "복음서", ""],
+];
 const LINK_CONFIG_KEYS = ["supabaseUrl", "supabase_url", "url", "supabaseAnonKey", "supabase_anon_key", "anonKey", "anon_key", "key"];
 const LINK_ROUTE_KEYS = [
   "module", "search", "praiseFilter", "scriptureFilter", "serviceFilter",
@@ -302,6 +346,97 @@ const LINK_ROUTE_KEYS = [
   "selectedBibleTranslationId", "selectedBibleChapter", "selectedBibleVerse",
   "selectedServiceTypeId", "selectedServiceId", "bibleTextSearchQuery", "bibleTextSearchPage",
 ];
+
+/**
+ * @typedef {Object} Service
+ * @property {string} id
+ * @property {string} type_id
+ * @property {string} date
+ * @property {string=} title
+ * @property {string=} leader
+ * @property {string=} status
+ * @property {string[]=} tags
+ */
+
+/**
+ * @typedef {Object} ServiceItem
+ * @property {string} id
+ * @property {string} service_id
+ * @property {string=} element_type semantic output/input kind
+ * @property {string=} component_type legacy output/input kind
+ * @property {string} title
+ * @property {number} sort_order
+ * @property {string=} song_id
+ * @property {string=} version_id
+ * @property {string=} scripture_id
+ * @property {string=} assignee
+ * @property {string=} memo
+ */
+
+/**
+ * @typedef {Object} PresenterSlide
+ * @property {string} id
+ * @property {string=} type legacy render class
+ * @property {string=} elementType
+ * @property {string=} layout
+ * @property {string} title
+ * @property {string[]=} lines
+ * @property {string=} label
+ * @property {string=} background
+ */
+
+/**
+ * @typedef {Object} ReferenceLink
+ * @property {string} id
+ * @property {string} title
+ * @property {string} url
+ * @property {string} group_name
+ * @property {number} sort_order
+ * @property {boolean} is_active
+ */
+
+/**
+ * @typedef {Object} ActivityEvent
+ * @property {string} id
+ * @property {string} title
+ * @property {string=} date
+ * @property {string=} status
+ * @property {string=} location
+ * @property {string=} memo
+ */
+
+/**
+ * @typedef {Object} ActivityGame
+ * @property {string} id
+ * @property {string} event_id
+ * @property {string} title
+ * @property {"puzzle_hunt"|"quiz"|"physical"} game_type
+ * @property {number} sort_order
+ * @property {string=} status
+ * @property {string=} owner
+ * @property {string=} location
+ */
+
+/**
+ * @typedef {Object} ActivityTeam
+ * @property {string} id
+ * @property {string} event_id
+ * @property {string} name
+ * @property {string} color
+ * @property {number} score
+ * @property {number} sort_order
+ */
+
+/**
+ * @typedef {Object} ActivityScoreEvent
+ * @property {string} id
+ * @property {string} event_id
+ * @property {string=} game_id
+ * @property {string} team_id
+ * @property {number} points
+ * @property {string=} reason
+ * @property {string=} created_at
+ */
 
 const state = {
   module: "home",
@@ -363,6 +498,7 @@ const state = {
   serviceItemAssigneeSupported: false,
   serviceItemVersionSupported: false,
   serviceItemMemoSupported: false,
+  serviceTitleSupported: false,
   homeVerseIndex: Math.floor(Math.random() * 3),
   selectedServiceTypeId: null,
   selectedServiceId: null,
@@ -400,6 +536,7 @@ const state = {
   calendarError: "",
   calendarScrollTargetMonth: null,
   calendarAutoScrolledMonth: null,
+  calendarDetailTab: "departments",
   listScroll: {},
   forms: [],
   search: "",
@@ -502,6 +639,7 @@ function bindStaticEvents() {
     if (state.module === "scripture") renderDetail();
     if (state.module === "service") renderServiceDetail();
     if (state.module === "activities") renderActivitiesDetail();
+    if (state.module === "order-sheets") renderOrderSheetsDetail();
   });
   refs.searchInput.addEventListener("keydown", handleSearchKeydown);
   refs.listFilter.addEventListener("click", (event) => {
@@ -941,7 +1079,7 @@ function applyTheme(theme) {
   state.theme = theme;
   document.body.dataset.theme = theme;
   if (!refs.themeBtn) return;
-  refs.themeBtn.title = theme === "dark" ? "Use light mode" : "Use dark mode";
+  refs.themeBtn.setAttribute("aria-label", theme === "dark" ? "Use light mode" : "Use dark mode");
   refs.themeBtn.innerHTML = `<i data-lucide="${theme === "dark" ? "sun" : "moon"}"></i>`;
   refreshIcons();
   resizeFormTextareas();
@@ -1320,7 +1458,7 @@ function connectClient() {
   state.connectionError = "";
   if (!state.config.url || !state.config.anonKey) {
     state.client = null;
-    state.connectionError = "Open Mindex with a Supabase connection link.";
+    state.connectionError = DB_CONNECTION_EMPTY_MESSAGE;
     return;
   }
 
@@ -1395,6 +1533,16 @@ async function switchModule(moduleName, options = {}) {
 }
 
 async function loadSongs() {
+  if (songLoadPromise) return songLoadPromise;
+  songLoadPromise = loadSongsOnce();
+  try {
+    return await songLoadPromise;
+  } finally {
+    songLoadPromise = null;
+  }
+}
+
+async function loadSongsOnce() {
   if (!requireClient()) return;
 
   state.loading = true;
@@ -1432,6 +1580,9 @@ async function loadSongs() {
     state.selectedSongId = null;
     state.selectedVersionId = null;
     state.forms = [];
+  }
+  if (state.presenter.serviceId) {
+    refreshPresenterForService(state.presenter.serviceId);
   }
 
   const selectedSong = getSelectedSong();
@@ -1629,18 +1780,25 @@ async function loadServiceData({ silent = false } = {}) {
       .order("service_id")
       .order("sort_order");
     if (itemsRes.error) throw itemsRes.error;
+    const serviceItems = itemsRes.data || [];
+    if (!state.songs.length && serviceItems.some((item) => item.song_id)) {
+      await loadSongs();
+    }
     state.serviceTypes = typesRes.data || [];
     state.services = servicesRes.data || [];
     state.serviceItemAssigneeSupported =
-      (itemsRes.data || []).some((item) => Object.prototype.hasOwnProperty.call(item, "assignee")) ||
+      serviceItems.some((item) => Object.prototype.hasOwnProperty.call(item, "assignee")) ||
       await detectServiceItemAssigneeSupport();
     state.serviceItemVersionSupported =
-      (itemsRes.data || []).some((item) => Object.prototype.hasOwnProperty.call(item, "version_id")) ||
+      serviceItems.some((item) => Object.prototype.hasOwnProperty.call(item, "version_id")) ||
       await detectServiceItemVersionSupport();
     state.serviceItemMemoSupported =
-      (itemsRes.data || []).some((item) => Object.prototype.hasOwnProperty.call(item, "memo")) ||
+      serviceItems.some((item) => Object.prototype.hasOwnProperty.call(item, "memo")) ||
       await detectServiceItemMemoSupport();
-    state.serviceItems = groupServiceItems(itemsRes.data || []);
+    state.serviceTitleSupported =
+      (servicesRes.data || []).some((service) => Object.prototype.hasOwnProperty.call(service, "title")) ||
+      await detectServiceTitleSupport();
+    state.serviceItems = groupServiceItems(serviceItems);
     state.dirtyServiceTypeIds.clear();
     state.dirty.service = false;
     state.serviceError = "";
@@ -1815,6 +1973,10 @@ async function detectServiceItemMemoSupport() {
   return detectServiceItemColumnSupport("memo");
 }
 
+async function detectServiceTitleSupport() {
+  return detectTableColumnSupport("mindex_services", "title");
+}
+
 async function detectSongVersionPraiseTypesSupport() {
   return detectTableColumnSupport("mindex_song_versions", "praise_types");
 }
@@ -1881,13 +2043,7 @@ async function saveCalendarCell(id, field, value) {
 
 function renderCalendarView() {
   if (!state.client) {
-    refs.detailPane.innerHTML = `
-      <div class="empty-detail">
-        <div class="empty-detail-inner">
-          <p class="empty-verse">Calendar unavailable</p>
-          <span>Open Mindex with a connection link.</span>
-        </div>
-      </div>`;
+    refs.detailPane.innerHTML = renderConnectionEmptyDetail();
     return;
   }
   if (!state.calendarLoaded && !state.calendarLoading && !state.calendarError) {
@@ -1920,6 +2076,7 @@ function renderCalendarView() {
   }
   const KO_MONTH = ["","1월","2월","3월","4월","5월","6월","7월","8월","9월","10월","11월","12월"];
   const DOW = ["일","월","화","수","목","금","토"];
+  const calendarDetailFields = getCalendarDetailFields();
 
   let tbodyHtml = "";
   let prevMonth = "";
@@ -1927,7 +2084,7 @@ function renderCalendarView() {
     const ym = row.date.slice(0, 7);
     if (ym !== prevMonth) {
       const [y, m] = ym.split("-");
-      tbodyHtml += `<tr class="cal-month-row" data-cal-month="${escapeAttr(ym)}"><td colspan="9">${y}년 ${KO_MONTH[parseInt(m)]}</td></tr>`;
+      tbodyHtml += `<tr class="cal-month-row" data-cal-month="${escapeAttr(ym)}"><td colspan="${4 + calendarDetailFields.length}">${y}년 ${KO_MONTH[parseInt(m)]}</td></tr>`;
       prevMonth = ym;
     }
     const d = parseLocalDate(row.date);
@@ -1947,22 +2104,13 @@ function renderCalendarView() {
       isUpcomingSunday ? "is-upcoming-sunday" : "",
     ].filter(Boolean).join(" ");
 
-	    const editField = (field) => {
-	      const val = escapeHtml(row[field] || "");
-	      return `<td class="cal-cell" data-cal-id="${row.id}" data-cal-field="${field}" data-placeholder="—" contenteditable="true" spellcheck="false">${val}</td>`;
-	    };
-
     tbodyHtml += `
       <tr class="${rowCls}">
         <td class="cal-date">${dateLabel}</td>
         <td class="cal-lit">${escapeHtml(row.liturgical || "")}</td>
-        ${editField("note")}
-        ${editField("church_schedule")}
-        ${editField("preacher")}
-        ${editField("nursery_prayer")}
-        ${editField("children_prayer")}
-        ${editField("youth_prayer")}
-        ${editField("young_adult_prayer")}
+        ${renderCalendarEditCell(row, "note")}
+        ${renderCalendarEditCell(row, "church_schedule")}
+        ${calendarDetailFields.map(([field]) => renderCalendarEditCell(row, field)).join("")}
       </tr>`;
   }
 
@@ -1973,6 +2121,7 @@ function renderCalendarView() {
           <h2 class="cal-title">교회력</h2>
           <span class="cal-subtitle">${escapeHtml(churchYearSeriesSummary(calendarRows))}</span>
         </div>
+        ${renderCalendarDetailTabs()}
       </div>
       <div class="cal-table-wrap">
         <table class="cal-table">
@@ -1982,11 +2131,7 @@ function renderCalendarView() {
               <th class="cal-th-lit">절기</th>
               <th class="cal-th-note">기념/메모</th>
               <th class="cal-th-note">교회 일정</th>
-              ${renderCalendarRoleHeader("청소년부", "설교자")}
-              ${renderCalendarRoleHeader("유치부", "기도자")}
-              ${renderCalendarRoleHeader("어린이부", "기도자")}
-              ${renderCalendarRoleHeader("청소년부", "기도자")}
-              ${renderCalendarRoleHeader("청년부", "기도자")}
+              ${calendarDetailFields.map(([, department, role]) => renderCalendarRoleHeader(department, role)).join("")}
             </tr>
           </thead>
           <tbody>${tbodyHtml}</tbody>
@@ -2025,11 +2170,44 @@ function nextSundayDate(todayValue = toLocalDateStr(new Date())) {
 }
 
 function renderCalendarRoleHeader(department, role) {
+  if (!role) {
+    return `<th class="cal-th-person cal-th-simple"><span class="cal-th-role">${escapeHtml(department)}</span></th>`;
+  }
   return `
     <th class="cal-th-person">
       <span class="cal-th-dept">${escapeHtml(department)}</span>
       <span class="cal-th-role">${escapeHtml(role)}</span>
     </th>`;
+}
+
+function getCalendarDetailFields() {
+  return state.calendarDetailTab === "lectionary"
+    ? CALENDAR_LECTIONARY_FIELDS
+    : CALENDAR_DEPARTMENT_FIELDS;
+}
+
+function renderCalendarDetailTabs() {
+  const tabs = [
+    ["departments", "부서 일과"],
+    ["lectionary", "성서일과"],
+  ];
+  return `
+    <div class="cal-tabs" role="tablist" aria-label="교회력 표시">
+      ${tabs.map(([key, label]) => `
+        <button
+          class="cal-tab${state.calendarDetailTab === key ? " active" : ""}"
+          type="button"
+          data-calendar-detail-tab="${escapeAttr(key)}"
+          role="tab"
+          aria-selected="${state.calendarDetailTab === key ? "true" : "false"}"
+        >${escapeHtml(label)}</button>
+      `).join("")}
+    </div>`;
+}
+
+function renderCalendarEditCell(row, field) {
+  const val = escapeHtml(row[field] || "");
+  return `<td class="cal-cell" data-cal-id="${escapeAttr(row.id)}" data-cal-field="${escapeAttr(field)}" data-placeholder="—" contenteditable="true" spellcheck="false">${val}</td>`;
 }
 
 function groupServiceItems(items) {
@@ -2060,6 +2238,9 @@ async function loadServiceItems(serviceId) {
     }
     if ((data || []).some((item) => Object.prototype.hasOwnProperty.call(item, "memo")) || await detectServiceItemMemoSupport()) {
       state.serviceItemMemoSupported = true;
+    }
+    if (!state.songs.length && (data || []).some((item) => item.song_id)) {
+      await loadSongs();
     }
     state.serviceItems[serviceId] = normalizeServiceItems(data || []);
     renderServiceDetail();
@@ -2580,13 +2761,45 @@ function nextReferenceGroupName() {
 }
 
 function moveReferenceLink(id, delta) {
-  const links = [...state.referenceLinks].map(normalizeReferenceLink).sort(sortReferenceLinks);
-  const index = links.findIndex((link) => link.id === id);
+  const groups = referenceGroupBlocks();
+  const group = groups.find((item) => item.links.some((link) => link.id === id));
+  if (!group) return;
+  const index = group.links.findIndex((link) => link.id === id);
   const nextIndex = index + delta;
-  if (index < 0 || nextIndex < 0 || nextIndex >= links.length) return;
+  if (index < 0 || nextIndex < 0 || nextIndex >= group.links.length) return;
 
-  const [link] = links.splice(index, 1);
-  links.splice(nextIndex, 0, link);
+  const [link] = group.links.splice(index, 1);
+  group.links.splice(nextIndex, 0, link);
+  updateReferenceOrderFromGroups(groups);
+}
+
+function moveReferenceGroup(key, delta) {
+  const groups = referenceGroupBlocks();
+  const index = groups.findIndex((group) => group.key === referenceGroupKey(key));
+  const nextIndex = index + delta;
+  if (index < 0 || nextIndex < 0 || nextIndex >= groups.length) return;
+
+  const [group] = groups.splice(index, 1);
+  groups.splice(nextIndex, 0, group);
+  updateReferenceOrderFromGroups(groups);
+}
+
+function referenceGroupBlocks() {
+  const groups = [];
+  for (const link of [...state.referenceLinks].map(normalizeReferenceLink).sort(sortReferenceLinks)) {
+    const key = referenceGroupKey(link.group_name);
+    let group = groups.find((item) => item.key === key);
+    if (!group) {
+      group = { key, links: [] };
+      groups.push(group);
+    }
+    group.links.push(link);
+  }
+  return groups;
+}
+
+function updateReferenceOrderFromGroups(groups) {
+  const links = groups.flatMap((group) => group.links);
   state.referenceLinks = links.map((item, itemIndex) => ({
     ...item,
     sort_order: (itemIndex + 1) * 10,
@@ -2730,13 +2943,15 @@ async function saveService() {
       state.serviceItems[service.id] = [];
     }
 
-    // Save service metadata (leader, tags)
+    // Save service metadata.
+    const metaPayload = {
+      leader: serviceUsesPraiseLeader(service.type_id) ? nullIfBlank(service.leader) : null,
+      tags: service.tags || [],
+    };
+    if (state.serviceTitleSupported) metaPayload.title = nullIfBlank(service.title);
     const { error: metaError } = await state.client
       .from("mindex_services")
-      .update({
-        leader: serviceUsesPraiseLeader(service.type_id) ? nullIfBlank(service.leader) : null,
-        tags: service.tags || [],
-      })
+      .update(metaPayload)
       .eq("id", service.id);
     if (metaError) throw metaError;
 
@@ -3008,6 +3223,16 @@ function writeFormsToSelectedVersion() {
 }
 
 function handleDetailClick(event) {
+  const calendarDetailTab = event.target.closest("[data-calendar-detail-tab]");
+  if (calendarDetailTab) {
+    const tab = calendarDetailTab.dataset.calendarDetailTab;
+    if (CALENDAR_DETAIL_TABS.includes(tab) && state.calendarDetailTab !== tab) {
+      state.calendarDetailTab = tab;
+      renderCalendarView();
+    }
+    return;
+  }
+
   const globalSongItem = event.target.closest("[data-global-song-id]");
   if (globalSongItem) {
     void openGlobalSongResult(globalSongItem.dataset.globalSongId);
@@ -3057,7 +3282,7 @@ function handleDetailClick(event) {
   if (newServiceBtn) {
     if (!confirmDiscardServiceChanges()) return;
     const typeId = newServiceBtn.dataset.newService;
-    state.newServiceForm = { type_id: typeId, date: "", leader: "", tags: "" };
+    state.newServiceForm = { type_id: typeId, date: "", title: "", leader: "", tags: "" };
     renderServiceDetail();
     return;
   }
@@ -3217,6 +3442,8 @@ function handleDetailClick(event) {
     if (action === "delete") deleteReferenceLink(id);
     if (action === "move-up") moveReferenceLink(id, -1);
     if (action === "move-down") moveReferenceLink(id, 1);
+    if (action === "move-group-up") moveReferenceGroup(referenceAction.dataset.referenceGroupKey || "", -1);
+    if (action === "move-group-down") moveReferenceGroup(referenceAction.dataset.referenceGroupKey || "", 1);
     if (action === "edit-group") {
       beginEditReferenceGroup(referenceAction.dataset.referenceGroupKey || "");
       renderReferencesDetail();
@@ -4008,7 +4235,7 @@ function renderVersionPraiseTypeTags(version) {
   return `<div class="version-type-tags">${
     PRAISE_TYPES.map(type => `
       <button class="version-type-tag${active.includes(type) ? " on" : ""}" type="button"
-              data-version-type-toggle="${escapeAttr(type)}" title="Toggle ${type}">
+              data-version-type-toggle="${escapeAttr(type)}">
         ${escapeHtml(labels[type])}
       </button>`).join("")
   }</div>`;
@@ -4122,7 +4349,9 @@ function updateServiceMetaField(field) {
   const service = state.services.find((s) => s.id === state.selectedServiceId);
   if (!service) return;
   const key = field.dataset.serviceMetaField;
-  if (key === "leader") {
+  if (key === "title") {
+    service.title = field.value;
+  } else if (key === "leader") {
     if (!serviceUsesPraiseLeader(service.type_id)) {
       service.leader = "";
       return;
@@ -4139,7 +4368,7 @@ function updateServiceMetaField(field) {
 function updateNewServiceFormField(field) {
   if (!state.newServiceForm) return;
   const key = field.dataset.newServiceField;
-  if (["date", "leader", "tags"].includes(key)) {
+  if (["date", "title", "leader", "tags"].includes(key)) {
     if (key === "leader" && !serviceUsesPraiseLeader(state.newServiceForm.type_id)) {
       state.newServiceForm[key] = "";
       return;
@@ -4159,21 +4388,27 @@ function updateServiceItemField(field) {
     item[key] = key === "raw_title" ? normalizeServiceItemRawTitle(item.label, field.value) : field.value;
     if (key === "raw_title") applyServiceSongSelection(item);
   }
-  if (key === "memo_note" || key === "slide_overrides" || key === "form_hint" || key === "component_type" || key === "asset_name" || key === "asset_url") {
+  if (key === "memo_note" || key === "slide_overrides" || key === "form_hint" || key === "element_type" || key === "component_type" || key === "asset_name" || key === "asset_url") {
     const parsed = parseServiceItemMemo(item.memo);
     if (key === "memo_note") parsed.note = field.value;
     if (key === "slide_overrides") parsed.slides = parseServiceSlideOverrideInput(field.value);
     if (key === "form_hint") parsed.formHint = field.value;
-    if (key === "component_type") {
-      parsed.componentType = normalizeServiceComponentType(field.value);
-      if (parsed.componentType === "pptx") parsed.asset = { ...normalizeServiceAsset(parsed.asset), kind: "pptx" };
-      if (parsed.componentType === "video") parsed.asset = { ...normalizeServiceAsset(parsed.asset), kind: "video" };
+    if (key === "element_type" || key === "component_type") {
+      parsed.elementType = normalizeServiceElementType(field.value);
+      parsed.componentType = parsed.elementType;
+      if (parsed.elementType === "pptx") parsed.asset = { ...normalizeServiceAsset(parsed.asset), kind: "pptx" };
+      if (parsed.elementType === "video") parsed.asset = { ...normalizeServiceAsset(parsed.asset), kind: "video" };
+      if (parsed.elementType === "image") parsed.asset = { ...normalizeServiceAsset(parsed.asset), kind: "image" };
+      if (parsed.elementType === "pdf") parsed.asset = { ...normalizeServiceAsset(parsed.asset), kind: "pdf" };
     }
     if (key === "asset_name" || key === "asset_url") {
       const asset = normalizeServiceAsset(parsed.asset);
       asset[key === "asset_name" ? "name" : "url"] = field.value;
-      if (!asset.kind && parsed.componentType === "pptx") asset.kind = "pptx";
-      if (!asset.kind && parsed.componentType === "video") asset.kind = "video";
+      const elementType = serviceMemoElementType(parsed);
+      if (!asset.kind && elementType === "pptx") asset.kind = "pptx";
+      if (!asset.kind && elementType === "video") asset.kind = "video";
+      if (!asset.kind && elementType === "image") asset.kind = "image";
+      if (!asset.kind && elementType === "pdf") asset.kind = "pdf";
       parsed.asset = asset;
     }
     item.memo = serializeServiceItemMemo(parsed);
@@ -4189,12 +4424,16 @@ function updateServiceItemField(field) {
   updateSaveState();
 }
 
-const SERVICE_COMPONENT_TYPES = new Set(["", ...Object.keys(SERVICE_COMPONENT_LABELS)]);
+const SERVICE_ELEMENT_TYPES = new Set(["", ...Object.keys(SERVICE_ELEMENT_LABELS)]);
 const SERVICE_ASSET_KINDS = new Set(["", "video", "pptx", "key", "pdf", "image"]);
 
-function normalizeServiceComponentType(value) {
+function normalizeServiceElementType(value) {
   const type = String(value || "").trim().toLowerCase();
-  return SERVICE_COMPONENT_TYPES.has(type) ? type : "";
+  return SERVICE_ELEMENT_TYPES.has(type) ? type : "";
+}
+
+function serviceMemoElementType(memo = {}) {
+  return normalizeServiceElementType(memo.elementType || memo.element_type || memo.componentType || memo.component_type);
 }
 
 function normalizeServiceAsset(value) {
@@ -4218,6 +4457,7 @@ function emptyServiceItemMemo(rawNote = "") {
     formHint: "",
     templateKey: "",
     templateVariant: "",
+    elementType: "",
     componentType: "",
     asset: { kind: "", name: "", url: "" },
   };
@@ -4229,7 +4469,7 @@ function parseServiceItemMemo(value) {
   try {
     const parsed = JSON.parse(raw);
     if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-      const componentType = normalizeServiceComponentType(parsed.componentType || parsed.component_type || parsed.type);
+      const elementType = serviceMemoElementType({ ...parsed, elementType: parsed.elementType || parsed.element_type || parsed.type });
       const asset = normalizeServiceAsset(parsed.asset || parsed.deck || parsed.file || parsed.media);
       return {
         note: String(parsed.note || parsed.memo || "").trim(),
@@ -4239,7 +4479,8 @@ function parseServiceItemMemo(value) {
         formHint: String(parsed.formHint || parsed.form_hint || parsed.forms || "").trim(),
         templateKey: String(parsed.templateKey || parsed.template_key || "").trim(),
         templateVariant: String(parsed.templateVariant || parsed.template_variant || "").trim(),
-        componentType,
+        elementType,
+        componentType: elementType,
         asset,
       };
     }
@@ -4268,14 +4509,14 @@ function serializeServiceItemMemo(value = {}) {
   const formHint = String(value.formHint || value.form_hint || "").trim();
   const templateKey = String(value.templateKey || value.template_key || "").trim();
   const templateVariant = String(value.templateVariant || value.template_variant || "").trim();
-  const componentType = normalizeServiceComponentType(value.componentType || value.component_type);
+  const elementType = serviceMemoElementType(value);
   const asset = normalizeServiceAsset(value.asset);
-  if (!slides.length && !formHint && !templateKey && !templateVariant && !componentType && !hasServiceAsset(asset)) return note;
+  if (!slides.length && !formHint && !templateKey && !templateVariant && !elementType && !hasServiceAsset(asset)) return note;
   const payload = { note };
   if (formHint) payload.formHint = formHint;
   if (templateKey) payload.templateKey = templateKey;
   if (templateVariant) payload.templateVariant = templateVariant;
-  if (componentType) payload.componentType = componentType;
+  if (elementType) payload.elementType = elementType;
   if (hasServiceAsset(asset)) payload.asset = asset;
   if (slides.length) payload.slides = slides;
   return JSON.stringify(payload);
@@ -4598,6 +4839,7 @@ function isCalendarInlineFeast(row) {
     row.nursery_prayer,
     row.children_prayer,
     row.youth_prayer,
+    row.youth_offering_prayer,
     row.young_adult_prayer,
   ]);
   if (serviceFields.length) return false;
@@ -4644,6 +4886,7 @@ function majorChurchFeastsForYear(year) {
     generatedRelativeFeast(easter, 0, "부활주일"),
     generatedRelativeFeast(easter, 39, "주님의 승천일"),
     generatedChurchFeast(year, 12, 25, "성탄절"),
+    generatedChurchFeast(year, 12, 31, "송구영신예배"),
   ];
 }
 
@@ -4658,7 +4901,13 @@ function generatedChurchFeast(year, month, day, label) {
     nursery_prayer: "",
     children_prayer: "",
     youth_prayer: "",
+    youth_offering_prayer: "",
     young_adult_prayer: "",
+    liturgical_color: "",
+    first_reading: "",
+    psalm: "",
+    second_reading: "",
+    gospel: "",
     _generatedFeast: true,
   };
 }
@@ -4751,38 +5000,35 @@ function renderModuleSwitcher() {
   refs.brandHome?.setAttribute("aria-current", homeActive ? "page" : "false");
   refs.brandNameHome?.setAttribute("aria-current", homeActive ? "page" : "false");
   syncSidebarCollapsedState();
+  let searchLabel = "Search Mindex.";
   if (state.module === "service") {
     refs.searchInput.placeholder = "Search date, song...";
-    refs.searchInput.title = "Search worship services by date or song.";
+    searchLabel = "Search worship services by date or song.";
   } else if (state.module === "activities") {
     refs.searchInput.placeholder = "Search games, teams...";
-    refs.searchInput.title = "Search activities by game or team.";
+    searchLabel = "Search activities by game or team.";
   } else if (state.module === "order-sheets") {
     refs.searchInput.placeholder = "Search date, service...";
-    refs.searchInput.title = "Search order sheets by date or service.";
+    searchLabel = "Search order sheets by date or service.";
   } else if (state.module === "references") {
-    refs.searchInput.placeholder = "Search praise, scripture...";
-    refs.searchInput.title = "Search Mindex.";
+    refs.searchInput.placeholder = "Search Mindex...";
   } else if (state.module === "calendar") {
-    refs.searchInput.placeholder = "Search praise, scripture...";
-    refs.searchInput.title = "Search Mindex.";
+    refs.searchInput.placeholder = "Search Mindex...";
   } else if (state.module === "home") {
-    refs.searchInput.placeholder = "Search praise, scripture...";
-    refs.searchInput.title = "Search Mindex.";
+    refs.searchInput.placeholder = "Search Mindex...";
   } else if (state.module === "scripture") {
     refs.searchInput.placeholder = "Search reference, text...";
-    refs.searchInput.title = "Search scripture by reference or text.";
+    searchLabel = "Search scripture by reference or text.";
   } else {
     refs.searchInput.placeholder = "Search title, lyrics...";
-    refs.searchInput.title = "Search praise by title or lyrics.";
+    searchLabel = "Search praise by title or lyrics.";
   }
-  refs.searchInput.setAttribute("aria-label", refs.searchInput.title);
+  refs.searchInput.setAttribute("aria-label", searchLabel);
   const canCreate = state.module === "praise";
-  refs.newSongBtn.title = "New song";
   refs.newSongBtn.hidden = !canCreate;
   refs.newSongBtn.disabled = !canCreate;
   refs.saveAllBtn.hidden = false;
-  refs.saveAllBtn.title =
+  const saveLabel =
     state.module === "scripture"
       ? "Save scripture"
       : state.module === "service"
@@ -4796,7 +5042,7 @@ function renderModuleSwitcher() {
           : state.module === "praise"
           ? "Save song"
           : "Save";
-  refs.saveAllBtn.setAttribute("aria-label", refs.saveAllBtn.title);
+  refs.saveAllBtn.setAttribute("aria-label", saveLabel);
   renderListFilter();
 }
 
@@ -4809,7 +5055,41 @@ function syncSidebarCollapsedState() {
 const SERVICE_CATEGORIES = {
   public: ["sunday-first","sunday-second","sunday-main","sunday-afternoon","wednesday","friday","monthly"],
   ministry: ["children","youth","young-adult"],
-  special: ["holy-week-dawn","omer"],
+  special: ["special","holy-week-dawn","omer"],
+};
+
+const SERVICE_TYPE_DISPLAY_NAMES = {
+  "sunday-first": "주일예배 (1부)",
+  "sunday-second": "주일예배 (2부)",
+  "sunday-main": "주일예배 (3부)",
+  "sunday-afternoon": "주일오후예배",
+  wednesday: "수요예배",
+  friday: "금요기도회",
+  monthly: "월삭예배",
+  "주일예배": "주일예배 (3부)",
+  "새벽기도회": "특별예배",
+  children: "어린이부 예배",
+  youth: "청소년부 예배",
+  "young-adult": "청년부 예배",
+  special: "특별예배",
+  "holy-week-dawn": "특별새벽기도회",
+  omer: "오멜세기기도회",
+};
+
+const SERVICE_TYPE_LEGACY_NAMES = {
+  sun_1st: "주일예배 (1부)",
+  sun_2nd: "주일예배 (2부)",
+  sun_3rd: "주일예배 (3부)",
+  sun_pm: "주일오후예배",
+  wed: "수요예배",
+  fri: "금요기도회",
+  monthly: "월삭예배",
+  children: "어린이부 예배",
+  youth: "청소년부 예배",
+  young_adult: "청년부 예배",
+  holy_week_dawn: "특별새벽기도회",
+  omer: "오멜세기기도회",
+  special: "특별예배",
 };
 
 const CHROMAKEY_SERVICE_TYPES = new Set(["sunday-second", "sunday-main", "sunday-afternoon", "wednesday", "monthly"]);
@@ -4896,7 +5176,7 @@ function renderListFilter() {
   refs.listFilter.setAttribute("aria-label", state.module === "scripture" ? "Scripture filter" : "Praise filter");
   const filters = state.module === "scripture"
     ? [["all", "All"], ["old", "OT"], ["new", "NT"]]
-    : [["all", "All"], ["hymns", "Hymns"], ["ccm", "CCM"], ["children", "Children"]];
+    : [["all", "All"], ["hymns", "Hymns"], ["ccm", "CCM"], ["children", "Kids"]];
   const activeFilter = state.module === "scripture" ? state.scriptureFilter : state.praiseFilter;
   refs.listFilterButtons.forEach((button, index) => {
     if (index < filters.length) {
@@ -4916,15 +5196,15 @@ function renderListFilter() {
 function renderConnectionStatus() {
   const hasClient = Boolean(state.client);
   const hasDirty = hasDirtyChanges();
-  function setStatusIcon(icon, cls, title) {
+  function setStatusIcon(icon, cls, label) {
     refs.connectionStatus.className = "status-icon" + (cls ? " " + cls : "");
-    refs.connectionStatus.title = title;
+    refs.connectionStatus.setAttribute("aria-label", label);
     refs.connectionStatus.innerHTML = `<i data-lucide="${icon}"></i>`;
     refreshIcons();
   }
 
   if (state.loading) {
-    setStatusIcon("loader-2", "", "Loading…");
+    setStatusIcon("loader-2", "", "불러오는 중");
     return;
   }
 
@@ -4976,6 +5256,12 @@ function renderSongList() {
   }
   if (state.module === "calendar") {
     renderHomeList();
+    return;
+  }
+
+  if (!state.client) {
+    refs.songCount.textContent = "";
+    refs.songList.innerHTML = renderListEmptyState("연결 대기", DB_CONNECTION_EMPTY_MESSAGE);
     return;
   }
 
@@ -5273,7 +5559,7 @@ function renderHomeList() {
   const contentModules = ["activities", "praise", "scripture"]
     .map((id) => modules.find((module) => module.id === id))
     .filter(Boolean);
-  const utilityModules = ["calendar", "order-sheets", "references"]
+  const utilityModules = ["calendar", "references", "order-sheets"]
     .map((id) => modules.find((module) => module.id === id))
     .filter(Boolean);
   refs.songCount.textContent = "";
@@ -5315,7 +5601,7 @@ function renderHomeDetail() {
   const contentModules = ["activities", "praise", "scripture"]
     .map((id) => modules.find((module) => module.id === id))
     .filter(Boolean);
-  const utilityModules = ["calendar", "order-sheets", "references"]
+  const utilityModules = ["calendar", "references", "order-sheets"]
     .map((id) => modules.find((module) => module.id === id))
     .filter(Boolean);
   const verse = homeVerse();
@@ -5377,6 +5663,19 @@ function renderHomeVerseText(text) {
   return splitHomeVerseLines(text)
     .map((line) => escapeHtml(line))
     .join("<br />");
+}
+
+function renderConnectionEmptyDetail(message = DB_CONNECTION_EMPTY_MESSAGE) {
+  const verse = DB_CONNECTION_EMPTY_VERSE;
+  const meta = cleanList([verse.reference, message]).join(" · ");
+  return `
+      <div class="empty-detail">
+        <div class="empty-detail-inner">
+          <p class="empty-verse">${renderHomeVerseText(verse.text)}</p>
+          ${meta ? `<span>${escapeHtml(meta)}</span>` : ""}
+        </div>
+      </div>
+    `;
 }
 
 function renderModuleEmptyDetail(slot, title, fallback) {
@@ -5560,7 +5859,7 @@ function homeModuleCards() {
     },
     {
       id: "order-sheets",
-      title: "Order Sheet",
+      title: "Order Sheets",
       eyebrow: "",
       icon: "newspaper",
       sidebarMeta: orderSheetSummaryText(),
@@ -5627,6 +5926,12 @@ function toPositiveNumber(value) {
 
 function renderActivitiesList() {
   const query = normalizeSearchValue(state.search);
+  if (!state.client) {
+    refs.songCount.textContent = "";
+    refs.songList.innerHTML = renderListEmptyState("연결 대기", DB_CONNECTION_EMPTY_MESSAGE);
+    return;
+  }
+
   refs.songCount.textContent = state.activityLoaded
     ? `${formatCount(state.activityEvents.length)} ${state.activityEvents.length === 1 ? "event" : "events"}`
     : "";
@@ -5636,11 +5941,11 @@ function renderActivitiesList() {
     return;
   }
   if (state.activityError && state.activityError !== "setup") {
-    refs.songList.innerHTML = renderListEmptyState("Could not load activities", state.activityError);
+    refs.songList.innerHTML = renderListEmptyState("Activities unavailable", state.activityError);
     return;
   }
   if (!state.activityLoaded) {
-    refs.songList.innerHTML = renderListEmptyState("Loading activities", "Preparing games and teams.");
+    refs.songList.innerHTML = renderListEmptyState("Loading…", "");
     return;
   }
 
@@ -5883,6 +6188,12 @@ function formatActivityDate(value) {
 }
 
 function renderScriptureList() {
+  if (!state.client) {
+    refs.songCount.textContent = "";
+    refs.songList.innerHTML = renderListEmptyState("연결 대기", DB_CONNECTION_EMPTY_MESSAGE);
+    return;
+  }
+
   const reference = parseBibleReference(state.search);
   const books = reference ? getBibleBooks() : getBibleBooksForScriptureFilter();
   const filtered = getFilteredBibleBooks();
@@ -5892,7 +6203,7 @@ function renderScriptureList() {
     : `${filtered.length} ${filtered.length === 1 ? "book" : "books"}`;
 
   if (state.scriptureError) {
-    refs.songList.innerHTML = `<div class="song-list-empty">Run Scripture SQL first.</div>`;
+    refs.songList.innerHTML = renderListEmptyState("Scripture unavailable", state.scriptureError);
     return;
   }
 
@@ -5946,6 +6257,11 @@ function getReferenceLinks() {
 function finishListRender() {
   restoreCurrentListScroll();
   refreshIcons();
+}
+
+function finishDetailRender() {
+  refreshIcons();
+  updateSaveState();
 }
 
 function getListScrollKey() {
@@ -6049,6 +6365,12 @@ function renderDetail() {
     return;
   }
 
+  if (!state.client) {
+    refs.detailPane.innerHTML = renderConnectionEmptyDetail();
+    refreshIcons();
+    return;
+  }
+
   const song = getSelectedSong();
 
   if (!song) {
@@ -6068,14 +6390,17 @@ function renderDetail() {
             <span>${escapeHtml((song.hymn_no ? stripHymnNumber(song.title) : song.title) || "Untitled Song")}</span>
             ${song.hymn_no ? `<span class="scripture-book-marker">${escapeHtml(song.hymn_no)}</span>` : ""}
           </h2>
-          ${renderSongDescription(song, titleMetaLine, supportMetaItems, relatedSongs)}
+          ${renderSongDescription(song, titleMetaLine, [], relatedSongs)}
         </div>
         <div class="editor-head-right">
+          <div class="song-header-meta-row">
+            ${renderSongHeaderMeta(supportMetaItems, { reserve: true })}
+            <button class="icon-btn quiet metadata-edit-btn" type="button" data-open-metadata aria-label="Edit song info">
+              <i data-lucide="pencil"></i>
+            </button>
+          </div>
           <div class="head-actions">
             <span class="dirty-pill" ${hasDirtyChanges() ? "" : "hidden"}>Unsaved changes</span>
-            <button class="icon-btn quiet" type="button" data-open-metadata title="Edit song info" aria-label="Edit song info">
-              <i data-lucide="sliders-horizontal"></i>
-            </button>
           </div>
         </div>
       </header>
@@ -6090,22 +6415,14 @@ function renderDetail() {
 }
 
 function renderActivitiesDetail() {
+  if (!state.client) {
+    refs.detailPane.innerHTML = renderConnectionEmptyDetail();
+    refreshIcons();
+    return;
+  }
+
   if (state.activityError === "setup") {
-    refs.detailPane.innerHTML = `
-      <div class="editor-shell activities-shell">
-        <header class="editor-head">
-          <div class="editor-title">
-            <h2>Activities</h2>
-            <section class="song-description" aria-label="Activities setup">
-              <p class="song-description-title">Activities tables are not installed yet</p>
-            </section>
-          </div>
-        </header>
-        <div class="reference-setup-notice">
-          <strong>Run scripts/activities-schema.sql</strong>
-        </div>
-      </div>
-    `;
+    refs.detailPane.innerHTML = renderModuleEmptyDetail("activities", "Activities", "Activities unavailable.");
     refreshIcons();
     return;
   }
@@ -6148,7 +6465,7 @@ function renderActivitiesDetail() {
             <i data-lucide="gamepad-2"></i>
             <span>Game</span>
           </button>
-          <button class="icon-btn quiet" type="button" title="Presenter" aria-label="Open activity presenter" disabled>
+          <button class="icon-btn quiet" type="button" aria-label="Open activity presenter" disabled>
             <i data-lucide="screen-share"></i>
           </button>
         </div>
@@ -6193,7 +6510,7 @@ function renderActivityScoreForm(event, teams, games) {
       </select>
       <input data-activity-score-field="points" type="number" value="1" inputmode="numeric" aria-label="Points" />
       <input data-activity-score-field="reason" type="text" placeholder="Reason" aria-label="Reason" />
-      <button class="icon-btn" type="button" data-activity-action="add-score" data-activity-event-id="${escapeAttr(event.id)}" title="Add score" aria-label="Add score">
+      <button class="icon-btn" type="button" data-activity-action="add-score" data-activity-event-id="${escapeAttr(event.id)}" aria-label="Add score">
         <i data-lucide="plus"></i>
       </button>
     </div>
@@ -6238,6 +6555,12 @@ function activityGameTypeLabel(type) {
 }
 
 function renderReferencesDetail() {
+  if (!state.client) {
+    refs.detailPane.innerHTML = renderConnectionEmptyDetail();
+    refreshIcons();
+    return;
+  }
+
   const links = getReferenceLinks();
   const hasLinks = links.length && !state.referenceError;
   refs.detailPane.innerHTML = `
@@ -6251,11 +6574,11 @@ function renderReferencesDetail() {
         </div>
         <div class="head-actions">
           <span class="dirty-pill" ${state.dirty.references ? "" : "hidden"}>Unsaved changes</span>
-          <button class="reference-new-btn secondary" type="button" data-reference-action="new-group" title="New group" aria-label="New group">
+          <button class="reference-new-btn secondary" type="button" data-reference-action="new-group" aria-label="New group">
             <i data-lucide="folder-plus"></i>
             <span>New group</span>
           </button>
-          <button class="reference-new-btn" type="button" data-reference-action="new" title="New link" aria-label="New link">
+          <button class="reference-new-btn" type="button" data-reference-action="new" aria-label="New link">
             <i data-lucide="plus"></i>
             <span>New link</span>
           </button>
@@ -6305,10 +6628,9 @@ function renderReferenceGroups(links) {
     }
     group.links.push(link);
   }
-  const allLinks = getReferenceEditorLinks();
   return `
     <div class="reference-group-stack">
-      ${groups.map((group) => `
+      ${groups.map((group, index) => `
         <section class="reference-group">
           <div class="reference-group-head">
             ${state.editingReferenceGroupKey === group.key ? `
@@ -6322,17 +6644,32 @@ function renderReferenceGroups(links) {
               />
             ` : `<h3>${escapeHtml(group.title)}</h3>`}
             <span>${escapeHtml(formatCount(group.links.length))}</span>
+            <div class="reference-group-actions" aria-label="Move reference group">
+              <button class="icon-btn quiet" type="button"
+                data-reference-action="move-group-up"
+                data-reference-group-key="${escapeAttr(group.key)}"
+                ${index <= 0 ? "disabled" : ""}
+                aria-label="Move group up">
+                <i data-lucide="arrow-up"></i>
+              </button>
+              <button class="icon-btn quiet" type="button"
+                data-reference-action="move-group-down"
+                data-reference-group-key="${escapeAttr(group.key)}"
+                ${index >= groups.length - 1 ? "disabled" : ""}
+                aria-label="Move group down">
+                <i data-lucide="arrow-down"></i>
+              </button>
+            </div>
             <button class="icon-btn quiet reference-group-edit" type="button"
               data-reference-action="${state.editingReferenceGroupKey === group.key ? "done-group" : "edit-group"}"
               data-reference-group-key="${escapeAttr(group.key)}"
-              title="${state.editingReferenceGroupKey === group.key ? "Done" : "Edit group"}"
               aria-label="${state.editingReferenceGroupKey === group.key ? "Done editing group" : "Edit group"}">
               <i data-lucide="${state.editingReferenceGroupKey === group.key ? "check" : "pencil"}"></i>
               <span>${state.editingReferenceGroupKey === group.key ? "Done" : "Rename"}</span>
             </button>
           </div>
           <div class="reference-link-grid">
-            ${group.links.map((link) => renderReferenceCard(link, allLinks)).join("")}
+            ${group.links.map((link) => renderReferenceCard(link, group.links)).join("")}
           </div>
         </section>
       `).join("")}
@@ -6360,10 +6697,10 @@ function renderReferenceEditorRow(link, index = 0, total = 1) {
       <div class="reference-editor-actions">
         <div class="reference-editor-action-group">
           <div class="reference-move-actions" aria-label="Move reference">
-            <button class="icon-btn quiet" type="button" data-reference-action="move-up" data-reference-id="${escapeAttr(link.id)}" ${index <= 0 ? "disabled" : ""} title="Move up" aria-label="Move up">
+            <button class="icon-btn quiet" type="button" data-reference-action="move-up" data-reference-id="${escapeAttr(link.id)}" ${index <= 0 ? "disabled" : ""} aria-label="Move up">
               <i data-lucide="arrow-up"></i>
             </button>
-            <button class="icon-btn quiet" type="button" data-reference-action="move-down" data-reference-id="${escapeAttr(link.id)}" ${index >= total - 1 ? "disabled" : ""} title="Move down" aria-label="Move down">
+            <button class="icon-btn quiet" type="button" data-reference-action="move-down" data-reference-id="${escapeAttr(link.id)}" ${index >= total - 1 ? "disabled" : ""} aria-label="Move down">
               <i data-lucide="arrow-down"></i>
             </button>
           </div>
@@ -6373,13 +6710,13 @@ function renderReferenceEditorRow(link, index = 0, total = 1) {
           </label>
         </div>
         <div class="reference-editor-action-group">
-          <button class="icon-btn quiet" type="button" data-reference-action="open" data-reference-id="${escapeAttr(link.id)}" title="Open reference" aria-label="Open reference">
+          <button class="icon-btn quiet" type="button" data-reference-action="open" data-reference-id="${escapeAttr(link.id)}" aria-label="Open reference">
             <i data-lucide="external-link"></i>
           </button>
-          <button class="icon-btn quiet" type="button" data-reference-action="done" data-reference-id="${escapeAttr(link.id)}" title="Done" aria-label="Done editing">
+          <button class="icon-btn quiet" type="button" data-reference-action="done" data-reference-id="${escapeAttr(link.id)}" aria-label="Done editing">
             <i data-lucide="check"></i>
           </button>
-          <button class="icon-btn danger" type="button" data-reference-action="delete" data-reference-id="${escapeAttr(link.id)}" title="Delete reference" aria-label="Delete reference">
+          <button class="icon-btn danger" type="button" data-reference-action="delete" data-reference-id="${escapeAttr(link.id)}" aria-label="Delete reference">
             <i data-lucide="trash-2"></i>
           </button>
         </div>
@@ -6400,16 +6737,16 @@ function renderReferenceCard(link, allLinks = getReferenceEditorLinks()) {
         </span>
       </a>
       <div class="reference-card-actions">
-        <button class="icon-btn quiet" type="button" data-reference-action="move-up" data-reference-id="${escapeAttr(link.id)}" ${index <= 0 ? "disabled" : ""} title="Move up" aria-label="Move up">
+        <button class="icon-btn quiet" type="button" data-reference-action="move-up" data-reference-id="${escapeAttr(link.id)}" ${index <= 0 ? "disabled" : ""} aria-label="Move up">
           <i data-lucide="arrow-up"></i>
         </button>
-        <button class="icon-btn quiet" type="button" data-reference-action="move-down" data-reference-id="${escapeAttr(link.id)}" ${index >= allLinks.length - 1 ? "disabled" : ""} title="Move down" aria-label="Move down">
+        <button class="icon-btn quiet" type="button" data-reference-action="move-down" data-reference-id="${escapeAttr(link.id)}" ${index >= allLinks.length - 1 ? "disabled" : ""} aria-label="Move down">
           <i data-lucide="arrow-down"></i>
         </button>
-        <button class="icon-btn quiet" type="button" data-reference-action="edit" data-reference-id="${escapeAttr(link.id)}" title="Edit link" aria-label="Edit link">
+        <button class="icon-btn quiet" type="button" data-reference-action="edit" data-reference-id="${escapeAttr(link.id)}" aria-label="Edit link">
           <i data-lucide="pencil"></i>
         </button>
-        <button class="icon-btn quiet" type="button" data-reference-action="open" data-reference-id="${escapeAttr(link.id)}" title="Open reference" aria-label="Open reference">
+        <button class="icon-btn quiet" type="button" data-reference-action="open" data-reference-id="${escapeAttr(link.id)}" aria-label="Open reference">
           <i data-lucide="external-link"></i>
         </button>
       </div>
@@ -6428,10 +6765,9 @@ function shortUrl(value) {
 
 function renderSongDescription(song, primary, items = [], relatedSongs = []) {
   const supportItems = items.filter(Boolean);
-  if (!primary && !supportItems.length && !relatedSongs?.length) return "";
   return `
-    <section class="song-description" aria-label="Song description">
-      ${primary ? `<p class="song-description-title">${escapeHtml(primary)}</p>` : ""}
+    <section class="song-description song-description--song" aria-label="Song description">
+      ${primary ? `<p class="song-description-title">${escapeHtml(primary)}</p>` : `<p class="song-description-title empty" aria-hidden="true">&nbsp;</p>`}
       ${supportItems.length ? `
         <div class="song-description-meta">
           ${supportItems.map(renderDescriptionMetaItem).join("")}
@@ -6439,6 +6775,16 @@ function renderSongDescription(song, primary, items = [], relatedSongs = []) {
       ` : ""}
       ${renderRelatedSongLinks(relatedSongs)}
     </section>
+  `;
+}
+
+function renderSongHeaderMeta(items = [], options = {}) {
+  const supportItems = items.filter(Boolean);
+  if (!supportItems.length && !options.reserve) return "";
+  return `
+    <div class="song-description-meta song-description-meta--head${supportItems.length ? "" : " empty"}" ${supportItems.length ? "" : `aria-hidden="true"`}>
+      ${supportItems.length ? supportItems.map(renderDescriptionMetaItem).join("") : "&nbsp;"}
+    </div>
   `;
 }
 
@@ -6456,10 +6802,9 @@ function renderDescriptionMetaItem(item) {
 
 function renderEditorMeta(primary, items = []) {
   const supportItems = items.filter(Boolean);
-  if (!primary && !supportItems.length) return "";
   return `
     <section class="song-description" aria-label="Metadata">
-      ${primary ? `<p class="song-description-title">${escapeHtml(primary)}</p>` : ""}
+      ${primary ? `<p class="song-description-title">${escapeHtml(primary)}</p>` : `<p class="song-description-title empty" aria-hidden="true">&nbsp;</p>`}
       ${supportItems.length ? `
         <div class="song-description-meta">
           ${supportItems.map(renderDescriptionMetaItem).join("")}
@@ -6488,7 +6833,7 @@ function renderSongMetadataDialog(song) {
       <section class="metadata-popover" role="dialog" aria-label="Song metadata">
         <header class="metadata-popover-head">
           <h3>Metadata</h3>
-          <button class="icon-btn" type="button" data-close-metadata title="Close metadata" aria-label="Close metadata">
+          <button class="icon-btn" type="button" data-close-metadata aria-label="Close metadata">
             <i data-lucide="x"></i>
           </button>
         </header>
@@ -6515,7 +6860,7 @@ function renderScriptureMetadataDialog(scripture) {
       <section class="metadata-popover" role="dialog" aria-label="Scripture metadata">
         <header class="metadata-popover-head">
           <h3>Metadata</h3>
-          <button class="icon-btn" type="button" data-close-metadata title="Close metadata" aria-label="Close metadata">
+          <button class="icon-btn" type="button" data-close-metadata aria-label="Close metadata">
             <i data-lucide="x"></i>
           </button>
         </header>
@@ -6570,6 +6915,12 @@ function renderScriptureDetail() {
   const scripture = getSelectedScripture();
   const selectedBook = findBibleBookByCode(scripture?.book_code) || findBibleBookByCode(state.selectedBookCode) || findBibleBookByName(scripture?.book);
 
+  if (!state.client) {
+    refs.detailPane.innerHTML = renderConnectionEmptyDetail();
+    refreshIcons();
+    return;
+  }
+
   if (state.scriptureError) {
     refs.detailPane.innerHTML = `
       <div class="empty-detail">
@@ -6606,7 +6957,12 @@ function renderScriptureDetail() {
             <span>${escapeHtml(selectedBook?.koreanName || "Bible Books")}</span>
             ${renderScriptureBookMarker(selectedBook)}
           </h2>
-          ${renderEditorMeta(titleMetaLine, supportMetaItems)}
+          ${renderEditorMeta(titleMetaLine, [])}
+          </div>
+          <div class="editor-head-right">
+            <div class="song-header-meta-row">
+              ${renderSongHeaderMeta(supportMetaItems, { reserve: true })}
+            </div>
           </div>
         </header>
         <section class="panel scripture-panel">
@@ -6631,19 +6987,19 @@ function renderScriptureDetail() {
           <h2 id="editorSongTitle">
             <span>${escapeHtml(scripture.title || "Untitled Scripture")}</span>
           </h2>
-          ${renderEditorMeta(titleMetaLine, supportMetaItems)}
+          ${renderEditorMeta(titleMetaLine, [])}
         </div>
         <div class="editor-head-right">
+          <div class="song-header-meta-row">
+            ${renderSongHeaderMeta(supportMetaItems, { reserve: true })}
+          </div>
           <div class="head-actions">
             <span class="dirty-pill" ${hasDirtyChanges() ? "" : "hidden"}>Unsaved changes</span>
-            <button class="icon-btn quiet" type="button" data-open-metadata title="Edit scripture info" aria-label="Edit scripture info">
-              <i data-lucide="sliders-horizontal"></i>
-            </button>
-            <button class="btn secondary" type="button" data-copy-action="scripture" title="Copy scripture text">
+            <button class="btn secondary" type="button" data-copy-action="scripture">
               <i data-lucide="clipboard"></i>
               <span>Text</span>
             </button>
-            <button class="btn secondary" type="button" data-copy-action="scripture-slides" title="Copy scripture slide blocks">
+            <button class="btn secondary" type="button" data-copy-action="scripture-slides">
               <i data-lucide="copy"></i>
               <span>Slides</span>
             </button>
@@ -6725,7 +7081,7 @@ function versionReviewReasons(song, version, forms = version?.forms || []) {
     if (form?.review_status === "needs_review") reasons.add("Marked");
     if (form?.import_source === "amen-coda-audit") reasons.add("Amen split check");
     else if (form?.import_source === "ccm-children-duplicate-lyrics") reasons.add("CCM/children duplicate lyrics");
-    else if (form?.import_source) reasons.add("Imported");
+    else if (form?.import_source) reasons.add("Lyrics check");
     if (allowStructuralReview && formLooksUnsplit(form)) reasons.add("Unsplit lyrics");
   }
   if (allowStructuralReview && (forms || []).some((form) => form?.review_status !== "reviewed")) {
@@ -6742,7 +7098,7 @@ function songNeedsReviewFromImport(song) {
 
 function renderAttentionIcon(label, tone = "needs-review") {
   return `
-    <span class="attention-icon ${tone}" title="${escapeAttr(label)}" aria-label="${escapeAttr(label)}">
+    <span class="attention-icon ${tone}" aria-label="${escapeAttr(label)}">
       !
     </span>
   `;
@@ -6845,7 +7201,7 @@ function renderVersionCompareColumn(version, forms) {
 
 function renderAddVersionButton(sourceVersionId) {
   return `
-    <button class="version-add-btn" type="button" data-add-version data-source-version-id="${escapeAttr(sourceVersionId || "")}" title="Duplicate as new version" aria-label="Duplicate as new version">
+    <button class="version-add-btn" type="button" data-add-version data-source-version-id="${escapeAttr(sourceVersionId || "")}" aria-label="Duplicate as new version">
       <i data-lucide="copy-plus"></i>
     </button>
   `;
@@ -6881,11 +7237,11 @@ function renderVersionAttentionStatus(song, version, forms, options = {}) {
   const label = versionAttentionLabel(song, version, forms);
   const visibleLabel = info.needsReview ? "Review" : "Empty";
   return `
-    <span class="version-attention-status ${escapeAttr(info.tone)}" title="${escapeAttr(label)}" aria-label="${escapeAttr(label)}">
+    <span class="version-attention-status ${escapeAttr(info.tone)}" aria-label="${escapeAttr(label)}">
       <span class="version-attention-mark">!</span>
       <span>${escapeHtml(visibleLabel)}</span>
       ${options.active && info.needsReview ? `
-        <button class="version-review-btn review-action" type="button" data-version-action="mark-all-reviewed" title="Mark this version reviewed" aria-label="Mark this version reviewed">
+        <button class="version-review-btn review-action" type="button" data-version-action="mark-all-reviewed" aria-label="Mark this version reviewed">
           <i data-lucide="check"></i>
         </button>
       ` : ""}
@@ -6907,7 +7263,7 @@ function renderFormToolbar(song) {
         ${STRUCTURAL_PART_TYPES
           .map(
             (type) => `
-              <button class="btn secondary" type="button" data-add-form="${type}" title="Add ${type}">
+              <button class="btn secondary" type="button" data-add-form="${type}">
                 <i data-lucide="plus"></i>
                 <span>${FORM_ADD_LABELS[type] || type}</span>
               </button>
@@ -6917,15 +7273,15 @@ function renderFormToolbar(song) {
       </div>
       <div class="toolbar-output-stack">
         <div class="copy-actions" aria-label="Copy and export lyrics">
-          <button class="btn secondary" type="button" data-copy-action="plain" ${hasLyrics ? "" : "disabled"} title="Copy text with form labels">
+          <button class="btn secondary" type="button" data-copy-action="plain" ${hasLyrics ? "" : "disabled"}>
             <i data-lucide="clipboard"></i>
             <span>Text</span>
           </button>
-          <button class="btn secondary" type="button" data-copy-action="download-freeshow" ${hasLyrics ? "" : "disabled"} title="Download FreeShow .show">
+          <button class="btn secondary" type="button" data-copy-action="download-freeshow" ${hasLyrics ? "" : "disabled"}>
             <i data-lucide="presentation"></i>
             <span>Show</span>
           </button>
-          <button class="btn secondary" type="button" data-copy-action="download-xml" ${hasLyrics ? "" : "disabled"} title="Download XML">
+          <button class="btn secondary" type="button" data-copy-action="download-xml" ${hasLyrics ? "" : "disabled"}>
             <i data-lucide="file-code-2"></i>
             <span>XML</span>
           </button>
@@ -6992,14 +7348,14 @@ function renderBibleBookOptions(testament, selectedCode) {
 function renderScriptureBookMarker(book) {
   if (!book?.shortName) return "";
   const label = book.koreanName || book.canonicalEnglishTitle || book.englishName || book.code;
-  return `<span class="scripture-book-marker" title="${escapeAttr(label)}">${escapeHtml(book.shortName)}</span>`;
+  return `<span class="scripture-book-marker" aria-label="${escapeAttr(label)}">${escapeHtml(book.shortName)}</span>`;
 }
 
 function renderScriptureChapterBadge(book) {
   const count = getBibleChapterCount(book);
   if (!count) return "";
   const label = `${count} ${count === 1 ? "chapter" : "chapters"}`;
-  return `<span class="song-count-badge scripture-chapter-badge" title="${escapeAttr(label)}" aria-label="${escapeAttr(label)}">${escapeHtml(String(count))}</span>`;
+  return `<span class="song-count-badge scripture-chapter-badge" aria-label="${escapeAttr(label)}">${escapeHtml(String(count))}</span>`;
 }
 
 function scriptureBookSupportMetaItems(book) {
@@ -7041,7 +7397,12 @@ function renderBibleTextSearchDetail() {
           <h2>
             <span>Search Results</span>
           </h2>
-          ${renderEditorMeta(`"${state.bibleTextSearchQuery}"`, supportMetaItems)}
+          ${renderEditorMeta(`"${state.bibleTextSearchQuery}"`, [])}
+        </div>
+        <div class="editor-head-right">
+          <div class="song-header-meta-row">
+            ${renderSongHeaderMeta(supportMetaItems, { reserve: true })}
+          </div>
         </div>
       </header>
       <section class="panel scripture-panel">
@@ -7081,7 +7442,7 @@ function renderBibleTextSearchResults() {
           <p class="bible-verse bible-search-result" data-bible-search-result="${index}" role="button" tabindex="0" aria-label="Open ${escapeAttr(reference)}">
             <span class="bible-search-reference">${escapeHtml(reference)}</span>
             <strong>${highlightBibleSearchText(verse.text || "", state.bibleTextSearchQuery)}</strong>
-            <button class="bible-verse-copy" type="button" data-copy-bible-search-result="${index}" title="Copy verse" aria-label="Copy ${escapeAttr(reference)}">
+            <button class="bible-verse-copy" type="button" data-copy-bible-search-result="${index}" aria-label="Copy ${escapeAttr(reference)}">
               <i data-lucide="copy"></i>
             </button>
           </p>
@@ -7102,10 +7463,10 @@ function renderBibleSearchPagination(totalCount) {
   if (!hasPrevious && !hasNext) return "";
   return `
     <span class="bible-search-pagination">
-      <button class="icon-btn" type="button" data-bible-search-page="-1" title="Previous results" aria-label="Previous results" ${hasPrevious ? "" : "disabled"}>
+      <button class="icon-btn" type="button" data-bible-search-page="-1" aria-label="Previous results" ${hasPrevious ? "" : "disabled"}>
         <i data-lucide="chevron-left"></i>
       </button>
-      <button class="icon-btn" type="button" data-bible-search-page="1" title="Next results" aria-label="Next results" ${hasNext ? "" : "disabled"}>
+      <button class="icon-btn" type="button" data-bible-search-page="1" aria-label="Next results" ${hasNext ? "" : "disabled"}>
         <i data-lucide="chevron-right"></i>
       </button>
     </span>
@@ -7179,7 +7540,7 @@ function renderBibleChapterControl(chapters, hasPreviousChapter, hasNextChapter)
     <label class="bible-control bible-control--chapter">
       <span>Chapter</span>
       <span class="bible-chapter-control">
-        <button class="icon-btn" type="button" data-bible-reader-action="-1" title="Previous chapter" aria-label="Previous chapter" ${hasPreviousChapter ? "" : "disabled"}>
+        <button class="icon-btn" type="button" data-bible-reader-action="-1" aria-label="Previous chapter" ${hasPreviousChapter ? "" : "disabled"}>
           <i data-lucide="chevron-left"></i>
         </button>
         <select data-bible-reader-field="chapter" ${chapters.length ? "" : "disabled"}>
@@ -7187,7 +7548,7 @@ function renderBibleChapterControl(chapters, hasPreviousChapter, hasNextChapter)
             ? chapters.map((chapter) => `<option value="${chapter}" ${chapter === state.selectedBibleChapter ? "selected" : ""}>${chapter}</option>`).join("")
             : `<option value="1">1</option>`}
         </select>
-        <button class="icon-btn" type="button" data-bible-reader-action="1" title="Next chapter" aria-label="Next chapter" ${hasNextChapter ? "" : "disabled"}>
+        <button class="icon-btn" type="button" data-bible-reader-action="1" aria-label="Next chapter" ${hasNextChapter ? "" : "disabled"}>
           <i data-lucide="chevron-right"></i>
         </button>
       </span>
@@ -7210,7 +7571,7 @@ function renderBibleCopyFormatControl() {
 
 function renderBibleChapterCopyButton() {
   return `
-    <button class="btn secondary bible-copy-chapter" type="button" data-copy-bible-chapter title="Copy this chapter" aria-label="Copy this chapter">
+    <button class="btn secondary bible-copy-chapter" type="button" data-copy-bible-chapter aria-label="Copy this chapter">
       <i data-lucide="copy"></i>
       <span>Copy chapter</span>
     </button>
@@ -7257,7 +7618,7 @@ function renderBibleVerseList(verses) {
           <p class="bible-verse${selected ? " selected" : ""}" data-bible-verse="${escapeAttr(String(verse.verse))}" role="button" tabindex="0" aria-selected="${selected ? "true" : "false"}" aria-label="Select verse ${escapeAttr(String(verse.verse))}">
             <span>${escapeHtml(String(verse.verse))}</span>
             <strong>${escapeHtml(verse.text || "")}</strong>
-            <button class="bible-verse-copy" type="button" data-copy-bible-verse="${escapeAttr(String(verse.verse))}" title="Copy verse" aria-label="Copy verse ${escapeAttr(String(verse.verse))}">
+            <button class="bible-verse-copy" type="button" data-copy-bible-verse="${escapeAttr(String(verse.verse))}" aria-label="Copy verse ${escapeAttr(String(verse.verse))}">
               <i data-lucide="copy"></i>
             </button>
           </p>
@@ -7304,16 +7665,16 @@ function renderFormBlock(form, index, options = {}) {
           </select>
         </div>
         <div class="form-actions">
-          <button class="icon-btn" type="button" data-form-action="up" data-index="${index}" title="Move up" ${index === 0 ? "disabled" : ""}>
+          <button class="icon-btn" type="button" data-form-action="up" data-index="${index}" aria-label="Move block up" ${index === 0 ? "disabled" : ""}>
             <i data-lucide="arrow-up"></i>
           </button>
-          <button class="icon-btn" type="button" data-form-action="down" data-index="${index}" title="Move down" ${index === state.forms.length - 1 ? "disabled" : ""}>
+          <button class="icon-btn" type="button" data-form-action="down" data-index="${index}" aria-label="Move block down" ${index === state.forms.length - 1 ? "disabled" : ""}>
             <i data-lucide="arrow-down"></i>
           </button>
-          <button class="icon-btn" type="button" data-form-action="copy" data-index="${index}" title="Copy block">
+          <button class="icon-btn" type="button" data-form-action="copy" data-index="${index}" aria-label="Copy block">
             <i data-lucide="copy"></i>
           </button>
-          <button class="icon-btn danger" type="button" data-form-action="delete" data-index="${index}" title="Delete block">
+          <button class="icon-btn danger" type="button" data-form-action="delete" data-index="${index}" aria-label="Delete block">
             <i data-lucide="trash-2"></i>
           </button>
         </div>
@@ -8803,7 +9164,7 @@ function getSelectedScripture() {
 
 function requireClient({ silent = false } = {}) {
   if (state.client) return true;
-  if (!silent) showToast(state.connectionError || "Open Mindex with a connection link first.", "error");
+  if (!silent) showToast(state.connectionError || DB_CONNECTION_EMPTY_MESSAGE, "error");
   return false;
 }
 
@@ -9050,6 +9411,7 @@ const SERVICE_ORDER_TEMPLATE_FALLBACKS = {
   monthly: ["찬양", "기도", "성경봉독", "특송", "설교", "결단찬양", "기도", "봉헌", "봉헌기도", "교회소식", "축도"],
   "holy-week-dawn": ["찬양", "기도", "성경봉독", "설교", "기도"],
   omer: ["찬양", "기도", "특송", "결단"],
+  special: [],
   children: ["사도신경", "찬양", "예배의 부름", "성경봉독", "설교", "결단기도", "봉헌", "봉헌찬양", "봉헌기도", "나래파송", "주기도문", "광고", "교제"],
   youth: ["사도신경", "찬양", "통성기도", "대표기도", "봉헌", "봉헌찬양", "봉헌기도", "성경봉독", "설교", "결단찬양", "결단기도", "주기도문", "광고", "교제"],
   "young-adult": ["사도신경", "대표기도", "찬양", "통성기도", "성경봉독", "설교", "결단찬양", "결단기도", "봉헌", "봉헌찬양", "봉헌기도", "광고", "파송찬양", "축도", "교제"],
@@ -9169,23 +9531,19 @@ function serviceTypeName(typeId) {
 }
 
 function serviceTypeDisplayName(typeId) {
-  if (typeId === "sunday-first") return "주일예배 (1부)";
-  if (typeId === "sunday-second") return "주일예배 (2부)";
-  if (typeId === "sunday-main") return "주일예배 (3부)";
-  if (typeId === "sunday-afternoon") return "주일오후예배";
-  if (typeId === "wednesday") return "수요예배";
-  if (typeId === "friday") return "금요기도회";
-  if (typeId === "monthly") return "월삭예배";
-  if (typeId === "holy-week-dawn") return "특별새벽기도회";
-  if (typeId === "omer") return "오멜세기기도회";
-  if (typeId === "children") return "어린이부 예배";
-  if (typeId === "youth") return "청소년부 예배";
-  if (typeId === "young-adult") return "청년부 예배";
-  return serviceTypeName(typeId);
+  const rawName = String(serviceTypeName(typeId) || "").trim();
+  if (rawName && !SERVICE_TYPE_LEGACY_NAMES[rawName]) return rawName;
+  return SERVICE_TYPE_DISPLAY_NAMES[typeId] || SERVICE_TYPE_LEGACY_NAMES[rawName] || rawName || typeId || "";
+}
+
+function serviceCustomTitle(service) {
+  return String(service?.title || "").trim();
 }
 
 function serviceDisplayTypeName(service) {
   if (!service) return "";
+  const customTitle = serviceCustomTitle(service);
+  if (customTitle) return customTitle;
   const tags = Array.isArray(service.tags) ? service.tags : [];
   if (service.type_id === "sunday-main" && tags.some((tag) => String(tag).includes("2·3부 통합"))) {
     return "주일예배 (2·3부 통합)";
@@ -9232,7 +9590,7 @@ function serializeServiceOrderTemplate(typeId) {
           ...parseServiceItemMemo(normalized.notes),
           templateKey: normalized.templateKey,
           templateVariant: normalized.templateVariant,
-          componentType: normalized.componentType,
+          elementType: normalized.elementType,
         })),
         sort_order: index + 1,
       };
@@ -9249,6 +9607,7 @@ function defaultServiceTemplateStep(index = 0, typeId = "") {
     required: false,
     flex: true,
     repeatable: false,
+    elementType: "",
     componentType: "",
     templateKey: "",
     templateVariant: serviceGroup === "ministry" ? "부서예배" : serviceGroup === "public" ? "공예배" : "",
@@ -9270,7 +9629,8 @@ function normalizeServiceTemplateStep(step = {}, index = 0) {
     required: Boolean(step.required),
     flex: Boolean(step.flex),
     repeatable: Boolean(step.repeatable),
-    componentType: normalizeServiceComponentType(step.componentType || step.component_type || memo.componentType),
+    elementType: normalizeServiceElementType(step.elementType || step.element_type || step.componentType || step.component_type || memo.elementType || memo.componentType),
+    componentType: normalizeServiceElementType(step.elementType || step.element_type || step.componentType || step.component_type || memo.elementType || memo.componentType),
     templateKey: String(step.templateKey || step.template_key || memo.templateKey || "").trim(),
     templateVariant: String(step.templateVariant || step.template_variant || memo.templateVariant || "").trim(),
     default_text: String(step.default_text || "").trim(),
@@ -9313,8 +9673,9 @@ function updateServiceTemplateStepField(field) {
     step.default_text = String(field.value || "").trim();
   } else if (key === "phase") {
     step.phase = String(field.value || "").trim();
-  } else if (key === "component_type") {
-    step.componentType = normalizeServiceComponentType(field.value);
+  } else if (key === "element_type" || key === "component_type") {
+    step.elementType = normalizeServiceElementType(field.value);
+    step.componentType = step.elementType;
   } else if (key === "template_key") {
     step.templateKey = String(field.value || "").trim();
   } else if (key === "template_variant") {
@@ -9385,7 +9746,7 @@ function renderServiceFormHintInput(item, index, options = {}) {
       data-service-item-index="${index}"
       value="${escapeAttr(serviceItemFormHint(item))}"
       placeholder="${escapeAttr(options.placeholder || "송폼/범위")}"
-      aria-label="Section form hint"
+      aria-label="섹션 송폼/범위"
     />`;
 }
 
@@ -9504,12 +9865,13 @@ function serviceMatchesSearch(svc, q) {
   const date = svc.date || "";
   const d = new Date(date + "T00:00:00");
   const dateFmt = `${d.getMonth()+1}/${d.getDate()}`;
-  const type = norm([serviceTypeName(svc.type_id), serviceTypeDisplayName(svc.type_id)].join(" "));
+  const dateDisplay = norm([dateFmt, formatServiceDate(svc, { compact: true }), formatServiceDate(svc), serviceOrderSheetTitle(svc)].join(" "));
+  const type = norm([serviceTypeName(svc.type_id), serviceTypeDisplayName(svc.type_id), serviceDisplayTypeName(svc), serviceCustomTitle(svc)].join(" "));
   const items = norm([
     ...getServiceItems(svc.id),
     ...getServiceDefaultItems(svc.type_id),
   ].map((item) => `${item.label || ""} ${item.raw_title || ""}`).join(" "));
-  return praiseLead.includes(q) || date.includes(q) || tags.includes(q) || dateFmt.includes(q) || type.includes(q) || items.includes(q);
+  return praiseLead.includes(q) || date.includes(q) || tags.includes(q) || dateDisplay.includes(q) || type.includes(q) || items.includes(q);
 }
 
 function getFilteredServicesForType(typeId) {
@@ -9642,6 +10004,12 @@ function getServiceSidebarServices() {
 }
 
 function renderServiceList() {
+  if (!state.client) {
+    refs.songCount.textContent = "";
+    refs.songList.innerHTML = renderListEmptyState("연결 대기", DB_CONNECTION_EMPTY_MESSAGE);
+    return;
+  }
+
   if (state.serviceError || !state.serviceTypes.length) {
     refs.songCount.textContent = "";
     refs.songList.innerHTML = state.serviceError
@@ -9664,7 +10032,7 @@ function renderServiceList() {
         <div class="service-sidebar-head">
           <span>${q ? "검색 결과" : "예배"}</span>
           ${q ? `<small>${types.length}종</small>` : `
-            <button class="service-sidebar-add" type="button" data-service-dashboard title="원하는 날짜 예배 추가" aria-label="원하는 날짜 예배 추가">
+            <button class="service-sidebar-add" type="button" data-service-dashboard aria-label="원하는 날짜 예배 추가">
               <i data-lucide="plus"></i>
               <span>추가</span>
             </button>`}
@@ -9740,11 +10108,11 @@ function renderServiceOrderTemplateEditor(type) {
     <details class="svc-template-card">
       <summary>
         <span>${escapeHtml(serviceTypeDisplayName(type.id))}</span>
-        <small>${steps.length} sections</small>
+        <small>${steps.length} 섹션</small>
       </summary>
       <div class="svc-template-step-list">
         ${steps.map((step, index) => renderServiceTemplateStepRow(type.id, step, index, steps.length)).join("")}
-        <button class="svc-template-add" type="button" data-service-template-step-action="add" data-service-type-id="${escapeAttr(type.id)}">+ Section</button>
+        <button class="svc-template-add" type="button" data-service-template-step-action="add" data-service-type-id="${escapeAttr(type.id)}">+ 섹션</button>
       </div>
     </details>`;
 }
@@ -9754,7 +10122,7 @@ function renderServiceTemplateStepRow(typeId, step, index, total) {
     <div class="svc-template-step-row">
       <span class="svc-template-step-number">${index + 1}</span>
       <label class="svc-template-step-field">
-        <small>Label</small>
+        <small>섹션</small>
         <input
           type="text"
           data-service-template-step-field="label"
@@ -9764,7 +10132,7 @@ function renderServiceTemplateStepRow(typeId, step, index, total) {
         >
       </label>
       <label class="svc-template-step-field svc-template-step-field--wide">
-        <small>Text</small>
+        <small>기본 항목</small>
         <input
           type="text"
           data-service-template-step-field="default_text"
@@ -9774,7 +10142,7 @@ function renderServiceTemplateStepRow(typeId, step, index, total) {
         >
       </label>
       <label class="svc-template-step-field">
-        <small>Phase</small>
+        <small>흐름</small>
         <input
           type="text"
           data-service-template-step-field="phase"
@@ -9784,17 +10152,17 @@ function renderServiceTemplateStepRow(typeId, step, index, total) {
         >
       </label>
       <label class="svc-template-step-field">
-        <small>Type</small>
+        <small>타입</small>
         <select
-          data-service-template-step-field="component_type"
+          data-service-template-step-field="element_type"
           data-service-type-id="${escapeAttr(typeId)}"
           data-step-index="${index}"
         >
-          ${renderServiceComponentTypeOptions(step.componentType)}
+          ${renderServiceElementTypeOptions(step.elementType || step.componentType)}
         </select>
       </label>
       <label class="svc-template-step-field">
-        <small>Template</small>
+        <small>템플릿</small>
         <input
           type="text"
           data-service-template-step-field="template_key"
@@ -9805,7 +10173,7 @@ function renderServiceTemplateStepRow(typeId, step, index, total) {
         >
       </label>
       <label class="svc-template-step-field">
-        <small>Output</small>
+        <small>출력</small>
         <input
           type="text"
           data-service-template-step-field="template_variant"
@@ -9823,7 +10191,7 @@ function renderServiceTemplateStepRow(typeId, step, index, total) {
           data-step-index="${index}"
           ${step.required ? "checked" : ""}
         >
-        <span>Req</span>
+        <span>필수</span>
       </label>
       <label class="svc-template-step-toggle">
         <input
@@ -9833,7 +10201,7 @@ function renderServiceTemplateStepRow(typeId, step, index, total) {
           data-step-index="${index}"
           ${step.flex ? "checked" : ""}
         >
-        <span>Flex</span>
+        <span>유동</span>
       </label>
       <label class="svc-template-step-toggle">
         <input
@@ -9843,13 +10211,13 @@ function renderServiceTemplateStepRow(typeId, step, index, total) {
           data-step-index="${index}"
           ${step.repeatable ? "checked" : ""}
         >
-        <span>Repeat</span>
+        <span>반복</span>
       </label>
       <div class="svc-template-step-actions">
-        <button class="icon-btn tiny" type="button" data-service-template-step-action="up" data-service-type-id="${escapeAttr(typeId)}" data-step-index="${index}" ${index <= 0 ? "disabled" : ""}>↑</button>
-        <button class="icon-btn tiny" type="button" data-service-template-step-action="down" data-service-type-id="${escapeAttr(typeId)}" data-step-index="${index}" ${index >= total - 1 ? "disabled" : ""}>↓</button>
-        <button class="icon-btn tiny" type="button" data-service-template-step-action="add-after" data-service-type-id="${escapeAttr(typeId)}" data-step-index="${index}">＋</button>
-        <button class="icon-btn tiny danger" type="button" data-service-template-step-action="delete" data-service-type-id="${escapeAttr(typeId)}" data-step-index="${index}">×</button>
+        <button class="icon-btn tiny" type="button" data-service-template-step-action="up" data-service-type-id="${escapeAttr(typeId)}" data-step-index="${index}" aria-label="섹션 위로 이동" ${index <= 0 ? "disabled" : ""}>↑</button>
+        <button class="icon-btn tiny" type="button" data-service-template-step-action="down" data-service-type-id="${escapeAttr(typeId)}" data-step-index="${index}" aria-label="섹션 아래로 이동" ${index >= total - 1 ? "disabled" : ""}>↓</button>
+        <button class="icon-btn tiny" type="button" data-service-template-step-action="add-after" data-service-type-id="${escapeAttr(typeId)}" data-step-index="${index}" aria-label="아래에 섹션 추가">＋</button>
+        <button class="icon-btn tiny danger" type="button" data-service-template-step-action="delete" data-service-type-id="${escapeAttr(typeId)}" data-step-index="${index}" aria-label="섹션 삭제">×</button>
       </div>
     </div>`;
 }
@@ -9859,13 +10227,19 @@ function startExpectedService(typeId, date, options = {}) {
   if (!options.skipConfirm && !confirmDiscardServiceChanges()) return;
   state.selectedServiceTypeId = typeId;
   state.selectedServiceId = null;
-  state.newServiceForm = { type_id: typeId, date, leader: "", tags: "" };
+  state.newServiceForm = { type_id: typeId, date, title: "", leader: "", tags: "" };
   renderServiceList();
   renderServiceDetail();
   syncBrowserHistory();
 }
 
 function renderServiceDetail() {
+  if (!state.client) {
+    refs.detailPane.innerHTML = renderConnectionEmptyDetail();
+    refreshIcons();
+    return;
+  }
+
   const serviceId = state.selectedServiceId;
   const selectedService = state.services.find((service) => service.id === serviceId);
   if (selectedService && state.selectedServiceTypeId !== selectedService.type_id) {
@@ -9896,7 +10270,7 @@ function renderServiceDetail() {
           <h2 class="service-date-list-title">${escapeHtml(typeName)}</h2>
           <div class="service-section-head-actions">
             <span class="service-search-count">${services.length}${q ? "개 결과" : "개 예배"}</span>
-            ${!q ? `<button class="icon-btn svc-new-btn" type="button" data-new-service="${escapeAttr(typeId)}" title="새 예배 추가" aria-label="새 예배 추가"><i data-lucide="plus"></i></button>` : ""}
+            ${!q ? `<button class="icon-btn svc-new-btn" type="button" data-new-service="${escapeAttr(typeId)}" aria-label="새 예배 추가"><i data-lucide="plus"></i></button>` : ""}
           </div>
         </div>
         ${form ? `
@@ -9906,6 +10280,12 @@ function renderServiceDetail() {
               <label class="svc-new-label">날짜</label>
               <input class="svc-new-input" type="date" data-new-service-field="date" value="${escapeAttr(form.date)}" required />
             </div>
+            ${state.serviceTitleSupported ? `
+              <div class="svc-new-field">
+                <label class="svc-new-label">예배명</label>
+                <input class="svc-new-input" type="text" data-new-service-field="title" value="${escapeAttr(form.title || "")}" placeholder="${typeId === "special" ? "고난주간 특별새벽기도회" : "필요할 때만"}" />
+              </div>
+            ` : ""}
             ${serviceUsesPraiseLeader(typeId) ? `
               <div class="svc-new-field">
                 <label class="svc-new-label">찬양 인도</label>
@@ -9935,15 +10315,13 @@ function renderServiceDetail() {
 
   const items = state.serviceItems[serviceId];
   if (!items) {
-    refs.detailPane.innerHTML = `<div class="empty-detail"><div class="empty-detail-inner"><p>Loading…</p></div></div>`;
+    refs.detailPane.innerHTML = `<div class="empty-detail"><div class="empty-detail-inner"><p class="empty-verse">Loading…</p></div></div>`;
     loadServiceItems(serviceId);
     return;
   }
 
   const dateStr = formatServiceDate(svc);
-  const typeName = serviceDisplayTypeName(svc);
   const typeObj = serviceTypeById(svc.type_id);
-  const visibleServiceTags = serviceVisibleTags(svc);
 
   const sorted = normalizeServiceItems(items);
   const merged = mergeServiceItemsForDisplay(svc.type_id, sorted, getServiceDefaultItems(svc.type_id));
@@ -9956,10 +10334,6 @@ function renderServiceDetail() {
     <div class="service-viewer">
       <div class="svc-header">
         <div class="svc-header-date">
-          <div class="svc-title-line">
-            <span class="svc-type-name">${escapeHtml(typeName)}</span>
-            ${visibleServiceTags.map((tag) => `<span class="svc-service-tag">${escapeHtml(tag)}</span>`).join("")}
-          </div>
           <h2 class="svc-date-text">${escapeHtml(dateStr)}</h2>
         </div>
         <span class="dirty-pill" ${state.dirty.service ? "" : "hidden"}>Unsaved changes</span>
@@ -9971,7 +10345,7 @@ function renderServiceDetail() {
             <i data-lucide="sliders-horizontal"></i>
             <span>편집</span>
           </span>
-          <small>${merged.length} components</small>
+          <small>${merged.length} 항목</small>
           <strong>${merged.length}</strong>
         </summary>
         <div class="svc-workbench">
@@ -9979,7 +10353,7 @@ function renderServiceDetail() {
             ${renderServiceMetaEditor(svc)}
             ${renderServiceSetlistComposer(svc)}
             ${renderServiceOrderTemplate(typeObj)}
-            <div class="svc-items svc-editor-items">${itemsHtml || `<p class="service-no-results">예배 순서를 추가해 주세요.</p>`}</div>
+            <div class="svc-items svc-editor-items">${itemsHtml || `<p class="service-no-results">섹션과 항목을 추가해 주세요.</p>`}</div>
           </div>
         </div>
       </details>
@@ -10021,11 +10395,11 @@ function renderServiceEditorHeader(typeId) {
   return `
     <div class="svc-editor-header">
       <span></span>
-      <span>구성</span>
+      <span>섹션</span>
       <span>담당</span>
-      <span>내용</span>
+      <span>항목</span>
       <span>
-        ${typeId ? `<button class="icon-btn" type="button" data-service-default-action="add" data-service-default-index="${defaultCount}" title="공통 구성 추가" aria-label="공통 구성 추가">
+        ${typeId ? `<button class="icon-btn" type="button" data-service-default-action="add" data-service-default-index="${defaultCount}" aria-label="공통 항목 추가">
           <i data-lucide="plus"></i>
         </button>` : ""}
       </span>
@@ -10047,6 +10421,14 @@ function renderServiceMetaEditor(service) {
   const leaderHidden = !serviceUsesPraiseLeader(service.type_id);
   return `
     <div class="svc-meta-editor">
+      ${state.serviceTitleSupported ? `
+      <label>
+        <span>예배명</span>
+        <input class="svc-meta-input svc-meta-input--title" type="text" data-service-meta-field="title"
+          value="${escapeAttr(service.title || "")}"
+          placeholder="${service.type_id === "special" ? "특별예배명" : "필요할 때만"}"
+          aria-label="예배명" />
+      </label>` : ""}
       <label>
         <span>${leaderHidden ? "찬양 인도 없음" : "찬양 인도"}</span>
         <input class="svc-meta-input" type="text" data-service-meta-field="leader"
@@ -10058,11 +10440,11 @@ function renderServiceMetaEditor(service) {
       <label>
         <span>비고</span>
         <input class="svc-meta-input" type="text" data-service-meta-field="tags"
-          value="${escapeAttr((service.tags || []).join(", "))}"
+          value="${escapeAttr(serviceVisibleTags(service).join(", "))}"
           placeholder="온세대 찬양예배, 2·3부 통합..."
           aria-label="비고" />
       </label>
-      <button class="icon-btn danger" type="button" data-delete-service="${escapeAttr(service.id)}" title="예배 삭제" aria-label="예배 삭제">
+      <button class="icon-btn danger" type="button" data-delete-service="${escapeAttr(service.id)}" aria-label="예배 삭제">
         <i data-lucide="trash-2"></i>
       </button>
     </div>
@@ -10073,9 +10455,9 @@ function renderServiceOrderTemplate(typeObj) {
   const template = serviceOrderTemplate(typeObj?.id);
   if (!template.length) return "";
   return `
-    <details class="svc-template-guide" aria-label="Service order guide">
+    <details class="svc-template-guide" aria-label="섹션 템플릿">
       <summary class="svc-template-head">
-        <span>순서 추가</span>
+        <span>섹션 추가</span>
         <small>${template.length}</small>
       </summary>
       <div class="svc-template-flow">
@@ -10121,7 +10503,6 @@ function renderServiceTemplateStep(step, index, typeId = "") {
       data-service-item-action="add"
       data-service-item-label="${escapeAttr(step.label || "")}"
       data-service-item-title="${escapeAttr(step.default_text || "")}"
-      title="${escapeAttr([step.name, step.notes, step.source ? `Source: ${step.source}` : ""].filter(Boolean).join(" · "))}"
     >
       <span class="svc-template-step-label">${escapeHtml(label)}</span>
       ${badge}
@@ -10129,7 +10510,7 @@ function renderServiceTemplateStep(step, index, typeId = "") {
 }
 
 function renderServiceItemGroups(items) {
-  if (!items.length) return `<p class="service-no-results">예배 순서를 추가해 주세요.</p>`;
+  if (!items.length) return `<p class="service-no-results">섹션과 항목을 추가해 주세요.</p>`;
 
   const selectedService = state.services.find((service) => service.id === state.selectedServiceId);
   const groups = [];
@@ -10188,7 +10569,7 @@ function renderServiceItemGroups(items) {
             data-service-item-index="${origIndex}"
             value="${escapeAttr(item.assignee || "")}"
             placeholder="${escapeAttr(inferOrderSheetAssignee(item))}"
-            aria-label="Service item assignee"
+            aria-label="항목 담당"
 	          />`}
 	          <div class="svc-edit-title-wrap">
 	            <span class="svc-subsection-chip">${escapeHtml(`${group.label} ${localNumber}`)}</span>
@@ -10201,16 +10582,16 @@ function renderServiceItemGroups(items) {
               placeholder="${isScriptureServiceLabel(item.label) ? "성경 구절" : "찬양 제목"}"
               ${isSongServiceLabel(item.label) ? `list="servicePraiseOptions"` : ""}
               ${isScriptureServiceLabel(item.label) ? `list="serviceScriptureOptions"` : ""}
-	              aria-label="Service item text"
+	              aria-label="항목 내용"
 	            />
 	            ${group.kind === "main-praise" ? renderServiceFormHintInput(item, origIndex, { compact: true, placeholder: "송폼" }) : ""}
 	            ${renderServiceItemLinkControl(item, origIndex)}
 	          </div>
           <div class="svc-edit-actions">
-            <button class="icon-btn" type="button" data-service-item-action="up" data-service-item-index="${origIndex}" ${upDisabled ? "disabled" : ""} title="Move up" aria-label="Move up"><i data-lucide="arrow-up"></i></button>
-            <button class="icon-btn" type="button" data-service-item-action="down" data-service-item-index="${origIndex}" ${downDisabled ? "disabled" : ""} title="Move down" aria-label="Move down"><i data-lucide="arrow-down"></i></button>
-            <button class="icon-btn" type="button" data-service-item-action="duplicate" data-service-item-index="${origIndex}" title="Duplicate" aria-label="Duplicate"><i data-lucide="copy"></i></button>
-            <button class="icon-btn danger" type="button" data-service-item-action="delete" data-service-item-index="${origIndex}" title="Delete" aria-label="Delete"><i data-lucide="trash-2"></i></button>
+            <button class="icon-btn" type="button" data-service-item-action="up" data-service-item-index="${origIndex}" ${upDisabled ? "disabled" : ""} aria-label="항목 위로 이동"><i data-lucide="arrow-up"></i></button>
+            <button class="icon-btn" type="button" data-service-item-action="down" data-service-item-index="${origIndex}" ${downDisabled ? "disabled" : ""} aria-label="항목 아래로 이동"><i data-lucide="arrow-down"></i></button>
+            <button class="icon-btn" type="button" data-service-item-action="duplicate" data-service-item-index="${origIndex}" aria-label="항목 복제"><i data-lucide="copy"></i></button>
+            <button class="icon-btn danger" type="button" data-service-item-action="delete" data-service-item-index="${origIndex}" aria-label="항목 삭제"><i data-lucide="trash-2"></i></button>
           </div>
         </article>`;
       }
@@ -10248,8 +10629,8 @@ function renderServiceEditorItem(item, mergedIndex, mergedItems, groupNum) {
           ${fieldAttr}="label"
           ${indexAttr}="${origIndex}"
           value="${escapeAttr(item.label || "")}"
-          placeholder="${isDefault ? "구성" : "찬양"}"
-          aria-label="${isDefault ? "Default service component label" : "Service item label"}"
+          placeholder="${isDefault ? "섹션" : "찬양"}"
+          aria-label="${isDefault ? "기본 섹션" : "섹션"}"
         />
         ${!isDefault ? renderServiceTemplateBadge(state.services.find((service) => service.id === state.selectedServiceId)?.type_id, item) : ""}
         ${!isDefault ? renderServiceFormHintInput(item, origIndex) : ""}
@@ -10261,7 +10642,7 @@ function renderServiceEditorItem(item, mergedIndex, mergedItems, groupNum) {
         ${indexAttr}="${origIndex}"
         value="${escapeAttr(item.assignee || "")}"
         placeholder="${escapeAttr(inferOrderSheetAssignee(item))}"
-        aria-label="${isDefault ? "Default service component assignee" : "Service item assignee"}"
+        aria-label="${isDefault ? "기본 항목 담당" : "항목 담당"}"
       />
       <div class="svc-edit-title-wrap">
         <input
@@ -10273,15 +10654,15 @@ function renderServiceEditorItem(item, mergedIndex, mergedItems, groupNum) {
           placeholder="${isDefault ? "매 예배에 적용할 내용" : (item.label ? "내용" : "찬양 제목")}"
           ${!isDefault && isSongServiceLabel(item.label) ? `list="servicePraiseOptions"` : ""}
           ${!isDefault && isScriptureServiceLabel(item.label) ? `list="serviceScriptureOptions"` : ""}
-          aria-label="${isDefault ? "Default service component text" : "Service item text"}"
+          aria-label="${isDefault ? "기본 항목 내용" : "항목 내용"}"
         />
         ${!isDefault ? renderServiceItemLinkControl(item, origIndex) : ""}
       </div>
       <div class="svc-edit-actions">
-        <button class="icon-btn" type="button" ${actionAttr}="up" ${indexAttr}="${origIndex}" ${upDisabled ? "disabled" : ""} title="Move up" aria-label="Move up"><i data-lucide="arrow-up"></i></button>
-        <button class="icon-btn" type="button" ${actionAttr}="down" ${indexAttr}="${origIndex}" ${downDisabled ? "disabled" : ""} title="Move down" aria-label="Move down"><i data-lucide="arrow-down"></i></button>
-        <button class="icon-btn" type="button" ${actionAttr}="duplicate" ${indexAttr}="${origIndex}" title="Duplicate" aria-label="Duplicate"><i data-lucide="copy"></i></button>
-        <button class="icon-btn danger" type="button" ${actionAttr}="delete" ${indexAttr}="${origIndex}" title="Delete" aria-label="Delete"><i data-lucide="trash-2"></i></button>
+        <button class="icon-btn" type="button" ${actionAttr}="up" ${indexAttr}="${origIndex}" ${upDisabled ? "disabled" : ""} aria-label="${isDefault ? "기본 항목 위로 이동" : "항목 위로 이동"}"><i data-lucide="arrow-up"></i></button>
+        <button class="icon-btn" type="button" ${actionAttr}="down" ${indexAttr}="${origIndex}" ${downDisabled ? "disabled" : ""} aria-label="${isDefault ? "기본 항목 아래로 이동" : "항목 아래로 이동"}"><i data-lucide="arrow-down"></i></button>
+        <button class="icon-btn" type="button" ${actionAttr}="duplicate" ${indexAttr}="${origIndex}" aria-label="${isDefault ? "기본 항목 복제" : "항목 복제"}"><i data-lucide="copy"></i></button>
+        <button class="icon-btn danger" type="button" ${actionAttr}="delete" ${indexAttr}="${origIndex}" aria-label="${isDefault ? "기본 항목 삭제" : "항목 삭제"}"><i data-lucide="trash-2"></i></button>
       </div>
     </article>
     ${!isDefault ? renderServiceItemMemoEditor(item, origIndex) : ""}`;
@@ -10289,21 +10670,22 @@ function renderServiceEditorItem(item, mergedIndex, mergedItems, groupNum) {
 
 function renderServiceItemMemoEditor(item, index, options = {}) {
   const parsed = parseServiceItemMemo(item?.memo);
-  const hasContent = Boolean(parsed.note || parsed.slides.length || parsed.formHint || parsed.componentType || hasServiceAsset(parsed.asset));
+  const elementType = serviceMemoElementType(parsed);
+  const hasContent = Boolean(parsed.note || parsed.slides.length || parsed.formHint || elementType || hasServiceAsset(parsed.asset));
   return `
     <details class="svc-item-note${options.compact ? " compact" : ""}"${hasContent ? " open" : ""}>
       <summary>
-        <span>컴포넌트 · 메모 · 슬라이드</span>
+        <span>항목 · 메모 · 슬라이드</span>
         ${hasContent ? `<small>적용됨</small>` : ""}
       </summary>
       <div class="svc-item-note-grid">
         <label>
-          <span>양식</span>
+          <span>타입</span>
           <select
-            data-service-item-field="component_type"
+            data-service-item-field="element_type"
             data-service-item-index="${index}"
           >
-            ${renderServiceComponentTypeOptions(parsed.componentType)}
+            ${renderServiceElementTypeOptions(elementType)}
           </select>
         </label>
         <label>
@@ -10349,32 +10731,35 @@ function renderServiceItemMemoEditor(item, index, options = {}) {
     </details>`;
 }
 
-function renderServiceComponentTypeOptions(selectedType = "") {
-  const selected = normalizeServiceComponentType(selectedType);
+function renderServiceElementTypeOptions(selectedType = "") {
+  const selected = normalizeServiceElementType(selectedType);
   const options = [
     ["", "자동"],
     ["blank", "빈 화면"],
     ["video", "동영상"],
+    ["image", "이미지"],
     ["praise", "찬양"],
     ["scripture", "말씀"],
     ["activity", "Activity"],
     ["template", "슬라이드 템플릿"],
     ["pptx", "PPTX 파일"],
+    ["pdf", "PDF 파일"],
   ];
   return options
     .map(([value, label]) => `<option value="${escapeAttr(value)}"${value === selected ? " selected" : ""}>${escapeHtml(label)}</option>`)
     .join("");
 }
 
+
 function renderServicePraiseLinkControl(item, index) {
   if (!isSongServiceLabel(item?.label)) return "";
   if (item?.song_id) {
-    return `<button class="svc-item-link svc-item-link--linked" type="button" data-open-song="${escapeAttr(item.song_id)}" title="Praise에서 열기" aria-label="Praise에서 열기">DB</button>`;
+    return `<button class="svc-item-link svc-item-link--linked" type="button" data-open-song="${escapeAttr(item.song_id)}" aria-label="Praise에서 열기">DB</button>`;
   }
   const title = String(item?.raw_title || "").trim();
   if (!title) return "";
   return `
-    <button class="svc-song-create" type="button" data-service-song-create="${index}" title="Praise에 빈 곡으로 추가">
+    <button class="svc-song-create" type="button" data-service-song-create="${index}">
       <span>추가</span>
     </button>`;
 }
@@ -10387,7 +10772,7 @@ function renderServiceScriptureLinkControl(item) {
   if (!isScriptureServiceLabel(item?.label)) return "";
   const reference = normalizeServiceItemReferenceSpacing(item?.raw_title);
   if (!parseBibleReference(reference)) return "";
-  return `<button class="svc-item-link" type="button" data-open-scripture-reference="${escapeAttr(reference)}" title="Scripture에서 열기" aria-label="Scripture에서 열기">Scripture</button>`;
+  return `<button class="svc-item-link" type="button" data-open-scripture-reference="${escapeAttr(reference)}" aria-label="Scripture에서 열기">Scripture</button>`;
 }
 
 function renderServiceDashboard() {
@@ -10418,7 +10803,7 @@ function renderServiceDashboard() {
             <h2 class="service-date-list-title">${q ? "검색 결과" : "이번 주 예배"}</h2>
             ${!q ? `<p class="service-week-range">${escapeHtml(formatServiceWeekRange(start, end))}</p>` : ""}
           </div>
-          <button class="reference-new-btn" type="button" data-service-dashboard title="원하는 날짜 예배 추가" aria-label="원하는 날짜 예배 추가">
+          <button class="reference-new-btn" type="button" data-service-dashboard aria-label="원하는 날짜 예배 추가">
             <i data-lucide="plus"></i>
             <span>예배 추가</span>
           </button>
@@ -10827,14 +11212,13 @@ function renderServiceOrderSheetPanel(service) {
     <aside class="svc-print-panel" aria-label="Order sheet">
       <div class="svc-print-panel-head">
         <div>
-          <span class="svc-presenter-kicker">A4 · 2-up</span>
           <h3>순서지</h3>
         </div>
         <div class="svc-print-actions">
-          <button class="icon-btn" type="button" data-copy-service-order="${escapeAttr(service.id)}" title="Copy" aria-label="Copy order sheet text">
+          <button class="icon-btn" type="button" data-copy-service-order="${escapeAttr(service.id)}" aria-label="Copy order sheet text">
             <i data-lucide="clipboard"></i>
           </button>
-          <button class="icon-btn primary" type="button" data-print-service-order="${escapeAttr(service.id)}" title="Print" aria-label="Print order sheet">
+          <button class="icon-btn primary" type="button" data-print-service-order="${escapeAttr(service.id)}" aria-label="Print order sheet">
             <i data-lucide="printer"></i>
           </button>
         </div>
@@ -10855,6 +11239,12 @@ function getOrderSheetServices(query = normalizeSearchValue(state.search)) {
 }
 
 function renderOrderSheetsDetail() {
+  if (!state.client) {
+    refs.detailPane.innerHTML = renderConnectionEmptyDetail();
+    refreshIcons();
+    return;
+  }
+
   if (state.serviceError || !state.serviceTypes.length) {
     refs.detailPane.innerHTML = renderModuleEmptyDetail("service", "Order Sheet", state.serviceError || "Service data unavailable.");
     refreshIcons();
@@ -10864,15 +11254,15 @@ function renderOrderSheetsDetail() {
   const services = getOrderSheetServices();
   const selected = services.find((service) => service.id === state.selectedServiceId) || services[0] || null;
   if (selected && state.selectedServiceId !== selected.id) state.selectedServiceId = selected.id;
+  const serviceCountLabel = `${formatCount(services.length)} ${services.length === 1 ? "service" : "services"}`;
 
   refs.detailPane.innerHTML = `
     <div class="order-sheet-tool">
       <header class="order-sheet-tool-head">
         <div>
-          <span class="svc-presenter-kicker">Friday · Monthly</span>
           <h2>순서지</h2>
         </div>
-        <span>${escapeHtml(`${formatCount(services.length)} services`)}</span>
+        <span>${escapeHtml(serviceCountLabel)}</span>
       </header>
       ${services.length ? `
         <div class="order-sheet-tool-layout">
@@ -10880,7 +11270,6 @@ function renderOrderSheetsDetail() {
             ${services.map((service) => `
               <button class="order-sheet-service${selected?.id === service.id ? " active" : ""}" type="button" data-order-sheet-service="${escapeAttr(service.id)}">
                 <strong>${escapeHtml(formatServiceDate(service, { compact: true }))}</strong>
-                <span>${escapeHtml(serviceDisplayTypeName(service))}</span>
                 <small>${escapeHtml(serviceItemPreview(service.id) || "Review")}</small>
               </button>
             `).join("")}
@@ -10928,7 +11317,7 @@ function renderPresenterScreenControl() {
   if (!window.getScreenDetails || !window.isSecureContext) return "";
   if (state.presenter.screens.length > 1) {
     return `
-      <label class="svc-presenter-screen-select" title="Choose which display to present on">
+      <label class="svc-presenter-screen-select">
         <i data-lucide="monitor"></i>
         <select data-presenter-screen-select>
           <option value="">Auto</option>
@@ -10941,7 +11330,7 @@ function renderPresenterScreenControl() {
       </label>`;
   }
   return `
-    <button class="icon-btn" type="button" data-presenter-action="detect-screens" title="Detect displays" aria-label="Detect displays">
+    <button class="icon-btn" type="button" data-presenter-action="detect-screens" aria-label="Detect displays">
       <i data-lucide="monitor"></i>
     </button>`;
 }
@@ -10957,7 +11346,7 @@ function renderServicePresenterControls(service, slides, active, index) {
   return `
     <section id="servicePresenterControls" class="svc-presenter-strip${active ? " is-active" : ""}${blackActive ? " is-black" : ""}${chromakey ? "" : " is-clean-output"}" aria-label="Presenter controls">
       <div class="svc-presenter-top">
-        <button class="svc-present-btn svc-presenter-launch" type="button" data-presenter-action="open" data-service-id="${escapeAttr(service.id)}" title="Open presenter output">
+        <button class="svc-present-btn svc-presenter-launch" type="button" data-presenter-action="open" data-service-id="${escapeAttr(service.id)}">
           <i data-lucide="screen-share"></i>
           <span>Present</span>
         </button>
@@ -10966,19 +11355,19 @@ function renderServicePresenterControls(service, slides, active, index) {
           <span class="svc-slide-counter">
             <input class="svc-slide-jump-input" type="number" inputmode="numeric" min="1" max="${escapeAttr(count || 1)}" value="${escapeAttr(jumpInputValue)}" data-presenter-jump-input data-service-id="${escapeAttr(service.id)}" aria-label="Slide number" ${count ? "" : "disabled"} />
             <span>/ ${escapeHtml(count)}</span>
-            <button class="svc-slide-jump-btn" type="button" data-presenter-jump-button data-service-id="${escapeAttr(service.id)}" title="Go to slide" aria-label="Go to slide" ${count ? "" : "disabled"}><i data-lucide="corner-down-left"></i></button>
+            <button class="svc-slide-jump-btn" type="button" data-presenter-jump-button data-service-id="${escapeAttr(service.id)}" aria-label="슬라이드로 이동" ${count ? "" : "disabled"}><i data-lucide="corner-down-left"></i></button>
           </span>
         </div>
         <div class="svc-presenter-actions">
           ${renderServiceMusicPlayer()}
           ${renderLiveScriptureControl(service.id)}
-          <button class="icon-btn" type="button" data-presenter-action="prev" data-service-id="${escapeAttr(service.id)}" ${count ? "" : "disabled"} title="Previous slide" aria-label="Previous slide">
+          <button class="icon-btn" type="button" data-presenter-action="prev" data-service-id="${escapeAttr(service.id)}" ${count ? "" : "disabled"} aria-label="Previous slide">
             <i data-lucide="chevron-left"></i>
           </button>
-          <button class="icon-btn" type="button" data-presenter-action="next" data-service-id="${escapeAttr(service.id)}" ${count ? "" : "disabled"} title="Next slide" aria-label="Next slide">
+          <button class="icon-btn" type="button" data-presenter-action="next" data-service-id="${escapeAttr(service.id)}" ${count ? "" : "disabled"} aria-label="Next slide">
             <i data-lucide="chevron-right"></i>
           </button>
-          <button class="icon-btn${blackActive ? " is-active" : ""}" type="button" data-presenter-action="black" data-service-id="${escapeAttr(service.id)}" title="Black screen" aria-label="Black screen">
+          <button class="icon-btn${blackActive ? " is-active" : ""}" type="button" data-presenter-action="black" data-service-id="${escapeAttr(service.id)}" aria-label="Black screen">
             <i data-lucide="moon"></i>
           </button>
         </div>
@@ -10993,13 +11382,13 @@ function renderServiceMusicPlayer() {
   const volumeOptions = Array.from({ length: 6 }, (_, level) =>
     `<option value="${level}"${level === music.volumeLevel ? " selected" : ""}>${level}</option>`).join("");
   return `
-    <span class="svc-music-player" title="예배 전후 음악">
+    <span class="svc-music-player">
       <input class="svc-music-file" type="file" accept="audio/*" data-service-music-file hidden />
-      <button class="svc-music-name" type="button" data-service-music-action="choose" title="음악 파일 선택">
+      <button class="svc-music-name" type="button" data-service-music-action="choose">
         <i data-lucide="music"></i>
         <span>${escapeHtml(fileLabel)}</span>
       </button>
-      <button class="icon-btn svc-music-toggle${music.playing ? " is-active" : ""}" type="button" data-service-music-action="toggle" title="${music.playing ? "음악 정지" : "음악 재생"}" aria-label="${music.playing ? "음악 정지" : "음악 재생"}" ${music.objectUrl ? "" : "disabled"}>
+      <button class="icon-btn svc-music-toggle${music.playing ? " is-active" : ""}" type="button" data-service-music-action="toggle" aria-label="${music.playing ? "음악 정지" : "음악 재생"}" ${music.objectUrl ? "" : "disabled"}>
         <i data-lucide="${music.playing ? "pause" : "play"}"></i>
       </button>
       <select class="svc-music-volume" data-service-music-volume aria-label="음악 볼륨">
@@ -11011,12 +11400,12 @@ function renderServiceMusicPlayer() {
 function renderLiveScriptureControl(serviceId) {
   const live = state.presenter.liveScripture || {};
   return `
-    <span class="svc-live-scripture${live.active ? " is-active" : ""}" title="설교 중 실시간 성구 송출">
+    <span class="svc-live-scripture${live.active ? " is-active" : ""}">
       <input class="svc-live-scripture-input" type="text" value="${escapeAttr(live.draft || live.reference || "")}" data-live-scripture-input data-service-id="${escapeAttr(serviceId)}" placeholder="성구 입력" />
-      <button class="icon-btn svc-live-scripture-show" type="button" data-live-scripture-action="show" data-service-id="${escapeAttr(serviceId)}" title="성구 송출" aria-label="성구 송출">
+      <button class="icon-btn svc-live-scripture-show" type="button" data-live-scripture-action="show" data-service-id="${escapeAttr(serviceId)}" aria-label="성구 송출">
         <i data-lucide="send"></i>
       </button>
-      <button class="icon-btn svc-live-scripture-clear" type="button" data-live-scripture-action="clear" data-service-id="${escapeAttr(serviceId)}" title="성구 숨김" aria-label="성구 숨김" ${live.active ? "" : "disabled"}>
+      <button class="icon-btn svc-live-scripture-clear" type="button" data-live-scripture-action="clear" data-service-id="${escapeAttr(serviceId)}" aria-label="성구 숨김" ${live.active ? "" : "disabled"}>
         <i data-lucide="eye-off"></i>
       </button>
     </span>`;
@@ -11158,6 +11547,8 @@ async function buildLiveScriptureSlide(query) {
   const title = formatLiveScriptureReference(reference);
   return {
     id: `live-scripture:${Date.now()}`,
+    elementType: PRESENTER_ELEMENT_TYPES.SCRIPTURE_TEXT,
+    layout: PRESENTER_SLIDE_LAYOUTS.CENTER_TEXT,
     type: "component",
     label: "성구",
     title,
@@ -11285,15 +11676,13 @@ function renderPresenterBoardSection(group, activeIndex, serviceId) {
   const active = group.slides.some(({ slideIndex }) => slideIndex === activeIndex);
   const firstIndex = group.slides[0]?.slideIndex ?? 0;
   const visibleTitle = presenterVisibleTitle(group.label, group.title || group.name);
-  const visibleLabel = presenterVisibleLabel(group.label || `Item ${group.index}`, group.title || group.name);
   return `
     <section class="svc-board-section${active ? " active" : ""}" role="listitem" aria-label="${escapeAttr(group.name)}">
       <button class="svc-board-section-head" type="button"
         data-presenter-action="jump"
         data-presenter-index="${firstIndex}"
         data-service-id="${escapeAttr(serviceId)}"
-        title="${escapeAttr(group.name)}">
-        ${visibleLabel ? `<span class="svc-board-section-kicker">${escapeHtml(visibleLabel)}</span>` : ""}
+        aria-label="${escapeAttr(group.name)}">
         <span class="svc-board-section-title${visibleTitle ? "" : " is-empty"}">
           ${visibleTitle ? `<strong>${escapeHtml(visibleTitle)}</strong>` : ""}
           ${group.meta ? `<small>${escapeHtml(group.meta)}</small>` : ""}
@@ -11312,7 +11701,7 @@ function renderPresenterBoardSubgroup(subgroup, activeIndex, serviceId, options 
   const firstIndex = subgroup.slides[0]?.slideIndex ?? 0;
   const slides = annotatePresenterFormStarts(subgroup.slides);
   const visibleTitle = presenterVisibleTitle(subgroup.label, subgroup.title || subgroup.name);
-  const visibleLabel = presenterVisibleLabel(subgroup.label || "Item", subgroup.title || subgroup.name);
+  const visibleLabel = presenterVisibleLabel(subgroup.label || "항목", subgroup.title || subgroup.name);
   return `
     <div class="svc-board-subgroup${active ? " active" : ""}">
       ${options.showHead ? `
@@ -11320,7 +11709,7 @@ function renderPresenterBoardSubgroup(subgroup, activeIndex, serviceId, options 
           data-presenter-action="jump"
           data-presenter-index="${firstIndex}"
           data-service-id="${escapeAttr(serviceId)}"
-          title="${escapeAttr(subgroup.name)}">
+          aria-label="${escapeAttr(subgroup.name)}">
           ${visibleLabel ? `<span>${escapeHtml(visibleLabel)}</span>` : ""}
           ${visibleTitle ? `<strong>${escapeHtml(visibleTitle)}</strong>` : ""}
         </button>` : ""}
@@ -11348,21 +11737,26 @@ function presenterVisibleLabel(label, title) {
 
 function annotatePresenterFormStarts(entries = []) {
   let previousKey = "";
+  let currentFormLabel = "";
   return entries.map((entry) => {
     const { slide, slideIndex } = entry;
-    const lyrics = slide?.type === "lyrics";
+    const lyrics = presenterSlideElementType(slide) === PRESENTER_ELEMENT_TYPES.PRAISE
+      && presenterSlideLayout(slide) === PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT;
     const key = lyrics ? `lyrics:${slide.formKey || slideIndex}` : "";
     const startsForm = Boolean(lyrics && key !== previousKey);
+    if (startsForm) currentFormLabel = presenterFormGroupLabel(slide);
+    if (!lyrics) currentFormLabel = "";
     previousKey = key;
     return {
       ...entry,
-      formLabel: startsForm ? presenterFormGroupLabel(slide) : "",
+      formLabel: lyrics ? currentFormLabel : "",
     };
   });
 }
 
 function presenterFormGroupLabel(slide) {
-  return String(slide?.marker || "").trim();
+  const label = String(slide?.marker || "").trim();
+  return isGenericPresenterFormLabel(label) ? "" : label;
 }
 
 function presenterLabelDuplicatesSlideText(label, slide) {
@@ -11387,7 +11781,7 @@ function renderPresenterSlideThumb(slide, slideIndex, activeIndex, serviceId, fo
         data-presenter-action="jump"
         data-presenter-index="${slideIndex}"
         data-service-id="${escapeAttr(serviceId)}"
-        title="${escapeAttr(visibleFormLabel)}">
+        aria-label="${escapeAttr(visibleFormLabel)}">
         ${escapeHtml(visibleFormLabel)}
       </button>` : "";
   return `
@@ -11397,10 +11791,9 @@ function renderPresenterSlideThumb(slide, slideIndex, activeIndex, serviceId, fo
       data-presenter-action="jump"
       data-presenter-index="${slideIndex}"
       data-service-id="${escapeAttr(serviceId)}"
-      title="${escapeAttr(presenterSlideTitle(slide))}"
-      aria-label="Go to slide ${slideIndex + 1}">
+      aria-label="${escapeAttr(`${slideIndex + 1}번 슬라이드로 이동: ${presenterSlideTitle(slide)}`)}">
       <span class="svc-slide-thumb-no">${slideIndex + 1}</span>
-      <span class="svc-slide-thumb-frame svc-slide-thumb-frame--${escapeAttr(slide?.type || "component")}">
+      <span class="svc-slide-thumb-frame svc-slide-thumb-frame--${escapeAttr(presenterSlideRenderClass(slide))}" data-element-type="${escapeAttr(presenterSlideElementType(slide))}" data-slide-layout="${escapeAttr(presenterSlideLayout(slide))}">
         ${renderPresenterSlideMiniPreview(slide, serviceId)}
       </span>
     </button>
@@ -11416,12 +11809,12 @@ function renderPresenterSlideMiniPreview(slide, serviceId = state.presenter.serv
   if (!slide) {
     return `<span class="svc-slide-mini-output${chromakey ? "" : " no-chromakey"}" data-output-theme="${escapeAttr(theme)}"${bgStyle}></span>`;
   }
-  const type = slide.type || "component";
+  const renderClass = presenterSlideRenderClass(slide);
   const meta = renderPresenterSlideMiniMeta(slide);
   const body = renderPresenterSlideMiniBody(slide);
   return `
     <span class="svc-slide-mini-output${chromakey ? "" : " no-chromakey"}${backgroundImage && !chromakey ? " has-background" : ""}" data-output-theme="${escapeAttr(theme)}"${bgStyle}>
-      <span class="svc-slide-mini-live svc-slide-mini-live--${escapeAttr(type)}">
+      <span class="svc-slide-mini-live svc-slide-mini-live--${escapeAttr(renderClass)}" data-element-type="${escapeAttr(presenterSlideElementType(slide))}" data-slide-layout="${escapeAttr(presenterSlideLayout(slide))}">
         ${meta}
         ${body}
       </span>
@@ -11429,27 +11822,36 @@ function renderPresenterSlideMiniPreview(slide, serviceId = state.presenter.serv
 }
 
 function renderPresenterSlideMiniMeta(slide) {
-  if (!slide || slide.type === "lyrics" || slide.type === "song-title" || slide.type === "video" || slide.type === "ready" || slide.type === "deck" || slide.type === "blank") return "";
+  if (!slide || !presenterSlideHasMeta(slide)) return "";
   const marker = presenterVisibleMeta(slide);
   return marker ? `<span class="svc-slide-mini-live-meta">${escapeHtml(marker)}</span>` : "";
 }
 
 function renderPresenterSlideMiniBody(slide) {
-  if (slide.type === "video") {
+  const layout = presenterSlideLayout(slide);
+  const elementType = presenterSlideElementType(slide);
+  if (layout === PRESENTER_SLIDE_LAYOUTS.MEDIA && elementType === PRESENTER_ELEMENT_TYPES.VIDEO) {
     const source = normalizePresenterMediaSource(slide.videoSrc || slide.text);
     return `
       <span class="svc-slide-mini-video">
         <small>${escapeHtml(source ? presenterMediaFileName(source) : (slide.title || "Media"))}</small>
       </span>`;
   }
-  if (slide.type === "deck") {
+  if (layout === PRESENTER_SLIDE_LAYOUTS.MEDIA && elementType === PRESENTER_ELEMENT_TYPES.IMAGE) {
+    const source = normalizePresenterMediaSource(slide.imageSrc || slide.asset?.url || slide.text);
     return `
-      <span class="svc-slide-mini-file">
-        <strong>${escapeHtml(serviceComponentTypeLabel(slide.componentType || slide.asset?.kind || "template"))}</strong>
-        <small>${escapeHtml(slide.title || presenterMediaFileName(slide.asset?.url) || "Slide file")}</small>
+      <span class="svc-slide-mini-video">
+        <small>${escapeHtml(source ? presenterMediaFileName(source) : (slide.title || "Image"))}</small>
       </span>`;
   }
-  if (slide.type === "blank") return "";
+  if (layout === PRESENTER_SLIDE_LAYOUTS.FILE) {
+    return `
+      <span class="svc-slide-mini-file">
+        <strong>${escapeHtml(serviceElementTypeLabel(slide.sourceType || slide.componentType || slide.asset?.kind || "template"))}</strong>
+        <small>${escapeHtml(slide.title || presenterMediaFileName(slide.asset?.url) || "슬라이드 파일")}</small>
+      </span>`;
+  }
+  if (layout === PRESENTER_SLIDE_LAYOUTS.BLANK) return "";
   return `<span class="svc-slide-mini-live-text">${renderPresenterSlideText(slide)}</span>`;
 }
 
@@ -11460,15 +11862,16 @@ function presenterMediaFileName(source) {
 }
 
 function presenterSlideTitle(slide) {
-  if (!slide) return "Ready to present";
+  if (!slide) return "프레젠터 준비";
   const marker = presenterSlideMarker(slide);
-  if (slide.type === "lyrics") return marker || slide.title || "Lyrics";
-  const text = slide.type === "lyrics" ? slide.title : presenterSlideMainText(slide);
-  return cleanList([marker, text]).join(" — ") || "Untitled slide";
+  const renderClass = presenterSlideRenderClass(slide);
+  if (renderClass === "lyrics") return marker || slide.title || "Lyrics";
+  const text = renderClass === "lyrics" ? slide.title : presenterSlideMainText(slide);
+  return cleanList([marker, text]).join(" — ") || "제목 없는 슬라이드";
 }
 
 function presenterSlideMarker(slide) {
-  if (slide?.type === "lyrics") return slide?.marker || "";
+  if (presenterSlideRenderClass(slide) === "lyrics") return slide?.marker || "";
   return [slide?.marker, slide?.label].filter(Boolean).join(" · ");
 }
 
@@ -11649,7 +12052,7 @@ function scrollActivePresenterThumbIntoView(serviceId = state.presenter.serviceI
   const root = document.getElementById("servicePresenterControls");
   if (!root || state.presenter.serviceId !== serviceId) return;
   root.querySelector(".svc-slide-thumb.active")?.scrollIntoView({
-    block: "nearest",
+    block: "center",
     inline: "nearest",
   });
 }
@@ -11745,6 +12148,8 @@ function presenterReadySlide(service) {
     sectionRole: "ready",
     sectionTitle: title,
     sectionName: title,
+    elementType: PRESENTER_ELEMENT_TYPES.PLAIN_TEXT,
+    layout: PRESENTER_SLIDE_LAYOUTS.CENTER_TEXT,
     type: "ready",
     label: "준비",
     title,
@@ -11754,6 +12159,42 @@ function presenterReadySlide(service) {
   };
 }
 
+function presenterSlideElementType(slide) {
+  if (slide?.elementType) return slide.elementType;
+  if (slide?.type === "lyrics" || slide?.type === "song-title") return PRESENTER_ELEMENT_TYPES.PRAISE;
+  if (slide?.type === "video") return PRESENTER_ELEMENT_TYPES.VIDEO;
+  if (slide?.type === "image") return PRESENTER_ELEMENT_TYPES.IMAGE;
+  if (slide?.type === "deck") return (slide?.sourceType || slide?.componentType) === "pdf" ? PRESENTER_ELEMENT_TYPES.PDF : PRESENTER_ELEMENT_TYPES.PPT;
+  if (slide?.type === "blank") return PRESENTER_ELEMENT_TYPES.BLANK;
+  return PRESENTER_ELEMENT_TYPES.PLAIN_TEXT;
+}
+
+function presenterSlideLayout(slide) {
+  if (slide?.layout) return slide.layout;
+  if (slide?.type === "lyrics" || slide?.type === "song-title") return PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT;
+  if (slide?.type === "video") return PRESENTER_SLIDE_LAYOUTS.MEDIA;
+  if (slide?.type === "image") return PRESENTER_SLIDE_LAYOUTS.MEDIA;
+  if (slide?.type === "deck") return PRESENTER_SLIDE_LAYOUTS.FILE;
+  if (slide?.type === "blank") return PRESENTER_SLIDE_LAYOUTS.BLANK;
+  return PRESENTER_SLIDE_LAYOUTS.CENTER_TEXT;
+}
+
+function presenterSlideRenderClass(slide) {
+  const layout = presenterSlideLayout(slide);
+  const elementType = presenterSlideElementType(slide);
+  if (layout === PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT) return slide?.type === "song-title" ? "song-title" : "lyrics";
+  if (layout === PRESENTER_SLIDE_LAYOUTS.MEDIA) return elementType === PRESENTER_ELEMENT_TYPES.IMAGE ? "image" : "video";
+  if (layout === PRESENTER_SLIDE_LAYOUTS.FILE) return "deck";
+  if (layout === PRESENTER_SLIDE_LAYOUTS.BLANK) return "blank";
+  if (slide?.type === "ready") return "ready";
+  if (elementType === PRESENTER_ELEMENT_TYPES.SCRIPTURE_TEXT || elementType === PRESENTER_ELEMENT_TYPES.BODY_TEXT) return "component";
+  return "component";
+}
+
+function presenterSlideHasMeta(slide) {
+  return presenterSlideLayout(slide) === PRESENTER_SLIDE_LAYOUTS.CENTER_TEXT && slide?.type !== "ready";
+}
+
 function buildPresenterSlidesForServiceItem(item, service, index) {
   const song = item.song_id ? state.songs.find((candidate) => candidate.id === item.song_id) : null;
   const version = song ? getServiceItemVersion(song, item, service) : null;
@@ -11761,10 +12202,11 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
   const label = item.label || "";
   const displayText = serviceItemDisplayText(item);
   const memo = parseServiceItemMemo(item?.memo);
-  if (!displayText && !memo.componentType) return [];
-  const section = presenterSectionForServiceItem(item, index, displayText);
-  const componentSlide = presenterComponentSlideFromMemo(item, section, index, memo, displayText);
-  if (componentSlide) return [componentSlide];
+  const memoElementType = serviceMemoElementType(memo);
+  if (!displayText && !memoElementType) return [];
+  const section = presenterSectionForServiceItem(item, index, displayText, song);
+  const elementSlide = presenterElementSlideFromMemo(item, section, index, memo, displayText);
+  if (elementSlide) return [elementSlide];
   const videoSrc = presenterVideoSourceFromServiceItem(item, displayText);
 
   if (videoSrc) {
@@ -11775,6 +12217,8 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
       sectionLabel: label || "Video",
       sectionTitle: videoTitle,
       sectionName: videoTitle,
+      elementType: PRESENTER_ELEMENT_TYPES.VIDEO,
+      layout: PRESENTER_SLIDE_LAYOUTS.MEDIA,
       type: "video",
       label,
       title: videoTitle,
@@ -11798,9 +12242,11 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
       return chunks.map((chunk, chunkIndex) => ({
         id: `${item.id || index}:form:${formId}:chunk:${chunkIndex}`,
         ...section,
+        elementType: PRESENTER_ELEMENT_TYPES.PRAISE,
+        layout: PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT,
         type: "lyrics",
         label,
-        title: song.title || splitHymnNo(displayText).title,
+        title: presenterPraiseTitle(song, displayText),
         subtitle: versionDisplayName(song, version),
         marker: chunkIndex === 0 ? presenterFormMarker(form) : "",
         formKey: String(formId),
@@ -11818,6 +12264,8 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
   return [{
     id: `${item.id || index}:title`,
     ...section,
+    elementType: isSongServiceLabel(label) ? PRESENTER_ELEMENT_TYPES.PRAISE : PRESENTER_ELEMENT_TYPES.PLAIN_TEXT,
+    layout: isSongServiceLabel(label) ? PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT : PRESENTER_SLIDE_LAYOUTS.CENTER_TEXT,
     type: isSongServiceLabel(label) ? "song-title" : "component",
     label,
     title,
@@ -11827,16 +12275,18 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
   }];
 }
 
-function presenterComponentSlideFromMemo(item, section, index, memo, displayText) {
-  const componentType = normalizeServiceComponentType(memo?.componentType);
-  if (!componentType || componentType === "praise" || componentType === "scripture") return null;
+function presenterElementSlideFromMemo(item, section, index, memo, displayText) {
+  const elementType = serviceMemoElementType(memo);
+  if (!elementType || elementType === "praise" || elementType === "scripture") return null;
   const label = item?.label || "";
   const asset = normalizeServiceAsset(memo?.asset);
-  const title = asset.name || displayText || label || serviceComponentTypeLabel(componentType);
-  if (componentType === "blank") {
+  const title = asset.name || displayText || label || serviceElementTypeLabel(elementType);
+  if (elementType === "blank") {
     return {
       id: `${item.id || index}:blank`,
       ...section,
+      elementType: PRESENTER_ELEMENT_TYPES.BLANK,
+      layout: PRESENTER_SLIDE_LAYOUTS.BLANK,
       type: "blank",
       label,
       title: title || "Blank",
@@ -11845,7 +12295,7 @@ function presenterComponentSlideFromMemo(item, section, index, memo, displayText
       sort: index,
     };
   }
-  if (componentType === "video") {
+  if (elementType === "video") {
     const source = normalizePresenterMediaSource(asset.url || displayText);
     if (!source) return null;
     return {
@@ -11854,6 +12304,8 @@ function presenterComponentSlideFromMemo(item, section, index, memo, displayText
       sectionLabel: label || "Video",
       sectionTitle: title,
       sectionName: title,
+      elementType: PRESENTER_ELEMENT_TYPES.VIDEO,
+      layout: PRESENTER_SLIDE_LAYOUTS.MEDIA,
       type: "video",
       label,
       title,
@@ -11863,13 +12315,36 @@ function presenterComponentSlideFromMemo(item, section, index, memo, displayText
       sort: index,
     };
   }
-  if (componentType === "activity") {
+  if (elementType === "image") {
+    const source = normalizePresenterMediaSource(asset.url || displayText);
+    if (!source) return null;
+    return {
+      id: `${item.id || index}:image`,
+      ...section,
+      sectionLabel: label || "Image",
+      sectionTitle: title,
+      sectionName: title,
+      elementType: PRESENTER_ELEMENT_TYPES.IMAGE,
+      layout: PRESENTER_SLIDE_LAYOUTS.MEDIA,
+      type: "image",
+      label,
+      title,
+      marker: label || "Image",
+      text: title,
+      imageSrc: source,
+      asset,
+      sort: index,
+    };
+  }
+  if (elementType === "activity") {
     return {
       id: `${item.id || index}:activity`,
       ...section,
       sectionLabel: label || "Activity",
       sectionTitle: title,
       sectionName: title,
+      elementType: PRESENTER_ELEMENT_TYPES.FREEFORM,
+      layout: PRESENTER_SLIDE_LAYOUTS.CENTER_TEXT,
       type: "activity",
       label,
       title,
@@ -11878,28 +12353,35 @@ function presenterComponentSlideFromMemo(item, section, index, memo, displayText
       sort: index,
     };
   }
-  if (componentType === "pptx" || componentType === "template") {
+  if (elementType === "pptx" || elementType === "pdf" || elementType === "template") {
     return {
-      id: `${item.id || index}:${componentType}`,
+      id: `${item.id || index}:${elementType}`,
       ...section,
-      sectionLabel: label || serviceComponentTypeLabel(componentType),
+      sectionLabel: label || serviceElementTypeLabel(elementType),
       sectionTitle: title,
       sectionName: title,
+      elementType: elementType === "pdf"
+        ? PRESENTER_ELEMENT_TYPES.PDF
+        : elementType === "pptx"
+          ? PRESENTER_ELEMENT_TYPES.PPT
+          : PRESENTER_ELEMENT_TYPES.FREEFORM,
+      layout: PRESENTER_SLIDE_LAYOUTS.FILE,
       type: "deck",
       label,
       title,
-      marker: serviceComponentTypeLabel(componentType),
+      marker: serviceElementTypeLabel(elementType),
       text: [title, asset.url].filter(Boolean).join("\n"),
       asset,
-      componentType,
+      sourceType: elementType,
+      componentType: elementType,
       sort: index,
     };
   }
   return null;
 }
 
-function serviceComponentTypeLabel(type) {
-  return SERVICE_COMPONENT_LABELS[normalizeServiceComponentType(type)] || "Component";
+function serviceElementTypeLabel(type) {
+  return SERVICE_ELEMENT_LABELS[normalizeServiceElementType(type)] || "항목";
 }
 
 function buildPresenterCustomSlides(item, section, index) {
@@ -11911,6 +12393,8 @@ function buildPresenterCustomSlides(item, section, index) {
     return {
       id: `${item.id || index}:custom:${blockIndex}`,
       ...section,
+      elementType: isSongServiceLabel(label) ? PRESENTER_ELEMENT_TYPES.PRAISE : PRESENTER_ELEMENT_TYPES.FREEFORM,
+      layout: isSongServiceLabel(label) ? PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT : PRESENTER_SLIDE_LAYOUTS.CENTER_TEXT,
       type: isSongServiceLabel(label) ? "lyrics" : "component",
       label,
       title: section.sectionTitle || item.raw_title || label || "Slide",
@@ -11952,6 +12436,8 @@ function buildPresenterScriptureTextSlides(item, section, index) {
   return payload.verses.map((verse, verseIndex) => ({
     id: `${item.id || index}:scripture:${verse.number || verseIndex + 1}`,
     ...section,
+    elementType: PRESENTER_ELEMENT_TYPES.SCRIPTURE_TEXT,
+    layout: PRESENTER_SLIDE_LAYOUTS.CENTER_TEXT,
     type: "component",
     label: item.label || "본문",
     title: payload.reference || section.sectionTitle || "본문",
@@ -11989,31 +12475,53 @@ function shouldIncludeSongTitleSlide(item, label) {
 }
 
 function presenterSongTitleSlide(item, section, song, version, displayText, index) {
-  const { no, title } = splitHymnNo(displayText);
-  const songTitle = song?.title || title || displayText;
+  const songTitle = presenterPraiseTitle(song, displayText);
+  const marker = presenterPraiseMarker(song, displayText);
   return {
     id: `${item.id || index}:song-title`,
     ...section,
+    elementType: PRESENTER_ELEMENT_TYPES.PRAISE,
+    layout: PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT,
     type: "song-title",
     label: item.label || "",
     title: songTitle,
     subtitle: versionDisplayName(song, version),
-    marker: no || "",
+    marker,
     text: songTitle,
     sort: index - 0.001,
   };
 }
 
-function presenterFormMarker(form) {
-  const label = displayLabel(form);
-  return label && label !== "Lyrics" ? label : "";
+function presenterPraiseTitle(song, fallbackText = "") {
+  const linkedTitle = String(song?.title || "").trim();
+  const cleanLinkedTitle = song?.hymn_no ? stripHymnNumber(linkedTitle) : linkedTitle;
+  const normalizedLinkedTitle = cleanLinkedTitle.replace(/^찬송가\s*\d+\s*장\s*/i, "").trim();
+  if (normalizedLinkedTitle) return normalizedLinkedTitle;
+  const { title } = splitHymnNo(fallbackText);
+  return title || fallbackText || "";
 }
 
-function presenterSectionForServiceItem(item, index, displayText) {
+function presenterPraiseMarker(song, fallbackText = "") {
+  if (song?.hymn_no) return String(song.hymn_no).trim();
+  const { no } = splitHymnNo(fallbackText);
+  return no || "";
+}
+
+function presenterFormMarker(form) {
+  const label = displayLabel(form);
+  return isGenericPresenterFormLabel(label) ? "" : label;
+}
+
+function isGenericPresenterFormLabel(value) {
+  return /^(lyrics|가사)$/i.test(String(value || "").trim());
+}
+
+function presenterSectionForServiceItem(item, index, displayText, song = null) {
   const label = String(item?.label || "").trim();
   const formHint = serviceItemFormHint(item);
   const { no, title } = splitHymnNo(displayText);
-  const sectionTitle = [no, title].filter(Boolean).join(" ") || displayText || label || `Component ${index + 1}`;
+  const linkedSongTitle = song ? presenterPraiseTitle(song, displayText) : "";
+  const sectionTitle = linkedSongTitle || [no, title].filter(Boolean).join(" ") || displayText || label || `항목 ${index + 1}`;
   const sectionLabelText = cleanList([label, formHint]).join(" · ");
   return {
     sectionId: item?.id || `section:${index}:${normalizeTitle([label, displayText].filter(Boolean).join(" "))}`,
@@ -12052,7 +12560,7 @@ function normalizePresenterMediaSource(value) {
   if (!source) return "";
   if (/^(javascript|data):/i.test(source)) return "";
   if (/^(https?:\/\/|\/|\.{1,2}\/)/i.test(source)) return source;
-  if (/\.(mp4|webm|mov|m4v)(?:[?#].*)?$/i.test(source)) return source;
+  if (/\.(mp4|webm|mov|m4v|png|jpe?g|gif|webp|svg|pdf)(?:[?#].*)?$/i.test(source)) return source;
   return "";
 }
 
@@ -12513,8 +13021,9 @@ function renderPresenterOutput(payload) {
     return;
   }
 
+  const slideClass = presenterSlideRenderClass(slide);
   root.innerHTML = `
-    <section class="presenter-slide presenter-slide--${escapeAttr(slide.type || "component")}">
+    <section class="presenter-slide presenter-slide--${escapeAttr(slideClass)}" data-element-type="${escapeAttr(presenterSlideElementType(slide))}" data-slide-layout="${escapeAttr(presenterSlideLayout(slide))}">
       ${renderPresenterSlideMeta(slide)}
       ${renderPresenterSlideBody(slide)}
     </section>
@@ -12522,7 +13031,7 @@ function renderPresenterOutput(payload) {
 }
 
 function renderPresenterSlideMeta(slide) {
-  if (slide.type === "lyrics" || slide.type === "song-title" || slide.type === "video" || slide.type === "ready" || slide.type === "deck" || slide.type === "blank") return "";
+  if (!presenterSlideHasMeta(slide)) return "";
   const marker = presenterVisibleMeta(slide);
   if (!marker) return "";
   return `<div class="presenter-slide-meta">${escapeHtml(marker)}</div>`;
@@ -12536,9 +13045,12 @@ function presenterVisibleMeta(slide) {
 }
 
 function renderPresenterSlideBody(slide) {
-  if (slide.type === "video") return renderPresenterVideoSlide(slide);
-  if (slide.type === "deck") return renderPresenterDeckSlide(slide);
-  if (slide.type === "blank") return "";
+  const layout = presenterSlideLayout(slide);
+  const elementType = presenterSlideElementType(slide);
+  if (layout === PRESENTER_SLIDE_LAYOUTS.MEDIA && elementType === PRESENTER_ELEMENT_TYPES.VIDEO) return renderPresenterVideoSlide(slide);
+  if (layout === PRESENTER_SLIDE_LAYOUTS.MEDIA && elementType === PRESENTER_ELEMENT_TYPES.IMAGE) return renderPresenterImageSlide(slide);
+  if (layout === PRESENTER_SLIDE_LAYOUTS.FILE) return renderPresenterDeckSlide(slide);
+  if (layout === PRESENTER_SLIDE_LAYOUTS.BLANK) return "";
   return `<div class="presenter-slide-text">${renderPresenterSlideText(slide)}</div>`;
 }
 
@@ -12552,9 +13064,17 @@ function renderPresenterVideoSlide(slide) {
   `;
 }
 
+function renderPresenterImageSlide(slide) {
+  const source = normalizePresenterMediaSource(slide.imageSrc || slide.asset?.url || slide.text);
+  if (!source) {
+    return `<div class="presenter-slide-text"><span>${escapeHtml(slide.title || "Image")}</span></div>`;
+  }
+  return `<img class="presenter-image" src="${escapeAttr(source)}" alt="" />`;
+}
+
 function renderPresenterDeckSlide(slide) {
   const asset = normalizeServiceAsset(slide.asset);
-  const typeLabel = serviceComponentTypeLabel(slide.componentType || asset.kind || "template");
+  const typeLabel = serviceElementTypeLabel(slide.sourceType || slide.componentType || asset.kind || "template");
   const title = slide.title || presenterMediaFileName(asset.url) || typeLabel;
   return `
     <div class="presenter-slide-file">
@@ -12572,9 +13092,10 @@ function renderPresenterSlideText(slide) {
 
 function presenterDisplayLines(slide) {
   const baseText = slide?.text || slide?.title || "";
-  const text = slide?.type === "lyrics" ? slide?.text : baseText;
+  const lowerBar = presenterSlideLayout(slide) === PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT;
+  const text = lowerBar ? slide?.text : baseText;
   const lines = String(text || "").split(/\n/);
-  if (slide?.type === "lyrics") return lines;
+  if (lowerBar) return lines;
 
   const deduped = [];
   for (const line of lines) {
@@ -12599,7 +13120,7 @@ function presenterLineCharEstimate(line) {
 
 async function createService() {
   if (!state.newServiceForm || !requireClient()) return;
-  const { type_id, date, leader, tags } = state.newServiceForm;
+  const { type_id, date, title, leader, tags } = state.newServiceForm;
   if (!date) { showToast("날짜를 입력해주세요.", "error"); return; }
 
   try {
@@ -12609,6 +13130,7 @@ async function createService() {
       leader: serviceUsesPraiseLeader(type_id) ? nullIfBlank(leader) : null,
       tags: tags ? tags.split(",").map((t) => t.trim()).filter(Boolean) : [],
     };
+    if (state.serviceTitleSupported) payload.title = nullIfBlank(title);
     const { data, error } = await state.client
       .from("mindex_services")
       .insert(payload)

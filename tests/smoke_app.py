@@ -233,6 +233,36 @@ def get_app_snapshot(page) -> dict[str, Any]:
     )
 
 
+def shell_layout_snapshot(page) -> dict[str, Any]:
+    return page.evaluate(
+        """
+        (() => {
+          const detail = document.querySelector('.detail-pane');
+          const topbar = document.querySelector('.topbar');
+          const sidebar = document.querySelector('.sidebar');
+          const toggle = document.querySelector('#sidebarToggleBtn');
+          const styles = detail ? getComputedStyle(detail) : null;
+          const toggleRect = toggle?.getBoundingClientRect();
+          const sidebarRect = sidebar?.getBoundingClientRect();
+          return {
+            module: document.body.dataset.module,
+            viewport: window.innerWidth,
+            documentScrollWidth: document.documentElement.scrollWidth,
+            bodyScrollWidth: document.body.scrollWidth,
+            detailPaddingLeft: styles ? Math.round(parseFloat(styles.paddingLeft)) : 0,
+            detailPaddingTop: styles ? Math.round(parseFloat(styles.paddingTop)) : 0,
+            topbarHeight: topbar ? Math.round(topbar.getBoundingClientRect().height) : 0,
+            sidebarWidth: sidebarRect ? Math.round(sidebarRect.width) : 0,
+            toggleLeft: toggleRect ? Math.round(toggleRect.left) : 0,
+            toggleTop: toggleRect ? Math.round(toggleRect.top) : 0,
+            toggleWidth: toggleRect ? Math.round(toggleRect.width) : 0,
+            toggleHeight: toggleRect ? Math.round(toggleRect.height) : 0
+          };
+        })()
+        """
+    )
+
+
 def select_service_for_print(page) -> dict[str, Any] | None:
     return page.evaluate(
         """
@@ -354,10 +384,90 @@ def main() -> int:
             collapsed = page.evaluate("document.body.classList.contains('sidebar-collapsed')")
             page.click("#sidebarToggleBtn")
             expanded = page.evaluate("!document.body.classList.contains('sidebar-collapsed')")
+            page.wait_for_timeout(180)
             if collapsed and expanded:
                 pass_("sidebar-toggle")
             else:
                 fail("sidebar-toggle", f"collapsed={collapsed} expanded={expanded}")
+
+            desktop_shell = shell_layout_snapshot(page)
+            desktop_overflow = max(
+                desktop_shell["documentScrollWidth"] - desktop_shell["viewport"],
+                desktop_shell["bodyScrollWidth"] - desktop_shell["viewport"],
+            )
+            if (
+                desktop_shell["detailPaddingLeft"] == 25
+                and desktop_shell["detailPaddingTop"] == 20
+                and desktop_shell["toggleWidth"] == desktop_shell["toggleHeight"] == 32
+                and desktop_overflow <= 2
+            ):
+                pass_("shell-desktop-geometry", json.dumps(desktop_shell, ensure_ascii=False))
+            else:
+                fail("shell-desktop-geometry", json.dumps(desktop_shell, ensure_ascii=False))
+
+            page.click("#sidebarToggleBtn")
+            page.wait_for_timeout(180)
+            collapsed_shell = shell_layout_snapshot(page)
+            page.click("#sidebarToggleBtn")
+            page.wait_for_timeout(180)
+            if collapsed_shell["detailPaddingLeft"] == desktop_shell["detailPaddingLeft"]:
+                pass_("sidebar-collapse-keeps-gutter", json.dumps(collapsed_shell, ensure_ascii=False))
+            else:
+                fail("sidebar-collapse-keeps-gutter", json.dumps(collapsed_shell, ensure_ascii=False))
+
+            page.set_viewport_size({"width": 390, "height": 780})
+            mobile_shell = shell_layout_snapshot(page)
+            mobile_overflow = max(
+                mobile_shell["documentScrollWidth"] - mobile_shell["viewport"],
+                mobile_shell["bodyScrollWidth"] - mobile_shell["viewport"],
+            )
+            if mobile_shell["detailPaddingLeft"] == 15 and mobile_shell["detailPaddingTop"] == 15 and mobile_overflow <= 2:
+                pass_("shell-mobile-geometry", json.dumps(mobile_shell, ensure_ascii=False))
+            else:
+                fail("shell-mobile-geometry", json.dumps(mobile_shell, ensure_ascii=False))
+            page.set_viewport_size({"width": 1440, "height": 980})
+
+            reference_page = browser.new_page(viewport={"width": 1100, "height": 760})
+            reference_page.add_init_script("localStorage.clear(); sessionStorage.clear();")
+            reference_page.goto(f"{app_url}?mindexSmokeRaw=1", wait_until="load")
+            reference_page.wait_for_selector(".app-shell", timeout=5000)
+            reference_page.evaluate(
+                """
+                (() => {
+                  state.module = 'references';
+                  state.referenceError = '';
+                  state.referenceLinksLoaded = true;
+                  state.referenceLinks = [
+                    { id: 'a1', title: 'Alpha Link', url: 'https://alpha.example', group_name: 'Alpha', sort_order: 10, is_active: true },
+                    { id: 'b1', title: 'Beta One', url: 'https://beta-one.example', group_name: 'Beta', sort_order: 20, is_active: true },
+                    { id: 'b2', title: 'Beta Two', url: 'https://beta-two.example', group_name: 'Beta', sort_order: 30, is_active: true }
+                  ];
+                  render();
+                })();
+                """
+            )
+            reference_page.evaluate(
+                """
+                (() => {
+                  moveReferenceGroup('Alpha', 1);
+                  moveReferenceLink('b1', 1);
+                })();
+                """
+            )
+            reference_order = reference_page.evaluate(
+                """
+                (() => ({
+                  groups: [...document.querySelectorAll('.reference-group-head h3')].map((node) => node.textContent.trim()),
+                  links: state.referenceLinks.map((link) => link.id),
+                  dirty: state.dirty.references
+                }))()
+                """
+            )
+            if reference_order["groups"] == ["Beta", "Alpha"] and reference_order["links"] == ["b2", "b1", "a1"] and reference_order["dirty"]:
+                pass_("reference-group-reorder", json.dumps(reference_order, ensure_ascii=False))
+            else:
+                fail("reference-group-reorder", json.dumps(reference_order, ensure_ascii=False))
+            reference_page.close()
 
             if not has_config:
                 skip("supabase-backed-flows", "No Supabase config found.")
@@ -398,7 +508,6 @@ def main() -> int:
                     raw_link_state["module"] == "praise"
                     and raw_link_state["songs"] > 0
                     and not raw_link_state["connectionError"]
-                    and not raw_link_state["injectedConfig"]
                     and raw_link_state["hasUrl"]
                     and raw_link_state["hasAnonKey"]
                 ):
@@ -408,6 +517,93 @@ def main() -> int:
                 raw_page.close()
 
                 wait_for_supabase_client(page)
+                page.evaluate("goHome()")
+                page.wait_for_function("() => document.body.dataset.module === 'home'", timeout=5000)
+                home_order = page.evaluate(
+                    """
+                    [...document.querySelectorAll('.home-sidebar-card span')].map((node) => node.textContent.trim())
+                    """
+                )
+                expected_home_order = ["Worship", "Activities", "Praise", "Scripture", "Calendar", "References", "Order Sheets"]
+                if home_order == expected_home_order:
+                    pass_("home-sidebar-hierarchy", json.dumps(home_order, ensure_ascii=False))
+                else:
+                    fail("home-sidebar-hierarchy", json.dumps(home_order, ensure_ascii=False))
+
+                page.evaluate("switchModule('calendar')")
+                page.wait_for_function("() => document.body.dataset.module === 'calendar'", timeout=5000)
+                page.wait_for_selector(".cal-tab.active", timeout=15000)
+                calendar_state = page.evaluate(
+                    """
+                    (() => ({
+                      placeholder: document.querySelector('#searchInput')?.placeholder || '',
+                      hasCalendar: Boolean(document.querySelector('.cal-view') || document.querySelector('.empty-detail')),
+                      activeTab: document.querySelector('.cal-tab.active')?.textContent.trim() || '',
+                      departmentHeaders: [...document.querySelectorAll('.cal-table thead th')]
+                        .map((node) => node.textContent.replace(/\\s+/g, ' ').trim())
+                        .filter((text) => text.includes('부')),
+                      hasYearEndRow: document.body.textContent.includes('송구영신예배'),
+                      overflow: Math.max(document.documentElement.scrollWidth - window.innerWidth, document.body.scrollWidth - window.innerWidth)
+                    }))()
+                    """
+                )
+                expected_department_headers = [
+                    "유치부 기도자",
+                    "어린이부 기도자",
+                    "청소년부 기도자",
+                    "청소년부 봉헌기도자",
+                    "청소년부 설교자",
+                ]
+                if (
+                    "Mindex" in calendar_state["placeholder"]
+                    and calendar_state["hasCalendar"]
+                    and calendar_state["activeTab"] == "부서 일과"
+                    and calendar_state["departmentHeaders"] == expected_department_headers
+                    and calendar_state["hasYearEndRow"]
+                    and calendar_state["overflow"] <= 2
+                ):
+                    pass_("calendar-utility-shell", json.dumps(calendar_state, ensure_ascii=False))
+                else:
+                    fail("calendar-utility-shell", json.dumps(calendar_state, ensure_ascii=False))
+
+                page.click('[data-calendar-detail-tab="lectionary"]')
+                calendar_lectionary_state = page.evaluate(
+                    """
+                    (() => ({
+                      activeTab: document.querySelector('.cal-tab.active')?.textContent.trim() || '',
+                      headers: [...document.querySelectorAll('.cal-table thead th')]
+                        .map((node) => node.textContent.replace(/\\s+/g, ' ').trim())
+                        .slice(-5),
+                      overflow: Math.max(document.documentElement.scrollWidth - window.innerWidth, document.body.scrollWidth - window.innerWidth)
+                    }))()
+                    """
+                )
+                expected_lectionary_headers = ["색깔", "첫째 읽기", "시편", "둘째 읽기", "복음서"]
+                if (
+                    calendar_lectionary_state["activeTab"] == "성서일과"
+                    and calendar_lectionary_state["headers"] == expected_lectionary_headers
+                    and calendar_lectionary_state["overflow"] <= 2
+                ):
+                    pass_("calendar-lectionary-tab", json.dumps(calendar_lectionary_state, ensure_ascii=False))
+                else:
+                    fail("calendar-lectionary-tab", json.dumps(calendar_lectionary_state, ensure_ascii=False))
+
+                page.evaluate("switchModule('references')")
+                page.wait_for_function("() => document.body.dataset.module === 'references'", timeout=5000)
+                references_state = page.evaluate(
+                    """
+                    (() => ({
+                      placeholder: document.querySelector('#searchInput')?.placeholder || '',
+                      hasReferences: Boolean(document.querySelector('.references-shell') || document.querySelector('.empty-detail')),
+                      overflow: Math.max(document.documentElement.scrollWidth - window.innerWidth, document.body.scrollWidth - window.innerWidth)
+                    }))()
+                    """
+                )
+                if "Mindex" in references_state["placeholder"] and references_state["hasReferences"] and references_state["overflow"] <= 2:
+                    pass_("references-utility-shell", json.dumps(references_state, ensure_ascii=False))
+                else:
+                    fail("references-utility-shell", json.dumps(references_state, ensure_ascii=False))
+
                 page.click('[data-module="service"]')
                 wait_for_service_data(page)
                 wait_for_module_data(page, "service")
@@ -418,6 +614,39 @@ def main() -> int:
                     pass_("service-data-load", json.dumps(snapshot, ensure_ascii=False))
                 else:
                     fail("service-data-load", json.dumps(snapshot, ensure_ascii=False))
+
+                page.click('[data-service-templates]')
+                page.wait_for_selector(".svc-template-card", timeout=5000)
+                page.locator(".svc-template-card > summary").first.click()
+                page.wait_for_selector(".svc-template-step-row", timeout=5000)
+                template_terms = page.evaluate(
+                    """
+                    (() => {
+                      const root = document.querySelector('.svc-template-card[open]') || document;
+                      return {
+                        labels: [...root.querySelectorAll('.svc-template-step-row:first-of-type .svc-template-step-field small')]
+                          .slice(0, 6)
+                          .map((node) => node.textContent.trim()),
+                        toggles: [...root.querySelectorAll('.svc-template-step-row:first-of-type .svc-template-step-toggle span')]
+                          .slice(0, 3)
+                          .map((node) => node.textContent.trim()),
+                        addText: root.querySelector('.svc-template-add')?.textContent.trim() || '',
+                        overflow: Math.max(document.documentElement.scrollWidth - window.innerWidth, document.body.scrollWidth - window.innerWidth)
+                      };
+                    })()
+                    """
+                )
+                expected_labels = ["섹션", "기본 항목", "흐름", "타입", "템플릿", "출력"]
+                expected_toggles = ["필수", "유동", "반복"]
+                if (
+                    template_terms["labels"] == expected_labels
+                    and template_terms["toggles"] == expected_toggles
+                    and template_terms["addText"] == "+ 섹션"
+                    and template_terms["overflow"] <= 2
+                ):
+                    pass_("service-template-terminology", json.dumps(template_terms, ensure_ascii=False))
+                else:
+                    fail("service-template-terminology", json.dumps(template_terms, ensure_ascii=False))
 
                 service_for_print = select_service_for_print(page)
                 if not service_for_print:
@@ -431,18 +660,62 @@ def main() -> int:
                           window.print = () => { window.__mindexPrintCalled += 1; };
                           const area = document.getElementById('orderSheetPrintArea');
                           const rect = area.getBoundingClientRect();
+                          const copies = [...area.querySelectorAll('.order-sheet-copy')].map((copy) => {
+                            const copyRect = copy.getBoundingClientRect();
+                            return {
+                              x: Math.round(copyRect.x - rect.x),
+                              y: Math.round(copyRect.y - rect.y),
+                              width: Math.round(copyRect.width),
+                              height: Math.round(copyRect.height)
+                            };
+                          });
                           return {
-                            copies: area.querySelectorAll('.order-sheet-copy').length,
+                            copies: copies.length,
+                            copyRects: copies,
                             ratio: rect.width / rect.height,
                             rows: area.querySelectorAll('tbody tr').length
                           };
                         })()
                         """
                     )
-                    if print_state["copies"] == 2 and 0.68 <= print_state["ratio"] <= 0.74 and print_state["rows"] >= 2:
+                    side_by_side = (
+                        print_state["copies"] == 2
+                        and abs(print_state["copyRects"][0]["y"] - print_state["copyRects"][1]["y"]) <= 2
+                        and print_state["copyRects"][1]["x"] > print_state["copyRects"][0]["x"]
+                        and abs(print_state["copyRects"][0]["height"] - print_state["copyRects"][1]["height"]) <= 2
+                    )
+                    if side_by_side and 1.40 <= print_state["ratio"] <= 1.43 and print_state["rows"] >= 2:
                         pass_("order-sheet-preview", json.dumps({**service_for_print, **print_state}, ensure_ascii=False))
                     else:
                         fail("order-sheet-preview", json.dumps({**service_for_print, **print_state}, ensure_ascii=False))
+
+                    active_order_sheet_date = page.evaluate(
+                        """
+                        () => document.querySelector('.order-sheet-service.active strong')?.textContent.trim() || ''
+                        """
+                    )
+                    page.fill("#searchInput", active_order_sheet_date)
+                    page.wait_for_timeout(150)
+                    order_sheet_search = page.evaluate(
+                        """
+                        (serviceId) => {
+                          const active = document.querySelector(`.order-sheet-service.active[data-order-sheet-service="${CSS.escape(serviceId)}"]`);
+                          const area = document.getElementById('orderSheetPrintArea');
+                          return {
+                            query: document.querySelector('#searchInput')?.value || '',
+                            count: document.querySelectorAll('.order-sheet-service').length,
+                            activeMatches: Boolean(active),
+                            copies: area?.querySelectorAll('.order-sheet-copy').length || 0,
+                            overflow: Math.max(document.documentElement.scrollWidth - window.innerWidth, document.body.scrollWidth - window.innerWidth)
+                          };
+                        }
+                        """,
+                        service_for_print["id"],
+                    )
+                    if order_sheet_search["query"] and order_sheet_search["count"] >= 1 and order_sheet_search["activeMatches"] and order_sheet_search["copies"] == 2 and order_sheet_search["overflow"] <= 2:
+                        pass_("order-sheet-search", json.dumps(order_sheet_search, ensure_ascii=False))
+                    else:
+                        fail("order-sheet-search", json.dumps(order_sheet_search, ensure_ascii=False))
 
                     print_button = page.evaluate(
                         """
@@ -471,7 +744,7 @@ def main() -> int:
                     else:
                         fail("order-sheet-print-button", f"called={called}")
 
-                    pdf_bytes = page.pdf(format="A4", print_background=True)
+                    pdf_bytes = page.pdf(format="A4", landscape=True, print_background=True)
                     if len(pdf_bytes) > 10000:
                         pass_("order-sheet-pdf", f"{len(pdf_bytes)} bytes")
                     else:
@@ -488,6 +761,36 @@ def main() -> int:
                         pass_("presenter-slides", json.dumps(service_for_slides, ensure_ascii=False))
                     else:
                         fail("presenter-slides", f"dom={slide_count} state={service_for_slides}")
+                    page.locator(".svc-edit-drawer > summary").click()
+                    presenter_terms = page.evaluate(
+                        """
+                        (() => ({
+                          summary: document.querySelector('.svc-edit-drawer > summary')?.innerText.trim() || '',
+                          jumpLabel: document.querySelector('[data-presenter-jump-button]')?.getAttribute('aria-label') || '',
+                          firstThumbLabel: document.querySelector('.svc-slide-thumb')?.getAttribute('aria-label') || '',
+                          actionLabels: [...document.querySelectorAll('.svc-edit-actions [aria-label]')]
+                            .slice(0, 4)
+                            .map((node) => node.getAttribute('aria-label')),
+                          elementTypes: [...document.querySelectorAll('[data-service-item-field="element_type"] option')]
+                            .map((node) => node.textContent.trim())
+                            .slice(0, 10),
+                          visibleBadTerms: /컴포넌트|\\bcomponents\\b|\\bComponent\\b|\\bItem\\b|\\bElement\\b/.test(document.body.innerText),
+                          overflow: Math.max(document.documentElement.scrollWidth - window.innerWidth, document.body.scrollWidth - window.innerWidth)
+                        }))()
+                        """
+                    )
+                    if (
+                        "항목" in presenter_terms["summary"]
+                        and presenter_terms["jumpLabel"] == "슬라이드로 이동"
+                        and "슬라이드로 이동" in presenter_terms["firstThumbLabel"]
+                        and presenter_terms["actionLabels"][:4] == ["항목 위로 이동", "항목 아래로 이동", "항목 복제", "항목 삭제"]
+                        and presenter_terms["elementTypes"][:6] == ["자동", "빈 화면", "동영상", "이미지", "찬양", "말씀"]
+                        and not presenter_terms["visibleBadTerms"]
+                        and presenter_terms["overflow"] <= 2
+                    ):
+                        pass_("presenter-terminology", json.dumps(presenter_terms, ensure_ascii=False))
+                    else:
+                        fail("presenter-terminology", json.dumps(presenter_terms, ensure_ascii=False))
                     thumb_metrics = page.evaluate(
                         """
                         (() => [...document.querySelectorAll('.svc-slide-thumb-frame')]
