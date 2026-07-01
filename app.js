@@ -4461,6 +4461,103 @@ function hasServiceAsset(asset) {
   return Boolean(asset && (asset.kind || asset.name || asset.url));
 }
 
+function firstDefinedValue(...values) {
+  return values.find((value) => value !== undefined && value !== null);
+}
+
+function firstNonBlankString(...values) {
+  for (const value of values) {
+    const text = String(value ?? "").trim();
+    if (text) return text;
+  }
+  return "";
+}
+
+function normalizeOrderSheetBoolean(value) {
+  if (value === undefined || value === null || value === "") return null;
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value !== 0;
+  const text = String(value).trim().toLowerCase();
+  if (["true", "1", "yes", "y", "on", "hidden", "hide", "skip", "exclude", "제외", "숨김"].includes(text)) return true;
+  if (["false", "0", "no", "n", "off", "show", "include", "visible", "표시", "포함"].includes(text)) return false;
+  return null;
+}
+
+function parseObjectPayload(value) {
+  if (!value) return null;
+  if (typeof value === "object" && !Array.isArray(value)) return value;
+  if (typeof value !== "string") return null;
+  const raw = value.trim();
+  if (!raw || (!raw.startsWith("{") && !raw.startsWith("["))) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function normalizeServiceOrderSheetPayload(value) {
+  const source = parseObjectPayload(value);
+  if (!source) return null;
+  const order = firstNonBlankString(
+    source.order,
+    source.label,
+    source.title,
+    source.name,
+    source.row,
+    source.rowLabel,
+    source.row_label,
+    source.orderLabel,
+    source.order_label,
+  );
+  const assignee = firstNonBlankString(source.assignee, source.owner, source.person, source.leader, source["담당"]);
+  const note = firstNonBlankString(source.note, source.memo, source.detail, source.details, source.reference, source.text);
+  const group = firstNonBlankString(source.group, source.groupKey, source.group_key, source.section, source.sectionKey, source.section_key);
+  const role = firstNonBlankString(source.role, source.type, source.kind);
+  const hidden = normalizeOrderSheetBoolean(firstDefinedValue(source.hidden, source.hide, source.skip, source.exclude, source.excluded));
+  const include = normalizeOrderSheetBoolean(firstDefinedValue(source.include, source.included, source.visible));
+  const payload = {};
+  if (order) payload.order = order;
+  if (assignee) payload.assignee = assignee;
+  if (note) payload.note = note;
+  if (group) payload.group = group;
+  if (role) payload.role = role;
+  if (hidden === true || include === false) payload.hidden = true;
+  return Object.keys(payload).length ? payload : null;
+}
+
+function mergeServiceOrderSheetPayloads(...payloads) {
+  const merged = {};
+  for (const payload of payloads) {
+    if (!payload || typeof payload !== "object") continue;
+    Object.assign(merged, payload);
+  }
+  return Object.keys(merged).length ? merged : null;
+}
+
+function hasServiceOrderSheetPayload(payload) {
+  return Boolean(payload && typeof payload === "object" && Object.keys(payload).length);
+}
+
+function pickServiceOrderSheetFields(item = {}) {
+  const orderSheet = mergeServiceOrderSheetPayloads(
+    normalizeServiceOrderSheetPayload(item.order_sheet),
+    normalizeServiceOrderSheetPayload(item.orderSheet),
+    normalizeServiceOrderSheetPayload(item.order_sheet_row),
+    normalizeServiceOrderSheetPayload(item.orderSheetRow),
+  );
+  return {
+    ...(orderSheet ? { order_sheet: orderSheet } : {}),
+    order_sheet_label: firstNonBlankString(item.order_sheet_label, item.orderSheetLabel, item.order_sheet_order, item.orderSheetOrder),
+    order_sheet_assignee: firstNonBlankString(item.order_sheet_assignee, item.orderSheetAssignee),
+    order_sheet_note: firstNonBlankString(item.order_sheet_note, item.orderSheetNote),
+    order_sheet_group: firstNonBlankString(item.order_sheet_group, item.orderSheetGroup),
+    order_sheet_role: firstNonBlankString(item.order_sheet_role, item.orderSheetRole, item.order_sheet_type, item.orderSheetType),
+    order_sheet_hidden: normalizeOrderSheetBoolean(firstDefinedValue(item.order_sheet_hidden, item.orderSheetHidden, item.order_sheet_skip, item.orderSheetSkip)) === true,
+  };
+}
+
 function emptyServiceItemMemo(rawNote = "") {
   return {
     note: String(rawNote || "").trim(),
@@ -4471,6 +4568,7 @@ function emptyServiceItemMemo(rawNote = "") {
     elementType: "",
     componentType: "",
     asset: { kind: "", name: "", url: "" },
+    orderSheet: null,
   };
 }
 
@@ -4482,6 +4580,20 @@ function parseServiceItemMemo(value) {
     if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
       const elementType = serviceMemoElementType({ ...parsed, elementType: parsed.elementType || parsed.element_type || parsed.type });
       const asset = normalizeServiceAsset(parsed.asset || parsed.deck || parsed.file || parsed.media);
+      const orderSheet = mergeServiceOrderSheetPayloads(
+        normalizeServiceOrderSheetPayload(parsed.orderSheet),
+        normalizeServiceOrderSheetPayload(parsed.order_sheet),
+        normalizeServiceOrderSheetPayload(parsed.orderSheetRow),
+        normalizeServiceOrderSheetPayload(parsed.order_sheet_row),
+        normalizeServiceOrderSheetPayload({
+          order: firstNonBlankString(parsed.orderSheetLabel, parsed.order_sheet_label, parsed.orderSheetOrder, parsed.order_sheet_order),
+          assignee: firstNonBlankString(parsed.orderSheetAssignee, parsed.order_sheet_assignee),
+          note: firstNonBlankString(parsed.orderSheetNote, parsed.order_sheet_note),
+          group: firstNonBlankString(parsed.orderSheetGroup, parsed.order_sheet_group),
+          role: firstNonBlankString(parsed.orderSheetRole, parsed.order_sheet_role, parsed.orderSheetType, parsed.order_sheet_type),
+          hidden: firstDefinedValue(parsed.orderSheetHidden, parsed.order_sheet_hidden, parsed.orderSheetSkip, parsed.order_sheet_skip),
+        }),
+      );
       return {
         note: String(parsed.note || parsed.memo || "").trim(),
         slides: Array.isArray(parsed.slides)
@@ -4493,6 +4605,7 @@ function parseServiceItemMemo(value) {
         elementType,
         componentType: elementType,
         asset,
+        orderSheet,
       };
     }
   } catch {
@@ -4522,13 +4635,18 @@ function serializeServiceItemMemo(value = {}) {
   const templateVariant = String(value.templateVariant || value.template_variant || "").trim();
   const elementType = serviceMemoElementType(value);
   const asset = normalizeServiceAsset(value.asset);
-  if (!slides.length && !formHint && !templateKey && !templateVariant && !elementType && !hasServiceAsset(asset)) return note;
+  const orderSheet = mergeServiceOrderSheetPayloads(
+    normalizeServiceOrderSheetPayload(value.orderSheet),
+    normalizeServiceOrderSheetPayload(value.order_sheet),
+  );
+  if (!slides.length && !formHint && !templateKey && !templateVariant && !elementType && !hasServiceAsset(asset) && !hasServiceOrderSheetPayload(orderSheet)) return note;
   const payload = { note };
   if (formHint) payload.formHint = formHint;
   if (templateKey) payload.templateKey = templateKey;
   if (templateVariant) payload.templateVariant = templateVariant;
   if (elementType) payload.elementType = elementType;
   if (hasServiceAsset(asset)) payload.asset = asset;
+  if (hasServiceOrderSheetPayload(orderSheet)) payload.orderSheet = orderSheet;
   if (slides.length) payload.slides = slides;
   return JSON.stringify(payload);
 }
@@ -9515,6 +9633,7 @@ function normalizeServiceItem(item = {}, index = 0) {
     song_id: item.song_id || null,
     version_id: item.version_id || item.song_version_id || null,
     memo: item.memo || "",
+    ...pickServiceOrderSheetFields(item),
   };
 }
 
@@ -9526,6 +9645,7 @@ function normalizeServiceDefaultItem(item = {}, index = 0) {
     label,
     assignee: item.assignee || "",
     raw_title: normalizeServiceItemRawTitle(label, item.raw_title || item.title || item.default_text || ""),
+    ...pickServiceOrderSheetFields(item),
   };
 }
 
@@ -11167,10 +11287,13 @@ function serviceOrderSheetRows(serviceId) {
   let praiseGroup = [];
   const flushPraiseGroup = () => {
     if (!praiseGroup.length) return;
+    const praiseMetas = praiseGroup.map(serviceOrderSheetMeta);
+    const explicitOrder = praiseMetas.map((meta) => meta.order).find(Boolean);
+    const explicitAssignee = praiseMetas.map((meta) => meta.assignee).find(Boolean);
     rows.push({
-      order: "찬양",
-      assignee: serviceOrderSheetPraiseAssignee(praiseGroup),
-      note: praiseGroup.map(serviceOrderSheetNote).filter(Boolean).join("\n"),
+      order: explicitOrder || "찬양",
+      assignee: explicitAssignee || serviceOrderSheetPraiseAssignee(praiseGroup),
+      note: praiseGroup.map((item, index) => serviceOrderSheetNote(item, praiseMetas[index])).filter(Boolean).join("\n"),
     });
     praiseGroup = [];
   };
@@ -11178,21 +11301,26 @@ function serviceOrderSheetRows(serviceId) {
   getServiceOutputItems(serviceId)
     .sort((a, b) => a.sort_order - b.sort_order)
     .forEach((item) => {
+      const meta = serviceOrderSheetMeta(item);
+      if (meta.hidden) {
+        flushPraiseGroup();
+        return;
+      }
       if (isServiceSeparatorItem(item)) {
         flushPraiseGroup();
         return;
       }
-      if (isMainPraiseServiceItem(item, { allowUnlabeled: true })) {
+      if (isOrderSheetPraiseItem(item, meta)) {
         praiseGroup.push(item);
         return;
       }
       flushPraiseGroup();
-      const order = serviceOrderSheetLabel(item);
-      const note = serviceOrderSheetNote(item);
+      const order = serviceOrderSheetLabel(item, meta);
+      const note = serviceOrderSheetNote(item, meta);
       if (!order && !note) return;
       rows.push({
         order,
-        assignee: serviceOrderSheetAssignee(item),
+        assignee: serviceOrderSheetAssignee(item, meta),
         note,
       });
     });
@@ -11211,6 +11339,33 @@ function isMainPraiseLabel(label) {
   return /^찬양\d*$/.test(compact);
 }
 
+function orderSheetGroupKey(value) {
+  return compactSearchValue(String(value || ""));
+}
+
+function serviceOrderSheetMeta(item = {}) {
+  const memo = parseServiceItemMemo(item.memo);
+  return mergeServiceOrderSheetPayloads(
+    memo.orderSheet,
+    normalizeServiceOrderSheetPayload(item.order_sheet),
+    normalizeServiceOrderSheetPayload({
+      order: firstNonBlankString(item.order_sheet_label, item.order_sheet_order),
+      assignee: item.order_sheet_assignee,
+      note: item.order_sheet_note,
+      group: item.order_sheet_group,
+      role: item.order_sheet_role,
+      hidden: item.order_sheet_hidden,
+    }),
+  ) || {};
+}
+
+function isOrderSheetPraiseItem(item, meta = serviceOrderSheetMeta(item)) {
+  const key = orderSheetGroupKey(meta.group || meta.role);
+  if (["praise", "song", "songs", "찬양"].includes(key)) return true;
+  if (meta.order && !isMainPraiseLabel(meta.order)) return false;
+  return isMainPraiseServiceItem(item, { allowUnlabeled: true });
+}
+
 function servicePraiseAssignee(service, items = []) {
   if (!serviceUsesPraiseLeader(service?.type_id)) return "";
   const itemAssignee = items.map((item) => cleanServiceAssignee(item?.assignee)).find(Boolean);
@@ -11221,21 +11376,25 @@ function servicePraiseAssignee(service, items = []) {
 }
 
 function serviceOrderSheetPraiseAssignee(items = []) {
-  const itemAssignee = items.map((item) => cleanServiceAssignee(item?.assignee)).find(Boolean);
+  const itemAssignee = items
+    .map((item) => serviceOrderSheetMeta(item).assignee || cleanServiceAssignee(item?.assignee))
+    .find(Boolean);
   return itemAssignee || "다같이";
 }
 
-function serviceOrderSheetLabel(item) {
+function serviceOrderSheetLabel(item, meta = serviceOrderSheetMeta(item)) {
+  if (meta.order) return meta.order;
   const label = String(item?.label || "").trim();
   if (label === "—") return "";
-  return label || (serviceOrderSheetNote(item) ? "찬양" : "");
+  return label || (serviceOrderSheetNote(item, meta) ? "찬양" : "");
 }
 
 function isServiceSeparatorItem(item) {
   return String(item?.label || "").trim() === "—" && !String(item?.raw_title || "").trim();
 }
 
-function serviceOrderSheetAssignee(item) {
+function serviceOrderSheetAssignee(item, meta = serviceOrderSheetMeta(item)) {
+  if (meta.assignee) return meta.assignee;
   const assignee = cleanServiceAssignee(item?.assignee);
   if (assignee) return assignee;
   return inferOrderSheetAssignee(item);
@@ -11259,7 +11418,8 @@ function looksLikePersonOrGroup(value) {
   return /(목사|전도사|장로|권사|집사|청년|구역|전도회|기관|일동)$/.test(text);
 }
 
-function serviceOrderSheetNote(item) {
+function serviceOrderSheetNote(item, meta = serviceOrderSheetMeta(item)) {
+  if (meta.note) return normalizeServiceItemReferenceSpacing(meta.note);
   return normalizeServiceItemReferenceSpacing(String(item?.raw_title || "").trim());
 }
 

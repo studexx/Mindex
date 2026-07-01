@@ -737,6 +737,63 @@ def main() -> int:
                     else:
                         fail("order-sheet-search", json.dumps(order_sheet_search, ensure_ascii=False))
 
+                    order_sheet_adapter = page.evaluate(
+                        """
+                        (serviceId) => {
+                          const original = state.serviceItems[serviceId] || [];
+                          const explicitItem = normalizeServiceItem({
+                            service_id: serviceId,
+                            sort_order: original.length + 1,
+                            label: '',
+                            raw_title: 'Fallback text',
+                            order_sheet: {
+                              order: '데이터 순서',
+                              assignee: '데이터 담당',
+                              note: '데이터 비고'
+                            }
+                          });
+                          const hiddenItem = normalizeServiceItem({
+                            service_id: serviceId,
+                            sort_order: original.length + 2,
+                            label: '숨김',
+                            raw_title: '숨겨진 비고',
+                            order_sheet_hidden: true
+                          });
+                          const memo = serializeServiceItemMemo({
+                            note: '메모',
+                            orderSheet: {
+                              order: '메모 순서',
+                              assignee: '메모 담당',
+                              note: '메모 비고'
+                            }
+                          });
+                          state.serviceItems[serviceId] = normalizeServiceItemsInCurrentOrder([...original, explicitItem, hiddenItem]);
+                          const rows = serviceOrderSheetRows(serviceId);
+                          state.serviceItems[serviceId] = original;
+                          refreshServiceOrderSheetPreview(serviceId);
+                          const explicit = rows.find((row) => row.order === '데이터 순서');
+                          const hidden = rows.find((row) => row.note === '숨겨진 비고');
+                          const parsedMemo = parseServiceItemMemo(memo).orderSheet || {};
+                          return {
+                            explicit,
+                            hidden: Boolean(hidden),
+                            memoPreserved: parsedMemo.order === '메모 순서' && parsedMemo.assignee === '메모 담당' && parsedMemo.note === '메모 비고'
+                          };
+                        }
+                        """,
+                        service_for_print["id"],
+                    )
+                    if (
+                        order_sheet_adapter["explicit"]
+                        and order_sheet_adapter["explicit"]["assignee"] == "데이터 담당"
+                        and order_sheet_adapter["explicit"]["note"] == "데이터 비고"
+                        and not order_sheet_adapter["hidden"]
+                        and order_sheet_adapter["memoPreserved"]
+                    ):
+                        pass_("order-sheet-data-adapter", json.dumps(order_sheet_adapter, ensure_ascii=False))
+                    else:
+                        fail("order-sheet-data-adapter", json.dumps(order_sheet_adapter, ensure_ascii=False))
+
                     print_button = page.evaluate(
                         """
                         (() => {
