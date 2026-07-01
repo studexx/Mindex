@@ -2054,13 +2054,15 @@ function renderCalendarView() {
     void loadCalendarData({ silent: true });
   }
   if (state.calendarError) {
-    refs.detailPane.innerHTML = `
-      <div class="empty-detail">
-        <div class="empty-detail-inner">
-          <p class="empty-verse">교회력 로드 실패</p>
-          <span>${escapeHtml(state.calendarError)}</span>
-        </div>
-      </div>`;
+    refs.detailPane.innerHTML = isConnectionUnavailableMessage(state.calendarError)
+      ? renderConnectionEmptyDetail(state.connectionError || state.calendarError)
+      : `
+        <div class="empty-detail">
+          <div class="empty-detail-inner">
+            <p class="empty-verse">교회력 로드 실패</p>
+            <span>${escapeHtml(state.calendarError)}</span>
+          </div>
+        </div>`;
     return;
   }
   if (!state.calendarLoaded) {
@@ -5237,17 +5239,23 @@ function renderSongList() {
     return;
   }
 
+  if (state.module === "home") {
+    renderHomeList();
+    return;
+  }
+
+  if (state.connectionError && !["calendar", "references", "order-sheets"].includes(state.module)) {
+    refs.songCount.textContent = "";
+    refs.songList.innerHTML = renderListEmptyState("연결 대기", state.connectionError);
+    return;
+  }
+
   if (state.module === "references" || state.module === "order-sheets") {
     renderHomeList();
     return;
   }
   if (state.module === "activities") {
     renderActivitiesList();
-    return;
-  }
-
-  if (state.module === "home") {
-    renderHomeList();
     return;
   }
 
@@ -5683,6 +5691,29 @@ function renderConnectionEmptyDetail(message = DB_CONNECTION_EMPTY_MESSAGE) {
     `;
 }
 
+function isConnectionUnavailableMessage(message) {
+  const text = String(message || "").trim().toLowerCase();
+  if (!text) return false;
+  return (
+    text === DB_CONNECTION_EMPTY_MESSAGE.toLowerCase() ||
+    text === "no connection." ||
+    text.includes("failed to fetch") ||
+    text.includes("networkerror") ||
+    text.includes("load failed") ||
+    text.includes("supabase connection failed") ||
+    text.includes("supabase library did not load") ||
+    text.includes("invalid api key") ||
+    text.includes("jwt") ||
+    text.includes("connection")
+  );
+}
+
+function renderUnavailableDetail(slot, title, message) {
+  const connectionMessage = state.connectionError || (isConnectionUnavailableMessage(message) ? message : "");
+  if (connectionMessage) return renderConnectionEmptyDetail(connectionMessage);
+  return renderModuleEmptyDetail(slot, title, message);
+}
+
 function renderModuleEmptyDetail(slot, title, fallback) {
   const verse = moduleUiVerse(slot);
   const verseHtml = verse?.text
@@ -5946,7 +5977,9 @@ function renderActivitiesList() {
     return;
   }
   if (state.activityError && state.activityError !== "setup") {
-    refs.songList.innerHTML = renderListEmptyState("Activities unavailable", state.activityError);
+    refs.songList.innerHTML = isConnectionUnavailableMessage(state.activityError)
+      ? renderListEmptyState("연결 대기", state.connectionError || state.activityError)
+      : renderListEmptyState("Activities unavailable", state.activityError);
     return;
   }
   if (!state.activityLoaded) {
@@ -6208,7 +6241,9 @@ function renderScriptureList() {
     : `${filtered.length} ${filtered.length === 1 ? "book" : "books"}`;
 
   if (state.scriptureError) {
-    refs.songList.innerHTML = renderListEmptyState("Scripture unavailable", state.scriptureError);
+    refs.songList.innerHTML = isConnectionUnavailableMessage(state.scriptureError)
+      ? renderListEmptyState("연결 대기", state.connectionError || state.scriptureError)
+      : renderListEmptyState("Scripture unavailable", state.scriptureError);
     return;
   }
 
@@ -6345,6 +6380,12 @@ function renderDetail() {
     return;
   }
 
+  if (state.connectionError) {
+    refs.detailPane.innerHTML = renderConnectionEmptyDetail(state.connectionError);
+    refreshIcons();
+    return;
+  }
+
   if (state.module === "scripture") {
     renderScriptureDetail();
     return;
@@ -6433,7 +6474,7 @@ function renderActivitiesDetail() {
   }
 
   if (state.activityError && state.activityError !== "setup") {
-    refs.detailPane.innerHTML = renderModuleEmptyDetail("activities", "Activities", state.activityError);
+    refs.detailPane.innerHTML = renderUnavailableDetail("activities", "Activities", state.activityError);
     refreshIcons();
     return;
   }
@@ -6562,6 +6603,12 @@ function activityGameTypeLabel(type) {
 function renderReferencesDetail() {
   if (!state.client) {
     refs.detailPane.innerHTML = renderConnectionEmptyDetail();
+    refreshIcons();
+    return;
+  }
+
+  if (state.referenceError && state.referenceError !== "setup") {
+    refs.detailPane.innerHTML = renderUnavailableDetail("references", "References", state.referenceError);
     refreshIcons();
     return;
   }
@@ -6927,14 +6974,7 @@ function renderScriptureDetail() {
   }
 
   if (state.scriptureError) {
-    refs.detailPane.innerHTML = `
-      <div class="empty-detail">
-        <div class="empty-detail-inner">
-          <h2>Mindex Scripture</h2>
-          <p>Scripture data is unavailable.</p>
-        </div>
-      </div>
-    `;
+    refs.detailPane.innerHTML = renderUnavailableDetail("scripture", "Scripture", state.scriptureError);
     refreshIcons();
     return;
   }
@@ -10015,10 +10055,18 @@ function renderServiceList() {
     return;
   }
 
+  if (state.connectionError) {
+    refs.songCount.textContent = "";
+    refs.songList.innerHTML = renderListEmptyState("연결 대기", state.connectionError);
+    return;
+  }
+
   if (state.serviceError || !state.serviceTypes.length) {
     refs.songCount.textContent = "";
     refs.songList.innerHTML = state.serviceError
-      ? renderListEmptyState("Service unavailable", state.serviceError)
+      ? (isConnectionUnavailableMessage(state.serviceError)
+        ? renderListEmptyState("연결 대기", state.connectionError || state.serviceError)
+        : renderListEmptyState("Service unavailable", state.serviceError))
       : renderListEmptyState("Loading…", "");
     return;
   }
@@ -10782,11 +10830,9 @@ function renderServiceScriptureLinkControl(item) {
 
 function renderServiceDashboard() {
   if (!state.serviceTypes.length) {
-    refs.detailPane.innerHTML = `
-      <div class="empty-detail"><div class="empty-detail-inner">
-        <p class="empty-verse">Wait for the LORD; be strong and take heart and wait for the LORD.</p>
-        <span>Psalm 27:14</span>
-      </div></div>`;
+    refs.detailPane.innerHTML = state.serviceError
+      ? renderUnavailableDetail("service", "Worship", state.serviceError)
+      : `<div class="empty-detail"><div class="empty-detail-inner"><p class="empty-verse">Loading…</p></div></div>`;
     return;
   }
 
@@ -11251,7 +11297,7 @@ function renderOrderSheetsDetail() {
   }
 
   if (state.serviceError || !state.serviceTypes.length) {
-    refs.detailPane.innerHTML = renderModuleEmptyDetail("service", "Order Sheet", state.serviceError || "Service data unavailable.");
+    refs.detailPane.innerHTML = renderUnavailableDetail("service", "Order Sheet", state.serviceError || "Service data unavailable.");
     refreshIcons();
     return;
   }
