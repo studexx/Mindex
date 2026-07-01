@@ -18,3 +18,4 @@ scripts/*
 !scripts/youtube_live_schedule.py
 output/
 backups/
+assets/youtube/

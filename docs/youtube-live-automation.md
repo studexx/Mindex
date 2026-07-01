@@ -23,6 +23,30 @@ GitHub cron uses UTC:
 - Preacher: sermon item `assignee`, then service `leader`, then Sunday calendar `preacher`
 - Required fields: `sermonTitle`, `passage`, `preacher`
 
+The labels are intentionally exact matches. A nearby label such as `설교 전 찬양`
+must not be treated as the sermon item.
+
+## Stable DB Contract
+
+The current workflow reads the service tables directly because the live source is
+small and read-only. If the worship data model changes from flat service items to
+typed service components, keep the workflow stable by moving this extraction into
+one database contract, preferably:
+
+- RPC: `get_youtube_live_source(service_date date)`
+- or view: `mindex_youtube_live_source`
+
+The contract should return:
+
+- `serviceDate`
+- `scheduledStartTime`
+- `sermonTitle`
+- `passage`
+- `preacher`
+- `serviceId`
+- `ready`
+- `missing`
+
 ## YouTube Title
 
 ```text
@@ -64,6 +88,27 @@ For a 2026 service date, the default playlist title is:
 
 If `YOUTUBE_LIVE_PLAYLIST_ID` is set, that ID is used directly. Otherwise, the
 workflow looks up the playlist by `YOUTUBE_LIVE_PLAYLIST_TITLE_TEMPLATE`.
+
+## Thumbnail
+
+The live thumbnail should be stored as a GitHub secret, not committed to the
+repository.
+
+Current prepared local files:
+
+```text
+assets/youtube/live_thumbnail.jpg
+assets/youtube/live_thumbnail.b64
+```
+
+Set `YOUTUBE_LIVE_THUMBNAIL_B64` to the contents of
+`assets/youtube/live_thumbnail.b64`.
+
+Set `YOUTUBE_LIVE_THUMBNAIL_EXT` to:
+
+```text
+.jpg
+```
 
 ## Manual Test
 
