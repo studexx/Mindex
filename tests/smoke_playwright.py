@@ -8,6 +8,7 @@ from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
+from urllib.parse import parse_qs, quote, urlsplit
 
 try:
     from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
@@ -73,12 +74,15 @@ def injected_index_html() -> str:
 
 class MindexSmokeHandler(SimpleHTTPRequestHandler):
     def do_GET(self) -> None:
-        route = self.path.split("?", 1)[0]
+        parsed = urlsplit(self.path)
+        route = parsed.path
         if route in ("", "/", "/index.html"):
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.end_headers()
-            self.wfile.write(injected_index_html().encode("utf-8"))
+            query = parse_qs(parsed.query)
+            markup = INDEX_PATH.read_text(encoding="utf-8") if query.get("mindexSmokeRaw") else injected_index_html()
+            self.wfile.write(markup.encode("utf-8"))
             return
         super().do_GET()
 
@@ -97,6 +101,16 @@ def start_local_app_server() -> tuple[ThreadingHTTPServer, str]:
     thread.start()
     host, port = server.server_address
     return server, f"http://{host}:{port}/index.html"
+
+
+def build_raw_connection_link(app_url: str, module: str = "praise") -> str:
+    supa_url, supa_key = extract_supa_config()
+    params = (
+        f"supabaseUrl={quote(supa_url, safe='')}"
+        f"&supabaseAnonKey={quote(supa_key, safe='')}"
+        f"&module={quote(module, safe='')}"
+    )
+    return f"{app_url}?mindexSmokeRaw=1#{params}"
 
 
 def launch_chromium(playwright):
@@ -230,7 +244,7 @@ def select_service_for_print(page) -> dict[str, Any] | None:
             .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
           const service = candidates[0];
           if (!service) return null;
-          state.module = 'service';
+          state.module = 'order-sheets';
           state.selectedServiceTypeId = service.type_id;
           state.selectedServiceId = service.id;
           render();
@@ -348,6 +362,51 @@ def main() -> int:
             if not has_config:
                 skip("supabase-backed-flows", "No Supabase config found.")
             else:
+                raw_page = browser.new_page(viewport={"width": 1280, "height": 820})
+                raw_page.add_init_script(
+                    """
+                    (() => {
+                      localStorage.clear();
+                      sessionStorage.clear();
+                    })();
+                    """
+                )
+                raw_page.on("pageerror", lambda error: page_errors.append(f"raw-link: {error}"))
+                raw_page.on(
+                    "console",
+                    lambda msg: console_messages.append(f"raw-link {msg.type}: {msg.text}")
+                    if msg.type in ("error", "warning")
+                    else None,
+                )
+                raw_page.goto(build_raw_connection_link(app_url, "praise"), wait_until="load")
+                raw_page.wait_for_selector(".app-shell", timeout=5000)
+                wait_for_supabase_client(raw_page)
+                wait_for_praise_data(raw_page)
+                raw_link_state = raw_page.evaluate(
+                    """
+                    (() => ({
+                      module: state.module,
+                      songs: state.songs.length,
+                      connectionError: state.connectionError,
+                      injectedConfig: Boolean(window.MINDEX_SUPABASE),
+                      hasUrl: Boolean(state.config.url),
+                      hasAnonKey: Boolean(state.config.anonKey)
+                    }))()
+                    """
+                )
+                if (
+                    raw_link_state["module"] == "praise"
+                    and raw_link_state["songs"] > 0
+                    and not raw_link_state["connectionError"]
+                    and not raw_link_state["injectedConfig"]
+                    and raw_link_state["hasUrl"]
+                    and raw_link_state["hasAnonKey"]
+                ):
+                    pass_("share-link-connection", json.dumps(raw_link_state, ensure_ascii=False))
+                else:
+                    fail("share-link-connection", json.dumps(raw_link_state, ensure_ascii=False))
+                raw_page.close()
+
                 wait_for_supabase_client(page)
                 page.click('[data-module="service"]')
                 wait_for_service_data(page)
@@ -364,20 +423,7 @@ def main() -> int:
                 if not service_for_print:
                     skip("order-sheet-print", "No friday/monthly service with items.")
                 else:
-                    page.evaluate(
-                        """
-                        (() => {
-                          const area = document.getElementById('orderSheetPrintArea');
-                          const drawer = area?.closest('details.svc-edit-drawer')
-                            || document.querySelector('details.svc-edit-drawer');
-                          if (drawer) {
-                            drawer.open = true;
-                            drawer.scrollIntoView({ block: 'start', inline: 'nearest' });
-                          }
-                        })()
-                        """
-                    )
-                    page.wait_for_selector("#orderSheetPrintArea .order-sheet-copy", timeout=5000)
+                    page.wait_for_selector(".order-sheet-tool #orderSheetPrintArea .order-sheet-copy", state="attached", timeout=5000)
                     print_state = page.evaluate(
                         """
                         (() => {
@@ -430,6 +476,7 @@ def main() -> int:
                         pass_("order-sheet-pdf", f"{len(pdf_bytes)} bytes")
                     else:
                         fail("order-sheet-pdf", f"{len(pdf_bytes)} bytes")
+                    page.emulate_media(media="screen")
 
                 service_for_slides = select_service_with_slides(page)
                 if not service_for_slides:
@@ -441,6 +488,157 @@ def main() -> int:
                         pass_("presenter-slides", json.dumps(service_for_slides, ensure_ascii=False))
                     else:
                         fail("presenter-slides", f"dom={slide_count} state={service_for_slides}")
+                    thumb_metrics = page.evaluate(
+                        """
+                        (() => [...document.querySelectorAll('.svc-slide-thumb-frame')]
+                          .slice(0, 12)
+                          .map((node) => {
+                            const rect = node.getBoundingClientRect();
+                            return {
+                              width: Math.round(rect.width),
+                              height: Math.round(rect.height),
+                              ratio: rect.height ? Number((rect.width / rect.height).toFixed(3)) : 0
+                            };
+                          }))()
+                        """
+                    )
+                    if thumb_metrics:
+                        widths = [item["width"] for item in thumb_metrics]
+                        heights = [item["height"] for item in thumb_metrics]
+                        ratios = [item["ratio"] for item in thumb_metrics]
+                        uniform = (
+                            max(widths) - min(widths) <= 2
+                            and max(heights) - min(heights) <= 2
+                            and all(1.75 <= ratio <= 1.79 for ratio in ratios)
+                        )
+                        if uniform:
+                            pass_("presenter-thumbnail-grid", json.dumps(thumb_metrics[:4], ensure_ascii=False))
+                        else:
+                            fail("presenter-thumbnail-grid", json.dumps(thumb_metrics[:8], ensure_ascii=False))
+                    form_label_state = page.evaluate(
+                        """
+                        (() => ({
+                          heads: document.querySelectorAll('.svc-slide-form-badge').length,
+                          dividers: document.querySelectorAll('.svc-slide-form-divider').length,
+                          labels: [...document.querySelectorAll('.svc-slide-form-badge')]
+                            .slice(0, 6)
+                            .map((node) => node.textContent.trim())
+                        }))()
+                        """
+                    )
+                    if form_label_state["heads"] > 0 and form_label_state["dividers"] == 0:
+                        pass_("presenter-form-labels", json.dumps(form_label_state, ensure_ascii=False))
+                    else:
+                        fail("presenter-form-labels", json.dumps(form_label_state, ensure_ascii=False))
+                    if service_for_slides["slides"] > 1:
+                        page.click(f'[data-presenter-action="next"][data-service-id="{service_for_slides["id"]}"]')
+                        next_state = page.evaluate(
+                            """
+                            (() => ({
+                              serviceId: state.presenter.serviceId,
+                              index: state.presenter.index,
+                              slides: state.presenter.slides.length,
+                              black: state.presenter.black
+                            }))()
+                            """
+                        )
+                        if next_state["serviceId"] == service_for_slides["id"] and next_state["index"] == 1 and not next_state["black"]:
+                            pass_("presenter-next-control", json.dumps(next_state, ensure_ascii=False))
+                        else:
+                            fail("presenter-next-control", json.dumps(next_state, ensure_ascii=False))
+
+                        jump_target = min(service_for_slides["slides"], 3)
+                        jump_input = page.locator(f'[data-presenter-jump-input][data-service-id="{service_for_slides["id"]}"]')
+                        jump_input.fill(str(jump_target))
+                        jump_input.press("Enter")
+                        page.wait_for_function("(target) => state.presenter.index === target", arg=jump_target - 1, timeout=5000)
+                        jump_state = page.evaluate(
+                            """
+                            (() => ({
+                              serviceId: state.presenter.serviceId,
+                              index: state.presenter.index,
+                              draft: state.presenter.jumpDraft
+                            }))()
+                            """
+                        )
+                        if jump_state["serviceId"] == service_for_slides["id"] and jump_state["index"] == jump_target - 1 and not jump_state["draft"]:
+                            pass_("presenter-jump-control", json.dumps(jump_state, ensure_ascii=False))
+                        else:
+                            fail("presenter-jump-control", json.dumps(jump_state, ensure_ascii=False))
+
+                        dbl_target = min(service_for_slides["slides"] - 1, 4)
+                        page.evaluate(
+                            """
+                            (() => {
+                              window.__mindexPresenterOpenCalls = 0;
+                              window.open = () => {
+                                window.__mindexPresenterOpenCalls += 1;
+                                return {
+                                  closed: false,
+                                  focus() {},
+                                  addEventListener() {},
+                                  moveTo() {},
+                                  resizeTo() {},
+                                  document: {
+                                    documentElement: {
+                                      requestFullscreen() { return Promise.resolve(); }
+                                    }
+                                  }
+                                };
+                              };
+                            })()
+                            """
+                        )
+                        page.locator(
+                            f'.svc-slide-thumb[data-service-id="{service_for_slides["id"]}"][data-presenter-index="{dbl_target}"]'
+                        ).dblclick()
+                        page.wait_for_function("(target) => state.presenter.index === target", arg=dbl_target, timeout=5000)
+                        page.wait_for_function("() => window.__mindexPresenterOpenCalls === 1", timeout=5000)
+                        dbl_state = page.evaluate(
+                            """
+                            (() => ({
+                              serviceId: state.presenter.serviceId,
+                              index: state.presenter.index,
+                              openCalls: window.__mindexPresenterOpenCalls || 0,
+                              black: state.presenter.black
+                            }))()
+                            """
+                        )
+                        if (
+                            dbl_state["serviceId"] == service_for_slides["id"]
+                            and dbl_state["index"] == dbl_target
+                            and dbl_state["openCalls"] == 1
+                            and not dbl_state["black"]
+                        ):
+                            pass_("presenter-doubleclick-start", json.dumps(dbl_state, ensure_ascii=False))
+                        else:
+                            fail("presenter-doubleclick-start", json.dumps(dbl_state, ensure_ascii=False))
+
+                    overflow_state = page.evaluate(
+                        """
+                        (() => {
+                          const root = document.documentElement;
+                          const body = document.body;
+                          const board = document.querySelector('.svc-slide-board');
+                          return {
+                            viewport: window.innerWidth,
+                            documentScrollWidth: root.scrollWidth,
+                            bodyScrollWidth: body.scrollWidth,
+                            boardScrollWidth: board?.scrollWidth || 0,
+                            boardClientWidth: board?.clientWidth || 0
+                          };
+                        })()
+                        """
+                    )
+                    const_overflow = max(
+                        overflow_state["documentScrollWidth"] - overflow_state["viewport"],
+                        overflow_state["bodyScrollWidth"] - overflow_state["viewport"],
+                        overflow_state["boardScrollWidth"] - overflow_state["boardClientWidth"],
+                    )
+                    if const_overflow <= 2:
+                        pass_("presenter-horizontal-overflow", json.dumps(overflow_state, ensure_ascii=False))
+                    else:
+                        fail("presenter-horizontal-overflow", json.dumps(overflow_state, ensure_ascii=False))
 
                 page.click('[data-module="praise"]')
                 wait_for_praise_data(page)

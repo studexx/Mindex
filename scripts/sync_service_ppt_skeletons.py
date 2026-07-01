@@ -1,12 +1,18 @@
 #!/usr/bin/env python3
-"""Create missing Mindex service skeletons from existing worship PPT files.
+"""Create or sync Mindex service skeletons from existing worship PPT files.
 
 This is intentionally conservative:
-  - it never updates or deletes existing service items;
   - it creates a service only when that type/date is missing;
   - with --fill-empty it may insert items only into an existing service that has
     zero items;
+  - with --sync-existing it rewrites service items to match PPT sections, while
+    preserving matched Mindex praise links where possible;
   - PPT files are read-only source hints, not canonical storage.
+
+For worship services, PowerPoint sections are the closest thing to the real
+run-of-show. The default parser therefore treats one PPT section as one Mindex
+service component and stores that section's slide texts as presenter slide
+overrides in service item memo.
 """
 from __future__ import annotations
 
@@ -77,8 +83,15 @@ class PptService:
     path: Path
     service_type: str
     service_date: str
-    items: list[dict[str, str]]
+    items: list[dict[str, Any]]
     confidence: str
+
+
+@dataclass
+class PptSection:
+    name: str
+    slide_ids: list[str]
+    slide_texts: list[str]
 
 
 def read_env_file(path: Path) -> dict[str, str]:
@@ -144,17 +157,201 @@ class RestClient:
         return self.request("DELETE", table, params=params, prefer="return=minimal")
 
 
-def ppt_to_service(path: Path) -> PptService | None:
+def ppt_to_service(path: Path, *, use_legacy_inference: bool = False) -> PptService | None:
     for pattern, service_type in SERVICE_FILE_PATTERNS:
         match = pattern.match(path.name)
         if match:
-            items = infer_items_from_slides(extract_slide_texts(path), service_type)
-            confidence = "ppt" if items else "template"
+            sections = [] if use_legacy_inference else extract_ppt_sections(path)
+            items = items_from_ppt_sections(sections, service_type) if sections else []
+            confidence = "ppt-sections" if items else "ppt"
+            if use_legacy_inference or not items:
+                items = infer_items_from_slides(extract_slide_texts(path), service_type)
+                confidence = "ppt" if items else "template"
             if should_use_template_skeleton(service_type, items):
                 items = [{"label": label, "raw_title": ""} for label in SERVICE_SKELETONS.get(service_type, [])]
                 confidence = "template"
             return PptService(path, service_type, match.group(1), items, confidence)
     return None
+
+
+def extract_ppt_sections(path: Path) -> list[PptSection]:
+    try:
+        with ZipFile(path) as archive:
+            presentation = ET.fromstring(archive.read("ppt/presentation.xml"))
+            rels = read_presentation_relationships(archive)
+            slide_paths = map_slide_ids_to_paths(presentation, rels)
+            sections: list[PptSection] = []
+            for section in presentation.findall(".//{http://schemas.microsoft.com/office/powerpoint/2010/main}section"):
+                name = cleanup_section_name(section.attrib.get("name", ""))
+                slide_ids = [
+                    node.attrib.get("id", "")
+                    for node in section.findall(".//{http://schemas.microsoft.com/office/powerpoint/2010/main}sldId")
+                    if node.attrib.get("id")
+                ]
+                texts = []
+                for slide_id in slide_ids:
+                    slide_path = slide_paths.get(slide_id)
+                    if not slide_path:
+                        continue
+                    texts.append(tokens_to_text(extract_text_tokens(archive.read(slide_path))))
+                if name or any(texts):
+                    sections.append(PptSection(name=name or "Section", slide_ids=slide_ids, slide_texts=texts))
+            return sections
+    except (KeyError, BadZipFile, ET.ParseError) as error:
+        print(f"  ! could not read sections from {path.name}: {error}", file=sys.stderr)
+        return []
+
+
+def read_presentation_relationships(archive: ZipFile) -> dict[str, str]:
+    root = ET.fromstring(archive.read("ppt/_rels/presentation.xml.rels"))
+    rels = {}
+    for node in root:
+        rel_id = node.attrib.get("Id")
+        target = node.attrib.get("Target", "")
+        if rel_id and target:
+            rels[rel_id] = target
+    return rels
+
+
+def map_slide_ids_to_paths(presentation: ET.Element, rels: dict[str, str]) -> dict[str, str]:
+    rel_ns = "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}"
+    mapping = {}
+    for node in presentation.findall(".//{http://schemas.openxmlformats.org/presentationml/2006/main}sldId"):
+        slide_id = node.attrib.get("id")
+        rel_id = node.attrib.get(rel_ns + "id")
+        target = rels.get(rel_id or "")
+        if not slide_id or not target:
+            continue
+        target = target.lstrip("/")
+        if target.startswith("../"):
+            target = target[3:]
+        if not target.startswith("ppt/"):
+            target = f"ppt/{target}"
+        mapping[slide_id] = target
+    return mapping
+
+
+def cleanup_section_name(value: str) -> str:
+    text = re.sub(r"\s+", " ", value or "").strip()
+    return text
+
+
+def items_from_ppt_sections(sections: list[PptSection], service_type: str) -> list[dict[str, Any]]:
+    items = []
+    for section in sections:
+        label = cleanup_section_name(section.name)
+        raw_title = infer_section_raw_title(label, section.slide_texts)
+        assignee = infer_section_assignee(label, section.slide_texts)
+        slides = clean_section_slide_texts(section.slide_texts)
+        item: dict[str, Any] = {
+            "label": normalize_section_label(label),
+            "assignee": assignee,
+            "raw_title": raw_title,
+        }
+        if slides:
+            item["memo"] = json.dumps({"slides": slides}, ensure_ascii=False)
+        items.append(item)
+    return normalize_contextual_roles(dedupe_adjacent_items(items), service_type)
+
+
+def clean_section_slide_texts(texts: list[str]) -> list[str]:
+    output = []
+    for text in texts:
+        cleaned = cleanup_slide_text_for_presenter(text)
+        if cleaned:
+            output.append(cleaned)
+    return output
+
+
+def cleanup_slide_text_for_presenter(text: str) -> str:
+    text = strip_spaced_english_heading(text)
+    text = re.sub(r"\s+", " ", text or "").strip()
+    return text
+
+
+def normalize_section_label(label: str) -> str:
+    label = cleanup_section_name(label)
+    if label == "사도신경":
+        return "신앙고백"
+    label = re.sub(r"^찬양\s*(\d+)$", r"찬양 \1", label)
+    return label
+
+
+def infer_section_raw_title(label: str, slide_texts: list[str]) -> str:
+    label = cleanup_section_name(label)
+    joined = " ".join(slide_texts)
+    if label in ("사도신경", "신앙고백"):
+        return "사도신경"
+    if label in ("성경봉독", "성경본문"):
+        return infer_scripture_reference(joined)
+    if label == "설교":
+        return infer_quoted_title(joined)
+    if is_song_section_label(label):
+        return infer_song_title_from_section(label, slide_texts)
+    if is_structural_section_label(label):
+        return ""
+    first = first_meaningful_slide_text(slide_texts)
+    return cleanup_title(remove_label_prefix(first, label)) if first else ""
+
+
+def infer_section_assignee(label: str, slide_texts: list[str]) -> str:
+    label = cleanup_section_name(label)
+    if label not in ("대표기도", "기도", "봉헌기도", "축도", "설교"):
+        return ""
+    joined = " ".join(slide_texts)
+    return infer_person_after_label(joined, label)
+
+
+def is_song_section_label(label: str) -> bool:
+    normalized = cleanup_section_name(label)
+    if re.match(r"^찬양\s*\d+$", normalized):
+        return True
+    return normalized in SONG_LABELS or normalized in ("결단찬양", "파송찬양", "봉헌찬양")
+
+
+def is_structural_section_label(label: str) -> bool:
+    normalized = cleanup_section_name(label)
+    return normalized in {
+        "준비", "사도신경", "신앙고백", "대표기도", "기도", "참회기도", "봉헌기도", "축도",
+        "광고", "교회소식", "주기도문", "묵도", "통성기도", "결단기도",
+        "예배의 부름", "교제", "나래파송", "공동체고백",
+    }
+
+
+def infer_song_title_from_section(label: str, slide_texts: list[str]) -> str:
+    for text in slide_texts:
+        cleaned = strip_spaced_english_heading(text).replace("♪", " ")
+        cleaned = remove_label_prefix(cleaned, label)
+        cleaned = cleanup_title(cleaned)
+        if looks_like_lyrics_fragment(cleaned):
+            continue
+        if cleaned and len(cleaned) <= 80:
+            return cleaned
+    return ""
+
+
+def looks_like_lyrics_fragment(text: str) -> bool:
+    if not text:
+        return False
+    if re.match(r"^\d+\.\s*", text):
+        return True
+    return len(re.findall(r"\b\d+\.", text)) >= 2
+
+
+def first_meaningful_slide_text(slide_texts: list[str]) -> str:
+    for text in slide_texts:
+        cleaned = cleanup_slide_text_for_presenter(text)
+        if cleaned:
+            return cleaned
+    return ""
+
+
+def remove_label_prefix(text: str, label: str) -> str:
+    text = re.sub(r"\s+", " ", text or "").strip()
+    label = cleanup_section_name(label)
+    if not label:
+        return text
+    return re.sub(rf"^(?:{re.escape(label)})(?:\s*[/·:-]\s*|\s+)?", "", text).strip()
 
 
 def extract_slide_texts(path: Path) -> list[str]:
@@ -318,7 +515,10 @@ def cleanup_title(text: str) -> str:
 
 def infer_scripture_reference(text: str) -> str:
     match = re.search(r"([가-힣]{1,5})\s*(\d{1,3})\s*:\s*(\d{1,3})(?:\s*[–—-]\s*(\d{1,3}))?", text)
-    return match.group(0).replace(" ", "") if match else ""
+    if not match:
+        return ""
+    end = f"-{match.group(4)}" if match.group(4) else ""
+    return f"{match.group(1)} {match.group(2)}:{match.group(3)}{end}"
 
 
 def infer_quoted_title(text: str) -> str:
@@ -372,12 +572,12 @@ def should_use_template_skeleton(service_type: str, items: list[dict[str, str]])
     return not items
 
 
-def discover_ppt_services(root: Path, start: str | None, end: str | None) -> list[PptService]:
+def discover_ppt_services(root: Path, start: str | None, end: str | None, *, use_legacy_inference: bool = False) -> list[PptService]:
     services = []
     for path in sorted(root.rglob("*.pptx")):
         if path.name.startswith("~$"):
             continue
-        parsed = ppt_to_service(path)
+        parsed = ppt_to_service(path, use_legacy_inference=use_legacy_inference)
         if not parsed:
             continue
         if start and parsed.service_date < start:
@@ -420,7 +620,7 @@ def create_service(client: RestClient, service: PptService) -> str:
     return rows[0]["id"]
 
 
-def insert_items(client: RestClient, service_id: str, items: list[dict[str, str]]) -> None:
+def insert_items(client: RestClient, service_id: str, items: list[dict[str, Any]]) -> None:
     rows = []
     for index, item in enumerate(items):
         rows.append({
@@ -429,6 +629,7 @@ def insert_items(client: RestClient, service_id: str, items: list[dict[str, str]
             "label": item.get("label") or None,
             "assignee": item.get("assignee") or "",
             "raw_title": item.get("raw_title") or "",
+            "memo": item.get("memo") or None,
         })
     if rows:
         client.insert("mindex_service_items", rows)
@@ -457,34 +658,12 @@ def norm_item_text(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
-def item_is_songish(item: dict[str, Any]) -> bool:
-    label = item.get("label") or ""
-    if not item.get("raw_title"):
-        return False
-    return (
-        label in SONG_LABELS
-        or not label
-        or re.match(r"^기도\s*\d+$", label)
-        or label in ("결단", "봉헌", "파송", "폐회")
-    )
-
-
 def item_label(item: dict[str, Any]) -> str:
     return item.get("label") or ""
 
 
 def item_title_key(item: dict[str, Any]) -> str:
     return norm_item_text(item.get("raw_title") or "")
-
-
-def title_key_already_present(title_key: str, existing_keys: set[str]) -> bool:
-    if not title_key:
-        return False
-    if title_key in existing_keys:
-        return True
-    if re.fullmatch(r"\d{1,3}", title_key):
-        return any(key.startswith(f"{title_key} ") for key in existing_keys)
-    return False
 
 
 def item_to_insert_payload(item: dict[str, Any], service_id: str, sort_order: int) -> dict[str, Any]:
@@ -496,6 +675,7 @@ def item_to_insert_payload(item: dict[str, Any], service_id: str, sort_order: in
         "raw_title": item.get("raw_title") or "",
         "song_id": item.get("song_id") or None,
         "version_id": item.get("version_id") or None,
+        "memo": item.get("memo") or None,
     }
 
 
@@ -505,14 +685,18 @@ def merge_ppt_item_with_existing(ppt_item: dict[str, Any], existing_item: dict[s
             "label": ppt_item.get("label") or None,
             "assignee": ppt_item.get("assignee") or "",
             "raw_title": ppt_item.get("raw_title") or "",
+            "memo": ppt_item.get("memo") or None,
         }
     raw_title = ppt_item.get("raw_title") or existing_item.get("raw_title") or ""
+    title_matches = raw_title == (existing_item.get("raw_title") or "")
+    label_matches = (ppt_item.get("label") or "") == (existing_item.get("label") or "")
     return {
         "label": ppt_item.get("label") or existing_item.get("label") or None,
         "assignee": ppt_item.get("assignee") or existing_item.get("assignee") or "",
         "raw_title": raw_title,
-        "song_id": existing_item.get("song_id") if raw_title == (existing_item.get("raw_title") or "") else None,
-        "version_id": existing_item.get("version_id") if raw_title == (existing_item.get("raw_title") or "") else None,
+        "memo": ppt_item.get("memo") or existing_item.get("memo") or None,
+        "song_id": existing_item.get("song_id") if title_matches or label_matches else None,
+        "version_id": existing_item.get("version_id") if title_matches or label_matches else None,
     }
 
 
@@ -525,6 +709,12 @@ def find_matching_existing(ppt_item: dict[str, Any], existing_items: list[dict[s
             if item_title_key(item) == title_key:
                 return item
     label = item_label(ppt_item)
+    if label:
+        for item in existing_items:
+            if item.get("id") in used_ids:
+                continue
+            if item_label(item) == label:
+                return item
     if label in ("특송", "봉헌", "파송", "폐회", "결단찬양", "파송찬양", "봉헌찬양") and not title_key:
         for item in existing_items:
             if item.get("id") in used_ids:
@@ -532,70 +722,6 @@ def find_matching_existing(ppt_item: dict[str, Any], existing_items: list[dict[s
             if item_label(item) == label and item.get("raw_title"):
                 return item
     return None
-
-
-def placeholder_index(items: list[dict[str, Any]], *labels: str) -> int | None:
-    for index, item in enumerate(items):
-        if item_label(item) in labels and not item.get("raw_title"):
-            return index
-    return None
-
-
-def first_label_index(items: list[dict[str, Any]], *labels: str) -> int | None:
-    for index, item in enumerate(items):
-        if item_label(item) in labels:
-            return index
-    return None
-
-
-def opening_insert_index(items: list[dict[str, Any]], service_type: str) -> int:
-    if service_type == "young-adult":
-        index = first_label_index(items, "성경봉독")
-        if index is not None:
-            return index
-        index = first_label_index(items, "대표기도")
-        return index + 1 if index is not None else 0
-    if service_type in ("children", "youth"):
-        index = first_label_index(items, "예배의 부름", "통성기도", "대표기도", "성경봉독")
-        if index is not None:
-            return index
-        index = first_label_index(items, "사도신경")
-        return index + 1 if index is not None else 0
-    index = first_label_index(items, "참회기도", "기도", "묵도", "교회소식", "성경봉독")
-    return index if index is not None else 0
-
-
-def merge_labeled_song(items: list[dict[str, Any]], song: dict[str, Any]) -> bool:
-    label = item_label(song)
-    candidate_labels = [label]
-    if label == "결단":
-        candidate_labels = ["결단찬양", "결단"]
-    for candidate in candidate_labels:
-        index = placeholder_index(items, candidate)
-        if index is not None:
-            items[index] = merge_ppt_item_with_existing(items[index], song)
-            return True
-    if label in ("특송", "봉헌", "파송", "폐회", "결단찬양", "파송찬양", "봉헌찬양"):
-        index = first_label_index(items, "교회소식", "성경봉독", "결단기도", "봉헌기도", "송영", "축도", "자율기도")
-        items.insert(index if index is not None else len(items), {
-            "label": label,
-            "assignee": song.get("assignee") or "",
-            "raw_title": song.get("raw_title") or "",
-            "song_id": song.get("song_id"),
-            "version_id": song.get("version_id"),
-        })
-        return True
-    if label.startswith("기도"):
-        index = first_label_index(items, "자율기도")
-        items.insert(index if index is not None else len(items), {
-            "label": label,
-            "assignee": song.get("assignee") or "",
-            "raw_title": song.get("raw_title") or "",
-            "song_id": song.get("song_id"),
-            "version_id": song.get("version_id"),
-        })
-        return True
-    return False
 
 
 def merge_items_from_ppt(service: PptService, existing_items: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -606,44 +732,6 @@ def merge_items_from_ppt(service: PptService, existing_items: list[dict[str, Any
         if match:
             used_ids.add(match["id"])
         merged.append(merge_ppt_item_with_existing(ppt_item, match))
-
-    merged_title_keys = {item_title_key(item) for item in merged if item_title_key(item)}
-    leftovers = [
-        item for item in existing_items
-        if item.get("id") not in used_ids
-        and item_is_songish(item)
-        and not title_key_already_present(item_title_key(item), merged_title_keys)
-    ]
-    opening_songs = [
-        item for item in leftovers
-        if item_label(item) in ("", "찬양", "찬송") or item_label(item) is None
-    ]
-    labeled_songs = [item for item in leftovers if item not in opening_songs]
-
-    if opening_songs:
-        placeholder = placeholder_index(merged, "찬양", "찬송")
-        if placeholder is not None:
-            merged.pop(placeholder)
-        insert_at = opening_insert_index(merged, service.service_type)
-        for offset, item in enumerate(opening_songs):
-            merged.insert(insert_at + offset, {
-                "label": item.get("label") or "찬양",
-                "assignee": item.get("assignee") or "",
-                "raw_title": item.get("raw_title") or "",
-                "song_id": item.get("song_id"),
-                "version_id": item.get("version_id"),
-            })
-
-    for item in labeled_songs:
-        if not merge_labeled_song(merged, item):
-            merged.append({
-                "label": item.get("label") or None,
-                "assignee": item.get("assignee") or "",
-                "raw_title": item.get("raw_title") or "",
-                "song_id": item.get("song_id"),
-                "version_id": item.get("version_id"),
-            })
-
     return dedupe_adjacent_items(merged)
 
 
@@ -676,12 +764,13 @@ def dedupe_adjacent_items(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return output
 
 
-def comparable_items(items: list[dict[str, Any]]) -> list[tuple[str, str, str, str, str]]:
+def comparable_items(items: list[dict[str, Any]]) -> list[tuple[str, str, str, str, str, str]]:
     return [
         (
             item.get("label") or "",
             item.get("assignee") or "",
             item.get("raw_title") or "",
+            item.get("memo") or "",
             item.get("song_id") or "",
             item.get("version_id") or "",
         )
@@ -704,6 +793,7 @@ def main() -> int:
     parser.add_argument("--apply", action="store_true", help="Write missing/empty service skeletons")
     parser.add_argument("--fill-empty", action="store_true", help="Insert items into existing services only when they have zero items")
     parser.add_argument("--sync-existing", action="store_true", help="Replace existing service items with PPT-confirmed components while preserving matched song links")
+    parser.add_argument("--legacy-infer", action="store_true", help="Use older slide-text inference instead of PowerPoint sections")
     parser.add_argument("--limit", type=int, default=0, help="Limit number of PPT services processed")
     args = parser.parse_args()
 
@@ -713,7 +803,7 @@ def main() -> int:
 
     supa_url, supa_key = read_config()
     client = RestClient(supa_url, supa_key)
-    services = discover_ppt_services(root, args.start or None, args.end or None)
+    services = discover_ppt_services(root, args.start or None, args.end or None, use_legacy_inference=args.legacy_infer)
     if args.limit:
         services = services[:args.limit]
 

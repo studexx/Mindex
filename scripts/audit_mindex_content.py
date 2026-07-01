@@ -12,7 +12,6 @@ from urllib.error import HTTPError
 
 
 ROOT = Path(__file__).resolve().parents[1]
-HANDOFF_PATH = ROOT / "HANDOFF.md"
 ENV_PATHS = (
     ROOT / ".env.supabase.local",
     ROOT / ".env.supabase",
@@ -61,13 +60,9 @@ def read_config() -> tuple[str, str]:
         if url and key:
             return url, key
 
-    text = HANDOFF_PATH.read_text()
-    url_match = re.search(r"https://[a-z]+\.supabase\.co", text)
-    if not url_match:
-        raise RuntimeError("Supabase config not found. Set SUPABASE_URL and SUPABASE_ANON_KEY.")
     raise RuntimeError(
-        "Supabase key not found. Set SUPABASE_ANON_KEY, SUPABASE_KEY, "
-        "or use a local .env.supabase.local/.env.supabase file."
+        "Supabase config not found. Set MINDEX_SUPABASE_URL and "
+        "MINDEX_SUPABASE_ANON_KEY, or use a local .env.supabase.local/.env.supabase file."
     )
 
 
@@ -160,7 +155,12 @@ def service_item_raw_title_issues(row: dict[str, Any], row_id: str) -> list[dict
     return issues
 
 
-def audit(supa_url: str, supa_key: str) -> tuple[dict[str, int], list[dict[str, Any]], list[dict[str, Any]]]:
+def audit(
+    supa_url: str,
+    supa_key: str,
+    *,
+    strict_schema: bool = False,
+) -> tuple[dict[str, int], list[dict[str, Any]], list[dict[str, Any]]]:
     songs = fetch_rows(supa_url, supa_key, "mindex_songs")
     scriptures = fetch_rows(supa_url, supa_key, "mindex_scriptures")
     books = fetch_rows(supa_url, supa_key, "mindex_scripture_books")
@@ -178,20 +178,26 @@ def audit(supa_url: str, supa_key: str) -> tuple[dict[str, int], list[dict[str, 
     book_codes = {row["code"] for row in books}
     translation_ids = {row["id"] for row in translations}
 
-    optional_columns = (
-        ("mindex_song_versions", "praise_types"),
-    )
-    for table, column in optional_columns:
-        if not column_exists(supa_url, supa_key, table, column):
-            warnings.append({"type": "missing-optional-column", "table": table, "column": column})
+    if strict_schema:
+        optional_columns = (
+            ("mindex_song_versions", "praise_types"),
+        )
+        for table, column in optional_columns:
+            if not column_exists(supa_url, supa_key, table, column):
+                warnings.append({"type": "missing-optional-column", "table": table, "column": column})
 
-    seen_song_titles: dict[str, list[str]] = {}
+    seen_song_keys: dict[tuple[str, str, str], list[dict[str, Any]]] = {}
     for row in songs:
         row_id = row["id"]
         title = row.get("title") or ""
         normalized = title.strip().casefold()
         if normalized:
-            seen_song_titles.setdefault(normalized, []).append(row_id)
+            identity = (
+                normalized,
+                (row.get("subtitle") or "").strip().casefold(),
+                (row.get("original_title") or "").strip().casefold(),
+            )
+            seen_song_keys.setdefault(identity, []).append(row)
         if TEST_PATTERNS.search(title):
             issues.append({"type": "testish-song-title", "id": row_id, "title": title})
         if row.get("hymn_no") and re.match(r"^\s*(?:통\s*)?\d{1,3}\s+\S+", title):
@@ -199,9 +205,20 @@ def audit(supa_url: str, supa_key: str) -> tuple[dict[str, int], list[dict[str, 
         issues.extend(edge_text_issues(row, row_id, ("title", "subtitle", "original_title", "hymn_no")))
         warnings.extend(edge_text_issues(row, row_id, ("memo",)))
 
-    for title, ids in seen_song_titles.items():
-        if len(ids) > 1:
-            warnings.append({"type": "duplicate-song-title", "title": title, "ids": ids, "count": len(ids)})
+    for (title, subtitle, original_title), rows in seen_song_keys.items():
+        if len(rows) > 1:
+            hymn_numbers = [(row.get("hymn_no") or "").strip() for row in rows]
+            if all(hymn_numbers) and len(set(hymn_numbers)) == len(hymn_numbers):
+                continue
+            ids = [row["id"] for row in rows]
+            warnings.append({
+                "type": "duplicate-song-identity",
+                "title": title,
+                "subtitle": subtitle,
+                "original_title": original_title,
+                "ids": ids,
+                "count": len(ids),
+            })
 
     for row in scriptures:
         row_id = row["id"]
@@ -255,9 +272,10 @@ def audit(supa_url: str, supa_key: str) -> tuple[dict[str, int], list[dict[str, 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Audit Mindex Supabase content for residue and reference issues.")
     parser.add_argument("--json", action="store_true", help="Print all issues and warnings as JSON.")
+    parser.add_argument("--strict-schema", action="store_true", help="Warn about optional schema columns that the app can otherwise tolerate.")
     args = parser.parse_args()
 
-    counts, issues, warnings = audit(*read_config())
+    counts, issues, warnings = audit(*read_config(), strict_schema=args.strict_schema)
     if args.json:
         print(json.dumps({"counts": counts, "issues": issues, "warnings": warnings}, ensure_ascii=False, indent=2))
     else:
