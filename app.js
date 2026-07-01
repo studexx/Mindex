@@ -5784,7 +5784,7 @@ function uiVerseSlot(scripture) {
 function splitHomeVerseLines(text) {
   const normalized = String(text || "").replace(/\s+/g, " ").trim();
   if (!normalized) return [""];
-  const maxLineLength = 44;
+  const maxLineLength = 56;
   const punctuationSegments = normalized
     .match(/[^;.?!:]+[;.?!:]?/g)
     ?.map((segment) => segment.trim())
