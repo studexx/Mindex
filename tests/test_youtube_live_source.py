@@ -159,6 +159,39 @@ class YoutubeLiveSourceTests(unittest.TestCase):
             "교회력 목사",
         )
 
+    def test_resolve_live_source_ignores_title_fragment_assignee(self) -> None:
+        client = FakeClient({
+            "mindex_services": [{
+                "id": "service-1",
+                "type_id": "sunday-main",
+                "date": "2026-06-28",
+                "leader": "김석범 목사",
+            }],
+            "mindex_service_items": [
+                {
+                    "service_id": "service-1",
+                    "sort_order": 10,
+                    "label": "성경봉독",
+                    "raw_title": "에 9:20-32",
+                    "assignee": "",
+                },
+                {
+                    "service_id": "service-1",
+                    "sort_order": 20,
+                    "label": "설교",
+                    "raw_title": "역대급 감사",
+                    "assignee": "‘ 역대급",
+                },
+            ],
+            "mindex_sunday_calendar": [],
+        })
+
+        result = resolve_live_source(client, date(2026, 6, 28))
+
+        self.assertTrue(result["ready"])
+        self.assertEqual(result["preacher"], "김석범 목사")
+        self.assertEqual(result["warnings"][0]["code"], "ignored_sermon_assignee")
+
 
 if __name__ == "__main__":
     unittest.main()

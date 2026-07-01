@@ -120,6 +120,24 @@ def clean_text(value: Any) -> str:
     return " ".join(str(value or "").split())
 
 
+def compact_identity(value: str) -> str:
+    return "".join(ch for ch in value if ch.isalnum())
+
+
+def looks_like_preacher(candidate: str, sermon_title: str) -> bool:
+    if not candidate:
+        return False
+    if candidate[0] in "\"'“”‘’":
+        return False
+
+    candidate_key = compact_identity(candidate)
+    title_key = compact_identity(sermon_title)
+    if title_key and len(candidate_key) >= 2:
+        if candidate_key in title_key or title_key in candidate_key:
+            return False
+    return True
+
+
 def retry_marker_path(state_dir: Path, service_date: date) -> Path:
     return state_dir / f"{service_date.isoformat()}.retry.json"
 
@@ -187,7 +205,13 @@ def resolve_live_source(
     sermon_item = first_exact_label(items, "설교")
     passage = clean_text(scripture_item.get("raw_title")) if scripture_item else ""
     sermon_title = clean_text(sermon_item.get("raw_title")) if sermon_item else ""
-    preacher = clean_text(sermon_item.get("assignee")) if sermon_item else ""
+    warnings = []
+    sermon_assignee = clean_text(sermon_item.get("assignee")) if sermon_item else ""
+    preacher = ""
+    if looks_like_preacher(sermon_assignee, sermon_title):
+        preacher = sermon_assignee
+    elif sermon_assignee:
+        warnings.append({"code": "ignored_sermon_assignee", "value": sermon_assignee})
     preacher = preacher or clean_text(service.get("leader") if service else "")
     preacher = preacher or clean_text(calendar.get("preacher") if calendar else "")
 
@@ -203,7 +227,7 @@ def resolve_live_source(
         "preacher": preacher,
         "serviceId": service.get("id") if service else None,
         "missing": [],
-        "warnings": [],
+        "warnings": warnings,
         "source": {
             "service": service,
             "scriptureItem": scripture_item,

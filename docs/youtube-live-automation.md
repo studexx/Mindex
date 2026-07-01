@@ -26,6 +26,10 @@ GitHub cron uses UTC:
 The labels are intentionally exact matches. A nearby label such as `설교 전 찬양`
 must not be treated as the sermon item.
 
+If the sermon item `assignee` looks like a sermon-title fragment instead of a
+preacher name, the workflow ignores it, emits `ignored_sermon_assignee`, and
+falls back to the service leader or Sunday calendar preacher.
+
 ## Stable DB Contract
 
 The current workflow reads the service tables directly because the live source is
