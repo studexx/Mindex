@@ -3073,7 +3073,6 @@ async function saveService() {
   state.dirty.service = false;
   state.dirtyServiceTypeIds.clear();
   updateSaveState();
-  showToast("Worship editing is being rebuilt from templates.", "info");
 }
 
 async function saveDirtyServiceTypes() {
@@ -10220,7 +10219,7 @@ function renderServiceList() {
     refs.songList.innerHTML = state.serviceError
       ? (isConnectionUnavailableMessage(state.serviceError)
         ? renderConnectionList(state.connectionError || state.serviceError)
-        : renderListEmptyState("Service unavailable", state.serviceError))
+        : renderListEmptyState("예배 데이터를 불러올 수 없습니다", state.serviceError))
       : renderLoadingList();
     return;
   }
@@ -10476,7 +10475,7 @@ function renderWorshipTemplateDraftCard(type) {
     <details class="svc-template-draft-card">
       <summary>
         <span>${escapeHtml(type.name)}</span>
-        <small>${type.services} 예배 · ${type.slides} slides</small>
+        <small>${type.services} 예배 · ${type.slides} 슬라이드</small>
       </summary>
       <div class="svc-template-draft-body">
         <div class="svc-template-draft-block">
@@ -10724,7 +10723,7 @@ function renderServiceDetail() {
   const editDrawerOpen = svc._worship || !presenterSlides.length ? " open" : "";
   const drawerTitle = svc._worship ? "구성" : "편집";
   const drawerCountLabel = svc._worship && worshipStructure
-    ? `${worshipStructure.sections.length} 섹션 · ${worshipStructure.elements.length} 요소 · ${presenterSlides.length} slides`
+    ? `${worshipStructure.sections.length} 섹션 · ${worshipStructure.elements.length} 요소 · ${presenterSlides.length} 슬라이드`
     : `${merged.length} 항목`;
   refs.detailPane.innerHTML = `
     <div class="service-viewer">
@@ -10802,7 +10801,7 @@ function renderWorshipSectionBlock(section, index, structure) {
         <span class="svc-worship-section-no">${index + 1}</span>
         <div class="svc-worship-section-title">
           <strong>${escapeHtml(section.title || section.section_key || "Section")}</strong>
-          <small>${elements.length} elements · ${slideCount} slides</small>
+          <small>${elements.length} 요소 · ${slideCount} 슬라이드</small>
         </div>
       </div>
       <div class="svc-worship-element-list">
@@ -10818,9 +10817,9 @@ function renderWorshipElementRow(element, index, structure) {
   const title = cleanList([element.title, element.body]).join(" · ") || typeLabel;
   const meta = cleanList([
     element.person,
-    element.song_id ? "linked Praise" : "",
-    element.scripture_reference || element.scripture_id ? "linked Scripture" : "",
-    element.review_status === "needs_review" ? "needs review" : "",
+    element.song_id ? "Praise 연결" : "",
+    element.scripture_reference || element.scripture_id ? "Scripture 연결" : "",
+    element.review_status === "needs_review" ? "검토 필요" : "",
   ]).join(" · ");
   const slideCount = structure.slideCountsByElement[element.id] || 0;
   return `
@@ -10829,7 +10828,7 @@ function renderWorshipElementRow(element, index, structure) {
       <div class="svc-worship-outline-main">
         <span class="svc-worship-outline-label">${escapeHtml(typeLabel)}</span>
         <strong>${escapeHtml(title)}</strong>
-        <small>${escapeHtml(cleanList([meta, `${slideCount} slides`]).join(" · "))}</small>
+        <small>${escapeHtml(cleanList([meta, `${slideCount} 슬라이드`]).join(" · "))}</small>
       </div>
     </article>`;
 }
@@ -11755,7 +11754,7 @@ function renderOrderSheetsDetail() {
 
   if (state.serviceError || !state.serviceTypes.length) {
     refs.detailPane.innerHTML = state.serviceError
-      ? renderUnavailableDetail("service", "Order Sheet", state.serviceError)
+      ? renderUnavailableDetail("service", "순서지", state.serviceError)
       : renderLoadingDetail();
     refreshIcons();
     return;
@@ -11764,18 +11763,18 @@ function renderOrderSheetsDetail() {
   const services = getOrderSheetServices();
   const selected = services.find((service) => service.id === state.selectedServiceId) || services[0] || null;
   if (selected && state.selectedServiceId !== selected.id) state.selectedServiceId = selected.id;
-  const serviceCountLabel = `${formatCount(services.length)} ${services.length === 1 ? "service" : "services"}`;
+  const serviceCountLabel = `${formatCount(services.length)}개 예배`;
   const serviceListItems = services.map((service) => {
     const title = serviceOrderSheetTitle(service);
     const dateLabel = formatServiceDate(service, { compact: true });
     const rowCount = serviceOrderSheetRows(service.id).length;
-    const preview = serviceItemPreview(service.id) || "No items";
-    const meta = [`${formatCount(rowCount)} ${rowCount === 1 ? "row" : "rows"}`, preview].join(" · ");
+    const preview = serviceItemPreview(service.id);
+    const meta = cleanList([rowCount ? `${formatCount(rowCount)}개 행` : "", preview]).join(" · ");
     return `
       <button class="order-sheet-service${selected?.id === service.id ? " active" : ""}" type="button" data-order-sheet-service="${escapeAttr(service.id)}">
         <strong>${escapeHtml(dateLabel || title)}</strong>
         <span>${escapeHtml(title)}</span>
-        <small>${escapeHtml(meta)}</small>
+        ${meta ? `<small>${escapeHtml(meta)}</small>` : ""}
       </button>
     `;
   }).join("");
@@ -11796,7 +11795,7 @@ function renderOrderSheetsDetail() {
           <div class="order-sheet-preview-shell">
             ${selected ? renderServiceOrderSheetPanel(selected) : ""}
           </div>
-        </div>` : `<p class="service-no-results">No order sheets.</p>`}
+        </div>` : ""}
     </div>`;
   refreshServiceOrderSheetPreview(selected?.id);
   refreshIcons();
@@ -12498,7 +12497,7 @@ async function openPresenterOutput(serviceId = state.selectedServiceId) {
     : "popup=yes,width=1280,height=720";
   const outputWindow = window.open(url, "mindexPresenterOutput", features);
   if (!outputWindow) {
-    showToast("Output window was blocked by the browser.", "error");
+    showToast("브라우저가 출력 창을 차단했습니다.", "error");
     return;
   }
 
@@ -13254,7 +13253,7 @@ async function requestPresenterScreens() {
     apply();
     details.addEventListener?.("screenschange", apply);
   } catch {
-    showToast("Couldn't access display info. Check browser permission.", "error");
+    showToast("디스플레이 정보를 읽지 못했습니다. 브라우저 권한을 확인해 주세요.", "error");
   }
 }
 
@@ -13647,12 +13646,10 @@ function presenterLineCharEstimate(line) {
 
 async function createService() {
   void state.newServiceForm;
-  showToast("Worship service creation is being rebuilt from templates.", "error");
 }
 
 async function deleteService(serviceId) {
   void serviceId;
-  showToast("Worship deletion is not exposed yet.", "error");
 }
 
 function selectService(id) {
