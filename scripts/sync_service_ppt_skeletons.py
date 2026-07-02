@@ -35,9 +35,8 @@ from zipfile import BadZipFile, ZipFile
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_PPT_ROOT = Path("/Users/parkjihun/Library/CloudStorage/OneDrive-Personal/02_Church/11_예배")
 ENV_PATHS = (
-    ROOT / ".env.supabase",
     ROOT / ".env.supabase.local",
-    Path("/Users/parkjihun/Documents/INDEX/.env.supabase"),
+    ROOT / ".env.supabase",
 )
 
 TEXT_NS = "{http://schemas.openxmlformats.org/drawingml/2006/main}"

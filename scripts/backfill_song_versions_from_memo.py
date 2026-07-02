@@ -15,9 +15,8 @@ from urllib.error import HTTPError
 
 ROOT = Path(__file__).resolve().parents[1]
 ENV_PATHS = (
+    ROOT / ".env.supabase.local",
     ROOT / ".env.supabase",
-    ROOT.parent / "INDEX" / ".env.supabase",
-    Path.home() / "Documents" / "INDEX" / ".env.supabase",
 )
 PAGE_SIZE = 1000
 PART_TYPES = {"Verse", "Pre-Chorus", "Chorus", "Bridge", "Coda", "Lyrics"}

@@ -20,7 +20,7 @@ This document is the canonical handoff for new Codex/Claude/GPT threads. Read th
   - `/Users/parkjihun/Mindex/scripts/reference-links-schema.sql`
 - Local Supabase config:
   - `/Users/parkjihun/Mindex/.env.supabase.local`
-  - `/Users/parkjihun/Documents/INDEX/.env.supabase`
+  - `/Users/parkjihun/Mindex/.env.supabase`
 - Preferred local server:
   - `python3 /Users/parkjihun/Mindex/serve.py`
   - The app is often tested at `http://localhost:4173`.

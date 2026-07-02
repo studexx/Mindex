@@ -21,10 +21,6 @@ ROOT = Path(__file__).resolve().parents[1]
 ENV_PATHS = (
     ROOT / ".env.supabase.local",
     ROOT / ".env.supabase",
-    ROOT.parent / "INDEX" / ".env.supabase.local",
-    ROOT.parent / "INDEX" / ".env.supabase",
-    Path.home() / "Documents" / "INDEX" / ".env.supabase.local",
-    Path.home() / "Documents" / "INDEX" / ".env.supabase",
 )
 
 SERVICE_TYPE_MAP = {

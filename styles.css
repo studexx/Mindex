@@ -65,7 +65,7 @@
 :root {
   color-scheme: light;
   --ink: #101010; --ink-2: #333331; --ink-3: #5f5f5a; --ink-4: #787872;
-  --bg: #ffffff; --chrome: #fbfbfa; --panel: #fbfbfa; --panel-2: #f0f0eb; --line: #dfdfd8; --line-2: #c5c5bb;
+  --bg: #ffffff; --chrome: #f4f4ef; --sidebar-bg: #f4f4ef; --panel: #fbfbfa; --panel-2: #f0f0eb; --line: #dfdfd8; --line-2: #c5c5bb;
   --line-soft: color-mix(in srgb, var(--line) 36%, transparent);
   --line-faint: color-mix(in srgb, var(--line) 24%, transparent);
   --accent: #009bff; --accent-ink: #ffffff; --accent-soft: #d8f1ff; --danger: #d72575; --warn: #d72575; --warn-bg: #ffe1ef; --info: #009bff;
@@ -87,7 +87,7 @@
 body[data-theme="dark"] {
   color-scheme: dark;
   --ink: #f3f3ef; --ink-2: #deded8; --ink-3: #c8c8bf; --ink-4: #abab9f;
-  --bg: #181816; --chrome: #20201d; --panel: #20201d; --panel-2: #37372f; --line: #4d4d43; --line-2: #68685d;
+  --bg: #181816; --chrome: #1f1f1b; --sidebar-bg: #1f1f1b; --panel: #20201d; --panel-2: #37372f; --line: #4d4d43; --line-2: #68685d;
   --line-soft: color-mix(in srgb, var(--line) 42%, transparent);
   --line-faint: color-mix(in srgb, var(--line) 28%, transparent);
   --accent: #ff8bc2; --accent-ink: #2a0617; --accent-soft: #46172c; --danger: #ff8bc2; --warn: #ff8bc2; --warn-bg: #46172c; --info: #55c7ff;
@@ -115,7 +115,7 @@ h1, h2, h3, p { margin: 0; }
   grid-template-columns: var(--topbar-left-w, var(--rail-w)) minmax(0, 1fr) var(--rail-w);
   gap: 0;
   border-bottom: 0;
-  background: var(--chrome);
+  background: var(--sidebar-bg);
   box-shadow: none;
   padding: 0;
   transition: grid-template-columns 140ms ease;
@@ -438,7 +438,7 @@ body.sidebar-collapsed .sidebar {
   min-height: 0;
   flex-direction: column;
   border-right: 0;
-  background: var(--chrome);
+  background: var(--sidebar-bg);
   overflow: hidden;
   padding: var(--s2) 0 var(--s3);
   transition: width 140ms ease, padding 140ms ease;

@@ -27,10 +27,6 @@ LOCAL_CHROME_PATH = Path("/Applications/Google Chrome.app/Contents/MacOS/Google 
 ENV_PATHS = (
     APP_DIR / ".env.supabase.local",
     APP_DIR / ".env.supabase",
-    APP_DIR.parent / "INDEX" / ".env.supabase.local",
-    APP_DIR.parent / "INDEX" / ".env.supabase",
-    Path.home() / "Documents" / "INDEX" / ".env.supabase.local",
-    Path.home() / "Documents" / "INDEX" / ".env.supabase",
 )
 
 

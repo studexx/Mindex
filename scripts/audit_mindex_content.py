@@ -15,10 +15,6 @@ ROOT = Path(__file__).resolve().parents[1]
 ENV_PATHS = (
     ROOT / ".env.supabase.local",
     ROOT / ".env.supabase",
-    ROOT.parent / "INDEX" / ".env.supabase.local",
-    ROOT.parent / "INDEX" / ".env.supabase",
-    Path.home() / "Documents" / "INDEX" / ".env.supabase.local",
-    Path.home() / "Documents" / "INDEX" / ".env.supabase",
 )
 TEST_PATTERNS = re.compile(r"\b(test|dummy|sample|probe|debug)\b", re.IGNORECASE)
 

@@ -10,7 +10,6 @@ ROOT = pathlib.Path("/Users/parkjihun/Mindex")
 ENV_PATHS = (
     ROOT / ".env.supabase.local",
     ROOT / ".env.supabase",
-    pathlib.Path("/Users/parkjihun/Documents/INDEX/.env.supabase"),
 )
 
 
