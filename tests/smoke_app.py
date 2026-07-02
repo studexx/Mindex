@@ -457,15 +457,70 @@ def main() -> int:
                 fail("sidebar-collapse-keeps-gutter", json.dumps(collapsed_shell, ensure_ascii=False))
 
             page.set_viewport_size({"width": 390, "height": 780})
+            page.wait_for_timeout(80)
             mobile_shell = shell_layout_snapshot(page)
             mobile_overflow = max(
                 mobile_shell["documentScrollWidth"] - mobile_shell["viewport"],
                 mobile_shell["bodyScrollWidth"] - mobile_shell["viewport"],
             )
-            if mobile_shell["detailPaddingLeft"] == 25 and mobile_shell["detailPaddingTop"] == 25 and mobile_overflow <= 2:
+            if (
+                mobile_shell["detailPaddingLeft"] == 25
+                and mobile_shell["detailPaddingTop"] == 25
+                and mobile_shell["topbarHeight"] == 40
+                and mobile_overflow <= 2
+            ):
                 pass_("shell-mobile-geometry", json.dumps(mobile_shell, ensure_ascii=False))
             else:
                 fail("shell-mobile-geometry", json.dumps(mobile_shell, ensure_ascii=False))
+            page.set_viewport_size({"width": 1440, "height": 980})
+
+            responsive_shells = []
+            for width in (1180, 900, 760, 520, 390):
+                page.set_viewport_size({"width": width, "height": 780})
+                page.wait_for_timeout(80)
+                responsive_shells.append(
+                    page.evaluate(
+                        """
+                        (width) => {
+                          const rect = (selector) => {
+                            const node = document.querySelector(selector);
+                            const box = node?.getBoundingClientRect();
+                            return box ? {
+                              left: Math.round(box.left),
+                              right: Math.round(box.right),
+                              width: Math.round(box.width),
+                              height: Math.round(box.height)
+                            } : null;
+                          };
+                          const topbar = rect('.topbar');
+                          const sidebar = rect('.sidebar');
+                          const search = rect('.sidebar-search-wrap');
+                          const switcher = document.querySelector('.primary-switcher');
+                          return {
+                            width,
+                            topbarHeight: topbar?.height || 0,
+                            sidebarWidth: sidebar?.width || 0,
+                            searchWithinSidebar: Boolean(search && sidebar && search.left >= sidebar.left && search.right <= sidebar.right),
+                            switcherClientWidth: Math.round(switcher?.clientWidth || 0),
+                            switcherScrollWidth: Math.round(switcher?.scrollWidth || 0),
+                            overflow: Math.max(document.documentElement.scrollWidth - window.innerWidth, document.body.scrollWidth - window.innerWidth)
+                          };
+                        }
+                        """,
+                        width,
+                    )
+                )
+            if all(
+                item["topbarHeight"] == 40
+                and item["sidebarWidth"] <= item["width"]
+                and item["searchWithinSidebar"]
+                and item["switcherClientWidth"] > 0
+                and item["overflow"] <= 2
+                for item in responsive_shells
+            ):
+                pass_("shell-responsive-geometry", json.dumps(responsive_shells, ensure_ascii=False))
+            else:
+                fail("shell-responsive-geometry", json.dumps(responsive_shells, ensure_ascii=False))
             page.set_viewport_size({"width": 1440, "height": 980})
 
             reference_page = browser.new_page(viewport={"width": 1100, "height": 760})
