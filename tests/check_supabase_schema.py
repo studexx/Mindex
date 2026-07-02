@@ -25,16 +25,22 @@ REQUIRED_TABLES: dict[str, tuple[str, ...]] = {
     "mindex_scripture_books": ("code", "korean_name", "english_name", "sort_order", "is_active"),
     "mindex_bible_translations": ("id", "translation_key", "name", "abbreviation", "language"),
     "mindex_bible_verses": ("id", "translation_id", "book_code", "chapter", "verse", "text"),
-    "mindex_service_types": ("id", "name", "sort_order", "fixed_items", "order_template"),
-    "mindex_services": ("id", "type_id", "date", "date_end", "leader", "tags"),
-    "mindex_service_items": ("id", "service_id", "sort_order", "label", "raw_title", "song_id", "assignee", "version_id"),
+    "mindex_worship_service_types": ("id", "display_name", "group_key", "sort_order", "default_output_context"),
+    "mindex_worship_services": ("id", "service_type_id", "service_date", "title", "status", "worship_leader", "praise_leader"),
+    "mindex_worship_sections": ("id", "service_id", "sort_order", "section_key", "title", "person"),
+    "mindex_worship_elements": ("id", "section_id", "sort_order", "element_type", "title", "person", "song_id", "scripture_reference"),
+    "mindex_worship_slides": ("id", "element_id", "sort_order", "slide_type", "output_context", "title", "body", "marker"),
+    "mindex_worship_templates": ("id", "template_level", "stable_key", "version", "name"),
+    "mindex_worship_template_items": ("id", "template_id", "sort_order", "slot_key", "default_title"),
+    "mindex_worship_import_sources": ("id", "source_kind", "source_name", "status", "raw_payload"),
+    "mindex_worship_import_candidates": ("id", "import_source_id", "candidate_level", "review_status", "raw_title"),
+    "mindex_worship_import_mappings": ("id", "import_source_id", "target_level", "review_status"),
     "mindex_reference_links": ("id", "title", "url", "sort_order"),
     "mindex_sunday_calendar": ("id", "date"),
 }
 
 OPTIONAL_COLUMNS: dict[str, tuple[str, ...]] = {
     "mindex_song_versions": ("praise_types",),
-    "mindex_service_items": ("memo",),
     "mindex_reference_links": ("group_name",),
 }
 
@@ -53,9 +59,7 @@ OPTIONAL_TABLES: dict[str, tuple[str, ...]] = {
 SHOULD_HAVE_ROWS = (
     "mindex_songs",
     "mindex_scripture_books",
-    "mindex_service_types",
-    "mindex_services",
-    "mindex_service_items",
+    "mindex_worship_service_types",
 )
 
 

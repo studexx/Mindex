@@ -11,11 +11,8 @@ scripts/*
 !scripts/activities-schema.sql
 !scripts/backfill_song_versions_from_memo.py
 !scripts/db-maintenance-2026-06-23.sql
-!scripts/service-item-memo-2026-06-26.sql
-!scripts/service-schema.sql
 !scripts/calendar-lectionary-2026.sql
-!scripts/sync_worship_v2_taxonomy.py
-!scripts/worship-v2-schema.sql
+!scripts/worship-schema.sql
 !scripts/youtube-live-source-rpc.sql
 !scripts/youtube_live_source.py
 !scripts/youtube_live_schedule.py

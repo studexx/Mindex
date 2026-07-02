@@ -6,10 +6,6 @@
 alter table public.mindex_song_versions
   add column if not exists praise_types text[] not null default '{}';
 
-alter table public.mindex_service_items
-  add column if not exists assignee text not null default '',
-  add column if not exists version_id text;
-
 -- 2) Keep blank residue normalized, without touching real content.
 update public.mindex_songs
 set memo = null
@@ -31,15 +27,6 @@ create index if not exists mindex_song_versions_canonical_order_idx
 
 create index if not exists mindex_version_units_canonical_order_idx
   on public.mindex_version_units (canonical_song_id, curated_order, unit_order);
-
-create index if not exists mindex_service_items_song_idx
-  on public.mindex_service_items (song_id);
-
-create index if not exists mindex_service_items_version_idx
-  on public.mindex_service_items (version_id);
-
-create index if not exists mindex_services_date_idx
-  on public.mindex_services (date);
 
 create index if not exists mindex_bible_verses_translation_book_chapter_idx
   on public.mindex_bible_verses (translation_id, book_code, chapter);
@@ -92,16 +79,3 @@ select
   source_count,
   created_at
 from public.mindex_song_versions;
-
-create or replace view public.mindex_service_items_ordered as
-select
-  id,
-  service_id,
-  sort_order,
-  label,
-  assignee,
-  raw_title,
-  song_id,
-  version_id,
-  created_at
-from public.mindex_service_items;

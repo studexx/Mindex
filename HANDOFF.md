@@ -15,7 +15,7 @@ This document is the canonical handoff for new Codex/Claude/GPT threads. Read th
   - `/Users/parkjihun/Mindex/app.js`
   - `/Users/parkjihun/Mindex/styles.css`
   - `/Users/parkjihun/Mindex/supabase-schema.sql`
-  - `/Users/parkjihun/Mindex/scripts/service-schema.sql`
+  - `/Users/parkjihun/Mindex/scripts/worship-schema.sql`
   - `/Users/parkjihun/Mindex/scripts/activities-schema.sql`
   - `/Users/parkjihun/Mindex/scripts/reference-links-schema.sql`
 - Local Supabase config:

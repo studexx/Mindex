@@ -137,20 +137,6 @@ def block_text_issues(row: dict[str, Any], row_id: str, fields: tuple[str, ...])
     return issues
 
 
-def service_item_raw_title_issues(row: dict[str, Any], row_id: str) -> list[dict[str, Any]]:
-    value = row.get("raw_title")
-    if not isinstance(value, str):
-        return []
-    issues: list[dict[str, Any]] = []
-    if value != value.strip():
-        issues.append({"type": "edge-space", "id": row_id, "field": "raw_title", "value": value})
-    if "\ufffd" in value:
-        issues.append({"type": "replacement-char", "id": row_id, "field": "raw_title"})
-    if "\n" not in value and re.search(r"[ \t]{2,}", value):
-        issues.append({"type": "double-space", "id": row_id, "field": "raw_title", "value": value})
-    return issues
-
-
 def audit(
     supa_url: str,
     supa_key: str,
@@ -160,17 +146,22 @@ def audit(
     songs = fetch_rows(supa_url, supa_key, "mindex_songs")
     scriptures = fetch_rows(supa_url, supa_key, "mindex_scriptures")
     books = fetch_rows(supa_url, supa_key, "mindex_scripture_books")
-    service_types = fetch_rows(supa_url, supa_key, "mindex_service_types")
-    services = fetch_rows(supa_url, supa_key, "mindex_services")
-    service_items = fetch_rows(supa_url, supa_key, "mindex_service_items")
+    worship_service_types = fetch_rows(supa_url, supa_key, "mindex_worship_service_types")
+    worship_services = fetch_rows(supa_url, supa_key, "mindex_worship_services")
+    worship_sections = fetch_rows(supa_url, supa_key, "mindex_worship_sections")
+    worship_elements = fetch_rows(supa_url, supa_key, "mindex_worship_elements")
+    worship_slides = fetch_rows(supa_url, supa_key, "mindex_worship_slides")
     translations = fetch_rows(supa_url, supa_key, "mindex_bible_translations")
     verse_count = table_count(supa_url, supa_key, "mindex_bible_verses")
 
     issues: list[dict[str, Any]] = []
     warnings: list[dict[str, Any]] = []
     song_ids = {row["id"] for row in songs}
-    service_ids = {row["id"] for row in services}
-    service_type_ids = {row["id"] for row in service_types}
+    scripture_ids = {row["id"] for row in scriptures}
+    worship_service_ids = {row["id"] for row in worship_services}
+    worship_service_type_ids = {row["id"] for row in worship_service_types}
+    worship_section_ids = {row["id"] for row in worship_sections}
+    worship_element_ids = {row["id"] for row in worship_elements}
     book_codes = {row["code"] for row in books}
     translation_ids = {row["id"] for row in translations}
 
@@ -229,21 +220,36 @@ def audit(
             issues.append({"type": "book-name-missing", "code": code})
         issues.extend(edge_text_issues(row, code, ("korean_name", "english_name", "short_name", "division", "testament")))
 
-    for row in services:
+    for row in worship_services:
         row_id = row["id"]
-        if row.get("type_id") not in service_type_ids:
-            issues.append({"type": "service-missing-type", "id": row_id, "type_id": row.get("type_id")})
-        issues.extend(edge_text_issues(row, row_id, ("leader",)))
-        warnings.extend(block_text_issues(row, row_id, ("raw_text",)))
+        if row.get("service_type_id") not in worship_service_type_ids:
+            issues.append({"type": "worship-service-missing-type", "id": row_id, "service_type_id": row.get("service_type_id")})
+        issues.extend(edge_text_issues(row, row_id, ("title", "worship_leader", "praise_leader")))
+        warnings.extend(block_text_issues(row, row_id, ("notes",)))
 
-    for row in service_items:
+    for row in worship_sections:
         row_id = row["id"]
-        if row.get("service_id") not in service_ids:
-            issues.append({"type": "service-item-missing-service", "id": row_id, "service_id": row.get("service_id")})
+        if row.get("service_id") not in worship_service_ids:
+            issues.append({"type": "worship-section-missing-service", "id": row_id, "service_id": row.get("service_id")})
+        issues.extend(edge_text_issues(row, row_id, ("section_key", "title", "person")))
+
+    for row in worship_elements:
+        row_id = row["id"]
+        if row.get("section_id") not in worship_section_ids:
+            issues.append({"type": "worship-element-missing-section", "id": row_id, "section_id": row.get("section_id")})
         if row.get("song_id") and row.get("song_id") not in song_ids:
-            issues.append({"type": "service-item-missing-song", "id": row_id, "song_id": row.get("song_id"), "raw_title": row.get("raw_title")})
-        issues.extend(edge_text_issues(row, row_id, ("label",)))
-        issues.extend(service_item_raw_title_issues(row, row_id))
+            issues.append({"type": "worship-element-missing-song", "id": row_id, "song_id": row.get("song_id"), "title": row.get("title")})
+        if row.get("scripture_id") and row.get("scripture_id") not in scripture_ids:
+            issues.append({"type": "worship-element-missing-scripture", "id": row_id, "scripture_id": row.get("scripture_id"), "title": row.get("title")})
+        issues.extend(edge_text_issues(row, row_id, ("element_type", "title", "person", "scripture_reference")))
+        warnings.extend(block_text_issues(row, row_id, ("body",)))
+
+    for row in worship_slides:
+        row_id = row["id"]
+        if row.get("element_id") not in worship_element_ids:
+            issues.append({"type": "worship-slide-missing-element", "id": row_id, "element_id": row.get("element_id")})
+        issues.extend(edge_text_issues(row, row_id, ("slide_type", "title", "marker")))
+        warnings.extend(block_text_issues(row, row_id, ("body",)))
 
     for row in translations:
         row_id = row["id"]
@@ -255,9 +261,11 @@ def audit(
         "songs": len(songs),
         "scriptures": len(scriptures),
         "scripture_books": len(books),
-        "service_types": len(service_types),
-        "services": len(services),
-        "service_items": len(service_items),
+        "worship_service_types": len(worship_service_types),
+        "worship_services": len(worship_services),
+        "worship_sections": len(worship_sections),
+        "worship_elements": len(worship_elements),
+        "worship_slides": len(worship_slides),
         "bible_translations": len(translations),
         "bible_verses": verse_count,
         "linked_translation_ids": len(translation_ids),

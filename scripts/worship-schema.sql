@@ -1,8 +1,8 @@
--- Worship v2 domain schema for Mindex
+-- Worship domain schema for Mindex
 -- Run in Supabase SQL editor after reviewing.
 --
--- This schema is additive. It does not delete or rewrite legacy
--- mindex_service_types / mindex_services / mindex_service_items rows.
+-- This schema defines the Worship domain model independently from older
+-- service tables.
 --
 -- Canonical model:
 --   Worship Service > Section > Element > Slide
@@ -10,7 +10,7 @@
 -- Naming decision:
 --   Keep "worship service" for the top-level service instance. The app tab is
 --   Worship, and "worship service" is the natural English church-domain term.
---   Legacy mindex_services remains separate compatibility/import residue.
+--   Worship data lives in the normalized mindex_worship_* tables.
 --
 -- Template model:
 --   Service Template / Section Template / Element Template / Slide Template
@@ -133,7 +133,7 @@ create table if not exists public.mindex_worship_services (
   template_id uuid references public.mindex_worship_templates(id) on delete set null,
   template_modified boolean not null default false,
   source_kind text not null default 'mindex'
-    check (source_kind in ('mindex', 'manual', 'ppt', 'pdf', 'import', 'legacy')),
+    check (source_kind in ('mindex', 'manual', 'ppt', 'pdf', 'import', 'archive')),
   source_ref jsonb not null default '{}'::jsonb,
   notes text not null default '',
   created_at timestamptz not null default now(),
@@ -164,7 +164,7 @@ create table if not exists public.mindex_worship_sections (
   template_id uuid references public.mindex_worship_templates(id) on delete set null,
   template_modified boolean not null default false,
   source_kind text not null default 'mindex'
-    check (source_kind in ('mindex', 'manual', 'ppt', 'pdf', 'import', 'legacy')),
+    check (source_kind in ('mindex', 'manual', 'ppt', 'pdf', 'import', 'archive')),
   source_ref jsonb not null default '{}'::jsonb,
   config jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now(),
@@ -211,7 +211,7 @@ create table if not exists public.mindex_worship_elements (
   template_id uuid references public.mindex_worship_templates(id) on delete set null,
   template_modified boolean not null default false,
   source_kind text not null default 'mindex'
-    check (source_kind in ('mindex', 'manual', 'ppt', 'pdf', 'import', 'legacy')),
+    check (source_kind in ('mindex', 'manual', 'ppt', 'pdf', 'import', 'archive')),
   source_ref jsonb not null default '{}'::jsonb,
   review_status text not null default 'draft'
     check (review_status in ('draft', 'matched', 'needs_review', 'approved')),
@@ -266,7 +266,7 @@ create table if not exists public.mindex_worship_slides (
   template_id uuid references public.mindex_worship_templates(id) on delete set null,
   template_modified boolean not null default false,
   source_kind text not null default 'mindex'
-    check (source_kind in ('mindex', 'manual', 'ppt', 'pdf', 'import', 'legacy')),
+    check (source_kind in ('mindex', 'manual', 'ppt', 'pdf', 'import', 'archive')),
   source_ref jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -286,7 +286,7 @@ create index if not exists mindex_worship_slides_template_idx
 create table if not exists public.mindex_worship_import_sources (
   id uuid primary key default gen_random_uuid(),
   source_kind text not null
-    check (source_kind in ('ppt', 'pdf', 'manual', 'legacy', 'setlist')),
+    check (source_kind in ('ppt', 'pdf', 'manual', 'archive', 'setlist')),
   source_name text not null default '',
   source_path text not null default '',
   source_hash text not null default '',
@@ -413,7 +413,7 @@ join public.mindex_worship_sections sec on sec.service_id = svc.id
 join public.mindex_worship_elements el on el.section_id = sec.id
 join public.mindex_worship_slides sl on sl.element_id = el.id;
 
--- ── RLS: current prototype collaboration model mirrors legacy service tables.
+-- ── RLS: current prototype collaboration model.
 alter table public.mindex_worship_service_types enable row level security;
 alter table public.mindex_worship_templates enable row level security;
 alter table public.mindex_worship_template_items enable row level security;

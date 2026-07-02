@@ -761,10 +761,10 @@ def main() -> int:
 
                 template_mode = page.evaluate(
                     """
-                    () => document.querySelector('.svc-template-card') ? 'legacy' : 'v2'
+                    () => document.querySelector('.svc-template-card') ? 'classic' : 'worship'
                     """
                 )
-                if template_mode == "legacy":
+                if template_mode == "classic":
                     page.evaluate(
                         """
                         (() => {
@@ -784,7 +784,7 @@ def main() -> int:
                           const fieldLabels = [...row.querySelectorAll('.svc-template-step-field small')];
                           const headerLabels = [...root.querySelectorAll('.svc-template-step-header span')].slice(1, 7);
                           return {
-                            mode: 'legacy',
+                            mode: 'classic',
                             labels: (fieldLabels.length ? fieldLabels : headerLabels)
                               .slice(0, 6)
                               .map((node) => node.textContent.trim()),
@@ -812,7 +812,7 @@ def main() -> int:
                     template_terms = page.evaluate(
                         """
                         (() => ({
-                          mode: 'v2',
+                          mode: 'worship',
                           levels: [...document.querySelectorAll('.svc-template-level-card strong')]
                             .map((node) => node.textContent.trim()),
                           cards: document.querySelectorAll('.svc-template-draft-card, .svc-template-inventory-card').length,

@@ -8,11 +8,10 @@ stable
 as $$
 declare
   v_service_date date := $1;
-  v_service public.mindex_services%rowtype;
+  v_service_id uuid;
+  v_service_leader text := '';
   v_service_count integer := 0;
   v_calendar public.mindex_sunday_calendar%rowtype;
-  v_scripture_item public.mindex_service_items%rowtype;
-  v_sermon_item public.mindex_service_items%rowtype;
   v_sermon_title text := '';
   v_passage text := '';
   v_sermon_assignee text := '';
@@ -25,15 +24,15 @@ declare
 begin
   select count(*)
     into v_service_count
-  from public.mindex_services s
-  where s.type_id = 'sunday-main'
-    and s.date = v_service_date;
+  from public.mindex_worship_services s
+  where s.service_type_id in ('sun_3rd', 'sunday-main')
+    and s.service_date = v_service_date;
 
-  select *
-    into v_service
-  from public.mindex_services s
-  where s.type_id = 'sunday-main'
-    and s.date = v_service_date
+  select s.id, btrim(regexp_replace(coalesce(s.worship_leader, ''), '[[:space:]]+', ' ', 'g'))
+    into v_service_id, v_service_leader
+  from public.mindex_worship_services s
+  where s.service_type_id in ('sun_3rd', 'sunday-main')
+    and s.service_date = v_service_date
   order by s.created_at asc
   limit 1;
 
@@ -43,27 +42,35 @@ begin
   where c.date = v_service_date
   limit 1;
 
-  if v_service.id is not null then
-    select *
-      into v_scripture_item
-    from public.mindex_service_items i
-    where i.service_id = v_service.id
-      and i.label = '성경봉독'
-    order by i.sort_order asc
+  if v_service_id is not null then
+    select btrim(regexp_replace(coalesce(nullif(el.scripture_reference, ''), nullif(el.title, ''), el.body, ''), '[[:space:]]+', ' ', 'g'))
+      into v_passage
+    from public.mindex_worship_sections sec
+    join public.mindex_worship_elements el on el.section_id = sec.id
+    where sec.service_id = v_service_id
+      and (
+        sec.section_key = 'scripture'
+        or sec.title = '성경봉독'
+        or el.element_type in ('scripture_reading', 'scripture_body')
+      )
+    order by sec.sort_order asc, el.sort_order asc
     limit 1;
 
-    select *
-      into v_sermon_item
-    from public.mindex_service_items i
-    where i.service_id = v_service.id
-      and i.label = '설교'
-    order by i.sort_order asc
+    select
+      btrim(regexp_replace(coalesce(nullif(el.title, ''), sec.title, ''), '[[:space:]]+', ' ', 'g')),
+      btrim(regexp_replace(coalesce(nullif(el.person, ''), sec.person, ''), '[[:space:]]+', ' ', 'g'))
+      into v_sermon_title, v_sermon_assignee
+    from public.mindex_worship_sections sec
+    join public.mindex_worship_elements el on el.section_id = sec.id
+    where sec.service_id = v_service_id
+      and (sec.section_key = 'sermon' or sec.title = '설교')
+    order by sec.sort_order asc, el.sort_order asc
     limit 1;
   end if;
 
-  v_passage := btrim(regexp_replace(coalesce(v_scripture_item.raw_title, ''), '[[:space:]]+', ' ', 'g'));
-  v_sermon_title := btrim(regexp_replace(coalesce(v_sermon_item.raw_title, ''), '[[:space:]]+', ' ', 'g'));
-  v_sermon_assignee := btrim(regexp_replace(coalesce(v_sermon_item.assignee, ''), '[[:space:]]+', ' ', 'g'));
+  v_passage := coalesce(v_passage, '');
+  v_sermon_title := coalesce(v_sermon_title, '');
+  v_sermon_assignee := coalesce(v_sermon_assignee, '');
 
   if v_sermon_assignee <> '' then
     v_assignee_key := regexp_replace(lower(v_sermon_assignee), '[^0-9a-z가-힣]', '', 'g');
@@ -87,11 +94,11 @@ begin
   end if;
 
   if v_preacher = ''
-    and btrim(regexp_replace(coalesce(v_service.leader, ''), '[[:space:]]+', ' ', 'g')) <> ''
+    and v_service_leader <> ''
   then
     v_warnings := v_warnings || jsonb_build_array(jsonb_build_object(
       'code', 'ignored_service_leader_for_preacher',
-      'value', btrim(regexp_replace(coalesce(v_service.leader, ''), '[[:space:]]+', ' ', 'g'))
+      'value', v_service_leader
     ));
   end if;
 
@@ -111,7 +118,7 @@ begin
     ));
   end if;
 
-  if v_service.id is null then
+  if v_service_id is null then
     v_warnings := v_warnings || jsonb_build_array(jsonb_build_object(
       'code', 'service_not_found'
     ));
@@ -133,7 +140,7 @@ begin
     'passage', v_passage,
     'preacher', v_preacher,
     'preacherSource', v_preacher_source,
-    'serviceId', v_service.id,
+    'serviceId', v_service_id,
     'ready', jsonb_array_length(v_missing) = 0,
     'missing', v_missing,
     'warnings', v_warnings

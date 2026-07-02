@@ -10,7 +10,7 @@ Focus on:
 - Presenter slide building.
 - Presenter controller controls and keyboard behavior.
 - Presenter output route and projector-facing layout.
-- Service templates and PPT/reference mapping when needed.
+- Service templates and import/reference mapping when needed.
 - Order-sheet integration only where it touches service data or Friday/monthly print output.
 
 Avoid:
@@ -27,21 +27,20 @@ ambiguous; ask the user and preserve curated service material.
 
 Schema direction:
 
-- New canonical Worship work should target `scripts/worship-v2-schema.sql`.
+- New canonical Worship work should target `scripts/worship-schema.sql`.
 - Data ownership and table responsibilities are summarized in
-  `docs/worship-v2-data-contract.md`.
-- `scripts/sync_worship_v2_taxonomy.py` seeds only v2 service type taxonomy;
-  `scripts/stage_worship_v2_legacy_import.py` stages legacy rows only into
-  import review tables.
-- Legacy `mindex_service_types`, `mindex_services`, and `mindex_service_items`
-  are compatibility/import residue, not the long-term Worship domain model.
-- The app/presenter read path should load Worship v2 first. Legacy
-  `mindex_services` and `mindex_service_items` have been purged after v2 apply;
-  do not rebuild new Worship behavior on those tables.
+  `docs/worship-data-contract.md`.
+- `mindex_worship_service_types` is the retained service taxonomy. Populate it
+  directly from reviewed Mindex decisions, not from legacy service type rows.
+- Older service tables are residue, not the Worship domain model. Do not use
+  them as app fallback, template source, or import authority.
+- The app/presenter read path loads Worship only. The previous PPT-derived
+  Worship rows have been purged; rebuild Worship behavior on normalized worship
+  tables.
 - Use `mindex_worship_services` for the top-level instance name. The product
   area is Worship, and `worship service` is the intended church-domain term.
 - Do not add new Worship concepts by expanding `raw_title`, `memo`, or
-  `order_template`; create/import into the normalized Worship v2 domain instead.
+  `order_template`; create/import into the normalized Worship domain instead.
 
 Hierarchy:
 
