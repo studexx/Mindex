@@ -2618,7 +2618,7 @@ body[data-module="service"] .detail-pane {
   width: 100%;
   flex-direction: column;
   gap: var(--s3);
-  padding: var(--s3) var(--s4);
+  padding: 0;
 }
 .svc-template-level-grid {
   display: grid;

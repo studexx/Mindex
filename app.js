@@ -13752,85 +13752,13 @@ function presenterLineCharEstimate(line) {
 }
 
 async function createService() {
-  if (!state.newServiceForm || !requireClient()) return;
-  if (serviceTypeById(state.newServiceForm.type_id)?._v2) {
-    showToast("Worship v2 service creation is being rebuilt from templates.", "error");
-    return;
-  }
-  const { type_id, date, title, leader, tags } = state.newServiceForm;
-  if (!date) { showToast("날짜를 입력해주세요.", "error"); return; }
-
-  try {
-    const payload = {
-      type_id,
-      date,
-      leader: serviceUsesPraiseLeader(type_id) ? nullIfBlank(leader) : null,
-      tags: tags ? tags.split(",").map((t) => t.trim()).filter(Boolean) : [],
-    };
-    if (state.serviceTitleSupported) payload.title = nullIfBlank(title);
-    const { data, error } = await state.client
-      .from("mindex_services")
-      .insert(payload)
-      .select("*")
-      .single();
-    if (error) throw error;
-    state.services.push(data);
-    state.services = sortServicesByDate(state.services, "asc");
-    state.serviceItems[data.id] = [];
-    state.newServiceForm = null;
-    state.selectedServiceId = data.id;
-    state.selectedServiceTypeId = data.type_id;
-    renderServiceList();
-    renderServiceDetail();
-    syncBrowserHistory();
-    showToast("예배가 추가되었습니다.");
-  } catch (e) {
-    showToast(e.message || "예배 생성 실패.", "error");
-  }
+  void state.newServiceForm;
+  showToast("Worship v2 service creation is being rebuilt from templates.", "error");
 }
 
 async function deleteService(serviceId) {
-  if (!serviceId || !requireClient()) return;
-  const svc = state.services.find((s) => s.id === serviceId);
-  if (!svc) return;
-  const label = `${serviceDisplayTypeName(svc)} ${formatServiceDate(svc)}`;
-  if (!window.confirm(`"${label}" 예배를 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`)) return;
-
-  try {
-    const { error: itemsErr } = await state.client
-      .from("mindex_service_items")
-      .delete()
-      .eq("service_id", serviceId);
-    if (itemsErr) throw itemsErr;
-
-    const { error: svcErr } = await state.client
-      .from("mindex_services")
-      .delete()
-      .eq("id", serviceId);
-    if (svcErr) throw svcErr;
-
-    state.services = state.services.filter((s) => s.id !== serviceId);
-    delete state.serviceItems[serviceId];
-    if (state.presenter.serviceId === serviceId) {
-      stopPresenterOutputWindowMonitor();
-      state.presenter.serviceId = null;
-      state.presenter.outputWindow = null;
-      state.presenter.slides = [];
-      state.presenter.index = 0;
-      state.presenter.black = false;
-      publishPresenterState({ force: true });
-    }
-    if (state.selectedServiceId === serviceId) {
-      state.selectedServiceId = null;
-      state.dirty.service = false;
-    }
-    renderServiceList();
-    renderServiceDetail();
-    syncBrowserHistory();
-    showToast("예배가 삭제되었습니다.");
-  } catch (e) {
-    showToast(e.message || "예배 삭제 실패.", "error");
-  }
+  void serviceId;
+  showToast("Worship v2 deletion is not exposed yet.", "error");
 }
 
 function selectService(id) {

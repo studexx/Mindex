@@ -711,6 +711,35 @@ def main() -> int:
                     """
                 )
                 page.wait_for_selector(".svc-template-card, .svc-template-level-card", timeout=5000)
+                template_gutter = page.evaluate(
+                    """
+                    (() => {
+                      const detail = document.querySelector('.detail-pane')?.getBoundingClientRect();
+                      const root = document.querySelector('.service-templates')?.getBoundingClientRect();
+                      const title = document.querySelector('.service-templates .service-date-list-title')?.getBoundingClientRect();
+                      const grid = document.querySelector('.svc-template-level-grid, .svc-template-draft-grid')?.getBoundingClientRect();
+                      const styles = getComputedStyle(document.querySelector('.service-templates'));
+                      return {
+                        rootLeft: Math.round((root?.left || 0) - (detail?.left || 0)),
+                        titleLeft: Math.round((title?.left || 0) - (detail?.left || 0)),
+                        gridLeft: Math.round((grid?.left || 0) - (detail?.left || 0)),
+                        paddingLeft: Math.round(parseFloat(styles.paddingLeft)),
+                        overflow: Math.max(document.documentElement.scrollWidth - window.innerWidth, document.body.scrollWidth - window.innerWidth)
+                      };
+                    })()
+                    """
+                )
+                if (
+                    template_gutter["rootLeft"] == 25
+                    and template_gutter["titleLeft"] == 25
+                    and template_gutter["gridLeft"] == 25
+                    and template_gutter["paddingLeft"] == 0
+                    and template_gutter["overflow"] <= 2
+                ):
+                    pass_("service-template-gutter", json.dumps(template_gutter, ensure_ascii=False))
+                else:
+                    fail("service-template-gutter", json.dumps(template_gutter, ensure_ascii=False))
+
                 template_mode = page.evaluate(
                     """
                     () => document.querySelector('.svc-template-card') ? 'legacy' : 'v2'
