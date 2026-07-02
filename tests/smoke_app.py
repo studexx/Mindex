@@ -419,7 +419,7 @@ def main() -> int:
             if (
                 desktop_shell["detailPaddingLeft"] == 25
                 and desktop_shell["detailPaddingTop"] == 25
-                and desktop_shell["sidebarSearchTop"] == 25
+                and desktop_shell["sidebarSearchTop"] == 8
                 and desktop_shell["toggleWidth"] == desktop_shell["toggleHeight"] == 32
                 and desktop_overflow <= 2
             ):
@@ -595,7 +595,7 @@ def main() -> int:
                             module_id,
                         )
                     )
-                if all(item["searchTop"] == 25 and item["firstTop"] == 25 and item["overflow"] <= 2 for item in module_spacing):
+                if all(item["searchTop"] == 8 and item["firstTop"] == 25 and item["overflow"] <= 2 for item in module_spacing):
                     pass_("module-start-gutters", json.dumps(module_spacing, ensure_ascii=False))
                 else:
                     fail("module-start-gutters", json.dumps(module_spacing, ensure_ascii=False))
