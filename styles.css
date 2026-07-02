@@ -389,8 +389,9 @@ body[data-module="praise"] .list-filter {
   grid-auto-columns: var(--topbar-btn-size);
   grid-template-columns: repeat(2, var(--topbar-btn-size));
   align-items: center;
+  align-self: center;
   justify-content: start;
-  height: 100%;
+  height: var(--topbar-btn-size);
   column-gap: var(--s1);
   grid-column: 3;
   justify-self: stretch;
