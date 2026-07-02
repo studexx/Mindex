@@ -411,7 +411,7 @@ body[data-module="praise"] .list-filter {
 .topbar-actions .btn:not(:disabled):hover,
 .topbar-actions .icon-btn:not(:disabled):hover { background: var(--panel-2); }
 .topbar-actions .btn.secondary:not(:disabled):hover { background: var(--panel-2); color: var(--ink-2); }
-.topbar-actions #themeBtn { color: var(--ink-3); }
+.topbar-actions #themeBtn { color: var(--ink-2); }
 .topbar-actions #themeBtn:not(:disabled):hover { background: var(--panel-2); color: var(--ink-2); }
 .topbar-actions .icon-btn.primary {
   background: transparent;
