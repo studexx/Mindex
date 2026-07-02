@@ -457,13 +457,13 @@ body[data-module="order-sheets"] .sidebar-count,
 .global-search-wrap {
   max-width: none;
   min-width: 200px;
-  height: 30px;
+  height: 35px;
   width: 100%;
 }
 .sidebar-search-wrap {
   width: auto;
   min-width: 0;
-  margin: var(--s1) var(--topbar-edge-x) 6px;
+  margin: var(--s1) var(--topbar-edge-x) var(--s2);
 }
 .search-wrap {
   border: 0;
@@ -476,7 +476,7 @@ body[data-module="order-sheets"] .sidebar-count,
 .field input, .field textarea, .field select, .form-type-select, .form-textarea {
   border: 0; border-radius: var(--r); background: color-mix(in srgb, var(--panel-2) 42%, transparent); color: var(--ink); outline: 0;
 }
-.search-wrap input { width: 100%; border: 0; outline: 0; background: transparent; font-size: 12px; }
+.search-wrap input { width: 100%; border: 0; outline: 0; background: transparent; color: var(--sidebar-ink); font-size: 12px; line-height: 1; }
 .search-wrap input::placeholder { color: var(--ink-4); }
 .search-wrap:focus-within {
   background: var(--control-surface);
