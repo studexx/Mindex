@@ -5819,10 +5819,6 @@ function renderHomeDetail() {
   const verse = homeVerse();
   refs.detailPane.innerHTML = `
     <div class="home-screen">
-      ${verse.text ? `<section class="home-verse-card" aria-label="Home verse">
-        <p>${renderHomeVerseText(verse.text)}</p>
-        <span>${escapeHtml(verse.reference)}</span>
-      </section>` : ""}
       <section class="home-primary-row" aria-label="Mindex modules">
         ${service ? renderHomePrimaryCard(service) : ""}
         <div class="home-library-stack" aria-label="Mindex library">
@@ -5831,6 +5827,10 @@ function renderHomeDetail() {
           ${utilityModules.map((module) => renderHomeCompactCard(module, { wide: true })).join("")}
         </div>
       </section>
+      ${verse.text ? `<section class="home-verse-card" aria-label="Home verse">
+        <p>${renderHomeVerseText(verse.text)}</p>
+        <span>${escapeHtml(verse.reference)}</span>
+      </section>` : ""}
     </div>
   `;
   refreshIcons();
