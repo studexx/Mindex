@@ -237,12 +237,14 @@ def shell_layout_snapshot(page) -> dict[str, Any]:
           const topbar = document.querySelector('.topbar');
           const sidebar = document.querySelector('.sidebar');
           const search = document.querySelector('.sidebar-search-wrap');
+          const firstSectionLabel = document.querySelector('.service-sidebar-head');
           const toggle = document.querySelector('#sidebarToggleBtn');
           const styles = detail ? getComputedStyle(detail) : null;
           const topbarRect = topbar?.getBoundingClientRect();
           const toggleRect = toggle?.getBoundingClientRect();
           const sidebarRect = sidebar?.getBoundingClientRect();
           const searchRect = search?.getBoundingClientRect();
+          const firstSectionLabelRect = firstSectionLabel?.getBoundingClientRect();
           return {
             module: document.body.dataset.module,
             viewport: window.innerWidth,
@@ -251,6 +253,7 @@ def shell_layout_snapshot(page) -> dict[str, Any]:
             detailPaddingLeft: styles ? Math.round(parseFloat(styles.paddingLeft)) : 0,
             detailPaddingTop: styles ? Math.round(parseFloat(styles.paddingTop)) : 0,
             sidebarSearchTop: searchRect && topbarRect ? Math.round(searchRect.top - topbarRect.bottom) : 0,
+            sidebarSearchSectionGap: searchRect && firstSectionLabelRect ? Math.round(firstSectionLabelRect.top - searchRect.bottom) : 0,
             topbarHeight: topbarRect ? Math.round(topbarRect.height) : 0,
             sidebarWidth: sidebarRect ? Math.round(sidebarRect.width) : 0,
             toggleLeft: toggleRect ? Math.round(toggleRect.left) : 0,
@@ -457,7 +460,7 @@ def main() -> int:
                 fail("sidebar-collapse-keeps-gutter", json.dumps(collapsed_shell, ensure_ascii=False))
 
             page.set_viewport_size({"width": 390, "height": 780})
-            page.wait_for_timeout(80)
+            page.wait_for_timeout(180)
             mobile_shell = shell_layout_snapshot(page)
             mobile_overflow = max(
                 mobile_shell["documentScrollWidth"] - mobile_shell["viewport"],
@@ -466,6 +469,7 @@ def main() -> int:
             if (
                 mobile_shell["detailPaddingLeft"] == 25
                 and mobile_shell["detailPaddingTop"] == 25
+                and mobile_shell["sidebarSearchTop"] == 8
                 and mobile_shell["topbarHeight"] == 40
                 and mobile_overflow <= 2
             ):
@@ -477,7 +481,7 @@ def main() -> int:
             responsive_shells = []
             for width in (1180, 900, 760, 520, 390):
                 page.set_viewport_size({"width": width, "height": 780})
-                page.wait_for_timeout(80)
+                page.wait_for_timeout(180)
                 responsive_shells.append(
                     page.evaluate(
                         """
@@ -495,11 +499,14 @@ def main() -> int:
                           const topbar = rect('.topbar');
                           const sidebar = rect('.sidebar');
                           const search = rect('.sidebar-search-wrap');
+                          const detail = rect('.detail-pane');
                           const switcher = document.querySelector('.primary-switcher');
                           return {
                             width,
                             topbarHeight: topbar?.height || 0,
                             sidebarWidth: sidebar?.width || 0,
+                            sidebarHeight: sidebar?.height || 0,
+                            sidebarLeftRail: Boolean(sidebar && detail && detail.left >= sidebar.right),
                             searchWithinSidebar: Boolean(search && sidebar && search.left >= sidebar.left && search.right <= sidebar.right),
                             switcherClientWidth: Math.round(switcher?.clientWidth || 0),
                             switcherScrollWidth: Math.round(switcher?.scrollWidth || 0),
@@ -513,6 +520,9 @@ def main() -> int:
             if all(
                 item["topbarHeight"] == 40
                 and item["sidebarWidth"] <= item["width"]
+                and (item["width"] >= 780 or item["sidebarWidth"] == 170)
+                and item["sidebarLeftRail"]
+                and (item["width"] > 860 or item["sidebarHeight"] > 300)
                 and item["searchWithinSidebar"]
                 and item["switcherClientWidth"] > 0
                 and item["overflow"] <= 2
@@ -744,7 +754,7 @@ def main() -> int:
                     "청소년부 설교자",
                 ]
                 if (
-                    "Mindex" in calendar_state["placeholder"]
+                    calendar_state["placeholder"] == "Search..."
                     and calendar_state["hasCalendar"]
                     and calendar_state["activeTab"] == "부서 일과"
                     and calendar_state["departmentHeaders"] == expected_department_headers
@@ -789,7 +799,7 @@ def main() -> int:
                     }))()
                     """
                 )
-                if "Mindex" in references_state["placeholder"] and references_state["hasReferences"] and references_state["overflow"] <= 2:
+                if references_state["placeholder"] == "Search..." and references_state["hasReferences"] and references_state["overflow"] <= 2:
                     pass_("references-utility-shell", json.dumps(references_state, ensure_ascii=False))
                 else:
                     fail("references-utility-shell", json.dumps(references_state, ensure_ascii=False))
@@ -804,6 +814,35 @@ def main() -> int:
                     pass_("service-data-load", json.dumps(snapshot, ensure_ascii=False))
                 else:
                     fail("service-data-load", json.dumps(snapshot, ensure_ascii=False))
+
+                service_sidebar_gap = page.evaluate(
+                    """
+                    (() => {
+                      const search = document.querySelector('.sidebar-search-wrap')?.getBoundingClientRect();
+                      const headNode = document.querySelector('.service-sidebar-head');
+                      const head = headNode?.getBoundingClientRect();
+                      const label = headNode?.querySelector('span')?.getBoundingClientRect();
+                      const headStyles = headNode ? getComputedStyle(headNode) : null;
+                      const sidebar = document.querySelector('.sidebar')?.getBoundingClientRect();
+                      return {
+                        gap: search && head ? Math.round(head.top - search.bottom) : 0,
+                        headHeight: Math.round(head?.height || 0),
+                        headLineHeight: headStyles?.lineHeight || '',
+                        headLeft: sidebar && head ? Math.round(head.left - sidebar.left) : 0,
+                        labelLeft: sidebar && label ? Math.round(label.left - sidebar.left) : 0
+                      };
+                    })()
+                    """
+                )
+                if (
+                    service_sidebar_gap["gap"] == 16
+                    and service_sidebar_gap["headHeight"] < 18
+                    and service_sidebar_gap["headLeft"] == 12
+                    and service_sidebar_gap["labelLeft"] == 20
+                ):
+                    pass_("service-sidebar-section-label-gap", json.dumps(service_sidebar_gap, ensure_ascii=False))
+                else:
+                    fail("service-sidebar-section-label-gap", json.dumps(service_sidebar_gap, ensure_ascii=False))
 
                 if page.locator(".service-type-row[data-service-type-id]").count():
                     page.locator(".service-type-row[data-service-type-id]").first.click()
@@ -1296,7 +1335,7 @@ def main() -> int:
                 wait_for_module_data(page, "praise")
                 praise_placeholder = page.input_value("#searchInput")
                 placeholder = page.get_attribute("#searchInput", "placeholder") or ""
-                if "title" in placeholder.lower() or "lyrics" in placeholder.lower():
+                if placeholder == "Search...":
                     pass_("praise-module-placeholder", placeholder)
                 else:
                     fail("praise-module-placeholder", placeholder or praise_placeholder)

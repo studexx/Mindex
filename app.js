@@ -5179,30 +5179,8 @@ function renderModuleSwitcher() {
   refs.brandHome?.setAttribute("aria-current", homeActive ? "page" : "false");
   refs.brandNameHome?.setAttribute("aria-current", homeActive ? "page" : "false");
   syncSidebarCollapsedState();
-  let searchLabel = "Search Mindex.";
-  if (state.module === "service") {
-    refs.searchInput.placeholder = "Search date, song...";
-    searchLabel = "Search worship services by date or song.";
-  } else if (state.module === "activities") {
-    refs.searchInput.placeholder = "Search games, teams...";
-    searchLabel = "Search activities by game or team.";
-  } else if (state.module === "order-sheets") {
-    refs.searchInput.placeholder = "Search date, service...";
-    searchLabel = "Search order sheets by date or service.";
-  } else if (state.module === "references") {
-    refs.searchInput.placeholder = "Search Mindex...";
-  } else if (state.module === "calendar") {
-    refs.searchInput.placeholder = "Search Mindex...";
-  } else if (state.module === "home") {
-    refs.searchInput.placeholder = "Search Mindex...";
-  } else if (state.module === "scripture") {
-    refs.searchInput.placeholder = "Search reference, text...";
-    searchLabel = "Search scripture by reference or text.";
-  } else {
-    refs.searchInput.placeholder = "Search title, lyrics...";
-    searchLabel = "Search praise by title or lyrics.";
-  }
-  refs.searchInput.setAttribute("aria-label", searchLabel);
+  refs.searchInput.placeholder = "Search...";
+  refs.searchInput.setAttribute("aria-label", "Search");
   const canCreate = state.module === "praise";
   refs.newSongBtn.hidden = !canCreate;
   refs.newSongBtn.disabled = !canCreate;
