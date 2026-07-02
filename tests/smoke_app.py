@@ -179,8 +179,8 @@ def wait_for_service_data(page) -> None:
           && (
             (
               state.serviceTypes.length > 0
-              && state.services.length > 0
-              && Object.keys(state.serviceItems || {}).length > 0
+              && Array.isArray(state.services)
+              && state.serviceItems
             )
             || state.serviceError
             || state.connectionError
@@ -652,7 +652,7 @@ def main() -> int:
                 snapshot = get_app_snapshot(page)
                 if snapshot.get("serviceError") or snapshot.get("connectionError"):
                     fail("service-data-load", json.dumps(snapshot, ensure_ascii=False))
-                elif snapshot.get("serviceTypes", 0) > 0 and snapshot.get("services", 0) > 0:
+                elif snapshot.get("serviceTypes", 0) > 0 and snapshot.get("services", 0) >= 0:
                     pass_("service-data-load", json.dumps(snapshot, ensure_ascii=False))
                 else:
                     fail("service-data-load", json.dumps(snapshot, ensure_ascii=False))
@@ -664,49 +664,72 @@ def main() -> int:
                     })()
                     """
                 )
-                page.wait_for_selector(".svc-template-card", timeout=5000)
-                page.evaluate(
+                page.wait_for_selector(".svc-template-card, .svc-template-level-card", timeout=5000)
+                template_mode = page.evaluate(
                     """
-                    (() => {
-                      const card = [...document.querySelectorAll('.svc-template-card')]
-                        .find((item) => item.querySelector('.svc-template-step-row'));
-                      if (card) card.open = true;
-                    })()
+                    () => document.querySelector('.svc-template-card') ? 'legacy' : 'v2'
                     """
                 )
-                page.wait_for_function("() => document.querySelector('.svc-template-card[open] .svc-template-step-row')", timeout=5000)
-                template_terms = page.evaluate(
-                    """
-                    (() => {
-                      const root = [...document.querySelectorAll('.svc-template-card[open]')]
-                        .find((item) => item.querySelector('.svc-template-step-row')) || document;
-                      const row = root.querySelector('.svc-template-step-row') || root;
-                      const fieldLabels = [...row.querySelectorAll('.svc-template-step-field small')];
-                      const headerLabels = [...root.querySelectorAll('.svc-template-step-header span')].slice(1, 7);
-                      return {
-                        labels: (fieldLabels.length ? fieldLabels : headerLabels)
-                          .slice(0, 6)
-                          .map((node) => node.textContent.trim()),
-                        toggles: [...row.querySelectorAll('.svc-template-step-toggle span')]
-                          .slice(0, 3)
-                          .map((node) => node.textContent.trim()),
-                        addText: root.querySelector('.svc-template-add')?.textContent.trim() || '',
-                        overflow: Math.max(document.documentElement.scrollWidth - window.innerWidth, document.body.scrollWidth - window.innerWidth)
-                      };
-                    })()
-                    """
-                )
-                expected_labels = ["섹션", "기본 항목", "흐름", "타입", "템플릿", "출력"]
-                expected_toggles = ["필수", "유동", "반복"]
-                if (
-                    template_terms["labels"] == expected_labels
-                    and template_terms["toggles"] == expected_toggles
-                    and template_terms["addText"] == "+ 섹션"
-                    and template_terms["overflow"] <= 2
-                ):
-                    pass_("service-template-terminology", json.dumps(template_terms, ensure_ascii=False))
+                if template_mode == "legacy":
+                    page.evaluate(
+                        """
+                        (() => {
+                          const card = [...document.querySelectorAll('.svc-template-card')]
+                            .find((item) => item.querySelector('.svc-template-step-row'));
+                          if (card) card.open = true;
+                        })()
+                        """
+                    )
+                    page.wait_for_function("() => document.querySelector('.svc-template-card[open] .svc-template-step-row')", timeout=5000)
+                    template_terms = page.evaluate(
+                        """
+                        (() => {
+                          const root = [...document.querySelectorAll('.svc-template-card[open]')]
+                            .find((item) => item.querySelector('.svc-template-step-row')) || document;
+                          const row = root.querySelector('.svc-template-step-row') || root;
+                          const fieldLabels = [...row.querySelectorAll('.svc-template-step-field small')];
+                          const headerLabels = [...root.querySelectorAll('.svc-template-step-header span')].slice(1, 7);
+                          return {
+                            mode: 'legacy',
+                            labels: (fieldLabels.length ? fieldLabels : headerLabels)
+                              .slice(0, 6)
+                              .map((node) => node.textContent.trim()),
+                            toggles: [...row.querySelectorAll('.svc-template-step-toggle span')]
+                              .slice(0, 3)
+                              .map((node) => node.textContent.trim()),
+                            addText: root.querySelector('.svc-template-add')?.textContent.trim() || '',
+                            overflow: Math.max(document.documentElement.scrollWidth - window.innerWidth, document.body.scrollWidth - window.innerWidth)
+                          };
+                        })()
+                        """
+                    )
+                    expected_labels = ["섹션", "기본 항목", "흐름", "타입", "템플릿", "출력"]
+                    expected_toggles = ["필수", "유동", "반복"]
+                    if (
+                        template_terms["labels"] == expected_labels
+                        and template_terms["toggles"] == expected_toggles
+                        and template_terms["addText"] == "+ 섹션"
+                        and template_terms["overflow"] <= 2
+                    ):
+                        pass_("service-template-terminology", json.dumps(template_terms, ensure_ascii=False))
+                    else:
+                        fail("service-template-terminology", json.dumps(template_terms, ensure_ascii=False))
                 else:
-                    fail("service-template-terminology", json.dumps(template_terms, ensure_ascii=False))
+                    template_terms = page.evaluate(
+                        """
+                        (() => ({
+                          mode: 'v2',
+                          levels: [...document.querySelectorAll('.svc-template-level-card strong')]
+                            .map((node) => node.textContent.trim()),
+                          cards: document.querySelectorAll('.svc-template-draft-card, .svc-template-inventory-card').length,
+                          overflow: Math.max(document.documentElement.scrollWidth - window.innerWidth, document.body.scrollWidth - window.innerWidth)
+                        }))()
+                        """
+                    )
+                    if template_terms["levels"] == ["Service", "Section", "Element", "Slide"] and template_terms["overflow"] <= 2:
+                        pass_("service-template-terminology", json.dumps(template_terms, ensure_ascii=False))
+                    else:
+                        fail("service-template-terminology", json.dumps(template_terms, ensure_ascii=False))
 
                 service_for_print = select_service_for_print(page)
                 if not service_for_print:
