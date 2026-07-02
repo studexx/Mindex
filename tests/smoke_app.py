@@ -420,6 +420,25 @@ def main() -> int:
             else:
                 fail("shell-desktop-geometry", json.dumps(desktop_shell, ensure_ascii=False))
 
+            home_gutter = page.evaluate(
+                """
+                (() => {
+                  const detail = document.querySelector('.detail-pane')?.getBoundingClientRect();
+                  const home = document.querySelector('.home-screen')?.getBoundingClientRect();
+                  return {
+                    left: Math.round((home?.left || 0) - (detail?.left || 0)),
+                    top: Math.round((home?.top || 0) - (detail?.top || 0)),
+                    width: Math.round(home?.width || 0),
+                    overflow: Math.max(document.documentElement.scrollWidth - window.innerWidth, document.body.scrollWidth - window.innerWidth)
+                  };
+                })()
+                """
+            )
+            if home_gutter["left"] == 25 and home_gutter["top"] == 25 and home_gutter["overflow"] <= 2:
+                pass_("home-screen-gutter", json.dumps(home_gutter, ensure_ascii=False))
+            else:
+                fail("home-screen-gutter", json.dumps(home_gutter, ensure_ascii=False))
+
             page.click("#sidebarToggleBtn")
             page.wait_for_timeout(180)
             collapsed_shell = shell_layout_snapshot(page)
