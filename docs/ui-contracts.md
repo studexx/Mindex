@@ -9,9 +9,8 @@ Read `HANDOFF.md` first. This file is the short UI contract for Codex threads so
 - Sidebar open or closed must not change the detail pane gutter.
 - Topbar icon buttons are square, normally `32px` by `32px`.
 - Sidebar toggle, home, theme, and save controls should share the same button geometry.
-- Left and right topbar action groups should use the same grid start offset inside
-  their rail. Do not push the right action group to the far edge unless the left
-  rail follows the same rule.
+- Left topbar actions align to the left rail edge. Right topbar actions align to
+  the right rail edge because they belong to the app-level utility side.
 - Mindex brand/home buttons may navigate home, but should not add hover motion.
 - Avoid horizontal page overflow on desktop and mobile.
 

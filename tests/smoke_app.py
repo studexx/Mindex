@@ -236,10 +236,13 @@ def shell_layout_snapshot(page) -> dict[str, Any]:
           const detail = document.querySelector('.detail-pane');
           const topbar = document.querySelector('.topbar');
           const sidebar = document.querySelector('.sidebar');
+          const search = document.querySelector('.sidebar-search-wrap');
           const toggle = document.querySelector('#sidebarToggleBtn');
           const styles = detail ? getComputedStyle(detail) : null;
+          const topbarRect = topbar?.getBoundingClientRect();
           const toggleRect = toggle?.getBoundingClientRect();
           const sidebarRect = sidebar?.getBoundingClientRect();
+          const searchRect = search?.getBoundingClientRect();
           return {
             module: document.body.dataset.module,
             viewport: window.innerWidth,
@@ -247,7 +250,8 @@ def shell_layout_snapshot(page) -> dict[str, Any]:
             bodyScrollWidth: document.body.scrollWidth,
             detailPaddingLeft: styles ? Math.round(parseFloat(styles.paddingLeft)) : 0,
             detailPaddingTop: styles ? Math.round(parseFloat(styles.paddingTop)) : 0,
-            topbarHeight: topbar ? Math.round(topbar.getBoundingClientRect().height) : 0,
+            sidebarSearchTop: searchRect && topbarRect ? Math.round(searchRect.top - topbarRect.bottom) : 0,
+            topbarHeight: topbarRect ? Math.round(topbarRect.height) : 0,
             sidebarWidth: sidebarRect ? Math.round(sidebarRect.width) : 0,
             toggleLeft: toggleRect ? Math.round(toggleRect.left) : 0,
             toggleTop: toggleRect ? Math.round(toggleRect.top) : 0,
@@ -383,14 +387,16 @@ def main() -> int:
                   const rightRail = document.querySelector('.topbar-actions')?.getBoundingClientRect();
                   const leftFirst = document.querySelector('#sidebarToggleBtn')?.getBoundingClientRect();
                   const rightFirst = document.querySelector('#themeBtn')?.getBoundingClientRect();
+                  const rightLast = document.querySelector('#saveAllBtn')?.getBoundingClientRect();
                   return {
                     leftFirst: Math.round((leftFirst?.left || 0) - (leftRail?.left || 0)),
-                    rightFirst: Math.round((rightFirst?.left || 0) - (rightRail?.left || 0))
+                    rightFirst: Math.round((rightFirst?.left || 0) - (rightRail?.left || 0)),
+                    rightLastInset: Math.round((rightRail?.right || 0) - (rightLast?.right || 0))
                   };
                 })()
                 """
             )
-            if abs(topbar_offsets["leftFirst"] - topbar_offsets["rightFirst"]) <= 1:
+            if topbar_offsets["leftFirst"] == 12 and topbar_offsets["rightLastInset"] == 12:
                 pass_("topbar-action-offset", json.dumps(topbar_offsets, ensure_ascii=False))
             else:
                 fail("topbar-action-offset", json.dumps(topbar_offsets, ensure_ascii=False))
@@ -413,6 +419,7 @@ def main() -> int:
             if (
                 desktop_shell["detailPaddingLeft"] == 25
                 and desktop_shell["detailPaddingTop"] == 25
+                and desktop_shell["sidebarSearchTop"] == 25
                 and desktop_shell["toggleWidth"] == desktop_shell["toggleHeight"] == 32
                 and desktop_overflow <= 2
             ):
@@ -564,8 +571,38 @@ def main() -> int:
                 else:
                     fail("home-sidebar-hierarchy", json.dumps(home_order, ensure_ascii=False))
 
+                spacing_modules = ["home", "service", "scripture", "praise", "activities", "calendar", "references", "order-sheets"]
+                module_spacing = []
+                for module_id in spacing_modules:
+                    page.evaluate("(moduleId) => switchModule(moduleId)", module_id)
+                    page.wait_for_function("(moduleId) => document.body.dataset.module === moduleId", arg=module_id, timeout=5000)
+                    page.wait_for_timeout(120)
+                    module_spacing.append(
+                        page.evaluate(
+                            """
+                            (moduleId) => {
+                              const topbar = document.querySelector('.topbar')?.getBoundingClientRect();
+                              const search = document.querySelector('.sidebar-search-wrap')?.getBoundingClientRect();
+                              const first = document.querySelector('.detail-pane > *')?.getBoundingClientRect();
+                              return {
+                                module: moduleId,
+                                searchTop: Math.round((search?.top || 0) - (topbar?.bottom || 0)),
+                                firstTop: Math.round((first?.top || 0) - (topbar?.bottom || 0)),
+                                overflow: Math.max(document.documentElement.scrollWidth - window.innerWidth, document.body.scrollWidth - window.innerWidth)
+                              };
+                            }
+                            """,
+                            module_id,
+                        )
+                    )
+                if all(item["searchTop"] == 25 and item["firstTop"] == 25 and item["overflow"] <= 2 for item in module_spacing):
+                    pass_("module-start-gutters", json.dumps(module_spacing, ensure_ascii=False))
+                else:
+                    fail("module-start-gutters", json.dumps(module_spacing, ensure_ascii=False))
+
                 page.click('[data-module="scripture"]')
                 page.wait_for_function("() => document.body.dataset.module === 'scripture'", timeout=5000)
+                page.mouse.move(12, 200)
                 topbar_state = page.evaluate(
                     """
                     (() => {
@@ -592,11 +629,33 @@ def main() -> int:
                     })()
                     """
                 )
+                page.locator(".primary-switcher .top-module-entry.active").hover()
+                topbar_hover_state = page.evaluate(
+                    """
+                    (() => {
+                      const active = document.querySelector('.primary-switcher .top-module-entry.active');
+                      const activeStyles = active ? getComputedStyle(active) : null;
+                      const probe = document.createElement('span');
+                      probe.style.position = 'absolute';
+                      probe.style.background = 'var(--tab-hover-bg)';
+                      document.body.appendChild(probe);
+                      const expected = getComputedStyle(probe);
+                      const output = {
+                        activeHoverBackground: activeStyles?.backgroundColor || '',
+                        expectedHoverBackground: expected.backgroundColor,
+                      };
+                      probe.remove();
+                      return output;
+                    })()
+                    """
+                )
+                topbar_state.update(topbar_hover_state)
                 expected_topbar_order = ["Worship", "Scripture", "Praise", "Activities"]
                 if (
                     topbar_state["order"] == expected_topbar_order
                     and topbar_state["active"] == "scripture"
                     and topbar_state["activeBackground"] == topbar_state["expectedBackground"]
+                    and topbar_state["activeHoverBackground"] == topbar_state["expectedHoverBackground"]
                     and topbar_state["activeColor"] == topbar_state["expectedColor"]
                     and topbar_state["activeWeight"] == "550"
                 ):

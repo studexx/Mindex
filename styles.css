@@ -75,6 +75,7 @@
   --shadow-soft: 0 1px 10px rgba(16, 16, 16, .035);
   --r: 5px; --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 22px; --h: 34px;
   --tab-active-bg: var(--bg);
+  --tab-hover-bg: color-mix(in srgb, var(--panel-2) 46%, transparent);
   --rail-w: 240px; --topbar-h: 40px; --sidebar-row-h: 32px; --sidebar-sub-row-h: 28px; --sidebar-pad-x: 18px; --topbar-edge-x: 12px;
   --sidebar-item-x: var(--topbar-edge-x); --sidebar-item-pad-x: var(--s2);
   --content-pad-y: 25px; --content-pad-x: 25px; --content-pad-tight: 25px;
@@ -93,6 +94,7 @@ body[data-theme="dark"] {
   --sidebar-label: #b7b7ac; --sidebar-ink: #e8e8e1; --sidebar-sub: #cbcbc2; --sidebar-hover-bg: rgba(235, 235, 220, .11); --sidebar-active-bg: #37372f;
   --control-surface: var(--bg); --control-line: color-mix(in srgb, var(--line) 78%, transparent); --control-line-strong: color-mix(in srgb, var(--line-2) 92%, transparent);
   --tab-active-bg: var(--bg);
+  --tab-hover-bg: color-mix(in srgb, var(--panel-2) 46%, transparent);
   --line-soft: color-mix(in srgb, var(--line) 42%, transparent);
   --line-faint: color-mix(in srgb, var(--line) 28%, transparent);
   --accent: #ff8bc2; --accent-ink: #2a0617; --accent-soft: #46172c; --danger: var(--accent); --warn: var(--accent); --warn-bg: var(--accent-soft); --info: #55c7ff;
@@ -260,7 +262,7 @@ body.sidebar-collapsed .brand-name {
   height: 14px;
   stroke-width: 1.7;
 }
-.module-tab:not(.active):not(:disabled):hover { background: color-mix(in srgb, var(--panel-2) 46%, transparent); color: var(--ink-2); }
+.module-tab:not(:disabled):hover { background: var(--tab-hover-bg); color: var(--ink); }
 .module-tab.active {
   background: var(--tab-active-bg);
   color: var(--ink);
@@ -320,9 +322,9 @@ body[data-theme="dark"] .top-module-entry.active {
   box-shadow: none;
   font-weight: 550;
 }
-.top-module-entry:not(.active):hover {
-  background: color-mix(in srgb, var(--panel-2) 46%, transparent);
-  color: var(--ink-2);
+.top-module-entry:not(:disabled):hover {
+  background: var(--tab-hover-bg);
+  color: var(--ink);
 }
 .top-module-entry:not(.active) svg {
   color: currentColor;
@@ -390,7 +392,7 @@ body[data-module="praise"] .list-filter {
   grid-template-columns: repeat(2, var(--topbar-btn-size));
   align-items: center;
   align-self: center;
-  justify-content: start;
+  justify-content: end;
   height: var(--topbar-btn-size);
   column-gap: var(--s1);
   grid-column: 3;
@@ -455,7 +457,7 @@ body.sidebar-collapsed .sidebar {
   border-right: 0;
   background: var(--sidebar-bg);
   overflow: hidden;
-  padding: var(--s1) 0 var(--s3);
+  padding: 0 0 var(--s3);
   transition: width 140ms ease, padding 140ms ease;
 }
 body[data-module="home"] .sidebar-count,
@@ -474,7 +476,7 @@ body[data-module="order-sheets"] .sidebar-count,
   flex: 0 0 auto;
   width: auto;
   min-width: 0;
-  margin: var(--s1) var(--topbar-edge-x) var(--s2);
+  margin: var(--content-pad-y) var(--topbar-edge-x) var(--s2);
 }
 .search-wrap {
   border: 0;
@@ -2083,7 +2085,7 @@ body[data-module="calendar"] .detail-pane { overflow: hidden; }
   .primary-switcher { width: 100%; height: 36px; padding: 0; }
   .module-tab { flex: 1 1 0; width: auto; }
   .top-module-entry { flex: 0 0 auto; }
-  .sidebar-search-wrap { margin-top: var(--s2); }
+  .sidebar-search-wrap { margin-top: var(--content-pad-tight); }
   .global-search-wrap { width: 100%; max-width: none; min-width: 0; }
   .topbar-actions, .head-actions, .form-actions, .copy-actions { justify-content: flex-start; }
   .topbar-actions { width: 100%; height: auto; grid-column: auto; justify-self: stretch; padding: 0; }
