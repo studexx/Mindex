@@ -460,12 +460,24 @@ body[data-module="order-sheets"] .sidebar-count,
   min-width: 0;
   margin: var(--s1) var(--topbar-edge-x) 6px;
 }
-.search-wrap, .field input, .field textarea, .field select, .form-type-select, .form-textarea {
+.search-wrap {
+  border: 0;
+  border-radius: var(--r);
+  background: var(--bg);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--line) 28%, transparent);
+  color: var(--ink);
+  outline: 0;
+}
+.field input, .field textarea, .field select, .form-type-select, .form-textarea {
   border: 0; border-radius: var(--r); background: color-mix(in srgb, var(--panel-2) 42%, transparent); color: var(--ink); outline: 0;
 }
 .search-wrap input { width: 100%; border: 0; outline: 0; background: transparent; font-size: 12px; }
 .search-wrap input::placeholder { color: var(--ink-4); }
-.search-wrap:focus-within, .field input:focus, .field textarea:focus, .field select:focus, .form-type-select:focus, .form-textarea:focus, .scripture-textarea:focus { background: color-mix(in srgb, var(--panel-2) 72%, transparent); }
+.search-wrap:focus-within {
+  background: var(--bg);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--line-2) 48%, transparent);
+}
+.field input:focus, .field textarea:focus, .field select:focus, .form-type-select:focus, .form-textarea:focus, .scripture-textarea:focus { background: color-mix(in srgb, var(--panel-2) 72%, transparent); }
 .sidebar-count { padding: 7px calc(var(--sidebar-item-x) + var(--sidebar-item-pad-x)) 6px; }
 .song-list, .detail-pane { min-height: 0; overflow: auto; scrollbar-color: var(--line-2) transparent; }
 body[data-module="calendar"] .detail-pane { overflow: hidden; }
