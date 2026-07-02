@@ -406,7 +406,7 @@ body[data-module="praise"] .list-filter {
   padding: 0;
 }
 .topbar-actions .btn span { display: none; }
-.topbar-actions svg { width: 18px; height: 18px; }
+.topbar-actions svg { display: block; width: 17px; height: 17px; stroke-width: 1.45; }
 .topbar-actions .btn.secondary { background: transparent; color: var(--ink-3); }
 .topbar-actions .btn:not(:disabled):hover,
 .topbar-actions .icon-btn:not(:disabled):hover { background: var(--panel-2); }
