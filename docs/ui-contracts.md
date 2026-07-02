@@ -4,13 +4,29 @@ Read `HANDOFF.md` first. This file is the short UI contract for Codex threads so
 
 ## Shell
 
-- Desktop content gutter: `25px` horizontal and `20px` top.
-- Narrow content gutter: `15px` horizontal and `15px` top.
+- Detail pane page padding: `25px` on all sides on desktop and narrow layouts,
+  unless a feature has an explicit fullscreen/presenter reason to override it.
 - Sidebar open or closed must not change the detail pane gutter.
 - Topbar icon buttons are square, normally `32px` by `32px`.
 - Sidebar toggle, home, theme, and save controls should share the same button geometry.
+- Left and right topbar action groups should use the same grid start offset inside
+  their rail. Do not push the right action group to the far edge unless the left
+  rail follows the same rule.
 - Mindex brand/home buttons may navigate home, but should not add hover motion.
 - Avoid horizontal page overflow on desktop and mobile.
+
+## Color And Surfaces
+
+- Preserve token relationships across light and dark themes. If `accent`,
+  `warn`, and `danger` are grouped in one mode, keep that grouping in the other
+  mode.
+- Shell controls should stay neutral. Theme, navigation, and disabled save
+  buttons should not pull accent color into the app chrome.
+- Use accent for active/primary/data emphasis, such as selected rows, brand
+  accent, enabled primary save/present actions, and linked/reference states.
+- Search should read as an independent surface on the sidebar through background
+  contrast, not a visible stroke. Focus may strengthen the surface tone without
+  adding an accent or border line.
 
 ## Navigation
 

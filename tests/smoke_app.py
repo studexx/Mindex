@@ -376,6 +376,25 @@ def main() -> int:
             else:
                 pass_("topbar-icon-grid", json.dumps(icon_metrics, ensure_ascii=False))
 
+            topbar_offsets = page.evaluate(
+                """
+                (() => {
+                  const leftRail = document.querySelector('.brand-cluster')?.getBoundingClientRect();
+                  const rightRail = document.querySelector('.topbar-actions')?.getBoundingClientRect();
+                  const leftFirst = document.querySelector('#sidebarToggleBtn')?.getBoundingClientRect();
+                  const rightFirst = document.querySelector('#themeBtn')?.getBoundingClientRect();
+                  return {
+                    leftFirst: Math.round((leftFirst?.left || 0) - (leftRail?.left || 0)),
+                    rightFirst: Math.round((rightFirst?.left || 0) - (rightRail?.left || 0))
+                  };
+                })()
+                """
+            )
+            if abs(topbar_offsets["leftFirst"] - topbar_offsets["rightFirst"]) <= 1:
+                pass_("topbar-action-offset", json.dumps(topbar_offsets, ensure_ascii=False))
+            else:
+                fail("topbar-action-offset", json.dumps(topbar_offsets, ensure_ascii=False))
+
             page.click("#sidebarToggleBtn")
             collapsed = page.evaluate("document.body.classList.contains('sidebar-collapsed')")
             page.click("#sidebarToggleBtn")
@@ -393,7 +412,7 @@ def main() -> int:
             )
             if (
                 desktop_shell["detailPaddingLeft"] == 25
-                and desktop_shell["detailPaddingTop"] == 20
+                and desktop_shell["detailPaddingTop"] == 25
                 and desktop_shell["toggleWidth"] == desktop_shell["toggleHeight"] == 32
                 and desktop_overflow <= 2
             ):
@@ -417,7 +436,7 @@ def main() -> int:
                 mobile_shell["documentScrollWidth"] - mobile_shell["viewport"],
                 mobile_shell["bodyScrollWidth"] - mobile_shell["viewport"],
             )
-            if mobile_shell["detailPaddingLeft"] == 15 and mobile_shell["detailPaddingTop"] == 15 and mobile_overflow <= 2:
+            if mobile_shell["detailPaddingLeft"] == 25 and mobile_shell["detailPaddingTop"] == 25 and mobile_overflow <= 2:
                 pass_("shell-mobile-geometry", json.dumps(mobile_shell, ensure_ascii=False))
             else:
                 fail("shell-mobile-geometry", json.dumps(mobile_shell, ensure_ascii=False))
@@ -652,6 +671,37 @@ def main() -> int:
                     pass_("service-data-load", json.dumps(snapshot, ensure_ascii=False))
                 else:
                     fail("service-data-load", json.dumps(snapshot, ensure_ascii=False))
+
+                if page.locator(".service-type-row[data-service-type-id]").count():
+                    page.locator(".service-type-row[data-service-type-id]").first.click()
+                    page.wait_for_selector(".service-date-list", timeout=5000)
+                    service_gutter = page.evaluate(
+                        """
+                        (() => {
+                          const detail = document.querySelector('.detail-pane')?.getBoundingClientRect();
+                          const list = document.querySelector('.service-date-list')?.getBoundingClientRect();
+                          const title = document.querySelector('.service-date-list-title')?.getBoundingClientRect();
+                          const styles = getComputedStyle(document.querySelector('.service-date-list'));
+                          return {
+                            listLeft: Math.round((list?.left || 0) - (detail?.left || 0)),
+                            titleLeft: Math.round((title?.left || 0) - (detail?.left || 0)),
+                            paddingLeft: Math.round(parseFloat(styles.paddingLeft)),
+                            overflow: Math.max(document.documentElement.scrollWidth - window.innerWidth, document.body.scrollWidth - window.innerWidth)
+                          };
+                        })()
+                        """
+                    )
+                    if (
+                        service_gutter["listLeft"] == 25
+                        and service_gutter["titleLeft"] == 25
+                        and service_gutter["paddingLeft"] == 0
+                        and service_gutter["overflow"] <= 2
+                    ):
+                        pass_("service-date-list-gutter", json.dumps(service_gutter, ensure_ascii=False))
+                    else:
+                        fail("service-date-list-gutter", json.dumps(service_gutter, ensure_ascii=False))
+                else:
+                    skip("service-date-list-gutter", "No service type rows.")
 
                 page.evaluate(
                     """

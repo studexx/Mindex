@@ -1790,57 +1790,8 @@ async function loadServiceData({ silent = false } = {}) {
     render();
     return;
   } catch (err) {
-    if (!isUnavailableRelationError(err) && !isWorshipV2NotReadyError(err)) {
-      if (!silent) console.error("[Service] loadWorshipV2Data failed:", err);
-      state.serviceError = err.message || String(err) || "Could not load worship data.";
-      if (!silent && state.module === "service") showToast(state.serviceError, "error");
-      render();
-      return;
-    }
-    if (!silent) console.warn("[Service] Worship v2 unavailable; falling back to legacy service tables.", err);
-  }
-  try {
-    const typesRes = await state.client.from("mindex_service_types").select("*").order("sort_order");
-    if (typesRes.error) throw typesRes.error;
-    const servicesRes = await state.client.from("mindex_services").select("*").order("date");
-    if (servicesRes.error) throw servicesRes.error;
-    const itemsRes = await state.client
-      .from("mindex_service_items")
-      .select("*")
-      .order("service_id")
-      .order("sort_order");
-    if (itemsRes.error) throw itemsRes.error;
-    const serviceItems = itemsRes.data || [];
-    if (!state.songs.length && serviceItems.some((item) => item.song_id)) {
-      await loadSongs();
-    }
-    state.serviceTypes = typesRes.data || [];
-    state.services = servicesRes.data || [];
-    state.serviceItemAssigneeSupported =
-      serviceItems.some((item) => Object.prototype.hasOwnProperty.call(item, "assignee")) ||
-      await detectServiceItemAssigneeSupport();
-    state.serviceItemVersionSupported =
-      serviceItems.some((item) => Object.prototype.hasOwnProperty.call(item, "version_id")) ||
-      await detectServiceItemVersionSupport();
-    state.serviceItemMemoSupported =
-      serviceItems.some((item) => Object.prototype.hasOwnProperty.call(item, "memo")) ||
-      await detectServiceItemMemoSupport();
-    state.serviceTitleSupported =
-      (servicesRes.data || []).some((service) => Object.prototype.hasOwnProperty.call(service, "title")) ||
-      await detectServiceTitleSupport();
-    state.serviceItems = groupServiceItems(serviceItems);
-    state.worshipSections = [];
-    state.worshipElements = [];
-    state.worshipTemplates = [];
-    state.worshipTemplateItems = [];
-    state.worshipPresenterSlides = {};
-    state.dirtyServiceTypeIds.clear();
-    state.dirty.service = false;
-    state.serviceError = "";
-    render();
-  } catch (err) {
-    if (!silent) console.error("[Service] loadServiceData failed:", err);
-    state.serviceError = err.message || String(err) || "Could not load service data.";
+    if (!silent) console.error("[Service] loadWorshipV2Data failed:", err);
+    state.serviceError = err.message || String(err) || "Could not load worship data.";
     if (!silent && state.module === "service") showToast(state.serviceError, "error");
     render();
   }
@@ -1894,15 +1845,12 @@ async function loadWorshipV2Data() {
         .order("slide_order", { ascending: true })),
   ]);
 
-  if (!services.length) {
-    throw Object.assign(new Error("Worship v2 data is not ready."), { code: "MINDEX_WORSHIP_V2_NOT_READY" });
-  }
-
   if (!state.songs.length && elements.some((item) => item.song_id)) {
     await loadSongs();
   }
 
-  state.serviceTypes = types.map(normalizeWorshipV2ServiceType);
+  const resolvedTypes = types.length ? types : defaultWorshipV2ServiceTypes();
+  state.serviceTypes = resolvedTypes.map(normalizeWorshipV2ServiceType);
   state.services = services.map(normalizeWorshipV2Service);
   state.worshipSections = sections;
   state.worshipElements = elements;
@@ -1914,6 +1862,18 @@ async function loadWorshipV2Data() {
   state.serviceItemVersionSupported = true;
   state.serviceItemMemoSupported = true;
   state.serviceTitleSupported = true;
+}
+
+function defaultWorshipV2ServiceTypes() {
+  return Object.values(SERVICE_CATEGORIES)
+    .flat()
+    .map((id, index) => ({
+      id,
+      display_name: SERVICE_TYPE_DISPLAY_NAMES[id] || id,
+      short_name: SERVICE_TYPE_DISPLAY_NAMES[id] || id,
+      sort_order: index + 1,
+      group_key: serviceTypeGroupKey(id),
+    }));
 }
 
 function normalizeWorshipV2ServiceType(type = {}) {
@@ -2225,7 +2185,7 @@ async function detectServiceItemMemoSupport() {
 }
 
 async function detectServiceTitleSupport() {
-  return detectTableColumnSupport("mindex_services", "title");
+  return true;
 }
 
 async function detectSongVersionPraiseTypesSupport() {
@@ -2233,7 +2193,8 @@ async function detectSongVersionPraiseTypesSupport() {
 }
 
 async function detectServiceItemColumnSupport(column) {
-  return detectTableColumnSupport("mindex_service_items", column);
+  void column;
+  return true;
 }
 
 async function detectTableColumnSupport(table, column) {
@@ -2475,32 +2436,9 @@ function groupServiceItems(items) {
 }
 
 async function loadServiceItems(serviceId) {
-  if (!requireClient() || !serviceId) return;
-  if (state.serviceItems[serviceId]) return; // already loaded
-  try {
-    const { data, error } = await state.client
-      .from("mindex_service_items")
-      .select("*")
-      .eq("service_id", serviceId)
-      .order("sort_order");
-    if (error) throw error;
-    if ((data || []).some((item) => Object.prototype.hasOwnProperty.call(item, "assignee")) || await detectServiceItemAssigneeSupport()) {
-      state.serviceItemAssigneeSupported = true;
-    }
-    if ((data || []).some((item) => Object.prototype.hasOwnProperty.call(item, "version_id")) || await detectServiceItemVersionSupport()) {
-      state.serviceItemVersionSupported = true;
-    }
-    if ((data || []).some((item) => Object.prototype.hasOwnProperty.call(item, "memo")) || await detectServiceItemMemoSupport()) {
-      state.serviceItemMemoSupported = true;
-    }
-    if (!state.songs.length && (data || []).some((item) => item.song_id)) {
-      await loadSongs();
-    }
-    state.serviceItems[serviceId] = normalizeServiceItems(data || []);
-    renderServiceDetail();
-  } catch (err) {
-    showToast(err.message || "Could not load items.", "error");
-  }
+  if (!serviceId || state.serviceItems[serviceId]) return;
+  state.serviceItems[serviceId] = [];
+  renderServiceDetail();
 }
 
 async function loadBibleTranslations({ silent = false } = {}) {
@@ -3136,115 +3074,14 @@ async function saveScripture() {
 }
 
 async function saveService() {
-  const service = state.services.find((svc) => svc.id === state.selectedServiceId);
-  if (!requireClient() || state.saving) return;
-
-  const items = service ? normalizeServiceItems(getServiceItems(service.id)) : [];
-  const storableItems = items.filter((item) => String(item.label || item.raw_title || "").trim());
-  const droppedCount = items.length - storableItems.length;
-  if (droppedCount > 0) showToast(`빈 항목 ${droppedCount}개가 저장에서 제외됩니다.`, "info");
-  if (!state.serviceItemAssigneeSupported && storableItems.some((item) => String(item.assignee || "").trim())) {
-    showToast("담당 칸은 assignee 컬럼 추가 전까지 서버에 저장되지 않습니다.", "info");
-  }
-  if (!state.serviceItemMemoSupported && storableItems.some((item) => String(item.memo || "").trim())) {
-    showToast("섹션 메모와 슬라이드 편집은 memo 컬럼 추가 전까지 서버에 저장되지 않습니다.", "info");
-  }
-
-  state.saving = true;
+  state.dirty.service = false;
+  state.dirtyServiceTypeIds.clear();
   updateSaveState();
-
-  try {
-    await saveDirtyServiceTypes();
-
-    if (!service) {
-      state.dirty.service = false;
-      showToast("Service templates saved.");
-      render();
-      return;
-    }
-
-    const { error: deleteError } = await state.client
-      .from("mindex_service_items")
-      .delete()
-      .eq("service_id", service.id);
-    if (deleteError) throw deleteError;
-
-    if (storableItems.length) {
-      const rows = storableItems.map((item, index) => ({
-        service_id: service.id,
-        sort_order: index + 1,
-        label: nullIfBlank(item.label),
-        ...(state.serviceItemAssigneeSupported ? { assignee: nullIfBlank(item.assignee) } : {}),
-        raw_title: normalizeServiceItemRawTitle(item.label, item.raw_title),
-        song_id: item.song_id || null,
-        ...(state.serviceItemVersionSupported ? { version_id: item.version_id || null } : {}),
-        ...(state.serviceItemMemoSupported ? { memo: nullIfBlank(item.memo) } : {}),
-      }));
-      const { data, error } = await state.client
-        .from("mindex_service_items")
-        .insert(rows)
-        .select("*")
-        .order("sort_order");
-      if (error) throw error;
-      if ((data || []).some((item) => Object.prototype.hasOwnProperty.call(item, "assignee"))) {
-        state.serviceItemAssigneeSupported = true;
-      }
-      if ((data || []).some((item) => Object.prototype.hasOwnProperty.call(item, "memo"))) {
-        state.serviceItemMemoSupported = true;
-      }
-      state.serviceItems[service.id] = normalizeServiceItems(data || []);
-    } else {
-      state.serviceItems[service.id] = [];
-    }
-
-    // Save service metadata.
-    const metaPayload = {
-      leader: serviceUsesPraiseLeader(service.type_id) ? nullIfBlank(service.leader) : null,
-      tags: service.tags || [],
-    };
-    if (state.serviceTitleSupported) metaPayload.title = nullIfBlank(service.title);
-    const { error: metaError } = await state.client
-      .from("mindex_services")
-      .update(metaPayload)
-      .eq("id", service.id);
-    if (metaError) throw metaError;
-
-    state.dirty.service = false;
-    refreshPresenterForService(service.id);
-    showToast("Service saved.");
-    render();
-  } catch (error) {
-    showToast(error.message || "Service save failed.", "error");
-  } finally {
-    state.saving = false;
-    updateSaveState();
-  }
+  showToast("Worship v2 editing is being rebuilt from templates.", "info");
 }
 
 async function saveDirtyServiceTypes() {
-  for (const typeId of [...state.dirtyServiceTypeIds]) {
-    const typeObj = serviceTypeById(typeId);
-    if (!typeObj) {
-      state.dirtyServiceTypeIds.delete(typeId);
-      continue;
-    }
-    const fixedItems = serializeServiceDefaultItems(typeId);
-    const orderTemplate = serializeServiceOrderTemplate(typeId);
-    const { data: typeData, error: typeError } = await state.client
-      .from("mindex_service_types")
-      .update({ fixed_items: fixedItems, order_template: orderTemplate })
-      .eq("id", typeId)
-      .select("*")
-      .single();
-    if (typeError) {
-      const message = /policy|permission|rls/i.test(typeError.message || "")
-        ? "Service templates could not be saved with the current database permissions."
-        : typeError.message;
-      throw new Error(message);
-    }
-    if (typeObj && typeData) Object.assign(typeObj, typeData);
-    state.dirtyServiceTypeIds.delete(typeId);
-  }
+  state.dirtyServiceTypeIds.clear();
 }
 
 async function saveSongMeta(song) {
@@ -3534,10 +3371,7 @@ function handleDetailClick(event) {
 
   const newServiceBtn = event.target.closest("[data-new-service]");
   if (newServiceBtn) {
-    if (!confirmDiscardServiceChanges()) return;
-    const typeId = newServiceBtn.dataset.newService;
-    state.newServiceForm = { type_id: typeId, date: "", title: "", leader: "", tags: "" };
-    renderServiceDetail();
+    showToast("Worship v2 service creation is being rebuilt from templates.", "error");
     return;
   }
 
@@ -10932,7 +10766,6 @@ function renderServiceDetail() {
           <h2 class="service-date-list-title">${escapeHtml(typeName)}</h2>
           <div class="service-section-head-actions">
             <span class="service-search-count">${services.length}${q ? "개 결과" : "개 예배"}</span>
-            ${!q ? `<button class="icon-btn svc-new-btn" type="button" data-new-service="${escapeAttr(typeId)}" aria-label="새 예배 추가"><i data-lucide="plus"></i></button>` : ""}
           </div>
         </div>
         ${form ? `
@@ -13920,6 +13753,10 @@ function presenterLineCharEstimate(line) {
 
 async function createService() {
   if (!state.newServiceForm || !requireClient()) return;
+  if (serviceTypeById(state.newServiceForm.type_id)?._v2) {
+    showToast("Worship v2 service creation is being rebuilt from templates.", "error");
+    return;
+  }
   const { type_id, date, title, leader, tags } = state.newServiceForm;
   if (!date) { showToast("날짜를 입력해주세요.", "error"); return; }
 
