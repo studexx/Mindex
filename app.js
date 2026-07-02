@@ -272,7 +272,7 @@ const TITLE_COLLATOR = new Intl.Collator("ko-KR", {
 });
 
 const HANGUL_INITIALS = ["ㄱ", "ㄲ", "ㄴ", "ㄷ", "ㄸ", "ㄹ", "ㅁ", "ㅂ", "ㅃ", "ㅅ", "ㅆ", "ㅇ", "ㅈ", "ㅉ", "ㅊ", "ㅋ", "ㅌ", "ㅍ", "ㅎ"];
-const CONTENT_MODULES = ["service", "activities", "praise", "scripture", "calendar", "references", "order-sheets"];
+const CONTENT_MODULES = ["service", "scripture", "praise", "activities", "calendar", "references", "order-sheets"];
 const ROUTE_MODULES = ["home", ...CONTENT_MODULES];
 const SERVICE_FILTERS = ["all", "public", "ministry", "special"];
 const SERVICE_ELEMENT_LABELS = {
@@ -5691,7 +5691,7 @@ function clearGlobalSearchInput() {
 function renderHomeList() {
   const modules = homeModuleCards();
   const service = modules.find((module) => module.id === "service");
-  const contentModules = ["activities", "praise", "scripture"]
+  const contentModules = ["scripture", "praise", "activities"]
     .map((id) => modules.find((module) => module.id === id))
     .filter(Boolean);
   const utilityModules = ["calendar", "references", "order-sheets"]
@@ -5733,7 +5733,7 @@ function renderHomeDetail() {
 
   const modules = homeModuleCards();
   const service = modules.find((module) => module.id === "service");
-  const contentModules = ["activities", "praise", "scripture"]
+  const contentModules = ["scripture", "praise", "activities"]
     .map((id) => modules.find((module) => module.id === id))
     .filter(Boolean);
   const utilityModules = ["calendar", "references", "order-sheets"]

@@ -524,11 +524,51 @@ def main() -> int:
                     [...document.querySelectorAll('.home-sidebar-card span')].map((node) => node.textContent.trim())
                     """
                 )
-                expected_home_order = ["Worship", "Activities", "Praise", "Scripture", "Calendar", "References", "Order Sheets"]
+                expected_home_order = ["Worship", "Scripture", "Praise", "Activities", "Calendar", "References", "Order Sheets"]
                 if home_order == expected_home_order:
                     pass_("home-sidebar-hierarchy", json.dumps(home_order, ensure_ascii=False))
                 else:
                     fail("home-sidebar-hierarchy", json.dumps(home_order, ensure_ascii=False))
+
+                page.click('[data-module="scripture"]')
+                page.wait_for_function("() => document.body.dataset.module === 'scripture'", timeout=5000)
+                topbar_state = page.evaluate(
+                    """
+                    (() => {
+                      const tabs = [...document.querySelectorAll('.primary-switcher .top-module-entry')];
+                      const active = document.querySelector('.primary-switcher .top-module-entry.active');
+                      const activeStyles = active ? getComputedStyle(active) : null;
+                      const probe = document.createElement('span');
+                      probe.style.position = 'absolute';
+                      probe.style.background = 'var(--tab-active-bg)';
+                      probe.style.color = 'var(--ink)';
+                      document.body.appendChild(probe);
+                      const expected = getComputedStyle(probe);
+                      const output = {
+                        order: tabs.map((tab) => tab.textContent.trim()),
+                        active: active?.dataset.module || '',
+                        activeBackground: activeStyles?.backgroundColor || '',
+                        expectedBackground: expected.backgroundColor,
+                        activeColor: activeStyles?.color || '',
+                        expectedColor: expected.color,
+                        activeWeight: activeStyles?.fontWeight || ''
+                      };
+                      probe.remove();
+                      return output;
+                    })()
+                    """
+                )
+                expected_topbar_order = ["Worship", "Scripture", "Praise", "Activities"]
+                if (
+                    topbar_state["order"] == expected_topbar_order
+                    and topbar_state["active"] == "scripture"
+                    and topbar_state["activeBackground"] == topbar_state["expectedBackground"]
+                    and topbar_state["activeColor"] == topbar_state["expectedColor"]
+                    and topbar_state["activeWeight"] == "550"
+                ):
+                    pass_("topbar-module-order-active-style", json.dumps(topbar_state, ensure_ascii=False))
+                else:
+                    fail("topbar-module-order-active-style", json.dumps(topbar_state, ensure_ascii=False))
 
                 page.evaluate("switchModule('calendar')")
                 page.wait_for_function("() => document.body.dataset.module === 'calendar'", timeout=5000)
