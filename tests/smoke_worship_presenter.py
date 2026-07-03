@@ -1478,6 +1478,50 @@ def main() -> int:
                 else:
                     fail("presenter-output-pixel-match-no-chromakey", json.dumps(no_chromakey_pixels, ensure_ascii=False))
 
+                theme_preview_state = page.evaluate(
+                    """
+                    (() => {
+                      const host = document.createElement('div');
+                      host.style.cssText = 'position:fixed;left:-10000px;top:0;width:184px;height:104px;';
+                      host.innerHTML = `
+                        <span id="miniFormal" class="svc-slide-mini-output" data-output-theme="formal"></span>
+                        <span id="miniChildren" class="svc-slide-mini-output" data-output-theme="children">
+                          <section class="presenter-slide presenter-slide--song-title" data-element-type="praise" data-slide-layout="lower_bar_text">
+                            <div class="presenter-slide-text"><span>♪ 어린이 찬양</span></div>
+                          </section>
+                        </span>
+                        <span id="miniYouth" class="svc-slide-mini-output" data-output-theme="youth"></span>
+                        <span id="miniYoungAdult" class="svc-slide-mini-output" data-output-theme="young-adult"></span>
+                        <span id="miniChildrenBg" class="svc-slide-mini-output no-chromakey has-background" data-output-theme="children" style="--presenter-bg-image: url('assets/worship-backgrounds/26-C1.jpg')"></span>
+                      `;
+                      document.body.appendChild(host);
+                      const css = (id) => getComputedStyle(host.querySelector(`#${id}`));
+                      const childrenText = getComputedStyle(host.querySelector('#miniChildren .presenter-slide-text'));
+                      const result = {
+                        formalBg: css('miniFormal').backgroundColor,
+                        childrenBgImage: css('miniChildren').backgroundImage,
+                        childrenTextColor: childrenText.color,
+                        youthBgImage: css('miniYouth').backgroundImage,
+                        youngAdultBgImage: css('miniYoungAdult').backgroundImage,
+                        childrenHasBackgroundImage: css('miniChildrenBg').backgroundImage,
+                      };
+                      host.remove();
+                      return result;
+                    })()
+                    """
+                )
+                if (
+                    theme_preview_state["formalBg"] == "rgb(16, 18, 15)"
+                    and "radial-gradient" in theme_preview_state["childrenBgImage"]
+                    and theme_preview_state["childrenTextColor"] == "rgb(85, 51, 0)"
+                    and "linear-gradient" in theme_preview_state["youthBgImage"]
+                    and "radial-gradient" in theme_preview_state["youngAdultBgImage"]
+                    and "26-C1.jpg" in theme_preview_state["childrenHasBackgroundImage"]
+                ):
+                    pass_("presenter-controller-preview-theme-parity", json.dumps(theme_preview_state, ensure_ascii=False))
+                else:
+                    fail("presenter-controller-preview-theme-parity", json.dumps(theme_preview_state, ensure_ascii=False))
+
                 output_page.keyboard.press("Escape")
                 output_page.wait_for_timeout(120)
                 output_page.keyboard.press("Escape")

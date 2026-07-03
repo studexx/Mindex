@@ -4207,9 +4207,46 @@ body[data-module="service"] .detail-pane {
   --presenter-output-fg: #553300;
   --presenter-output-muted: rgba(85, 51, 0, .68);
   --presenter-output-bar: rgba(85, 51, 0, .08);
+  background:
+    radial-gradient(circle at 50% 38%, rgba(255, 255, 255, .72), transparent 34%),
+    var(--presenter-output-bg);
 }
-.svc-slide-mini-output[data-output-theme="youth"] { --presenter-output-bg: #07384d; }
-.svc-slide-mini-output[data-output-theme="young-adult"] { --presenter-output-bg: #0b0d12; }
+.svc-slide-mini-output[data-output-theme="formal"] {
+  --presenter-output-bg: #10120f;
+  --presenter-output-fg: #f8f8f3;
+  --presenter-output-muted: rgba(248, 248, 243, .66);
+}
+.svc-slide-mini-output[data-output-theme="children"],
+.svc-slide-mini-output[data-output-theme="youth"],
+.svc-slide-mini-output[data-output-theme="young-adult"] {
+  font-family: var(--font-presenter);
+}
+.svc-slide-mini-output[data-output-theme="youth"] {
+  --presenter-output-bg: #07384d;
+  --presenter-output-fg: #f7fbff;
+  --presenter-output-muted: rgba(247, 251, 255, .68);
+  background:
+    linear-gradient(180deg, rgba(36, 169, 207, .32), transparent 46%),
+    radial-gradient(circle at 50% 25%, rgba(255, 255, 255, .13), transparent 34%),
+    var(--presenter-output-bg);
+}
+.svc-slide-mini-output[data-output-theme="young-adult"] {
+  --presenter-output-bg: #0b0d12;
+  --presenter-output-fg: #f8f8f3;
+  --presenter-output-muted: rgba(248, 248, 243, .62);
+  background:
+    radial-gradient(circle at 50% 42%, rgba(255, 255, 255, .09), transparent 30%),
+    var(--presenter-output-bg);
+}
+.svc-slide-mini-output.no-chromakey.has-background {
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, .24), rgba(0, 0, 0, .34)),
+    var(--presenter-bg-image),
+    var(--presenter-output-bg);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
 .svc-slide-mini-output .presenter-slide {
   padding: 6% 7% 8%;
 }
@@ -4275,6 +4312,16 @@ body[data-module="service"] .detail-pane {
 .svc-slide-mini-output.no-chromakey .presenter-slide--song-title .presenter-slide-text {
   font-size: clamp(8px, 1vw, 15px);
   font-weight: 900;
+}
+.svc-slide-mini-output[data-output-theme="children"] .presenter-slide--lyrics .presenter-slide-text,
+.svc-slide-mini-output[data-output-theme="children"] .presenter-slide--song-title .presenter-slide-text,
+.svc-slide-mini-output[data-output-theme="children"] .presenter-slide--component .presenter-slide-text,
+.svc-slide-mini-output[data-output-theme="children"] .presenter-slide--ready .presenter-slide-text {
+  color: #553300;
+  text-shadow: none;
+}
+.svc-slide-mini-output[data-output-theme="children"] .presenter-slide--song-title .presenter-slide-text {
+  font-size: clamp(7px, .94vw, 14px);
 }
 .svc-slide-mini-output .presenter-slide-file {
   gap: clamp(2px, .35vw, 4px);
