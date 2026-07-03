@@ -6,7 +6,7 @@ import os
 import pathlib
 import sys
 
-ROOT = pathlib.Path("/Users/parkjihun/Mindex")
+ROOT = pathlib.Path("/Users/parkjihun/Code/Mindex")
 ENV_PATHS = (
     ROOT / ".env.supabase.local",
     ROOT / ".env.supabase",

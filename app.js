@@ -1,39 +1,19 @@
-const PART_TYPES = [
-  "Verse",
-  "Pre-Chorus",
-  "Chorus",
-  "Bridge",
-  "Coda",
-  "Lyrics",
-];
-
-const STRUCTURAL_PART_TYPES = PART_TYPES.filter((type) => type !== "Lyrics");
-
-const FORM_ADD_LABELS = {
-  Verse: "Verse",
-  "Pre-Chorus": "Pre-Chorus",
-  Chorus: "Chorus",
-  Bridge: "Bridge",
-  Coda: "Coda",
-};
-
-const PRAISE_TYPES = ["hymn", "ccm", "children"];
-const PROMOTED_SONG_METADATA_COLUMNS = {
-  artist: "artist",
-  lyricist: "lyricist",
-  composer: "composer",
-  translator: "translator",
-  album: "album",
-  track: "track",
-};
-const META_SEPARATOR = " · ";
-const LIST_INPUT_SEPARATOR = ", ";
-const BIBLE_TEXT_SEARCH_PAGE_SIZE = 50;
+const MINDEX_CONSTANTS = window.MINDEX_APP_CONSTANTS || {};
+const {
+  PART_TYPES,
+  STRUCTURAL_PART_TYPES,
+  FORM_ADD_LABELS,
+  PRAISE_TYPES,
+  PROMOTED_SONG_METADATA_COLUMNS,
+  META_SEPARATOR,
+  LIST_INPUT_SEPARATOR,
+  BIBLE_TEXT_SEARCH_PAGE_SIZE,
+} = MINDEX_CONSTANTS;
 const TABLE_COLUMN_SUPPORT_CACHE = new Map();
 let presenterThumbClickTimer = null;
 let songLoadPromise = null;
 
-const BIBLE_CHAPTER_COUNTS = {};
+const { BIBLE_CHAPTER_COUNTS } = MINDEX_CONSTANTS;
 
 const KOREAN_BIBLE_BOOK_ABBREVIATIONS = {
   GEN: "창",
@@ -244,26 +224,15 @@ const BIBLE_BOOK_ALIASES = {
 
 const BIBLE_BOOKS = [];
 
-const STORAGE = {
-  url: "mindex.supabase.url",
-  key: "mindex.supabase.anonKey",
-  theme: "mindex.theme",
-  module: "mindex.ui.module",
-  praiseFilter: "mindex.ui.praiseFilter",
-  scriptureFilter: "mindex.ui.scriptureFilter",
-  serviceFilter: "mindex.ui.serviceFilter",
-  bibleTranslationId: "mindex.ui.bibleTranslationId",
-  bibleChapter: "mindex.ui.bibleChapter",
-  bibleCopyReference: "mindex.ui.bibleCopyReference",
-  selectedSongId: "mindex.ui.selectedSongId",
-  selectedVersionId: "mindex.ui.selectedVersionId",
-  selectedScriptureId: "mindex.ui.selectedScriptureId",
-  selectedBookCode: "mindex.ui.selectedBookCode",
-};
+const { STORAGE } = MINDEX_CONSTANTS;
 
 const PRESENTER_CHANNEL = "mindex.presenter";
 const PRESENTER_STORAGE_KEY = "mindex.presenter.state";
 const PRESENTER_JUMP_MAX_DIGITS = 3;
+const PRESENTER_OUTPUT_HEARTBEAT_INTERVAL_MS = 1000;
+const PRESENTER_OUTPUT_HEARTBEAT_TTL_MS = 3000;
+const PRESENTER_FULLSCREEN_RETRY_DELAYS_MS = [0, 80, 240, 600];
+const PRESENTER_OUTPUT_ESCAPE_EXIT_MS = 1600;
 
 const SYSTEM_THEME_QUERY = window.matchMedia?.("(prefers-color-scheme: dark)") || null;
 const TITLE_COLLATOR = new Intl.Collator("ko-KR", {
@@ -283,8 +252,7 @@ const SERVICE_ELEMENT_LABELS = {
   scripture: "말씀",
   activity: "Activity",
   template: "슬라이드 템플릿",
-  pptx: "PPTX",
-  pdf: "PDF",
+  file: "파일",
 };
 const PRESENTER_ELEMENT_TYPES = {
   BLANK: "blank",
@@ -296,9 +264,8 @@ const PRESENTER_ELEMENT_TYPES = {
   SCRIPTURE_TEXT: "scripture_text",
   IMAGE: "image",
   VIDEO: "video",
+  FILE: "file",
   FREEFORM: "freeform",
-  PPT: "ppt",
-  PDF: "pdf",
 };
 const PRESENTER_SLIDE_LAYOUTS = {
   BLANK: "blank",
@@ -314,16 +281,15 @@ const ACTIVITY_GAME_TYPE_LABELS = {
 };
 const SERVICE_FUTURE_LOOKAHEAD_DAYS = 7;
 const CALENDAR_MIN_DATE = "2025-11-30";
-const SUPABASE_PAGE_SIZE = 1000;
-const UI_SCRIPTURE_PREFIX = "Mindex UI:";
-const UI_VERSE_SLOTS = ["home", "activities", "praise", "scripture"];
-const LOADING_MESSAGE = "Loading...";
-const CONNECTION_LIST_TITLE = "Connection unavailable";
-const DB_CONNECTION_EMPTY_VERSE = {
-  reference: "Psalm 27:14",
-  text: "Wait for the LORD; be strong and take heart and wait for the LORD.",
-};
-const DB_CONNECTION_EMPTY_MESSAGE = "Waiting for database connection.";
+const {
+  SUPABASE_PAGE_SIZE,
+  UI_SCRIPTURE_PREFIX,
+  UI_VERSE_SLOTS,
+  LOADING_MESSAGE,
+  CONNECTION_LIST_TITLE,
+  DB_CONNECTION_EMPTY_VERSE,
+  DB_CONNECTION_EMPTY_MESSAGE,
+} = MINDEX_CONSTANTS;
 const CALENDAR_DETAIL_TABS = ["departments", "lectionary"];
 const CALENDAR_DEPARTMENT_FIELDS = [
   ["nursery_prayer", "유치부", "기도자"],
@@ -343,15 +309,7 @@ const CALENDAR_LECTIONARY_FOOTNOTE = [
   "* 부활절 기간 동안 사도행전을 읽는 것으로 구약성경의 교훈을 대체할 수 있습니다.",
   "오순절 날에 민수기 구절이 첫째 읽기로 선택되면, 사도행전 구절이 둘째 읽기로 사용됩니다.",
 ];
-const LINK_CONFIG_KEYS = ["supabaseUrl", "supabase_url", "url", "supabaseAnonKey", "supabase_anon_key", "anonKey", "anon_key", "key"];
-const LINK_ROUTE_KEYS = [
-  "module", "search", "praiseFilter", "scriptureFilter", "serviceFilter",
-  "songId", "versionId", "scriptureId", "book", "translation", "chapter", "verse",
-  "serviceType", "service", "bibleSearch", "biblePage",
-  "selectedSongId", "selectedVersionId", "selectedScriptureId", "selectedBookCode",
-  "selectedBibleTranslationId", "selectedBibleChapter", "selectedBibleVerse",
-  "selectedServiceTypeId", "selectedServiceId", "bibleTextSearchQuery", "bibleTextSearchPage",
-];
+const { LINK_CONFIG_KEYS, LINK_ROUTE_KEYS } = MINDEX_CONSTANTS;
 
 /**
  * @typedef {Object} Service
@@ -447,7 +405,16 @@ const LINK_ROUTE_KEYS = [
 const state = {
   module: "home",
   client: null,
-  config: { url: "", anonKey: "" },
+  config: { url: "", anonKey: "", authRequired: false },
+  auth: {
+    loading: false,
+    session: null,
+    user: null,
+    email: "",
+    message: "",
+    error: "",
+    subscription: null,
+  },
   songs: [],
   scriptureBooks: [],
   scriptures: [],
@@ -495,6 +462,7 @@ const state = {
   referenceLinksLoaded: false,
   referenceError: "",
   referenceGroupSupported: false,
+  songRelationsSupported: false,
   editingReferenceId: null,
   editingReferenceGroupKey: null,
   uiVerses: {
@@ -513,6 +481,7 @@ const state = {
   homeVerseIndex: Math.floor(Math.random() * 3),
   selectedServiceTypeId: null,
   selectedServiceId: null,
+  selectedServiceItemIndex: null,
   serviceFilter: "all",
   serviceError: "",
   newServiceForm: null,
@@ -520,11 +489,14 @@ const state = {
     channel: null,
     outputWindow: null,
     outputWindowMonitor: null,
+    outputConnectedAt: 0,
+    outputClientId: "",
     serviceId: null,
     slides: [],
     index: 0,
-    black: false,
+    safetyBlank: false,
     jumpDraft: "",
+    exitArmedAt: 0,
     screens: [],
     selectedScreenId: null,
     liveScripture: {
@@ -578,7 +550,7 @@ const bibleBookLookupCache = {
 
 document.addEventListener("DOMContentLoaded", init);
 
-function init() {
+async function init() {
   if (isPresenterOutputRoute()) {
     initPresenterOutput();
     return;
@@ -597,17 +569,22 @@ function init() {
   syncBrowserHistory({ replace: true });
 
   if (state.client) {
-    loadSongs();
-    loadScriptureBooks({ silent: true });
-    loadScriptures({ silent: true });
-    loadBibleTranslations({ silent: true });
-    loadServiceData({ silent: true });
-    loadReferenceLinks({ silent: true });
-    if (state.module === "activities") loadActivities({ silent: true });
-    if (state.module === "calendar") loadCalendarData({ silent: true });
+    await initializeAuth();
+    if (canUseClientData()) loadInitialData();
   } else if (state.connectionError) {
     showToast(state.connectionError, "error");
   }
+}
+
+function loadInitialData() {
+  loadSongs();
+  loadScriptureBooks({ silent: true });
+  loadScriptures({ silent: true });
+  loadBibleTranslations({ silent: true });
+  loadServiceData({ silent: true });
+  loadReferenceLinks({ silent: true });
+  if (state.module === "activities") loadActivities({ silent: true });
+  if (state.module === "calendar") loadCalendarData({ silent: true });
 }
 
 function cacheRefs() {
@@ -664,6 +641,7 @@ function bindStaticEvents() {
       state.serviceFilter = button.dataset.listFilter;
       state.selectedServiceTypeId = null;
       state.selectedServiceId = null;
+      state.selectedServiceItemIndex = null;
       render();
       syncBrowserHistory();
       return;
@@ -688,6 +666,8 @@ function bindStaticEvents() {
     syncBrowserHistory();
   });
   refs.songList.addEventListener("scroll", saveCurrentListScroll, { passive: true });
+  refs.songList.addEventListener("input", handleDetailInput);
+  refs.songList.addEventListener("change", handleDetailChange);
   refs.detailPane.addEventListener("dblclick", handleDetailDoubleClick);
 
   refs.songList.addEventListener("click", async (event) => {
@@ -768,6 +748,20 @@ function bindStaticEvents() {
       if (!confirmDiscardServiceChanges()) return;
       state.selectedServiceTypeId = serviceTypeItem.dataset.serviceTypeId;
       state.selectedServiceId = null;
+      state.selectedServiceItemIndex = null;
+      renderServiceList();
+      renderServiceDetail();
+      syncBrowserHistory();
+      return;
+    }
+
+    const serviceListItem = event.target.closest("[data-service-list]");
+    if (serviceListItem) {
+      if (!confirmDiscardServiceChanges()) return;
+      state.selectedServiceTypeId = SERVICE_LIST_PANEL_ID;
+      state.selectedServiceId = null;
+      state.selectedServiceItemIndex = null;
+      state.newServiceForm = null;
       renderServiceList();
       renderServiceDetail();
       syncBrowserHistory();
@@ -779,10 +773,34 @@ function bindStaticEvents() {
       if (!confirmDiscardServiceChanges()) return;
       state.selectedServiceTypeId = SERVICE_TEMPLATES_PANEL_ID;
       state.selectedServiceId = null;
+      state.selectedServiceItemIndex = null;
       state.newServiceForm = null;
       renderServiceList();
       renderServiceDetail();
       syncBrowserHistory();
+      return;
+    }
+
+    const serviceOutlineItem = event.target.closest("[data-service-outline-slide]");
+    if (serviceOutlineItem) {
+      const itemIndex = Number(serviceOutlineItem.dataset.serviceOutlineItemIndex);
+      if (Number.isFinite(itemIndex) && itemIndex >= 0) state.selectedServiceItemIndex = itemIndex;
+      const slideIndex = Number(serviceOutlineItem.dataset.serviceOutlineSlide);
+      const serviceId = serviceOutlineItem.dataset.serviceOutlineService || state.selectedServiceId;
+      if (Number.isFinite(slideIndex) && slideIndex >= 0) runPresenterAction("jump", serviceId, { index: slideIndex });
+      renderServiceList();
+      return;
+    }
+
+    const serviceItemAction = event.target.closest("[data-service-item-action]");
+    if (serviceItemAction) {
+      runServiceItemAction(
+        serviceItemAction.dataset.serviceItemAction,
+        Number(serviceItemAction.dataset.serviceItemIndex),
+        serviceItemAction.dataset.serviceItemLabel || "",
+        serviceItemAction.dataset.serviceItemTitle || "",
+      );
+      renderServiceList();
       return;
     }
 
@@ -803,6 +821,7 @@ function bindStaticEvents() {
   refs.detailPane.addEventListener("keydown", handleDetailKeydown);
   refs.detailPane.addEventListener("input", handleDetailInput);
   refs.detailPane.addEventListener("change", handleDetailChange);
+  refs.detailPane.addEventListener("submit", handleDetailSubmit);
   refs.detailPane.addEventListener("pointerdown", handleDetailPointerDown);
   refs.detailPane.addEventListener("pointerover", handleDetailPointerOver);
 
@@ -1269,6 +1288,7 @@ async function applyBrowserHistorySnapshot(snapshot) {
     state.lastSelectedBibleVerse = state.selectedBibleVerse || null;
     state.selectedServiceTypeId = snapshot.selectedServiceTypeId || null;
     state.selectedServiceId = snapshot.selectedServiceId || null;
+    state.selectedServiceItemIndex = null;
     clearBibleTextSearch();
     state.bibleTextSearchQuery = snapshot.bibleTextSearchQuery || "";
     state.bibleTextSearchPage = Math.max(0, Number(snapshot.bibleTextSearchPage) || 0);
@@ -1308,6 +1328,13 @@ function readConfig(params = readLinkParams()) {
       injected.anon_key ||
       safeStorageGet("local", STORAGE.key) ||
       "",
+    authRequired:
+      params.get("authRequired") ||
+      params.get("auth_required") ||
+      params.get("auth") ||
+      injected.authRequired ||
+      injected.auth_required ||
+      false,
   };
   return sanitizeSupabaseConfig(config);
 }
@@ -1318,7 +1345,14 @@ function sanitizeSupabaseConfig(config = {}) {
   return {
     url: isPlaceholderSupabaseValue(url) ? "" : url,
     anonKey: isPlaceholderSupabaseValue(anonKey) ? "" : anonKey,
+    authRequired: normalizeBooleanFlag(config.authRequired),
   };
+}
+
+function normalizeBooleanFlag(value) {
+  if (value === true) return true;
+  const normalized = String(value || "").trim().toLowerCase();
+  return ["1", "true", "yes", "required", "auth", "login"].includes(normalized);
 }
 
 function isPlaceholderSupabaseValue(value) {
@@ -1415,6 +1449,7 @@ function applyLinkState(params) {
   state.lastSelectedBibleVerse = state.selectedBibleVerse || null;
   state.selectedServiceTypeId = snapshot.selectedServiceTypeId || state.selectedServiceTypeId;
   state.selectedServiceId = snapshot.selectedServiceId || state.selectedServiceId;
+  state.selectedServiceItemIndex = null;
   state.bibleTextSearchQuery = snapshot.bibleTextSearchQuery || state.bibleTextSearchQuery;
   state.bibleTextSearchPage = Number.isFinite(snapshot.bibleTextSearchPage) ? snapshot.bibleTextSearchPage : state.bibleTextSearchPage;
   if (refs.searchInput) refs.searchInput.value = state.search;
@@ -1432,6 +1467,7 @@ function buildMindexLink(snapshot = currentBrowserHistorySnapshot()) {
   const params = new URLSearchParams();
   if (state.config.url) params.set("supabaseUrl", state.config.url);
   if (state.config.anonKey) params.set("supabaseAnonKey", state.config.anonKey);
+  if (state.config.authRequired) params.set("auth", "required");
   appendRouteParams(params, snapshot);
   url.hash = params.toString();
   return url.toString();
@@ -1479,13 +1515,111 @@ function connectClient() {
 
   try {
     state.client = window.supabase.createClient(state.config.url, state.config.anonKey, {
-      auth: { persistSession: false },
+      auth: {
+        persistSession: state.config.authRequired,
+        autoRefreshToken: state.config.authRequired,
+        detectSessionInUrl: state.config.authRequired,
+      },
       global: { headers: { "X-Client-Info": "mindex-prototype" } },
     });
   } catch (error) {
     state.client = null;
     state.connectionError = error.message || "Supabase connection failed.";
   }
+}
+
+function isAuthRequired() {
+  return Boolean(state.config.authRequired);
+}
+
+function canUseClientData() {
+  return Boolean(state.client) && (!isAuthRequired() || Boolean(state.auth.session));
+}
+
+async function initializeAuth() {
+  if (!isAuthRequired() || !state.client?.auth) return;
+  state.auth.loading = true;
+  state.auth.error = "";
+  render();
+  try {
+    const { data, error } = await state.client.auth.getSession();
+    if (error) throw error;
+    applyAuthSession(data?.session || null);
+    state.auth.subscription?.unsubscribe?.();
+    const { data: subscriptionData } = state.client.auth.onAuthStateChange((_event, session) => {
+      const wasSignedOut = !state.auth.session;
+      applyAuthSession(session);
+      render();
+      if (session && wasSignedOut) loadInitialData();
+    });
+    state.auth.subscription = subscriptionData?.subscription || null;
+  } catch (error) {
+    state.auth.error = error.message || "Could not check sign-in.";
+  } finally {
+    state.auth.loading = false;
+    render();
+  }
+}
+
+function applyAuthSession(session) {
+  state.auth.session = session || null;
+  state.auth.user = session?.user || null;
+  state.auth.error = "";
+}
+
+async function requestAdminSignIn(email) {
+  if (!state.client?.auth) return;
+  state.auth.email = String(email || "").trim();
+  state.auth.message = "";
+  state.auth.error = "";
+  if (!state.auth.email) {
+    state.auth.error = "Email is required.";
+    render();
+    return;
+  }
+  state.auth.loading = true;
+  render();
+  try {
+    const { error } = await state.client.auth.signInWithOtp({
+      email: state.auth.email,
+      options: { emailRedirectTo: authRedirectUrl() },
+    });
+    if (error) throw error;
+    state.auth.message = "Check your email for the sign-in link.";
+  } catch (error) {
+    state.auth.error = error.message || "Sign-in failed.";
+  } finally {
+    state.auth.loading = false;
+    render();
+  }
+}
+
+async function signOutAdmin() {
+  if (!state.client?.auth) return;
+  state.auth.loading = true;
+  render();
+  try {
+    const { error } = await state.client.auth.signOut();
+    if (error) throw error;
+    applyAuthSession(null);
+  } catch (error) {
+    state.auth.error = error.message || "Sign-out failed.";
+  } finally {
+    state.auth.loading = false;
+    render();
+  }
+}
+
+function authRedirectUrl() {
+  const url = new URL(window.location.href);
+  url.search = "";
+  const params = new URLSearchParams();
+  if (state.config.url) params.set("supabaseUrl", state.config.url);
+  if (state.config.anonKey) params.set("supabaseAnonKey", state.config.anonKey);
+  params.set("auth", "required");
+  appendRouteParams(params, currentBrowserHistorySnapshot());
+  url.hash = params.toString();
+  return url.toString();
 }
 
 async function switchModule(moduleName, options = {}) {
@@ -1571,11 +1705,10 @@ async function loadSongsOnce() {
     error = response.error;
   } catch (caughtError) {
     error = caughtError;
-  } finally {
-    state.loading = false;
   }
 
   if (error) {
+    state.loading = false;
     state.connectionError = error.message || "Could not load songs.";
     showToast(state.connectionError, "error");
     render();
@@ -1585,6 +1718,9 @@ async function loadSongsOnce() {
   state.connectionError = "";
   state.songs = (data || []).map(normalizeServerSong).sort(sortSongs);
   await attachRelationalSongVersions();
+  if (!state.songs.some((song) => cleanList(song.related_song_ids).length)) {
+    await attachSongRelations();
+  }
   if (state.selectedSongId && !state.songs.some((song) => song.id === state.selectedSongId)) {
     state.selectedSongId = null;
     state.selectedVersionId = null;
@@ -1602,9 +1738,12 @@ async function loadSongsOnce() {
     state.selectedVersionId = validVersionId;
     persistUiState();
     await loadForms(validVersionId);
+    state.loading = false;
+    updateSaveState();
     return;
   }
 
+  state.loading = false;
   persistUiState();
   render();
 }
@@ -1672,23 +1811,74 @@ async function attachRelationalSongVersions() {
     unitsByVersion.set(row.version_id, units);
   }
 
-  const versionsBySong = new Map();
+  const sourceVersionsBySong = new Map();
+  const fallbackVersionsBySong = new Map();
   for (const row of versionResponse.data || []) {
-    const songId = row.source_song_id || row.canonical_song_id;
-    if (!songIds.has(songId)) continue;
-    const versions = versionsBySong.get(songId) || [];
-    const version = normalizeRelationalVersion(row, versions.length);
-    version.forms = normalizeForms(unitsByVersion.get(version.id) || []);
-    versions.push(version);
-    versionsBySong.set(songId, versions);
+    const sourceSongId = row.source_song_id || null;
+    const canonicalSongId = row.canonical_song_id || null;
+    if (sourceSongId && songIds.has(sourceSongId)) {
+      const rows = sourceVersionsBySong.get(sourceSongId) || [];
+      rows.push(row);
+      sourceVersionsBySong.set(sourceSongId, rows);
+    } else if (canonicalSongId && songIds.has(canonicalSongId)) {
+      const rows = fallbackVersionsBySong.get(canonicalSongId) || [];
+      rows.push(row);
+      fallbackVersionsBySong.set(canonicalSongId, rows);
+    }
   }
 
   for (const song of state.songs) {
-    const versions = versionsBySong.get(song.id);
-    if (!versions?.length) continue;
+    const rows = sourceVersionsBySong.get(song.id) || fallbackVersionsBySong.get(song.id) || [];
+    if (!rows.length) continue;
+    const versions = rows
+      .sort(sortVersionRows)
+      .map((row, index) => {
+        const version = normalizeRelationalVersion(row, index);
+        version.forms = normalizeForms(unitsByVersion.get(version.id) || []);
+        return version;
+      });
     song.versions = normalizeSongVersions(song, versions);
     song._memoHasVersions = false;
     updateSongPraiseTypesFromVersions(song);
+  }
+}
+
+async function attachSongRelations() {
+  if (!state.client || !state.songs.length) return;
+  let relationResponse;
+  try {
+    relationResponse = await fetchAllRows(() =>
+      state.client
+        .from("mindex_song_relations")
+        .select("source_song_id,related_song_id,relation_type")
+        .eq("relation_type", "related")
+        .order("source_song_id", { ascending: true })
+        .order("related_song_id", { ascending: true })
+    );
+  } catch (error) {
+    if (!isUnavailableRelationError(error)) console.warn("Could not load song relations.", error);
+    state.songRelationsSupported = false;
+    return;
+  }
+
+  if (relationResponse.error) {
+    if (!isUnavailableRelationError(relationResponse.error)) console.warn("Could not load song relations.", relationResponse.error);
+    state.songRelationsSupported = false;
+    return;
+  }
+
+  state.songRelationsSupported = true;
+  const songIds = new Set(state.songs.map((song) => song.id));
+  const relatedBySong = new Map(state.songs.map((song) => [song.id, new Set()]));
+  for (const row of relationResponse.data || []) {
+    const sourceId = row.source_song_id;
+    const relatedId = row.related_song_id;
+    if (!songIds.has(sourceId) || !songIds.has(relatedId) || sourceId === relatedId) continue;
+    relatedBySong.get(sourceId)?.add(relatedId);
+    relatedBySong.get(relatedId)?.add(sourceId);
+  }
+  for (const song of state.songs) {
+    song.related_song_ids = [...(relatedBySong.get(song.id) || [])].sort();
   }
 }
 
@@ -1873,19 +2063,24 @@ function defaultWorshipServiceTypes() {
 }
 
 function normalizeWorshipServiceType(type = {}) {
+  const config = type.config && typeof type.config === "object" ? type.config : {};
   return {
     id: worshipAppServiceTypeId(type.id),
     name: type.display_name || type.id || "",
     short_name: type.short_name || "",
     sort_order: Number(type.sort_order) || 0,
-    fixed_items: [],
-    order_template: [],
+    fixed_items: normalizeServiceDefaultItems(config.fixedItems || config.fixed_items || []),
+    order_template: normalizeServiceOrderTemplateConfig(config.orderTemplate || config.order_template || []),
     _worship: true,
     _worshipId: type.id || "",
     _worshipGroupKey: type.group_key || "",
     _worshipOutputContext: type.default_output_context || "auto",
     _worshipChromakey: Boolean(type.chromakey_enabled),
   };
+}
+
+function normalizeServiceOrderTemplateConfig(value) {
+  return Array.isArray(value) ? value.filter((step) => step && typeof step === "object") : [];
 }
 
 function normalizeWorshipService(service = {}) {
@@ -1914,26 +2109,46 @@ function groupWorshipElements(sections = [], elements = []) {
     if (!serviceId) return grouped;
     if (!grouped[serviceId]) grouped[serviceId] = [];
     const sourceRef = element.source_ref && typeof element.source_ref === "object" ? element.source_ref : {};
+    const config = element.config && typeof element.config === "object" ? element.config : {};
+    const orderSheet = mergeServiceOrderSheetPayloads(
+      normalizeServiceOrderSheetPayload(config.orderSheet),
+      normalizeServiceOrderSheetPayload(config.order_sheet),
+      normalizeServiceOrderSheetPayload(sourceRef.orderSheet),
+      normalizeServiceOrderSheetPayload(sourceRef.order_sheet),
+    );
     grouped[serviceId].push(normalizeServiceItem({
       id: element.id,
       service_id: serviceId,
       sort_order: (Number(section.sort_order) || 0) * 1000 + (Number(element.sort_order) || 0),
       label: sourceRef.label || section.title || "",
       assignee: element.person || section.person || "",
-      raw_title: element.title || sourceRef.label || section.title || "",
+      raw_title: worshipElementDisplayTitle(element, section, sourceRef, config, orderSheet),
       song_id: element.song_id || null,
       song_version_id: element.song_version_id || null,
       memo: serializeServiceItemMemo({
         elementType: element.element_type,
+        orderSheet,
         reviewStatus: element.review_status,
         reviewFlags: sourceRef.review_flags || [],
       }),
       _worship: true,
       _worshipSectionId: section.id,
       _worshipSectionKey: section.section_key || "",
+      _worshipSectionTitle: section.title || "",
+      _worshipSectionOrder: Number(section.sort_order) || 0,
+      _worshipElementOrder: Number(element.sort_order) || 0,
+      _worshipOrderSheetPlaceholder: Boolean(sourceRef.placeholder || sourceRef.order_sheet_placeholder || config.orderSheetPlaceholder),
     }));
     return grouped;
   }, {});
+}
+
+function worshipElementDisplayTitle(element = {}, section = {}, sourceRef = {}, config = {}, orderSheet = null) {
+  const title = String(element.title || "").trim();
+  if (title) return title;
+  const placeholder = Boolean(sourceRef.placeholder || sourceRef.order_sheet_placeholder || config.orderSheetPlaceholder);
+  if (placeholder && orderSheet?.order) return "";
+  return sourceRef.label || section.title || "";
 }
 
 function groupWorshipPresenterSlides(rows = []) {
@@ -1959,7 +2174,9 @@ function normalizeWorshipPresenterSlide(row = {}, index = 0) {
     sectionIndex: Number(row.section_order) || index + 1,
     sectionLabel: row.section_title || "",
     sectionRole: row.section_title === "찬양" || row.element_type === "praise" ? "main-praise" : "",
-    sectionTitle: row.element_title || row.section_title || title,
+    sectionTitle: row.section_title || "",
+    elementLabel: row.element_label || row.section_title || "",
+    elementTitle: row.element_title || title,
     sectionAssignee: row.element_person || row.section_person || "",
     sectionName: presenterNameParts(row.section_title, row.element_title).join(" / "),
     elementType,
@@ -1996,8 +2213,7 @@ function worshipPresenterElementType(elementType, slideType) {
   if (elementType === "title_person") return PRESENTER_ELEMENT_TYPES.TITLE_ASSIGNEE;
   if (elementType === "image") return PRESENTER_ELEMENT_TYPES.IMAGE;
   if (elementType === "video") return PRESENTER_ELEMENT_TYPES.VIDEO;
-  if (elementType === "ppt") return PRESENTER_ELEMENT_TYPES.PPT;
-  if (elementType === "pdf") return PRESENTER_ELEMENT_TYPES.PDF;
+  if (["file", "ppt", "pptx", "pdf", "key"].includes(elementType)) return PRESENTER_ELEMENT_TYPES.FILE;
   if (elementType === "blank") return PRESENTER_ELEMENT_TYPES.BLANK;
   return PRESENTER_ELEMENT_TYPES.PLAIN_TEXT;
 }
@@ -2005,15 +2221,16 @@ function worshipPresenterElementType(elementType, slideType) {
 function worshipPresenterLayout(slideType, elementType) {
   if (elementType === PRESENTER_ELEMENT_TYPES.PRAISE) return PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT;
   if (elementType === PRESENTER_ELEMENT_TYPES.IMAGE || elementType === PRESENTER_ELEMENT_TYPES.VIDEO) return PRESENTER_SLIDE_LAYOUTS.MEDIA;
-  if (elementType === PRESENTER_ELEMENT_TYPES.PPT || elementType === PRESENTER_ELEMENT_TYPES.PDF) return PRESENTER_SLIDE_LAYOUTS.FILE;
+  if (elementType === PRESENTER_ELEMENT_TYPES.FILE) return PRESENTER_SLIDE_LAYOUTS.FILE;
   if (slideType === "blank" || elementType === PRESENTER_ELEMENT_TYPES.BLANK) return PRESENTER_SLIDE_LAYOUTS.BLANK;
   return PRESENTER_SLIDE_LAYOUTS.CENTER_TEXT;
 }
 
 function worshipPresenterSlideType(slideType, elementType, layout) {
   if (elementType === PRESENTER_ELEMENT_TYPES.PRAISE) return slideType === "praise_title" ? "song-title" : "lyrics";
+  if (layout === PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT && elementType === PRESENTER_ELEMENT_TYPES.SCRIPTURE_TEXT) return "scripture";
   if (layout === PRESENTER_SLIDE_LAYOUTS.MEDIA) return elementType === PRESENTER_ELEMENT_TYPES.IMAGE ? "image" : "video";
-  if (layout === PRESENTER_SLIDE_LAYOUTS.FILE) return "deck";
+  if (layout === PRESENTER_SLIDE_LAYOUTS.FILE) return "file";
   if (layout === PRESENTER_SLIDE_LAYOUTS.BLANK) return "blank";
   return "component";
 }
@@ -2801,6 +3018,11 @@ async function saveAll() {
     return;
   }
 
+  if (state.module === "praise" && songLoadPromise) {
+    showToast("Song data is still loading.", "error");
+    return;
+  }
+
   const song = getSelectedSong();
   if (!song || !requireClient() || state.saving) return;
 
@@ -3096,6 +3318,7 @@ async function saveSongMeta(song) {
       useVersionTables = false;
     }
   }
+  const useRelationTable = await saveSongRelationsIfAvailable(song);
 
   const payload = {
     title: cleanSongTitleForSave(song),
@@ -3107,6 +3330,7 @@ async function saveSongMeta(song) {
       omitPromotedMetadata: hasPromotedColumns,
       omitScripture: hasScriptureRefsColumn,
       omitVersions: useVersionTables,
+      omitRelatedSongs: useRelationTable,
     }),
   };
 
@@ -3166,11 +3390,12 @@ async function saveSongVersions(song) {
   }
 
   song.versions = versions;
+  const versionOrders = assignStableVersionOrders(versions);
   const versionRows = versions.map((version, index) => ({
     id: version.id,
     canonical_song_id: song.id,
     source_song_id: song.id,
-    version_order: index + 1,
+    version_order: versionOrders.get(version.id) || index + 1,
     version_label: version.raw_section_name || version.version_label || version.name || `Version ${index + 1}`,
     curated_version_name: normalizeGeneratedVersionName(version.name || `Version ${index + 1}`),
     version_review_status: versionNeedsFormReview(song, version) ? "pending" : "reviewed",
@@ -3292,6 +3517,60 @@ async function fetchExistingVersionUnits(versionIds) {
   return data || [];
 }
 
+function assignStableVersionOrders(versions) {
+  const orders = new Map();
+  const used = new Set();
+  let nextOrder = 1;
+
+  for (const version of versions || []) {
+    const explicitOrder = Number(version?.version_order) || 0;
+    if (explicitOrder > 0 && !used.has(explicitOrder)) {
+      orders.set(version.id, explicitOrder);
+      used.add(explicitOrder);
+      nextOrder = Math.max(nextOrder, explicitOrder + 1);
+    }
+  }
+
+  for (const version of versions || []) {
+    if (orders.has(version.id)) continue;
+    while (used.has(nextOrder)) nextOrder += 1;
+    orders.set(version.id, nextOrder);
+    used.add(nextOrder);
+    nextOrder += 1;
+  }
+
+  return orders;
+}
+
+async function saveSongRelationsIfAvailable(song) {
+  if (!song?.id || !state.client) return false;
+  if (!state.songRelationsSupported) {
+    state.songRelationsSupported = await detectTableColumnSupport("mindex_song_relations", "source_song_id");
+  }
+  if (!state.songRelationsSupported) return false;
+
+  const relatedIds = cleanList(song.related_song_ids).filter((id) => id && id !== song.id);
+  const { error: deleteError } = await state.client
+    .from("mindex_song_relations")
+    .delete()
+    .eq("source_song_id", song.id)
+    .eq("relation_type", "related");
+  if (deleteError) throw deleteError;
+
+  if (!relatedIds.length) return true;
+  const rows = relatedIds.map((relatedId) => ({
+    source_song_id: song.id,
+    related_song_id: relatedId,
+    relation_type: "related",
+    note: "",
+  }));
+  const { error } = await state.client
+    .from("mindex_song_relations")
+    .upsert(rows, { onConflict: "source_song_id,related_song_id,relation_type" });
+  if (error) throw error;
+  return true;
+}
+
 function writeFormsToSelectedVersion() {
   state.forms = normalizeForms(state.forms);
   const version = getSelectedVersion();
@@ -3309,6 +3588,12 @@ function writeFormsToSelectedVersion() {
 }
 
 function handleDetailClick(event) {
+  const authAction = event.target.closest("[data-auth-action]");
+  if (authAction?.dataset.authAction === "sign-out") {
+    void signOutAdmin();
+    return;
+  }
+
   const calendarDetailTab = event.target.closest("[data-calendar-detail-tab]");
   if (calendarDetailTab) {
     const tab = calendarDetailTab.dataset.calendarDetailTab;
@@ -3374,6 +3659,12 @@ function handleDetailClick(event) {
   const createServiceBtn = event.target.closest("[data-create-service]");
   if (createServiceBtn) {
     createService();
+    return;
+  }
+
+  const newServiceBtn = event.target.closest("[data-new-service]");
+  if (newServiceBtn) {
+    startNewServiceForm(newServiceBtn.dataset.newService || state.selectedServiceTypeId);
     return;
   }
 
@@ -3550,6 +3841,7 @@ function handleDetailClick(event) {
     if (!confirmDiscardServiceChanges()) return;
     state.selectedServiceTypeId = serviceTypeCard.dataset.selectServiceType;
     state.selectedServiceId = null;
+    state.selectedServiceItemIndex = null;
     renderServiceList();
     renderServiceDetail();
     syncBrowserHistory();
@@ -3694,16 +3986,6 @@ function handleDetailKeydown(event) {
       jumpPresenterToSlideInput(presenterJumpInput);
       return;
     }
-    if (event.key === "ArrowUp") {
-      event.preventDefault();
-      runPresenterAction("prev", presenterJumpInput.dataset.serviceId);
-      return;
-    }
-    if (event.key === "ArrowDown") {
-      event.preventDefault();
-      runPresenterAction("next", presenterJumpInput.dataset.serviceId);
-      return;
-    }
   }
 
   const liveScriptureInput = event.target.closest("[data-live-scripture-input]");
@@ -3820,6 +4102,12 @@ function handleWindowPointerUp() {
 }
 
 function handleDetailInput(event) {
+  const authEmail = event.target.closest("[data-auth-email]");
+  if (authEmail) {
+    state.auth.email = authEmail.value;
+    return;
+  }
+
   const liveScriptureInput = event.target.closest("[data-live-scripture-input]");
   if (liveScriptureInput) {
     updateLiveScriptureDraft(liveScriptureInput.value);
@@ -3892,6 +4180,14 @@ function handleDetailInput(event) {
     return;
   }
 
+}
+
+function handleDetailSubmit(event) {
+  const authForm = event.target.closest("[data-auth-form]");
+  if (!authForm) return;
+  event.preventDefault();
+  const email = authForm.querySelector("[data-auth-email]")?.value || state.auth.email;
+  void requestAdminSignIn(email);
 }
 
 function handleDetailChange(event) {
@@ -4457,19 +4753,17 @@ function updateServiceItemField(field) {
     if (key === "element_type" || key === "component_type") {
       parsed.elementType = normalizeServiceElementType(field.value);
       parsed.componentType = parsed.elementType;
-      if (parsed.elementType === "pptx") parsed.asset = { ...normalizeServiceAsset(parsed.asset), kind: "pptx" };
+      if (parsed.elementType === "file") parsed.asset = { ...normalizeServiceAsset(parsed.asset), kind: "file" };
       if (parsed.elementType === "video") parsed.asset = { ...normalizeServiceAsset(parsed.asset), kind: "video" };
       if (parsed.elementType === "image") parsed.asset = { ...normalizeServiceAsset(parsed.asset), kind: "image" };
-      if (parsed.elementType === "pdf") parsed.asset = { ...normalizeServiceAsset(parsed.asset), kind: "pdf" };
     }
     if (key === "asset_name" || key === "asset_url") {
       const asset = normalizeServiceAsset(parsed.asset);
       asset[key === "asset_name" ? "name" : "url"] = field.value;
       const elementType = serviceMemoElementType(parsed);
-      if (!asset.kind && elementType === "pptx") asset.kind = "pptx";
+      if (!asset.kind && elementType === "file") asset.kind = "file";
       if (!asset.kind && elementType === "video") asset.kind = "video";
       if (!asset.kind && elementType === "image") asset.kind = "image";
-      if (!asset.kind && elementType === "pdf") asset.kind = "pdf";
       parsed.asset = asset;
     }
     item.memo = serializeServiceItemMemo(parsed);
@@ -4486,11 +4780,27 @@ function updateServiceItemField(field) {
 }
 
 const SERVICE_ELEMENT_TYPES = new Set(["", ...Object.keys(SERVICE_ELEMENT_LABELS)]);
-const SERVICE_ASSET_KINDS = new Set(["", "video", "pptx", "key", "pdf", "image"]);
+const SERVICE_ELEMENT_TYPE_ALIASES = {
+  ppt: "file",
+  pptx: "file",
+  powerpoint: "file",
+  key: "file",
+  keynote: "file",
+  pdf: "file",
+};
+const SERVICE_ASSET_KIND_ALIASES = {
+  ppt: "file",
+  pptx: "file",
+  powerpoint: "file",
+  key: "file",
+  keynote: "file",
+};
+const SERVICE_ASSET_KINDS = new Set(["", "file", "video", "pdf", "image"]);
 
 function normalizeServiceElementType(value) {
   const type = String(value || "").trim().toLowerCase();
-  return SERVICE_ELEMENT_TYPES.has(type) ? type : "";
+  const normalized = SERVICE_ELEMENT_TYPE_ALIASES[type] || type;
+  return SERVICE_ELEMENT_TYPES.has(normalized) ? normalized : "";
 }
 
 function serviceMemoElementType(memo = {}) {
@@ -4499,12 +4809,18 @@ function serviceMemoElementType(memo = {}) {
 
 function normalizeServiceAsset(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return { kind: "", name: "", url: "" };
-  const kind = String(value.kind || value.type || "").trim().toLowerCase();
+  const rawKind = String(value.kind || value.type || "").trim().toLowerCase();
+  const kind = SERVICE_ASSET_KIND_ALIASES[rawKind] || rawKind;
   return {
     kind: SERVICE_ASSET_KINDS.has(kind) ? kind : "",
     name: String(value.name || value.title || "").trim(),
     url: String(value.url || value.path || value.href || "").trim(),
   };
+}
+
+function isLegacyImportArtifactName(value) {
+  const name = presenterMediaFileName(value);
+  return /^(?:Elem|Element|Section|Slide)_\d*[_-]/i.test(name) || /^(?:Elem|Element|Section|Slide)_/i.test(name);
 }
 
 function hasServiceAsset(asset) {
@@ -4629,7 +4945,7 @@ function parseServiceItemMemo(value) {
     const parsed = JSON.parse(raw);
     if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
       const elementType = serviceMemoElementType({ ...parsed, elementType: parsed.elementType || parsed.element_type || parsed.type });
-      const asset = normalizeServiceAsset(parsed.asset || parsed.deck || parsed.file || parsed.media);
+      const asset = normalizeServiceAsset(parsed.asset || parsed.file || parsed.media);
       const orderSheet = mergeServiceOrderSheetPayloads(
         normalizeServiceOrderSheetPayload(parsed.orderSheet),
         normalizeServiceOrderSheetPayload(parsed.order_sheet),
@@ -4802,6 +5118,7 @@ function runServiceItemAction(action, index, label = "", title = "") {
   if (!serviceId) return;
   const typeId = state.services.find((service) => service.id === serviceId)?.type_id || state.selectedServiceTypeId;
   const items = normalizeServiceItems(getServiceItems(serviceId));
+  let nextSelectedIndex = Number.isInteger(Number(state.selectedServiceItemIndex)) ? Number(state.selectedServiceItemIndex) : index;
 
   if (action === "add") {
     const nextItem = normalizeServiceItem({
@@ -4812,26 +5129,33 @@ function runServiceItemAction(action, index, label = "", title = "") {
     }, items.length);
     applyServiceSongSelection(nextItem);
     insertServiceItemInTemplateOrder(items, nextItem, typeId);
+    nextSelectedIndex = items.findIndex((candidate) => candidate.id === nextItem.id);
   }
 
   const item = items[index];
   if (action === "up" && item && index > 0) {
     [items[index - 1], items[index]] = [items[index], items[index - 1]];
+    nextSelectedIndex = index - 1;
   }
   if (action === "down" && item && index < items.length - 1) {
     [items[index + 1], items[index]] = [items[index], items[index + 1]];
+    nextSelectedIndex = index + 1;
   }
   if (action === "duplicate" && item) {
     items.splice(index + 1, 0, normalizeServiceItem({ ...item, id: createLocalId() }, index + 1));
+    nextSelectedIndex = index + 1;
   }
   if (action === "delete" && item) {
     items.splice(index, 1);
+    nextSelectedIndex = Math.min(index, items.length - 1);
   }
 
   state.serviceItems[serviceId] = normalizeServiceItemsInCurrentOrder(items);
+  state.selectedServiceItemIndex = Number.isFinite(nextSelectedIndex) && nextSelectedIndex >= 0 ? nextSelectedIndex : null;
   state.dirty.service = true;
   refreshPresenterForService(serviceId);
   renderServiceDetail();
+  renderServiceList();
   updateSaveState();
 }
 
@@ -4944,6 +5268,149 @@ function insertServiceItemInTemplateOrder(items, item, typeId) {
   const rank = serviceItemTemplateRank(typeId, item);
   const insertIndex = items.findIndex((candidate) => serviceItemTemplateRank(typeId, candidate) > rank);
   items.splice(insertIndex === -1 ? items.length : insertIndex, 0, item);
+}
+
+function startNewServiceForm(typeId = state.selectedServiceTypeId) {
+  if (!typeId || typeId === SERVICE_TEMPLATES_PANEL_ID) return;
+  state.selectedServiceTypeId = typeId;
+  state.selectedServiceId = null;
+  state.newServiceForm = {
+    type_id: typeId,
+    date: toLocalDateStr(new Date()),
+    title: "",
+    leader: "",
+    tags: "",
+  };
+  renderServiceList();
+  renderServiceDetail();
+}
+
+function canonicalWorshipServiceTypeId(typeId) {
+  return serviceTypeById(typeId)?._worshipId || typeId || "";
+}
+
+function buildWorshipServiceScaffold(serviceId, typeId) {
+  const steps = serviceOrderTemplate(typeId).map(normalizeServiceTemplateStep);
+  const sections = [];
+  const elements = [];
+  steps.forEach((step, index) => {
+    const label = String(step.label || step.name || "").trim();
+    if (!label) return;
+    const sectionId = createUuid();
+    const ready = isReadyServiceTemplateLabel(label);
+    const elementSteps = worshipTemplateElementSteps(step, label);
+    sections.push({
+      id: sectionId,
+      service_id: serviceId,
+      sort_order: index,
+      section_key: worshipTemplateSectionKey(label, index, step),
+      title: label,
+      person: "",
+      source_kind: "mindex",
+      source_ref: { label, template: true, placeholder: true },
+      config: ready ? { presenterRole: "ready" } : { orderSheetPlaceholder: true },
+    });
+    elementSteps.forEach((elementStep, elementIndex) => {
+      const elementLabel = String(elementStep.label || elementStep.name || label).trim() || label;
+      const orderSheet = ready
+        ? { hidden: true }
+        : normalizeServiceOrderSheetPayload(elementStep.orderSheet || elementStep.order_sheet) || { order: elementLabel };
+      elements.push({
+        id: createUuid(),
+        section_id: sectionId,
+        sort_order: elementIndex + 1,
+        element_type: worshipTemplateElementType(elementStep, elementLabel),
+        title: ready ? "예배 준비" : String(elementStep.default_text || elementStep.title || "").trim(),
+        person: "",
+        body: "",
+        scripture_reference: "",
+        source_kind: "mindex",
+        source_ref: { label: elementLabel, template: true, placeholder: !ready },
+        config: {
+          orderSheet,
+          ...(ready ? { presenterRole: "ready" } : { orderSheetPlaceholder: true }),
+        },
+      });
+    });
+  });
+  return { sections, elements };
+}
+
+function worshipTemplateElementSteps(step = {}, label = "") {
+  const elements = Array.isArray(step.elements) ? step.elements : [];
+  if (elements.length) return elements.filter((element) => element && typeof element === "object");
+  return [{
+    ...step,
+    label,
+    orderSheet: step.orderSheet || step.order_sheet || (isReadyServiceTemplateLabel(label) ? { hidden: true } : { order: label }),
+  }];
+}
+
+function isReadyServiceTemplateLabel(label) {
+  const compact = compactSearchValue(label);
+  return compact === "준비" || compact === "예배준비" || compact === "예배준비영상";
+}
+
+function worshipTemplateSectionKey(label, index = 0, step = {}) {
+  const explicit = String(step.sectionKey || step.section_key || "").trim();
+  if (explicit) return explicit;
+  const compact = compactSearchValue(label);
+  const known = {
+    "준비": "ready",
+    "예배준비": "ready",
+    "예배준비영상": "ready",
+    "찬양": "praise",
+    "찬송": "praise",
+    "기도": "prayer",
+    "대표기도": "prayer",
+    "성경봉독": "scripture_reading",
+    "성경": "scripture_reading",
+    "특송": "special_song",
+    "설교": "sermon",
+    "말씀": "sermon",
+    "결단찬양": "response_song",
+    "결단기도": "response_prayer",
+    "월삭기도": "monthly_prayer",
+    "기도회": "prayer_meeting",
+    "통성기도": "prayer_meeting",
+    "자율기도": "prayer_meeting",
+    "봉헌": "offering",
+    "봉헌기도": "offering_prayer",
+    "교회소식": "announcements",
+    "광고": "announcements",
+    "송영": "closing_song",
+    "축도": "benediction",
+    "주기도문": "lords_prayer",
+    "사도신경": "creed",
+    "참회기도": "confession",
+  };
+  return known[compact] || `section_${index + 1}`;
+}
+
+function worshipTemplateElementType(step = {}, label = "") {
+  const explicit = normalizeWorshipElementType(step.elementType || step.element_type || step.componentType || step.component_type);
+  if (explicit) return explicit;
+  const compact = compactSearchValue(label);
+  if (isReadyServiceTemplateLabel(label)) return "video";
+  if (/찬양|찬송|송영/.test(compact) || /^(결단|봉헌|파송)찬양$/.test(compact)) return "praise";
+  if (/성경봉독|성경/.test(compact)) return "scripture_reading";
+  if (/설교|말씀/.test(compact)) return "body";
+  if (/기도|특송|축도|사도신경/.test(compact)) return "title_person";
+  if (/교회소식|광고/.test(compact)) return "plain_text";
+  return "plain_text";
+}
+
+function normalizeWorshipElementType(value) {
+  const raw = String(value || "").trim().toLowerCase();
+  const canonical = raw.replace(/-/g, "_");
+  if (["title_person", "plain_text", "body", "scripture_reading", "scripture_body", "editable", "ppt"].includes(canonical)) return canonical;
+  const type = normalizeServiceElementType(value);
+  if (type === "template") return "plain_text";
+  if (type === "file") return "ppt";
+  if (type === "scripture") return "scripture_reading";
+  return ["blank", "plain_text", "title_person", "body", "praise", "scripture_reading", "scripture_body", "image", "video", "editable", "ppt", "pdf"].includes(type)
+    ? type
+    : "";
 }
 
 function runCopyAction(action, index) {
@@ -5370,6 +5837,16 @@ function renderConnectionStatus() {
     return;
   }
 
+  if (isAuthRequired() && state.auth.loading) {
+    setStatusIcon("loader-2", "", "Checking sign-in");
+    return;
+  }
+
+  if (isAuthRequired() && !state.auth.session) {
+    setStatusIcon("lock", "error", "Sign in required");
+    return;
+  }
+
   if (!hasClient) {
     setStatusIcon("database", "", "Disconnected");
     return;
@@ -5384,6 +5861,12 @@ function renderConnectionStatus() {
 }
 
 function renderSongList() {
+  if (isAuthRequired() && !state.auth.session) {
+    refs.songCount.textContent = "";
+    refs.songList.innerHTML = renderConnectionList("Sign in required.");
+    return;
+  }
+
   if (isGlobalSearchActive() && (state.module === "home" || state.module === "calendar" || state.module === "references")) {
     renderGlobalSearchList();
     return;
@@ -5770,12 +6253,19 @@ function renderHomeDetail() {
   const verse = homeVerse();
   refs.detailPane.innerHTML = `
     <div class="home-screen">
-      <section class="home-primary-row" aria-label="Mindex modules">
-        ${service ? renderHomePrimaryCard(service) : ""}
-        <div class="home-library-stack" aria-label="Mindex library">
-          ${contentModules.map((module) => renderHomeCompactCard(module, { wide: true })).join("")}
-          ${utilityModules.length ? `<div class="home-library-divider" aria-hidden="true"></div>` : ""}
-          ${utilityModules.map((module) => renderHomeCompactCard(module, { wide: true })).join("")}
+      ${service ? `<section class="home-section home-section--primary" aria-label="Worship">
+        ${renderHomePrimaryCard(service)}
+      </section>` : ""}
+      <section class="home-section" aria-label="Library">
+        <div class="home-section-label">Library</div>
+        <div class="home-module-grid">
+          ${contentModules.map((module) => renderHomeCompactCard(module)).join("")}
+        </div>
+      </section>
+      <section class="home-section" aria-label="Utilities">
+        <div class="home-section-label">Utilities</div>
+        <div class="home-module-grid">
+          ${utilityModules.map((module) => renderHomeCompactCard(module)).join("")}
         </div>
       </section>
       ${verse.text ? `<section class="home-verse-card" aria-label="Home verse">
@@ -5837,6 +6327,28 @@ function renderConnectionEmptyDetail(message = DB_CONNECTION_EMPTY_MESSAGE) {
           <p class="empty-verse">${renderHomeVerseText(verse.text)}</p>
           ${meta ? `<span>${escapeHtml(meta)}</span>` : ""}
         </div>
+      </div>
+    `;
+}
+
+function renderAuthRequiredDetail() {
+  const email = state.auth.email || state.auth.user?.email || "";
+  return `
+      <div class="empty-detail">
+        <form class="empty-detail-inner auth-panel" data-auth-form>
+          <p class="empty-verse">Sign in required</p>
+          <span>관리자 계정으로 로그인해야 Mindex 데이터를 열 수 있습니다.</span>
+          <label class="auth-field">
+            <span>Email</span>
+            <input type="email" data-auth-email value="${escapeAttr(email)}" autocomplete="email" placeholder="name@example.com" />
+          </label>
+          <button class="btn primary" type="submit" data-auth-action="sign-in" ${state.auth.loading ? "disabled" : ""}>
+            <i data-lucide="${state.auth.loading ? "loader-2" : "mail"}"></i>
+            <span>${state.auth.loading ? "Sending..." : "Send sign-in link"}</span>
+          </button>
+          ${state.auth.message ? `<span class="auth-message">${escapeHtml(state.auth.message)}</span>` : ""}
+          ${state.auth.error ? `<span class="auth-message error">${escapeHtml(state.auth.error)}</span>` : ""}
+        </form>
       </div>
     `;
 }
@@ -6538,6 +7050,12 @@ function scrollListItemIntoView(item) {
 }
 
 function renderDetail() {
+  if (isAuthRequired() && !state.auth.session) {
+    refs.detailPane.innerHTML = renderAuthRequiredDetail();
+    refreshIcons();
+    return;
+  }
+
   if (isGlobalSearchActive() && (state.module === "home" || state.module === "calendar" || state.module === "references")) {
     renderHomeSearchDetail();
     return;
@@ -7310,6 +7828,7 @@ function versionReviewReasons(song, version, forms = version?.forms || []) {
   for (const form of forms || []) {
     if (form?.review_status === "reviewed") continue;
     if (form?.review_status === "needs_review") reasons.add("Marked");
+    if (form?.review_status === "soft_review") reasons.add("Review");
     if (form?.import_source === "amen-coda-audit") reasons.add("Amen split check");
     else if (form?.import_source === "ccm-children-duplicate-lyrics") reasons.add("CCM/children duplicate lyrics");
     else if (form?.import_source) reasons.add("Lyrics check");
@@ -7323,7 +7842,8 @@ function versionReviewReasons(song, version, forms = version?.forms || []) {
 
 function songNeedsReviewFromImport(song) {
   return (song?.versions || []).some((version) =>
-    (version?.forms || []).some((form) => Boolean(form?.import_source) && form?.review_status !== "reviewed"),
+    (version?.forms || []).some((form) =>
+      form?.review_status === "soft_review" || (Boolean(form?.import_source) && form?.review_status !== "reviewed")),
   );
 }
 
@@ -8477,6 +8997,7 @@ function normalizeSongVersions(song, versions) {
 function normalizeRelationalVersion(row, index) {
   return {
     id: row.id,
+    version_order: Number(row.version_order) || index + 1,
     name: normalizeGeneratedVersionName(row.curated_version_name || row.version_label || `Version ${index + 1}`),
     version_label: row.version_label || null,
     raw_section_name: row.raw_section_name || null,
@@ -8487,6 +9008,12 @@ function normalizeRelationalVersion(row, index) {
     canonical_song_id: row.canonical_song_id || null,
     forms: [],
   };
+}
+
+function sortVersionRows(a, b) {
+  return (Number(a?.version_order) || 9999) - (Number(b?.version_order) || 9999)
+    || String(a?.version_label || "").localeCompare(String(b?.version_label || ""), "ko")
+    || String(a?.id || "").localeCompare(String(b?.id || ""));
 }
 
 function normalizeRelationalUnit(row, index) {
@@ -8521,7 +9048,9 @@ function parseSongMemo(value) {
 
 function serializeSongMemo(song, options = {}) {
   const scripture = options.omitScripture ? [] : cleanList(song.scripture);
-  const relatedSongIds = cleanList(song.related_song_ids).filter((id) => id !== song.id);
+  const relatedSongIds = options.omitRelatedSongs
+    ? []
+    : cleanList(song.related_song_ids).filter((id) => id !== song.id);
   const metadata = options.omitPromotedMetadata
     ? omitPromotedSongMetadata(song, normalizeSongMetadata(song.metadata))
     : normalizeSongMetadata(song.metadata);
@@ -9434,7 +9963,7 @@ function updateSaveState() {
     return;
   }
   const selectedItem = state.module === "scripture" ? getSelectedScripture() : getSelectedSong();
-  refs.saveAllBtn.disabled = !selectedItem || !hasDirtyChanges() || state.saving;
+  refs.saveAllBtn.disabled = !selectedItem || !hasDirtyChanges() || state.saving || state.loading;
   renderConnectionStatus();
 
   const dirtyPill = refs.detailPane.querySelector(".dirty-pill");
@@ -9636,6 +10165,59 @@ function resizeFormTextarea(textarea) {
 
 // ─── Service module ───────────────────────────────────────────────────────────
 
+const MONTHLY_ORDER_TEMPLATE_FALLBACK = [
+  {
+    label: "찬양",
+    name: "찬양",
+    phase: "Gathering",
+    required: true,
+    flex: true,
+    repeatable: true,
+    sectionKey: "praise",
+    elements: Array.from({ length: 5 }, (_, index) => ({
+      label: "찬양",
+      name: `찬양 ${index + 1}`,
+      elementType: "praise",
+      orderSheet: { order: "찬양", group: "praise" },
+    })),
+  },
+  { label: "기도", name: "기도", phase: "Gathering", required: true, flex: false, sectionKey: "prayer", elementType: "title_person" },
+  { label: "성경봉독", name: "성경봉독", phase: "Word", required: true, flex: false, sectionKey: "scripture_reading", elementType: "scripture_reading" },
+  { label: "특송", name: "특송", phase: "Word", required: false, flex: true, sectionKey: "special_song", elementType: "title_person" },
+  { label: "설교", name: "설교", phase: "Word", required: true, flex: false, sectionKey: "sermon", elementType: "body" },
+  { label: "결단찬양", name: "결단찬양", phase: "Response", required: false, flex: true, sectionKey: "response_song", elementType: "praise", orderSheet: { order: "결단찬양", group: "praise" } },
+  {
+    label: "월삭기도",
+    name: "월삭기도",
+    phase: "Response",
+    required: true,
+    flex: true,
+    sectionKey: "monthly_prayer",
+    elements: [
+      { label: "월삭기도", name: "기도 1", elementType: "title_person", orderSheet: { order: "기도 1" } },
+      { label: "월삭기도", name: "기도 2", elementType: "title_person", orderSheet: { order: "기도 2" } },
+      { label: "찬양", name: "기도 찬양", elementType: "praise", orderSheet: { order: "찬양", group: "praise" } },
+      { label: "월삭기도", name: "기도 3", elementType: "title_person", orderSheet: { order: "기도 3" } },
+      { label: "월삭기도", name: "기도 4", elementType: "title_person", orderSheet: { order: "기도 4" } },
+    ],
+  },
+  {
+    label: "봉헌",
+    name: "봉헌",
+    phase: "Response",
+    required: true,
+    flex: false,
+    sectionKey: "offering",
+    elements: [
+      { label: "봉헌", name: "봉헌찬양", elementType: "praise", orderSheet: { order: "봉헌", group: "praise" } },
+      { label: "봉헌기도", name: "봉헌기도", elementType: "title_person", orderSheet: { order: "봉헌기도" } },
+    ],
+  },
+  { label: "교회소식", name: "교회소식", phase: "Sending", required: true, flex: false, sectionKey: "announcements", elementType: "plain_text" },
+  { label: "찬양", name: "파송찬양", phase: "Sending", required: true, flex: false, sectionKey: "closing_song", elementType: "praise", orderSheet: { order: "찬양", group: "praise" } },
+  { label: "축도", name: "축도", phase: "Sending", required: true, flex: false, sectionKey: "benediction", elementType: "title_person" },
+];
+
 const SERVICE_ORDER_TEMPLATE_FALLBACKS = {
   "sunday-first": ["사도신경", "찬양", "참회기도", "기도", "성경봉독", "특송", "설교", "결단기도", "봉헌", "봉헌기도", "교회소식", "송영", "축도"],
   "sunday-second": ["사도신경", "찬양", "참회기도", "기도", "성경봉독", "특송", "설교", "결단기도", "봉헌", "봉헌기도", "교회소식", "송영", "축도"],
@@ -9643,7 +10225,7 @@ const SERVICE_ORDER_TEMPLATE_FALLBACKS = {
   "sunday-afternoon": ["찬양", "묵도", "찬송", "기도", "성경봉독", "설교", "결단기도", "교회소식", "송영", "축도"],
   wednesday: ["찬양", "기도", "교회소식", "성경봉독", "설교", "결단찬양", "결단기도", "축도"],
   friday: ["찬양", "기도", "특송", "교회소식", "성경봉독", "설교", "결단찬양", "기도회", "찬양", "통성기도", "자율기도"],
-  monthly: ["찬양", "기도", "성경봉독", "특송", "설교", "결단찬양", "기도", "봉헌", "봉헌기도", "교회소식", "축도"],
+  monthly: MONTHLY_ORDER_TEMPLATE_FALLBACK,
   "holy-week-dawn": ["찬양", "기도", "성경봉독", "설교", "기도"],
   omer: ["찬양", "기도", "특송", "결단"],
   special: [],
@@ -9651,6 +10233,7 @@ const SERVICE_ORDER_TEMPLATE_FALLBACKS = {
   youth: ["사도신경", "찬양", "통성기도", "대표기도", "봉헌", "봉헌찬양", "봉헌기도", "성경봉독", "설교", "결단찬양", "결단기도", "주기도문", "광고", "교제"],
   "young-adult": ["사도신경", "대표기도", "찬양", "통성기도", "성경봉독", "설교", "결단찬양", "결단기도", "봉헌", "봉헌찬양", "봉헌기도", "광고", "파송찬양", "축도", "교제"],
 };
+const SERVICE_LIST_PANEL_ID = "__list";
 const SERVICE_TEMPLATES_PANEL_ID = "__templates";
 
 function normalizeServiceItem(item = {}, index = 0) {
@@ -9666,6 +10249,12 @@ function normalizeServiceItem(item = {}, index = 0) {
     version_id: item.version_id || item.song_version_id || null,
     memo: item.memo || "",
     ...pickServiceOrderSheetFields(item),
+    _worshipSectionId: item._worshipSectionId || "",
+    _worshipSectionKey: item._worshipSectionKey || "",
+    _worshipSectionTitle: item._worshipSectionTitle || "",
+    _worshipSectionOrder: Number(item._worshipSectionOrder) || 0,
+    _worshipElementOrder: Number(item._worshipElementOrder) || 0,
+    _worshipOrderSheetPlaceholder: Boolean(item._worshipOrderSheetPlaceholder),
   };
 }
 
@@ -9795,17 +10384,37 @@ function serviceTypeById(typeId) {
 function serviceOrderTemplate(typeId) {
   const template = serviceTypeById(typeId)?.order_template;
   if (Array.isArray(template) && template.length) return template.filter((step) => step && typeof step === "object");
-  const fallbackLabels = ["예배 준비 영상", ...(SERVICE_ORDER_TEMPLATE_FALLBACKS[typeId] || [])]
-    .filter((label, index, labels) => labels.indexOf(label) === index);
-  return fallbackLabels.map((label, index) => ({
+  const fallbackSteps = [
+    { label: "준비", name: "준비", phase: "Gathering", required: false, flex: true, sectionKey: "ready", elementType: "video" },
+    ...(SERVICE_ORDER_TEMPLATE_FALLBACKS[typeId] || []),
+  ];
+  return fallbackSteps
+    .map((step, index) => normalizeFallbackServiceTemplateStep(step, index))
+    .filter((step) => step.label || step.name);
+}
+
+function normalizeFallbackServiceTemplateStep(step, index = 0) {
+  const value = step && typeof step === "object" ? step : { label: String(step || ""), name: String(step || "") };
+  const label = String(value.label || value.name || "").trim();
+  const elementType = value.elementType || value.element_type || value.componentType || value.component_type || serviceTemplateDefaultElementType(label);
+  return {
+    ...value,
     label,
-    name: label,
-    phase: index < 4 ? "Gathering" : index < 8 ? "Word/Response" : "Sending",
-    required: !["찬양", "특송", "결단찬양", "통성기도", "교제", "기도회"].includes(label),
-    flex: ["찬양", "특송", "결단찬양", "통성기도", "교제", "기도회", "기도"].includes(label),
-    repeatable: label === "찬양" || label === "기도",
-    source: "Fallback",
-  }));
+    name: String(value.name || label).trim(),
+    phase: String(value.phase || (index < 4 ? "Gathering" : index < 8 ? "Word/Response" : "Sending")).trim(),
+    required: value.required !== undefined ? Boolean(value.required) : !["찬양", "특송", "결단찬양", "통성기도", "교제", "기도회"].includes(label),
+    flex: value.flex !== undefined ? Boolean(value.flex) : ["찬양", "특송", "결단찬양", "통성기도", "교제", "기도회", "기도"].includes(label),
+    repeatable: value.repeatable !== undefined ? Boolean(value.repeatable) : label === "찬양" || label === "기도",
+    elementType,
+    componentType: value.componentType || value.component_type || elementType,
+    source: value.source || "Fallback",
+  };
+}
+
+function serviceTemplateDefaultElementType(label) {
+  const compact = compactSearchValue(label);
+  if (compact === "준비" || compact === "예배준비" || compact === "예배준비영상") return "video";
+  return "";
 }
 
 function serializeServiceOrderTemplate(typeId) {
@@ -9819,10 +10428,13 @@ function serializeServiceOrderTemplate(typeId) {
         label: nullIfBlank(normalized.label || normalized.name || ""),
         name: nullIfBlank(normalized.name || normalized.label || ""),
         phase: nullIfBlank(normalized.phase),
+        sectionKey: nullIfBlank(normalized.sectionKey || normalized.section_key),
         required: Boolean(normalized.required),
         flex: Boolean(normalized.flex),
         repeatable: Boolean(normalized.repeatable),
+        elementType: nullIfBlank(normalized.elementType),
         default_text: nullIfBlank(normalized.default_text),
+        elements: serializeServiceTemplateElements(normalized.elements),
         notes: nullIfBlank(serializeServiceItemMemo({
           ...parseServiceItemMemo(normalized.notes),
           templateKey: normalized.templateKey,
@@ -9833,6 +10445,25 @@ function serializeServiceOrderTemplate(typeId) {
       };
     })
     .filter((step) => step.label || step.name);
+}
+
+function serializeServiceTemplateElements(elements = []) {
+  if (!Array.isArray(elements) || !elements.length) return undefined;
+  const serialized = elements
+    .filter((element) => element && typeof element === "object")
+    .map((element, index) => {
+      const elementType = normalizeWorshipElementType(element.elementType || element.element_type || element.componentType || element.component_type);
+      return {
+        label: nullIfBlank(element.label || element.name || ""),
+        name: nullIfBlank(element.name || element.label || ""),
+        elementType: nullIfBlank(elementType),
+        default_text: nullIfBlank(element.default_text || element.title || ""),
+        orderSheet: normalizeServiceOrderSheetPayload(element.orderSheet || element.order_sheet) || undefined,
+        sort_order: index + 1,
+      };
+    })
+    .filter((element) => element.label || element.name || element.elementType || element.default_text);
+  return serialized.length ? serialized : undefined;
 }
 
 function defaultServiceTemplateStep(index = 0, typeId = "") {
@@ -9857,6 +10488,8 @@ function normalizeServiceTemplateStep(step = {}, index = 0) {
   const label = String(step.label || step.name || "").trim();
   const memo = parseServiceItemMemo(step.notes || step.memo || "");
   const fallback = defaultServiceTemplateStep(index);
+  const elementTypeValue = step.elementType || step.element_type || step.componentType || step.component_type || memo.elementType || memo.componentType;
+  const elementType = normalizeServiceElementType(elementTypeValue) || normalizeWorshipElementType(elementTypeValue);
   return {
     ...fallback,
     ...step,
@@ -9866,8 +10499,8 @@ function normalizeServiceTemplateStep(step = {}, index = 0) {
     required: Boolean(step.required),
     flex: Boolean(step.flex),
     repeatable: Boolean(step.repeatable),
-    elementType: normalizeServiceElementType(step.elementType || step.element_type || step.componentType || step.component_type || memo.elementType || memo.componentType),
-    componentType: normalizeServiceElementType(step.elementType || step.element_type || step.componentType || step.component_type || memo.elementType || memo.componentType),
+    elementType,
+    componentType: elementType,
     templateKey: String(step.templateKey || step.template_key || memo.templateKey || "").trim(),
     templateVariant: String(step.templateVariant || step.template_variant || memo.templateVariant || "").trim(),
     default_text: String(step.default_text || "").trim(),
@@ -10004,12 +10637,12 @@ function setServiceDefaultItems(typeId, items) {
   updateSaveState();
 }
 
-function getServiceOutputItems(serviceId) {
+function getServiceOutputItems(serviceId, options = {}) {
   const service = state.services.find((svc) => svc.id === serviceId);
   const items = normalizeServiceItems(getServiceItems(serviceId));
   if (!service) return items;
   const defaults = getServiceDefaultItems(service.type_id)
-    .filter((item) => String(item.label || item.raw_title || "").trim())
+    .filter((item) => serviceDefaultItemVisibleInOutput(item, options))
     .map((item, index) => ({
       ...item,
       id: item.id || `default:${service.type_id}:${index}`,
@@ -10020,6 +10653,12 @@ function getServiceOutputItems(serviceId) {
     }));
   if (!defaults.length) return items;
   return mergeServiceItemsWithDefaults(service.type_id, items, defaults);
+}
+
+function serviceDefaultItemVisibleInOutput(item = {}, options = {}) {
+  if (String(item.label || item.raw_title || "").trim()) return true;
+  if (!options.includeOrderSheetRows) return false;
+  return hasServiceOrderSheetPayload(serviceOrderSheetMeta(item));
 }
 
 function mergeServiceItemsWithDefaults(typeId, items, defaults) {
@@ -10202,38 +10841,30 @@ function renderServiceList() {
     return;
   }
 
-  const types = getFilteredServiceTypes();
   const q = normalizeSearchValue(state.search);
   const services = q ? getServiceSidebarServices() : [];
   refs.songCount.textContent = q ? `${services.length}개 결과` : "";
-  const groupedTypes = ["public", "ministry", "special", "other"]
-    .map((key) => ({ key, types: types.filter((type) => serviceTypeGroupKey(type.id) === key) }))
-    .filter((group) => group.types.length);
+  const selectedService = state.services.find((service) => service.id === state.selectedServiceId);
 
   refs.songList.innerHTML = `
     <div class="service-sidebar">
       <section class="service-sidebar-section">
         <div class="service-sidebar-head">
           <span>${q ? "검색 결과" : "예배"}</span>
-          ${q ? `<small>${types.length}종</small>` : ""}
+          ${q ? `<small>${services.length}</small>` : ""}
         </div>
 	        ${q ? (services.length
 	          ? `<div class="service-sidebar-stack">${services.map(renderServiceSidebarCard).join("")}</div>`
 	          : `<p class="service-no-results">검색 결과가 없습니다.</p>`) : `
+	          <button class="service-type-row${!state.selectedServiceId && state.selectedServiceTypeId !== SERVICE_TEMPLATES_PANEL_ID ? " active" : ""}" type="button" data-service-list>
+	            <span>목록</span>
+	            <small>${state.services.length}</small>
+	          </button>
 	          <button class="service-type-row service-type-row--templates${state.selectedServiceTypeId === SERVICE_TEMPLATES_PANEL_ID && !state.selectedServiceId ? " active" : ""}" type="button" data-service-templates>
 	            <span>템플릿</span>
 	            <small>예배 · 섹션</small>
 	          </button>
-	          <div class="service-type-groups">
-	            ${groupedTypes.map((group) => `
-	              <div class="service-type-group">
-	                <span class="service-type-group-label">${escapeHtml(serviceTypeGroupLabel(group.key))}</span>
-	                <div class="service-type-picker service-type-picker--sidebar">
-                  ${group.types.map(renderServiceSidebarType).join("")}
-                </div>
-              </div>
-            `).join("")}
-          </div>`}
+            ${selectedService ? renderServiceCurrentSidebar(selectedService) : ""}`}
       </section>
     </div>`;
 
@@ -10261,6 +10892,144 @@ function renderServiceSidebarType(type) {
       <span>${escapeHtml(serviceTypeDisplayName(type.id))}</span>
       ${count ? `<small>${count}</small>` : ""}
     </button>`;
+}
+
+function renderServiceCurrentSidebar(service) {
+  const items = normalizeServiceItems(getServiceItems(service.id));
+  const presenterActive = state.presenter.serviceId === service.id;
+  const slides = presenterActive ? state.presenter.slides : buildServicePresenterSlides(service.id);
+  const selectedIndex = serviceSidebarSelectedItemIndex(service.id, items, slides);
+  return `
+    <section class="service-sidebar-section service-sidebar-section--current">
+      <div class="service-sidebar-head">
+        <span>순서</span>
+        <small>${items.length}</small>
+      </div>
+      <div class="service-outline-list">
+        ${renderServiceReadyOutlineRow(service, slides)}
+        ${items.length
+          ? items.map((item, index) => renderServiceOutlineRow(service, item, index, selectedIndex, slides)).join("")
+          : `<p class="service-no-results">순서가 없습니다.</p>`}
+      </div>
+    </section>
+    ${renderServiceSidebarItemEditor(service, items, selectedIndex)}
+  `;
+}
+
+function renderServiceReadyOutlineRow(service, slides = []) {
+  const readyIndex = slides.findIndex((slide) => isPresenterPreparationSlide(slide));
+  const active = state.presenter.serviceId === service.id && readyIndex >= 0 && state.presenter.index === readyIndex;
+  return `
+    <button class="service-outline-row service-outline-row--ready${active ? " active" : ""}" type="button"
+      data-service-outline-slide="${escapeAttr(readyIndex >= 0 ? readyIndex : 0)}"
+      data-service-outline-service="${escapeAttr(service.id)}">
+      <span class="service-outline-no">0</span>
+      <span class="service-outline-main">
+        <strong>준비</strong>
+        <small>${escapeHtml(serviceDisplayTypeName(service))}</small>
+      </span>
+    </button>`;
+}
+
+function renderServiceOutlineRow(service, item, index, selectedIndex, slides = []) {
+  const slideIndex = firstPresenterSlideIndexForServiceItem(item, slides);
+  const activeSlide = state.presenter.serviceId === service.id && slideIndex >= 0 && presenterSlideBelongsToItem(state.presenter.slides[state.presenter.index], item);
+  const selected = index === selectedIndex;
+  const title = serviceSidebarItemTitle(item);
+  const meta = cleanList([
+    item.assignee,
+    slideIndex >= 0 ? `${slideCountForServiceItem(item, slides)} slides` : "",
+  ]).join(" · ");
+  return `
+    <button class="service-outline-row${selected ? " selected" : ""}${activeSlide ? " active" : ""}" type="button"
+      data-service-outline-slide="${escapeAttr(slideIndex >= 0 ? slideIndex : "")}"
+      data-service-outline-item-index="${index}"
+      data-service-outline-service="${escapeAttr(service.id)}"
+      ${slideIndex >= 0 ? "" : "disabled"}>
+      <span class="service-outline-no">${escapeHtml(index + 1)}</span>
+      <span class="service-outline-main">
+        <strong>${escapeHtml(title)}</strong>
+        ${meta ? `<small>${escapeHtml(meta)}</small>` : ""}
+      </span>
+    </button>`;
+}
+
+function serviceSidebarItemTitle(item) {
+  const label = String(item?.label || "").trim();
+  const title = serviceItemDisplayText(item);
+  if (label && title && compactSearchValue(label) !== compactSearchValue(title)) return `${label} · ${title}`;
+  return title || label || "항목";
+}
+
+function serviceSidebarSelectedItemIndex(serviceId, items = getServiceItems(serviceId), slides = buildServicePresenterSlides(serviceId)) {
+  if (!items.length) return -1;
+  const currentIndex = Number(state.selectedServiceItemIndex);
+  if (Number.isInteger(currentIndex) && currentIndex >= 0 && currentIndex < items.length) return currentIndex;
+  const activeSlide = state.presenter.serviceId === serviceId ? slides[state.presenter.index] : null;
+  const activeIndex = activeSlide ? items.findIndex((item) => presenterSlideBelongsToItem(activeSlide, item)) : -1;
+  return activeIndex >= 0 ? activeIndex : 0;
+}
+
+function firstPresenterSlideIndexForServiceItem(item, slides = []) {
+  return slides.findIndex((slide) => presenterSlideBelongsToItem(slide, item));
+}
+
+function slideCountForServiceItem(item, slides = []) {
+  return slides.filter((slide) => presenterSlideBelongsToItem(slide, item)).length;
+}
+
+function presenterSlideBelongsToItem(slide, item) {
+  if (!slide || !item) return false;
+  const id = String(item.id || "").trim();
+  if (!id) return false;
+  return String(slide.elementId || "") === id
+    || String(slide.sectionId || "") === id
+    || String(slide.id || "").startsWith(`${id}:`);
+}
+
+function renderServiceSidebarItemEditor(service, items, selectedIndex) {
+  const item = items[selectedIndex];
+  if (!item) return "";
+  const elementType = serviceMemoElementType(parseServiceItemMemo(item.memo));
+  return `
+    <section class="service-sidebar-section service-sidebar-section--editor">
+      <div class="service-sidebar-head">
+        <span>편집</span>
+        <small>${escapeHtml(selectedIndex + 1)}</small>
+      </div>
+      <div class="service-sidebar-editor">
+        <label>
+          <span>섹션</span>
+          <input type="text" data-service-item-field="label" data-service-item-index="${selectedIndex}"
+            value="${escapeAttr(item.label || "")}" placeholder="찬양" />
+        </label>
+        <label>
+          <span>담당</span>
+          <input type="text" data-service-item-field="assignee" data-service-item-index="${selectedIndex}"
+            value="${escapeAttr(item.assignee || "")}" placeholder="${escapeAttr(inferOrderSheetAssignee(item))}" />
+        </label>
+        <label>
+          <span>항목</span>
+          <input type="text" data-service-item-field="raw_title" data-service-item-index="${selectedIndex}"
+            value="${escapeAttr(item.raw_title || "")}"
+            placeholder="${isScriptureServiceLabel(item.label) ? "성경 구절" : "내용"}"
+            ${isSongServiceLabel(item.label) ? `list="servicePraiseOptions"` : ""}
+            ${isScriptureServiceLabel(item.label) ? `list="serviceScriptureOptions"` : ""} />
+        </label>
+        <label>
+          <span>타입</span>
+          <select data-service-item-field="element_type" data-service-item-index="${selectedIndex}">
+            ${renderServiceElementTypeOptions(elementType)}
+          </select>
+        </label>
+        <div class="service-sidebar-editor-actions">
+          <button class="icon-btn" type="button" data-service-item-action="up" data-service-item-index="${selectedIndex}" ${selectedIndex <= 0 ? "disabled" : ""} aria-label="항목 위로 이동"><i data-lucide="arrow-up"></i></button>
+          <button class="icon-btn" type="button" data-service-item-action="down" data-service-item-index="${selectedIndex}" ${selectedIndex >= items.length - 1 ? "disabled" : ""} aria-label="항목 아래로 이동"><i data-lucide="arrow-down"></i></button>
+          <button class="icon-btn" type="button" data-service-item-action="duplicate" data-service-item-index="${selectedIndex}" aria-label="항목 복제"><i data-lucide="copy"></i></button>
+          <button class="icon-btn danger" type="button" data-service-item-action="delete" data-service-item-index="${selectedIndex}" aria-label="항목 삭제"><i data-lucide="trash-2"></i></button>
+        </div>
+      </div>
+    </section>`;
 }
 
 function renderServiceTemplatesDetail() {
@@ -10476,9 +11245,6 @@ function worshipElementTypeLabel(type) {
     scripture_body: "성경 본문",
     plain_text: "일반 텍스트",
     body: "본문",
-    ppt: "PPT",
-    pptx: "PPT",
-    pdf: "PDF",
   }[normalized] || serviceElementTypeLabel(normalized) || normalized || "요소";
 }
 
@@ -10602,6 +11368,63 @@ function renderServiceTemplateStepRow(typeId, step, index, total) {
     </div>`;
 }
 
+function renderServiceListDetail() {
+  const types = getFilteredServiceTypes();
+  const q = normalizeSearchValue(state.search);
+  const groups = ["public", "ministry", "special", "other"]
+    .map((key) => ({
+      key,
+      types: types
+        .filter((type) => serviceTypeGroupKey(type.id) === key)
+        .map((type) => ({
+          type,
+          services: q ? getFilteredServicesForType(type.id) : getFilteredServicesForType(type.id),
+        }))
+        .filter((entry) => entry.services.length || !q),
+    }))
+    .filter((group) => group.types.length);
+  const count = groups.reduce((total, group) => total + group.types.reduce((sum, entry) => sum + entry.services.length, 0), 0);
+  refs.detailPane.innerHTML = `
+    <div class="service-date-list service-date-list--all">
+      <div class="service-section-head">
+        <h2 class="service-date-list-title">${q ? "검색 결과" : "목록"}</h2>
+        <div class="service-section-head-actions">
+          <span class="service-search-count">${count}${q ? "개 결과" : "개 예배"}</span>
+        </div>
+      </div>
+      <div class="service-list-groups">
+        ${groups.map((group) => `
+          <section class="service-list-group">
+            <h3>${escapeHtml(serviceTypeGroupLabel(group.key))}</h3>
+            <div class="service-list-type-stack">
+              ${group.types.map(({ type, services }) => renderServiceListTypeBlock(type, services, q)).join("")}
+            </div>
+          </section>
+        `).join("")}
+      </div>
+    </div>`;
+  refreshIcons();
+}
+
+function renderServiceListTypeBlock(type, services, query) {
+  const sorted = sortServicesByDate(services, "desc");
+  return `
+    <section class="service-list-type-block">
+      <header>
+        <div>
+          <strong>${escapeHtml(serviceTypeDisplayName(type.id))}</strong>
+          <small>${escapeHtml(sorted.length)}${query ? " results" : " services"}</small>
+        </div>
+        <button class="icon-btn quiet svc-new-btn" type="button" data-new-service="${escapeAttr(type.id)}" aria-label="예배 추가">
+          <i data-lucide="plus"></i>
+        </button>
+      </header>
+      ${sorted.length ? `<div class="service-date-grid">
+        ${sorted.map((service) => renderServiceDateCard(service, { showType: true })).join("")}
+      </div>` : `<p class="service-no-results">등록된 예배가 없습니다.</p>`}
+    </section>`;
+}
+
 function renderServiceDetail() {
   if (!state.client) {
     refs.detailPane.innerHTML = renderConnectionEmptyDetail();
@@ -10615,13 +11438,13 @@ function renderServiceDetail() {
     state.selectedServiceTypeId = selectedService.type_id;
   }
 
-  if (!state.selectedServiceTypeId) {
-    renderServiceDashboard();
+  if (state.selectedServiceTypeId === SERVICE_TEMPLATES_PANEL_ID) {
+    renderServiceTemplatesDetail();
     return;
   }
 
-  if (state.selectedServiceTypeId === SERVICE_TEMPLATES_PANEL_ID) {
-    renderServiceTemplatesDetail();
+  if (!state.selectedServiceTypeId || state.selectedServiceTypeId === SERVICE_LIST_PANEL_ID) {
+    renderServiceListDetail();
     return;
   }
 
@@ -10639,6 +11462,10 @@ function renderServiceDetail() {
           <h2 class="service-date-list-title">${escapeHtml(typeName)}</h2>
           <div class="service-section-head-actions">
             <span class="service-search-count">${services.length}${q ? "개 결과" : "개 예배"}</span>
+            <button class="reference-new-btn" type="button" data-new-service="${escapeAttr(typeId)}" aria-label="예배 추가">
+              <i data-lucide="plus"></i>
+              <span>추가</span>
+            </button>
           </div>
         </div>
         ${form ? `
@@ -10689,20 +11516,9 @@ function renderServiceDetail() {
   }
 
   const dateStr = formatServiceDate(svc);
-  const typeObj = serviceTypeById(svc.type_id);
-
-  const sorted = normalizeServiceItems(items);
-  const merged = mergeServiceItemsForDisplay(svc.type_id, sorted, getServiceDefaultItems(svc.type_id));
   const presenterActive = state.presenter.serviceId === serviceId;
   const presenterSlides = presenterActive ? state.presenter.slides : buildServicePresenterSlides(serviceId);
   const presenterIndex = presenterActive ? clampPresenterIndex(state.presenter.index, presenterSlides.length) : 0;
-  const worshipStructure = svc._worship ? buildWorshipServiceStructure(svc, presenterSlides) : null;
-  const itemsHtml = svc._worship ? renderWorshipServiceStructure(worshipStructure) : renderServiceItemGroups(merged);
-  const editDrawerOpen = svc._worship || !presenterSlides.length ? " open" : "";
-  const drawerTitle = svc._worship ? "구성" : "편집";
-  const drawerCountLabel = svc._worship && worshipStructure
-    ? `${worshipStructure.sections.length} 섹션 · ${worshipStructure.elements.length} 요소 · ${presenterSlides.length} 슬라이드`
-    : `${merged.length} 항목`;
   refs.detailPane.innerHTML = `
     <div class="service-viewer">
       <div class="svc-header">
@@ -10712,24 +11528,6 @@ function renderServiceDetail() {
         <span class="dirty-pill" ${state.dirty.service ? "" : "hidden"}>Unsaved changes</span>
       </div>
       ${renderServicePresenterControls(svc, presenterSlides, presenterActive, presenterIndex)}
-      <details class="svc-edit-drawer"${editDrawerOpen}>
-        <summary>
-          <span class="svc-edit-summary-main">
-            <i data-lucide="sliders-horizontal"></i>
-            <span>${drawerTitle}</span>
-          </span>
-          <small>${escapeHtml(drawerCountLabel)}</small>
-          <strong>${svc._worship && worshipStructure ? worshipStructure.sections.length : merged.length}</strong>
-        </summary>
-        <div class="svc-workbench">
-          <div class="svc-workbench-main">
-            ${svc._worship ? "" : renderServiceMetaEditor(svc)}
-            ${svc._worship ? "" : renderServiceSetlistComposer(svc)}
-            ${svc._worship ? "" : renderServiceOrderTemplate(typeObj)}
-            <div class="svc-items svc-editor-items">${itemsHtml || `<p class="service-no-results">섹션과 항목을 추가해 주세요.</p>`}</div>
-          </div>
-        </div>
-      </details>
       ${renderServicePraiseDatalist()}
       ${renderServiceScriptureDatalist()}
     </div>`;
@@ -11152,7 +11950,7 @@ function renderServiceItemMemoEditor(item, index, options = {}) {
             data-service-item-field="asset_name"
             data-service-item-index="${index}"
             value="${escapeAttr(parsed.asset?.name || "")}"
-            placeholder="예배 준비 영상 또는 PPTX"
+            placeholder="예배 준비 영상 또는 파일"
           />
         </label>
         <label>
@@ -11189,8 +11987,7 @@ function renderServiceElementTypeOptions(selectedType = "") {
     ["scripture", "말씀"],
     ["activity", "Activity"],
     ["template", "슬라이드 템플릿"],
-    ["pptx", "PPTX 파일"],
-    ["pdf", "PDF 파일"],
+    ["file", "파일"],
   ];
   return options
     .map(([value, label]) => `<option value="${escapeAttr(value)}"${value === selected ? " selected" : ""}>${escapeHtml(label)}</option>`)
@@ -11530,7 +12327,7 @@ function serviceOrderSheetRows(serviceId) {
     praiseGroup = [];
   };
 
-  getServiceOutputItems(serviceId)
+  getServiceOutputItems(serviceId, { includeOrderSheetRows: true })
     .sort((a, b) => a.sort_order - b.sort_order)
     .forEach((item) => {
       const meta = serviceOrderSheetMeta(item);
@@ -11549,7 +12346,6 @@ function serviceOrderSheetRows(serviceId) {
       flushPraiseGroup();
       const order = serviceOrderSheetLabel(item, meta);
       const note = serviceOrderSheetNote(item, meta);
-      if (!order && !note) return;
       rows.push({
         order,
         assignee: serviceOrderSheetAssignee(item, meta),
@@ -11834,13 +12630,16 @@ function renderPresenterScreenControl() {
 function renderServicePresenterControls(service, slides, active, index) {
   const count = slides.length;
   const safeIndex = clampPresenterIndex(index, count);
-  const current = count ? safeIndex + 1 : 0;
-  const outputOpen = active && isPresenterOutputWindowOpen();
-  const blackActive = outputOpen && state.presenter.black;
+  const current = active && state.presenter.safetyBlank ? 0 : count ? safeIndex + 1 : 0;
+  const anyOutputOpen = isPresenterOutputWindowOpen();
+  const outputOpen = active && anyOutputOpen;
+  const outputOpenElsewhere = anyOutputOpen && state.presenter.serviceId && state.presenter.serviceId !== service.id;
   const chromakey = presenterServiceUsesChromakey(service);
   const jumpInputValue = active && state.presenter.jumpDraft ? state.presenter.jumpDraft : current || "";
+  const statusLabel = outputOpen ? "Live" : outputOpenElsewhere ? "Other live" : active ? "Ready" : "Preview";
+  const statusTone = outputOpen ? "live" : outputOpenElsewhere ? "other" : active ? "ready" : "preview";
   return `
-    <section id="servicePresenterControls" class="svc-presenter-strip${active ? " is-active" : ""}${blackActive ? " is-black" : ""}${chromakey ? "" : " is-clean-output"}" aria-label="Presenter controls">
+    <section id="servicePresenterControls" class="svc-presenter-strip${active ? " is-active" : ""}${chromakey ? "" : " is-clean-output"}" aria-label="Presenter controls">
       <div class="svc-presenter-top">
         <button class="svc-present-btn svc-presenter-launch" type="button" data-presenter-action="open" data-service-id="${escapeAttr(service.id)}">
           <i data-lucide="screen-share"></i>
@@ -11848,8 +12647,9 @@ function renderServicePresenterControls(service, slides, active, index) {
         </button>
         ${renderPresenterScreenControl()}
         <div class="svc-presenter-main" aria-live="polite">
+          <span class="svc-presenter-status svc-presenter-status--${escapeAttr(statusTone)}" aria-label="${escapeAttr(`Presenter status: ${statusLabel}`)}">${escapeHtml(statusLabel)}</span>
           <span class="svc-slide-counter">
-            <input class="svc-slide-jump-input" type="number" inputmode="numeric" min="1" max="${escapeAttr(count || 1)}" value="${escapeAttr(jumpInputValue)}" data-presenter-jump-input data-service-id="${escapeAttr(service.id)}" aria-label="Slide number" ${count ? "" : "disabled"} />
+            <input class="svc-slide-jump-input" type="number" inputmode="numeric" min="0" max="${escapeAttr(count || 1)}" value="${escapeAttr(jumpInputValue)}" data-presenter-jump-input data-service-id="${escapeAttr(service.id)}" aria-label="Slide number" ${count ? "" : "disabled"} />
             <span>/ ${escapeHtml(count)}</span>
             <button class="svc-slide-jump-btn" type="button" data-presenter-jump-button data-service-id="${escapeAttr(service.id)}" aria-label="슬라이드로 이동" ${count ? "" : "disabled"}><i data-lucide="corner-down-left"></i></button>
           </span>
@@ -11863,12 +12663,9 @@ function renderServicePresenterControls(service, slides, active, index) {
           <button class="icon-btn" type="button" data-presenter-action="next" data-service-id="${escapeAttr(service.id)}" ${count ? "" : "disabled"} aria-label="Next slide">
             <i data-lucide="chevron-right"></i>
           </button>
-          <button class="icon-btn${blackActive ? " is-active" : ""}" type="button" data-presenter-action="black" data-service-id="${escapeAttr(service.id)}" aria-label="Black screen">
-            <i data-lucide="moon"></i>
-          </button>
         </div>
       </div>
-      ${renderPresenterSlideBoard(slides, safeIndex, service.id)}
+      ${renderPresenterSlideBoard(slides, active ? safeIndex : -1, service.id)}
     </section>`;
 }
 
@@ -11994,6 +12791,7 @@ async function runLiveScriptureAction(action, serviceId = state.selectedServiceI
       active: true,
       slide,
     };
+    state.presenter.safetyBlank = false;
     publishPresenterState({ force: true });
     renderPresenterControlState(serviceId);
   } catch (error) {
@@ -12044,8 +12842,8 @@ async function buildLiveScriptureSlide(query) {
   return {
     id: `live-scripture:${Date.now()}`,
     elementType: PRESENTER_ELEMENT_TYPES.SCRIPTURE_TEXT,
-    layout: PRESENTER_SLIDE_LAYOUTS.CENTER_TEXT,
-    type: "component",
+    layout: PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT,
+    type: "scripture",
     label: "성구",
     title,
     marker: title,
@@ -12139,12 +12937,12 @@ function addPresenterSlideToSubgroup(group, entry) {
     const number = group.kind === "main-praise" ? group.subgroups.length + 1 : group.subgroups.length;
     const label = group.kind === "main-praise"
       ? presenterPraiseSubgroupLabel(slide.sectionLabel, number)
-      : slide.sectionLabel || "";
+      : slide.elementLabel || slide.sectionLabel || "";
     subgroup = {
       id,
       label,
-      title: slide.sectionTitle || slide.title || presenterSlideMainText(slide),
-      name: presenterNameParts(label, slide.sectionTitle || slide.title).join(" / ") || presenterSlideTitle(slide),
+      title: slide.elementTitle || slide.title || presenterSlideMainText(slide),
+      name: presenterNameParts(label, slide.elementTitle || slide.title).join(" / ") || presenterSlideTitle(slide),
       slides: [],
     };
     group.subgroups.push(subgroup);
@@ -12171,7 +12969,7 @@ function presenterPraiseSubgroupLabel(label, number) {
 function renderPresenterBoardSection(group, activeIndex, serviceId) {
   const active = group.slides.some(({ slideIndex }) => slideIndex === activeIndex);
   const firstIndex = group.slides[0]?.slideIndex ?? 0;
-  const visibleTitle = presenterVisibleTitle(group.label, group.title || group.name);
+  const visibleTitle = group.title || group.label || group.name;
   return `
     <section class="svc-board-section${active ? " active" : ""}" role="listitem" aria-label="${escapeAttr(group.name)}">
       <button class="svc-board-section-head" type="button"
@@ -12186,7 +12984,7 @@ function renderPresenterBoardSection(group, activeIndex, serviceId) {
       </button>
       <div class="svc-board-subgroups">
         ${group.subgroups.map((subgroup) => renderPresenterBoardSubgroup(subgroup, activeIndex, serviceId, {
-          showHead: group.kind === "main-praise" || group.subgroups.length > 1,
+          showHead: true,
         })).join("")}
       </div>
     </section>`;
@@ -12196,7 +12994,7 @@ function renderPresenterBoardSubgroup(subgroup, activeIndex, serviceId, options 
   const active = subgroup.slides.some(({ slideIndex }) => slideIndex === activeIndex);
   const firstIndex = subgroup.slides[0]?.slideIndex ?? 0;
   const slides = annotatePresenterFormStarts(subgroup.slides);
-  const visibleTitle = presenterVisibleTitle(subgroup.label, subgroup.title || subgroup.name);
+  const visibleTitle = subgroup.title || subgroup.name;
   const visibleLabel = presenterVisibleLabel(subgroup.label || "항목", subgroup.title || subgroup.name);
   return `
     <div class="svc-board-subgroup${active ? " active" : ""}">
@@ -12245,7 +13043,7 @@ function annotatePresenterFormStarts(entries = []) {
     previousKey = key;
     return {
       ...entry,
-      formLabel: lyrics ? currentFormLabel : "",
+      formLabel: startsForm ? currentFormLabel : "",
     };
   });
 }
@@ -12272,6 +13070,9 @@ function presenterLabelDuplicatesSlideText(label, slide) {
 function renderPresenterSlideThumb(slide, slideIndex, activeIndex, serviceId, formLabel = "") {
   const active = slideIndex === activeIndex;
   const visibleFormLabel = presenterLabelDuplicatesSlideText(formLabel, slide) ? "" : formLabel;
+  const showNumberBadge = presenterSlideShowsNumberBadge(slide);
+  const numberBadge = showNumberBadge ? `<span class="svc-slide-thumb-no">${slideIndex + 1}</span>` : "";
+  const ariaPrefix = `${slideIndex + 1}번 슬라이드로 이동`;
   const formBadge = visibleFormLabel ? `
       <button class="svc-slide-form-badge" type="button"
         data-presenter-action="jump"
@@ -12281,19 +13082,23 @@ function renderPresenterSlideThumb(slide, slideIndex, activeIndex, serviceId, fo
         ${escapeHtml(visibleFormLabel)}
       </button>` : "";
   return `
-    <span class="svc-slide-thumb-wrap${visibleFormLabel ? " has-form-label" : ""}">
+    <span class="svc-slide-thumb-wrap${active ? " active" : ""}${visibleFormLabel ? " has-form-label" : ""}">
     ${formBadge}
     <button class="svc-slide-thumb${active ? " active" : ""}" type="button"
       data-presenter-action="jump"
       data-presenter-index="${slideIndex}"
       data-service-id="${escapeAttr(serviceId)}"
-      aria-label="${escapeAttr(`${slideIndex + 1}번 슬라이드로 이동: ${presenterSlideTitle(slide)}`)}">
-      <span class="svc-slide-thumb-no">${slideIndex + 1}</span>
+      aria-label="${escapeAttr(`${ariaPrefix}: ${presenterSlideTitle(slide)}`)}">
+      ${numberBadge}
       <span class="svc-slide-thumb-frame svc-slide-thumb-frame--${escapeAttr(presenterSlideRenderClass(slide))}" data-element-type="${escapeAttr(presenterSlideElementType(slide))}" data-slide-layout="${escapeAttr(presenterSlideLayout(slide))}">
         ${renderPresenterSlideMiniPreview(slide, serviceId)}
       </span>
     </button>
     </span>`;
+}
+
+function presenterSlideShowsNumberBadge(slide) {
+  return Boolean(slide);
 }
 
 function renderPresenterSlideMiniPreview(slide, serviceId = state.presenter.serviceId) {
@@ -12328,23 +13133,26 @@ function renderPresenterSlideMiniBody(slide) {
   const elementType = presenterSlideElementType(slide);
   if (layout === PRESENTER_SLIDE_LAYOUTS.MEDIA && elementType === PRESENTER_ELEMENT_TYPES.VIDEO) {
     const source = normalizePresenterMediaSource(slide.videoSrc || slide.text);
+    if (!source) return "";
     return `
       <span class="svc-slide-mini-video">
-        <small>${escapeHtml(source ? presenterMediaFileName(source) : (slide.title || "Media"))}</small>
+        <small>${escapeHtml(presenterMediaFileName(source))}</small>
       </span>`;
   }
   if (layout === PRESENTER_SLIDE_LAYOUTS.MEDIA && elementType === PRESENTER_ELEMENT_TYPES.IMAGE) {
     const source = normalizePresenterMediaSource(slide.imageSrc || slide.asset?.url || slide.text);
+    if (!source) return "";
     return `
       <span class="svc-slide-mini-video">
-        <small>${escapeHtml(source ? presenterMediaFileName(source) : (slide.title || "Image"))}</small>
+        <small>${escapeHtml(presenterMediaFileName(source))}</small>
       </span>`;
   }
   if (layout === PRESENTER_SLIDE_LAYOUTS.FILE) {
+    const typeLabel = presenterFileTypeLabel(slide.sourceType || slide.componentType || slide.asset?.kind || "file");
     return `
       <span class="svc-slide-mini-file">
-        <strong>${escapeHtml(serviceElementTypeLabel(slide.sourceType || slide.componentType || slide.asset?.kind || "template"))}</strong>
-        <small>${escapeHtml(slide.title || presenterMediaFileName(slide.asset?.url) || "슬라이드 파일")}</small>
+        <strong>${escapeHtml(typeLabel)}</strong>
+        <small>${escapeHtml(presenterFileDisplayTitle(slide, typeLabel))}</small>
       </span>`;
   }
   if (layout === PRESENTER_SLIDE_LAYOUTS.BLANK) return "";
@@ -12357,11 +13165,34 @@ function presenterMediaFileName(source) {
   return parts[parts.length - 1] || source;
 }
 
+function presenterFileDisplayTitle(slide, fallback = "파일") {
+  const title = String(slide?.title || "").trim();
+  if (title && !isLegacyImportArtifactName(title) && !isLegacyPresentationLabel(title)) return title;
+  const assetName = String(slide?.asset?.name || "").trim();
+  if (assetName && !isLegacyImportArtifactName(assetName) && !isLegacyPresentationLabel(assetName)) return assetName;
+  const fileName = presenterMediaFileName(slide?.asset?.url);
+  if (fileName && !isLegacyImportArtifactName(fileName) && !isLegacyPresentationLabel(fileName)) return fileName;
+  return fallback;
+}
+
+function presenterFileTypeLabel(type = "") {
+  const normalized = String(type || "").trim().toLowerCase();
+  return normalized === "pdf" ? "PDF 파일" : "파일";
+}
+
+function isLegacyPresentationLabel(value) {
+  return /^(?:pptx?|powerpoint|keynote|key)$/i.test(String(value || "").trim());
+}
+
 function presenterSlideTitle(slide) {
   if (!slide) return "프레젠터 준비";
   const marker = presenterSlideMarker(slide);
   const renderClass = presenterSlideRenderClass(slide);
   if (renderClass === "lyrics") return marker || slide.title || "Lyrics";
+  if (presenterSlideLayout(slide) === PRESENTER_SLIDE_LAYOUTS.FILE) {
+    const typeLabel = presenterFileTypeLabel(slide.sourceType || slide.componentType || slide.asset?.kind || "file");
+    return cleanList([marker, presenterFileDisplayTitle(slide, typeLabel)]).join(" — ") || typeLabel;
+  }
   const text = renderClass === "lyrics" ? slide.title : presenterSlideMainText(slide);
   return cleanList([marker, text]).join(" — ") || "제목 없는 슬라이드";
 }
@@ -12396,7 +13227,9 @@ function clearPresenterJumpDraft(serviceId = state.presenter.serviceId) {
     const count = state.presenter.serviceId === serviceId
       ? state.presenter.slides.length
       : buildServicePresenterSlides(serviceId).length;
-    input.value = count ? String(clampPresenterIndex(state.presenter.index, count) + 1) : "";
+    input.value = state.presenter.serviceId === serviceId && state.presenter.safetyBlank
+      ? "0"
+      : count ? String(clampPresenterIndex(state.presenter.index, count) + 1) : "";
   }
 }
 
@@ -12409,8 +13242,13 @@ function commitPresenterJumpDraft(serviceId = state.presenter.serviceId) {
 }
 
 function runPresenterAction(action, serviceId = state.selectedServiceId, options = {}) {
+  if (!["open", "stop", "next", "prev", "first", "last", "jump"].includes(action)) return;
+  if (action === "stop") {
+    stopPresenterOutput(serviceId || state.presenter.serviceId);
+    return;
+  }
   if (!serviceId) return;
-  if (!["open", "next", "prev", "first", "last", "black", "jump"].includes(action)) return;
+  if (action !== "open" && isPresenterOutputWindowOpen() && state.presenter.serviceId && state.presenter.serviceId !== serviceId) return;
   preparePresenterService(serviceId);
 
   if (action === "open") {
@@ -12428,24 +13266,74 @@ function runPresenterAction(action, serviceId = state.selectedServiceId, options
   }
 
   if (action === "next") {
+    state.presenter.safetyBlank = false;
     movePresenterSlide(1);
   } else if (action === "prev") {
+    state.presenter.safetyBlank = false;
     movePresenterSlide(-1);
   } else if (action === "first") {
+    state.presenter.safetyBlank = false;
     state.presenter.index = 0;
-    state.presenter.black = false;
   } else if (action === "last") {
+    state.presenter.safetyBlank = false;
     state.presenter.index = Math.max(state.presenter.slides.length - 1, 0);
-    state.presenter.black = false;
   } else if (action === "jump") {
-    state.presenter.index = clampPresenterIndex(options.index, state.presenter.slides.length);
-    state.presenter.black = false;
-  } else if (action === "black") {
-    state.presenter.black = !state.presenter.black;
+    const requestedIndex = Number(options.index);
+    if (isValidPresenterIndex(requestedIndex, state.presenter.slides.length)) {
+      state.presenter.index = requestedIndex;
+      state.presenter.safetyBlank = false;
+    } else {
+      state.presenter.safetyBlank = true;
+    }
   }
 
   publishPresenterState();
   renderPresenterControlState(serviceId);
+}
+
+function stopPresenterOutput(serviceId = state.presenter.serviceId) {
+  const activeServiceId = serviceId || state.presenter.serviceId;
+  const outputWindow = state.presenter.outputWindow;
+  state.presenter.jumpDraft = "";
+  state.presenter.exitArmedAt = 0;
+  state.presenter.safetyBlank = false;
+  state.presenter.liveScripture = {
+    ...state.presenter.liveScripture,
+    active: false,
+    slide: null,
+  };
+  state.presenter.outputWindow = null;
+  state.presenter.outputConnectedAt = 0;
+  state.presenter.outputClientId = "";
+  stopPresenterOutputWindowMonitor();
+  try {
+    if (outputWindow && !outputWindow.closed) outputWindow.close?.();
+  } catch {
+    // Closing may be blocked for manually opened output tabs.
+  }
+  publishPresenterPayload(presenterStoppedPayload());
+  refreshPresenterOutputConnectionState();
+  if (activeServiceId) renderPresenterControlState(activeServiceId);
+}
+
+function presenterStoppedPayload() {
+  return {
+    serviceId: null,
+    serviceType: "",
+    serviceTitle: "",
+    chromakey: true,
+    outputTheme: presenterOutputTheme(""),
+    backgroundImage: "",
+    slides: [],
+    index: 0,
+    safetyBlank: false,
+    liveScripture: null,
+    updatedAt: Date.now(),
+  };
+}
+
+function isValidPresenterIndex(index, count) {
+  return Number.isInteger(Number(index)) && Number(index) >= 0 && Number(index) < count;
 }
 
 function jumpPresenterToSlideInput(input) {
@@ -12469,10 +13357,8 @@ async function openPresenterOutput(serviceId = state.selectedServiceId) {
   const targetRect = await resolvePresenterTargetScreenRect();
   if (!state.presenter.screens.length) void requestPresenterScreens();
 
-  const url = presenterOutputUrl();
-  const features = targetRect
-    ? `popup=yes,left=${targetRect.left},top=${targetRect.top},width=${targetRect.width},height=${targetRect.height}`
-    : "popup=yes,width=1280,height=720";
+  const url = presenterOutputUrl({ fullscreen: true });
+  const features = presenterOutputWindowFeatures(targetRect);
   const outputWindow = window.open(url, "mindexPresenterOutput", features);
   if (!outputWindow) {
     showToast("브라우저가 출력 창을 차단했습니다.", "error");
@@ -12485,18 +13371,44 @@ async function openPresenterOutput(serviceId = state.selectedServiceId) {
   if (!targetRect) await positionPresenterOutputWindow(outputWindow);
   outputWindow.addEventListener?.("load", () => {
     publishPresenterState();
-    requestOutputFullscreen(outputWindow);
+    requestOutputFullscreen(outputWindow, { retry: true });
   }, { once: true });
-  requestOutputFullscreen(outputWindow);
+  requestOutputFullscreen(outputWindow, { retry: true });
   window.setTimeout(() => publishPresenterState(), 250);
   renderPresenterControlState(serviceId);
 }
 
+function presenterOutputWindowFeatures(targetRect = null) {
+  const features = [
+    "popup=yes",
+    "fullscreen=yes",
+    "menubar=no",
+    "toolbar=no",
+    "location=no",
+    "status=no",
+    "scrollbars=no",
+    "resizable=yes",
+  ];
+  if (targetRect) {
+    features.push(
+      `left=${Math.round(targetRect.left)}`,
+      `top=${Math.round(targetRect.top)}`,
+      `width=${Math.round(targetRect.width)}`,
+      `height=${Math.round(targetRect.height)}`,
+    );
+  } else {
+    features.push("width=1280", "height=720");
+  }
+  return features.join(",");
+}
+
 function isPresenterOutputWindowOpen() {
+  const heartbeatOpen = state.presenter.outputConnectedAt
+    && Date.now() - state.presenter.outputConnectedAt <= PRESENTER_OUTPUT_HEARTBEAT_TTL_MS;
   try {
-    return Boolean(state.presenter.outputWindow && !state.presenter.outputWindow.closed);
+    return Boolean((state.presenter.outputWindow && !state.presenter.outputWindow.closed) || heartbeatOpen);
   } catch {
-    return false;
+    return Boolean(heartbeatOpen);
   }
 }
 
@@ -12506,7 +13418,10 @@ function startPresenterOutputWindowMonitor(serviceId) {
     if (isPresenterOutputWindowOpen()) return;
     stopPresenterOutputWindowMonitor();
     state.presenter.outputWindow = null;
-    renderPresenterControlState(serviceId);
+    state.presenter.outputConnectedAt = 0;
+    state.presenter.outputClientId = "";
+    refreshPresenterOutputConnectionState();
+    if (serviceId) renderPresenterControlState(serviceId);
   }, 1000);
 }
 
@@ -12557,7 +13472,7 @@ function startPresenterAtSlide(serviceId, index) {
   if (!serviceId || !Number.isFinite(Number(index))) return;
   preparePresenterService(serviceId);
   state.presenter.index = clampPresenterIndex(index, state.presenter.slides.length);
-  state.presenter.black = false;
+  state.presenter.safetyBlank = false;
   state.presenter.jumpDraft = "";
   state.presenter.liveScripture = {
     ...state.presenter.liveScripture,
@@ -12574,13 +13489,14 @@ function preparePresenterService(serviceId = state.selectedServiceId) {
   const slides = buildServicePresenterSlides(serviceId);
   if (state.presenter.serviceId !== serviceId) {
     state.presenter.index = 0;
-    state.presenter.black = false;
+    state.presenter.safetyBlank = false;
     state.presenter.jumpDraft = "";
     state.presenter.liveScripture = { reference: "", draft: "", active: false, slide: null };
   }
   state.presenter.serviceId = serviceId;
   state.presenter.slides = slides;
   state.presenter.index = clampPresenterIndex(state.presenter.index, slides.length);
+  if (!slides.length) state.presenter.safetyBlank = false;
 }
 
 function refreshPresenterForService(serviceId, options = {}) {
@@ -12592,6 +13508,7 @@ function refreshPresenterForService(serviceId, options = {}) {
   }
   state.presenter.slides = buildServicePresenterSlides(serviceId);
   state.presenter.index = clampPresenterIndex(state.presenter.index, state.presenter.slides.length);
+  if (!state.presenter.slides.length) state.presenter.safetyBlank = false;
   if (options.publish !== false) publishPresenterState();
   if (state.module === "service" && state.selectedServiceId === serviceId) renderPresenterControlState(serviceId);
 }
@@ -12609,7 +13526,6 @@ function movePresenterSlide(delta) {
   const count = state.presenter.slides.length;
   if (!count) return;
   state.presenter.index = Math.min(Math.max(state.presenter.index + delta, 0), count - 1);
-  state.presenter.black = false;
 }
 
 function clampPresenterIndex(index, count) {
@@ -12650,9 +13566,11 @@ function presenterReadySlide(service) {
     sectionLabel: "준비",
     sectionRole: "ready",
     sectionTitle: title,
+    elementLabel: "준비",
+    elementTitle: title,
     sectionName: title,
-    elementType: PRESENTER_ELEMENT_TYPES.PLAIN_TEXT,
-    layout: PRESENTER_SLIDE_LAYOUTS.CENTER_TEXT,
+    elementType: PRESENTER_ELEMENT_TYPES.VIDEO,
+    layout: PRESENTER_SLIDE_LAYOUTS.MEDIA,
     type: "ready",
     label: "준비",
     title,
@@ -12667,7 +13585,7 @@ function presenterSlideElementType(slide) {
   if (slide?.type === "lyrics" || slide?.type === "song-title") return PRESENTER_ELEMENT_TYPES.PRAISE;
   if (slide?.type === "video") return PRESENTER_ELEMENT_TYPES.VIDEO;
   if (slide?.type === "image") return PRESENTER_ELEMENT_TYPES.IMAGE;
-  if (slide?.type === "deck") return (slide?.sourceType || slide?.componentType) === "pdf" ? PRESENTER_ELEMENT_TYPES.PDF : PRESENTER_ELEMENT_TYPES.PPT;
+  if (slide?.type === "file") return PRESENTER_ELEMENT_TYPES.FILE;
   if (slide?.type === "blank") return PRESENTER_ELEMENT_TYPES.BLANK;
   return PRESENTER_ELEMENT_TYPES.PLAIN_TEXT;
 }
@@ -12677,7 +13595,7 @@ function presenterSlideLayout(slide) {
   if (slide?.type === "lyrics" || slide?.type === "song-title") return PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT;
   if (slide?.type === "video") return PRESENTER_SLIDE_LAYOUTS.MEDIA;
   if (slide?.type === "image") return PRESENTER_SLIDE_LAYOUTS.MEDIA;
-  if (slide?.type === "deck") return PRESENTER_SLIDE_LAYOUTS.FILE;
+  if (slide?.type === "file") return PRESENTER_SLIDE_LAYOUTS.FILE;
   if (slide?.type === "blank") return PRESENTER_SLIDE_LAYOUTS.BLANK;
   return PRESENTER_SLIDE_LAYOUTS.CENTER_TEXT;
 }
@@ -12685,9 +13603,12 @@ function presenterSlideLayout(slide) {
 function presenterSlideRenderClass(slide) {
   const layout = presenterSlideLayout(slide);
   const elementType = presenterSlideElementType(slide);
-  if (layout === PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT) return slide?.type === "song-title" ? "song-title" : "lyrics";
+  if (layout === PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT) {
+    if (elementType === PRESENTER_ELEMENT_TYPES.SCRIPTURE_TEXT) return "scripture";
+    return slide?.type === "song-title" ? "song-title" : "lyrics";
+  }
   if (layout === PRESENTER_SLIDE_LAYOUTS.MEDIA) return elementType === PRESENTER_ELEMENT_TYPES.IMAGE ? "image" : "video";
-  if (layout === PRESENTER_SLIDE_LAYOUTS.FILE) return "deck";
+  if (layout === PRESENTER_SLIDE_LAYOUTS.FILE) return "file";
   if (layout === PRESENTER_SLIDE_LAYOUTS.BLANK) return "blank";
   if (slide?.type === "ready") return "ready";
   if (elementType === PRESENTER_ELEMENT_TYPES.SCRIPTURE_TEXT || elementType === PRESENTER_ELEMENT_TYPES.BODY_TEXT) return "component";
@@ -12706,6 +13627,10 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
   const displayText = serviceItemDisplayText(item);
   const memo = parseServiceItemMemo(item?.memo);
   const memoElementType = serviceMemoElementType(memo);
+  if (isServicePreparationItem(item, memo)) {
+    return [presenterPreparationSlide(service, item, index)];
+  }
+  if (isOrderSheetOnlyPlaceholderItem(item)) return [];
   if (!displayText && !memoElementType) return [];
   const section = presenterSectionForServiceItem(item, index, displayText, song);
   const elementSlide = presenterElementSlideFromMemo(item, section, index, memo, displayText);
@@ -12764,6 +13689,7 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
   }
 
   const { no, title } = splitHymnNo(displayText);
+  if (!isSongServiceLabel(label)) return [];
   return [{
     id: `${item.id || index}:title`,
     ...section,
@@ -12778,12 +13704,42 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
   }];
 }
 
+function isOrderSheetOnlyPlaceholderItem(item = {}) {
+  return Boolean(item._worshipOrderSheetPlaceholder);
+}
+
+function isServicePreparationItem(item, memo = parseServiceItemMemo(item?.memo)) {
+  const label = String(item?.label || "").replace(/\s+/g, "");
+  const title = String(item?.raw_title || "").replace(/\s+/g, "");
+  const sectionKey = String(item?._worshipSectionKey || "").trim();
+  const role = String(memo?.templateKey || memo?.templateVariant || "").replace(/\s+/g, "");
+  return sectionKey === "ready"
+    || label === "준비"
+    || label === "예배준비"
+    || title === "예배준비"
+    || role === "ready"
+    || role === "preparation";
+}
+
+function presenterPreparationSlide(service, item, index) {
+  return {
+    ...presenterReadySlide(service),
+    id: `${item?.id || index}:ready`,
+    sectionId: item?.id || `${service?.id || "service"}:ready`,
+    elementId: item?.id || `${service?.id || "service"}:ready`,
+    sectionIndex: index + 1,
+    sort: index,
+  };
+}
+
 function presenterElementSlideFromMemo(item, section, index, memo, displayText) {
   const elementType = serviceMemoElementType(memo);
   if (!elementType || elementType === "praise" || elementType === "scripture") return null;
   const label = item?.label || "";
   const asset = normalizeServiceAsset(memo?.asset);
-  const title = asset.name || displayText || label || serviceElementTypeLabel(elementType);
+  const safeLabel = isLegacyPresentationLabel(label) ? "" : label;
+  const assetTitle = asset.name && !isLegacyImportArtifactName(asset.name) ? asset.name : "";
+  const title = assetTitle || displayText || label || serviceElementTypeLabel(elementType);
   if (elementType === "blank") {
     return {
       id: `${item.id || index}:blank`,
@@ -12856,26 +13812,24 @@ function presenterElementSlideFromMemo(item, section, index, memo, displayText) 
       sort: index,
     };
   }
-  if (elementType === "pptx" || elementType === "pdf" || elementType === "template") {
+  if (elementType === "file" || elementType === "template") {
+    const fileLabel = presenterFileTypeLabel(asset.kind || elementType);
+    const fileTitle = presenterFileDisplayTitle({ title: assetTitle || displayText || safeLabel, asset }, fileLabel);
     return {
       id: `${item.id || index}:${elementType}`,
       ...section,
-      sectionLabel: label || serviceElementTypeLabel(elementType),
-      sectionTitle: title,
-      sectionName: title,
-      elementType: elementType === "pdf"
-        ? PRESENTER_ELEMENT_TYPES.PDF
-        : elementType === "pptx"
-          ? PRESENTER_ELEMENT_TYPES.PPT
-          : PRESENTER_ELEMENT_TYPES.FREEFORM,
+      sectionLabel: safeLabel || fileLabel,
+      sectionTitle: fileTitle,
+      sectionName: fileTitle,
+      elementType: elementType === "file" ? PRESENTER_ELEMENT_TYPES.FILE : PRESENTER_ELEMENT_TYPES.FREEFORM,
       layout: PRESENTER_SLIDE_LAYOUTS.FILE,
-      type: "deck",
-      label,
-      title,
-      marker: serviceElementTypeLabel(elementType),
-      text: [title, asset.url].filter(Boolean).join("\n"),
+      type: "file",
+      label: safeLabel,
+      title: fileTitle,
+      marker: fileLabel,
+      text: [fileTitle, asset.url].filter(Boolean).join("\n"),
       asset,
-      sourceType: elementType,
+      sourceType: asset.kind || elementType,
       componentType: elementType,
       sort: index,
     };
@@ -13021,21 +13975,24 @@ function isGenericPresenterFormLabel(value) {
 
 function presenterSectionForServiceItem(item, index, displayText, song = null) {
   const label = String(item?.label || "").trim();
+  const sectionLabel = String(item?._worshipSectionTitle || label).trim();
   const formHint = serviceItemFormHint(item);
   const { no, title } = splitHymnNo(displayText);
   const linkedSongTitle = song ? presenterPraiseTitle(song, displayText) : "";
-  const sectionTitle = linkedSongTitle || [no, title].filter(Boolean).join(" ") || displayText || label || `항목 ${index + 1}`;
+  const elementTitle = linkedSongTitle || [no, title].filter(Boolean).join(" ") || displayText || label || `항목 ${index + 1}`;
   const sectionLabelText = cleanList([label, formHint]).join(" · ");
   return {
-    sectionId: item?.id || `section:${index}:${normalizeTitle([label, displayText].filter(Boolean).join(" "))}`,
+    sectionId: item?._worshipSectionId || item?.id || `section:${index}:${normalizeTitle([label, displayText].filter(Boolean).join(" "))}`,
     elementId: item?.id || `element:${index}:${normalizeTitle([label, displayText].filter(Boolean).join(" "))}`,
-    sectionIndex: index + 1,
-    sectionLabel: label,
+    sectionIndex: Number(item?._worshipSectionOrder) || index + 1,
+    sectionLabel,
     sectionFormHint: formHint,
-    sectionRole: isMainPraiseServiceItem(item, { allowUnlabeled: true }) ? "main-praise" : "",
-    sectionTitle,
+    sectionRole: sectionLabel === "찬양" && isMainPraiseServiceItem(item, { allowUnlabeled: true }) ? "main-praise" : "",
+    sectionTitle: sectionLabel,
+    elementLabel: label,
+    elementTitle,
     sectionAssignee: item?.assignee || "",
-    sectionName: [sectionLabelText, sectionTitle].filter(Boolean).join(" / "),
+    sectionName: [sectionLabel || sectionLabelText, elementTitle].filter(Boolean).join(" / "),
   };
 }
 
@@ -13166,7 +14123,7 @@ function presenterStatePayload(serviceId = state.presenter.serviceId) {
     backgroundImage: presenterBackgroundForService(service),
     slides,
     index: clampPresenterIndex(state.presenter.index, slides.length),
-    black: Boolean(state.presenter.black),
+    safetyBlank: Boolean(state.presenter.safetyBlank),
     liveScripture: state.presenter.liveScripture?.active ? state.presenter.liveScripture : null,
     updatedAt: Date.now(),
   };
@@ -13178,10 +14135,16 @@ function bindPresenterChannel() {
   state.presenter.channel.onmessage = (event) => {
     const message = event.data || {};
     if (message.type === "presenter-ready") {
+      markPresenterOutputConnected(message.clientId);
       publishPresenterState();
       return;
     }
+    if (message.type === "presenter-heartbeat") {
+      markPresenterOutputConnected(message.clientId);
+      return;
+    }
     if (message.type === "presenter-control") {
+      markPresenterOutputConnected(message.clientId);
       runPresenterAction(message.action, state.presenter.serviceId, {
         index: Number.isFinite(Number(message.index)) ? Number(message.index) : undefined,
       });
@@ -13192,6 +14155,20 @@ function bindPresenterChannel() {
       else clearPresenterJumpDraft(state.presenter.serviceId);
     }
   };
+}
+
+function markPresenterOutputConnected(clientId = "") {
+  const wasConnected = state.presenter.outputConnectedAt
+    && Date.now() - state.presenter.outputConnectedAt <= PRESENTER_OUTPUT_HEARTBEAT_TTL_MS;
+  state.presenter.outputConnectedAt = Date.now();
+  if (clientId) state.presenter.outputClientId = clientId;
+  if (!state.presenter.outputWindowMonitor) startPresenterOutputWindowMonitor(state.presenter.serviceId);
+  if (!wasConnected) refreshPresenterOutputConnectionState();
+}
+
+function refreshPresenterOutputConnectionState() {
+  const serviceIds = new Set([state.presenter.serviceId, state.selectedServiceId].filter(Boolean));
+  serviceIds.forEach((serviceId) => renderPresenterControlState(serviceId));
 }
 
 function publishPresenterState(options = {}) {
@@ -13205,9 +14182,10 @@ function publishPresenterPayload(payload) {
   state.presenter.channel?.postMessage({ type: "presenter-state", payload });
 }
 
-function presenterOutputUrl() {
+function presenterOutputUrl(options = {}) {
   const url = new URL(window.location.href);
   url.searchParams.set("output", "presenter");
+  if (options.fullscreen) url.searchParams.set("fullscreen", "1");
   url.hash = "";
   return url.toString();
 }
@@ -13277,16 +14255,23 @@ async function positionPresenterOutputWindow(outputWindow) {
   }
 }
 
-function requestOutputFullscreen(outputWindow) {
-  try {
-    outputWindow?.document?.documentElement?.requestFullscreen?.().catch?.(() => {});
-  } catch {
-    // Browsers often require a direct activation in the output window.
-  }
+function requestOutputFullscreen(outputWindow, options = {}) {
+  const delays = options.retry ? PRESENTER_FULLSCREEN_RETRY_DELAYS_MS : [0];
+  delays.forEach((delay) => {
+    window.setTimeout(() => {
+      try {
+        if (!outputWindow || outputWindow.closed) return;
+        outputWindow.document?.documentElement?.requestFullscreen?.().catch?.(() => {});
+      } catch {
+        // Browsers often require a direct activation in the output window.
+      }
+    }, delay);
+  });
 }
 
 function handlePresenterShortcut(event) {
   if (state.module !== "service" || !state.presenter.serviceId) return false;
+  if (state.selectedServiceId !== state.presenter.serviceId) return false;
   if (shouldKeepHorizontalNavigationInFocusedControl(event.target)) return false;
   if (event.metaKey || event.ctrlKey || event.altKey) return false;
 
@@ -13305,6 +14290,17 @@ function handlePresenterShortcut(event) {
   if (event.key === "Escape" && state.presenter.jumpDraft) {
     event.preventDefault();
     clearPresenterJumpDraft(state.presenter.serviceId);
+    return true;
+  }
+
+  if (event.key === "Escape") {
+    event.preventDefault();
+    const now = Date.now();
+    if (now - (state.presenter.exitArmedAt || 0) <= PRESENTER_OUTPUT_ESCAPE_EXIT_MS) {
+      stopPresenterOutput(state.presenter.serviceId);
+      return true;
+    }
+    state.presenter.exitArmedAt = now;
     return true;
   }
 
@@ -13332,12 +14328,6 @@ function handlePresenterShortcut(event) {
     return true;
   }
 
-  if (event.key.toLowerCase() === "b") {
-    event.preventDefault();
-    runPresenterAction("black", state.presenter.serviceId);
-    return true;
-  }
-
   return false;
 }
 
@@ -13348,6 +14338,7 @@ function isPresenterOutputRoute() {
 
 function initPresenterOutput() {
   document.title = "MINDEX Output";
+  document.documentElement.classList.add("presenter-output-document");
   document.body.className = "presenter-output-body";
   document.body.innerHTML = `
     <main id="presenterOutputRoot" class="presenter-output-root no-chromakey" aria-live="polite"></main>
@@ -13356,9 +14347,32 @@ function initPresenterOutput() {
   let currentPayload = null;
   let channel = null;
   let jumpDraft = "";
+  let exitArmedAt = 0;
+  const outputClientId = `presenter-output:${Date.now()}:${Math.random().toString(36).slice(2)}`;
+  let heartbeatTimer = null;
   const applyPayload = (payload) => {
     currentPayload = normalizePresenterPayload(payload);
     renderPresenterOutput(currentPayload);
+  };
+  const postHeartbeat = () => {
+    channel?.postMessage({ type: "presenter-heartbeat", clientId: outputClientId });
+  };
+  const closeOutputChannel = () => {
+    if (heartbeatTimer) {
+      window.clearInterval(heartbeatTimer);
+      heartbeatTimer = null;
+    }
+    channel?.close?.();
+    channel = null;
+  };
+  const requestPresenterOutputStop = () => {
+    channel?.postMessage({ type: "presenter-control", action: "stop", clientId: outputClientId });
+    currentPayload = normalizePresenterPayload(presenterStoppedPayload());
+    renderPresenterOutput(currentPayload);
+    window.setTimeout(() => {
+      closeOutputChannel();
+      window.close();
+    }, 40);
   };
 
   const renderStoredState = () => {
@@ -13375,8 +14389,15 @@ function initPresenterOutput() {
     channel.onmessage = (event) => {
       if (event.data?.type === "presenter-state") applyPayload(event.data.payload);
     };
-    window.setTimeout(() => channel.postMessage({ type: "presenter-ready" }), 50);
+    window.setTimeout(() => {
+      channel.postMessage({ type: "presenter-ready", clientId: outputClientId });
+      postHeartbeat();
+    }, 50);
+    heartbeatTimer = window.setInterval(postHeartbeat, PRESENTER_OUTPUT_HEARTBEAT_INTERVAL_MS);
   }
+  window.addEventListener("pagehide", () => {
+    closeOutputChannel();
+  });
 
   window.addEventListener("storage", (event) => {
     if (event.key === PRESENTER_STORAGE_KEY) renderStoredState();
@@ -13391,6 +14412,7 @@ function initPresenterOutput() {
       event.preventDefault();
       jumpDraft = `${jumpDraft}${event.key}`.slice(0, PRESENTER_JUMP_MAX_DIGITS);
       channel?.postMessage({ type: "presenter-jump-draft", value: jumpDraft });
+      postHeartbeat();
       return;
     }
     if (!event.metaKey && !event.ctrlKey && !event.altKey && event.key === "Enter" && jumpDraft) {
@@ -13398,8 +14420,9 @@ function initPresenterOutput() {
       const index = Number(jumpDraft) - 1;
       jumpDraft = "";
       channel?.postMessage({ type: "presenter-jump-draft", value: "" });
+      postHeartbeat();
       if (channel) {
-        channel.postMessage({ type: "presenter-control", action: "jump", index });
+        channel.postMessage({ type: "presenter-control", action: "jump", index, clientId: outputClientId });
       } else {
         currentPayload = applyPresenterActionToPayload(currentPayload, "jump", { index });
         publishPresenterPayload(currentPayload);
@@ -13411,6 +14434,18 @@ function initPresenterOutput() {
       event.preventDefault();
       jumpDraft = "";
       channel?.postMessage({ type: "presenter-jump-draft", value: "" });
+      postHeartbeat();
+      return;
+    }
+    if (!event.metaKey && !event.ctrlKey && !event.altKey && event.key === "Escape") {
+      event.preventDefault();
+      const now = Date.now();
+      if (now - exitArmedAt <= PRESENTER_OUTPUT_ESCAPE_EXIT_MS) {
+        requestPresenterOutputStop();
+        return;
+      }
+      exitArmedAt = now;
+      postHeartbeat();
       return;
     }
     const action = presenterOutputKeyAction(event);
@@ -13418,8 +14453,9 @@ function initPresenterOutput() {
       event.preventDefault();
       jumpDraft = "";
       channel?.postMessage({ type: "presenter-jump-draft", value: "" });
+      postHeartbeat();
       if (channel) {
-        channel.postMessage({ type: "presenter-control", action });
+        channel.postMessage({ type: "presenter-control", action, clientId: outputClientId });
       } else {
         currentPayload = applyPresenterActionToPayload(currentPayload, action);
         publishPresenterPayload(currentPayload);
@@ -13430,8 +14466,25 @@ function initPresenterOutput() {
   window.addEventListener("pointerdown", () => {
     document.documentElement.requestFullscreen?.().catch?.(() => {});
   }, { once: true });
+  document.addEventListener("fullscreenchange", () => {
+    if (shouldAutoFullscreenPresenterOutput() && !document.fullscreenElement) exitArmedAt = Date.now();
+  });
 
   renderStoredState();
+  if (shouldAutoFullscreenPresenterOutput()) requestLocalPresenterFullscreen({ retry: true });
+}
+
+function shouldAutoFullscreenPresenterOutput() {
+  return new URLSearchParams(window.location.search).get("fullscreen") === "1";
+}
+
+function requestLocalPresenterFullscreen(options = {}) {
+  const delays = options.retry ? PRESENTER_FULLSCREEN_RETRY_DELAYS_MS : [0];
+  delays.forEach((delay) => {
+    window.setTimeout(() => {
+      document.documentElement.requestFullscreen?.().catch?.(() => {});
+    }, delay);
+  });
 }
 
 function presenterOutputKeyAction(event) {
@@ -13440,7 +14493,6 @@ function presenterOutputKeyAction(event) {
   if (event.key === "ArrowLeft" || event.key === "ArrowUp" || event.key === "PageUp") return "prev";
   if (event.key === "Home") return "first";
   if (event.key === "End") return "last";
-  if (event.key.toLowerCase() === "b") return "black";
   return "";
 }
 
@@ -13455,7 +14507,7 @@ function normalizePresenterPayload(payload) {
     backgroundImage: payload?.backgroundImage || "",
     slides,
     index: clampPresenterIndex(payload?.index, slides.length),
-    black: Boolean(payload?.black),
+    safetyBlank: Boolean(payload?.safetyBlank),
     liveScripture: normalizeLiveScripturePayload(payload?.liveScripture),
     updatedAt: Number(payload?.updatedAt) || Date.now(),
   };
@@ -13476,22 +14528,25 @@ function applyPresenterActionToPayload(payload, action, options = {}) {
     next.liveScripture = null;
   }
   if (action === "next" && next.slides.length) {
+    next.safetyBlank = false;
     next.index = Math.min(next.index + 1, next.slides.length - 1);
-    next.black = false;
   } else if (action === "prev" && next.slides.length) {
+    next.safetyBlank = false;
     next.index = Math.max(next.index - 1, 0);
-    next.black = false;
   } else if (action === "first" && next.slides.length) {
+    next.safetyBlank = false;
     next.index = 0;
-    next.black = false;
   } else if (action === "last" && next.slides.length) {
+    next.safetyBlank = false;
     next.index = next.slides.length - 1;
-    next.black = false;
   } else if (action === "jump" && next.slides.length) {
-    next.index = clampPresenterIndex(options.index, next.slides.length);
-    next.black = false;
-  } else if (action === "black") {
-    next.black = !next.black;
+    const requestedIndex = Number(options.index);
+    if (isValidPresenterIndex(requestedIndex, next.slides.length)) {
+      next.index = requestedIndex;
+      next.safetyBlank = false;
+    } else {
+      next.safetyBlank = true;
+    }
   }
   next.updatedAt = Date.now();
   return next;
@@ -13502,22 +14557,23 @@ function renderPresenterOutput(payload) {
   if (!root) return;
   const slides = Array.isArray(payload?.slides) ? payload.slides : [];
   const liveSlide = payload?.liveScripture?.active ? payload.liveScripture.slide : null;
-  const slide = liveSlide || slides[clampPresenterIndex(payload?.index, slides.length)];
+  const slide = payload?.safetyBlank
+    ? presenterSafetyBlankSlide()
+    : liveSlide || slides[clampPresenterIndex(payload?.index, slides.length)];
   const backgroundImage = payload?.backgroundImage || "";
-  root.classList.toggle("is-black", Boolean(payload?.black));
+  const cleanOutput = payload?.chromakey === false;
+  document.body.classList.toggle("presenter-output-body--clean", cleanOutput);
+  document.body.classList.toggle("has-background", Boolean(backgroundImage && cleanOutput));
   root.classList.toggle("no-chromakey", payload?.chromakey === false);
   root.classList.toggle("has-background", Boolean(backgroundImage && payload?.chromakey === false));
   root.dataset.serviceType = payload?.serviceType || "";
   root.dataset.outputTheme = payload?.outputTheme || presenterOutputTheme(payload?.serviceType);
-  if (backgroundImage && payload?.chromakey === false) {
+  if (backgroundImage && cleanOutput) {
+    document.body.style.setProperty("--presenter-bg-image", `url("${backgroundImage}")`);
     root.style.setProperty("--presenter-bg-image", `url("${backgroundImage}")`);
   } else {
+    document.body.style.removeProperty("--presenter-bg-image");
     root.style.removeProperty("--presenter-bg-image");
-  }
-
-  if (payload?.black) {
-    root.innerHTML = "";
-    return;
   }
 
   if (!slide) {
@@ -13532,6 +14588,17 @@ function renderPresenterOutput(payload) {
       ${renderPresenterSlideBody(slide)}
     </section>
   `;
+}
+
+function presenterSafetyBlankSlide() {
+  return {
+    id: "presenter:safety-blank",
+    elementType: PRESENTER_ELEMENT_TYPES.BLANK,
+    layout: PRESENTER_SLIDE_LAYOUTS.BLANK,
+    type: "blank",
+    title: "빈 화면",
+    text: "",
+  };
 }
 
 function renderPresenterSlideMeta(slide) {
@@ -13553,16 +14620,14 @@ function renderPresenterSlideBody(slide) {
   const elementType = presenterSlideElementType(slide);
   if (layout === PRESENTER_SLIDE_LAYOUTS.MEDIA && elementType === PRESENTER_ELEMENT_TYPES.VIDEO) return renderPresenterVideoSlide(slide);
   if (layout === PRESENTER_SLIDE_LAYOUTS.MEDIA && elementType === PRESENTER_ELEMENT_TYPES.IMAGE) return renderPresenterImageSlide(slide);
-  if (layout === PRESENTER_SLIDE_LAYOUTS.FILE) return renderPresenterDeckSlide(slide);
+  if (layout === PRESENTER_SLIDE_LAYOUTS.FILE) return renderPresenterFileSlide(slide);
   if (layout === PRESENTER_SLIDE_LAYOUTS.BLANK) return "";
   return `<div class="presenter-slide-text">${renderPresenterSlideText(slide)}</div>`;
 }
 
 function renderPresenterVideoSlide(slide) {
   const source = normalizePresenterMediaSource(slide.videoSrc || slide.text);
-  if (!source) {
-    return `<div class="presenter-slide-text"><span>${escapeHtml(slide.title || "Video")}</span></div>`;
-  }
+  if (!source) return "";
   return `
     <video class="presenter-video" src="${escapeAttr(source)}" autoplay muted loop playsinline preload="auto"></video>
   `;
@@ -13570,16 +14635,14 @@ function renderPresenterVideoSlide(slide) {
 
 function renderPresenterImageSlide(slide) {
   const source = normalizePresenterMediaSource(slide.imageSrc || slide.asset?.url || slide.text);
-  if (!source) {
-    return `<div class="presenter-slide-text"><span>${escapeHtml(slide.title || "Image")}</span></div>`;
-  }
+  if (!source) return "";
   return `<img class="presenter-image" src="${escapeAttr(source)}" alt="" />`;
 }
 
-function renderPresenterDeckSlide(slide) {
+function renderPresenterFileSlide(slide) {
   const asset = normalizeServiceAsset(slide.asset);
-  const typeLabel = serviceElementTypeLabel(slide.sourceType || slide.componentType || asset.kind || "template");
-  const title = slide.title || presenterMediaFileName(asset.url) || typeLabel;
+  const typeLabel = presenterFileTypeLabel(slide.sourceType || slide.componentType || asset.kind || "file");
+  const title = presenterFileDisplayTitle({ ...slide, asset }, typeLabel);
   return `
     <div class="presenter-slide-file">
       <small>${escapeHtml(typeLabel)}</small>
@@ -13623,7 +14686,80 @@ function presenterLineCharEstimate(line) {
 }
 
 async function createService() {
-  void state.newServiceForm;
+  if (!state.newServiceForm || !requireClient() || state.saving) return;
+  const form = state.newServiceForm;
+  const typeId = form.type_id || state.selectedServiceTypeId;
+  const date = String(form.date || "").trim();
+  if (!typeId || !date) {
+    showToast("예배 날짜를 입력해 주세요.", "error");
+    return;
+  }
+
+  const serviceId = createUuid();
+  const tags = String(form.tags || "")
+    .split(",")
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+  const servicePayload = {
+    id: serviceId,
+    service_type_id: canonicalWorshipServiceTypeId(typeId),
+    service_date: date,
+    title: String(form.title || "").trim(),
+    status: "draft",
+    worship_leader: "",
+    praise_leader: serviceUsesPraiseLeader(typeId) ? String(form.leader || "").trim() : "",
+    tags,
+    source_kind: "mindex",
+    source_ref: { created_from: "mindex_template", app_service_type_id: typeId },
+    notes: "",
+  };
+  const scaffold = buildWorshipServiceScaffold(serviceId, typeId);
+
+  state.saving = true;
+  updateSaveState();
+  try {
+    const { data: serviceRow, error: serviceError } = await state.client
+      .from("mindex_worship_services")
+      .insert(servicePayload)
+      .select("*")
+      .single();
+    if (serviceError) throw serviceError;
+
+    if (scaffold.sections.length) {
+      const { data: sectionRows, error: sectionError } = await state.client
+        .from("mindex_worship_sections")
+        .insert(scaffold.sections)
+        .select("*");
+      if (sectionError) throw sectionError;
+      state.worshipSections.push(...(sectionRows || scaffold.sections));
+    }
+    if (scaffold.elements.length) {
+      const { data: elementRows, error: elementError } = await state.client
+        .from("mindex_worship_elements")
+        .insert(scaffold.elements)
+        .select("*");
+      if (elementError) throw elementError;
+      state.worshipElements.push(...(elementRows || scaffold.elements));
+    }
+
+    const service = normalizeWorshipService(serviceRow || servicePayload);
+    state.services = sortServicesByDate([service, ...state.services]);
+    state.serviceItems[service.id] = groupWorshipElements(scaffold.sections, scaffold.elements)[service.id] || [];
+    state.selectedServiceTypeId = service.type_id;
+    state.selectedServiceId = service.id;
+    state.selectedServiceItemIndex = 0;
+    state.newServiceForm = null;
+    state.dirty.service = false;
+    renderServiceList();
+    renderServiceDetail();
+    syncBrowserHistory();
+    showToast("예배와 기본 요소를 추가했습니다.");
+  } catch (error) {
+    showToast(error.message || "예배 추가 실패.", "error");
+  } finally {
+    state.saving = false;
+    updateSaveState();
+  }
 }
 
 async function deleteService(serviceId) {
@@ -13633,6 +14769,7 @@ async function deleteService(serviceId) {
 function selectService(id) {
   if (id !== state.selectedServiceId && !confirmDiscardServiceChanges()) return;
   state.selectedServiceId = id;
+  state.selectedServiceItemIndex = 0;
   const service = state.services.find((svc) => svc.id === id);
   if (service) state.selectedServiceTypeId = service.type_id;
   renderServiceDetail();

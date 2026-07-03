@@ -237,9 +237,11 @@ def shell_layout_snapshot(page) -> dict[str, Any]:
           const topbar = document.querySelector('.topbar');
           const sidebar = document.querySelector('.sidebar');
           const search = document.querySelector('.sidebar-search-wrap');
+          const searchInput = document.querySelector('.sidebar-search-wrap input');
           const firstSectionLabel = document.querySelector('.service-sidebar-head');
           const toggle = document.querySelector('#sidebarToggleBtn');
           const styles = detail ? getComputedStyle(detail) : null;
+          const searchInputStyles = searchInput ? getComputedStyle(searchInput) : null;
           const topbarRect = topbar?.getBoundingClientRect();
           const toggleRect = toggle?.getBoundingClientRect();
           const sidebarRect = sidebar?.getBoundingClientRect();
@@ -254,6 +256,7 @@ def shell_layout_snapshot(page) -> dict[str, Any]:
             detailPaddingTop: styles ? Math.round(parseFloat(styles.paddingTop)) : 0,
             sidebarSearchTop: searchRect && topbarRect ? Math.round(searchRect.top - topbarRect.bottom) : 0,
             sidebarSearchSectionGap: searchRect && firstSectionLabelRect ? Math.round(firstSectionLabelRect.top - searchRect.bottom) : 0,
+            sidebarSearchInputLineHeight: searchInputStyles ? Math.round(parseFloat(searchInputStyles.lineHeight)) : 0,
             topbarHeight: topbarRect ? Math.round(topbarRect.height) : 0,
             sidebarWidth: sidebarRect ? Math.round(sidebarRect.width) : 0,
             toggleLeft: toggleRect ? Math.round(toggleRect.left) : 0,
@@ -298,16 +301,111 @@ def select_service_with_slides(page) -> dict[str, Any] | None:
         """
         (() => {
           if (typeof state === 'undefined') return null;
-          const service = state.services
+          let fixture = false;
+          let service = state.services
             .filter((item) => (state.serviceItems[item.id] || []).length > 0)
             .find((item) => buildServicePresenterSlides(item.id).length > 0);
+          if (!service) {
+            fixture = true;
+            const typeId = 'monthly';
+            service = {
+              id: '__smoke_presenter_service__',
+              type_id: typeId,
+              date: '2026-07-02',
+              title: 'Presenter Smoke',
+              leader: '테스트',
+              tags: [],
+            };
+            if (!state.serviceTypes.some((item) => item.id === typeId)) {
+              state.serviceTypes.push({ id: typeId, name: '월삭예배', sort_order: 1 });
+            }
+            state.services = [
+              service,
+              ...state.services.filter((item) => item.id !== service.id),
+            ];
+            state.__smokePresenterFixtureServiceId = service.id;
+            state.serviceItems[service.id] = normalizeServiceItems([
+              {
+                id: '__smoke_presenter_item_1__',
+                service_id: service.id,
+                sort_order: 1,
+                label: '찬양',
+                assignee: '테스트',
+                raw_title: '주만 의지해',
+                memo: JSON.stringify({
+                  slides: [
+                    '[Verse 1]\\n주만 의지해\\n주만 바라봐',
+                    '[Chorus]\\n주 예수 앞에 다 아뢰어라',
+                  ],
+                }),
+              },
+              {
+                id: '__smoke_presenter_item_2__',
+                service_id: service.id,
+                sort_order: 2,
+                label: '말씀',
+                raw_title: '요 3:16',
+                memo: JSON.stringify({
+                  elementType: 'scripture',
+                  slides: ['하나님이 세상을 이처럼 사랑하사'],
+                }),
+              },
+              {
+                id: '__smoke_presenter_item_3__',
+                service_id: service.id,
+                sort_order: 3,
+                label: '빈 화면',
+                raw_title: '',
+                memo: JSON.stringify({ elementType: 'blank' }),
+              },
+              {
+                id: '__smoke_presenter_item_4__',
+                service_id: service.id,
+                sort_order: 4,
+                label: 'PPT',
+                raw_title: '',
+                memo: JSON.stringify({
+                  elementType: 'pptx',
+                  asset: {
+                    kind: 'pptx',
+                    name: 'Elem_003_찬양.pptx',
+                    url: 'archive/Elem_003_찬양.pptx',
+                  },
+                }),
+              },
+            ]);
+          }
           if (!service) return null;
           const slides = buildServicePresenterSlides(service.id);
           state.module = 'service';
           state.selectedServiceTypeId = service.type_id;
           state.selectedServiceId = service.id;
           render();
-          return { id: service.id, typeId: service.type_id, date: service.date, slides: slides.length };
+          return { id: service.id, typeId: service.type_id, date: service.date, slides: slides.length, fixture };
+        })()
+        """
+    )
+
+
+def cleanup_presenter_fixture(page) -> None:
+    page.evaluate(
+        """
+        (() => {
+          if (typeof state === 'undefined') return;
+          const serviceId = state.__smokePresenterFixtureServiceId;
+          if (!serviceId) return;
+          state.services = state.services.filter((service) => service.id !== serviceId);
+          delete state.serviceItems[serviceId];
+          delete state.worshipPresenterSlides[serviceId];
+          if (state.selectedServiceId === serviceId) state.selectedServiceId = null;
+          if (state.presenter?.serviceId === serviceId) {
+            state.presenter.serviceId = null;
+            state.presenter.slides = [];
+            state.presenter.index = 0;
+            state.presenter.jumpDraft = "";
+            state.presenter.liveScripture = { reference: "", draft: "", active: false, slide: null };
+          }
+          delete state.__smokePresenterFixtureServiceId;
         })()
         """
     )
@@ -423,6 +521,7 @@ def main() -> int:
                 desktop_shell["detailPaddingLeft"] == 25
                 and desktop_shell["detailPaddingTop"] == 25
                 and desktop_shell["sidebarSearchTop"] == 8
+                and desktop_shell["sidebarSearchInputLineHeight"] == 30
                 and desktop_shell["toggleWidth"] == desktop_shell["toggleHeight"] == 32
                 and desktop_overflow <= 2
             ):
@@ -470,6 +569,7 @@ def main() -> int:
                 mobile_shell["detailPaddingLeft"] == 25
                 and mobile_shell["detailPaddingTop"] == 25
                 and mobile_shell["sidebarSearchTop"] == 8
+                and mobile_shell["sidebarSearchInputLineHeight"] == 30
                 and mobile_shell["topbarHeight"] == 40
                 and mobile_overflow <= 2
             ):
@@ -496,38 +596,38 @@ def main() -> int:
                               height: Math.round(box.height)
                             } : null;
                           };
-                          const topbar = rect('.topbar');
-                          const sidebar = rect('.sidebar');
-                          const search = rect('.sidebar-search-wrap');
-                          const detail = rect('.detail-pane');
-                          const switcher = document.querySelector('.primary-switcher');
-                          return {
-                            width,
-                            topbarHeight: topbar?.height || 0,
-                            sidebarWidth: sidebar?.width || 0,
-                            sidebarHeight: sidebar?.height || 0,
-                            sidebarLeftRail: Boolean(sidebar && detail && detail.left >= sidebar.right),
-                            searchWithinSidebar: Boolean(search && sidebar && search.left >= sidebar.left && search.right <= sidebar.right),
-                            switcherClientWidth: Math.round(switcher?.clientWidth || 0),
-                            switcherScrollWidth: Math.round(switcher?.scrollWidth || 0),
-                            overflow: Math.max(document.documentElement.scrollWidth - window.innerWidth, document.body.scrollWidth - window.innerWidth)
-                          };
-                        }
+	                          const topbar = rect('.topbar');
+	                          const sidebar = rect('.sidebar');
+	                          const search = rect('.sidebar-search-wrap');
+	                          const detail = rect('.detail-pane');
+	                          const switcher = document.querySelector('.primary-switcher');
+	                          return {
+	                            width,
+	                            topbarHeight: topbar?.height || 0,
+	                            sidebarWidth: sidebar?.width || 0,
+	                            sidebarHeight: sidebar?.height || 0,
+	                            sidebarLeftRail: Boolean(sidebar && detail && detail.left >= sidebar.right),
+	                            searchWithinSidebar: Boolean(search && sidebar && search.left >= sidebar.left && search.right <= sidebar.right),
+	                            switcherClientWidth: Math.round(switcher?.clientWidth || 0),
+	                            switcherScrollWidth: Math.round(switcher?.scrollWidth || 0),
+	                            overflow: Math.max(document.documentElement.scrollWidth - window.innerWidth, document.body.scrollWidth - window.innerWidth)
+	                          };
+	                        }
                         """,
                         width,
                     )
                 )
             if all(
-                item["topbarHeight"] == 40
-                and item["sidebarWidth"] <= item["width"]
-                and (item["width"] >= 780 or item["sidebarWidth"] == 170)
-                and item["sidebarLeftRail"]
-                and (item["width"] > 860 or item["sidebarHeight"] > 300)
-                and item["searchWithinSidebar"]
-                and item["switcherClientWidth"] > 0
-                and item["overflow"] <= 2
-                for item in responsive_shells
-            ):
+	                item["topbarHeight"] == 40
+	                and item["sidebarWidth"] <= item["width"]
+	                and (item["width"] >= 780 or item["sidebarWidth"] == 170)
+	                and item["sidebarLeftRail"]
+	                and (item["width"] > 860 or item["sidebarHeight"] > 300)
+	                and item["searchWithinSidebar"]
+	                and item["switcherClientWidth"] > 0
+	                and item["overflow"] <= 2
+	                for item in responsive_shells
+	            ):
                 pass_("shell-responsive-geometry", json.dumps(responsive_shells, ensure_ascii=False))
             else:
                 fail("shell-responsive-geometry", json.dumps(responsive_shells, ensure_ascii=False))
@@ -673,20 +773,35 @@ def main() -> int:
                     (() => {
                       const tabs = [...document.querySelectorAll('.primary-switcher .top-module-entry')];
                       const active = document.querySelector('.primary-switcher .top-module-entry.active');
+                      const activeLabel = active?.querySelector('span');
+                      const activeIcon = active?.querySelector('svg');
                       const activeStyles = active ? getComputedStyle(active) : null;
+                      const activeLabelStyles = activeLabel ? getComputedStyle(activeLabel) : null;
+                      const activeIconStyles = activeIcon ? getComputedStyle(activeIcon) : null;
+                      const activeIconRect = activeIcon?.getBoundingClientRect();
                       const probe = document.createElement('span');
                       probe.style.position = 'absolute';
                       probe.style.background = 'var(--tab-active-bg)';
                       probe.style.color = 'var(--ink)';
                       document.body.appendChild(probe);
                       const expected = getComputedStyle(probe);
+                      const expectedBackground = expected.backgroundColor;
+                      const expectedColor = expected.color;
+                      probe.style.color = 'var(--accent)';
+                      const expectedAccent = getComputedStyle(probe).color;
                       const output = {
                         order: tabs.map((tab) => tab.textContent.trim()),
                         active: active?.dataset.module || '',
                         activeBackground: activeStyles?.backgroundColor || '',
-                        expectedBackground: expected.backgroundColor,
+                        expectedBackground,
                         activeColor: activeStyles?.color || '',
-                        expectedColor: expected.color,
+                        expectedColor,
+                        activeLabelColor: activeLabelStyles?.color || '',
+                        expectedLabelColor: expectedAccent,
+                        activeIconColor: activeIconStyles?.color || '',
+                        activeIconWidth: Math.round(activeIconRect?.width || 0),
+                        activeIconHeight: Math.round(activeIconRect?.height || 0),
+                        activeIconStroke: activeIconStyles?.strokeWidth || '',
                         activeWeight: activeStyles?.fontWeight || ''
                       };
                       probe.remove();
@@ -702,7 +817,7 @@ def main() -> int:
                       const activeStyles = active ? getComputedStyle(active) : null;
                       const probe = document.createElement('span');
                       probe.style.position = 'absolute';
-                      probe.style.background = 'var(--tab-hover-bg)';
+                      probe.style.background = 'var(--tab-active-bg)';
                       document.body.appendChild(probe);
                       const expected = getComputedStyle(probe);
                       const output = {
@@ -722,6 +837,11 @@ def main() -> int:
                     and topbar_state["activeBackground"] == topbar_state["expectedBackground"]
                     and topbar_state["activeHoverBackground"] == topbar_state["expectedHoverBackground"]
                     and topbar_state["activeColor"] == topbar_state["expectedColor"]
+                    and topbar_state["activeLabelColor"] == topbar_state["expectedLabelColor"]
+                    and topbar_state["activeIconColor"] == topbar_state["expectedColor"]
+                    and topbar_state["activeIconWidth"] == 14
+                    and topbar_state["activeIconHeight"] == 14
+                    and topbar_state["activeIconStroke"] == "1.7px"
                     and topbar_state["activeWeight"] == "550"
                 ):
                     pass_("topbar-module-order-active-style", json.dumps(topbar_state, ensure_ascii=False))
@@ -968,12 +1088,58 @@ def main() -> int:
                           mode: 'worship',
                           levels: [...document.querySelectorAll('.svc-template-level-card strong')]
                             .map((node) => node.textContent.trim()),
+                          monthlyFirst: (() => {
+                            const step = serviceOrderTemplate('monthly')[0] || {};
+                            return {
+                              label: step.label || step.name || '',
+                              elementType: step.elementType || step.element_type || step.componentType || step.component_type || ''
+                            };
+                          })(),
+                          monthlyScaffold: (() => {
+                            const scaffold = buildWorshipServiceScaffold('__smoke_service__', 'monthly');
+                            const sections = scaffold.sections.map((section) => ({
+                              key: section.section_key || '',
+                              title: section.title || '',
+                              elements: scaffold.elements
+                                .filter((element) => element.section_id === section.id)
+                                .map((element) => ({
+                                  type: element.element_type || '',
+                                  label: element.source_ref?.label || '',
+                                  order: element.config?.orderSheet?.order || ''
+                                }))
+                            }));
+                            return {
+                              sections: scaffold.sections.length,
+                              elements: scaffold.elements.length,
+                              firstSection: scaffold.sections[0]?.title || '',
+                              firstElementType: scaffold.elements[0]?.element_type || '',
+                              sectionKeys: sections.map((section) => section.key),
+                              monthlyPrayerElements: sections.find((section) => section.key === 'monthly_prayer')?.elements || [],
+                              offeringElements: sections.find((section) => section.key === 'offering')?.elements || [],
+                              blankPlaceholders: scaffold.elements
+                                .filter((item) => item.config?.orderSheetPlaceholder === true)
+                                .length
+                            };
+                          })(),
                           cards: document.querySelectorAll('.svc-template-draft-card, .svc-template-inventory-card').length,
                           overflow: Math.max(document.documentElement.scrollWidth - window.innerWidth, document.body.scrollWidth - window.innerWidth)
                         }))()
                         """
                     )
-                    if template_terms["levels"] == ["Service", "Section", "Element", "Slide"] and template_terms["overflow"] <= 2:
+                    if (
+                        template_terms["levels"] == ["Service", "Section", "Element", "Slide"]
+                        and template_terms["monthlyFirst"] == {"label": "준비", "elementType": "video"}
+                        and template_terms["monthlyScaffold"]["sections"] == 12
+                        and template_terms["monthlyScaffold"]["elements"] == 21
+                        and template_terms["monthlyScaffold"]["firstSection"] == "준비"
+                        and template_terms["monthlyScaffold"]["firstElementType"] == "video"
+                        and "monthly_prayer" in template_terms["monthlyScaffold"]["sectionKeys"]
+                        and "closing_song" in template_terms["monthlyScaffold"]["sectionKeys"]
+                        and len(template_terms["monthlyScaffold"]["monthlyPrayerElements"]) == 5
+                        and len(template_terms["monthlyScaffold"]["offeringElements"]) == 2
+                        and template_terms["monthlyScaffold"]["blankPlaceholders"] == 20
+                        and template_terms["overflow"] <= 2
+                    ):
                         pass_("service-template-terminology", json.dumps(template_terms, ensure_ascii=False))
                     else:
                         fail("service-template-terminology", json.dumps(template_terms, ensure_ascii=False))
@@ -1069,6 +1235,13 @@ def main() -> int:
                             raw_title: '숨겨진 비고',
                             order_sheet_hidden: true
                           });
+                          const blankItem = normalizeServiceItem({
+                            service_id: serviceId,
+                            sort_order: original.length + 3,
+                            label: '',
+                            raw_title: '',
+                            assignee: ''
+                          });
                           const memo = serializeServiceItemMemo({
                             note: '메모',
                             orderSheet: {
@@ -1077,16 +1250,36 @@ def main() -> int:
                               note: '메모 비고'
                             }
                           });
-                          state.serviceItems[serviceId] = normalizeServiceItemsInCurrentOrder([...original, explicitItem, hiddenItem]);
+                          state.serviceItems[serviceId] = normalizeServiceItemsInCurrentOrder([...original, explicitItem, hiddenItem, blankItem]);
+                          const service = state.services.find((svc) => svc.id === serviceId) || {};
+                          const type = state.serviceTypes.find((candidate) => candidate.id === service.type_id);
+                          const originalDefaults = type ? [...(type.fixed_items || [])] : [];
+                          if (type) {
+                            type.fixed_items = normalizeServiceDefaultItemsInCurrentOrder([
+                              ...originalDefaults,
+                              {
+                                label: '',
+                                raw_title: '',
+                                order_sheet: {
+                                  order: '공란 순서'
+                                }
+                              }
+                            ]);
+                          }
                           const rows = serviceOrderSheetRows(serviceId);
+                          if (type) type.fixed_items = originalDefaults;
                           state.serviceItems[serviceId] = original;
                           refreshServiceOrderSheetPreview(serviceId);
                           const explicit = rows.find((row) => row.order === '데이터 순서');
                           const hidden = rows.find((row) => row.note === '숨겨진 비고');
+                          const defaultBlank = rows.find((row) => row.order === '공란 순서');
+                          const blank = rows[rows.length - 1] || {};
                           const parsedMemo = parseServiceItemMemo(memo).orderSheet || {};
                           return {
                             explicit,
                             hidden: Boolean(hidden),
+                            defaultBlank,
+                            blankPreserved: blank.order === '' && blank.assignee === '' && blank.note === '',
                             memoPreserved: parsedMemo.order === '메모 순서' && parsedMemo.assignee === '메모 담당' && parsedMemo.note === '메모 비고'
                           };
                         }
@@ -1098,6 +1291,9 @@ def main() -> int:
                         and order_sheet_adapter["explicit"]["assignee"] == "데이터 담당"
                         and order_sheet_adapter["explicit"]["note"] == "데이터 비고"
                         and not order_sheet_adapter["hidden"]
+                        and order_sheet_adapter["defaultBlank"]
+                        and order_sheet_adapter["defaultBlank"]["note"] == ""
+                        and order_sheet_adapter["blankPreserved"]
                         and order_sheet_adapter["memoPreserved"]
                     ):
                         pass_("order-sheet-data-adapter", json.dumps(order_sheet_adapter, ensure_ascii=False))
@@ -1153,6 +1349,7 @@ def main() -> int:
                         """
                         (() => ({
                           summary: document.querySelector('.svc-edit-drawer > summary')?.innerText.trim() || '',
+                          status: document.querySelector('.svc-presenter-status')?.textContent.trim() || '',
                           jumpLabel: document.querySelector('[data-presenter-jump-button]')?.getAttribute('aria-label') || '',
                           firstThumbLabel: document.querySelector('.svc-slide-thumb')?.getAttribute('aria-label') || '',
                           actionLabels: [...document.querySelectorAll('.svc-edit-actions [aria-label]')]
@@ -1161,18 +1358,39 @@ def main() -> int:
                           elementTypes: [...document.querySelectorAll('[data-service-item-field="element_type"] option')]
                             .map((node) => node.textContent.trim())
                             .slice(0, 10),
-                          visibleBadTerms: /컴포넌트|\\bcomponents\\b|\\bComponent\\b|\\bItem\\b|\\bElement\\b/.test(document.body.innerText),
+                          visibleBadTerms: /컴포넌트|\\bcomponents\\b|\\bComponent\\b|\\bItem\\b|\\bElement\\b|\\bElem_/.test(document.body.innerText),
+                          visiblePresentationTerms: /\\bPPTX?\\b|PowerPoint/i.test(document.body.innerText),
+                          legacyArtifactLabels: [...document.querySelectorAll('[aria-label]')]
+                            .map((node) => node.getAttribute('aria-label') || '')
+                            .filter((label) => /\\b(?:Elem|Element|Section|Slide)_/i.test(label)),
                           overflow: Math.max(document.documentElement.scrollWidth - window.innerWidth, document.body.scrollWidth - window.innerWidth)
                         }))()
                         """
                     )
                     if (
-                        "항목" in presenter_terms["summary"]
+                        (
+                            (
+                                "항목" in presenter_terms["summary"]
+                                and presenter_terms["actionLabels"][:4] == ["항목 위로 이동", "항목 아래로 이동", "항목 복제", "항목 삭제"]
+                                and presenter_terms["elementTypes"][:6] == ["자동", "빈 화면", "동영상", "이미지", "찬양", "말씀"]
+                            )
+                            or (
+                                "섹션" in presenter_terms["summary"]
+                                and "요소" in presenter_terms["summary"]
+                                and "슬라이드" in presenter_terms["summary"]
+                                and not presenter_terms["actionLabels"]
+                                and not presenter_terms["elementTypes"]
+                            )
+                        )
+                        and presenter_terms["status"] == "Preview"
                         and presenter_terms["jumpLabel"] == "슬라이드로 이동"
-                        and "슬라이드로 이동" in presenter_terms["firstThumbLabel"]
-                        and presenter_terms["actionLabels"][:4] == ["항목 위로 이동", "항목 아래로 이동", "항목 복제", "항목 삭제"]
-                        and presenter_terms["elementTypes"][:6] == ["자동", "빈 화면", "동영상", "이미지", "찬양", "말씀"]
+                        and (
+                            "슬라이드로 이동" in presenter_terms["firstThumbLabel"]
+                            or "준비 화면으로 이동" in presenter_terms["firstThumbLabel"]
+                        )
                         and not presenter_terms["visibleBadTerms"]
+                        and not presenter_terms["visiblePresentationTerms"]
+                        and not presenter_terms["legacyArtifactLabels"]
                         and presenter_terms["overflow"] <= 2
                     ):
                         pass_("presenter-terminology", json.dumps(presenter_terms, ensure_ascii=False))
@@ -1205,18 +1423,93 @@ def main() -> int:
                             pass_("presenter-thumbnail-grid", json.dumps(thumb_metrics[:4], ensure_ascii=False))
                         else:
                             fail("presenter-thumbnail-grid", json.dumps(thumb_metrics[:8], ensure_ascii=False))
-                    form_label_state = page.evaluate(
+                    page.evaluate(
                         """
-                        (() => ({
-                          heads: document.querySelectorAll('.svc-slide-form-badge').length,
-                          dividers: document.querySelectorAll('.svc-slide-form-divider').length,
-                          labels: [...document.querySelectorAll('.svc-slide-form-badge')]
-                            .slice(0, 6)
-                            .map((node) => node.textContent.trim())
-                        }))()
+                        (serviceId) => {
+                          preparePresenterService(serviceId);
+                          renderPresenterControlState(serviceId);
+                        }
+                        """,
+                        service_for_slides["id"],
+                    )
+                    page.wait_for_function(
+                        "() => document.querySelectorAll('.svc-slide-thumb-wrap.active').length === 1",
+                        timeout=5000,
+                    )
+                    active_ring_state = page.evaluate(
+                        """
+                        (() => {
+                          const wrap = document.querySelector('.svc-slide-thumb-wrap.active');
+                          const frame = wrap?.querySelector('.svc-slide-thumb-frame');
+                          if (!wrap || !frame) return { hasActiveWrap: false };
+                          const wrapRect = wrap.getBoundingClientRect();
+                          const frameRect = frame.getBoundingClientRect();
+                          const ring = Number.parseFloat(getComputedStyle(wrap).getPropertyValue('--svc-thumb-ring-space')) || 0;
+                          return {
+                            hasActiveWrap: true,
+                            ring,
+                            leftInset: Number((frameRect.left - wrapRect.left).toFixed(2)),
+                            topInset: Number((frameRect.top - wrapRect.top).toFixed(2)),
+                            rightInset: Number((wrapRect.right - frameRect.right).toFixed(2)),
+                            bottomInset: Number((wrapRect.bottom - frameRect.bottom).toFixed(2)),
+                            wrapWidth: Math.round(wrapRect.width),
+                            frameWidth: Math.round(frameRect.width),
+                            activeFrameShadow: getComputedStyle(frame).boxShadow,
+                          };
+                        })()
                         """
                     )
-                    if form_label_state["heads"] > 0 and form_label_state["dividers"] == 0:
+                    if (
+                        active_ring_state.get("hasActiveWrap")
+                        and active_ring_state.get("ring", 0) >= 3
+                        and min(
+                            active_ring_state.get("leftInset", 0),
+                            active_ring_state.get("topInset", 0),
+                            active_ring_state.get("rightInset", 0),
+                            active_ring_state.get("bottomInset", 0),
+                        ) >= active_ring_state.get("ring", 0) - 1
+                    ):
+                        pass_("presenter-active-ring-box", json.dumps(active_ring_state, ensure_ascii=False))
+                    else:
+                        fail("presenter-active-ring-box", json.dumps(active_ring_state, ensure_ascii=False))
+                    form_label_state = page.evaluate(
+                        """
+                        (serviceId) => {
+                          const slides = buildServicePresenterSlides(serviceId);
+                          const badges = [...document.querySelectorAll('.svc-slide-form-badge')]
+                            .map((node) => {
+                              const thumb = node.closest('.svc-slide-thumb-wrap')?.querySelector('.svc-slide-thumb');
+                              return {
+                                index: Number(thumb?.dataset.presenterIndex),
+                                label: node.textContent.trim()
+                              };
+                            })
+                            .filter((item) => Number.isFinite(item.index));
+                          const continuationBadges = badges.filter((item) => {
+                            const slide = slides[item.index];
+                            const previous = slides[item.index - 1];
+                            return slide
+                              && previous
+                              && slide.elementType === 'praise'
+                              && previous.elementType === 'praise'
+                              && slide.formKey
+                              && slide.formKey === previous.formKey;
+                          });
+                          return {
+                            heads: badges.length,
+                            dividers: document.querySelectorAll('.svc-slide-form-divider').length,
+                            labels: badges.slice(0, 6).map((item) => item.label),
+                            continuationBadges
+                          };
+                        }
+                        """,
+                        service_for_slides["id"],
+                    )
+                    if (
+                        form_label_state["heads"] > 0
+                        and form_label_state["dividers"] == 0
+                        and not form_label_state["continuationBadges"]
+                    ):
                         pass_("presenter-form-labels", json.dumps(form_label_state, ensure_ascii=False))
                     else:
                         fail("presenter-form-labels", json.dumps(form_label_state, ensure_ascii=False))
@@ -1227,12 +1520,11 @@ def main() -> int:
                             (() => ({
                               serviceId: state.presenter.serviceId,
                               index: state.presenter.index,
-                              slides: state.presenter.slides.length,
-                              black: state.presenter.black
+                              slides: state.presenter.slides.length
                             }))()
                             """
                         )
-                        if next_state["serviceId"] == service_for_slides["id"] and next_state["index"] == 1 and not next_state["black"]:
+                        if next_state["serviceId"] == service_for_slides["id"] and next_state["index"] == 1:
                             pass_("presenter-next-control", json.dumps(next_state, ensure_ascii=False))
                         else:
                             fail("presenter-next-control", json.dumps(next_state, ensure_ascii=False))
@@ -1289,8 +1581,7 @@ def main() -> int:
                             (() => ({
                               serviceId: state.presenter.serviceId,
                               index: state.presenter.index,
-                              openCalls: window.__mindexPresenterOpenCalls || 0,
-                              black: state.presenter.black
+                              openCalls: window.__mindexPresenterOpenCalls || 0
                             }))()
                             """
                         )
@@ -1298,7 +1589,6 @@ def main() -> int:
                             dbl_state["serviceId"] == service_for_slides["id"]
                             and dbl_state["index"] == dbl_target
                             and dbl_state["openCalls"] == 1
-                            and not dbl_state["black"]
                         ):
                             pass_("presenter-doubleclick-start", json.dumps(dbl_state, ensure_ascii=False))
                         else:
@@ -1329,6 +1619,8 @@ def main() -> int:
                         pass_("presenter-horizontal-overflow", json.dumps(overflow_state, ensure_ascii=False))
                     else:
                         fail("presenter-horizontal-overflow", json.dumps(overflow_state, ensure_ascii=False))
+
+                cleanup_presenter_fixture(page)
 
                 page.click('[data-module="praise"]')
                 wait_for_praise_data(page)

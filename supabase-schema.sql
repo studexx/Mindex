@@ -99,6 +99,23 @@ create table if not exists public.mindex_version_units (
 create index if not exists mindex_version_units_version_idx
   on public.mindex_version_units (version_id, curated_order, unit_order);
 
+create table if not exists public.mindex_song_relations (
+  id uuid primary key default gen_random_uuid(),
+  source_song_id uuid not null references public.mindex_songs(id) on delete cascade,
+  related_song_id uuid not null references public.mindex_songs(id) on delete cascade,
+  relation_type text not null default 'related',
+  note text not null default '',
+  created_at timestamptz not null default now(),
+  check (source_song_id <> related_song_id),
+  unique (source_song_id, related_song_id, relation_type)
+);
+
+create index if not exists mindex_song_relations_source_idx
+  on public.mindex_song_relations (source_song_id, relation_type, related_song_id);
+
+create index if not exists mindex_song_relations_related_idx
+  on public.mindex_song_relations (related_song_id, relation_type, source_song_id);
+
 -- Promote song-level support metadata out of the legacy memo JSON.
 do $$
 declare
@@ -589,10 +606,13 @@ alter table public.mindex_songs enable row level security;
 alter table public.mindex_canonical_songs enable row level security;
 alter table public.mindex_song_versions enable row level security;
 alter table public.mindex_version_units enable row level security;
+alter table public.mindex_song_relations enable row level security;
 alter table public.mindex_scripture_books enable row level security;
 alter table public.mindex_scriptures enable row level security;
 alter table public.mindex_bible_translations enable row level security;
 alter table public.mindex_bible_verses enable row level security;
+
+grant select, insert, update, delete on public.mindex_song_relations to anon, authenticated;
 
 drop policy if exists "mindex_songs_shared_read" on public.mindex_songs;
 create policy "mindex_songs_shared_read"
@@ -706,6 +726,35 @@ create policy "mindex_version_units_shared_update"
 drop policy if exists "mindex_version_units_shared_delete" on public.mindex_version_units;
 create policy "mindex_version_units_shared_delete"
   on public.mindex_version_units
+  for delete
+  to anon
+  using (true);
+
+drop policy if exists "mindex_song_relations_shared_read" on public.mindex_song_relations;
+create policy "mindex_song_relations_shared_read"
+  on public.mindex_song_relations
+  for select
+  to anon
+  using (true);
+
+drop policy if exists "mindex_song_relations_shared_insert" on public.mindex_song_relations;
+create policy "mindex_song_relations_shared_insert"
+  on public.mindex_song_relations
+  for insert
+  to anon
+  with check (true);
+
+drop policy if exists "mindex_song_relations_shared_update" on public.mindex_song_relations;
+create policy "mindex_song_relations_shared_update"
+  on public.mindex_song_relations
+  for update
+  to anon
+  using (true)
+  with check (true);
+
+drop policy if exists "mindex_song_relations_shared_delete" on public.mindex_song_relations;
+create policy "mindex_song_relations_shared_delete"
+  on public.mindex_song_relations
   for delete
   to anon
   using (true);

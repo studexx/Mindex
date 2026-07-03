@@ -19,7 +19,7 @@ ENV_PATHS = (
     ROOT / ".env.supabase",
 )
 PAGE_SIZE = 1000
-PART_TYPES = {"Verse", "Pre-Chorus", "Chorus", "Bridge", "Coda", "Lyrics"}
+PART_TYPES = {"Verse", "Pre-Chorus", "Chorus", "Bridge", "Coda", "Lyrics", "Amen"}
 
 
 def read_env_file(path: Path) -> dict[str, str]:
@@ -36,17 +36,29 @@ def read_env_file(path: Path) -> dict[str, str]:
 
 
 def read_config() -> tuple[str, str]:
-    url = os.environ.get("SUPABASE_URL", "")
-    key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_KEY", "")
+    url = os.environ.get("MINDEX_SUPABASE_URL") or os.environ.get("SUPABASE_URL", "")
+    key = (
+        os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+        or os.environ.get("MINDEX_SUPABASE_ANON_KEY")
+        or os.environ.get("SUPABASE_ANON_KEY")
+        or os.environ.get("SUPABASE_KEY")
+        or ""
+    )
     if url and key:
         return url.rstrip("/"), key
     for path in ENV_PATHS:
         values = read_env_file(path)
-        url = values.get("SUPABASE_URL", "")
-        key = values.get("SUPABASE_SERVICE_ROLE_KEY") or values.get("SUPABASE_KEY", "")
+        url = values.get("MINDEX_SUPABASE_URL") or values.get("SUPABASE_URL", "")
+        key = (
+            values.get("SUPABASE_SERVICE_ROLE_KEY")
+            or values.get("MINDEX_SUPABASE_ANON_KEY")
+            or values.get("SUPABASE_ANON_KEY")
+            or values.get("SUPABASE_KEY")
+            or ""
+        )
         if url and key:
             return url.rstrip("/"), key
-    raise RuntimeError("Supabase config not found. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.")
+    raise RuntimeError("Supabase config not found. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY/SUPABASE_ANON_KEY.")
 
 
 def request_json(
@@ -74,8 +86,12 @@ def request_json(
         data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         headers["Content-Type"] = "application/json"
     request = Request(f"{supa_url}/rest/v1/{table}{query}", data=data, headers=headers, method=method)
-    with urlopen(request, timeout=60) as response:
-        raw = response.read().decode("utf-8")
+    try:
+        with urlopen(request, timeout=60) as response:
+            raw = response.read().decode("utf-8")
+    except HTTPError as error:
+        body = error.read().decode("utf-8", errors="ignore")
+        raise RuntimeError(f"{method} {table}{query} failed with HTTP {error.code}: {body}") from error
     return json.loads(raw) if raw else None
 
 
@@ -146,7 +162,7 @@ def clean_list(value: Any) -> list[str]:
 
 
 def lyric_signature(version: dict[str, Any]) -> str:
-    text = "\n\n".join(clean_text(form.get("lyrics")) for form in version.get("forms") or [])
+    text = "\n\n".join(str(form.get("lyrics") or "") for form in version.get("forms") or [])
     digest = hashlib.sha1(text.encode("utf-8")).hexdigest()[:16]
     return f"mindex-{digest}"
 
@@ -204,7 +220,7 @@ def build_rows(song: dict[str, Any], has_version_praise_types: bool) -> tuple[di
             label = clean_text(form.get("label")) or (
                 part_type if not form.get("part_number") else f"{part_type} {form.get('part_number')}"
             )
-            review_status = clean_text(form.get("review_status")) or "reviewed"
+            review_status = clean_text(form.get("review_status")) or "pending"
             unit_rows.append({
                 "id": stable_uuid(form.get("id")),
                 "version_id": version_id,
@@ -215,11 +231,11 @@ def build_rows(song: dict[str, Any], has_version_praise_types: bool) -> tuple[di
                 "unit_kind": part_type.lower(),
                 "trigger": "",
                 "slide_numbers": [],
-                "text": clean_text(form.get("lyrics")),
+                "text": str(form.get("lyrics") or ""),
                 "curated_unit_type": part_type,
                 "curated_unit_label": label or part_type,
                 "curated_order": unit_index,
-                "review_status": "reviewed" if review_status == "pending" else review_status,
+                "review_status": review_status,
                 "review_note": None,
             })
     return canonical, version_rows, unit_rows
@@ -229,6 +245,91 @@ def strip_memo_versions(song: dict[str, Any]) -> str | None:
     memo = parse_memo(song.get("memo"))
     memo.pop("versions", None)
     return json.dumps(memo, ensure_ascii=False, separators=(",", ":")) if memo else None
+
+
+def assign_canonical_id_and_order(
+    version_rows: list[dict[str, Any]],
+    unit_rows: list[dict[str, Any]],
+    canonical_id: str,
+    first_order: int,
+) -> None:
+    for index, row in enumerate(version_rows):
+        row["canonical_song_id"] = canonical_id
+        row["version_order"] = first_order + index
+    for row in unit_rows:
+        row["canonical_song_id"] = canonical_id
+
+
+def assign_unique_lyric_signatures(
+    version_rows: list[dict[str, Any]],
+    used_signatures_by_canonical: dict[str, set[str]],
+) -> None:
+    for index, row in enumerate(version_rows, start=1):
+        canonical_id = row["canonical_song_id"]
+        used = used_signatures_by_canonical.setdefault(canonical_id, set())
+        signature = row["lyric_signature"]
+        if signature in used:
+            source = str(row.get("source_song_id") or row["id"]).replace("-", "")[:12]
+            signature = f"{signature}:{source}:{index}"
+            row["lyric_signature"] = signature
+        used.add(signature)
+
+
+def delete_version_units_by_version_ids(supa_url: str, supa_key: str, version_ids: list[str]) -> None:
+    for batch in chunked([version_id for version_id in version_ids if version_id]):
+        ids = ",".join(batch)
+        request_json(
+            supa_url,
+            supa_key,
+            "DELETE",
+            "mindex_version_units",
+            {"version_id": f"in.({ids})"},
+            prefer="return=minimal",
+        )
+
+
+def delete_existing_source_versions(supa_url: str, supa_key: str, song_id: str) -> None:
+    existing_versions = request_json(
+        supa_url,
+        supa_key,
+        "GET",
+        "mindex_song_versions",
+        {"select": "id", "source_song_id": f"eq.{song_id}"},
+    ) or []
+    version_ids = [row["id"] for row in existing_versions if row.get("id")]
+    delete_version_units_by_version_ids(supa_url, supa_key, version_ids)
+    request_json(
+        supa_url,
+        supa_key,
+        "DELETE",
+        "mindex_song_versions",
+        {"source_song_id": f"eq.{song_id}"},
+        prefer="return=minimal",
+    )
+
+
+def delete_existing_source_versions_for_songs(
+    supa_url: str,
+    supa_key: str,
+    song_ids: set[str],
+    existing_version_rows: list[dict[str, Any]],
+) -> None:
+    source_version_ids = [
+        row["id"]
+        for row in existing_version_rows
+        if row.get("id") and row.get("source_song_id") in song_ids
+    ]
+    delete_version_units_by_version_ids(supa_url, supa_key, source_version_ids)
+    for batch in chunked(sorted(song_ids)):
+        ids = ",".join(batch)
+        request_json(
+            supa_url,
+            supa_key,
+            "DELETE",
+            "mindex_song_versions",
+            {"source_song_id": f"in.({ids})"},
+            prefer="return=minimal",
+        )
 
 
 def main() -> int:
@@ -252,6 +353,51 @@ def main() -> int:
     songs_with_versions = [song for song in songs if parse_memo(song.get("memo")).get("versions")]
     if args.limit:
         songs_with_versions = songs_with_versions[: args.limit]
+    canonical_rows = fetch_all(
+        supa_url,
+        supa_key,
+        "mindex_canonical_songs",
+        "id,normalized_title",
+    )
+    canonical_by_normalized = {
+        row["normalized_title"]: row["id"]
+        for row in canonical_rows
+        if row.get("id") and row.get("normalized_title")
+    }
+    source_song_ids = {song["id"] for song in songs_with_versions}
+    existing_version_rows = fetch_all(
+        supa_url,
+        supa_key,
+        "mindex_song_versions",
+        "id,canonical_song_id,source_song_id,version_order,lyric_signature",
+    )
+    if args.apply:
+        delete_existing_source_versions_for_songs(
+            supa_url,
+            supa_key,
+            source_song_ids,
+            existing_version_rows,
+        )
+    next_version_order_by_canonical: dict[str, int] = {}
+    for row in existing_version_rows:
+        if row.get("source_song_id") in source_song_ids:
+            continue
+        canonical_id = row.get("canonical_song_id")
+        if not canonical_id:
+            continue
+        order = int(row.get("version_order") or 0)
+        next_version_order_by_canonical[canonical_id] = max(
+            next_version_order_by_canonical.get(canonical_id, 0),
+            order,
+        )
+    used_signatures_by_canonical: dict[str, set[str]] = {}
+    for row in existing_version_rows:
+        if row.get("source_song_id") in source_song_ids:
+            continue
+        canonical_id = row.get("canonical_song_id")
+        signature = row.get("lyric_signature")
+        if canonical_id and signature:
+            used_signatures_by_canonical.setdefault(canonical_id, set()).add(signature)
 
     totals = {
         "songs": len(songs_with_versions),
@@ -260,32 +406,46 @@ def main() -> int:
         "apply": args.apply,
         "clear_memo_versions": args.clear_memo_versions,
     }
+    canonical_rows_to_insert: list[dict[str, Any]] = []
+    all_version_rows: list[dict[str, Any]] = []
+    all_unit_rows: list[dict[str, Any]] = []
 
     for song in songs_with_versions:
-        canonical, version_rows, unit_rows = build_rows(song, has_version_praise_types)
-        totals["versions"] += len(version_rows)
-        totals["units"] += len(unit_rows)
-        if not args.apply:
-            continue
+        try:
+            canonical, version_rows, unit_rows = build_rows(song, has_version_praise_types)
+            existing_canonical_id = canonical_by_normalized.get(canonical["normalized_title"])
+            canonical_id = existing_canonical_id or canonical["id"]
+            if not existing_canonical_id:
+                canonical_rows_to_insert.append(canonical)
+                canonical_by_normalized[canonical["normalized_title"]] = canonical_id
+            first_order = next_version_order_by_canonical.get(canonical_id, 0) + 1
+            assign_canonical_id_and_order(version_rows, unit_rows, canonical_id, first_order)
+            assign_unique_lyric_signatures(version_rows, used_signatures_by_canonical)
+            next_version_order_by_canonical[canonical_id] = first_order + len(version_rows) - 1
+            totals["versions"] += len(version_rows)
+            totals["units"] += len(unit_rows)
+            all_version_rows.extend(version_rows)
+            all_unit_rows.extend(unit_rows)
+        except Exception as error:
+            raise RuntimeError(f"Backfill failed for song {song.get('id')} {song.get('title')}") from error
 
-        request_json(
+    if args.apply:
+        delete_version_units_by_version_ids(
             supa_url,
             supa_key,
-            "POST",
-            "mindex_canonical_songs",
-            {"on_conflict": "id"},
-            [canonical],
-            "resolution=merge-duplicates,return=minimal",
+            [row["id"] for row in all_version_rows],
         )
-        request_json(
-            supa_url,
-            supa_key,
-            "DELETE",
-            "mindex_song_versions",
-            {"source_song_id": f"eq.{song['id']}"},
-            prefer="return=minimal",
-        )
-        for batch in chunked(version_rows):
+        for batch in chunked(canonical_rows_to_insert):
+            request_json(
+                supa_url,
+                supa_key,
+                "POST",
+                "mindex_canonical_songs",
+                {"on_conflict": "id"},
+                batch,
+                "resolution=merge-duplicates,return=minimal",
+            )
+        for batch in chunked(all_version_rows):
             request_json(
                 supa_url,
                 supa_key,
@@ -295,7 +455,7 @@ def main() -> int:
                 batch,
                 "resolution=merge-duplicates,return=minimal",
             )
-        for batch in chunked(unit_rows):
+        for batch in chunked(all_unit_rows):
             request_json(
                 supa_url,
                 supa_key,
@@ -306,15 +466,16 @@ def main() -> int:
                 "resolution=merge-duplicates,return=minimal",
             )
         if args.clear_memo_versions:
-            request_json(
-                supa_url,
-                supa_key,
-                "PATCH",
-                "mindex_songs",
-                {"id": f"eq.{song['id']}"},
-                {"memo": strip_memo_versions(song)},
-                "return=minimal",
-            )
+            for song in songs_with_versions:
+                request_json(
+                    supa_url,
+                    supa_key,
+                    "PATCH",
+                    "mindex_songs",
+                    {"id": f"eq.{song['id']}"},
+                    {"memo": strip_memo_versions(song)},
+                    "return=minimal",
+                )
 
     print(json.dumps(totals, ensure_ascii=False, indent=2))
     if not args.apply:

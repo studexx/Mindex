@@ -10,8 +10,11 @@ scripts/*
 !scripts/audit_mindex_content.py
 !scripts/activities-schema.sql
 !scripts/backfill_song_versions_from_memo.py
+!scripts/backfill_song_relations_from_memo.py
+!scripts/admin-auth-rls.sql
 !scripts/db-maintenance-2026-06-23.sql
 !scripts/calendar-lectionary-2026.sql
+!scripts/song-relations-schema.sql
 !scripts/worship-schema.sql
 !scripts/youtube-live-source-rpc.sql
 !scripts/youtube_live_source.py

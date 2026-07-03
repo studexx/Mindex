@@ -8,21 +8,21 @@ This document is the canonical handoff for new Codex/Claude/GPT threads. Read th
 
 ## Repository And Runtime
 
-- Repository: `/Users/parkjihun/Mindex`
+- Repository: `/Users/parkjihun/Code/Mindex`
 - Current app: static HTML/CSS/JS app
 - Main files:
-  - `/Users/parkjihun/Mindex/index.html`
-  - `/Users/parkjihun/Mindex/app.js`
-  - `/Users/parkjihun/Mindex/styles.css`
-  - `/Users/parkjihun/Mindex/supabase-schema.sql`
-  - `/Users/parkjihun/Mindex/scripts/worship-schema.sql`
-  - `/Users/parkjihun/Mindex/scripts/activities-schema.sql`
-  - `/Users/parkjihun/Mindex/scripts/reference-links-schema.sql`
+  - `/Users/parkjihun/Code/Mindex/index.html`
+  - `/Users/parkjihun/Code/Mindex/app.js`
+  - `/Users/parkjihun/Code/Mindex/styles.css`
+  - `/Users/parkjihun/Code/Mindex/supabase-schema.sql`
+  - `/Users/parkjihun/Code/Mindex/scripts/worship-schema.sql`
+  - `/Users/parkjihun/Code/Mindex/scripts/activities-schema.sql`
+  - `/Users/parkjihun/Code/Mindex/scripts/reference-links-schema.sql`
 - Local Supabase config:
-  - `/Users/parkjihun/Mindex/.env.supabase.local`
-  - `/Users/parkjihun/Mindex/.env.supabase`
+  - `/Users/parkjihun/Code/Mindex/.env.supabase.local`
+  - `/Users/parkjihun/Code/Mindex/.env.supabase`
 - Preferred local server:
-  - `python3 /Users/parkjihun/Mindex/serve.py`
+  - `python3 /Users/parkjihun/Code/Mindex/serve.py`
   - The app is often tested at `http://localhost:4173`.
 - GitHub Pages deployment exists, but do not assume remote pages are updated immediately after local edits. Local verification comes first.
 
@@ -104,7 +104,7 @@ Service/Worship structure:
 - Scripture elements should link to Mindex Scripture records or normalized references.
 - Activity elements should later link to Activity/Game records.
 - Detailed Worship terminology, template/type semantics, and examples live in
-  `/Users/parkjihun/Mindex/docs/thread-worship-presenter.md`.
+  `/Users/parkjihun/Code/Mindex/docs/thread-worship-presenter.md`.
 
 Activities structure:
 
@@ -220,6 +220,7 @@ Review markers:
 - Review should be meaningful and version-level where possible.
 - A sidebar marker should make it clear which version needs attention.
 - Do not use noisy double-ring icons; simple `!` is preferred.
+- Do not soften or clear review markers from lyrics until spelling, song-form split, and two-line stanza grouping have all been reviewed.
 
 ## Scripture Rules
 
@@ -405,7 +406,7 @@ Use the lightest verification that matches the risk, then broader tests before c
 Always after JS/CSS edits:
 
 ```bash
-cd /Users/parkjihun/Mindex
+cd /Users/parkjihun/Code/Mindex
 /Users/parkjihun/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node --check app.js
 git diff --check -- app.js styles.css index.html
 ```
@@ -413,7 +414,7 @@ git diff --check -- app.js styles.css index.html
 Schema/data sanity:
 
 ```bash
-cd /Users/parkjihun/Mindex
+cd /Users/parkjihun/Code/Mindex
 python3 tests/check_supabase_schema.py
 python3 scripts/audit_mindex_content.py --json
 ```
@@ -421,7 +422,7 @@ python3 scripts/audit_mindex_content.py --json
 App smoke:
 
 ```bash
-cd /Users/parkjihun/Mindex
+cd /Users/parkjihun/Code/Mindex
 python3 tests/smoke_app.py
 ```
 

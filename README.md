@@ -22,13 +22,23 @@ so a fresh browser can open the same workspace without relying on local storage.
 Use only the Supabase anon key in browser links. Never put a service role key in
 GitHub, GitHub Pages, screenshots, issues, or shared URLs.
 
+For administrator-only links, prefer Supabase Auth and add `auth=required`:
+
+```text
+https://<github-user>.github.io/<repo-name>/#supabaseUrl=<PROJECT_URL>&supabaseAnonKey=<ANON_KEY>&auth=required
+```
+
+Before using that link model, enable Supabase Auth redirect URLs and run
+`scripts/admin-auth-rls.sql`. See `docs/admin-access-security.md`.
+
 The app also reads a local injected config if you host it somewhere private:
 
 ```html
 <script>
   window.MINDEX_SUPABASE = {
     url: "https://project.supabase.co",
-    anonKey: "<ANON_KEY>"
+    anonKey: "<ANON_KEY>",
+    authRequired: true
   };
 </script>
 ```
@@ -131,6 +141,16 @@ python3 scripts/backfill_song_versions_from_memo.py --apply
 ```
 
 Only add `--clear-memo-versions` after verifying the relational rows in the app.
+
+Song-to-song relationships are stored in `mindex_song_relations`. Older
+`mindex_songs.memo.related_song_ids` values can be moved with:
+
+```sh
+python3 scripts/backfill_song_relations_from_memo.py
+python3 scripts/backfill_song_relations_from_memo.py --apply
+```
+
+Only add `--clear-memo-related` after verifying the relation rows in the app.
 
 ## Presenter Media
 
