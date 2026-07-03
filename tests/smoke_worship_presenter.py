@@ -973,6 +973,7 @@ def main() -> int:
                       };
                       state.presenter.safetyBlank = false;
                       publishPresenterState({ force: true });
+                      renderPresenterControlState(serviceId);
                       return presenterStatePayload(serviceId);
                     }
                     """,
@@ -1026,6 +1027,24 @@ def main() -> int:
                     pass_("presenter-live-scripture-lower-bar", json.dumps(live_scripture_state, ensure_ascii=False))
                 else:
                     fail("presenter-live-scripture-lower-bar", json.dumps(live_scripture_state, ensure_ascii=False))
+
+                live_scripture_controller_state = page.evaluate(
+                    """
+                    (() => ({
+                      activeThumbs: document.querySelectorAll('.svc-slide-thumb.active').length,
+                      activeWraps: document.querySelectorAll('.svc-slide-thumb-wrap.active').length,
+                      status: document.querySelector('.svc-presenter-status')?.textContent.trim() || '',
+                    }))()
+                    """
+                )
+                if (
+                    live_scripture_controller_state["activeThumbs"] == 0
+                    and live_scripture_controller_state["activeWraps"] == 0
+                    and live_scripture_controller_state["status"] == "Live"
+                ):
+                    pass_("presenter-live-scripture-controller-preview", json.dumps(live_scripture_controller_state, ensure_ascii=False))
+                else:
+                    fail("presenter-live-scripture-controller-preview", json.dumps(live_scripture_controller_state, ensure_ascii=False))
 
                 jump_input = page.locator(f'[data-presenter-jump-input][data-service-id="{service["id"]}"]')
                 jump_input.fill("1")
@@ -1100,6 +1119,26 @@ def main() -> int:
                     pass_("presenter-invalid-jump-blank", json.dumps(safety_blank_state, ensure_ascii=False))
                 else:
                     fail("presenter-invalid-jump-blank", json.dumps(safety_blank_state, ensure_ascii=False))
+
+                safety_blank_controller_state = page.evaluate(
+                    """
+                    (() => ({
+                      inputValue: document.querySelector('[data-presenter-jump-input]')?.value || '',
+                      activeThumbs: document.querySelectorAll('.svc-slide-thumb.active').length,
+                      activeWraps: document.querySelectorAll('.svc-slide-thumb-wrap.active').length,
+                      status: document.querySelector('.svc-presenter-status')?.textContent.trim() || '',
+                    }))()
+                    """
+                )
+                if (
+                    safety_blank_controller_state["inputValue"] == "0"
+                    and safety_blank_controller_state["activeThumbs"] == 0
+                    and safety_blank_controller_state["activeWraps"] == 0
+                    and safety_blank_controller_state["status"] == "Live"
+                ):
+                    pass_("presenter-safety-blank-controller-preview", json.dumps(safety_blank_controller_state, ensure_ascii=False))
+                else:
+                    fail("presenter-safety-blank-controller-preview", json.dumps(safety_blank_controller_state, ensure_ascii=False))
 
                 jump_input.fill("2")
                 jump_input.press("Enter")

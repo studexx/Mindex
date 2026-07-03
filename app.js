@@ -13057,9 +13057,13 @@ function renderServicePresenterControls(service, slides, active, index) {
   const outputOpen = active && anyOutputOpen;
   const outputOpenElsewhere = anyOutputOpen && state.presenter.serviceId && state.presenter.serviceId !== service.id;
   const chromakey = presenterServiceUsesChromakey(service);
-  const jumpInputValue = active && state.presenter.jumpDraft ? state.presenter.jumpDraft : current || "";
+  const jumpInputValue = active && state.presenter.jumpDraft
+    ? state.presenter.jumpDraft
+    : (count || current === 0 ? current : "");
   const statusLabel = outputOpen ? "Live" : outputOpenElsewhere ? "Other live" : active ? "Ready" : "Preview";
   const statusTone = outputOpen ? "live" : outputOpenElsewhere ? "other" : active ? "ready" : "preview";
+  const transientOutput = active && (state.presenter.safetyBlank || state.presenter.liveScripture?.active);
+  const boardActiveIndex = active && !transientOutput ? safeIndex : -1;
   return `
     <section id="servicePresenterControls" class="svc-presenter-strip${active ? " is-active" : ""}${chromakey ? "" : " is-clean-output"}" aria-label="Presenter controls">
       <div class="svc-presenter-top">
@@ -13087,7 +13091,7 @@ function renderServicePresenterControls(service, slides, active, index) {
           </button>
         </div>
       </div>
-      ${renderPresenterSlideBoard(slides, active ? safeIndex : -1, service.id)}
+      ${renderPresenterSlideBoard(slides, boardActiveIndex, service.id)}
     </section>`;
 }
 
@@ -13875,6 +13879,7 @@ function renderPresenterControlState(serviceId = state.selectedServiceId) {
 function scrollActivePresenterThumbIntoView(serviceId = state.presenter.serviceId) {
   const root = document.getElementById("servicePresenterControls");
   if (!root || state.presenter.serviceId !== serviceId) return;
+  if (state.presenter.safetyBlank || state.presenter.liveScripture?.active) return;
   root.querySelector(".svc-slide-thumb.active")?.scrollIntoView({
     block: "center",
     inline: "nearest",
