@@ -145,12 +145,17 @@ def main() -> int:
                         fail("presenter-thumbnail-grid", json.dumps(thumb_metrics[:8], ensure_ascii=False))
 
                 initial_status = page.evaluate(
-                    "() => document.querySelector('.svc-presenter-status')?.textContent.trim() || ''"
+                    """
+                    (() => ({
+                      status: document.querySelector('.svc-presenter-status')?.textContent.trim() || '',
+                      mode: document.querySelector('.svc-presenter-mode')?.textContent.trim() || '',
+                    }))()
+                    """
                 )
-                if initial_status == "Preview":
-                    pass_("presenter-status-preview", initial_status)
+                if initial_status["status"] == "Preview" and initial_status["mode"] == "":
+                    pass_("presenter-status-preview", json.dumps(initial_status, ensure_ascii=False))
                 else:
-                    fail("presenter-status-preview", initial_status)
+                    fail("presenter-status-preview", json.dumps(initial_status, ensure_ascii=False))
 
                 sticky_title_state: dict[str, Any] = page.evaluate(
                     """
@@ -266,12 +271,17 @@ def main() -> int:
                     fail("presenter-thumb-hover-ring", json.dumps(hover_state, ensure_ascii=False))
 
                 ready_status = page.evaluate(
-                    "() => document.querySelector('.svc-presenter-status')?.textContent.trim() || ''"
+                    """
+                    (() => ({
+                      status: document.querySelector('.svc-presenter-status')?.textContent.trim() || '',
+                      mode: document.querySelector('.svc-presenter-mode')?.textContent.trim() || '',
+                    }))()
+                    """
                 )
-                if ready_status == "Ready":
-                    pass_("presenter-status-ready", ready_status)
+                if ready_status["status"] == "Ready" and ready_status["mode"].startswith("Slide "):
+                    pass_("presenter-status-ready", json.dumps(ready_status, ensure_ascii=False))
                 else:
-                    fail("presenter-status-ready", ready_status)
+                    fail("presenter-status-ready", json.dumps(ready_status, ensure_ascii=False))
 
                 ready_thumb_state = page.evaluate(
                     """
@@ -821,6 +831,7 @@ def main() -> int:
                     """
                     (() => ({
                       status: document.querySelector('.svc-presenter-status')?.textContent.trim() || '',
+                      mode: document.querySelector('.svc-presenter-mode')?.textContent.trim() || '',
                       connected: state.presenter.outputConnectedAt > 0,
                       open: isPresenterOutputWindowOpen(),
                       hasWindowRef: Boolean(state.presenter.outputWindow),
@@ -829,6 +840,7 @@ def main() -> int:
                 )
                 if (
                     heartbeat_state["status"] == "Live"
+                    and heartbeat_state["mode"] == "Slide 2"
                     and heartbeat_state["connected"]
                     and heartbeat_state["open"]
                     and not heartbeat_state["hasWindowRef"]
@@ -1034,6 +1046,7 @@ def main() -> int:
                       activeThumbs: document.querySelectorAll('.svc-slide-thumb.active').length,
                       activeWraps: document.querySelectorAll('.svc-slide-thumb-wrap.active').length,
                       status: document.querySelector('.svc-presenter-status')?.textContent.trim() || '',
+                      mode: document.querySelector('.svc-presenter-mode')?.textContent.trim() || '',
                     }))()
                     """
                 )
@@ -1041,6 +1054,7 @@ def main() -> int:
                     live_scripture_controller_state["activeThumbs"] == 0
                     and live_scripture_controller_state["activeWraps"] == 0
                     and live_scripture_controller_state["status"] == "Live"
+                    and live_scripture_controller_state["mode"] == "Scripture"
                 ):
                     pass_("presenter-live-scripture-controller-preview", json.dumps(live_scripture_controller_state, ensure_ascii=False))
                 else:
@@ -1127,6 +1141,7 @@ def main() -> int:
                       activeThumbs: document.querySelectorAll('.svc-slide-thumb.active').length,
                       activeWraps: document.querySelectorAll('.svc-slide-thumb-wrap.active').length,
                       status: document.querySelector('.svc-presenter-status')?.textContent.trim() || '',
+                      mode: document.querySelector('.svc-presenter-mode')?.textContent.trim() || '',
                     }))()
                     """
                 )
@@ -1135,6 +1150,7 @@ def main() -> int:
                     and safety_blank_controller_state["activeThumbs"] == 0
                     and safety_blank_controller_state["activeWraps"] == 0
                     and safety_blank_controller_state["status"] == "Live"
+                    and safety_blank_controller_state["mode"] == "Blank"
                 ):
                     pass_("presenter-safety-blank-controller-preview", json.dumps(safety_blank_controller_state, ensure_ascii=False))
                 else:
@@ -1222,6 +1238,7 @@ def main() -> int:
                         selectedThumbs: document.querySelectorAll('.svc-slide-thumb').length,
                         selectedActiveThumbs: document.querySelectorAll('.svc-slide-thumb.active').length,
                         status: document.querySelector('.svc-presenter-status')?.textContent.trim() || '',
+                        mode: document.querySelector('.svc-presenter-mode')?.textContent.trim() || '',
                       };
                     }
                     """
@@ -1233,6 +1250,7 @@ def main() -> int:
                     and selection_state["selectedThumbs"] >= 2
                     and selection_state["selectedActiveThumbs"] == 0
                     and selection_state["status"] == "Other live"
+                    and selection_state["mode"] == "Other service"
                 ):
                     pass_("presenter-service-selection-is-passive", json.dumps(selection_state, ensure_ascii=False))
                 else:
@@ -1253,6 +1271,7 @@ def main() -> int:
                         outputServiceId: payload.serviceId || '',
                         outputIndex: payload.index,
                         status: document.querySelector('.svc-presenter-status')?.textContent.trim() || '',
+                        mode: document.querySelector('.svc-presenter-mode')?.textContent.trim() || '',
                       };
                     }
                     """
@@ -1263,6 +1282,7 @@ def main() -> int:
                     and other_live_keyboard_state["outputServiceId"] == service["id"]
                     and other_live_keyboard_state["outputIndex"] == 2
                     and other_live_keyboard_state["status"] == "Other live"
+                    and other_live_keyboard_state["mode"] == "Other service"
                 ):
                     pass_("presenter-keyboard-other-live-ignored", json.dumps(other_live_keyboard_state, ensure_ascii=False))
                 else:

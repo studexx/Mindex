@@ -13064,6 +13064,7 @@ function renderServicePresenterControls(service, slides, active, index) {
   const statusTone = outputOpen ? "live" : outputOpenElsewhere ? "other" : active ? "ready" : "preview";
   const transientOutput = active && (state.presenter.safetyBlank || state.presenter.liveScripture?.active);
   const boardActiveIndex = active && !transientOutput ? safeIndex : -1;
+  const mode = presenterControllerMode(service, { active, count, current, outputOpen, outputOpenElsewhere, safeIndex });
   return `
     <section id="servicePresenterControls" class="svc-presenter-strip${active ? " is-active" : ""}${chromakey ? "" : " is-clean-output"}" aria-label="Presenter controls">
       <div class="svc-presenter-top">
@@ -13074,6 +13075,7 @@ function renderServicePresenterControls(service, slides, active, index) {
         ${renderPresenterScreenControl()}
         <div class="svc-presenter-main" aria-live="polite">
           <span class="svc-presenter-status svc-presenter-status--${escapeAttr(statusTone)}" aria-label="${escapeAttr(`Presenter status: ${statusLabel}`)}">${escapeHtml(statusLabel)}</span>
+          ${mode.label ? `<span class="svc-presenter-mode svc-presenter-mode--${escapeAttr(mode.tone)}" aria-label="${escapeAttr(`Presenter mode: ${mode.label}`)}">${escapeHtml(mode.label)}</span>` : ""}
           <span class="svc-slide-counter">
             <input class="svc-slide-jump-input" type="number" inputmode="numeric" min="0" max="${escapeAttr(count || 1)}" value="${escapeAttr(jumpInputValue)}" data-presenter-jump-input data-service-id="${escapeAttr(service.id)}" aria-label="Slide number" ${count ? "" : "disabled"} />
             <span>/ ${escapeHtml(count)}</span>
@@ -13093,6 +13095,15 @@ function renderServicePresenterControls(service, slides, active, index) {
       </div>
       ${renderPresenterSlideBoard(slides, boardActiveIndex, service.id)}
     </section>`;
+}
+
+function presenterControllerMode(service, context = {}) {
+  if (context.outputOpenElsewhere) return { label: "Other service", tone: "other" };
+  if (!context.active) return { label: "", tone: "preview" };
+  if (state.presenter.safetyBlank) return { label: "Blank", tone: "blank" };
+  if (state.presenter.liveScripture?.active) return { label: "Scripture", tone: "scripture" };
+  if (context.count) return { label: `Slide ${context.safeIndex + 1}`, tone: context.outputOpen ? "slide-live" : "slide-ready" };
+  return { label: "No slides", tone: "empty" };
 }
 
 function renderServiceMusicPlayer() {
