@@ -2658,10 +2658,53 @@ body[data-module="service"] .detail-pane {
 }
 
 /* ── Service viewer (detail) ─────────────────────────────────────────────── */
-.service-viewer { display: flex; flex-direction: column; gap: var(--s3); padding: 2px 0 0; min-height: 0; }
-.svc-header { display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: var(--s4); padding-bottom: 0; border-bottom: 0; }
-.svc-header-date { display: grid; gap: 4px; min-width: 0; }
-.svc-date-text { font-size: 19px; font-weight: 500; line-height: 1.25; color: var(--ink); margin: 0; }
+.service-viewer {
+  --svc-service-header-sticky-h: 43px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  min-height: 0;
+  padding: 2px 0 0;
+}
+.svc-header {
+  position: sticky;
+  top: 0;
+  z-index: 7;
+  display: flex;
+  min-height: var(--svc-service-header-sticky-h);
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s4);
+  border-bottom: 0;
+  background: var(--bg);
+  padding: 0 0 7px;
+}
+.svc-header-date {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 8px;
+}
+.svc-service-title {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 19px;
+  font-weight: 500;
+  line-height: 1.25;
+  margin: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.svc-date-text {
+  flex: 0 0 auto;
+  color: var(--ink-4);
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 13px;
+  white-space: nowrap;
+}
 .svc-meta-input { height: 28px; border: 0; border-radius: calc(var(--r) - 2px); background: color-mix(in srgb, var(--panel-2) 38%, transparent); color: var(--ink-3); font: inherit; font-size: 12px; font-weight: 500; padding: 0 var(--s2); outline: none; width: 110px; }
 .svc-meta-input--title { width: 180px; }
 .svc-meta-input:focus { background: color-mix(in srgb, var(--panel-2) 66%, transparent); color: var(--ink); }
@@ -3208,7 +3251,7 @@ body[data-module="service"] .detail-pane {
 }
 .svc-template-element-row {
   display: grid;
-  grid-template-columns: 38px minmax(110px, 1fr) minmax(150px, 1.2fr) minmax(110px, .8fr) minmax(110px, .9fr) minmax(96px, .7fr);
+  grid-template-columns: 38px minmax(110px, 1fr) minmax(150px, 1.2fr) minmax(110px, .8fr) minmax(110px, .9fr) minmax(96px, .7fr) auto;
   min-width: 0;
   align-items: end;
   gap: 6px;
@@ -3229,6 +3272,12 @@ body[data-module="service"] .detail-pane {
   height: 28px;
   background: color-mix(in srgb, var(--panel) 66%, transparent);
   font-size: 11px;
+}
+.svc-template-element-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding-bottom: 0;
 }
 .svc-template-add {
   height: 30px;
@@ -3261,6 +3310,10 @@ body[data-module="service"] .detail-pane {
   .svc-template-step-actions {
     justify-content: flex-end;
   }
+  .svc-template-element-actions {
+    grid-column: 2 / -1;
+    justify-content: flex-end;
+  }
 }
 @media (max-width: 820px) {
   .svc-template-level-grid,
@@ -3278,6 +3331,7 @@ body[data-module="service"] .detail-pane {
   }
   .svc-template-step-field,
   .svc-template-element-field,
+  .svc-template-element-actions,
   .svc-template-step-actions {
     grid-column: 2;
   }
@@ -3629,7 +3683,7 @@ body[data-module="service"] .detail-pane {
 }
 .svc-presenter-top {
   position: sticky;
-  top: 0;
+  top: var(--svc-service-header-sticky-h);
   z-index: 6;
   display: grid;
   min-width: 0;
@@ -4267,32 +4321,6 @@ body[data-module="service"] .detail-pane {
 }
 .svc-slide-board--young-adult .svc-slide-thumb-frame {
   background: #0b0d12;
-}
-.svc-slide-thumb-no {
-  position: absolute;
-  top: 6px;
-  left: 6px;
-  z-index: 1;
-  display: inline-flex;
-  min-width: 20px;
-  height: 18px;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, .48);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .18);
-  color: rgba(255, 255, 255, .9);
-  font-size: 10px;
-  font-weight: 750;
-  line-height: 1;
-  padding: 0 5px;
-}
-.svc-slide-thumb.active .svc-slide-thumb-no {
-  background: rgba(0, 0, 0, .64);
-  box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--accent) 72%, rgba(255, 255, 255, .3)),
-    0 1px 5px rgba(0, 0, 0, .24);
-  color: #fff;
 }
 .svc-slide-mini-meta {
   color: #fff;

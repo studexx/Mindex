@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from io import BytesIO
 from typing import Any
 
@@ -151,6 +152,51 @@ def main() -> int:
                 else:
                     fail("presenter-status-preview", initial_status)
 
+                sticky_title_state: dict[str, Any] = page.evaluate(
+                    """
+                    async () => {
+                      const pane = document.querySelector('.detail-pane');
+                      const header = document.querySelector('.svc-header');
+                      const top = document.querySelector('.svc-presenter-top');
+                      const title = document.querySelector('.svc-service-title');
+                      const date = document.querySelector('.svc-date-text');
+                      const beforeHeader = header?.getBoundingClientRect();
+                      const beforeTop = top?.getBoundingClientRect();
+                      if (pane) pane.scrollTop = 260;
+                      document.scrollingElement.scrollTop = 260;
+                      await new Promise((resolve) => requestAnimationFrame(resolve));
+                      const afterHeader = header?.getBoundingClientRect();
+                      const afterTop = top?.getBoundingClientRect();
+                      return {
+                        title: title?.textContent.trim() || '',
+                        date: date?.textContent.trim() || '',
+                        usesExistingHeader: Boolean(title?.closest('.svc-header') && !document.querySelector('.svc-presenter-title-row')),
+                        headerPosition: header ? getComputedStyle(header).position : '',
+                        controlsPosition: top ? getComputedStyle(top).position : '',
+                        beforeHeaderTop: Math.round(beforeHeader?.top || 0),
+                        afterHeaderTop: Math.round(afterHeader?.top || 0),
+                        beforeControlsTop: Math.round(beforeTop?.top || 0),
+                        afterControlsTop: Math.round(afterTop?.top || 0),
+                        overflow: Math.max(document.documentElement.scrollWidth - window.innerWidth, document.body.scrollWidth - window.innerWidth)
+                      };
+                    }
+                    """
+                )
+                if (
+                    sticky_title_state["title"]
+                    and sticky_title_state["date"]
+                    and re.match(r"^\d{4}-\d{2}-\d{2}", sticky_title_state["date"])
+                    and sticky_title_state["usesExistingHeader"]
+                    and sticky_title_state["headerPosition"] == "sticky"
+                    and sticky_title_state["controlsPosition"] == "sticky"
+                    and sticky_title_state["afterHeaderTop"] <= sticky_title_state["beforeHeaderTop"] + 2
+                    and sticky_title_state["afterControlsTop"] > sticky_title_state["afterHeaderTop"]
+                    and sticky_title_state["overflow"] <= 2
+                ):
+                    pass_("presenter-sticky-service-title", json.dumps(sticky_title_state, ensure_ascii=False))
+                else:
+                    fail("presenter-sticky-service-title", json.dumps(sticky_title_state, ensure_ascii=False))
+
                 page.evaluate(
                     """
                     (serviceId) => {
@@ -235,9 +281,9 @@ def main() -> int:
                       return {
                         firstPreparationMedia: Boolean(first?.querySelector('.svc-slide-thumb-frame--video[data-element-type="video"][data-slide-layout="media"]')),
                         firstPreviewText: first?.querySelector('.svc-slide-mini-output')?.innerText.trim() || '',
-                        firstNumber: first?.querySelector('.svc-slide-thumb-no')?.textContent.trim() || '',
+                        numberBadges: document.querySelectorAll('.svc-slide-thumb-no').length,
                         firstLabel: first?.getAttribute('aria-label') || '',
-                        secondNumber: second?.querySelector('.svc-slide-thumb-no')?.textContent.trim() || '',
+                        secondLabel: second?.getAttribute('aria-label') || '',
                       };
                     })()
                     """
@@ -245,9 +291,9 @@ def main() -> int:
                 if (
                     ready_thumb_state["firstPreparationMedia"]
                     and ready_thumb_state["firstPreviewText"] == ""
-                    and ready_thumb_state["firstNumber"] == "1"
+                    and ready_thumb_state["numberBadges"] == 0
                     and "1번 슬라이드로 이동" in ready_thumb_state["firstLabel"]
-                    and ready_thumb_state["secondNumber"] == "2"
+                    and "2번 슬라이드로 이동" in ready_thumb_state["secondLabel"]
                 ):
                     pass_("presenter-ready-thumb-chrome", json.dumps(ready_thumb_state, ensure_ascii=False))
                 else:

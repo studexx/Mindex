@@ -3692,6 +3692,17 @@ function handleDetailClick(event) {
     return;
   }
 
+  const serviceTemplateElementAction = event.target.closest("[data-service-template-element-action]");
+  if (serviceTemplateElementAction) {
+    runServiceTemplateElementAction(
+      serviceTemplateElementAction.dataset.serviceTemplateElementAction,
+      serviceTemplateElementAction.dataset.serviceTypeId,
+      Number(serviceTemplateElementAction.dataset.stepIndex),
+      Number(serviceTemplateElementAction.dataset.elementIndex),
+    );
+    return;
+  }
+
   const serviceTemplateStepAction = event.target.closest("[data-service-template-step-action]");
   if (serviceTemplateStepAction) {
     runServiceTemplateStepAction(
@@ -10645,6 +10656,18 @@ function defaultServiceTemplateStep(index = 0, typeId = "") {
   };
 }
 
+function defaultServiceTemplateElement(index = 0, step = {}) {
+  const label = "새 엘리먼트";
+  const elementType = normalizeWorshipElementType(step.elementType || step.element_type || step.componentType || step.component_type) || "plain_text";
+  return {
+    label,
+    name: label,
+    elementType,
+    default_text: "",
+    sort_order: index + 1,
+  };
+}
+
 function normalizeServiceTemplateStep(step = {}, index = 0, typeId = "") {
   const label = String(step.label || step.name || "").trim();
   const memo = parseServiceItemMemo(step.notes || step.memo || "");
@@ -10767,6 +10790,39 @@ function updateServiceTemplateElementField(field) {
     .filter((item) => item && typeof item === "object")
     .map((item, itemIndex) => ({ ...item, sort_order: itemIndex + 1 }));
   markServiceTypeTemplateDirty(typeId);
+}
+
+function runServiceTemplateElementAction(action, typeId, stepIndex, elementIndex) {
+  const steps = ensureServiceOrderTemplate(typeId);
+  const step = steps[stepIndex];
+  if (!step) return;
+  if (!Array.isArray(step.elements)) step.elements = [];
+  const elements = step.elements;
+  if (!elements.length && action !== "add") return;
+  if (action === "add") {
+    elements.push(defaultServiceTemplateElement(elements.length, step));
+  } else if (action === "add-after") {
+    const targetIndex = Number.isFinite(elementIndex) ? elementIndex + 1 : elements.length;
+    elements.splice(targetIndex, 0, defaultServiceTemplateElement(targetIndex, step));
+  } else if (action === "delete") {
+    if (!Number.isFinite(elementIndex)) return;
+    elements.splice(elementIndex, 1);
+  } else if (action === "up") {
+    if (!Number.isFinite(elementIndex) || elementIndex <= 0) return;
+    [elements[elementIndex - 1], elements[elementIndex]] = [elements[elementIndex], elements[elementIndex - 1]];
+  } else if (action === "down") {
+    if (!Number.isFinite(elementIndex) || elementIndex >= elements.length - 1) return;
+    [elements[elementIndex + 1], elements[elementIndex]] = [elements[elementIndex], elements[elementIndex + 1]];
+  }
+  step.elements = elements
+    .filter((element) => element && typeof element === "object")
+    .map((element, index) => ({
+      ...element,
+      sort_order: index + 1,
+      name: String(element.name || element.label || `엘리먼트 ${index + 1}`).trim(),
+    }));
+  markServiceTypeTemplateDirty(typeId);
+  renderServiceTemplatesDetail();
 }
 
 function runServiceTemplateStepAction(action, typeId, index) {
@@ -11625,6 +11681,7 @@ function renderServiceTemplateStepRow(typeId, step, index, total) {
         <span>반복</span>
       </label>
       <div class="svc-template-step-actions">
+        <button class="icon-btn tiny" type="button" data-service-template-element-action="add" data-service-type-id="${escapeAttr(typeId)}" data-step-index="${index}" aria-label="세부 엘리먼트 추가">E＋</button>
         <button class="icon-btn tiny" type="button" data-service-template-step-action="up" data-service-type-id="${escapeAttr(typeId)}" data-step-index="${index}" aria-label="섹션 위로 이동" ${index <= 0 ? "disabled" : ""}>↑</button>
         <button class="icon-btn tiny" type="button" data-service-template-step-action="down" data-service-type-id="${escapeAttr(typeId)}" data-step-index="${index}" aria-label="섹션 아래로 이동" ${index >= total - 1 ? "disabled" : ""}>↓</button>
         <button class="icon-btn tiny" type="button" data-service-template-step-action="add-after" data-service-type-id="${escapeAttr(typeId)}" data-step-index="${index}" aria-label="아래에 섹션 추가">＋</button>
@@ -11639,11 +11696,11 @@ function renderServiceTemplateElementRows(typeId, step, stepIndex) {
   if (!elements.length) return "";
   return `
     <div class="svc-template-element-list" aria-label="${escapeAttr(step.label || step.name || "섹션")} 세부 요소">
-      ${elements.map((element, elementIndex) => renderServiceTemplateElementRow(typeId, element, stepIndex, elementIndex)).join("")}
+      ${elements.map((element, elementIndex) => renderServiceTemplateElementRow(typeId, element, stepIndex, elementIndex, elements.length)).join("")}
     </div>`;
 }
 
-function renderServiceTemplateElementRow(typeId, element, stepIndex, elementIndex) {
+function renderServiceTemplateElementRow(typeId, element, stepIndex, elementIndex, total) {
   const orderSheet = normalizeServiceOrderSheetPayload(element.orderSheet || element.order_sheet);
   const formHint = element.formHint || element.form_hint || serviceFormPresetSummary(element.formPreset || element.form_preset) || "";
   return `
@@ -11706,6 +11763,12 @@ function renderServiceTemplateElementRow(typeId, element, stepIndex, elementInde
           placeholder="V-C"
         >
       </label>
+      <div class="svc-template-element-actions">
+        <button class="icon-btn tiny" type="button" data-service-template-element-action="up" data-service-type-id="${escapeAttr(typeId)}" data-step-index="${stepIndex}" data-element-index="${elementIndex}" aria-label="엘리먼트 위로 이동" ${elementIndex <= 0 ? "disabled" : ""}>↑</button>
+        <button class="icon-btn tiny" type="button" data-service-template-element-action="down" data-service-type-id="${escapeAttr(typeId)}" data-step-index="${stepIndex}" data-element-index="${elementIndex}" aria-label="엘리먼트 아래로 이동" ${elementIndex >= total - 1 ? "disabled" : ""}>↓</button>
+        <button class="icon-btn tiny" type="button" data-service-template-element-action="add-after" data-service-type-id="${escapeAttr(typeId)}" data-step-index="${stepIndex}" data-element-index="${elementIndex}" aria-label="아래에 엘리먼트 추가">＋</button>
+        <button class="icon-btn tiny danger" type="button" data-service-template-element-action="delete" data-service-type-id="${escapeAttr(typeId)}" data-step-index="${stepIndex}" data-element-index="${elementIndex}" aria-label="엘리먼트 삭제">×</button>
+      </div>
     </div>`;
 }
 
@@ -11856,7 +11919,7 @@ function renderServiceDetail() {
     return;
   }
 
-  const dateStr = formatServiceDate(svc);
+  const dateStr = formatServiceIsoDate(svc);
   const presenterActive = state.presenter.serviceId === serviceId;
   const presenterSlides = presenterActive ? state.presenter.slides : buildServicePresenterSlides(serviceId);
   const presenterIndex = presenterActive ? clampPresenterIndex(state.presenter.index, presenterSlides.length) : 0;
@@ -11864,7 +11927,8 @@ function renderServiceDetail() {
     <div class="service-viewer">
       <div class="svc-header">
         <div class="svc-header-date">
-          <h2 class="svc-date-text">${escapeHtml(dateStr)}</h2>
+          <h2 class="svc-service-title">${escapeHtml(serviceDisplayTypeName(svc))}</h2>
+          <span class="svc-date-text">${escapeHtml(dateStr)}</span>
         </div>
         <span class="dirty-pill" ${state.dirty.service ? "" : "hidden"}>Unsaved changes</span>
       </div>
@@ -12473,6 +12537,13 @@ function formatServiceDate(service, options = {}) {
     ? `${end.getMonth() + 1}/${end.getDate()} ${weekdays[end.getDay()]}`
     : `${end.getMonth() + 1}월 ${end.getDate()}일 (${weekdays[end.getDay()]})`;
   return `${startText} - ${endText}`;
+}
+
+function formatServiceIsoDate(service) {
+  const start = String(service?.date || "").trim();
+  const end = String(service?.date_end || "").trim();
+  if (!start) return "";
+  return end && end !== start ? `${start} - ${end}` : start;
 }
 
 function serviceItemPreview(serviceId) {
@@ -13461,8 +13532,6 @@ function presenterLabelDuplicatesSlideText(label, slide) {
 function renderPresenterSlideThumb(slide, slideIndex, activeIndex, serviceId, formLabel = "") {
   const active = slideIndex === activeIndex;
   const visibleFormLabel = presenterLabelDuplicatesSlideText(formLabel, slide) ? "" : formLabel;
-  const showNumberBadge = presenterSlideShowsNumberBadge(slide);
-  const numberBadge = showNumberBadge ? `<span class="svc-slide-thumb-no">${slideIndex + 1}</span>` : "";
   const ariaPrefix = `${slideIndex + 1}번 슬라이드로 이동`;
   const formBadge = visibleFormLabel ? `
       <button class="svc-slide-form-badge" type="button"
@@ -13480,16 +13549,11 @@ function renderPresenterSlideThumb(slide, slideIndex, activeIndex, serviceId, fo
       data-presenter-index="${slideIndex}"
       data-service-id="${escapeAttr(serviceId)}"
       aria-label="${escapeAttr(`${ariaPrefix}: ${presenterSlideTitle(slide)}`)}">
-      ${numberBadge}
       <span class="svc-slide-thumb-frame svc-slide-thumb-frame--${escapeAttr(presenterSlideRenderClass(slide))}" data-element-type="${escapeAttr(presenterSlideElementType(slide))}" data-slide-layout="${escapeAttr(presenterSlideLayout(slide))}">
         ${renderPresenterSlideMiniPreview(slide, serviceId)}
       </span>
     </button>
     </span>`;
-}
-
-function presenterSlideShowsNumberBadge(slide) {
-  return Boolean(slide);
 }
 
 function renderPresenterSlideMiniPreview(slide, serviceId = state.presenter.serviceId) {
@@ -14501,9 +14565,9 @@ function presenterPraiseTitle(song, fallbackText = "") {
 }
 
 function presenterPraiseMarker(song, fallbackText = "") {
-  if (song?.hymn_no) return String(song.hymn_no).trim();
-  const { no } = splitHymnNo(fallbackText);
-  return no || "";
+  void song;
+  void fallbackText;
+  return "";
 }
 
 function presenterFormMarker(form) {

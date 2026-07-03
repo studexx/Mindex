@@ -1287,6 +1287,15 @@ def main() -> int:
                             updateServiceTemplateElementField(orderInput);
                             typeSelect.value = 'title_person';
                             updateServiceTemplateElementField(typeSelect);
+                            const snapshots = [];
+                            runServiceTemplateElementAction('add-after', typeId, 0, 0);
+                            snapshots.push((ensureServiceOrderTemplate(typeId)[0]?.elements || []).map((item) => item.label || item.name || ''));
+                            runServiceTemplateElementAction('down', typeId, 0, 1);
+                            snapshots.push((ensureServiceOrderTemplate(typeId)[0]?.elements || []).map((item) => item.label || item.name || ''));
+                            runServiceTemplateElementAction('up', typeId, 0, 2);
+                            snapshots.push((ensureServiceOrderTemplate(typeId)[0]?.elements || []).map((item) => item.label || item.name || ''));
+                            runServiceTemplateElementAction('delete', typeId, 0, 1);
+                            snapshots.push((ensureServiceOrderTemplate(typeId)[0]?.elements || []).map((item) => item.label || item.name || ''));
                             const updatedElements = ensureServiceOrderTemplate(typeId)[0]?.elements || [];
                             const serializedElements = serializeServiceOrderTemplate(typeId)[0]?.elements || [];
                             state.serviceTypes = state.serviceTypes.filter((type) => type.id !== typeId);
@@ -1295,7 +1304,9 @@ def main() -> int:
                             return {
                               before,
                               rowCount: host.querySelectorAll('.svc-template-element-row').length,
+                              actionButtons: host.querySelectorAll('[data-service-template-element-action]').length,
                               fieldLabels: [...host.querySelectorAll('.svc-template-element-field small')].map((node) => node.textContent.trim()).slice(0, 5),
+                              snapshots,
                               firstFormHint: updatedElements[0]?.formHint || '',
                               firstForms: updatedElements[0]?.formPreset?.forms || [],
                               firstStrength: updatedElements[0]?.formPreset?.strength || '',
@@ -1362,7 +1373,14 @@ def main() -> int:
                         and template_terms["templateElementEditor"] == {
                             "before": "V-C",
                             "rowCount": 2,
+                            "actionButtons": 9,
                             "fieldLabels": ["엘리먼트", "기본 항목", "타입", "순서지", "송폼"],
+                            "snapshots": [
+                                ["봉헌", "새 엘리먼트", "봉헌기도"],
+                                ["봉헌", "봉헌기도", "새 엘리먼트"],
+                                ["봉헌", "새 엘리먼트", "봉헌기도"],
+                                ["봉헌", "봉헌기도"],
+                            ],
                             "firstFormHint": "V2-C",
                             "firstForms": ["V2", "C"],
                             "firstStrength": "manual",
