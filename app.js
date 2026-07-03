@@ -13565,53 +13565,10 @@ function renderPresenterSlideMiniPreview(slide, serviceId = state.presenter.serv
   if (!slide) {
     return `<span class="svc-slide-mini-output${chromakey ? "" : " no-chromakey"}" data-output-theme="${escapeAttr(theme)}"${bgStyle}></span>`;
   }
-  const renderClass = presenterSlideRenderClass(slide);
-  const meta = renderPresenterSlideMiniMeta(slide);
-  const body = renderPresenterSlideMiniBody(slide);
   return `
     <span class="svc-slide-mini-output${chromakey ? "" : " no-chromakey"}${backgroundImage && !chromakey ? " has-background" : ""}" data-output-theme="${escapeAttr(theme)}"${bgStyle}>
-      <span class="svc-slide-mini-live svc-slide-mini-live--${escapeAttr(renderClass)}" data-element-type="${escapeAttr(presenterSlideElementType(slide))}" data-slide-layout="${escapeAttr(presenterSlideLayout(slide))}">
-        ${meta}
-        ${body}
-      </span>
+      ${renderPresenterSlideFrame(slide, { preview: true })}
     </span>`;
-}
-
-function renderPresenterSlideMiniMeta(slide) {
-  if (!slide || !presenterSlideHasMeta(slide)) return "";
-  const marker = presenterVisibleMeta(slide);
-  return marker ? `<span class="svc-slide-mini-live-meta">${escapeHtml(marker)}</span>` : "";
-}
-
-function renderPresenterSlideMiniBody(slide) {
-  const layout = presenterSlideLayout(slide);
-  const elementType = presenterSlideElementType(slide);
-  if (layout === PRESENTER_SLIDE_LAYOUTS.MEDIA && elementType === PRESENTER_ELEMENT_TYPES.VIDEO) {
-    const source = normalizePresenterMediaSource(slide.videoSrc || slide.text);
-    if (!source) return "";
-    return `
-      <span class="svc-slide-mini-video">
-        <small>${escapeHtml(presenterMediaFileName(source))}</small>
-      </span>`;
-  }
-  if (layout === PRESENTER_SLIDE_LAYOUTS.MEDIA && elementType === PRESENTER_ELEMENT_TYPES.IMAGE) {
-    const source = normalizePresenterMediaSource(slide.imageSrc || slide.asset?.url || slide.text);
-    if (!source) return "";
-    return `
-      <span class="svc-slide-mini-video">
-        <small>${escapeHtml(presenterMediaFileName(source))}</small>
-      </span>`;
-  }
-  if (layout === PRESENTER_SLIDE_LAYOUTS.FILE) {
-    const typeLabel = presenterFileTypeLabel(slide.sourceType || slide.componentType || slide.asset?.kind || "file");
-    return `
-      <span class="svc-slide-mini-file">
-        <strong>${escapeHtml(typeLabel)}</strong>
-        <small>${escapeHtml(presenterFileDisplayTitle(slide, typeLabel))}</small>
-      </span>`;
-  }
-  if (layout === PRESENTER_SLIDE_LAYOUTS.BLANK) return "";
-  return `<span class="svc-slide-mini-live-text">${renderPresenterSlideText(slide)}</span>`;
 }
 
 function presenterMediaFileName(source) {
@@ -15188,11 +15145,16 @@ function renderPresenterOutput(payload) {
     return;
   }
 
+  root.innerHTML = renderPresenterSlideFrame(slide);
+}
+
+function renderPresenterSlideFrame(slide, options = {}) {
   const slideClass = presenterSlideRenderClass(slide);
-  root.innerHTML = `
+  const body = options.preview ? renderPresenterSlidePreviewBody(slide) : renderPresenterSlideBody(slide);
+  return `
     <section class="presenter-slide presenter-slide--${escapeAttr(slideClass)}" data-element-type="${escapeAttr(presenterSlideElementType(slide))}" data-slide-layout="${escapeAttr(presenterSlideLayout(slide))}">
       ${renderPresenterSlideMeta(slide)}
-      ${renderPresenterSlideBody(slide)}
+      ${body}
     </section>
   `;
 }
@@ -15230,6 +15192,26 @@ function renderPresenterSlideBody(slide) {
   if (layout === PRESENTER_SLIDE_LAYOUTS.FILE) return renderPresenterFileSlide(slide);
   if (layout === PRESENTER_SLIDE_LAYOUTS.BLANK) return "";
   return `<div class="presenter-slide-text">${renderPresenterSlideText(slide)}</div>`;
+}
+
+function renderPresenterSlidePreviewBody(slide) {
+  const layout = presenterSlideLayout(slide);
+  const elementType = presenterSlideElementType(slide);
+  if (layout === PRESENTER_SLIDE_LAYOUTS.MEDIA && elementType === PRESENTER_ELEMENT_TYPES.VIDEO) {
+    const source = normalizePresenterMediaSource(slide.videoSrc || slide.text);
+    if (!source) return "";
+    return renderPresenterPreviewFileSlide(slide, "VIDEO", source);
+  }
+  return renderPresenterSlideBody(slide);
+}
+
+function renderPresenterPreviewFileSlide(slide, typeLabel, source) {
+  return `
+    <div class="presenter-slide-file">
+      <small>${escapeHtml(typeLabel)}</small>
+      <strong>${escapeHtml(presenterFileDisplayTitle({ ...slide, asset: { ...slide.asset, url: source } }, typeLabel))}</strong>
+    </div>
+  `;
 }
 
 function renderPresenterVideoSlide(slide) {

@@ -889,6 +889,32 @@ def main() -> int:
                 else:
                     fail("presenter-output-route", json.dumps({"payload": payload, "output": output_state}, ensure_ascii=False))
 
+                preview_state = page.evaluate(
+                    """
+                    (() => {
+                      const thumb = document.querySelector('.svc-slide-thumb.active .svc-slide-mini-output .presenter-slide');
+                      const text = thumb?.innerText.trim() || '';
+                      return {
+                        hasSharedFrame: Boolean(thumb),
+                        slideClass: thumb ? [...thumb.classList].find((name) => name.startsWith('presenter-slide--') && name !== 'presenter-slide') : '',
+                        elementType: thumb?.dataset.elementType || '',
+                        layout: thumb?.dataset.slideLayout || '',
+                        text,
+                      };
+                    })()
+                    """
+                )
+                if (
+                    preview_state["hasSharedFrame"]
+                    and preview_state["slideClass"] == output_state["slideClass"]
+                    and preview_state["elementType"] == output_state["elementType"]
+                    and preview_state["layout"] == output_state["layout"]
+                    and (output_state["text"] in preview_state["text"] or preview_state["text"] in output_state["text"])
+                ):
+                    pass_("presenter-controller-preview-shared-frame", json.dumps(preview_state, ensure_ascii=False))
+                else:
+                    fail("presenter-controller-preview-shared-frame", json.dumps({"output": output_state, "preview": preview_state}, ensure_ascii=False))
+
                 output_viewport_shot = output_page.screenshot()
                 letterbox_pixels = {
                     "top": rgb_at(output_viewport_shot, 0.5, 0.01),
