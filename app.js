@@ -5867,7 +5867,7 @@ function renderSongList() {
     return;
   }
 
-  if (isGlobalSearchActive() && (state.module === "home" || state.module === "calendar" || state.module === "references")) {
+  if (isGlobalSearchActive()) {
     renderGlobalSearchList();
     return;
   }
@@ -10853,17 +10853,20 @@ function renderServiceList() {
           <span>${q ? "검색 결과" : "예배"}</span>
           ${q ? `<small>${services.length}</small>` : ""}
         </div>
-	        ${q ? (services.length
-	          ? `<div class="service-sidebar-stack">${services.map(renderServiceSidebarCard).join("")}</div>`
-	          : `<p class="service-no-results">검색 결과가 없습니다.</p>`) : `
-	          <button class="service-type-row${!state.selectedServiceId && state.selectedServiceTypeId !== SERVICE_TEMPLATES_PANEL_ID ? " active" : ""}" type="button" data-service-list>
-	            <span>목록</span>
-	            <small>${state.services.length}</small>
-	          </button>
-	          <button class="service-type-row service-type-row--templates${state.selectedServiceTypeId === SERVICE_TEMPLATES_PANEL_ID && !state.selectedServiceId ? " active" : ""}" type="button" data-service-templates>
-	            <span>템플릿</span>
-	            <small>예배 · 섹션</small>
-	          </button>
+        ${q ? `
+          ${services.length
+            ? `<div class="service-sidebar-stack">${services.map(renderServiceSidebarCard).join("")}</div>`
+            : `<p class="service-no-results">검색 결과가 없습니다.</p>`}
+          ${selectedService ? renderServiceCurrentSidebar(selectedService) : ""}
+        ` : `
+          <button class="service-type-row${!state.selectedServiceId && state.selectedServiceTypeId !== SERVICE_TEMPLATES_PANEL_ID ? " active" : ""}" type="button" data-service-list>
+            <span>목록</span>
+            <small>${state.services.length}</small>
+          </button>
+          <button class="service-type-row service-type-row--templates${state.selectedServiceTypeId === SERVICE_TEMPLATES_PANEL_ID && !state.selectedServiceId ? " active" : ""}" type="button" data-service-templates>
+            <span>템플릿</span>
+            <small>예배 · 섹션</small>
+          </button>
             ${selectedService ? renderServiceCurrentSidebar(selectedService) : ""}`}
       </section>
     </div>`;
@@ -10938,7 +10941,7 @@ function renderServiceOutlineRow(service, item, index, selectedIndex, slides = [
   const title = serviceSidebarItemTitle(item);
   const meta = cleanList([
     item.assignee,
-    slideIndex >= 0 ? `${slideCountForServiceItem(item, slides)} slides` : "",
+    slideIndex >= 0 ? `${slideCountForServiceItem(item, slides)} 슬라이드` : "",
   ]).join(" · ");
   return `
     <button class="service-outline-row${selected ? " selected" : ""}${activeSlide ? " active" : ""}" type="button"
@@ -11378,7 +11381,7 @@ function renderServiceListDetail() {
         .filter((type) => serviceTypeGroupKey(type.id) === key)
         .map((type) => ({
           type,
-          services: q ? getFilteredServicesForType(type.id) : getFilteredServicesForType(type.id),
+          services: getFilteredServicesForType(type.id),
         }))
         .filter((entry) => entry.services.length || !q),
     }))
@@ -11403,7 +11406,7 @@ function renderServiceListDetail() {
         `).join("")}
       </div>
     </div>`;
-  refreshIcons();
+  finishDetailRender();
 }
 
 function renderServiceListTypeBlock(type, services, query) {
@@ -11413,7 +11416,7 @@ function renderServiceListTypeBlock(type, services, query) {
       <header>
         <div>
           <strong>${escapeHtml(serviceTypeDisplayName(type.id))}</strong>
-          <small>${escapeHtml(sorted.length)}${query ? " results" : " services"}</small>
+          <small>${escapeHtml(sorted.length)}${query ? "개 결과" : "개 예배"}</small>
         </div>
         <button class="icon-btn quiet svc-new-btn" type="button" data-new-service="${escapeAttr(type.id)}" aria-label="예배 추가">
           <i data-lucide="plus"></i>
@@ -12847,9 +12850,20 @@ async function buildLiveScriptureSlide(query) {
     label: "성구",
     title,
     marker: title,
-    text: verses.map((verse) => `${verse.verse}   ${verse.text}`).join("\n"),
+    text: formatLiveScriptureSlideText(title, verses),
     live: true,
   };
+}
+
+function formatLiveScriptureSlideText(reference, verses = []) {
+  const title = String(reference || "").trim();
+  const multipleVerses = verses.length > 1;
+  return verses.map((verse, index) => {
+    const verseText = String(verse?.text || "").trim();
+    const versePrefix = multipleVerses ? `${verse?.verse || ""} `.trim() : "";
+    const line = [versePrefix, verseText].filter(Boolean).join(" ");
+    return [index === 0 ? title : "", line].filter(Boolean).join("   ");
+  }).join("\n");
 }
 
 function selectedPresenterBibleTranslation() {
@@ -13450,6 +13464,7 @@ function renderPresenterControlState(serviceId = state.selectedServiceId) {
       }
       refreshIcons();
       updateSaveState();
+      renderServiceList();
       requestAnimationFrame(() => scrollActivePresenterThumbIntoView(serviceId));
       return;
     }
@@ -13699,7 +13714,7 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
     label,
     title,
     marker: no || "",
-    text: title,
+    text: formatPresenterSongTitleText(title),
     sort: index,
   }];
 }
@@ -13944,9 +13959,15 @@ function presenterSongTitleSlide(item, section, song, version, displayText, inde
     title: songTitle,
     subtitle: versionDisplayName(song, version),
     marker,
-    text: songTitle,
+    text: formatPresenterSongTitleText(songTitle),
     sort: index - 0.001,
   };
+}
+
+function formatPresenterSongTitleText(title) {
+  const cleanTitle = String(title || "").trim();
+  if (!cleanTitle) return "";
+  return cleanTitle.startsWith("♪") ? cleanTitle : `♪ ${cleanTitle}`;
 }
 
 function presenterPraiseTitle(song, fallbackText = "") {

@@ -688,6 +688,7 @@ def main() -> int:
                     and output_state["slideClass"]
                     and output_state["elementType"]
                     and output_state["layout"]
+                    and (output_state["slideClass"] != "presenter-slide--song-title" or output_state["text"].startswith("♪ "))
                     and abs(output_state["frame"]["ratio"] - (16 / 9)) <= 0.01
                     and abs(output_state["lowerBarRatio"] - (7 / 40)) <= 0.01
                     and output_state["overflow"] <= 2
@@ -743,7 +744,7 @@ def main() -> int:
                         label: '성구',
                         title: '요 3:16',
                         marker: '요 3:16',
-                        text: '16   하나님이 세상을 이처럼 사랑하사',
+                        text: '요 3:16   하나님이 세상을 이처럼 사랑하사',
                         live: true,
                       };
                       state.presenter.liveScripture = {
@@ -796,7 +797,7 @@ def main() -> int:
                     "presenter-slide--scripture" in live_scripture_state["slideClass"]
                     and live_scripture_state["elementType"] == "scripture_text"
                     and live_scripture_state["layout"] == "lower_bar_text"
-                    and "요 3:16" not in live_scripture_state["text"]
+                    and "요 3:16" in live_scripture_state["text"]
                     and "하나님이 세상을" in live_scripture_state["text"]
                     and live_scripture_state["textAlign"] == "left"
                     and live_scripture_state["alignItems"] == "flex-start"

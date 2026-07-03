@@ -362,14 +362,14 @@ def select_service_with_slides(page) -> dict[str, Any] | None:
                 id: '__smoke_presenter_item_4__',
                 service_id: service.id,
                 sort_order: 4,
-                label: 'PPT',
+                label: '파일',
                 raw_title: '',
                 memo: JSON.stringify({
-                  elementType: 'pptx',
+                  elementType: 'file',
                   asset: {
-                    kind: 'pptx',
-                    name: 'Elem_003_찬양.pptx',
-                    url: 'archive/Elem_003_찬양.pptx',
+                    kind: 'file',
+                    name: '예배 자료',
+                    url: 'archive/service-file',
                   },
                 }),
               },
@@ -378,6 +378,8 @@ def select_service_with_slides(page) -> dict[str, Any] | None:
           if (!service) return null;
           const slides = buildServicePresenterSlides(service.id);
           state.module = 'service';
+          state.search = '';
+          if (typeof refs !== 'undefined' && refs.searchInput) refs.searchInput.value = '';
           state.selectedServiceTypeId = service.type_id;
           state.selectedServiceId = service.id;
           render();
@@ -935,6 +937,34 @@ def main() -> int:
                 else:
                     fail("service-data-load", json.dumps(snapshot, ensure_ascii=False))
 
+                page.fill("#searchInput", "창세기")
+                page.wait_for_selector(".global-search-section", timeout=5000)
+                global_search_state = page.evaluate(
+                    """
+                    (() => ({
+                      module: document.body.dataset.module || '',
+                      headings: [...document.querySelectorAll('.global-search-heading')]
+                        .map((node) => node.textContent.trim()),
+                      scriptureResults: document.querySelectorAll('[data-global-book-code], [data-global-bible-text]').length,
+                      serviceLocalRows: document.querySelectorAll('.service-type-row, .service-sidebar-card').length,
+                      overflow: Math.max(document.documentElement.scrollWidth - window.innerWidth, document.body.scrollWidth - window.innerWidth)
+                    }))()
+                    """
+                )
+                if (
+                    global_search_state["module"] == "service"
+                    and "Scripture" in global_search_state["headings"]
+                    and global_search_state["scriptureResults"] > 0
+                    and global_search_state["serviceLocalRows"] == 0
+                    and global_search_state["overflow"] <= 2
+                ):
+                    pass_("global-search-cross-module", json.dumps(global_search_state, ensure_ascii=False))
+                else:
+                    fail("global-search-cross-module", json.dumps(global_search_state, ensure_ascii=False))
+
+                page.fill("#searchInput", "")
+                page.wait_for_selector("[data-service-list]", timeout=5000)
+
                 service_sidebar_gap = page.evaluate(
                     """
                     (() => {
@@ -964,36 +994,35 @@ def main() -> int:
                 else:
                     fail("service-sidebar-section-label-gap", json.dumps(service_sidebar_gap, ensure_ascii=False))
 
-                if page.locator(".service-type-row[data-service-type-id]").count():
-                    page.locator(".service-type-row[data-service-type-id]").first.click()
-                    page.wait_for_selector(".service-date-list", timeout=5000)
-                    service_gutter = page.evaluate(
-                        """
-                        (() => {
-                          const detail = document.querySelector('.detail-pane')?.getBoundingClientRect();
-                          const list = document.querySelector('.service-date-list')?.getBoundingClientRect();
-                          const title = document.querySelector('.service-date-list-title')?.getBoundingClientRect();
-                          const styles = getComputedStyle(document.querySelector('.service-date-list'));
-                          return {
-                            listLeft: Math.round((list?.left || 0) - (detail?.left || 0)),
-                            titleLeft: Math.round((title?.left || 0) - (detail?.left || 0)),
-                            paddingLeft: Math.round(parseFloat(styles.paddingLeft)),
-                            overflow: Math.max(document.documentElement.scrollWidth - window.innerWidth, document.body.scrollWidth - window.innerWidth)
-                          };
-                        })()
-                        """
-                    )
-                    if (
-                        service_gutter["listLeft"] == 25
-                        and service_gutter["titleLeft"] == 25
-                        and service_gutter["paddingLeft"] == 0
-                        and service_gutter["overflow"] <= 2
-                    ):
-                        pass_("service-date-list-gutter", json.dumps(service_gutter, ensure_ascii=False))
-                    else:
-                        fail("service-date-list-gutter", json.dumps(service_gutter, ensure_ascii=False))
+                page.locator("[data-service-list]").first.click()
+                page.wait_for_selector(".service-date-list", timeout=5000)
+                service_gutter = page.evaluate(
+                    """
+                    (() => {
+                      const detail = document.querySelector('.detail-pane')?.getBoundingClientRect();
+                      const list = document.querySelector('.service-date-list')?.getBoundingClientRect();
+                      const title = document.querySelector('.service-date-list-title')?.getBoundingClientRect();
+                      const styles = getComputedStyle(document.querySelector('.service-date-list'));
+                      return {
+                        listLeft: Math.round((list?.left || 0) - (detail?.left || 0)),
+                        titleLeft: Math.round((title?.left || 0) - (detail?.left || 0)),
+                        paddingLeft: Math.round(parseFloat(styles.paddingLeft)),
+                        hasGroups: Boolean(document.querySelector('.service-list-groups')),
+                        overflow: Math.max(document.documentElement.scrollWidth - window.innerWidth, document.body.scrollWidth - window.innerWidth)
+                      };
+                    })()
+                    """
+                )
+                if (
+                    service_gutter["listLeft"] == 25
+                    and service_gutter["titleLeft"] == 25
+                    and service_gutter["paddingLeft"] == 0
+                    and service_gutter["hasGroups"]
+                    and service_gutter["overflow"] <= 2
+                ):
+                    pass_("service-date-list-gutter", json.dumps(service_gutter, ensure_ascii=False))
                 else:
-                    skip("service-date-list-gutter", "No service type rows.")
+                    fail("service-date-list-gutter", json.dumps(service_gutter, ensure_ascii=False))
 
                 page.evaluate(
                     """
@@ -1344,15 +1373,19 @@ def main() -> int:
                         pass_("presenter-slides", json.dumps(service_for_slides, ensure_ascii=False))
                     else:
                         fail("presenter-slides", f"dom={slide_count} state={service_for_slides}")
-                    page.locator(".svc-edit-drawer > summary").click()
                     presenter_terms = page.evaluate(
                         """
                         (() => ({
-                          summary: document.querySelector('.svc-edit-drawer > summary')?.innerText.trim() || '',
+                          sidebarHeadings: [...document.querySelectorAll('.service-sidebar-head span')]
+                            .map((node) => node.textContent.trim()),
+                          outlineRows: document.querySelectorAll('.service-outline-row').length,
+                          editorFields: [...document.querySelectorAll('.service-sidebar-editor label > span')]
+                            .map((node) => node.textContent.trim()),
+                          hasLegacyDrawer: Boolean(document.querySelector('.svc-edit-drawer')),
                           status: document.querySelector('.svc-presenter-status')?.textContent.trim() || '',
                           jumpLabel: document.querySelector('[data-presenter-jump-button]')?.getAttribute('aria-label') || '',
                           firstThumbLabel: document.querySelector('.svc-slide-thumb')?.getAttribute('aria-label') || '',
-                          actionLabels: [...document.querySelectorAll('.svc-edit-actions [aria-label]')]
+                          actionLabels: [...document.querySelectorAll('.service-sidebar-editor-actions [aria-label]')]
                             .slice(0, 4)
                             .map((node) => node.getAttribute('aria-label')),
                           elementTypes: [...document.querySelectorAll('[data-service-item-field="element_type"] option')]
@@ -1368,20 +1401,13 @@ def main() -> int:
                         """
                     )
                     if (
-                        (
-                            (
-                                "항목" in presenter_terms["summary"]
-                                and presenter_terms["actionLabels"][:4] == ["항목 위로 이동", "항목 아래로 이동", "항목 복제", "항목 삭제"]
-                                and presenter_terms["elementTypes"][:6] == ["자동", "빈 화면", "동영상", "이미지", "찬양", "말씀"]
-                            )
-                            or (
-                                "섹션" in presenter_terms["summary"]
-                                and "요소" in presenter_terms["summary"]
-                                and "슬라이드" in presenter_terms["summary"]
-                                and not presenter_terms["actionLabels"]
-                                and not presenter_terms["elementTypes"]
-                            )
-                        )
+                        "순서" in presenter_terms["sidebarHeadings"]
+                        and "편집" in presenter_terms["sidebarHeadings"]
+                        and presenter_terms["outlineRows"] >= 2
+                        and presenter_terms["editorFields"][:4] == ["섹션", "담당", "항목", "타입"]
+                        and not presenter_terms["hasLegacyDrawer"]
+                        and presenter_terms["actionLabels"][:4] == ["항목 위로 이동", "항목 아래로 이동", "항목 복제", "항목 삭제"]
+                        and presenter_terms["elementTypes"][:6] == ["자동", "빈 화면", "동영상", "이미지", "찬양", "말씀"]
                         and presenter_terms["status"] == "Preview"
                         and presenter_terms["jumpLabel"] == "슬라이드로 이동"
                         and (
