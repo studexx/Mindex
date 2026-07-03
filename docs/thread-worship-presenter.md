@@ -58,7 +58,7 @@ Service > Section > Element > Slide
   the abstract theological flow of worship; it is the actual unit used to build,
   edit, and present the service. Examples include `준비`, `찬양`,
   `대표기도`, `교회소식`, `성경봉독`, `특송`, `설교`, `결단기도`, `봉헌`,
-  `파송찬양`, `축도`, and department-only `교제`.
+  a final `찬양`, `축도`, and department-only `교제`.
 - `Element` is the content-bearing unit inside a section. An element can have
   `제목` (`title`), `담당자` (`person`), and `본문` (`body`), but none of those
   fields is globally required. Required fields depend on the element's type.
@@ -109,6 +109,8 @@ Template levels:
   layout.
 - `Element Template`: content fields and slide-building rules for one content
   unit, such as praise, prayer, Apostles' Creed, scripture reading, or video.
+  Song-form defaults belong here when they apply to a specific content unit,
+  e.g. monthly `봉헌 > 봉헌찬양` uses `V-C`, while `봉헌기도` has no song form.
 - `Section Template`: ordered collection of element templates, such as an
   offering section containing offering song and offering prayer.
 - `Service Template`: ordered collection of section templates for a recurring

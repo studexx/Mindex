@@ -388,6 +388,7 @@ select
   svc.service_date,
   sec.id as section_id,
   sec.sort_order as section_order,
+  sec.section_key,
   sec.title as section_title,
   sec.person as section_person,
   el.id as element_id,

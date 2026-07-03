@@ -2116,6 +2116,9 @@ function groupWorshipElements(sections = [], elements = []) {
       normalizeServiceOrderSheetPayload(sourceRef.orderSheet),
       normalizeServiceOrderSheetPayload(sourceRef.order_sheet),
     );
+    const formHint = serviceFormHintFromConfig(config);
+    const formPreset = normalizeServiceFormPreset(config.formPreset || config.form_preset, formHint);
+    const formPresetRules = normalizeServiceFormPresetRules(config.formPresetRules || config.form_preset_rules);
     grouped[serviceId].push(normalizeServiceItem({
       id: element.id,
       service_id: serviceId,
@@ -2127,6 +2130,9 @@ function groupWorshipElements(sections = [], elements = []) {
       song_version_id: element.song_version_id || null,
       memo: serializeServiceItemMemo({
         elementType: element.element_type,
+        formHint,
+        formPreset,
+        formPresetRules,
         orderSheet,
         reviewStatus: element.review_status,
         reviewFlags: sourceRef.review_flags || [],
@@ -2141,6 +2147,11 @@ function groupWorshipElements(sections = [], elements = []) {
     }));
     return grouped;
   }, {});
+}
+
+function serviceFormHintFromConfig(config = {}) {
+  const preset = normalizeServiceFormPreset(config.formPreset || config.form_preset, config.formHint || config.form_hint);
+  return String(config.formHint || config.form_hint || preset?.hint || "").trim();
 }
 
 function worshipElementDisplayTitle(element = {}, section = {}, sourceRef = {}, config = {}, orderSheet = null) {
@@ -2172,8 +2183,9 @@ function normalizeWorshipPresenterSlide(row = {}, index = 0) {
     sectionId: row.section_id || row.element_id || `section:${index}`,
     elementId: row.element_id || row.section_id || `element:${index}`,
     sectionIndex: Number(row.section_order) || index + 1,
+    sectionKey: row.section_key || "",
     sectionLabel: row.section_title || "",
-    sectionRole: row.section_title === "찬양" || row.element_type === "praise" ? "main-praise" : "",
+    sectionRole: row.section_key === "praise" ? "main-praise" : "",
     sectionTitle: row.section_title || "",
     elementLabel: row.element_label || row.section_title || "",
     elementTitle: row.element_title || title,
@@ -4114,6 +4126,12 @@ function handleDetailInput(event) {
     return;
   }
 
+  const serviceTemplateElementField = event.target.closest("[data-service-template-element-field]");
+  if (serviceTemplateElementField) {
+    updateServiceTemplateElementField(serviceTemplateElementField);
+    return;
+  }
+
   const serviceTemplateStepField = event.target.closest("[data-service-template-step-field]");
   if (serviceTemplateStepField) {
     updateServiceTemplateStepField(serviceTemplateStepField);
@@ -4201,6 +4219,12 @@ function handleDetailChange(event) {
   const serviceTemplateStepField = event.target.closest("[data-service-template-step-field]");
   if (serviceTemplateStepField) {
     updateServiceTemplateStepField(serviceTemplateStepField);
+    return;
+  }
+
+  const serviceTemplateElementField = event.target.closest("[data-service-template-element-field]");
+  if (serviceTemplateElementField) {
+    updateServiceTemplateElementField(serviceTemplateElementField);
     return;
   }
 
@@ -4749,7 +4773,12 @@ function updateServiceItemField(field) {
     const parsed = parseServiceItemMemo(item.memo);
     if (key === "memo_note") parsed.note = field.value;
     if (key === "slide_overrides") parsed.slides = parseServiceSlideOverrideInput(field.value);
-    if (key === "form_hint") parsed.formHint = field.value;
+    if (key === "form_hint") {
+      parsed.formHint = field.value;
+      parsed.formPreset = field.value
+        ? normalizeServiceFormPreset(field.value, field.value, "manual")
+        : null;
+    }
     if (key === "element_type" || key === "component_type") {
       parsed.elementType = normalizeServiceElementType(field.value);
       parsed.componentType = parsed.elementType;
@@ -4906,6 +4935,57 @@ function hasServiceOrderSheetPayload(payload) {
   return Boolean(payload && typeof payload === "object" && Object.keys(payload).length);
 }
 
+function normalizeServiceFormPreset(value, fallbackHint = "", fallbackStrength = "") {
+  const source = parseObjectPayload(value);
+  const forms = Array.isArray(value)
+    ? normalizeServiceFormPresetForms(value)
+    : typeof value === "string"
+      ? normalizeServiceFormPresetForms(value)
+      : source
+        ? normalizeServiceFormPresetForms(source.forms || source.form || source.sequence || source.labels || source.items)
+        : [];
+  const hint = firstNonBlankString(
+    source?.hint,
+    source?.formHint,
+    source?.form_hint,
+    source?.label,
+    fallbackHint,
+    forms.join("-"),
+  );
+  const strength = firstNonBlankString(source?.strength, source?.defaultStrength, source?.default_strength, fallbackStrength);
+  const preset = {};
+  if (forms.length) preset.forms = forms;
+  if (hint) preset.hint = hint;
+  if (strength) preset.strength = strength;
+  return Object.keys(preset).length ? preset : null;
+}
+
+function normalizeServiceFormPresetForms(value) {
+  if (Array.isArray(value)) return cleanList(value);
+  return String(value || "")
+    .split(/\s*(?:,|[-+>→])\s*/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function normalizeServiceFormPresetRules(value) {
+  const source = Array.isArray(value) ? value : parseObjectPayload(value);
+  if (!Array.isArray(source)) return [];
+  return source
+    .map((rule) => {
+      const parsedRule = parseObjectPayload(rule);
+      if (!parsedRule) return null;
+      const preset = normalizeServiceFormPreset(
+        parsedRule.formPreset || parsedRule.form_preset || parsedRule.preset,
+        parsedRule.formHint || parsedRule.form_hint,
+        parsedRule.strength || parsedRule.defaultStrength || parsedRule.default_strength,
+      );
+      const when = parseObjectPayload(parsedRule.when || parsedRule.condition || parsedRule.conditions) || {};
+      return preset ? { when, formPreset: preset } : null;
+    })
+    .filter(Boolean);
+}
+
 function pickServiceOrderSheetFields(item = {}) {
   const orderSheet = mergeServiceOrderSheetPayloads(
     normalizeServiceOrderSheetPayload(item.order_sheet),
@@ -4929,6 +5009,8 @@ function emptyServiceItemMemo(rawNote = "") {
     note: String(rawNote || "").trim(),
     slides: [],
     formHint: "",
+    formPreset: null,
+    formPresetRules: [],
     templateKey: "",
     templateVariant: "",
     elementType: "",
@@ -4966,6 +5048,8 @@ function parseServiceItemMemo(value) {
           ? parsed.slides.map((slide) => String(slide || "").trim()).filter(Boolean)
           : [],
         formHint: String(parsed.formHint || parsed.form_hint || parsed.forms || "").trim(),
+        formPreset: normalizeServiceFormPreset(parsed.formPreset || parsed.form_preset, parsed.formHint || parsed.form_hint),
+        formPresetRules: normalizeServiceFormPresetRules(parsed.formPresetRules || parsed.form_preset_rules),
         templateKey: String(parsed.templateKey || parsed.template_key || "").trim(),
         templateVariant: String(parsed.templateVariant || parsed.template_variant || "").trim(),
         elementType,
@@ -4997,6 +5081,8 @@ function serializeServiceItemMemo(value = {}) {
     ? value.slides.map((slide) => String(slide || "").trim()).filter(Boolean)
     : [];
   const formHint = String(value.formHint || value.form_hint || "").trim();
+  const formPreset = normalizeServiceFormPreset(value.formPreset || value.form_preset, formHint);
+  const formPresetRules = normalizeServiceFormPresetRules(value.formPresetRules || value.form_preset_rules);
   const templateKey = String(value.templateKey || value.template_key || "").trim();
   const templateVariant = String(value.templateVariant || value.template_variant || "").trim();
   const elementType = serviceMemoElementType(value);
@@ -5005,9 +5091,11 @@ function serializeServiceItemMemo(value = {}) {
     normalizeServiceOrderSheetPayload(value.orderSheet),
     normalizeServiceOrderSheetPayload(value.order_sheet),
   );
-  if (!slides.length && !formHint && !templateKey && !templateVariant && !elementType && !hasServiceAsset(asset) && !hasServiceOrderSheetPayload(orderSheet)) return note;
+  if (!slides.length && !formHint && !formPreset && !formPresetRules.length && !templateKey && !templateVariant && !elementType && !hasServiceAsset(asset) && !hasServiceOrderSheetPayload(orderSheet)) return note;
   const payload = { note };
   if (formHint) payload.formHint = formHint;
+  if (formPreset) payload.formPreset = formPreset;
+  if (formPresetRules.length) payload.formPresetRules = formPresetRules;
   if (templateKey) payload.templateKey = templateKey;
   if (templateVariant) payload.templateVariant = templateVariant;
   if (elementType) payload.elementType = elementType;
@@ -5290,7 +5378,7 @@ function canonicalWorshipServiceTypeId(typeId) {
 }
 
 function buildWorshipServiceScaffold(serviceId, typeId) {
-  const steps = serviceOrderTemplate(typeId).map(normalizeServiceTemplateStep);
+  const steps = serviceOrderTemplate(typeId).map((step, index) => normalizeServiceTemplateStep(step, index, typeId));
   const sections = [];
   const elements = [];
   steps.forEach((step, index) => {
@@ -5315,6 +5403,14 @@ function buildWorshipServiceScaffold(serviceId, typeId) {
       const orderSheet = ready
         ? { hidden: true }
         : normalizeServiceOrderSheetPayload(elementStep.orderSheet || elementStep.order_sheet) || { order: elementLabel };
+      const defaultStrength = String(elementStep.defaultStrength || elementStep.default_strength || "").trim();
+      const formPreset = normalizeServiceFormPreset(
+        elementStep.formPreset || elementStep.form_preset,
+        elementStep.formHint || elementStep.form_hint,
+        defaultStrength,
+      );
+      const formPresetRules = normalizeServiceFormPresetRules(elementStep.formPresetRules || elementStep.form_preset_rules);
+      const formHint = String(elementStep.formHint || elementStep.form_hint || formPreset?.hint || "").trim();
       elements.push({
         id: createUuid(),
         section_id: sectionId,
@@ -5328,6 +5424,10 @@ function buildWorshipServiceScaffold(serviceId, typeId) {
         source_ref: { label: elementLabel, template: true, placeholder: !ready },
         config: {
           orderSheet,
+          ...(formHint ? { formHint } : {}),
+          ...(formPreset ? { formPreset } : {}),
+          ...(formPresetRules.length ? { formPresetRules } : {}),
+          ...(defaultStrength ? { defaultStrength } : {}),
           ...(ready ? { presenterRole: "ready" } : { orderSheetPlaceholder: true }),
         },
       });
@@ -10209,14 +10309,45 @@ const MONTHLY_ORDER_TEMPLATE_FALLBACK = [
     flex: false,
     sectionKey: "offering",
     elements: [
-      { label: "봉헌", name: "봉헌찬양", elementType: "praise", orderSheet: { order: "봉헌", group: "praise" } },
+      {
+        label: "봉헌",
+        name: "봉헌찬양",
+        elementType: "praise",
+        default_text: "이런 교회 되게 하소서",
+        formHint: "V-C",
+        formPreset: { forms: ["V", "C"], strength: "suggested" },
+        defaultStrength: "suggested",
+        orderSheet: { order: "봉헌", group: "praise" },
+      },
       { label: "봉헌기도", name: "봉헌기도", elementType: "title_person", orderSheet: { order: "봉헌기도" } },
     ],
   },
   { label: "교회소식", name: "교회소식", phase: "Sending", required: true, flex: false, sectionKey: "announcements", elementType: "plain_text" },
-  { label: "찬양", name: "파송찬양", phase: "Sending", required: true, flex: false, sectionKey: "closing_song", elementType: "praise", orderSheet: { order: "찬양", group: "praise" } },
+  {
+    label: "찬양",
+    name: "찬양",
+    phase: "Sending",
+    required: true,
+    flex: false,
+    sectionKey: "closing_song",
+    elementType: "praise",
+    default_text: "여기에 모인 우리",
+    formHint: "V1-C-C",
+    formPreset: { forms: ["V1", "C", "C"], strength: "default" },
+    defaultStrength: "default",
+    orderSheet: { order: "찬양", group: "praise" },
+  },
   { label: "축도", name: "축도", phase: "Sending", required: true, flex: false, sectionKey: "benediction", elementType: "title_person" },
 ];
+
+const PUBLIC_SPECIAL_HYMN_FORM_PRESET_RULE = {
+  when: { songType: "hymn" },
+  formPreset: {
+    forms: ["1절", "2절", "간주", "마지막 절"],
+    hint: "1절-2절-간주-마지막 절",
+    strength: "default",
+  },
+};
 
 const SERVICE_ORDER_TEMPLATE_FALLBACKS = {
   "sunday-first": ["사도신경", "찬양", "참회기도", "기도", "성경봉독", "특송", "설교", "결단기도", "봉헌", "봉헌기도", "교회소식", "송영", "축도"],
@@ -10231,7 +10362,7 @@ const SERVICE_ORDER_TEMPLATE_FALLBACKS = {
   special: [],
   children: ["사도신경", "찬양", "예배의 부름", "성경봉독", "설교", "결단기도", "봉헌", "봉헌찬양", "봉헌기도", "나래파송", "주기도문", "광고", "교제"],
   youth: ["사도신경", "찬양", "통성기도", "대표기도", "봉헌", "봉헌찬양", "봉헌기도", "성경봉독", "설교", "결단찬양", "결단기도", "주기도문", "광고", "교제"],
-  "young-adult": ["사도신경", "대표기도", "찬양", "통성기도", "성경봉독", "설교", "결단찬양", "결단기도", "봉헌", "봉헌찬양", "봉헌기도", "광고", "파송찬양", "축도", "교제"],
+  "young-adult": ["사도신경", "대표기도", "찬양", "통성기도", "성경봉독", "설교", "결단찬양", "결단기도", "봉헌", "봉헌찬양", "봉헌기도", "광고", "찬양", "축도", "교제"],
 };
 const SERVICE_LIST_PANEL_ID = "__list";
 const SERVICE_TEMPLATES_PANEL_ID = "__templates";
@@ -10383,20 +10514,25 @@ function serviceTypeById(typeId) {
 
 function serviceOrderTemplate(typeId) {
   const template = serviceTypeById(typeId)?.order_template;
-  if (Array.isArray(template) && template.length) return template.filter((step) => step && typeof step === "object");
+  if (Array.isArray(template) && template.length) {
+    return template
+      .filter((step) => step && typeof step === "object")
+      .map((step) => withServiceTemplateImplicitRules(step, typeId));
+  }
   const fallbackSteps = [
     { label: "준비", name: "준비", phase: "Gathering", required: false, flex: true, sectionKey: "ready", elementType: "video" },
     ...(SERVICE_ORDER_TEMPLATE_FALLBACKS[typeId] || []),
   ];
   return fallbackSteps
-    .map((step, index) => normalizeFallbackServiceTemplateStep(step, index))
+    .map((step, index) => normalizeFallbackServiceTemplateStep(step, index, typeId))
     .filter((step) => step.label || step.name);
 }
 
-function normalizeFallbackServiceTemplateStep(step, index = 0) {
+function normalizeFallbackServiceTemplateStep(step, index = 0, typeId = "") {
   const value = step && typeof step === "object" ? step : { label: String(step || ""), name: String(step || "") };
   const label = String(value.label || value.name || "").trim();
   const elementType = value.elementType || value.element_type || value.componentType || value.component_type || serviceTemplateDefaultElementType(label);
+  const formPresetRules = serviceTemplateImplicitFormPresetRules(value, typeId, label);
   return {
     ...value,
     label,
@@ -10407,8 +10543,23 @@ function normalizeFallbackServiceTemplateStep(step, index = 0) {
     repeatable: value.repeatable !== undefined ? Boolean(value.repeatable) : label === "찬양" || label === "기도",
     elementType,
     componentType: value.componentType || value.component_type || elementType,
+    ...(formPresetRules.length ? { formPresetRules } : {}),
     source: value.source || "Fallback",
   };
+}
+
+function withServiceTemplateImplicitRules(step = {}, typeId = "") {
+  const label = String(step.label || step.name || "").trim();
+  const formPresetRules = serviceTemplateImplicitFormPresetRules(step, typeId, label);
+  return formPresetRules.length ? { ...step, formPresetRules } : step;
+}
+
+function serviceTemplateImplicitFormPresetRules(step = {}, typeId = "", label = "") {
+  const rules = normalizeServiceFormPresetRules(step.formPresetRules || step.form_preset_rules);
+  if (serviceTypeGroupKey(typeId) === "public" && compactSearchValue(label || step.label || step.name) === "특송" && !rules.length) {
+    rules.push(PUBLIC_SPECIAL_HYMN_FORM_PRESET_RULE);
+  }
+  return rules;
 }
 
 function serviceTemplateDefaultElementType(label) {
@@ -10423,7 +10574,8 @@ function serializeServiceOrderTemplate(typeId) {
   const fallback = serviceOrderTemplate(typeId);
   return (current.length ? current : fallback)
     .map((step, index) => {
-      const normalized = normalizeServiceTemplateStep(step, index);
+      const normalized = normalizeServiceTemplateStep(step, index, typeId);
+      const formPresetRules = normalizeServiceFormPresetRules(normalized.formPresetRules || normalized.form_preset_rules);
       return {
         label: nullIfBlank(normalized.label || normalized.name || ""),
         name: nullIfBlank(normalized.name || normalized.label || ""),
@@ -10434,6 +10586,10 @@ function serializeServiceOrderTemplate(typeId) {
         repeatable: Boolean(normalized.repeatable),
         elementType: nullIfBlank(normalized.elementType),
         default_text: nullIfBlank(normalized.default_text),
+        formHint: nullIfBlank(normalized.formHint || normalized.form_hint),
+        formPreset: normalizeServiceFormPreset(normalized.formPreset || normalized.form_preset) || undefined,
+        formPresetRules: formPresetRules.length ? formPresetRules : undefined,
+        defaultStrength: nullIfBlank(normalized.defaultStrength || normalized.default_strength),
         elements: serializeServiceTemplateElements(normalized.elements),
         notes: nullIfBlank(serializeServiceItemMemo({
           ...parseServiceItemMemo(normalized.notes),
@@ -10453,11 +10609,16 @@ function serializeServiceTemplateElements(elements = []) {
     .filter((element) => element && typeof element === "object")
     .map((element, index) => {
       const elementType = normalizeWorshipElementType(element.elementType || element.element_type || element.componentType || element.component_type);
+      const formPresetRules = normalizeServiceFormPresetRules(element.formPresetRules || element.form_preset_rules);
       return {
         label: nullIfBlank(element.label || element.name || ""),
         name: nullIfBlank(element.name || element.label || ""),
         elementType: nullIfBlank(elementType),
         default_text: nullIfBlank(element.default_text || element.title || ""),
+        formHint: nullIfBlank(element.formHint || element.form_hint),
+        formPreset: normalizeServiceFormPreset(element.formPreset || element.form_preset) || undefined,
+        formPresetRules: formPresetRules.length ? formPresetRules : undefined,
+        defaultStrength: nullIfBlank(element.defaultStrength || element.default_strength),
         orderSheet: normalizeServiceOrderSheetPayload(element.orderSheet || element.order_sheet) || undefined,
         sort_order: index + 1,
       };
@@ -10484,12 +10645,19 @@ function defaultServiceTemplateStep(index = 0, typeId = "") {
   };
 }
 
-function normalizeServiceTemplateStep(step = {}, index = 0) {
+function normalizeServiceTemplateStep(step = {}, index = 0, typeId = "") {
   const label = String(step.label || step.name || "").trim();
   const memo = parseServiceItemMemo(step.notes || step.memo || "");
   const fallback = defaultServiceTemplateStep(index);
   const elementTypeValue = step.elementType || step.element_type || step.componentType || step.component_type || memo.elementType || memo.componentType;
   const elementType = normalizeServiceElementType(elementTypeValue) || normalizeWorshipElementType(elementTypeValue);
+  const defaultStrength = String(step.defaultStrength || step.default_strength || "").trim();
+  const formPreset = normalizeServiceFormPreset(step.formPreset || step.form_preset, step.formHint || step.form_hint, defaultStrength);
+  const formPresetRules = serviceTemplateImplicitFormPresetRules(
+    { ...step, formPresetRules: step.formPresetRules || step.form_preset_rules || memo.formPresetRules },
+    typeId,
+    label,
+  );
   return {
     ...fallback,
     ...step,
@@ -10504,6 +10672,10 @@ function normalizeServiceTemplateStep(step = {}, index = 0) {
     templateKey: String(step.templateKey || step.template_key || memo.templateKey || "").trim(),
     templateVariant: String(step.templateVariant || step.template_variant || memo.templateVariant || "").trim(),
     default_text: String(step.default_text || "").trim(),
+    formHint: String(step.formHint || step.form_hint || formPreset?.hint || "").trim(),
+    formPreset,
+    formPresetRules,
+    defaultStrength,
     notes: nullIfBlank(step.notes),
     sort_order: index + 1,
   };
@@ -10513,9 +10685,9 @@ function ensureServiceOrderTemplate(typeId) {
   const typeObj = serviceTypeById(typeId);
   if (!typeObj) return [];
   if (!Array.isArray(typeObj.order_template) || !typeObj.order_template.length) {
-    typeObj.order_template = serviceOrderTemplate(typeId).map(normalizeServiceTemplateStep);
+    typeObj.order_template = serviceOrderTemplate(typeId).map((step, index) => normalizeServiceTemplateStep(step, index, typeId));
   } else {
-    typeObj.order_template = typeObj.order_template.map(normalizeServiceTemplateStep);
+    typeObj.order_template = typeObj.order_template.map((step, index) => normalizeServiceTemplateStep(step, index, typeId));
   }
   return typeObj.order_template;
 }
@@ -10550,8 +10722,50 @@ function updateServiceTemplateStepField(field) {
     step.templateKey = String(field.value || "").trim();
   } else if (key === "template_variant") {
     step.templateVariant = String(field.value || "").trim();
+  } else if (key === "form_hint") {
+    step.formHint = String(field.value || "").trim();
+    step.formPreset = step.formHint ? normalizeServiceFormPreset(step.formHint, step.formHint, "manual") : null;
+    step.defaultStrength = step.formHint ? "manual" : "";
   }
   steps.forEach((item, itemIndex) => { item.sort_order = itemIndex + 1; });
+  markServiceTypeTemplateDirty(typeId);
+}
+
+function updateServiceTemplateElementField(field) {
+  const typeId = field.dataset.serviceTypeId;
+  const steps = ensureServiceOrderTemplate(typeId);
+  const stepIndex = Number(field.dataset.stepIndex);
+  const elementIndex = Number(field.dataset.elementIndex);
+  const step = steps[stepIndex];
+  if (!step) return;
+  if (!Array.isArray(step.elements)) step.elements = [];
+  const element = step.elements[elementIndex];
+  if (!element || typeof element !== "object") return;
+  const key = field.dataset.serviceTemplateElementField;
+  if (key === "label") {
+    const value = String(field.value || "").trim();
+    element.label = value;
+    if (!String(element.name || "").trim()) element.name = value;
+  } else if (key === "name") {
+    element.name = String(field.value || "").trim();
+  } else if (key === "default_text") {
+    element.default_text = String(field.value || "").trim();
+  } else if (key === "element_type" || key === "component_type") {
+    const elementType = normalizeWorshipElementType(field.value);
+    element.elementType = elementType;
+    element.componentType = elementType;
+  } else if (key === "order_sheet") {
+    const order = String(field.value || "").trim();
+    const previous = normalizeServiceOrderSheetPayload(element.orderSheet || element.order_sheet);
+    element.orderSheet = order ? { ...(previous || {}), order } : null;
+  } else if (key === "form_hint") {
+    element.formHint = String(field.value || "").trim();
+    element.formPreset = element.formHint ? normalizeServiceFormPreset(element.formHint, element.formHint, "manual") : null;
+    element.defaultStrength = element.formHint ? "manual" : "";
+  }
+  step.elements = step.elements
+    .filter((item) => item && typeof item === "object")
+    .map((item, itemIndex) => ({ ...item, sort_order: itemIndex + 1 }));
   markServiceTypeTemplateDirty(typeId);
 }
 
@@ -10604,6 +10818,42 @@ function renderServiceTemplateBadge(typeId, itemOrStep = {}) {
 
 function serviceItemFormHint(item) {
   return parseServiceItemMemo(item?.memo).formHint || "";
+}
+
+function serviceItemFormPreset(item) {
+  return parseServiceItemMemo(item?.memo).formPreset || null;
+}
+
+function serviceItemFormPresetRules(item) {
+  return parseServiceItemMemo(item?.memo).formPresetRules || [];
+}
+
+function serviceFormPresetSummary(preset) {
+  const normalized = normalizeServiceFormPreset(preset);
+  if (!normalized) return "";
+  return normalized.hint || (normalized.forms || []).join("-");
+}
+
+function serviceFormPresetRuleSummary(rule = {}) {
+  const presetText = serviceFormPresetSummary(rule.formPreset || rule.form_preset || rule.preset);
+  if (!presetText) return "";
+  const when = rule.when && typeof rule.when === "object" ? rule.when : {};
+  const types = normalizePraiseTypes(when.songType || when.song_type || when.praiseType || when.praise_type);
+  const condition = types.includes("hymn") ? "찬송가" : types.includes("ccm") ? "CCM" : types.includes("children") ? "어린이" : "";
+  return cleanList([condition, presetText]).join(" ");
+}
+
+function renderServiceFormPresetBadges(item, options = {}) {
+  if (!item || item._isDefault) return "";
+  const presetText = serviceFormPresetSummary(serviceItemFormPreset(item));
+  const ruleTexts = serviceItemFormPresetRules(item)
+    .map(serviceFormPresetRuleSummary)
+    .filter(Boolean);
+  if (!presetText && !ruleTexts.length) return "";
+  return `<span class="svc-form-preset-badges${options.compact ? " compact" : ""}">` + [
+    presetText ? `<span class="svc-form-preset-badge">송폼 ${escapeHtml(presetText)}</span>` : "",
+    ...ruleTexts.map((text) => `<span class="svc-form-preset-badge rule">${escapeHtml(text)}</span>`),
+  ].filter(Boolean).join(" ") + `</span>`;
 }
 
 function renderServiceFormHintInput(item, index, options = {}) {
@@ -11252,7 +11502,7 @@ function worshipElementTypeLabel(type) {
 }
 
 function renderServiceOrderTemplateEditor(type) {
-  const steps = serviceOrderTemplate(type.id).map(normalizeServiceTemplateStep);
+  const steps = serviceOrderTemplate(type.id).map((step, index) => normalizeServiceTemplateStep(step, index, type.id));
   return `
     <details class="svc-template-card">
       <summary>
@@ -11267,6 +11517,7 @@ function renderServiceOrderTemplateEditor(type) {
 }
 
 function renderServiceTemplateStepRow(typeId, step, index, total) {
+  const elementRows = renderServiceTemplateElementRows(typeId, step, index);
   return `
     <div class="svc-template-step-row">
       <span class="svc-template-step-number">${index + 1}</span>
@@ -11332,6 +11583,17 @@ function renderServiceTemplateStepRow(typeId, step, index, total) {
           placeholder="공예배 / 부서예배"
         >
       </label>
+      <label class="svc-template-step-field svc-template-step-field--form">
+        <small>송폼</small>
+        <input
+          type="text"
+          data-service-template-step-field="form_hint"
+          data-service-type-id="${escapeAttr(typeId)}"
+          data-step-index="${index}"
+          value="${escapeAttr(step.formHint || step.form_hint || serviceFormPresetSummary(step.formPreset || step.form_preset) || "")}"
+          placeholder="V1-C-C"
+        >
+      </label>
       <label class="svc-template-step-toggle">
         <input
           type="checkbox"
@@ -11368,6 +11630,82 @@ function renderServiceTemplateStepRow(typeId, step, index, total) {
         <button class="icon-btn tiny" type="button" data-service-template-step-action="add-after" data-service-type-id="${escapeAttr(typeId)}" data-step-index="${index}" aria-label="아래에 섹션 추가">＋</button>
         <button class="icon-btn tiny danger" type="button" data-service-template-step-action="delete" data-service-type-id="${escapeAttr(typeId)}" data-step-index="${index}" aria-label="섹션 삭제">×</button>
       </div>
+    </div>
+    ${elementRows}`;
+}
+
+function renderServiceTemplateElementRows(typeId, step, stepIndex) {
+  const elements = Array.isArray(step.elements) ? step.elements.filter((element) => element && typeof element === "object") : [];
+  if (!elements.length) return "";
+  return `
+    <div class="svc-template-element-list" aria-label="${escapeAttr(step.label || step.name || "섹션")} 세부 요소">
+      ${elements.map((element, elementIndex) => renderServiceTemplateElementRow(typeId, element, stepIndex, elementIndex)).join("")}
+    </div>`;
+}
+
+function renderServiceTemplateElementRow(typeId, element, stepIndex, elementIndex) {
+  const orderSheet = normalizeServiceOrderSheetPayload(element.orderSheet || element.order_sheet);
+  const formHint = element.formHint || element.form_hint || serviceFormPresetSummary(element.formPreset || element.form_preset) || "";
+  return `
+    <div class="svc-template-element-row">
+      <span class="svc-template-element-number">${stepIndex + 1}.${elementIndex + 1}</span>
+      <label class="svc-template-step-field svc-template-element-field">
+        <small>엘리먼트</small>
+        <input
+          type="text"
+          data-service-template-element-field="label"
+          data-service-type-id="${escapeAttr(typeId)}"
+          data-step-index="${stepIndex}"
+          data-element-index="${elementIndex}"
+          value="${escapeAttr(element.label || element.name || "")}"
+        >
+      </label>
+      <label class="svc-template-step-field svc-template-element-field">
+        <small>기본 항목</small>
+        <input
+          type="text"
+          data-service-template-element-field="default_text"
+          data-service-type-id="${escapeAttr(typeId)}"
+          data-step-index="${stepIndex}"
+          data-element-index="${elementIndex}"
+          value="${escapeAttr(element.default_text || element.title || "")}"
+        >
+      </label>
+      <label class="svc-template-step-field svc-template-element-field">
+        <small>타입</small>
+        <select
+          data-service-template-element-field="element_type"
+          data-service-type-id="${escapeAttr(typeId)}"
+          data-step-index="${stepIndex}"
+          data-element-index="${elementIndex}"
+        >
+          ${renderServiceElementTypeOptions(element.elementType || element.element_type || element.componentType || element.component_type)}
+        </select>
+      </label>
+      <label class="svc-template-step-field svc-template-element-field">
+        <small>순서지</small>
+        <input
+          type="text"
+          data-service-template-element-field="order_sheet"
+          data-service-type-id="${escapeAttr(typeId)}"
+          data-step-index="${stepIndex}"
+          data-element-index="${elementIndex}"
+          value="${escapeAttr(orderSheet?.order || "")}"
+          placeholder="순서지 항목"
+        >
+      </label>
+      <label class="svc-template-step-field svc-template-step-field--form svc-template-element-field">
+        <small>송폼</small>
+        <input
+          type="text"
+          data-service-template-element-field="form_hint"
+          data-service-type-id="${escapeAttr(typeId)}"
+          data-step-index="${stepIndex}"
+          data-element-index="${elementIndex}"
+          value="${escapeAttr(formHint)}"
+          placeholder="V-C"
+        >
+      </label>
     </div>`;
 }
 
@@ -11486,7 +11824,7 @@ function renderServiceDetail() {
             ` : ""}
             ${serviceUsesPraiseLeader(typeId) ? `
               <div class="svc-new-field">
-                <label class="svc-new-label">찬양 인도</label>
+                <label class="svc-new-label">찬양 인도자</label>
                 <input class="svc-new-input" type="text" data-new-service-field="leader" value="${escapeAttr(form.leader)}" placeholder="이름 칭호" />
               </div>
             ` : ""}
@@ -11678,11 +12016,11 @@ function renderServiceMetaEditor(service) {
           aria-label="예배명" />
       </label>` : ""}
       <label>
-        <span>${leaderHidden ? "찬양 인도 없음" : "찬양 인도"}</span>
+        <span>${leaderHidden ? "찬양 인도자 없음" : "찬양 인도자"}</span>
         <input class="svc-meta-input" type="text" data-service-meta-field="leader"
           value="${escapeAttr(leaderHidden ? "" : service.leader || "")}"
           placeholder="${leaderHidden ? "1·2부는 표시하지 않음" : "이름 칭호"}"
-          aria-label="${leaderHidden ? "찬양 인도 없음" : "찬양 인도"}"
+          aria-label="${leaderHidden ? "찬양 인도자 없음" : "찬양 인도자"}"
           ${leaderHidden ? "disabled" : ""} />
       </label>
       <label>
@@ -11798,6 +12136,7 @@ function renderServiceItemGroups(items) {
             <span class="svc-group-label">${escapeHtml(group.label)}</span>
             ${renderServiceTemplateBadge(selectedService?.type_id, groupFirst)}
             ${renderServiceFormHintInput(groupFirst, groupFirstIndex, { compact: true, placeholder: "송폼/범위" })}
+            ${renderServiceFormPresetBadges(groupFirst, { compact: true })}
           </span>
           ${group.assignee ? `<span class="svc-group-assignee">${escapeHtml(group.assignee)}</span>` : ""}
         </div>
@@ -11833,6 +12172,7 @@ function renderServiceItemGroups(items) {
 	              aria-label="항목 내용"
 	            />
 	            ${group.kind === "main-praise" ? renderServiceFormHintInput(item, origIndex, { compact: true, placeholder: "송폼" }) : ""}
+	            ${group.kind === "main-praise" ? renderServiceFormPresetBadges(item, { compact: true }) : ""}
 	            ${renderServiceItemLinkControl(item, origIndex)}
 	          </div>
           <div class="svc-edit-actions">
@@ -11851,7 +12191,7 @@ function renderServiceItemGroups(items) {
 
 function serviceEditorGroupInfo(item) {
   const label = String(item?.label || "").trim();
-  if (isMainPraiseLabel(label)) {
+  if (isMainPraiseServiceItem(item)) {
     return { key: "main-praise", kind: "main-praise", label: "찬양" };
   }
   return label
@@ -11882,6 +12222,7 @@ function renderServiceEditorItem(item, mergedIndex, mergedItems, groupNum) {
         />
         ${!isDefault ? renderServiceTemplateBadge(state.services.find((service) => service.id === state.selectedServiceId)?.type_id, item) : ""}
         ${!isDefault ? renderServiceFormHintInput(item, origIndex) : ""}
+        ${!isDefault ? renderServiceFormPresetBadges(item) : ""}
       </span>
       <input
         class="svc-edit-assignee"
@@ -11919,7 +12260,7 @@ function renderServiceEditorItem(item, mergedIndex, mergedItems, groupNum) {
 function renderServiceItemMemoEditor(item, index, options = {}) {
   const parsed = parseServiceItemMemo(item?.memo);
   const elementType = serviceMemoElementType(parsed);
-  const hasContent = Boolean(parsed.note || parsed.slides.length || parsed.formHint || elementType || hasServiceAsset(parsed.asset));
+  const hasContent = Boolean(parsed.note || parsed.slides.length || parsed.formHint || parsed.formPreset || parsed.formPresetRules?.length || elementType || hasServiceAsset(parsed.asset));
   return `
     <details class="svc-item-note${options.compact ? " compact" : ""}"${hasContent ? " open" : ""}>
       <summary>
@@ -11980,7 +12321,7 @@ function renderServiceItemMemoEditor(item, index, options = {}) {
 }
 
 function renderServiceElementTypeOptions(selectedType = "") {
-  const selected = normalizeServiceElementType(selectedType);
+  const selected = normalizeServiceElementType(selectedType) || normalizeWorshipElementType(selectedType);
   const options = [
     ["", "자동"],
     ["blank", "빈 화면"],
@@ -11988,6 +12329,11 @@ function renderServiceElementTypeOptions(selectedType = "") {
     ["image", "이미지"],
     ["praise", "찬양"],
     ["scripture", "말씀"],
+    ["scripture_reading", "성경봉독"],
+    ["scripture_body", "성경 본문"],
+    ["title_person", "제목 / 담당자"],
+    ["plain_text", "일반 텍스트"],
+    ["body", "본문"],
     ["activity", "Activity"],
     ["template", "슬라이드 템플릿"],
     ["file", "파일"],
@@ -12360,6 +12706,8 @@ function serviceOrderSheetRows(serviceId) {
 }
 
 function isMainPraiseServiceItem(item, options = {}) {
+  const sectionKey = String(item?._worshipSectionKey || "").trim();
+  if (sectionKey) return sectionKey === "praise";
   const label = String(item?.label || "").trim();
   if (isMainPraiseLabel(label)) return true;
   return Boolean(options.allowUnlabeled && !label && serviceOrderSheetNote(item));
@@ -12900,7 +13248,7 @@ function groupPresenterSlidesBySection(slides, serviceId = state.selectedService
   const service = state.services.find((svc) => svc.id === serviceId);
   const groups = [];
   slides.forEach((slide, slideIndex) => {
-    const mainPraise = slide.sectionRole === "main-praise" || isMainPraiseLabel(slide.sectionLabel);
+    const mainPraise = isPresenterMainPraiseSlide(slide);
     const id = mainPraise ? `main-praise:${groups.length}` : slide.sectionId || `section:${slideIndex}`;
     const previous = groups[groups.length - 1];
     let group = mainPraise && previous?.kind === "main-praise"
@@ -12923,6 +13271,13 @@ function groupPresenterSlidesBySection(slides, serviceId = state.selectedService
     addPresenterSlideToSubgroup(group, entry);
   });
   return groups;
+}
+
+function isPresenterMainPraiseSlide(slide = {}) {
+  const sectionKey = String(slide.sectionKey || "").trim();
+  if (sectionKey) return sectionKey === "praise";
+  if (slide.sectionRole === "main-praise") return true;
+  return isMainPraiseLabel(slide.sectionLabel);
 }
 
 function createPresenterSlideGroup(slide, slideIndex, options = {}) {
@@ -13010,6 +13365,7 @@ function renderPresenterBoardSubgroup(subgroup, activeIndex, serviceId, options 
   const slides = annotatePresenterFormStarts(subgroup.slides);
   const visibleTitle = subgroup.title || subgroup.name;
   const visibleLabel = presenterVisibleLabel(subgroup.label || "항목", subgroup.title || subgroup.name);
+  const warnings = presenterWarningsForEntries(subgroup.slides);
   return `
     <div class="svc-board-subgroup${active ? " active" : ""}">
       ${options.showHead ? `
@@ -13020,12 +13376,33 @@ function renderPresenterBoardSubgroup(subgroup, activeIndex, serviceId, options 
           aria-label="${escapeAttr(subgroup.name)}">
           ${visibleLabel ? `<span>${escapeHtml(visibleLabel)}</span>` : ""}
           ${visibleTitle ? `<strong>${escapeHtml(visibleTitle)}</strong>` : ""}
+          ${renderPresenterWarnings(warnings)}
         </button>` : ""}
       <div class="svc-board-grid">
         ${slides.map(({ slide, slideIndex, formLabel }) =>
           renderPresenterSlideThumb(slide, slideIndex, activeIndex, serviceId, formLabel)).join("")}
       </div>
     </div>`;
+}
+
+function presenterWarningsForEntries(entries = []) {
+  const seen = new Set();
+  return entries
+    .flatMap((entry) => Array.isArray(entry?.slide?.warnings) ? entry.slide.warnings : [])
+    .map((warning) => String(warning || "").trim())
+    .filter((warning) => {
+      const key = compactSearchValue(warning);
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+}
+
+function renderPresenterWarnings(warnings = []) {
+  if (!warnings.length) return "";
+  return `<span class="svc-presenter-warnings">${
+    warnings.map((warning) => `<span class="svc-presenter-warning">${escapeHtml(warning)}</span>`).join("")
+  }</span>`;
 }
 
 function presenterVisibleTitle(label, title) {
@@ -13637,7 +14014,9 @@ function presenterSlideHasMeta(slide) {
 function buildPresenterSlidesForServiceItem(item, service, index) {
   const song = item.song_id ? state.songs.find((candidate) => candidate.id === item.song_id) : null;
   const version = song ? getServiceItemVersion(song, item, service) : null;
-  const forms = version ? normalizeForms(version.forms || []).filter((form) => normalizeLyricsForCopy(form.lyrics)) : [];
+  const formPlan = version ? presenterFormPlanForServiceItem(version, item, song) : { forms: [], warnings: [] };
+  const forms = formPlan.forms;
+  const formWarnings = formPlan.warnings;
   const label = item.label || "";
   const displayText = serviceItemDisplayText(item);
   const memo = parseServiceItemMemo(item?.memo);
@@ -13680,10 +14059,28 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
 
   if (song && forms.length) {
     const lyricsSlides = forms.flatMap((form, formIndex) => {
+      if (form._presenterBlank) {
+        return [{
+          id: `${item.id || index}:blank:${form._presenterToken || formIndex}:${formIndex}`,
+          ...section,
+          elementType: PRESENTER_ELEMENT_TYPES.BLANK,
+          layout: PRESENTER_SLIDE_LAYOUTS.BLANK,
+          type: "blank",
+          label,
+          title: form.label || "빈 화면",
+          marker: "",
+          formKey: `blank:${form._presenterToken || formIndex}:${formIndex}`,
+          segment: "",
+          text: "",
+          warnings: formWarnings,
+          sort: index + formIndex / 100,
+        }];
+      }
       const chunks = splitPresenterLyricChunks(form.lyrics);
       const formId = form._localId || form.id || formIndex;
+      const formKey = `${formId}:${formIndex}`;
       return chunks.map((chunk, chunkIndex) => ({
-        id: `${item.id || index}:form:${formId}:chunk:${chunkIndex}`,
+        id: `${item.id || index}:form:${formId}:seq:${formIndex}:chunk:${chunkIndex}`,
         ...section,
         elementType: PRESENTER_ELEMENT_TYPES.PRAISE,
         layout: PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT,
@@ -13692,9 +14089,10 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
         title: presenterPraiseTitle(song, displayText),
         subtitle: versionDisplayName(song, version),
         marker: chunkIndex === 0 ? presenterFormMarker(form) : "",
-        formKey: String(formId),
+        formKey,
         segment: "",
         text: chunk,
+        warnings: formWarnings,
         sort: index + formIndex / 100 + chunkIndex / 10000,
       }));
     });
@@ -13717,6 +14115,129 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
     text: formatPresenterSongTitleText(title),
     sort: index,
   }];
+}
+
+function presenterFormsForServiceItem(version, item, song = null) {
+  return presenterFormPlanForServiceItem(version, item, song).forms;
+}
+
+function presenterFormPlanForServiceItem(version, item, song = null) {
+  const forms = normalizeForms(version.forms || []).filter((form) => normalizeLyricsForCopy(form.lyrics));
+  const preset = serviceItemFormPreset(item) || matchedServiceItemFormPresetRule(item, song, version)?.formPreset || null;
+  if (!preset?.forms?.length) return { forms, warnings: [] };
+  const resolved = resolvePresenterFormPresetSequence(forms, preset.forms);
+  const warnings = resolved.missing.map((label) => `${label} 없음`);
+  return {
+    forms: resolved.items.length ? resolved.items : forms,
+    warnings,
+  };
+}
+
+function matchedServiceItemFormPresetRule(item, song, version) {
+  return serviceItemFormPresetRules(item).find((rule) => serviceItemFormPresetRuleMatches(rule, item, song, version)) || null;
+}
+
+function serviceItemFormPresetRuleMatches(rule = {}, item = {}, song = null, version = null) {
+  const when = rule.when && typeof rule.when === "object" ? rule.when : {};
+  const songType = String(when.songType || when.song_type || when.praiseType || when.praise_type || "").trim();
+  if (songType) {
+    const requiredTypes = normalizePraiseTypes(songType);
+    const versionTypes = versionEffectivePraiseTypes(song, version);
+    if (requiredTypes.length && !requiredTypes.some((type) => versionTypes.includes(type))) return false;
+  }
+  const sectionKey = String(when.sectionKey || when.section_key || "").trim();
+  if (sectionKey && sectionKey !== String(item?._worshipSectionKey || "").trim()) return false;
+  const label = String(when.label || "").trim();
+  if (label && compactSearchValue(label) !== compactSearchValue(item?.label || "")) return false;
+  return true;
+}
+
+function resolvePresenterFormPresetSequence(forms = [], presetForms = []) {
+  const items = [];
+  const missing = [];
+  for (const label of cleanList(presetForms)) {
+    const resolved = findPresenterFormForPresetLabel(forms, label);
+    if (resolved) items.push(resolved);
+    else missing.push(normalizePresenterMissingFormLabel(label));
+  }
+  return { items, missing };
+}
+
+function findPresenterFormForPresetLabel(forms = [], label = "") {
+  const target = normalizePresenterFormPresetLabel(label);
+  if (!target.key) return null;
+  if (target.blank) return presenterBlankFormPresetItem(label, target);
+  if (target.lastVerse) {
+    return [...forms].reverse().find((form) => normalizePresenterFormPresetLabel(displayLabel(form)).type === "verse") || null;
+  }
+  return forms.find((form) => {
+    const candidate = normalizePresenterFormPresetLabel(displayLabel(form));
+    if (target.key === candidate.key) return true;
+    return target.type && target.type === candidate.type && (!target.number || target.number === candidate.number);
+  }) || null;
+}
+
+function normalizePresenterFormPresetLabel(value = "") {
+  const raw = String(value || "").trim();
+  const compact = compactSearchValue(raw);
+  const lastVerse = /^(마지막절|lastverse|last)$/i.test(compact);
+  if (lastVerse) return { key: "last-verse", type: "verse", number: 0, lastVerse: true };
+  const hymnVerse = raw.match(/^(\d+)\s*절$/u);
+  if (hymnVerse) return { key: `verse:${hymnVerse[1]}`, type: "verse", number: Number(hymnVerse[1]) };
+  const shorthand = raw.match(/^(v|verse)\s*(\d*)$/i);
+  if (shorthand) {
+    const number = shorthand[2] ? Number(shorthand[2]) : 0;
+    return { key: number ? `verse:${number}` : "verse", type: "verse", number };
+  }
+  const chorus = /^(c|chorus|후렴|코러스)$/i.test(compact);
+  if (chorus) return { key: "chorus", type: "chorus", number: 0 };
+  const bridge = /^(b|bridge|브릿지)$/i.test(compact);
+  if (bridge) return { key: "bridge", type: "bridge", number: 0 };
+  const preChorus = /^(pc|prechorus|pre-chorus|프리코러스)$/i.test(compact);
+  if (preChorus) return { key: "pre-chorus", type: "pre-chorus", number: 0 };
+  const instrumental = /^(간주|interlude|instrumental)$/i.test(compact);
+  if (instrumental) return { key: "instrumental", type: "instrumental", number: 0, blank: true };
+  const display = raw.match(/^([A-Za-z][A-Za-z -]*?)(?:\s+(\d+))?$/);
+  if (display) {
+    const type = normalizePresenterFormType(display[1]);
+    const number = display[2] ? Number(display[2]) : 0;
+    return { key: number ? `${type}:${number}` : type, type, number };
+  }
+  return { key: compact, type: compact, number: 0 };
+}
+
+function normalizePresenterFormType(value = "") {
+  const compact = compactSearchValue(value);
+  if (/^verse$/i.test(compact)) return "verse";
+  if (/^chorus$/i.test(compact)) return "chorus";
+  if (/^bridge$/i.test(compact)) return "bridge";
+  if (/^prechorus$/i.test(compact)) return "pre-chorus";
+  if (/^(interlude|instrumental)$/i.test(compact)) return "instrumental";
+  return compact;
+}
+
+function normalizePresenterMissingFormLabel(value = "") {
+  const raw = String(value || "").trim();
+  const target = normalizePresenterFormPresetLabel(raw);
+  if (target.lastVerse) return "마지막 절";
+  if (target.type === "verse" && target.number) return `${target.number}절`;
+  if (target.key === "chorus") return "C";
+  if (target.key === "bridge") return "Bridge";
+  if (target.key === "pre-chorus") return "Pre-Chorus";
+  return raw || "송폼";
+}
+
+function presenterBlankFormPresetItem(label = "", target = {}) {
+  const text = String(label || "").trim() || "빈 화면";
+  return {
+    _presenterBlank: true,
+    _presenterToken: target.key || compactSearchValue(text) || "blank",
+    id: `preset-blank:${target.key || compactSearchValue(text) || "blank"}`,
+    part_type: text,
+    part_number: null,
+    lyrics: "",
+    label: text,
+  };
 }
 
 function isOrderSheetOnlyPlaceholderItem(item = {}) {
@@ -14006,9 +14527,10 @@ function presenterSectionForServiceItem(item, index, displayText, song = null) {
     sectionId: item?._worshipSectionId || item?.id || `section:${index}:${normalizeTitle([label, displayText].filter(Boolean).join(" "))}`,
     elementId: item?.id || `element:${index}:${normalizeTitle([label, displayText].filter(Boolean).join(" "))}`,
     sectionIndex: Number(item?._worshipSectionOrder) || index + 1,
+    sectionKey: item?._worshipSectionKey || "",
     sectionLabel,
     sectionFormHint: formHint,
-    sectionRole: sectionLabel === "찬양" && isMainPraiseServiceItem(item, { allowUnlabeled: true }) ? "main-praise" : "",
+    sectionRole: isMainPraiseServiceItem(item, { allowUnlabeled: true }) ? "main-praise" : "",
     sectionTitle: sectionLabel,
     elementLabel: label,
     elementTitle,

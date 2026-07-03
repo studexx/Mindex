@@ -1137,6 +1137,18 @@ def main() -> int:
                                   order: element.config?.orderSheet?.order || ''
                                 }))
                             }));
+                            const defaultsFor = (sectionKey) => {
+                              const section = scaffold.sections.find((item) => item.section_key === sectionKey);
+                              return scaffold.elements
+                                .filter((element) => element.section_id === section?.id)
+                                .map((element) => ({
+                                  label: element.source_ref?.label || '',
+                                  title: element.title || '',
+                                  formHint: element.config?.formHint || '',
+                                  forms: element.config?.formPreset?.forms || [],
+                                  strength: element.config?.defaultStrength || element.config?.formPreset?.strength || ''
+                                }));
+                            };
                             return {
                               sections: scaffold.sections.length,
                               elements: scaffold.elements.length,
@@ -1145,9 +1157,153 @@ def main() -> int:
                               sectionKeys: sections.map((section) => section.key),
                               monthlyPrayerElements: sections.find((section) => section.key === 'monthly_prayer')?.elements || [],
                               offeringElements: sections.find((section) => section.key === 'offering')?.elements || [],
+                              offeringDefaults: defaultsFor('offering'),
+                              closingSection: (() => {
+                                const closing = sections.find((section) => section.key === 'closing_song');
+                                return {
+                                  title: closing?.title || '',
+                                  elements: closing?.elements || []
+                                };
+                              })(),
+                              closingDefaults: defaultsFor('closing_song'),
                               blankPlaceholders: scaffold.elements
                                 .filter((item) => item.config?.orderSheetPlaceholder === true)
                                 .length
+                            };
+                          })(),
+                          publicSpecialRule: (() => {
+                            const scaffold = buildWorshipServiceScaffold('__smoke_public__', 'sunday-main');
+                            const section = scaffold.sections.find((item) => item.section_key === 'special_song');
+                            const element = scaffold.elements.find((item) => item.section_id === section?.id);
+                            const rule = element?.config?.formPresetRules?.[0] || null;
+                            return {
+                              sectionTitle: section?.title || '',
+                              elementLabel: element?.source_ref?.label || '',
+                              when: rule?.when || {},
+                              forms: rule?.formPreset?.forms || [],
+                              hint: rule?.formPreset?.hint || '',
+                              strength: rule?.formPreset?.strength || ''
+                            };
+                          })(),
+                          formPresetUi: (() => {
+                            const memo = serializeServiceItemMemo({
+                              formHint: 'V2-C',
+                              formPreset: normalizeServiceFormPreset('V2-C', 'V2-C', 'manual'),
+                              formPresetRules: [{
+                                when: { songType: 'hymn' },
+                                formPreset: { forms: ['1절', '2절', '간주', '마지막 절'], hint: '1절-2절-간주-마지막 절' }
+                              }]
+                            });
+                            const parsed = parseServiceItemMemo(memo);
+                            const badgeHtml = renderServiceFormPresetBadges({ memo });
+                            return {
+                              formHint: parsed.formHint || '',
+                              forms: parsed.formPreset?.forms || [],
+                              strength: parsed.formPreset?.strength || '',
+                              badgeText: (() => {
+                                const node = document.createElement('div');
+                                node.innerHTML = badgeHtml;
+                                return node.textContent.trim().replace(/\\s+/g, ' ');
+                              })()
+                            };
+                          })(),
+                          templateFormEditor: (() => {
+                            const typeId = '__smoke_template_form__';
+                            const previousDirty = state.dirty.service;
+                            const previousDirtyTypeIds = new Set(state.dirtyServiceTypeIds);
+                            state.serviceTypes = state.serviceTypes.filter((type) => type.id !== typeId);
+                            state.serviceTypes.push({
+                              id: typeId,
+                              name: 'Smoke Template',
+                              sort_order: 9999,
+                              order_template: [{
+                                label: '찬양',
+                                name: '찬양',
+                                phase: 'Gathering',
+                                elementType: 'praise',
+                                formHint: 'V1-C'
+                              }]
+                            });
+                            const steps = ensureServiceOrderTemplate(typeId);
+                            const host = document.createElement('div');
+                            host.innerHTML = renderServiceTemplateStepRow(typeId, steps[0], 0, 1);
+                            const input = host.querySelector('[data-service-template-step-field="form_hint"]');
+                            const before = input?.value || '';
+                            input.value = 'V2-C';
+                            updateServiceTemplateStepField(input);
+                            const updatedStep = ensureServiceOrderTemplate(typeId)[0] || {};
+                            const serialized = serializeServiceOrderTemplate(typeId)[0] || {};
+                            state.serviceTypes = state.serviceTypes.filter((type) => type.id !== typeId);
+                            state.dirtyServiceTypeIds = previousDirtyTypeIds;
+                            state.dirty.service = previousDirty;
+                            return {
+                              before,
+                              fieldLabel: host.querySelector('[data-service-template-step-field="form_hint"]')?.closest('label')?.querySelector('small')?.textContent.trim() || '',
+                              stepFormHint: updatedStep.formHint || '',
+                              serializedFormHint: serialized.formHint || '',
+                              serializedForms: serialized.formPreset?.forms || [],
+                              serializedStrength: serialized.formPreset?.strength || '',
+                              serializedDefaultStrength: serialized.defaultStrength || ''
+                            };
+                          })(),
+                          templateElementEditor: (() => {
+                            const typeId = '__smoke_template_element__';
+                            const previousDirty = state.dirty.service;
+                            const previousDirtyTypeIds = new Set(state.dirtyServiceTypeIds);
+                            state.serviceTypes = state.serviceTypes.filter((type) => type.id !== typeId);
+                            state.serviceTypes.push({
+                              id: typeId,
+                              name: 'Smoke Template Element',
+                              sort_order: 9999,
+                              order_template: [{
+                                label: '봉헌',
+                                name: '봉헌',
+                                phase: 'Response',
+                                elements: [{
+                                  label: '봉헌',
+                                  name: '봉헌찬양',
+                                  elementType: 'praise',
+                                  default_text: '이런 교회 되게 하소서',
+                                  formHint: 'V-C',
+                                  orderSheet: { order: '봉헌', group: 'praise' }
+                                }, {
+                                  label: '봉헌기도',
+                                  name: '봉헌기도',
+                                  elementType: 'title_person',
+                                  orderSheet: { order: '봉헌기도' }
+                                }]
+                              }]
+                            });
+                            const steps = ensureServiceOrderTemplate(typeId);
+                            const host = document.createElement('div');
+                            host.innerHTML = renderServiceTemplateStepRow(typeId, steps[0], 0, 1);
+                            const formInput = host.querySelector('[data-service-template-element-field="form_hint"][data-element-index="0"]');
+                            const orderInput = host.querySelector('[data-service-template-element-field="order_sheet"][data-element-index="0"]');
+                            const typeSelect = host.querySelector('[data-service-template-element-field="element_type"][data-element-index="1"]');
+                            const before = formInput?.value || '';
+                            formInput.value = 'V2-C';
+                            updateServiceTemplateElementField(formInput);
+                            orderInput.value = '봉헌찬양';
+                            updateServiceTemplateElementField(orderInput);
+                            typeSelect.value = 'title_person';
+                            updateServiceTemplateElementField(typeSelect);
+                            const updatedElements = ensureServiceOrderTemplate(typeId)[0]?.elements || [];
+                            const serializedElements = serializeServiceOrderTemplate(typeId)[0]?.elements || [];
+                            state.serviceTypes = state.serviceTypes.filter((type) => type.id !== typeId);
+                            state.dirtyServiceTypeIds = previousDirtyTypeIds;
+                            state.dirty.service = previousDirty;
+                            return {
+                              before,
+                              rowCount: host.querySelectorAll('.svc-template-element-row').length,
+                              fieldLabels: [...host.querySelectorAll('.svc-template-element-field small')].map((node) => node.textContent.trim()).slice(0, 5),
+                              firstFormHint: updatedElements[0]?.formHint || '',
+                              firstForms: updatedElements[0]?.formPreset?.forms || [],
+                              firstStrength: updatedElements[0]?.formPreset?.strength || '',
+                              serializedFirstOrder: serializedElements[0]?.orderSheet?.order || '',
+                              serializedFirstGroup: serializedElements[0]?.orderSheet?.group || '',
+                              serializedFirstForms: serializedElements[0]?.formPreset?.forms || [],
+                              serializedFirstStrength: serializedElements[0]?.formPreset?.strength || '',
+                              serializedSecondType: serializedElements[1]?.elementType || ''
                             };
                           })(),
                           cards: document.querySelectorAll('.svc-template-draft-card, .svc-template-inventory-card').length,
@@ -1164,6 +1320,58 @@ def main() -> int:
                         and template_terms["monthlyScaffold"]["firstElementType"] == "video"
                         and "monthly_prayer" in template_terms["monthlyScaffold"]["sectionKeys"]
                         and "closing_song" in template_terms["monthlyScaffold"]["sectionKeys"]
+                        and template_terms["monthlyScaffold"]["closingSection"]["title"] == "찬양"
+                        and template_terms["monthlyScaffold"]["closingSection"]["elements"] == [{"type": "praise", "label": "찬양", "order": "찬양"}]
+                        and template_terms["monthlyScaffold"]["offeringDefaults"][0] == {
+                            "label": "봉헌",
+                            "title": "이런 교회 되게 하소서",
+                            "formHint": "V-C",
+                            "forms": ["V", "C"],
+                            "strength": "suggested",
+                        }
+                        and template_terms["monthlyScaffold"]["closingDefaults"][0] == {
+                            "label": "찬양",
+                            "title": "여기에 모인 우리",
+                            "formHint": "V1-C-C",
+                            "forms": ["V1", "C", "C"],
+                            "strength": "default",
+                        }
+                        and template_terms["publicSpecialRule"] == {
+                            "sectionTitle": "특송",
+                            "elementLabel": "특송",
+                            "when": {"songType": "hymn"},
+                            "forms": ["1절", "2절", "간주", "마지막 절"],
+                            "hint": "1절-2절-간주-마지막 절",
+                            "strength": "default",
+                        }
+                        and template_terms["formPresetUi"] == {
+                            "formHint": "V2-C",
+                            "forms": ["V2", "C"],
+                            "strength": "manual",
+                            "badgeText": "송폼 V2-C 찬송가 1절-2절-간주-마지막 절",
+                        }
+                        and template_terms["templateFormEditor"] == {
+                            "before": "V1-C",
+                            "fieldLabel": "송폼",
+                            "stepFormHint": "V2-C",
+                            "serializedFormHint": "V2-C",
+                            "serializedForms": ["V2", "C"],
+                            "serializedStrength": "manual",
+                            "serializedDefaultStrength": "manual",
+                        }
+                        and template_terms["templateElementEditor"] == {
+                            "before": "V-C",
+                            "rowCount": 2,
+                            "fieldLabels": ["엘리먼트", "기본 항목", "타입", "순서지", "송폼"],
+                            "firstFormHint": "V2-C",
+                            "firstForms": ["V2", "C"],
+                            "firstStrength": "manual",
+                            "serializedFirstOrder": "봉헌찬양",
+                            "serializedFirstGroup": "praise",
+                            "serializedFirstForms": ["V2", "C"],
+                            "serializedFirstStrength": "manual",
+                            "serializedSecondType": "title_person",
+                        }
                         and len(template_terms["monthlyScaffold"]["monthlyPrayerElements"]) == 5
                         and len(template_terms["monthlyScaffold"]["offeringElements"]) == 2
                         and template_terms["monthlyScaffold"]["blankPlaceholders"] == 20

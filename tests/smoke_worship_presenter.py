@@ -283,6 +283,21 @@ def main() -> int:
                               title: subgroup.title,
                               slides: subgroup.slides.length
                             }))
+                          })),
+                        mainPraiseGroups: groupPresenterSlidesBySection(slides, serviceId)
+                          .filter((group) => group.kind === 'main-praise')
+                          .map((group) => ({
+                            label: group.label,
+                            meta: group.meta,
+                            subgroups: group.subgroups.length
+                          })),
+                        closingGroups: groupPresenterSlidesBySection(slides, serviceId)
+                          .filter((group) => group.slides.some((entry) => entry.slide.sectionKey === 'closing_song'))
+                          .map((group) => ({
+                            kind: group.kind,
+                            label: group.label,
+                            title: group.title,
+                            subgroups: group.subgroups.length
                           }))
                       };
                     }
@@ -297,10 +312,141 @@ def main() -> int:
                         any(subgroup["label"] == "찬양" and subgroup["slides"] > 0 for subgroup in group["subgroups"])
                         for group in fallback_state["monthlyPrayerGroups"]
                     )
+                    and len(fallback_state["mainPraiseGroups"]) == 1
+                    and fallback_state["mainPraiseGroups"][0]["label"] == "찬양"
+                    and len(fallback_state["closingGroups"]) == 1
+                    and fallback_state["closingGroups"][0]["kind"] == "item"
+                    and fallback_state["closingGroups"][0]["label"] == "찬양"
                 ):
                     pass_("presenter-section-element-model", json.dumps(fallback_state, ensure_ascii=False))
                 else:
                     fail("presenter-section-element-model", json.dumps(fallback_state, ensure_ascii=False))
+
+                form_preset_state = page.evaluate(
+                    """
+                    () => {
+                      const hymnSong = {
+                        id: '__smoke_hymn_song__',
+                        title: '특송 테스트',
+                        hymn_no: '999',
+                        versions: [{
+                          id: '__smoke_hymn_version__',
+                          name: 'Default',
+                          is_primary: true,
+                          forms: [
+                            { id: 'h-v1', part_type: 'Verse', part_number: 1, lyrics: '1절 첫 줄\\n1절 둘째 줄', sort_order: 1 },
+                            { id: 'h-v2', part_type: 'Verse', part_number: 2, lyrics: '2절 첫 줄\\n2절 둘째 줄', sort_order: 2 },
+                            { id: 'h-v3', part_type: 'Verse', part_number: 3, lyrics: '3절 첫 줄\\n3절 둘째 줄', sort_order: 3 },
+                            { id: 'h-v4', part_type: 'Verse', part_number: 4, lyrics: '마지막 절 첫 줄\\n마지막 절 둘째 줄', sort_order: 4 }
+                          ]
+                        }]
+                      };
+                      const ccmSong = {
+                        id: '__smoke_ccm_song__',
+                        title: '반복 테스트',
+                        versions: [{
+                          id: '__smoke_ccm_version__',
+                          name: 'Default',
+                          is_primary: true,
+                          forms: [
+                            { id: 'c-v1', part_type: 'Verse', part_number: 1, lyrics: 'V1 첫 줄\\nV1 둘째 줄', sort_order: 1 },
+                            { id: 'c-c', part_type: 'Chorus', part_number: null, lyrics: 'C 첫 줄\\nC 둘째 줄', sort_order: 2 },
+                            { id: 'c-v2', part_type: 'Verse', part_number: 2, lyrics: 'V2 첫 줄\\nV2 둘째 줄', sort_order: 3 }
+                          ]
+                        }]
+                      };
+                      state.songs = state.songs.filter((song) => !String(song.id || '').startsWith('__smoke_')).concat([hymnSong, ccmSong]);
+                      const service = { id: '__smoke_form_service__', type_id: 'sunday-main', date: '2026-07-04' };
+                      const hymnItem = {
+                        id: '__smoke_hymn_item__',
+                        label: '특송',
+                        raw_title: '특송 테스트',
+                        song_id: hymnSong.id,
+                        version_id: '__smoke_hymn_version__',
+                        memo: serializeServiceItemMemo({
+                          elementType: 'praise',
+                          formPresetRules: [{
+                            when: { songType: 'hymn' },
+                            formPreset: {
+                              forms: ['1절', '2절', '간주', '마지막 절'],
+                              hint: '1절-2절-간주-마지막 절',
+                              strength: 'default'
+                            }
+                          }]
+                        })
+                      };
+                      const ccmItem = {
+                        id: '__smoke_ccm_item__',
+                        label: '찬양',
+                        raw_title: '반복 테스트',
+                        song_id: ccmSong.id,
+                        version_id: '__smoke_ccm_version__',
+                        memo: serializeServiceItemMemo({
+                          elementType: 'praise',
+                          formPreset: { forms: ['V1', 'C', 'C'], hint: 'V1-C-C', strength: 'default' }
+                        })
+                      };
+                      const missingItem = {
+                        id: '__smoke_missing_item__',
+                        label: '찬양',
+                        raw_title: '반복 테스트',
+                        song_id: ccmSong.id,
+                        version_id: '__smoke_ccm_version__',
+                        memo: serializeServiceItemMemo({
+                          elementType: 'praise',
+                          formPreset: { forms: ['V1', 'C', 'B'], hint: 'V1-C-B', strength: 'manual' }
+                        })
+                      };
+                      const hymnAllSlides = buildPresenterSlidesForServiceItem(hymnItem, service, 0);
+                      const hymnSlides = hymnAllSlides.filter((slide) => slide.type === 'lyrics');
+                      const hymnBlankSlides = hymnAllSlides.filter((slide) => slide.type === 'blank');
+                      const ccmSlides = buildPresenterSlidesForServiceItem(ccmItem, service, 1).filter((slide) => slide.type === 'lyrics');
+                      const missingSlides = buildPresenterSlidesForServiceItem(missingItem, service, 2);
+                      const warningHtml = renderPresenterBoardSubgroup({
+                        id: '__smoke_warning_group__',
+                        label: '찬양',
+                        title: '반복 테스트',
+                        name: '찬양 / 반복 테스트',
+                        slides: missingSlides.map((slide, slideIndex) => ({ slide, slideIndex }))
+                      }, 0, service.id, { showHead: true });
+                      const warningNode = document.createElement('div');
+                      warningNode.innerHTML = warningHtml;
+                      return {
+                        hymnTypes: hymnAllSlides.map((slide) => slide.type),
+                        hymnMarkers: hymnSlides.map((slide) => slide.marker),
+                        hymnTexts: hymnSlides.map((slide) => slide.text),
+                        hymnWarnings: [...new Set(hymnAllSlides.flatMap((slide) => slide.warnings || []))],
+                        hymnBlankCount: hymnBlankSlides.length,
+                        hymnBlankText: hymnBlankSlides.map((slide) => slide.text).join(''),
+                        hymnBlankLayout: hymnBlankSlides[0]?.layout || '',
+                        ccmMarkers: ccmSlides.map((slide) => slide.marker),
+                        ccmTexts: ccmSlides.map((slide) => slide.text),
+                        ccmFormKeys: ccmSlides.map((slide) => slide.formKey),
+                        missingWarnings: [...new Set(missingSlides.flatMap((slide) => slide.warnings || []))],
+                        missingPreviewText: missingSlides.map((slide) => renderPresenterSlideMiniPreview(slide, service.id)).join(' '),
+                        warningChipText: warningNode.querySelector('.svc-presenter-warning')?.textContent.trim() || ''
+                      };
+                    }
+                    """
+                )
+                if (
+                    form_preset_state["hymnTypes"] == ["song-title", "lyrics", "lyrics", "blank", "lyrics"]
+                    and form_preset_state["hymnMarkers"] == ["Verse 1", "Verse 2", "Verse 4"]
+                    and "3절 첫 줄" not in "\n".join(form_preset_state["hymnTexts"])
+                    and form_preset_state["hymnWarnings"] == []
+                    and form_preset_state["hymnBlankCount"] == 1
+                    and form_preset_state["hymnBlankText"] == ""
+                    and form_preset_state["hymnBlankLayout"] == "blank"
+                    and form_preset_state["ccmMarkers"] == ["Verse 1", "Chorus", "Chorus"]
+                    and form_preset_state["ccmTexts"] == ["V1 첫 줄\nV1 둘째 줄", "C 첫 줄\nC 둘째 줄", "C 첫 줄\nC 둘째 줄"]
+                    and len(set(form_preset_state["ccmFormKeys"])) == 3
+                    and form_preset_state["missingWarnings"] == ["Bridge 없음"]
+                    and "Bridge 없음" not in form_preset_state["missingPreviewText"]
+                    and form_preset_state["warningChipText"] == "Bridge 없음"
+                ):
+                    pass_("presenter-form-preset-sequence", json.dumps(form_preset_state, ensure_ascii=False))
+                else:
+                    fail("presenter-form-preset-sequence", json.dumps(form_preset_state, ensure_ascii=False))
 
                 live_input = page.locator(f'[data-live-scripture-input][data-service-id="{service["id"]}"]')
                 live_input.fill("요")

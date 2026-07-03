@@ -3131,7 +3131,7 @@ body[data-module="service"] .detail-pane {
 }
 .svc-template-step-row {
   display: grid;
-  grid-template-columns: 26px minmax(120px, 1fr) minmax(160px, 1.2fr) minmax(110px, .9fr) minmax(120px, .9fr) minmax(110px, .9fr) minmax(120px, .9fr) auto auto auto auto;
+  grid-template-columns: 26px minmax(120px, 1fr) minmax(160px, 1.2fr) minmax(110px, .9fr) minmax(120px, .9fr) minmax(110px, .9fr) minmax(120px, .9fr) minmax(96px, .7fr) auto auto auto auto;
   min-width: 0;
   align-items: end;
   gap: 6px;
@@ -3177,6 +3177,10 @@ body[data-module="service"] .detail-pane {
 .svc-template-step-field select {
   cursor: pointer;
 }
+.svc-template-step-field--form input {
+  font-size: 11px;
+  font-weight: 650;
+}
 .svc-template-step-toggle {
   display: inline-flex;
   height: 30px;
@@ -3196,6 +3200,36 @@ body[data-module="service"] .detail-pane {
   gap: 4px;
   padding-bottom: 1px;
 }
+.svc-template-element-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: -1px 0 3px 33px;
+}
+.svc-template-element-row {
+  display: grid;
+  grid-template-columns: 38px minmax(110px, 1fr) minmax(150px, 1.2fr) minmax(110px, .8fr) minmax(110px, .9fr) minmax(96px, .7fr);
+  min-width: 0;
+  align-items: end;
+  gap: 6px;
+  border-left: 2px solid color-mix(in srgb, var(--accent-soft) 34%, transparent);
+  border-radius: calc(var(--r) - 4px);
+  background: color-mix(in srgb, var(--panel-2) 24%, transparent);
+  padding: 6px 7px 6px 8px;
+}
+.svc-template-element-number {
+  color: var(--ink-5);
+  font-size: 10px;
+  font-weight: 700;
+  padding-bottom: 7px;
+  text-align: center;
+}
+.svc-template-element-field input,
+.svc-template-element-field select {
+  height: 28px;
+  background: color-mix(in srgb, var(--panel) 66%, transparent);
+  font-size: 11px;
+}
 .svc-template-add {
   height: 30px;
   align-self: flex-start;
@@ -3212,6 +3246,12 @@ body[data-module="service"] .detail-pane {
 @media (max-width: 1180px) {
   .svc-template-step-row {
     grid-template-columns: 24px repeat(3, minmax(120px, 1fr));
+  }
+  .svc-template-element-list {
+    margin-left: 31px;
+  }
+  .svc-template-element-row {
+    grid-template-columns: 34px repeat(3, minmax(120px, 1fr));
   }
   .svc-template-step-field,
   .svc-template-step-toggle,
@@ -3230,7 +3270,14 @@ body[data-module="service"] .detail-pane {
   .svc-template-step-row {
     grid-template-columns: 24px minmax(0, 1fr);
   }
+  .svc-template-element-list {
+    margin-left: 24px;
+  }
+  .svc-template-element-row {
+    grid-template-columns: 30px minmax(0, 1fr);
+  }
   .svc-template-step-field,
+  .svc-template-element-field,
   .svc-template-step-actions {
     grid-column: 2;
   }
@@ -3283,6 +3330,37 @@ body[data-module="service"] .detail-pane {
 .svc-form-hint:focus {
   background: color-mix(in srgb, var(--accent-soft) 42%, transparent);
   color: var(--ink);
+}
+.svc-form-preset-badges {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 4px;
+}
+.svc-form-preset-badge {
+  display: inline-flex;
+  max-width: 150px;
+  height: 20px;
+  align-items: center;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel-3) 62%, transparent);
+  color: var(--ink-3);
+  font-size: 10px;
+  font-weight: 650;
+  padding: 0 7px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.svc-form-preset-badge.rule {
+  background: color-mix(in srgb, var(--accent-soft) 24%, transparent);
+  color: var(--accent);
+}
+.svc-form-preset-badges.compact .svc-form-preset-badge {
+  max-width: 122px;
+  height: 18px;
+  font-size: 9px;
+  padding: 0 6px;
 }
 .svc-editor-items { gap: 4px; }
 .svc-editor-header {
@@ -3873,7 +3951,7 @@ body[data-module="service"] .detail-pane {
 }
 .svc-board-subgroup-head {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr) auto;
   min-height: 24px;
   align-items: center;
   gap: 8px;
@@ -3902,6 +3980,30 @@ body[data-module="service"] .detail-pane {
   font-size: 11px;
   font-weight: 500;
   line-height: 15px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.svc-board-subgroup-head .svc-presenter-warnings {
+  display: inline-flex;
+  min-width: 0;
+  max-width: 180px;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-self: start;
+}
+.svc-board-subgroup-head .svc-presenter-warning {
+  display: inline-flex;
+  max-width: 100%;
+  height: 18px;
+  align-items: center;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--warn-bg) 58%, transparent);
+  color: var(--warn);
+  font-size: 9px;
+  font-weight: 750;
+  line-height: 18px;
+  padding: 0 7px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
