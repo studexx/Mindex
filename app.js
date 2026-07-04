@@ -12733,7 +12733,16 @@ function renderServiceItemGroups(items) {
             ${renderServiceFormHintInput(groupFirst, groupFirstIndex, { compact: true, placeholder: "송폼/범위" })}
             ${renderServiceFormPresetBadges(groupFirst, { compact: true })}
           </span>
-          ${group.assignee ? `<span class="svc-group-assignee">${escapeHtml(group.assignee)}</span>` : ""}
+          ${group.kind === "main-praise" && serviceUsesPraiseLeader(selectedService?.type_id) ? `
+            <input
+              class="svc-group-assignee svc-group-assignee-input"
+              type="text"
+              data-service-meta-field="leader"
+              value="${escapeAttr(selectedService?.leader || "")}"
+              placeholder="${escapeAttr(group.assignee && group.assignee !== "다같이" ? group.assignee : "찬양 인도자")}"
+              aria-label="찬양 섹션 인도자"
+            />`
+            : group.assignee ? `<span class="svc-group-assignee">${escapeHtml(group.assignee)}</span>` : ""}
         </div>
         ${renderServiceItemMemoEditor(groupFirst, groupFirstIndex, { compact: true })}`;
       for (const { item, mergedIndex } of group.entries) {

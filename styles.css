@@ -3557,6 +3557,21 @@ body[data-module="service"] .detail-pane {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.svc-group-assignee-input {
+  width: min(150px, 28vw);
+  height: 24px;
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: calc(var(--r) - 2px);
+  background: transparent;
+  font: inherit;
+  outline: none;
+  padding: 0 6px;
+}
+.svc-group-assignee-input:focus {
+  background: color-mix(in srgb, var(--panel-2) 58%, transparent);
+  color: var(--ink-2);
+}
 .svc-edit-item--sub { grid-template-columns: minmax(86px, 120px) minmax(220px, 1fr) auto; padding-left: calc(30px + var(--s2) * 2); background: color-mix(in srgb, var(--panel-2) 12%, transparent); }
 .svc-edit-item--praise-sub { grid-template-columns: minmax(220px, 1fr) auto; }
 .svc-subsection-chip {
