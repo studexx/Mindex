@@ -172,16 +172,22 @@ def main() -> int:
                       await new Promise((resolve) => requestAnimationFrame(resolve));
                       const afterHeader = header?.getBoundingClientRect();
                       const afterTop = top?.getBoundingClientRect();
+                      const beforeHeaderTop = Math.round(beforeHeader?.top || 0);
+                      const afterHeaderTop = Math.round(afterHeader?.top || 0);
+                      const beforeControlsTop = Math.round(beforeTop?.top || 0);
+                      const afterControlsTop = Math.round(afterTop?.top || 0);
                       return {
                         title: title?.textContent.trim() || '',
                         date: date?.textContent.trim() || '',
                         usesExistingHeader: Boolean(title?.closest('.svc-header') && !document.querySelector('.svc-presenter-title-row')),
                         headerPosition: header ? getComputedStyle(header).position : '',
                         controlsPosition: top ? getComputedStyle(top).position : '',
-                        beforeHeaderTop: Math.round(beforeHeader?.top || 0),
-                        afterHeaderTop: Math.round(afterHeader?.top || 0),
-                        beforeControlsTop: Math.round(beforeTop?.top || 0),
-                        afterControlsTop: Math.round(afterTop?.top || 0),
+                        beforeHeaderTop,
+                        afterHeaderTop,
+                        headerShift: Math.abs(afterHeaderTop - beforeHeaderTop),
+                        beforeControlsTop,
+                        afterControlsTop,
+                        controlsShift: Math.abs(afterControlsTop - beforeControlsTop),
                         overflow: Math.max(document.documentElement.scrollWidth - window.innerWidth, document.body.scrollWidth - window.innerWidth)
                       };
                     }
@@ -194,7 +200,8 @@ def main() -> int:
                     and sticky_title_state["usesExistingHeader"]
                     and sticky_title_state["headerPosition"] == "sticky"
                     and sticky_title_state["controlsPosition"] == "sticky"
-                    and sticky_title_state["afterHeaderTop"] <= sticky_title_state["beforeHeaderTop"] + 2
+                    and sticky_title_state["headerShift"] <= 1
+                    and sticky_title_state["controlsShift"] <= 1
                     and sticky_title_state["afterControlsTop"] > sticky_title_state["afterHeaderTop"]
                     and sticky_title_state["overflow"] <= 2
                 ):
