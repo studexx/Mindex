@@ -863,7 +863,7 @@ function bindStaticEvents() {
     const serviceTypeItem = event.target.closest("[data-service-type-id]");
     if (serviceTypeItem) {
       if (!confirmDiscardServiceChanges()) return;
-      state.selectedServiceTypeId = serviceTypeItem.dataset.serviceTypeId;
+      state.selectedServiceTypeId = worshipAppServiceTypeId(serviceTypeItem.dataset.serviceTypeId);
       state.selectedServiceId = null;
       state.selectedServiceItemIndex = null;
       renderServiceList();
@@ -4201,7 +4201,7 @@ function handleDetailClick(event) {
   const serviceTypeCard = event.target.closest("[data-select-service-type]");
   if (serviceTypeCard) {
     if (!confirmDiscardServiceChanges()) return;
-    state.selectedServiceTypeId = serviceTypeCard.dataset.selectServiceType;
+    state.selectedServiceTypeId = worshipAppServiceTypeId(serviceTypeCard.dataset.selectServiceType);
     state.selectedServiceId = null;
     state.selectedServiceItemIndex = null;
     renderServiceList();
@@ -5818,14 +5818,15 @@ function insertServiceItemInTemplateOrder(items, item, typeId) {
 }
 
 function startNewServiceForm(typeId = state.selectedServiceTypeId) {
-  if (!typeId || typeId === SERVICE_TEMPLATES_PANEL_ID) return;
-  state.selectedServiceTypeId = typeId;
+  const appTypeId = worshipAppServiceTypeId(typeId);
+  if (!appTypeId || appTypeId === SERVICE_TEMPLATES_PANEL_ID) return;
+  state.selectedServiceTypeId = appTypeId;
   state.selectedServiceId = null;
   state.newServiceForm = {
-    type_id: typeId,
+    type_id: appTypeId,
     date: toLocalDateStr(new Date()),
     title: "",
-    leader: defaultServicePraiseLeader(typeId),
+    leader: defaultServicePraiseLeader(appTypeId),
     tags: "",
   };
   renderServiceList();
@@ -5837,7 +5838,8 @@ function defaultServicePraiseLeader(typeId) {
 }
 
 function canonicalWorshipServiceTypeId(typeId) {
-  return serviceTypeById(typeId)?._worshipId || typeId || "";
+  const appTypeId = worshipAppServiceTypeId(typeId);
+  return serviceTypeById(appTypeId)?._worshipId || typeId || "";
 }
 
 function buildWorshipServiceScaffold(serviceId, typeId) {
@@ -11225,7 +11227,8 @@ function serviceTypeGroupLabel(key) {
 }
 
 function getServicesByType(typeId) {
-  return sortServicesByDate(state.services.filter((s) => s.type_id === typeId));
+  const appTypeId = worshipAppServiceTypeId(typeId);
+  return sortServicesByDate(state.services.filter((s) => worshipAppServiceTypeId(s.type_id) === appTypeId));
 }
 
 function sortServicesByDate(services, direction = "asc") {
@@ -11238,17 +11241,20 @@ function sortServicesByDate(services, direction = "asc") {
 }
 
 function serviceTypeSortOrder(typeId) {
-  return state.serviceTypes.find((type) => type.id === typeId)?.sort_order || 999;
+  const appTypeId = worshipAppServiceTypeId(typeId);
+  return state.serviceTypes.find((type) => type.id === appTypeId)?.sort_order || 999;
 }
 
 function serviceTypeName(typeId) {
-  return state.serviceTypes.find((type) => type.id === typeId)?.name || typeId || "";
+  const appTypeId = worshipAppServiceTypeId(typeId);
+  return state.serviceTypes.find((type) => type.id === appTypeId)?.name || typeId || "";
 }
 
 function serviceTypeDisplayName(typeId) {
-  const rawName = String(serviceTypeName(typeId) || "").trim();
+  const appTypeId = worshipAppServiceTypeId(typeId);
+  const rawName = String(serviceTypeName(appTypeId) || "").trim();
   if (rawName && !SERVICE_TYPE_LEGACY_NAMES[rawName]) return rawName;
-  return SERVICE_TYPE_DISPLAY_NAMES[typeId] || SERVICE_TYPE_LEGACY_NAMES[rawName] || rawName || typeId || "";
+  return SERVICE_TYPE_DISPLAY_NAMES[appTypeId] || SERVICE_TYPE_LEGACY_NAMES[rawName] || rawName || appTypeId || "";
 }
 
 function serviceCustomTitle(service) {
@@ -11267,22 +11273,24 @@ function serviceDisplayTypeName(service) {
 }
 
 function serviceTypeById(typeId) {
-  return state.serviceTypes.find((type) => type.id === typeId) || null;
+  const appTypeId = worshipAppServiceTypeId(typeId);
+  return state.serviceTypes.find((type) => type.id === appTypeId) || null;
 }
 
 function serviceOrderTemplate(typeId) {
-  const template = serviceTypeById(typeId)?.order_template;
+  const appTypeId = worshipAppServiceTypeId(typeId);
+  const template = serviceTypeById(appTypeId)?.order_template;
   if (Array.isArray(template) && template.length) {
     return template
       .filter((step) => step && typeof step === "object")
-      .map((step) => withServiceTemplateImplicitRules(step, typeId));
+      .map((step) => withServiceTemplateImplicitRules(step, appTypeId));
   }
   const fallbackSteps = [
     { label: "준비", name: "준비", phase: "Gathering", required: false, flex: true, sectionKey: "ready", elementType: "video" },
-    ...(SERVICE_ORDER_TEMPLATE_FALLBACKS[typeId] || []),
+    ...(SERVICE_ORDER_TEMPLATE_FALLBACKS[appTypeId] || []),
   ];
   return fallbackSteps
-    .map((step, index) => normalizeFallbackServiceTemplateStep(step, index, typeId))
+    .map((step, index) => normalizeFallbackServiceTemplateStep(step, index, appTypeId))
     .filter((step) => step.label || step.name);
 }
 
@@ -12604,10 +12612,10 @@ function renderServiceListTypeBlock(type, services, query) {
   return `
     <section class="service-list-type-block">
       <header>
-        <div>
+        <button class="service-list-type-open" type="button" data-select-service-type="${escapeAttr(type.id)}">
           <strong>${escapeHtml(serviceTypeDisplayName(type.id))}</strong>
           <small>${escapeHtml(sorted.length)}${query ? "개 결과" : "개 예배"}</small>
-        </div>
+        </button>
         <button class="icon-btn quiet svc-new-btn" type="button" data-new-service="${escapeAttr(type.id)}" aria-label="예배 추가">
           <i data-lucide="plus"></i>
         </button>

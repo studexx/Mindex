@@ -2573,12 +2573,22 @@ body[data-module="service"] .detail-pane {
   justify-content: space-between;
   gap: var(--s3);
 }
-.service-list-type-block > header div {
+.service-list-type-open {
   display: grid;
   min-width: 0;
   gap: 1px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
 }
-.service-list-type-block > header strong {
+.service-list-type-open:hover strong {
+  color: var(--accent);
+}
+.service-list-type-block > header strong,
+.service-list-type-open strong {
   overflow: hidden;
   color: var(--ink);
   font-size: 14px;
@@ -2587,7 +2597,8 @@ body[data-module="service"] .detail-pane {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.service-list-type-block > header small {
+.service-list-type-block > header small,
+.service-list-type-open small {
   color: var(--ink-4);
   font-size: 10px;
   font-weight: 600;
