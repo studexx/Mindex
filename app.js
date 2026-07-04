@@ -241,7 +241,7 @@ const UI_FALLBACK_LOCALE = "en";
 const UI_MESSAGES = {
   ko: {
     "presenter.controls": "프레젠터 컨트롤",
-    "presenter.action.present": "송출 열기",
+    "presenter.action.present": "SHOW",
     "presenter.action.detectDisplays": "화면 감지",
     "presenter.action.jump": "이동",
     "presenter.action.prev": "이전 슬라이드",
