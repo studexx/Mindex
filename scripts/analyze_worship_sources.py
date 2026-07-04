@@ -17,16 +17,102 @@ import json
 import re
 import sys
 import zlib
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 
 TAG_PARA_TEXT = 67
+CIRCLED_SERVICE_MARKERS = {"1": "①", "2": "②"}
+ORDER_LABELS = {
+  "환영",
+  "경배와찬양",
+  "경배와 찬양",
+  "예배의부름",
+  "예배의 부름",
+  "사도신경",
+  "신앙고백",
+  "찬양",
+  "찬송",
+  "참회기도",
+  "사죄의선언",
+  "기도",
+  "대표기도",
+  "성경봉독",
+  "말씀선포",
+  "말씀",
+  "설교",
+  "결단의기도",
+  "결단기도",
+  "봉헌찬송",
+  "봉헌기도",
+  "교회소식",
+  "새가족환영",
+  "공동체고백",
+  "파송찬송",
+  "송영",
+  "축도",
+  "아멘송",
+  "묵도",
+}
+PRAISE_LABELS = {
+  "경배와찬양",
+  "경배와 찬양",
+  "찬양",
+  "찬송",
+  "봉헌찬송",
+  "파송찬송",
+  "송영",
+  "아멘송",
+}
 
 
 def normalize_space(value: str) -> str:
   return re.sub(r"\s+", " ", value or "").strip()
+
+
+def normalize_order_label(value: str) -> str:
+  value = normalize_space(value)
+  value = re.sub(r"^[※♱❦✽\s]+", "", value)
+  value = value.replace(" ", "")
+  return value
+
+
+def split_order_parts(value: str) -> list[str]:
+  return [normalize_space(part) for part in re.split(r"\s*/\s*", value) if normalize_space(part)]
+
+
+def strip_presentation_markers(value: str) -> str:
+  value = normalize_space(value)
+  value = re.sub(r"^[※♱❦✽\s]+", "", value)
+  return normalize_space(value)
+
+
+def strip_quotes(value: str) -> str:
+  value = normalize_space(value)
+  return value.strip(" \"'“”‘’「」")
+
+
+def strip_page_hint(value: str) -> str:
+  value = re.sub(r"\([^)]*p\.[^)]+\)", "", value)
+  return normalize_space(value)
+
+
+def is_order_label(value: str) -> bool:
+  return normalize_order_label(value) in {normalize_order_label(label) for label in ORDER_LABELS}
+
+
+def is_praise_label(value: str) -> bool:
+  return normalize_order_label(value) in {normalize_order_label(label) for label in PRAISE_LABELS}
+
+
+def is_ignorable_order_text(value: str) -> bool:
+  normalized = normalize_order_label(value)
+  return normalized in {
+    "인도자",
+    "다같이",
+    "말씀과봉헌",
+    "파송과축복",
+  }
 
 
 def hangul_score(value: str) -> int:
@@ -99,6 +185,324 @@ def slice_between(lines: list[str], start_pattern: str, end_pattern: str | None 
   return lines[begin:end if end is not None else len(lines)]
 
 
+def make_element_from_order_line(line: str, service_key: str = "") -> dict[str, Any] | None:
+  line = strip_presentation_markers(line)
+  if not line:
+    return None
+  if line.startswith("▸"):
+    return {
+      "section": "기도문",
+      "element_type": "body",
+      "label": "기도문",
+      "title": "기도문",
+      "person": "",
+      "body": line,
+      "review_status": "matched",
+      "confidence": "medium",
+    }
+  if line.startswith("▪"):
+    return {
+      "section": "찬양",
+      "element_type": "praise",
+      "label": "찬양",
+      "title": strip_quotes(line.lstrip("▪").strip()),
+      "person": "",
+      "review_status": "needs_manual_praise",
+      "confidence": "medium",
+      "notes": ["bulletin song title hint; confirm/register manually before linking Praise"],
+    }
+
+  parts = split_order_parts(line)
+  if not parts:
+    return None
+  label = strip_presentation_markers(parts[0])
+  normalized = normalize_order_label(label)
+  values = parts[1:]
+  raw_value = " / ".join(values)
+
+  if is_praise_label(label) or normalized.startswith(normalize_order_label("경배와찬양")):
+    first_value = strip_quotes(values[0]) if values else ""
+    title = "" if first_value in {"다같이", "다 같 이"} else first_value
+    person = values[-1] if len(values) > 1 else ""
+    return {
+      "section": label,
+      "element_type": "praise",
+      "label": label,
+      "title": title or label,
+      "person": person if person not in {"다같이", "다 같 이"} else "",
+      "review_status": "needs_manual_praise",
+      "confidence": "medium" if title else "low",
+      "notes": ["praise element from bulletin; user will confirm/register song directly"],
+    }
+
+  if normalized in {normalize_order_label(x) for x in ["예배의부름", "예배의 부름", "사도신경", "신앙고백"]}:
+    title = "사도신경" if "사도신경" in line else label
+    return {
+      "section": "신앙고백" if "사도신경" in line else label,
+      "element_type": "body",
+      "label": label,
+      "title": title,
+      "person": values[-1] if values and values[-1] not in {"다같이", "다 같 이"} else "",
+      "body": "",
+      "review_status": "matched",
+      "confidence": "high",
+    }
+
+  if normalized in {normalize_order_label(x) for x in ["기도", "대표기도", "참회기도", "결단의기도", "결단기도", "봉헌기도", "묵도"]}:
+    person = values[-1] if values else ""
+    return {
+      "section": label,
+      "element_type": "title_person",
+      "label": label,
+      "title": label,
+      "person": "" if person in {"다같이", "다 같 이", "인도자", "인 도 자"} else person,
+      "review_status": "matched" if values else "needs_review",
+      "confidence": "high" if values else "medium",
+    }
+
+  if normalized == normalize_order_label("성경봉독"):
+    reference = strip_page_hint(values[0]) if values else ""
+    person = values[-1] if len(values) > 1 else ""
+    return {
+      "section": "성경봉독",
+      "element_type": "scripture_reading",
+      "label": "성경봉독",
+      "title": "성경봉독",
+      "person": "" if person in {"인도자", "인 도 자"} else person,
+      "scripture_reference": reference,
+      "review_status": "matched" if reference else "needs_review",
+      "confidence": "high" if reference else "medium",
+    }
+
+  if normalized in {normalize_order_label("말씀선포"), normalize_order_label("설교"), normalize_order_label("말씀")}:
+    title = ""
+    person = ""
+    for value in values:
+      if re.search(r"[“”‘’「」]", value):
+        title = strip_quotes(value)
+      elif "목사" in value or "전도사" in value:
+        person = value
+    if not title and values:
+      title = label if person else strip_quotes(values[0])
+    return {
+      "section": "설교",
+      "element_type": "title_person",
+      "label": label,
+      "title": title or label,
+      "person": person,
+      "review_status": "matched" if title or person else "needs_review",
+      "confidence": "high" if title and person else "medium",
+    }
+
+  if normalized in {normalize_order_label(x) for x in ["교회소식", "교회소식&새가족환영", "새가족환영", "공동체고백", "환영", "사죄의선언"]}:
+    person = values[-1] if values else ""
+    return {
+      "section": label,
+      "element_type": "title_person",
+      "label": label,
+      "title": label,
+      "person": "" if person in {"다같이", "다 같 이", "인도자", "인 도 자"} else person,
+      "review_status": "matched",
+      "confidence": "high",
+    }
+
+  if normalized == normalize_order_label("축도"):
+    person = ""
+    notes = []
+    for value in values:
+      if value in {"인도자", "인 도 자"}:
+        continue
+      if "※" in value or "주기도문" in value:
+        notes.append(value)
+        continue
+      person = value
+    element = {
+      "section": "축도",
+      "element_type": "title_person",
+      "label": "축도",
+      "title": "축도",
+      "person": person,
+      "review_status": "matched" if values else "needs_review",
+      "confidence": "high" if values else "medium",
+    }
+    if notes:
+      element["notes"] = notes
+    return element
+
+  return {
+    "section": label,
+    "element_type": "editable",
+    "label": label,
+    "title": strip_quotes(raw_value) if raw_value else label,
+    "person": "",
+    "review_status": "needs_review",
+    "confidence": "low",
+    "notes": ["unclassified bulletin order line"],
+  }
+
+
+def merge_vertical_order_lines(lines: list[str]) -> list[str]:
+  merged: list[str] = []
+  index = 0
+  while index < len(lines):
+    line = strip_presentation_markers(lines[index])
+    if not line:
+      index += 1
+      continue
+    if line.startswith("▪"):
+      merged.append(line)
+      index += 1
+      continue
+    if is_order_label(line):
+      values: list[str] = []
+      lookahead = index + 1
+      while lookahead < len(lines):
+        candidate = strip_presentation_markers(lines[lookahead])
+        if not candidate:
+          lookahead += 1
+          continue
+        if candidate.startswith("▪") or is_order_label(candidate):
+          break
+        values.append(candidate)
+        lookahead += 1
+        # Most vertical bulletin cells use exactly one value line. Sermon rows
+        # can still include title/person joined by slash in that one value.
+        break
+      merged.append(f"{line}/ {' / '.join(values)}" if values else line)
+      index = lookahead
+      continue
+    merged.append(line)
+    index += 1
+  return merged
+
+
+def filter_orderish_lines(lines: list[str]) -> list[str]:
+  ignored_patterns = [
+    r"^\d+부[‧/]",
+    r"^3부/오전",
+    r"^오전",
+    r"^오후\s*\d",
+    r"^\[다음주",
+    r"^다음주",
+    r"^※ 표시는",
+    r"^표시는",
+    r"^제\d+권",
+    r"^이 름:",
+    r"^주.?일.?오.?후.?예.?배$",
+    r"^제자헌신예배$",
+  ]
+  filtered: list[str] = []
+  for line in lines:
+    clean = strip_presentation_markers(line)
+    if not clean:
+      continue
+    if is_ignorable_order_text(clean):
+      continue
+    if any(re.search(pattern, clean) for pattern in ignored_patterns):
+      continue
+    filtered.append(clean)
+  return filtered
+
+
+def split_combined_public_lines(lines: list[str], service_number: str) -> list[str]:
+  marker = CIRCLED_SERVICE_MARKERS[service_number]
+  other_markers = [value for key, value in CIRCLED_SERVICE_MARKERS.items() if key != service_number]
+  result: list[str] = []
+  carry_label = ""
+  for line in filter_orderish_lines(lines):
+    if "/" in line and not line.startswith("/"):
+      first = split_order_parts(line)[0]
+      if first:
+        carry_label = first
+    if any(other in line for other in other_markers) and marker not in line:
+      continue
+    if marker in line:
+      line = line.replace(marker, "")
+      if line.startswith("/") and carry_label:
+        line = f"{carry_label}{line}"
+    result.append(line)
+  return result
+
+
+def elements_from_lines(lines: list[str], service_key: str, vertical: bool = False) -> list[dict[str, Any]]:
+  working = merge_vertical_order_lines(filter_orderish_lines(lines)) if vertical else filter_orderish_lines(lines)
+  elements: list[dict[str, Any]] = []
+  for line in working:
+    element = make_element_from_order_line(line, service_key)
+    if element:
+      element["source_line"] = line
+      elements.append(element)
+  return elements
+
+
+def grouped_sections(elements: list[dict[str, Any]]) -> list[dict[str, Any]]:
+  sections: list[dict[str, Any]] = []
+  for element in elements:
+    title = element.get("section") or element.get("label") or "기타"
+    if not sections or sections[-1]["title"] != title:
+      sections.append({"title": title, "elements": []})
+    sections[-1]["elements"].append(element)
+  return sections
+
+
+def make_service_candidate(key: str, title: str, lines: list[str], vertical: bool = False) -> dict[str, Any]:
+  elements = elements_from_lines(lines, key, vertical=vertical)
+  manual_praise = [
+    {
+      "title_hint": element.get("title", ""),
+      "label": element.get("label", ""),
+      "source_line": element.get("source_line", ""),
+      "reason": "찬양은 사용자가 직접 확인/등록 후 Mindex Praise에 연결",
+    }
+    for element in elements
+    if element.get("review_status") == "needs_manual_praise"
+  ]
+  return {
+    "service_key": key,
+    "title": title,
+    "source": "bulletin",
+    "confidence": "draft",
+    "sections": grouped_sections(elements),
+    "manual_required": manual_praise,
+    "stats": {
+      "elements": len(elements),
+      "manual_praise": len(manual_praise),
+      "auto_extractable": len(elements) - len(manual_praise),
+    },
+  }
+
+
+def build_bulletin_candidates(services: dict[str, list[str]]) -> list[dict[str, Any]]:
+  afternoon_lines = services.get("sunday_afternoon", [])
+  afternoon_title = "주일오후예배"
+  if len(afternoon_lines) > 1 and "예배" in afternoon_lines[1]:
+    afternoon_title = f"주일오후예배 - {strip_presentation_markers(afternoon_lines[1])}"
+  return [
+    make_service_candidate(
+      "sunday_1st",
+      "주일예배 (1부)",
+      split_combined_public_lines(services.get("sunday_1_2_combined", []), "1"),
+    ),
+    make_service_candidate(
+      "sunday_2nd",
+      "주일예배 (2부)",
+      split_combined_public_lines(services.get("sunday_1_2_combined", []), "2"),
+    ),
+    make_service_candidate(
+      "sunday_3rd",
+      "주일예배 (3부)",
+      services.get("sunday_3rd", []),
+      vertical=True,
+    ),
+    make_service_candidate(
+      "sunday_afternoon",
+      afternoon_title,
+      afternoon_lines,
+      vertical=True,
+    ),
+  ]
+
+
 def parse_bulletin(path: Path) -> dict[str, Any]:
   lines = extract_hwp_texts(path)
   public_start = find_index(lines, r"3부/오전|1부.?오전")
@@ -116,15 +520,18 @@ def parse_bulletin(path: Path) -> dict[str, Any]:
   afternoon_lines = slice_between(lines, r"^주.*일.*오.*후.*예.*배$", r"✽다음주|위임목사", 0)
   friday_lines = slice_between(lines, r"^3금.*요.*기.*도.*회$|^“월삭예배”$", r"^월-금|^주.*일.*오.*후", 0)
 
+  services = {
+    "sunday_1_2_combined": first_second_lines,
+    "sunday_3rd": third_lines,
+    "sunday_afternoon": afternoon_lines,
+    "friday_or_monthly_notice": friday_lines,
+  }
+
   return {
     "path": str(path),
     "line_count": len(lines),
-    "services": {
-      "sunday_1_2_combined": first_second_lines,
-      "sunday_3rd": third_lines,
-      "sunday_afternoon": afternoon_lines,
-      "friday_or_monthly_notice": friday_lines,
-    },
+    "services": services,
+    "service_candidates": build_bulletin_candidates(services),
     "raw_excerpt": [{"index": i + 1, "text": line} for i, line in enumerate(lines[:220])],
   }
 
@@ -263,13 +670,15 @@ def main() -> int:
     "bulletin": bulletin,
     "pptx": [summarize_pptx(path, bulletin) for path in args.pptx],
     "algorithm": {
-      "authority_order": ["bulletin_structure", "manual_setlist", "mindex_praise", "mindex_scripture", "pptx_slide_material"],
+      "authority_order": ["bulletin_structure", "manual_praise_confirmation", "mindex_praise", "mindex_scripture", "pptx_slide_material"],
       "candidate_flow": [
         "extract bulletin cover/next-page order",
         "split service candidates by order markers",
+        "extract non-praise worship elements from bulletin into service candidates",
+        "mark praise elements as manual confirmation/registration targets",
         "extract PPT slide text and group repeated slide blocks",
         "infer service by content fingerprints, not only filename",
-        "link praise by normalized Mindex Praise/fingerprint; mark cropped lyric titles as weak",
+        "never treat cropped PPT praise titles as canonical",
         "emit import candidates for review before writing canonical Worship tables",
       ],
     },
