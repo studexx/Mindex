@@ -2018,6 +2018,39 @@ def main() -> int:
                     pass_("praise-module-placeholder", placeholder)
                 else:
                     fail("praise-module-placeholder", placeholder or praise_placeholder)
+                page.wait_for_selector("[data-song-id]", state="attached", timeout=5000)
+                page.click("[data-song-id]")
+                page.wait_for_selector(".version-compare-title", state="attached", timeout=5000)
+                praise_actions = page.evaluate(
+                    """
+                    (() => {
+                      const heads = [...document.querySelectorAll('.version-compare-title')];
+                      const versionCopyButtons = [...document.querySelectorAll('.version-copy-btn[data-copy-action="plain"][data-version-id]')];
+                      const versionDuplicateButtons = [...document.querySelectorAll('.version-add-btn[data-add-version]')];
+                      return {
+                        heads: heads.length,
+                        versionCopyButtons: versionCopyButtons.length,
+                        versionDuplicateButtons: versionDuplicateButtons.length,
+                        downloadShowButtons: document.querySelectorAll('[data-copy-action="download-freeshow"]').length,
+                        downloadXmlButtons: document.querySelectorAll('[data-copy-action="download-xml"]').length,
+                        toolbarCopyStack: document.querySelectorAll('.form-toolbar .copy-actions').length,
+                        firstHeadActions: [...(heads[0]?.querySelectorAll('.version-title-actions button') || [])]
+                          .map((button) => button.className)
+                      };
+                    })()
+                    """
+                )
+                if (
+                    praise_actions["heads"] > 0
+                    and praise_actions["versionCopyButtons"] == praise_actions["heads"]
+                    and praise_actions["versionDuplicateButtons"] == praise_actions["heads"]
+                    and praise_actions["downloadShowButtons"] == 0
+                    and praise_actions["downloadXmlButtons"] == 0
+                    and praise_actions["toolbarCopyStack"] == 0
+                ):
+                    pass_("praise-version-copy-actions", json.dumps(praise_actions, ensure_ascii=False))
+                else:
+                    fail("praise-version-copy-actions", json.dumps(praise_actions, ensure_ascii=False))
 
                 page.click('[data-module="scripture"]')
                 wait_for_scripture_data(page)

@@ -4282,7 +4282,7 @@ function handleDetailClick(event) {
 
   const copyAction = event.target.closest("[data-copy-action]");
   if (copyAction) {
-    runCopyAction(copyAction.dataset.copyAction, Number(copyAction.dataset.index));
+    runCopyAction(copyAction.dataset.copyAction, Number(copyAction.dataset.index), copyAction.dataset.versionId || "");
     return;
   }
 
@@ -5928,7 +5928,7 @@ function normalizeWorshipElementType(value) {
     : "";
 }
 
-function runCopyAction(action, index) {
+function runCopyAction(action, index, versionId = "") {
   if (state.module === "scripture") {
     const scripture = getSelectedScripture();
     if (action === "scripture-slides") {
@@ -5940,13 +5940,15 @@ function runCopyAction(action, index) {
   }
 
   if (action === "plain") {
-    copyText(formatFullLyrics());
+    copyText(formatFullLyrics(getFormsForVersionId(versionId)));
     return;
   }
 
   if (action === "download-freeshow") {
     try {
-      downloadTextFile(formatFreeShowShowJson(), getShowFileName(getSelectedSong(), getSelectedVersion()), "application/json");
+      const song = getSelectedSong();
+      const version = getVersionById(versionId) || getSelectedVersion();
+      downloadTextFile(formatFreeShowShowJson(song, version, getFormsForVersionId(versionId)), getShowFileName(song, version), "application/json");
     } catch (error) {
       showToast(error.message || "FreeShow file export failed.", "error");
     }
@@ -5955,7 +5957,9 @@ function runCopyAction(action, index) {
 
   if (action === "download-xml") {
     try {
-      downloadTextFile(formatSongXml(), getXmlFileName(getSelectedSong(), getSelectedVersion()), "application/xml");
+      const song = getSelectedSong();
+      const version = getVersionById(versionId) || getSelectedVersion();
+      downloadTextFile(formatSongXml(song, version, getFormsForVersionId(versionId)), getXmlFileName(song, version), "application/xml");
     } catch (error) {
       showToast(error.message || "XML export failed.", "error");
     }
@@ -8492,6 +8496,15 @@ function renderAddVersionButton(sourceVersionId) {
   `;
 }
 
+function renderCopyVersionButton(version, forms) {
+  const hasLyrics = getCopyableForms(forms).length > 0;
+  return `
+    <button class="version-copy-btn" type="button" data-copy-action="plain" data-version-id="${escapeAttr(version?.id || "")}" aria-label="Copy version lyrics" ${hasLyrics ? "" : "disabled"}>
+      <i data-lucide="clipboard"></i>
+    </button>
+  `;
+}
+
 function renderVersionCompareHead(song, version) {
   const active = version.id === getSelectedVersionId();
   const forms = getFormsForVersion(version);
@@ -8511,6 +8524,7 @@ function renderVersionTitleContent(song, version, forms, options = {}) {
     </div>
     <div class="version-title-actions">
       ${active ? renderVersionPraiseTypeTags(version) : ""}
+      ${renderCopyVersionButton(version, forms)}
       ${renderAddVersionButton(version?.id)}
     </div>
   `;
@@ -8539,9 +8553,19 @@ function getFormsForVersion(version) {
   return normalizeForms((version.forms || []).map((form) => ({ ...form, song_id: version.id })));
 }
 
+function getVersionById(versionId) {
+  const song = getSelectedSong();
+  if (!versionId) return null;
+  return (song?.versions || []).find((version) => version.id === versionId) || null;
+}
+
+function getFormsForVersionId(versionId) {
+  const version = getVersionById(versionId);
+  return version ? getFormsForVersion(version) : state.forms;
+}
+
 
 function renderFormToolbar(song) {
-  const hasLyrics = getCopyableForms().length > 0;
   return `
     <div class="section-bar form-toolbar" aria-label="Add song form">
       <div class="form-buttons">
@@ -8555,22 +8579,6 @@ function renderFormToolbar(song) {
             `,
           )
           .join("")}
-      </div>
-      <div class="toolbar-output-stack">
-        <div class="copy-actions" aria-label="Copy and export lyrics">
-          <button class="btn secondary" type="button" data-copy-action="plain" ${hasLyrics ? "" : "disabled"}>
-            <i data-lucide="clipboard"></i>
-            <span>Text</span>
-          </button>
-          <button class="btn secondary" type="button" data-copy-action="download-freeshow" ${hasLyrics ? "" : "disabled"}>
-            <i data-lucide="presentation"></i>
-            <span>Show</span>
-          </button>
-          <button class="btn secondary" type="button" data-copy-action="download-xml" ${hasLyrics ? "" : "disabled"}>
-            <i data-lucide="file-code-2"></i>
-            <span>XML</span>
-          </button>
-        </div>
       </div>
     </div>
   `;

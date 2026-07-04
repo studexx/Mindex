@@ -1892,27 +1892,34 @@ body[data-module="calendar"] .detail-pane { overflow: hidden; }
 }
 .copy-actions { justify-content: flex-end; }
 .version-compare-grid { display: grid; min-width: 0; gap: var(--s3); overflow-x: auto; }
-.version-add-btn {
-  position: absolute;
-  top: 50%;
-  right: 6px;
-  z-index: 2;
+.version-add-btn,
+.version-copy-btn {
   display: inline-grid;
+  flex: 0 0 auto;
   width: 26px;
   height: 26px;
   place-items: center;
-  transform: translateY(-50%);
   border: 0;
   border-radius: var(--r);
   background: transparent;
   color: var(--ink-4);
   padding: 0;
 }
-.version-add-btn:hover {
+.version-add-btn:hover,
+.version-copy-btn:hover {
   background: color-mix(in srgb, var(--panel-2) 70%, transparent);
   color: var(--ink-2);
 }
-.version-add-btn svg {
+.version-copy-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.38;
+}
+.version-copy-btn:disabled:hover {
+  background: transparent;
+  color: var(--ink-4);
+}
+.version-add-btn svg,
+.version-copy-btn svg {
   width: 14px;
   height: 14px;
 }
@@ -1948,7 +1955,7 @@ body[data-module="calendar"] .detail-pane { overflow: hidden; }
   color: var(--ink);
   cursor: pointer;
   font-weight: 500;
-  padding: 0 40px 0 var(--s3);
+  padding: 0 var(--s2) 0 var(--s3);
   text-align: left;
 }
 .version-compare-title.active {
