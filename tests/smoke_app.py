@@ -2182,6 +2182,35 @@ def main() -> int:
                     pass_("praise-version-copy-actions", json.dumps(praise_actions, ensure_ascii=False))
                 else:
                     fail("praise-version-copy-actions", json.dumps(praise_actions, ensure_ascii=False))
+                signature_state = page.evaluate(
+                    """
+                    (() => {
+                      const rows = [
+                        { id: '11111111-1111-4111-8111-111111111111', canonical_song_id: 'song', source_song_id: 'song', lyric_signature: 'mindex-same' },
+                        { id: '22222222-2222-4222-8222-222222222222', canonical_song_id: 'song', source_song_id: 'song', lyric_signature: 'mindex-same' },
+                        { id: '33333333-3333-4333-8333-333333333333', canonical_song_id: 'song', source_song_id: 'song', lyric_signature: 'mindex-other' },
+                      ];
+                      assignUniqueVersionLyricSignatures(rows, [
+                        { id: '99999999-9999-4999-8999-999999999999', lyric_signature: 'mindex-other' },
+                      ]);
+                      return {
+                        signatures: rows.map((row) => row.lyric_signature),
+                        unique: new Set(rows.map((row) => row.lyric_signature)).size === rows.length,
+                        secondSuffixed: rows[1].lyric_signature.startsWith('mindex-same:'),
+                        existingConflictSuffixed: rows[2].lyric_signature.startsWith('mindex-other:'),
+                      };
+                    })()
+                    """
+                )
+                if (
+                    signature_state["unique"]
+                    and signature_state["signatures"][0] == "mindex-same"
+                    and signature_state["secondSuffixed"]
+                    and signature_state["existingConflictSuffixed"]
+                ):
+                    pass_("praise-version-lyric-signature-unique", json.dumps(signature_state, ensure_ascii=False))
+                else:
+                    fail("praise-version-lyric-signature-unique", json.dumps(signature_state, ensure_ascii=False))
 
                 page.click('[data-module="scripture"]')
                 wait_for_scripture_data(page)

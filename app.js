@@ -3720,7 +3720,9 @@ async function saveSongVersions(song) {
   }));
 
   const existingVersions = await fetchExistingSongVersions(song.id);
+  const existingCanonicalVersions = await fetchExistingCanonicalSongVersions(song.id);
   const existingVersionIds = existingVersions.map((version) => version.id);
+  assignUniqueVersionLyricSignatures(versionRows, existingCanonicalVersions);
 
   const { error: versionError } = await state.client
     .from("mindex_song_versions")
@@ -3814,6 +3816,40 @@ async function fetchExistingSongVersions(songId) {
     .eq("source_song_id", songId);
   if (error) throw error;
   return data || [];
+}
+
+async function fetchExistingCanonicalSongVersions(canonicalSongId) {
+  const { data, error } = await state.client
+    .from("mindex_song_versions")
+    .select("id,lyric_signature")
+    .eq("canonical_song_id", canonicalSongId);
+  if (error) throw error;
+  return data || [];
+}
+
+function assignUniqueVersionLyricSignatures(versionRows = [], existingRows = []) {
+  const nextIds = new Set(versionRows.map((row) => row.id));
+  const used = new Set(
+    (existingRows || [])
+      .filter((row) => row?.lyric_signature && !nextIds.has(row.id))
+      .map((row) => row.lyric_signature),
+  );
+
+  versionRows.forEach((row, index) => {
+    const baseSignature = row.lyric_signature || "mindex-0";
+    let signature = baseSignature;
+    if (used.has(signature)) {
+      const source = String(row.source_song_id || row.id || index + 1).replace(/-/g, "").slice(0, 12) || index + 1;
+      signature = `${baseSignature}:${source}:${index + 1}`;
+      let suffix = 2;
+      while (used.has(signature)) {
+        signature = `${baseSignature}:${source}:${index + 1}:${suffix}`;
+        suffix += 1;
+      }
+      row.lyric_signature = signature;
+    }
+    used.add(signature);
+  });
 }
 
 async function fetchExistingVersionUnits(versionIds) {
