@@ -3714,7 +3714,7 @@ body[data-module="service"] .detail-pane {
 }
 .svc-presenter-top {
   position: sticky;
-  top: calc(var(--svc-service-header-sticky-h) - var(--content-pad-y) + 8px);
+  top: calc(var(--svc-service-header-sticky-h) - var(--content-pad-y));
   z-index: 29;
   display: grid;
   min-width: 0;
@@ -3722,6 +3722,7 @@ body[data-module="service"] .detail-pane {
   gap: 10px;
   align-items: center;
   background: var(--bg);
+  box-shadow: 0 -52px 0 0 var(--bg);
   padding: 2px 0 6px;
 }
 .svc-presenter-main {
