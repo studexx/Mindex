@@ -406,6 +406,7 @@ def cleanup_presenter_fixture(page) -> None:
             state.presenter.index = 0;
             state.presenter.jumpDraft = "";
             state.presenter.liveScripture = { reference: "", draft: "", active: false, slide: null };
+            state.presenter.livePraise = { query: "", draft: "", active: false, slides: [], index: 0, songId: "", versionId: "" };
           }
           delete state.__smokePresenterFixtureServiceId;
         })()
@@ -844,7 +845,7 @@ def main() -> int:
                     and topbar_state["activeIconWidth"] == 14
                     and topbar_state["activeIconHeight"] == 14
                     and topbar_state["activeIconStroke"] == "1.7px"
-                    and topbar_state["activeWeight"] == "550"
+                    and topbar_state["activeWeight"] == "600"
                 ):
                     pass_("topbar-module-order-active-style", json.dumps(topbar_state, ensure_ascii=False))
                 else:
@@ -1156,6 +1157,28 @@ def main() -> int:
                               firstElementType: scaffold.elements[0]?.element_type || '',
                               sectionKeys: sections.map((section) => section.key),
                               monthlyPrayerElements: sections.find((section) => section.key === 'monthly_prayer')?.elements || [],
+                              prayerSection: (() => {
+                                const prayer = sections.find((section) => section.key === 'prayer');
+                                return {
+                                  title: prayer?.title || '',
+                                  elements: prayer?.elements || [],
+                                  defaults: defaultsFor('prayer')
+                                };
+                              })(),
+                              sermonSection: (() => {
+                                const sermon = sections.find((section) => section.key === 'sermon');
+                                return {
+                                  title: sermon?.title || '',
+                                  elements: sermon?.elements || []
+                                };
+                              })(),
+                              responseSection: (() => {
+                                const response = sections.find((section) => section.key === 'response_song');
+                                return {
+                                  title: response?.title || '',
+                                  elements: response?.elements || []
+                                };
+                              })(),
                               offeringElements: sections.find((section) => section.key === 'offering')?.elements || [],
                               offeringDefaults: defaultsFor('offering'),
                               closingSection: (() => {
@@ -1163,6 +1186,20 @@ def main() -> int:
                                 return {
                                   title: closing?.title || '',
                                   elements: closing?.elements || []
+                                };
+                              })(),
+                              closingVisualSection: (() => {
+                                const closing = scaffold.sections.find((section) => section.section_key === 'closing_visual');
+                                return {
+                                  title: closing?.title || '',
+                                  elements: scaffold.elements
+                                    .filter((element) => element.section_id === closing?.id)
+                                    .map((element) => ({
+                                      type: element.element_type || '',
+                                      label: element.source_ref?.label || '',
+                                      order: element.config?.orderSheet?.order || '',
+                                      assetUrl: element.config?.asset?.url || ''
+                                    }))
                                 };
                               })(),
                               closingDefaults: defaultsFor('closing_song'),
@@ -1239,7 +1276,8 @@ def main() -> int:
                                 name: '찬양',
                                 phase: 'Gathering',
                                 elementType: 'praise',
-                                formHint: 'V1-C'
+                                formHint: 'V1-C',
+                                orderSheet: { order: '찬양', group: 'praise' }
                               }]
                             });
                             const steps = ensureServiceOrderTemplate(typeId);
@@ -1261,7 +1299,9 @@ def main() -> int:
                               serializedFormHint: serialized.formHint || '',
                               serializedForms: serialized.formPreset?.forms || [],
                               serializedStrength: serialized.formPreset?.strength || '',
-                              serializedDefaultStrength: serialized.defaultStrength || ''
+                              serializedDefaultStrength: serialized.defaultStrength || '',
+                              serializedOrder: serialized.orderSheet?.order || '',
+                              serializedGroup: serialized.orderSheet?.group || ''
                             };
                           })(),
                           templateElementEditor: (() => {
@@ -1343,14 +1383,38 @@ def main() -> int:
                     if (
                         template_terms["levels"] == ["Service", "Section", "Element", "Slide"]
                         and template_terms["monthlyFirst"] == {"label": "준비", "elementType": "video"}
-                        and template_terms["monthlyScaffold"]["sections"] == 12
-                        and template_terms["monthlyScaffold"]["elements"] == 21
+                        and template_terms["monthlyScaffold"]["sections"] == 13
+                        and template_terms["monthlyScaffold"]["elements"] == 23
                         and template_terms["monthlyScaffold"]["firstSection"] == "준비"
                         and template_terms["monthlyScaffold"]["firstElementType"] == "video"
                         and "monthly_prayer" in template_terms["monthlyScaffold"]["sectionKeys"]
                         and "closing_song" in template_terms["monthlyScaffold"]["sectionKeys"]
+                        and "closing_visual" in template_terms["monthlyScaffold"]["sectionKeys"]
+                        and template_terms["monthlyScaffold"]["prayerSection"] == {
+                            "title": "대표기도",
+                            "elements": [{"type": "title_person", "label": "대표기도", "order": "대표기도"}],
+                            "defaults": [{"label": "대표기도", "title": "기도", "formHint": "", "forms": [], "strength": ""}],
+                        }
+                        and template_terms["monthlyScaffold"]["sermonSection"] == {
+                            "title": "설교",
+                            "elements": [{"type": "title_person", "label": "설교", "order": "설교"}],
+                        }
+                        and template_terms["monthlyScaffold"]["responseSection"] == {
+                            "title": "결단",
+                            "elements": [
+                                {"type": "praise", "label": "결단찬양", "order": "결단찬양"},
+                                {"type": "title_person", "label": "결단기도", "order": "결단기도"},
+                            ],
+                        }
                         and template_terms["monthlyScaffold"]["closingSection"]["title"] == "찬양"
                         and template_terms["monthlyScaffold"]["closingSection"]["elements"] == [{"type": "praise", "label": "찬양", "order": "찬양"}]
+                        and template_terms["monthlyScaffold"]["closingVisualSection"]["title"] == "마무리"
+                        and template_terms["monthlyScaffold"]["closingVisualSection"]["elements"] == [{
+                            "type": "image",
+                            "label": "마무리",
+                            "order": "",
+                            "assetUrl": "assets/worship-templates/public-closing.png",
+                        }]
                         and template_terms["monthlyScaffold"]["offeringDefaults"][0] == {
                             "label": "봉헌",
                             "title": "이런 교회 되게 하소서",
@@ -1393,6 +1457,8 @@ def main() -> int:
                             "serializedForms": ["V2", "C"],
                             "serializedStrength": "manual",
                             "serializedDefaultStrength": "manual",
+                            "serializedOrder": "찬양",
+                            "serializedGroup": "praise",
                         }
                         and template_terms["templateElementEditor"] == {
                             "before": "V-C",
@@ -1416,7 +1482,7 @@ def main() -> int:
                         }
                         and len(template_terms["monthlyScaffold"]["monthlyPrayerElements"]) == 5
                         and len(template_terms["monthlyScaffold"]["offeringElements"]) == 2
-                        and template_terms["monthlyScaffold"]["blankPlaceholders"] == 20
+                        and template_terms["monthlyScaffold"]["blankPlaceholders"] == 21
                         and template_terms["overflow"] <= 2
                     ):
                         pass_("service-template-terminology", json.dumps(template_terms, ensure_ascii=False))
@@ -1463,6 +1529,41 @@ def main() -> int:
                         pass_("order-sheet-preview", json.dumps({**service_for_print, **print_state}, ensure_ascii=False))
                     else:
                         fail("order-sheet-preview", json.dumps({**service_for_print, **print_state}, ensure_ascii=False))
+
+                    order_sheet_edit = page.evaluate(
+                        """
+                        (serviceId) => {
+                          const cell = document.querySelector('[data-order-sheet-cell][data-order-sheet-row="0"][data-order-sheet-field="order"]');
+                          if (!cell) return { hasCell: false };
+                          cell.textContent = '편집 순서';
+                          cell.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: '편집 순서' }));
+                          const cells = [...document.querySelectorAll('[data-order-sheet-cell][data-order-sheet-row="0"][data-order-sheet-field="order"]')]
+                            .map((item) => item.textContent.trim());
+                          const textIncludesDraft = formatOrderSheetText(serviceId).includes('편집 순서');
+                          refreshServiceOrderSheetPreview(serviceId);
+                          const refreshedCells = [...document.querySelectorAll('[data-order-sheet-cell][data-order-sheet-row="0"][data-order-sheet-field="order"]')]
+                            .map((item) => item.textContent.trim());
+                          return {
+                            hasCell: true,
+                            cells,
+                            refreshedCells,
+                            textIncludesDraft,
+                            dirtyService: state.dirty.service
+                          };
+                        }
+                        """,
+                        service_for_print["id"],
+                    )
+                    if (
+                        order_sheet_edit["hasCell"]
+                        and order_sheet_edit["cells"] == ["편집 순서", "편집 순서"]
+                        and order_sheet_edit["refreshedCells"] == ["편집 순서", "편집 순서"]
+                        and order_sheet_edit["textIncludesDraft"]
+                        and not order_sheet_edit["dirtyService"]
+                    ):
+                        pass_("order-sheet-editable", json.dumps(order_sheet_edit, ensure_ascii=False))
+                    else:
+                        fail("order-sheet-editable", json.dumps(order_sheet_edit, ensure_ascii=False))
 
                     active_order_sheet_date = page.evaluate(
                         """
@@ -1629,11 +1730,17 @@ def main() -> int:
                           sidebarHeadings: [...document.querySelectorAll('.service-sidebar-head span')]
                             .map((node) => node.textContent.trim()),
                           outlineRows: document.querySelectorAll('.service-outline-row').length,
+                          readyShortcutRows: document.querySelectorAll('.service-outline-row--ready').length,
                           editorFields: [...document.querySelectorAll('.service-sidebar-editor label > span')]
                             .map((node) => node.textContent.trim()),
                           hasLegacyDrawer: Boolean(document.querySelector('.svc-edit-drawer')),
                           status: document.querySelector('.svc-presenter-status')?.textContent.trim() || '',
                           jumpLabel: document.querySelector('[data-presenter-jump-button]')?.getAttribute('aria-label') || '',
+                          controlLabels: [...document.querySelectorAll('.svc-presenter-mini-label')]
+                            .map((node) => node.textContent.trim()),
+                          actionButtonTexts: [...document.querySelectorAll('.svc-action-text-btn')]
+                            .map((node) => node.textContent.trim()),
+                          actionGroups: document.querySelectorAll('.svc-presenter-action-group').length,
                           firstThumbLabel: document.querySelector('.svc-slide-thumb')?.getAttribute('aria-label') || '',
                           actionLabels: [...document.querySelectorAll('.service-sidebar-editor-actions [aria-label]')]
                             .slice(0, 4)
@@ -1654,12 +1761,16 @@ def main() -> int:
                         "순서" in presenter_terms["sidebarHeadings"]
                         and "편집" in presenter_terms["sidebarHeadings"]
                         and presenter_terms["outlineRows"] >= 2
+                        and presenter_terms["readyShortcutRows"] == 0
                         and presenter_terms["editorFields"][:4] == ["섹션", "담당", "항목", "타입"]
                         and not presenter_terms["hasLegacyDrawer"]
                         and presenter_terms["actionLabels"][:4] == ["항목 위로 이동", "항목 아래로 이동", "항목 복제", "항목 삭제"]
-                        and presenter_terms["elementTypes"][:6] == ["자동", "빈 화면", "동영상", "이미지", "찬양", "말씀"]
-                        and presenter_terms["status"] == "Preview"
+                        and presenter_terms["elementTypes"][:10] == ["자동", "빈 화면", "동영상", "이미지", "악보", "찬양", "실시간 찬양", "말씀", "성경봉독", "성경 본문"]
+                        and presenter_terms["status"] == "미리보기"
                         and presenter_terms["jumpLabel"] == "슬라이드로 이동"
+                        and presenter_terms["controlLabels"][:3] == ["상태", "슬라이드", "음량"]
+                        and presenter_terms["actionButtonTexts"] == ["불러오기", "숨김", "송출", "숨김"]
+                        and presenter_terms["actionGroups"] == 4
                         and (
                             "슬라이드로 이동" in presenter_terms["firstThumbLabel"]
                             or "준비 화면으로 이동" in presenter_terms["firstThumbLabel"]

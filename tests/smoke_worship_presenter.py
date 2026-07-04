@@ -152,7 +152,7 @@ def main() -> int:
                     }))()
                     """
                 )
-                if initial_status["status"] == "Preview" and initial_status["mode"] == "":
+                if initial_status["status"] == "미리보기" and initial_status["mode"] == "":
                     pass_("presenter-status-preview", json.dumps(initial_status, ensure_ascii=False))
                 else:
                     fail("presenter-status-preview", json.dumps(initial_status, ensure_ascii=False))
@@ -278,7 +278,7 @@ def main() -> int:
                     }))()
                     """
                 )
-                if ready_status["status"] == "Ready" and ready_status["mode"].startswith("Slide "):
+                if ready_status["status"] == "준비" and ready_status["mode"].endswith("번"):
                     pass_("presenter-status-ready", json.dumps(ready_status, ensure_ascii=False))
                 else:
                     fail("presenter-status-ready", json.dumps(ready_status, ensure_ascii=False))
@@ -377,6 +377,134 @@ def main() -> int:
                     pass_("presenter-section-element-model", json.dumps(fallback_state, ensure_ascii=False))
                 else:
                     fail("presenter-section-element-model", json.dumps(fallback_state, ensure_ascii=False))
+
+                title_assignee_state = page.evaluate(
+                    """
+                    () => {
+                      const service = { id: '__smoke_title_service__', type_id: 'monthly', date: '2026-07-04' };
+                      const items = [
+                        {
+                          id: '__smoke_prayer_title__',
+                          label: '대표기도',
+                          raw_title: '박귀서 장로',
+                          memo: serializeServiceItemMemo({ elementType: 'title_person' }),
+                        },
+                        {
+                          id: '__smoke_scripture_title__',
+                          label: '성경봉독',
+                          raw_title: '대하 15:8-15',
+                          memo: serializeServiceItemMemo({ elementType: 'scripture_reading' }),
+                        },
+                        {
+                          id: '__smoke_sermon_title__',
+                          label: '설교',
+                          raw_title: '정함',
+                          assignee: '김남영 목사',
+                          memo: serializeServiceItemMemo({ elementType: 'title_person' }),
+                        },
+                      ];
+                      return items.map((item, index) => {
+                        const slide = buildPresenterSlidesForServiceItem(item, service, index)[0] || {};
+                        return {
+                          elementType: slide.elementType || '',
+                          layout: slide.layout || '',
+                          type: slide.type || '',
+                          renderClass: presenterSlideRenderClass(slide),
+                          title: slide.title || '',
+                          assignee: slide.assignee || '',
+                          text: slide.text || '',
+                          html: renderPresenterSlideFrame(slide),
+                        };
+                      });
+                    }
+                    """
+                )
+                if (
+                    title_assignee_state == [
+                        {
+                            "elementType": "title_assignee",
+                            "layout": "lower_bar_text",
+                            "type": "title-assignee",
+                            "renderClass": "title-assignee",
+                            "title": "기도",
+                            "assignee": "박귀서 장로",
+                            "text": "기도\n박귀서 장로",
+                            "html": title_assignee_state[0]["html"],
+                        },
+                        {
+                            "elementType": "title_assignee",
+                            "layout": "lower_bar_text",
+                            "type": "title-assignee",
+                            "renderClass": "title-assignee",
+                            "title": "성경봉독",
+                            "assignee": "대하 15:8–15",
+                            "text": "성경봉독\n대하 15:8–15",
+                            "html": title_assignee_state[1]["html"],
+                        },
+                        {
+                            "elementType": "title_assignee",
+                            "layout": "lower_bar_text",
+                            "type": "title-assignee",
+                            "renderClass": "title-assignee",
+                            "title": "정함",
+                            "assignee": "김남영 목사",
+                            "text": "정함\n김남영 목사",
+                            "html": title_assignee_state[2]["html"],
+                        },
+                    ]
+                    and all("presenter-title-assignee" in item["html"] for item in title_assignee_state)
+                ):
+                    pass_("presenter-title-assignee-slides", json.dumps(title_assignee_state, ensure_ascii=False))
+                else:
+                    fail("presenter-title-assignee-slides", json.dumps(title_assignee_state, ensure_ascii=False))
+
+                db_title_assignee_state = page.evaluate(
+                    """
+                    () => {
+                      const slide = normalizeWorshipPresenterSlide({
+                        service_id: '__smoke_db_service__',
+                        section_id: '__smoke_db_section__',
+                        section_order: 4,
+                        section_key: 'prayer',
+                        section_title: '대표기도',
+                        section_person: '',
+                        element_id: '__smoke_db_element__',
+                        element_order: 1,
+                        element_type: 'title_person',
+                        element_title: '기도',
+                        element_person: '박귀서 장로',
+                        slide_id: '__smoke_db_slide__',
+                        slide_order: 1,
+                        slide_type: 'title_person',
+                        slide_title: '기도',
+                        slide_body: ''
+                      }, 0);
+                      return {
+                        elementType: slide.elementType || '',
+                        layout: slide.layout || '',
+                        type: slide.type || '',
+                        renderClass: presenterSlideRenderClass(slide),
+                        title: slide.title || '',
+                        assignee: slide.assignee || '',
+                        text: slide.text || '',
+                        html: renderPresenterSlideFrame(slide),
+                      };
+                    }
+                    """
+                )
+                if (
+                    db_title_assignee_state["elementType"] == "title_assignee"
+                    and db_title_assignee_state["layout"] == "lower_bar_text"
+                    and db_title_assignee_state["type"] == "title-assignee"
+                    and db_title_assignee_state["renderClass"] == "title-assignee"
+                    and db_title_assignee_state["title"] == "기도"
+                    and db_title_assignee_state["assignee"] == "박귀서 장로"
+                    and db_title_assignee_state["text"] == "기도\n박귀서 장로"
+                    and "presenter-title-assignee" in db_title_assignee_state["html"]
+                ):
+                    pass_("presenter-db-title-assignee-slide", json.dumps(db_title_assignee_state, ensure_ascii=False))
+                else:
+                    fail("presenter-db-title-assignee-slide", json.dumps(db_title_assignee_state, ensure_ascii=False))
 
                 form_preset_state = page.evaluate(
                     """
@@ -862,6 +990,7 @@ def main() -> int:
                       preparePresenterService(serviceId);
                       state.presenter.index = Math.min(1, Math.max(state.presenter.slides.length - 1, 0));
                       state.presenter.liveScripture = { reference: "", draft: "", active: false, slide: null };
+                      state.presenter.livePraise = { query: "", draft: "", active: false, slides: [], index: 0, songId: "", versionId: "" };
                       state.presenter.outputWindow = null;
                       state.presenter.outputConnectedAt = 0;
                       state.presenter.outputClientId = "";
@@ -890,7 +1019,7 @@ def main() -> int:
                     timeout=5000,
                 )
                 page.wait_for_function(
-                    "() => document.querySelector('.svc-presenter-status')?.textContent.trim() === 'Live'",
+                    "() => document.querySelector('.svc-presenter-status')?.textContent.trim() === '송출 중'",
                     timeout=5000,
                 )
                 heartbeat_state = page.evaluate(
@@ -905,8 +1034,8 @@ def main() -> int:
                     """
                 )
                 if (
-                    heartbeat_state["status"] == "Live"
-                    and heartbeat_state["mode"] == "Slide 2"
+                    heartbeat_state["status"] == "송출 중"
+                    and heartbeat_state["mode"] == "2번"
                     and heartbeat_state["connected"]
                     and heartbeat_state["open"]
                     and not heartbeat_state["hasWindowRef"]
@@ -944,7 +1073,7 @@ def main() -> int:
                     and heartbeat_reuse_state["connected"]
                     and heartbeat_reuse_state["open"]
                     and not heartbeat_reuse_state["hasWindowRef"]
-                    and heartbeat_reuse_state["status"] == "Live"
+                    and heartbeat_reuse_state["status"] == "송출 중"
                 ):
                     pass_("presenter-open-reuses-heartbeat-output", json.dumps(heartbeat_reuse_state, ensure_ascii=False))
                 else:
@@ -1154,12 +1283,104 @@ def main() -> int:
                 if (
                     live_scripture_controller_state["activeThumbs"] == 0
                     and live_scripture_controller_state["activeWraps"] == 0
-                    and live_scripture_controller_state["status"] == "Live"
-                    and live_scripture_controller_state["mode"] == "Scripture"
+                    and live_scripture_controller_state["status"] == "송출 중"
+                    and live_scripture_controller_state["mode"] == "성구"
                 ):
                     pass_("presenter-live-scripture-controller-preview", json.dumps(live_scripture_controller_state, ensure_ascii=False))
                 else:
                     fail("presenter-live-scripture-controller-preview", json.dumps(live_scripture_controller_state, ensure_ascii=False))
+
+                page.evaluate(
+                    """
+                    (serviceId) => {
+                      const song = {
+                        id: '__smoke_live_praise_song__',
+                        title: '테스트 찬양',
+                        hymn_no: null,
+                        scripture: [],
+                        metadata: {},
+                        versions: [{
+                          id: '__smoke_live_praise_version__',
+                          name: 'Default',
+                          is_primary: true,
+                          forms: [
+                            { id: 'v1', part_type: 'Verse', part_number: 1, lyrics: '첫 줄\\n둘째 줄\\n셋째 줄\\n넷째 줄' },
+                            { id: 'c1', part_type: 'Chorus', part_number: null, lyrics: '후렴 첫 줄\\n후렴 둘째 줄' },
+                          ],
+                        }],
+                      };
+                      state.songs = [song, ...state.songs.filter((item) => item.id !== song.id)];
+                      preparePresenterService(serviceId);
+                      const result = buildLivePraisePayload('테스트 찬양', serviceId);
+                      state.presenter.livePraise = {
+                        query: '테스트 찬양',
+                        draft: '테스트 찬양',
+                        active: true,
+                        slides: result.slides,
+                        index: 0,
+                        songId: result.song.id,
+                        versionId: result.version.id,
+                      };
+                      state.presenter.liveScripture = { reference: '', draft: '', active: false, slide: null };
+                      state.presenter.safetyBlank = false;
+                      publishPresenterState({ force: true });
+                      renderPresenterControlState(serviceId);
+                    }
+                    """,
+                    service["id"],
+                )
+                output_page.wait_for_function(
+                    "() => JSON.parse(localStorage.getItem('mindex.presenter.state') || '{}').livePraise?.active === true",
+                    timeout=5000,
+                )
+                output_page.wait_for_function(
+                    "() => document.querySelector('.presenter-slide')?.classList.contains('presenter-slide--song-title')",
+                    timeout=5000,
+                )
+                page.evaluate("(serviceId) => runPresenterAction('next', serviceId)", service["id"])
+                output_page.wait_for_function(
+                    "() => JSON.parse(localStorage.getItem('mindex.presenter.state') || '{}').livePraise?.index === 1",
+                    timeout=5000,
+                )
+                output_page.wait_for_function(
+                    "() => document.querySelector('.presenter-slide')?.classList.contains('presenter-slide--lyrics')",
+                    timeout=5000,
+                )
+                live_praise_state = page.evaluate(
+                    """
+                    (() => {
+                      const payload = JSON.parse(localStorage.getItem('mindex.presenter.state') || '{}');
+                      return {
+                        active: Boolean(payload.livePraise?.active),
+                        index: payload.livePraise?.index ?? -1,
+                        slideCount: payload.livePraise?.slides?.length || 0,
+                        mode: document.querySelector('.svc-presenter-mode')?.textContent.trim() || '',
+                        activeThumbs: document.querySelectorAll('.svc-slide-thumb.active').length,
+                      };
+                    })()
+                    """
+                )
+                live_praise_output_state = output_page.evaluate(
+                    """
+                    (() => ({
+                      slideClass: document.querySelector('.presenter-slide')?.className || '',
+                      text: document.querySelector('.presenter-slide')?.innerText.trim() || '',
+                    }))()
+                    """
+                )
+                if (
+                    live_praise_state["active"]
+                    and live_praise_state["index"] == 1
+                    and live_praise_state["slideCount"] >= 3
+                    and live_praise_state["mode"] == "찬양"
+                    and live_praise_state["activeThumbs"] == 0
+                    and "presenter-slide--lyrics" in live_praise_output_state["slideClass"]
+                    and "첫 줄" in live_praise_output_state["text"]
+                    and "둘째 줄" in live_praise_output_state["text"]
+                ):
+                    pass_("presenter-live-praise-transient-output", json.dumps({**live_praise_state, **live_praise_output_state}, ensure_ascii=False))
+                else:
+                    fail("presenter-live-praise-transient-output", json.dumps({**live_praise_state, **live_praise_output_state}, ensure_ascii=False))
 
                 jump_input = page.locator(f'[data-presenter-jump-input][data-service-id="{service["id"]}"]')
                 jump_input.fill("1")
@@ -1250,8 +1471,8 @@ def main() -> int:
                     safety_blank_controller_state["inputValue"] == "0"
                     and safety_blank_controller_state["activeThumbs"] == 0
                     and safety_blank_controller_state["activeWraps"] == 0
-                    and safety_blank_controller_state["status"] == "Live"
-                    and safety_blank_controller_state["mode"] == "Blank"
+                    and safety_blank_controller_state["status"] == "송출 중"
+                    and safety_blank_controller_state["mode"] == "빈 화면"
                 ):
                     pass_("presenter-safety-blank-controller-preview", json.dumps(safety_blank_controller_state, ensure_ascii=False))
                 else:
@@ -1350,8 +1571,8 @@ def main() -> int:
                     and selection_state["outputServiceId"] == service["id"]
                     and selection_state["selectedThumbs"] >= 2
                     and selection_state["selectedActiveThumbs"] == 0
-                    and selection_state["status"] == "Other live"
-                    and selection_state["mode"] == "Other service"
+                    and selection_state["status"] == "다른 예배 송출"
+                    and selection_state["mode"] == "다른 예배"
                 ):
                     pass_("presenter-service-selection-is-passive", json.dumps(selection_state, ensure_ascii=False))
                 else:
@@ -1382,8 +1603,8 @@ def main() -> int:
                     and other_live_keyboard_state["presenterIndex"] == 2
                     and other_live_keyboard_state["outputServiceId"] == service["id"]
                     and other_live_keyboard_state["outputIndex"] == 2
-                    and other_live_keyboard_state["status"] == "Other live"
-                    and other_live_keyboard_state["mode"] == "Other service"
+                    and other_live_keyboard_state["status"] == "다른 예배 송출"
+                    and other_live_keyboard_state["mode"] == "다른 예배"
                 ):
                     pass_("presenter-keyboard-other-live-ignored", json.dumps(other_live_keyboard_state, ensure_ascii=False))
                 else:
@@ -1441,7 +1662,7 @@ def main() -> int:
                     and switch_state["slides"] >= 2
                     and switch_state["payloadIndex"] == 0
                     and switch_state["activeThumbs"] == 1
-                    and switch_state["status"] == "Live"
+                    and switch_state["status"] == "송출 중"
                     and switch_output_state["serviceId"] == selection_state["switchId"]
                     and switch_output_state["index"] == 0
                     and switch_output_state["hasSlide"]
@@ -1480,7 +1701,7 @@ def main() -> int:
                     and active_keyboard_state["presenterIndex"] == 1
                     and active_keyboard_state["outputServiceId"] == selection_state["switchId"]
                     and active_keyboard_state["outputIndex"] == 1
-                    and active_keyboard_state["status"] == "Live"
+                    and active_keyboard_state["status"] == "송출 중"
                 ):
                     pass_("presenter-keyboard-active-service", json.dumps(active_keyboard_state, ensure_ascii=False))
                 else:
@@ -1519,6 +1740,7 @@ def main() -> int:
                       preparePresenterService(service.id);
                       state.presenter.index = Math.min(1, Math.max(state.presenter.slides.length - 1, 0));
                       state.presenter.liveScripture = { reference: "", draft: "", active: false, slide: null };
+                      state.presenter.livePraise = { query: "", draft: "", active: false, slides: [], index: 0, songId: "", versionId: "" };
                       state.module = 'service';
                       state.selectedServiceTypeId = service.type_id;
                       state.selectedServiceId = service.id;
@@ -1666,7 +1888,7 @@ def main() -> int:
                     and esc_stop_state["outputWindowCleared"]
                     and esc_stop_state["monitorCleared"]
                     and not esc_stop_state["open"]
-                    and esc_stop_state["status"] == "Ready"
+                    and esc_stop_state["status"] == "준비"
                 ):
                     pass_("presenter-output-escape-stop", json.dumps(esc_stop_state, ensure_ascii=False))
                 else:
@@ -1754,7 +1976,7 @@ def main() -> int:
                     and monitor_state["monitorCleared"]
                     and monitor_state["connectedAt"] == 0
                     and not monitor_state["open"]
-                    and monitor_state["status"] == "Ready"
+                    and monitor_state["status"] == "준비"
                 ):
                     pass_("presenter-output-window-monitor", json.dumps(monitor_state, ensure_ascii=False))
                 else:

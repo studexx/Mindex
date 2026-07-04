@@ -196,6 +196,7 @@ create table if not exists public.mindex_worship_elements (
       'scripture_body',
       'image',
       'video',
+      'score',
       'editable',
       'ppt',
       'pdf'
@@ -252,6 +253,7 @@ create table if not exists public.mindex_worship_slides (
       'scripture_body',
       'image',
       'video',
+      'score',
       'editable',
       'ppt',
       'pdf'

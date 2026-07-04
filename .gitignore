@@ -9,6 +9,7 @@ mindex.local.js
 scripts/*
 !scripts/audit_mindex_content.py
 !scripts/activities-schema.sql
+!scripts/service_templates.py
 !scripts/backfill_song_versions_from_memo.py
 !scripts/backfill_song_relations_from_memo.py
 !scripts/admin-auth-rls.sql
