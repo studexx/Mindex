@@ -1227,6 +1227,7 @@ def main() -> int:
                             const summarize = (typeId) => {
                               const scaffold = buildWorshipServiceScaffold(`__smoke_${typeId}__`, typeId);
                               const sections = scaffold.sections.map((section) => ({
+                                id: section.id || '',
                                 key: section.section_key || '',
                                 title: section.title || '',
                                 elements: scaffold.elements
@@ -1244,7 +1245,15 @@ def main() -> int:
                                 keys: sections.map((section) => section.key),
                                 compactTitles: sections.map((section) => compact(section.title)),
                                 creedElements: sections.find((section) => section.key === 'creed')?.elements || [],
-                                offeringElements: sections.find((section) => section.key === 'offering')?.elements || []
+                                offeringElements: sections.find((section) => section.key === 'offering')?.elements || [],
+                                closingHymnDefaults: scaffold.elements
+                                  .filter((element) => element.section_id === sections.find((section) => section.key === 'closing_hymn')?.id)
+                                  .map((element) => ({
+                                    type: element.element_type || '',
+                                    label: element.source_ref?.label || '',
+                                    title: element.title || '',
+                                    orderSheetHidden: element.config?.orderSheet?.hidden === true
+                                  }))
                               };
                             };
                             return {
@@ -1468,7 +1477,8 @@ def main() -> int:
                             "hint": "1절-2절-간주-마지막 절",
                             "strength": "default",
                         }
-                        and template_terms["sundayPublicScaffold"]["first"]["titles"][:4] == ["준비", "환영", "신앙고백", "찬양"]
+                        and template_terms["sundayPublicScaffold"]["first"]["titles"][:4] == ["준비", "신앙고백", "찬양", "참회기도"]
+                        and "환영" not in template_terms["sundayPublicScaffold"]["first"]["titles"]
                         and template_terms["sundayPublicScaffold"]["first"]["creedElements"] == [
                             {"type": "body", "label": "사도신경", "order": "신앙고백"}
                         ]
@@ -1476,9 +1486,16 @@ def main() -> int:
                             {"type": "praise", "label": "봉헌찬양", "order": "봉헌"},
                             {"type": "title_person", "label": "봉헌기도", "order": "봉헌기도"},
                         ]
-                        and "사죄의선언" in template_terms["sundayPublicScaffold"]["third"]["titles"]
+                        and "사죄의선언" not in template_terms["sundayPublicScaffold"]["third"]["titles"]
                         and "공동체고백" in template_terms["sundayPublicScaffold"]["third"]["titles"]
-                        and "아멘송" in template_terms["sundayPublicScaffold"]["third"]["titles"]
+                        and "아멘송" not in template_terms["sundayPublicScaffold"]["third"]["titles"]
+                        and "폐회찬송" in template_terms["sundayPublicScaffold"]["third"]["titles"]
+                        and template_terms["sundayPublicScaffold"]["third"]["closingHymnDefaults"] == [{
+                            "type": "praise",
+                            "label": "폐회찬송",
+                            "title": "십자가 군병들아",
+                            "orderSheetHidden": True,
+                        }]
                         and template_terms["sundayPublicScaffold"]["third"]["keys"].count("praise") == 1
                         and "hymn_praise" in template_terms["sundayPublicScaffold"]["third"]["keys"]
                         and template_terms["sundayPublicScaffold"]["afternoon"]["titles"][:4] == ["준비", "찬양", "묵도", "찬양"]

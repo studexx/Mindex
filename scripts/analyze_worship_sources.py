@@ -64,6 +64,11 @@ PRAISE_LABELS = {
   "송영",
   "아멘송",
 }
+NON_PRESENTED_ORDER_LABELS = {
+  "환영",
+  "사죄의선언",
+  "아멘송",
+}
 
 
 def normalize_space(value: str) -> str:
@@ -75,6 +80,23 @@ def normalize_order_label(value: str) -> str:
   value = re.sub(r"^[※♱❦✽\s]+", "", value)
   value = value.replace(" ", "")
   return value
+
+
+def canonical_order_label(value: str) -> str:
+  normalized = normalize_order_label(value)
+  aliases = {
+    normalize_order_label("경배와찬양"): "찬양",
+    normalize_order_label("경배와 찬양"): "찬양",
+    normalize_order_label("말씀선포"): "설교",
+    normalize_order_label("말씀"): "설교",
+    normalize_order_label("결단의기도"): "결단기도",
+  }
+  return aliases.get(normalized, strip_presentation_markers(value))
+
+
+def is_non_presented_order_label(value: str) -> bool:
+  normalized = normalize_order_label(value)
+  return normalized in {normalize_order_label(label) for label in NON_PRESENTED_ORDER_LABELS}
 
 
 def split_order_parts(value: str) -> list[str]:
@@ -217,18 +239,21 @@ def make_element_from_order_line(line: str, service_key: str = "") -> dict[str, 
     return None
   label = strip_presentation_markers(parts[0])
   normalized = normalize_order_label(label)
+  canonical_label = canonical_order_label(label)
   values = parts[1:]
   raw_value = " / ".join(values)
+  if is_non_presented_order_label(label):
+    return None
 
   if is_praise_label(label) or normalized.startswith(normalize_order_label("경배와찬양")):
     first_value = strip_quotes(values[0]) if values else ""
     title = "" if first_value in {"다같이", "다 같 이"} else first_value
     person = values[-1] if len(values) > 1 else ""
     return {
-      "section": label,
+      "section": canonical_label,
       "element_type": "praise",
-      "label": label,
-      "title": title or label,
+      "label": canonical_label,
+      "title": title or canonical_label,
       "person": person if person not in {"다같이", "다 같 이"} else "",
       "review_status": "needs_manual_praise",
       "confidence": "medium" if title else "low",
@@ -236,11 +261,11 @@ def make_element_from_order_line(line: str, service_key: str = "") -> dict[str, 
     }
 
   if normalized in {normalize_order_label(x) for x in ["예배의부름", "예배의 부름", "사도신경", "신앙고백"]}:
-    title = "사도신경" if "사도신경" in line else label
+    title = "사도신경" if "사도신경" in line else canonical_label
     return {
-      "section": "신앙고백" if "사도신경" in line else label,
+      "section": "신앙고백" if "사도신경" in line else canonical_label,
       "element_type": "body",
-      "label": label,
+      "label": canonical_label,
       "title": title,
       "person": values[-1] if values and values[-1] not in {"다같이", "다 같 이"} else "",
       "body": "",
@@ -251,10 +276,10 @@ def make_element_from_order_line(line: str, service_key: str = "") -> dict[str, 
   if normalized in {normalize_order_label(x) for x in ["기도", "대표기도", "참회기도", "결단의기도", "결단기도", "봉헌기도", "묵도"]}:
     person = values[-1] if values else ""
     return {
-      "section": label,
+      "section": canonical_label,
       "element_type": "title_person",
-      "label": label,
-      "title": label,
+      "label": canonical_label,
+      "title": canonical_label,
       "person": "" if person in {"다같이", "다 같 이", "인도자", "인 도 자"} else person,
       "review_status": "matched" if values else "needs_review",
       "confidence": "high" if values else "medium",
@@ -283,12 +308,12 @@ def make_element_from_order_line(line: str, service_key: str = "") -> dict[str, 
       elif "목사" in value or "전도사" in value:
         person = value
     if not title and values:
-      title = label if person else strip_quotes(values[0])
+      title = canonical_label if person else strip_quotes(values[0])
     return {
       "section": "설교",
       "element_type": "title_person",
-      "label": label,
-      "title": title or label,
+      "label": canonical_label,
+      "title": title or canonical_label,
       "person": person,
       "review_status": "matched" if title or person else "needs_review",
       "confidence": "high" if title and person else "medium",
@@ -297,10 +322,10 @@ def make_element_from_order_line(line: str, service_key: str = "") -> dict[str, 
   if normalized in {normalize_order_label(x) for x in ["교회소식", "교회소식&새가족환영", "새가족환영", "공동체고백", "환영", "사죄의선언"]}:
     person = values[-1] if values else ""
     return {
-      "section": label,
+      "section": canonical_label,
       "element_type": "title_person",
-      "label": label,
-      "title": label,
+      "label": canonical_label,
+      "title": canonical_label,
       "person": "" if person in {"다같이", "다 같 이", "인도자", "인 도 자"} else person,
       "review_status": "matched",
       "confidence": "high",

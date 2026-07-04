@@ -5874,6 +5874,7 @@ function worshipTemplateSectionKey(label, index = 0, step = {}) {
     "예배준비": "ready",
     "예배준비영상": "ready",
     "찬양": "praise",
+    "경배와찬양": "praise",
     "찬송": "praise",
     "기도": "prayer",
     "대표기도": "prayer",
@@ -5882,9 +5883,11 @@ function worshipTemplateSectionKey(label, index = 0, step = {}) {
     "특송": "special_song",
     "설교": "sermon",
     "말씀": "sermon",
+    "말씀선포": "sermon",
     "결단": "response_song",
     "결단찬양": "response_song",
     "결단기도": "response_prayer",
+    "결단의기도": "response_prayer",
     "월삭기도": "monthly_prayer",
     "기도회": "prayer_meeting",
     "통성기도": "prayer_meeting",
@@ -5894,6 +5897,7 @@ function worshipTemplateSectionKey(label, index = 0, step = {}) {
     "교회소식": "announcements",
     "광고": "announcements",
     "송영": "closing_song",
+    "폐회찬송": "closing_hymn",
     "축도": "benediction",
     "마무리": "closing_visual",
     "마침": "closing_visual",
@@ -5909,7 +5913,7 @@ function worshipTemplateElementType(step = {}, label = "") {
   if (explicit) return explicit;
   const compact = compactSearchValue(label);
   if (isReadyServiceTemplateLabel(label)) return "video";
-  if (/찬양|찬송|송영/.test(compact) || /^(결단|봉헌|파송)찬양$/.test(compact)) return "praise";
+  if (/찬양|찬송|송영/.test(compact) || /^(결단|봉헌|파송)찬양$/.test(compact) || compact === "폐회찬송") return "praise";
   if (/성경봉독|성경/.test(compact)) return "scripture_reading";
   if (/설교|말씀/.test(compact)) return "body";
   if (/기도|특송|축도|사도신경/.test(compact)) return "title_person";
@@ -10905,7 +10909,6 @@ function publicWorshipSpecialSongStep() {
 
 function publicSundayFirstSecondTemplate() {
   return [
-    { label: "환영", name: "환영", phase: "Gathering", required: false, flex: true, sectionKey: "welcome", elementType: "plain_text" },
     { label: "신앙고백", name: "신앙고백", phase: "Gathering", required: true, flex: false, sectionKey: "creed", elements: [
       { label: "사도신경", name: "사도신경", elementType: "body", orderSheet: { order: "신앙고백" } },
     ] },
@@ -10931,7 +10934,6 @@ function publicSundayThirdTemplate() {
   return [
     { label: "찬양", name: "찬양", phase: "Gathering", required: true, flex: true, repeatable: true, sectionKey: "praise", elementType: "praise", orderSheet: { order: "찬양", group: "praise" } },
     { label: "참회기도", name: "참회기도", phase: "Gathering", required: false, flex: true, sectionKey: "confession", elementType: "body" },
-    { label: "사죄의선언", name: "사죄의선언", phase: "Gathering", required: false, flex: true, sectionKey: "assurance", elementType: "body" },
     { label: "찬양", name: "찬양", phase: "Gathering", required: false, flex: true, sectionKey: "hymn_praise", elementType: "praise", orderSheet: { order: "찬양", group: "praise" } },
     { label: "대표기도", name: "대표기도", phase: "Gathering", required: true, flex: false, sectionKey: "prayer", elementType: "title_person", orderSheet: { order: "대표기도" } },
     { label: "성경봉독", name: "성경봉독", phase: "Word", required: true, flex: false, sectionKey: "scripture_reading", elementType: "scripture_reading" },
@@ -10948,8 +10950,18 @@ function publicSundayThirdTemplate() {
     { label: "새가족환영", name: "새가족환영", phase: "Sending", required: false, flex: true, sectionKey: "new_family", elementType: "plain_text" },
     { label: "공동체고백", name: "공동체고백", phase: "Sending", required: false, flex: true, sectionKey: "community_confession", elementType: "body" },
     { label: "찬양", name: "찬양", phase: "Sending", required: true, flex: false, sectionKey: "closing_song", elementType: "praise", orderSheet: { order: "찬양", group: "praise" } },
+    {
+      label: "폐회찬송",
+      name: "폐회찬송",
+      phase: "Sending",
+      required: true,
+      flex: false,
+      sectionKey: "closing_hymn",
+      elementType: "praise",
+      default_text: "십자가 군병들아",
+      orderSheet: { hidden: true },
+    },
     { label: "축도", name: "축도", phase: "Sending", required: true, flex: false, sectionKey: "benediction", elementType: "title_person" },
-    { label: "아멘송", name: "아멘송", phase: "Sending", required: false, flex: true, sectionKey: "amen_song", elementType: "praise", orderSheet: { order: "아멘송", group: "praise" } },
     publicWorshipImageClosingStep(),
   ];
 }
@@ -11624,14 +11636,14 @@ function findAdjacentSameType(items, mergedIndex, direction) {
 
 function serviceItemTemplateRank(typeId, item) {
   const label = item?.label || "";
-  const fallbackLabel = label || "찬양";
+  const fallbackLabel = normalizeServiceOrderTemplateLabel(label || "찬양");
   const key = compactSearchValue(fallbackLabel);
   const template = serviceOrderTemplate(typeId);
   if (!key || !template.length) return Number.POSITIVE_INFINITY;
 
   const templateKeys = template.map((step, index) => ({
     index,
-    key: compactSearchValue(step.label || step.name || ""),
+    key: compactSearchValue(normalizeServiceOrderTemplateLabel(step.label || step.name || "")),
   })).filter((step) => step.key);
 
   const exact = templateKeys.find((step) => step.key === key);
@@ -11644,6 +11656,15 @@ function serviceItemTemplateRank(typeId, item) {
 
   const containsLabel = templateKeys.find((step) => step.key.includes(key));
   return containsLabel ? containsLabel.index : Number.POSITIVE_INFINITY;
+}
+
+function normalizeServiceOrderTemplateLabel(value) {
+  const text = String(value || "").trim();
+  const compact = compactSearchValue(text);
+  if (compact === "경배와찬양") return "찬양";
+  if (compact === "말씀선포" || compact === "말씀") return "설교";
+  if (compact === "결단의기도") return "결단기도";
+  return text;
 }
 
 function cleanServiceAssignee(value) {

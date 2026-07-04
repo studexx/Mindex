@@ -24,26 +24,26 @@ Use one shared base template unless we confirm meaningful differences between
 | Order | Section | Element | Type | Bulletin Fill | Manual Fill |
 | --- | --- | --- | --- | --- | --- |
 | 1 | 준비 | 예배 준비 | video |  | asset |
-| 2 | 환영 | 환영 | plain_text |  | optional body |
-| 3 | 신앙고백 | 사도신경 | body |  | fixed body |
-| 4 | 찬양 | 찬양 | praise |  | song/version/form |
-| 5 | 참회기도 | 참회기도 | body |  | fixed or editable body |
-| 6 | 대표기도 | 대표기도 | title_person | prayer leader |  |
-| 7 | 성경봉독 | 성경봉독 | scripture_reading | scripture reference | scripture link |
-| 8 | 특송 | 특송 | title_person or praise | performer/title | song link when known |
-| 9 | 설교 | 설교 | title_person | sermon title, preacher |  |
-| 10 | 결단 | 결단기도 | title_person |  | optional |
-| 11 | 봉헌 | 봉헌찬양 | praise |  | song/version/form |
-| 12 | 봉헌 | 봉헌기도 | title_person | dedication prayer leader |  |
-| 13 | 교회소식 | 교회소식 | plain_text | announcements |  |
-| 14 | 새가족환영 | 새가족환영 | plain_text |  | optional |
-| 15 | 송영 | 송영 | praise |  | song/version/form |
-| 16 | 축도 | 축도 | title_person | benediction pastor |  |
-| 17 | 마무리 | 마무리 | image |  | public closing visual |
+| 2 | 신앙고백 | 사도신경 | body |  | fixed body |
+| 3 | 찬양 | 찬양 | praise |  | song/version/form |
+| 4 | 참회기도 | 참회기도 | body |  | fixed or editable body |
+| 5 | 대표기도 | 대표기도 | title_person | prayer leader |  |
+| 6 | 성경봉독 | 성경봉독 | scripture_reading | scripture reference | scripture link |
+| 7 | 특송 | 특송 | title_person or praise | performer/title | song link when known |
+| 8 | 설교 | 설교 | title_person | sermon title, preacher |  |
+| 9 | 결단 | 결단기도 | title_person |  | optional |
+| 10 | 봉헌 | 봉헌찬양 | praise |  | song/version/form |
+| 11 | 봉헌 | 봉헌기도 | title_person | dedication prayer leader |  |
+| 12 | 교회소식 | 교회소식 | plain_text | announcements |  |
+| 13 | 새가족환영 | 새가족환영 | plain_text |  | optional |
+| 14 | 송영 | 송영 | praise |  | song/version/form |
+| 15 | 축도 | 축도 | title_person | benediction pastor |  |
+| 16 | 마무리 | 마무리 | image |  | public closing visual |
 
 Open checks:
 
-- Confirm whether `환영` is always a real section/element in 1st and 2nd service.
+- `환영` can appear in source order material, but it is not an explicit
+  presenter output element.
 - Confirm whether 1st service ends with `축도`, `주기도문`, or varies by week.
 - Confirm whether `결단기도` appears as an actual order item or only as a
   presenter placeholder after sermon.
@@ -58,29 +58,38 @@ and response/sending flow are different.
 | 1 | 준비 | 예배 준비 | video |  | asset |
 | 2 | 찬양 | 찬양 | praise |  | led praise set |
 | 3 | 참회기도 | 참회기도 | body |  | fixed or editable body |
-| 4 | 사죄의선언 | 사죄의선언 | body |  | fixed or editable body |
-| 5 | 찬양 | 찬양 | praise |  | hymn/song |
-| 6 | 대표기도 | 대표기도 | title_person | prayer leader |  |
-| 7 | 성경봉독 | 성경봉독 | scripture_reading | scripture reference | scripture link |
-| 8 | 특송 | 특송 | title_person or praise | performer/title | song link when known |
-| 9 | 설교 | 설교 | title_person | sermon title, preacher |  |
-| 10 | 결단 | 결단기도 | title_person |  | optional |
-| 11 | 신앙고백 | 사도신경 | body |  | fixed body |
-| 12 | 봉헌 | 봉헌찬양 | praise |  | song/version/form |
-| 13 | 봉헌 | 봉헌기도 | title_person | dedication prayer leader |  |
-| 14 | 교회소식 | 교회소식 | plain_text | announcements |  |
-| 15 | 새가족환영 | 새가족환영 | plain_text |  | optional |
-| 16 | 공동체고백 | 공동체고백 | body |  | fixed or editable body |
-| 17 | 찬양 | 찬양 | praise |  | sending song |
+| 4 | 찬양 | 찬양 | praise |  | hymn/song |
+| 5 | 대표기도 | 대표기도 | title_person | prayer leader |  |
+| 6 | 성경봉독 | 성경봉독 | scripture_reading | scripture reference | scripture link |
+| 7 | 특송 | 특송 | title_person or praise | performer/title | song link when known |
+| 8 | 설교 | 설교 | title_person | sermon title, preacher |  |
+| 9 | 결단 | 결단기도 | title_person |  | optional |
+| 10 | 신앙고백 | 사도신경 | body |  | fixed body |
+| 11 | 봉헌 | 봉헌찬양 | praise |  | song/version/form |
+| 12 | 봉헌 | 봉헌기도 | title_person | dedication prayer leader |  |
+| 13 | 교회소식 | 교회소식 | plain_text | announcements |  |
+| 14 | 새가족환영 | 새가족환영 | plain_text |  | optional |
+| 15 | 공동체고백 | 공동체고백 | body |  | fixed or editable body |
+| 16 | 찬양 | 찬양 | praise |  | sending song |
+| 17 | 폐회찬송 | 십자가 군병들아 | praise |  | default song |
 | 18 | 축도 | 축도 | title_person | benediction pastor |  |
-| 19 | 아멘송 | 아멘송 | praise |  | song/version/form |
-| 20 | 마무리 | 마무리 | image |  | public closing visual |
+| 19 | 마무리 | 마무리 | image |  | public closing visual |
 
 Open checks:
 
-- Confirm whether `사죄의선언` is a fixed 3rd-service element.
 - Confirm if `신앙고백` always comes after `결단기도` in 3rd service.
-- Confirm whether `아멘송` is always present.
+- `사죄의선언` and `아멘송` can appear in source order material, but they are
+  not explicit presenter output elements.
+- 3rd service has an unprinted closing hymn: `폐회찬송 > 십자가 군병들아`.
+
+## Source Order Normalization
+
+Use PPT section names and slide names as presenter/output naming material.
+Normalize bulletin labels before matching:
+
+- `경배와찬양` and `경배와 찬양` -> `찬양`
+- `말씀선포` and `말씀` -> `설교`
+- `결단의기도` -> `결단기도`
 
 ## Sunday Afternoon Service
 
