@@ -2675,10 +2675,10 @@ body[data-module="service"] .detail-pane {
 
 /* ── Service viewer (detail) ─────────────────────────────────────────────── */
 .service-viewer {
-  --svc-service-header-sticky-h: 43px;
+  --svc-service-header-sticky-h: 40px;
   display: flex;
   flex-direction: column;
-  gap: var(--s3);
+  gap: 8px;
   min-height: 0;
   padding: 2px 0 0;
 }
@@ -2694,7 +2694,7 @@ body[data-module="service"] .detail-pane {
   gap: var(--s4);
   border-bottom: 0;
   background: var(--bg);
-  padding: 0 0 7px;
+  padding: 0 0 4px;
 }
 .svc-header-date {
   display: flex;
@@ -3714,7 +3714,7 @@ body[data-module="service"] .detail-pane {
 }
 .svc-presenter-top {
   position: sticky;
-  top: calc(var(--svc-service-header-sticky-h) - var(--content-pad-y));
+  top: calc(var(--svc-service-header-sticky-h) - var(--content-pad-y) + 8px);
   z-index: 29;
   display: grid;
   min-width: 0;
