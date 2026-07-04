@@ -2678,13 +2678,13 @@ body[data-module="service"] .detail-pane {
   --svc-service-header-sticky-h: 40px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 2px;
   min-height: 0;
   padding: 2px 0 0;
 }
 .svc-header {
   position: sticky;
-  top: calc(var(--content-pad-y) * -1);
+  top: 0;
   z-index: 30;
   display: flex;
   min-height: var(--svc-service-header-sticky-h);
@@ -3714,7 +3714,7 @@ body[data-module="service"] .detail-pane {
 }
 .svc-presenter-top {
   position: sticky;
-  top: calc(var(--svc-service-header-sticky-h) - var(--content-pad-y));
+  top: var(--svc-service-header-sticky-h);
   z-index: 29;
   display: grid;
   min-width: 0;
