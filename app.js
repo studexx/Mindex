@@ -15879,61 +15879,68 @@ function requestOutputFullscreen(outputWindow, options = {}) {
 }
 
 function handlePresenterShortcut(event) {
-  if (state.module !== "service" || !state.presenter.serviceId) return false;
-  if (state.selectedServiceId !== state.presenter.serviceId) return false;
+  const presenterServiceId = state.presenter.serviceId;
+  if (state.module !== "service" || !presenterServiceId) return false;
   if (shouldKeepHorizontalNavigationInFocusedControl(event.target)) return false;
   if (event.metaKey || event.ctrlKey || event.altKey) return false;
-
-  if (/^\d$/.test(event.key)) {
-    event.preventDefault();
-    setPresenterJumpDraft(`${state.presenter.jumpDraft || ""}${event.key}`, state.presenter.serviceId);
-    return true;
-  }
-
-  if (event.key === "Enter" && state.presenter.jumpDraft) {
-    event.preventDefault();
-    commitPresenterJumpDraft(state.presenter.serviceId);
-    return true;
-  }
-
-  if (event.key === "Escape" && state.presenter.jumpDraft) {
-    event.preventDefault();
-    clearPresenterJumpDraft(state.presenter.serviceId);
-    return true;
-  }
+  const activeServiceSelected = state.selectedServiceId === presenterServiceId;
 
   if (event.key === "Escape") {
     event.preventDefault();
+    if (activeServiceSelected && state.presenter.jumpDraft) {
+      clearPresenterJumpDraft(presenterServiceId);
+      return true;
+    }
     const now = Date.now();
     if (now - (state.presenter.exitArmedAt || 0) <= PRESENTER_OUTPUT_ESCAPE_EXIT_MS) {
-      stopPresenterOutput(state.presenter.serviceId);
+      stopPresenterOutput(presenterServiceId);
       return true;
     }
     state.presenter.exitArmedAt = now;
     return true;
   }
 
+  if (!activeServiceSelected) return false;
+
+  if (/^\d$/.test(event.key)) {
+    event.preventDefault();
+    state.presenter.exitArmedAt = 0;
+    setPresenterJumpDraft(`${state.presenter.jumpDraft || ""}${event.key}`, presenterServiceId);
+    return true;
+  }
+
+  if (event.key === "Enter" && state.presenter.jumpDraft) {
+    event.preventDefault();
+    state.presenter.exitArmedAt = 0;
+    commitPresenterJumpDraft(presenterServiceId);
+    return true;
+  }
+
   if (event.key === "ArrowRight" || event.key === "ArrowDown" || event.key === "PageDown" || event.key === " ") {
     event.preventDefault();
-    runPresenterAction("next", state.presenter.serviceId);
+    state.presenter.exitArmedAt = 0;
+    runPresenterAction("next", presenterServiceId);
     return true;
   }
 
   if (event.key === "ArrowLeft" || event.key === "ArrowUp" || event.key === "PageUp") {
     event.preventDefault();
-    runPresenterAction("prev", state.presenter.serviceId);
+    state.presenter.exitArmedAt = 0;
+    runPresenterAction("prev", presenterServiceId);
     return true;
   }
 
   if (event.key === "Home") {
     event.preventDefault();
-    runPresenterAction("first", state.presenter.serviceId);
+    state.presenter.exitArmedAt = 0;
+    runPresenterAction("first", presenterServiceId);
     return true;
   }
 
   if (event.key === "End") {
     event.preventDefault();
-    runPresenterAction("last", state.presenter.serviceId);
+    state.presenter.exitArmedAt = 0;
+    runPresenterAction("last", presenterServiceId);
     return true;
   }
 

@@ -1610,6 +1610,64 @@ def main() -> int:
                 else:
                     fail("presenter-keyboard-other-live-ignored", json.dumps(other_live_keyboard_state, ensure_ascii=False))
 
+                controller_esc_state = page.evaluate(
+                    """
+                    () => {
+                      const previousModule = state.module;
+                      const previousSelectedServiceId = state.selectedServiceId;
+                      const previousPresenterServiceId = state.presenter.serviceId;
+                      const previousExitArmedAt = state.presenter.exitArmedAt;
+                      const originalStopPresenterOutput = stopPresenterOutput;
+                      let stoppedServiceId = '';
+                      let preventCount = 0;
+                      stopPresenterOutput = (serviceId) => {
+                        stoppedServiceId = serviceId || '';
+                      };
+                      state.module = 'service';
+                      state.selectedServiceId = '__smoke_other_selected__';
+                      state.presenter.serviceId = previousPresenterServiceId || '__smoke_active_presenter__';
+                      state.presenter.exitArmedAt = 0;
+                      const makeEvent = () => ({
+                        key: 'Escape',
+                        target: document.body,
+                        metaKey: false,
+                        ctrlKey: false,
+                        altKey: false,
+                        preventDefault() { preventCount += 1; },
+                      });
+                      const firstHandled = handlePresenterShortcut(makeEvent());
+                      const armedAfterFirst = state.presenter.exitArmedAt > 0;
+                      const secondHandled = handlePresenterShortcut(makeEvent());
+                      const armedAfterSecond = state.presenter.exitArmedAt > 0;
+                      stopPresenterOutput = originalStopPresenterOutput;
+                      state.module = previousModule;
+                      state.selectedServiceId = previousSelectedServiceId;
+                      state.presenter.serviceId = previousPresenterServiceId;
+                      state.presenter.exitArmedAt = previousExitArmedAt || 0;
+                      return {
+                        firstHandled,
+                        secondHandled,
+                        armedAfterFirst,
+                        armedAfterSecond,
+                        stoppedServiceId,
+                        expectedServiceId: previousPresenterServiceId,
+                        preventCount,
+                      };
+                    }
+                    """
+                )
+                if (
+                    controller_esc_state["firstHandled"]
+                    and controller_esc_state["secondHandled"]
+                    and controller_esc_state["armedAfterFirst"]
+                    and controller_esc_state["armedAfterSecond"]
+                    and controller_esc_state["stoppedServiceId"] == controller_esc_state["expectedServiceId"]
+                    and controller_esc_state["preventCount"] == 2
+                ):
+                    pass_("presenter-controller-escape-stop-other-service", json.dumps(controller_esc_state, ensure_ascii=False))
+                else:
+                    fail("presenter-controller-escape-stop-other-service", json.dumps(controller_esc_state, ensure_ascii=False))
+
                 switch_state = page.evaluate(
                     """
                     (switchId) => {
