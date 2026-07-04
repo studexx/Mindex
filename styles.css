@@ -3898,6 +3898,78 @@ body[data-module="service"] .detail-pane {
 .svc-presenter-actions { display: flex; min-width: 0; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px; }
 .svc-presenter-actions .icon-btn { width: 28px; height: 28px; }
 .svc-presenter-actions .icon-btn.is-active { background: transparent; color: var(--accent); }
+.svc-presenter-help {
+  position: relative;
+  display: inline-flex;
+  height: 34px;
+  align-items: center;
+}
+.svc-presenter-help > summary {
+  display: inline-grid;
+  list-style: none;
+  place-items: center;
+}
+.svc-presenter-help > summary::-webkit-details-marker { display: none; }
+.svc-presenter-help[open] > summary {
+  background: color-mix(in srgb, var(--accent-soft) 42%, transparent);
+  color: var(--accent);
+}
+.svc-presenter-help-panel {
+  position: absolute;
+  top: calc(100% + 7px);
+  right: 0;
+  z-index: 45;
+  width: min(320px, calc(100vw - 42px));
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r);
+  background: color-mix(in srgb, var(--panel) 96%, var(--bg));
+  box-shadow: var(--shadow);
+  color: var(--ink);
+  padding: 10px;
+}
+.svc-presenter-help-head {
+  display: grid;
+  gap: 3px;
+  padding: 0 0 8px;
+}
+.svc-presenter-help-head strong {
+  font-size: 12px;
+  font-weight: 850;
+}
+.svc-presenter-help-head small {
+  color: var(--ink-4);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+.svc-presenter-help-panel dl {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+}
+.svc-presenter-help-panel dl > div {
+  display: grid;
+  grid-template-columns: minmax(86px, .42fr) minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  min-height: 24px;
+}
+.svc-presenter-help-panel dt,
+.svc-presenter-help-panel dd {
+  margin: 0;
+}
+.svc-presenter-help-panel dt {
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 850;
+  white-space: nowrap;
+}
+.svc-presenter-help-panel dd {
+  color: var(--ink-3);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.35;
+}
 .svc-presenter-action-group {
   display: inline-flex;
   min-width: 0;

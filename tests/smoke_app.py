@@ -1741,6 +1741,8 @@ def main() -> int:
                           actionButtonTexts: [...document.querySelectorAll('.svc-action-text-btn')]
                             .map((node) => node.textContent.trim()),
                           actionGroups: document.querySelectorAll('.svc-presenter-action-group').length,
+                          helpLabel: document.querySelector('[data-presenter-help] > summary')?.getAttribute('aria-label') || '',
+                          helpText: document.querySelector('.svc-presenter-help-panel')?.textContent.replace(/\\s+/g, ' ').trim() || '',
                           firstThumbLabel: document.querySelector('.svc-slide-thumb')?.getAttribute('aria-label') || '',
                           actionLabels: [...document.querySelectorAll('.service-sidebar-editor-actions [aria-label]')]
                             .slice(0, 4)
@@ -1771,6 +1773,10 @@ def main() -> int:
                         and presenter_terms["controlLabels"][:3] == ["상태", "슬라이드", "음량"]
                         and presenter_terms["actionButtonTexts"] == ["불러오기", "숨김", "송출", "숨김"]
                         and presenter_terms["actionGroups"] == 4
+                        and presenter_terms["helpLabel"] == "도움말"
+                        and "Esc Esc" in presenter_terms["helpText"]
+                        and "Chrome 전체화면" in presenter_terms["helpText"]
+                        and "번호 + Enter" in presenter_terms["helpText"]
                         and (
                             "슬라이드로 이동" in presenter_terms["firstThumbLabel"]
                             or "준비 화면으로 이동" in presenter_terms["firstThumbLabel"]

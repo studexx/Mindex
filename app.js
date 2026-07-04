@@ -254,6 +254,7 @@ const UI_MESSAGES = {
     "presenter.action.load": "불러오기",
     "presenter.action.send": "송출",
     "presenter.action.hide": "숨김",
+    "presenter.action.help": "도움말",
     "presenter.option.auto": "자동",
     "presenter.aria.status": "프레젠터 상태: {status}",
     "presenter.aria.mode": "프레젠터 모드: {mode}",
@@ -279,6 +280,7 @@ const UI_MESSAGES = {
     "presenter.music.volume": "음악 볼륨",
     "presenter.scripture.placeholder": "성구 입력",
     "presenter.praise.placeholder": "찬양 입력",
+    "presenter.help.title": "프레젠터 도움말",
   },
   en: {
     "presenter.controls": "Presenter controls",
@@ -295,6 +297,7 @@ const UI_MESSAGES = {
     "presenter.action.load": "Load",
     "presenter.action.send": "Send",
     "presenter.action.hide": "Hide",
+    "presenter.action.help": "Help",
     "presenter.option.auto": "Auto",
     "presenter.aria.status": "Presenter status: {status}",
     "presenter.aria.mode": "Presenter mode: {mode}",
@@ -320,6 +323,7 @@ const UI_MESSAGES = {
     "presenter.music.volume": "Music volume",
     "presenter.scripture.placeholder": "Scripture reference",
     "presenter.praise.placeholder": "Song title",
+    "presenter.help.title": "Presenter help",
   },
 };
 let currentUiLocale = UI_DEFAULT_LOCALE;
@@ -13686,6 +13690,39 @@ function renderPresenterScreenControl() {
     </button>`;
 }
 
+function renderPresenterHelpControl() {
+  const rows = [
+    ["SHOW", "출력 창 열기 · 가능하면 다른 화면 전체화면"],
+    ["Space / →", "다음 슬라이드"],
+    ["←", "이전 슬라이드"],
+    ["번호 + Enter", "해당 슬라이드로 이동"],
+    ["0 또는 없는 번호", "빈 화면"],
+    ["Esc Esc", "프레젠터 종료"],
+    ["성구 입력 + Enter", "하단 bar에 레퍼런스 포함 송출"],
+    ["찬양 입력 + Enter", "실시간 찬양 송출"],
+    ["Output에서 F", "전체화면 다시 시도"],
+  ];
+  return `
+    <details class="svc-presenter-help" data-presenter-help>
+      <summary class="icon-btn" aria-label="${escapeAttr(uiText("presenter.action.help"))}">
+        <i data-lucide="circle-help"></i>
+      </summary>
+      <div class="svc-presenter-help-panel" role="dialog" aria-label="${escapeAttr(uiText("presenter.help.title"))}">
+        <div class="svc-presenter-help-head">
+          <strong>${escapeHtml(uiText("presenter.help.title"))}</strong>
+          <small>Chrome 전체화면은 브라우저 허용 범위 안에서 자동 시도</small>
+        </div>
+        <dl>
+          ${rows.map(([key, value]) => `
+            <div>
+              <dt>${escapeHtml(key)}</dt>
+              <dd>${escapeHtml(value)}</dd>
+            </div>`).join("")}
+        </dl>
+      </div>
+    </details>`;
+}
+
 function renderServicePresenterControls(service, slides, active, index) {
   const count = slides.length;
   const safeIndex = clampPresenterIndex(index, count);
@@ -13750,6 +13787,7 @@ function renderServicePresenterControls(service, slides, active, index) {
               <i data-lucide="chevron-right"></i>
             </button>
           </span>
+          ${renderPresenterHelpControl()}
         </div>
       </div>
       ${renderPresenterSlideBoard(slides, boardActiveIndex, service.id)}
