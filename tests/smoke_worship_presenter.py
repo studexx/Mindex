@@ -547,6 +547,42 @@ def main() -> int:
                 else:
                     fail("presenter-keyboard-jump-input-arrows-ignored", json.dumps(jump_scope_state, ensure_ascii=False))
 
+                page.evaluate(
+                    """
+                    (serviceId) => {
+                      preparePresenterService(serviceId);
+                      state.presenter.index = 0;
+                      state.presenter.safetyBlank = false;
+                      state.presenter.jumpDraft = "";
+                      renderPresenterControlState(serviceId);
+                    }
+                    """,
+                    service["id"],
+                )
+                jump_scope_input = page.locator(f'[data-presenter-jump-input][data-service-id="{service["id"]}"]')
+                jump_scope_input.fill("9")
+                jump_scope_input.focus()
+                page.keyboard.press("Escape")
+                page.wait_for_timeout(150)
+                jump_escape_state = page.evaluate(
+                    """
+                    (serviceId) => ({
+                      index: state.presenter.index,
+                      draft: state.presenter.jumpDraft,
+                      inputValue: document.querySelector(`[data-presenter-jump-input][data-service-id="${serviceId}"]`)?.value || '',
+                    })
+                    """,
+                    service["id"],
+                )
+                if (
+                    jump_escape_state["index"] == 0
+                    and jump_escape_state["draft"] == ""
+                    and jump_escape_state["inputValue"] == "1"
+                ):
+                    pass_("presenter-keyboard-jump-input-escape-cancel", json.dumps(jump_escape_state, ensure_ascii=False))
+                else:
+                    fail("presenter-keyboard-jump-input-escape-cancel", json.dumps(jump_escape_state, ensure_ascii=False))
+
                 form_label_state = page.evaluate(
                     """
                     (serviceId) => {

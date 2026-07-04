@@ -4009,6 +4009,11 @@ function handleDetailKeydown(event) {
       jumpPresenterToSlideInput(presenterJumpInput);
       return;
     }
+    if (event.key === "Escape") {
+      event.preventDefault();
+      clearPresenterJumpDraft(presenterJumpInput.dataset.serviceId || state.presenter.serviceId);
+      return;
+    }
   }
 
   const liveScriptureInput = event.target.closest("[data-live-scripture-input]");
