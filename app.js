@@ -15437,7 +15437,7 @@ function presenterScoreSlidesForServiceItem(item, section, index, song, version,
   const label = item?.label || "";
   const asset = normalizeServiceAsset(memo.asset || item.asset);
   const title = presenterPraiseTitle(song, displayText) || displayText || label || "악보";
-  const imageSlides = presenterScoreImageSlidesFromAsset(asset, item, section, index, title, label, song, version);
+  const imageSlides = presenterScoreImageSlidesFromAsset(asset, item, section, index, title, label, song, version, displayText);
   if (imageSlides.length) return imageSlides;
   const scoreAsset = { ...asset, kind: asset.kind || "score" };
   const fileTitle = presenterFileDisplayTitle({ title, asset: scoreAsset }, "악보");
@@ -15462,14 +15462,14 @@ function presenterScoreSlidesForServiceItem(item, section, index, song, version,
   }];
 }
 
-function presenterScoreImageSlidesFromAsset(asset, item, section, index, title, label, song = null, version = null) {
+function presenterScoreImageSlidesFromAsset(asset, item, section, index, title, label, song = null, version = null, displayText = "") {
   const explicitSources = [
     ...normalizeServiceAssetSlides(asset?.slides),
     ...normalizeServiceAssetSlides(asset?.images),
     ...normalizeServiceAssetSlides(asset?.urls),
     ...presenterImageSourcesFromAssetUrl(asset?.url),
   ];
-  const sources = explicitSources.length ? explicitSources : presenterHymnScoreAssetSlides(song, version);
+  const sources = explicitSources.length ? explicitSources : presenterHymnScoreAssetSlides(song, version, displayText);
   const imageSources = sources
     .map((slide, slideIndex) => ({
       url: normalizePresenterMediaSource(slide.url),
@@ -15504,8 +15504,8 @@ function presenterScoreImageSlidesFromAsset(asset, item, section, index, title, 
   });
 }
 
-function presenterHymnScoreAssetSlides(song = null, version = null) {
-  const hymnNo = normalizedHymnScoreNumber(song?.hymn_no || version?.hymn_no);
+function presenterHymnScoreAssetSlides(song = null, version = null, displayText = "") {
+  const hymnNo = normalizedHymnScoreNumber(song?.hymn_no || version?.hymn_no || displayText);
   if (!hymnNo) return [];
   const entry = state.hymnScoreManifest?.[hymnNo];
   const slides = Array.isArray(entry?.slides) ? entry.slides : [];
@@ -15810,7 +15810,7 @@ function presenterElementSlideFromMemo(item, section, index, memo, displayText) 
   if (elementType === "score") {
     const source = normalizePresenterMediaSource(asset.url || displayText);
     const scoreAsset = source ? { ...asset, url: source } : asset;
-    const imageSlides = presenterScoreImageSlidesFromAsset(scoreAsset, item, section, index, title, safeLabel || "악보");
+    const imageSlides = presenterScoreImageSlidesFromAsset(scoreAsset, item, section, index, title, safeLabel || "악보", null, null, displayText);
     if (imageSlides.length) return imageSlides;
     const fileLabel = presenterFileTypeLabel("score");
     const fileTitle = presenterFileDisplayTitle({ title: assetTitle || displayText || safeLabel, asset }, fileLabel);
