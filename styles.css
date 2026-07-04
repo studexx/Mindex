@@ -4314,25 +4314,25 @@ body[data-module="service"] .detail-pane {
 }
 .svc-slide-form-badge {
   position: absolute;
-  top: calc(var(--svc-thumb-ring-space) + 5px);
-  right: calc(var(--svc-thumb-ring-space) + 5px);
+  top: calc(var(--svc-thumb-ring-space) + 6px);
+  right: calc(var(--svc-thumb-ring-space) + 6px);
   z-index: 2;
   display: inline-flex;
   max-width: calc(100% - (var(--svc-thumb-ring-space) * 2) - 10px);
-  height: 16px;
+  height: 20px;
   align-items: center;
   border: 0;
-  border-radius: 4px;
-  background: rgba(8, 10, 10, .58);
-  color: rgba(255,255,255,.92);
+  border-radius: 6px;
+  background: rgba(8, 10, 10, .76);
+  color: #fff;
   cursor: pointer;
   font: inherit;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: .02em;
-  line-height: 16px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0;
+  line-height: 20px;
   overflow: hidden;
-  padding: 0 5px;
+  padding: 0 7px;
   text-align: right;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -4365,6 +4365,25 @@ body[data-module="service"] .detail-pane {
 .svc-slide-thumb-wrap.active {
   background: var(--accent);
   box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 32%, transparent);
+}
+.svc-slide-thumb-no {
+  position: absolute;
+  top: calc(var(--svc-thumb-ring-space) + 6px);
+  left: calc(var(--svc-thumb-ring-space) + 6px);
+  z-index: 2;
+  display: inline-grid;
+  min-width: 22px;
+  height: 22px;
+  place-items: center;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 86%, #fff 14%);
+  color: color-mix(in srgb, var(--accent-ink) 88%, #111 12%);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 22px;
+  padding: 0 6px;
+  pointer-events: none;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .24);
 }
 .svc-slide-thumb {
   position: relative;

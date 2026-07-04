@@ -14664,6 +14664,7 @@ function renderPresenterSlideThumb(slide, slideIndex, activeIndex, serviceId, fo
   const active = slideIndex === activeIndex;
   const visibleFormLabel = presenterLabelDuplicatesSlideText(formLabel, slide) ? "" : formLabel;
   const ariaPrefix = `${slideIndex + 1}번 슬라이드로 이동`;
+  const slideNumber = slideIndex + 1;
   const formBadge = visibleFormLabel ? `
       <button class="svc-slide-form-badge" type="button"
         data-presenter-action="jump"
@@ -14674,6 +14675,7 @@ function renderPresenterSlideThumb(slide, slideIndex, activeIndex, serviceId, fo
       </button>` : "";
   return `
     <span class="svc-slide-thumb-wrap${active ? " active" : ""}${visibleFormLabel ? " has-form-label" : ""}">
+    <span class="svc-slide-thumb-no" aria-hidden="true">${slideNumber}</span>
     ${formBadge}
     <button class="svc-slide-thumb${active ? " active" : ""}" type="button"
       data-presenter-action="jump"

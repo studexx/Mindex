@@ -299,6 +299,8 @@ def main() -> int:
                         firstPreparationMedia: Boolean(first?.querySelector('.svc-slide-thumb-frame--video[data-element-type="video"][data-slide-layout="media"]')),
                         firstPreviewText: first?.querySelector('.svc-slide-mini-output')?.innerText.trim() || '',
                         numberBadges: document.querySelectorAll('.svc-slide-thumb-no').length,
+                        firstNumber: first?.closest('.svc-slide-thumb-wrap')?.querySelector('.svc-slide-thumb-no')?.textContent.trim() || '',
+                        secondNumber: second?.closest('.svc-slide-thumb-wrap')?.querySelector('.svc-slide-thumb-no')?.textContent.trim() || '',
                         firstLabel: first?.getAttribute('aria-label') || '',
                         secondLabel: second?.getAttribute('aria-label') || '',
                       };
@@ -308,7 +310,9 @@ def main() -> int:
                 if (
                     ready_thumb_state["firstPreparationMedia"]
                     and ready_thumb_state["firstPreviewText"] == ""
-                    and ready_thumb_state["numberBadges"] == 0
+                    and ready_thumb_state["numberBadges"] >= 2
+                    and ready_thumb_state["firstNumber"] == "1"
+                    and ready_thumb_state["secondNumber"] == "2"
                     and "1번 슬라이드로 이동" in ready_thumb_state["firstLabel"]
                     and "2번 슬라이드로 이동" in ready_thumb_state["secondLabel"]
                 ):
