@@ -2676,15 +2676,16 @@ body[data-module="service"] .detail-pane {
 /* ── Service viewer (detail) ─────────────────────────────────────────────── */
 .service-viewer {
   --svc-service-header-sticky-h: 40px;
+  --svc-service-sticky-top: 2px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 0;
   min-height: 0;
   padding: 2px 0 0;
 }
 .svc-header {
   position: sticky;
-  top: 0;
+  top: var(--svc-service-sticky-top);
   z-index: 30;
   display: flex;
   min-height: var(--svc-service-header-sticky-h);
@@ -3723,7 +3724,7 @@ body[data-module="service"] .detail-pane {
 }
 .svc-presenter-top {
   position: sticky;
-  top: var(--svc-service-header-sticky-h);
+  top: calc(var(--svc-service-sticky-top) + var(--svc-service-header-sticky-h));
   z-index: 29;
   display: grid;
   min-width: 0;
