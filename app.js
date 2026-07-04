@@ -340,6 +340,7 @@ const ACTIVITY_MODULE_ENABLED = false;
 const CONTENT_MODULES = ["service", "scripture", "praise", "calendar", "references", "order-sheets"];
 const ROUTE_MODULES = ["home", ...CONTENT_MODULES];
 const SERVICE_FILTERS = ["all", "public", "ministry", "special"];
+const HYMN_SCORE_MANIFEST_URL = "assets/hymn-scores/manifest.json";
 const SERVICE_ELEMENT_LABELS = {
   blank: "빈 화면",
   video: "동영상",
@@ -555,6 +556,8 @@ const state = {
   worshipTemplates: [],
   worshipTemplateItems: [],
   worshipPresenterSlides: {},
+  hymnScoreManifest: {},
+  hymnScoreManifestLoaded: false,
   activityEvents: [],
   activityGames: [],
   activityTeams: [],
@@ -698,10 +701,27 @@ function loadInitialData() {
   loadScriptureBooks({ silent: true });
   loadScriptures({ silent: true });
   loadBibleTranslations({ silent: true });
+  loadHymnScoreManifest({ silent: true });
   loadServiceData({ silent: true });
   loadReferenceLinks({ silent: true });
   if (ACTIVITY_MODULE_ENABLED && state.module === "activities") loadActivities({ silent: true });
   if (state.module === "calendar") loadCalendarData({ silent: true });
+}
+
+async function loadHymnScoreManifest({ silent = false } = {}) {
+  if (state.hymnScoreManifestLoaded) return;
+  try {
+    const response = await fetch(HYMN_SCORE_MANIFEST_URL, { cache: "no-cache" });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json();
+    state.hymnScoreManifest = data && typeof data === "object" && !Array.isArray(data) ? data : {};
+    state.hymnScoreManifestLoaded = true;
+    if (state.module === "service") render();
+  } catch (err) {
+    state.hymnScoreManifest = {};
+    state.hymnScoreManifestLoaded = true;
+    if (!silent) console.warn("[Presenter] hymn score manifest unavailable:", err);
+  }
 }
 
 function cacheRefs() {
@@ -2229,6 +2249,7 @@ async function loadServiceData({ silent = false } = {}) {
     return;
   }
   try {
+    await loadHymnScoreManifest();
     await loadWorshipData();
     state.dirtyServiceTypeIds.clear();
     state.dirty.service = false;
@@ -5264,11 +5285,34 @@ function normalizeServiceAsset(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return { kind: "", name: "", url: "" };
   const rawKind = String(value.kind || value.type || "").trim().toLowerCase();
   const kind = SERVICE_ASSET_KIND_ALIASES[rawKind] || rawKind;
+  const slides = normalizeServiceAssetSlides(value.slides || value.images || value.urls || value.pages || value.files || value.items);
   return {
     kind: SERVICE_ASSET_KINDS.has(kind) ? kind : "",
     name: String(value.name || value.title || "").trim(),
     url: String(value.url || value.path || value.href || "").trim(),
+    ...(slides.length ? { slides } : {}),
   };
+}
+
+function normalizeServiceAssetSlides(value) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((slide, index) => {
+      if (typeof slide === "string") {
+        const url = String(slide || "").trim();
+        return url ? { url, name: "" } : null;
+      }
+      if (!slide || typeof slide !== "object") return null;
+      const url = String(slide.url || slide.path || slide.href || slide.src || "").trim();
+      if (!url) return null;
+      return {
+        url,
+        name: String(slide.name || slide.title || slide.label || "").trim(),
+        order: Number(slide.order || slide.sort || slide.index || index + 1) || index + 1,
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
 }
 
 function applyServicePreparationDefaults(item, serviceId = state.selectedServiceId) {
@@ -5292,7 +5336,7 @@ function isLegacyImportArtifactName(value) {
 }
 
 function hasServiceAsset(asset) {
-  return Boolean(asset && (asset.kind || asset.name || asset.url));
+  return Boolean(asset && (asset.kind || asset.name || asset.url || asset.slides?.length));
 }
 
 function firstDefinedValue(...values) {
@@ -15285,6 +15329,7 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
   if (!displayText && !memoElementType) return [];
   const section = presenterSectionForServiceItem(item, index, displayText, song);
   const elementSlide = presenterElementSlideFromMemo(item, section, index, memo, displayText);
+  if (Array.isArray(elementSlide)) return elementSlide;
   if (elementSlide) return [elementSlide];
   const videoSrc = presenterVideoSourceFromServiceItem(item, displayText);
 
@@ -15315,7 +15360,7 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
   if (scriptureTextSlides.length) return scriptureTextSlides;
 
   if (outputMode === "score" && (song || isSongServiceLabel(label))) {
-    return [presenterScoreSlideForServiceItem(item, section, index, song, version, displayText, memo)];
+    return presenterScoreSlidesForServiceItem(item, section, index, song, version, displayText, memo);
   }
 
   if (song && forms.length) {
@@ -15388,36 +15433,15 @@ function serviceItemOutputMode(item = {}, memo = parseServiceItemMemo(item?.memo
   );
 }
 
-function presenterScoreSlideForServiceItem(item, section, index, song, version, displayText, memo = parseServiceItemMemo(item?.memo)) {
+function presenterScoreSlidesForServiceItem(item, section, index, song, version, displayText, memo = parseServiceItemMemo(item?.memo)) {
   const label = item?.label || "";
   const asset = normalizeServiceAsset(memo.asset || item.asset);
   const title = presenterPraiseTitle(song, displayText) || displayText || label || "악보";
-  const source = normalizePresenterMediaSource(asset.url || "");
-  if (source && presenterMediaSourceIsImage(source)) {
-    return {
-      id: `${item.id || index}:score-image`,
-      ...section,
-      sectionLabel: label || "악보",
-      sectionTitle: title,
-      sectionName: presenterNameParts(label, title).join(" / ") || title,
-      elementType: PRESENTER_ELEMENT_TYPES.IMAGE,
-      layout: PRESENTER_SLIDE_LAYOUTS.MEDIA,
-      type: "image",
-      label,
-      title,
-      subtitle: versionDisplayName(song, version),
-      marker: "악보",
-      text: title,
-      imageSrc: source,
-      asset: { ...asset, kind: asset.kind || "score" },
-      sourceType: "score",
-      componentType: "score",
-      sort: index,
-    };
-  }
+  const imageSlides = presenterScoreImageSlidesFromAsset(asset, item, section, index, title, label, song, version);
+  if (imageSlides.length) return imageSlides;
   const scoreAsset = { ...asset, kind: asset.kind || "score" };
   const fileTitle = presenterFileDisplayTitle({ title, asset: scoreAsset }, "악보");
-  return {
+  return [{
     id: `${item.id || index}:score`,
     ...section,
     sectionLabel: label || "악보",
@@ -15435,7 +15459,78 @@ function presenterScoreSlideForServiceItem(item, section, index, song, version, 
     sourceType: "score",
     componentType: "score",
     sort: index,
-  };
+  }];
+}
+
+function presenterScoreImageSlidesFromAsset(asset, item, section, index, title, label, song = null, version = null) {
+  const explicitSources = [
+    ...normalizeServiceAssetSlides(asset?.slides),
+    ...normalizeServiceAssetSlides(asset?.images),
+    ...normalizeServiceAssetSlides(asset?.urls),
+    ...presenterImageSourcesFromAssetUrl(asset?.url),
+  ];
+  const sources = explicitSources.length ? explicitSources : presenterHymnScoreAssetSlides(song, version);
+  const imageSources = sources
+    .map((slide, slideIndex) => ({
+      url: normalizePresenterMediaSource(slide.url),
+      name: String(slide.name || "").trim(),
+      order: Number(slide.order) || slideIndex + 1,
+    }))
+    .filter((slide) => slide.url && presenterMediaSourceIsImage(slide.url));
+  const count = imageSources.length;
+  return imageSources.map((slide, slideIndex) => {
+    const marker = count > 1 ? `악보 ${slideIndex + 1}` : "악보";
+    return {
+      id: `${item.id || index}:score-image:${slideIndex}`,
+      ...section,
+      sectionLabel: label || "악보",
+      sectionTitle: title,
+      sectionName: presenterNameParts(label, title).join(" / ") || title,
+      elementType: PRESENTER_ELEMENT_TYPES.IMAGE,
+      layout: PRESENTER_SLIDE_LAYOUTS.MEDIA,
+      type: "image",
+      label,
+      title,
+      subtitle: versionDisplayName(song, version),
+      marker,
+      text: slide.name || title,
+      imageSrc: slide.url,
+      asset: { ...asset, kind: asset.kind || "score", url: slide.url, name: slide.name || asset.name || "" },
+      scoreBackground: true,
+      sourceType: "score",
+      componentType: "score",
+      sort: index + slideIndex / 100,
+    };
+  });
+}
+
+function presenterHymnScoreAssetSlides(song = null, version = null) {
+  const hymnNo = normalizedHymnScoreNumber(song?.hymn_no || version?.hymn_no);
+  if (!hymnNo) return [];
+  const entry = state.hymnScoreManifest?.[hymnNo];
+  const slides = Array.isArray(entry?.slides) ? entry.slides : [];
+  return slides
+    .map((slide, index) => ({
+      url: slide.src || slide.url,
+      name: slide.name || `${hymnNo} ${entry.title || stripHymnNumber(song?.title || "")} ${index + 1}`,
+      order: index + 1,
+    }))
+    .filter((slide) => slide.url);
+}
+
+function normalizedHymnScoreNumber(value = "") {
+  const match = String(value || "").match(/\d{1,3}/);
+  return match ? String(Number(match[0])) : "";
+}
+
+function presenterImageSourcesFromAssetUrl(value) {
+  const text = String(value || "").trim();
+  if (!text) return [];
+  return text
+    .split(/[\s,|]+/g)
+    .map((part) => normalizePresenterMediaSource(part))
+    .filter((source) => source && presenterMediaSourceIsImage(source))
+    .map((url, index) => ({ url, name: index === 0 ? "" : "", order: index + 1 }));
 }
 
 function presenterFormsForServiceItem(version, item, song = null) {
@@ -15714,27 +15809,9 @@ function presenterElementSlideFromMemo(item, section, index, memo, displayText) 
   }
   if (elementType === "score") {
     const source = normalizePresenterMediaSource(asset.url || displayText);
-    if (source && presenterMediaSourceIsImage(source)) {
-      return {
-        id: `${item.id || index}:score`,
-        ...section,
-        sectionLabel: safeLabel || "악보",
-        sectionTitle: title,
-        sectionName: title,
-        elementType: PRESENTER_ELEMENT_TYPES.IMAGE,
-        layout: PRESENTER_SLIDE_LAYOUTS.MEDIA,
-        type: "image",
-        label: safeLabel,
-        title,
-        marker: "악보",
-        text: title,
-        imageSrc: source,
-        asset,
-        sourceType: "score",
-        componentType: "score",
-        sort: index,
-      };
-    }
+    const scoreAsset = source ? { ...asset, url: source } : asset;
+    const imageSlides = presenterScoreImageSlidesFromAsset(scoreAsset, item, section, index, title, safeLabel || "악보");
+    if (imageSlides.length) return imageSlides;
     const fileLabel = presenterFileTypeLabel("score");
     const fileTitle = presenterFileDisplayTitle({ title: assetTitle || displayText || safeLabel, asset }, fileLabel);
     return {
@@ -16657,13 +16734,20 @@ function renderPresenterOutput(payload) {
 
 function renderPresenterSlideFrame(slide, options = {}) {
   const slideClass = presenterSlideRenderClass(slide);
+  const extraClasses = presenterSlideExtraClasses(slide);
   const body = options.preview ? renderPresenterSlidePreviewBody(slide) : renderPresenterSlideBody(slide);
   return `
-    <section class="presenter-slide presenter-slide--${escapeAttr(slideClass)}" data-element-type="${escapeAttr(presenterSlideElementType(slide))}" data-slide-layout="${escapeAttr(presenterSlideLayout(slide))}">
+    <section class="presenter-slide presenter-slide--${escapeAttr(slideClass)}${extraClasses ? ` ${escapeAttr(extraClasses)}` : ""}" data-element-type="${escapeAttr(presenterSlideElementType(slide))}" data-slide-layout="${escapeAttr(presenterSlideLayout(slide))}">
       ${renderPresenterSlideMeta(slide)}
       ${body}
     </section>
   `;
+}
+
+function presenterSlideExtraClasses(slide) {
+  return slide?.sourceType === "score" || slide?.componentType === "score" || slide?.scoreBackground
+    ? "presenter-slide--score"
+    : "";
 }
 
 function presenterSafetyBlankSlide() {

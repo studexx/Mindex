@@ -5203,6 +5203,12 @@ body[data-module="service"] .detail-pane {
 .presenter-slide--blank { padding: 0; }
 .presenter-video { display: block; width: 100%; height: 100%; object-fit: cover; background: #000; }
 .presenter-image { display: block; width: 100%; height: 100%; object-fit: contain; background: #000; }
+.presenter-slide--score {
+  background: #f7f4ed url("assets/worship-templates/score-background.png") center center / cover no-repeat;
+}
+.presenter-slide--score .presenter-image {
+  background: transparent;
+}
 .presenter-slide-file {
   display: grid;
   gap: clamp(12px, 1.5cqw, 22px);
