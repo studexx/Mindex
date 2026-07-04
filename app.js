@@ -2944,6 +2944,38 @@ async function runBibleTextSearch(value, options = {}) {
 }
 
 async function fetchBibleTextSearchRows(query, translationId, page = 0) {
+  const rpcRows = await fetchBibleTextSearchRowsViaRpc(query, translationId, page);
+  if (rpcRows) return rpcRows;
+  return fetchBibleTextSearchRowsByBook(query, translationId, page);
+}
+
+async function fetchBibleTextSearchRowsViaRpc(query, translationId, page = 0) {
+  try {
+    const { data, error } = await state.client.rpc("search_bible_verses", {
+      p_query: query,
+      p_translation_id: translationId,
+      p_page: Math.max(0, Number(page) || 0),
+      p_page_size: BIBLE_TEXT_SEARCH_PAGE_SIZE,
+    });
+    if (error) throw error;
+
+    const responseRows = data || [];
+    const firstRow = responseRows[0] || {};
+    const count = Number(firstRow.total_count);
+    const resolvedPage = Number(firstRow.resolved_page);
+    const rows = responseRows.map(({ total_count, resolved_page, ...row }) => row);
+    return {
+      rows,
+      count: Number.isFinite(count) ? count : rows.length,
+      page: Number.isFinite(resolvedPage) ? resolvedPage : 0,
+    };
+  } catch (error) {
+    if (isUnavailableRpcError(error)) return null;
+    throw error;
+  }
+}
+
+async function fetchBibleTextSearchRowsByBook(query, translationId, page = 0) {
   const pageSize = BIBLE_TEXT_SEARCH_PAGE_SIZE;
   const requestedPage = Math.max(0, Number(page) || 0);
   const requestedStart = requestedPage * pageSize;
@@ -2990,7 +3022,7 @@ async function fetchBibleTextSearchRows(query, translationId, page = 0) {
 
   const maxPage = Math.max(0, Math.ceil(totalCount / pageSize) - 1);
   if (requestedPage > maxPage && totalCount > 0) {
-    return fetchBibleTextSearchRows(query, translationId, maxPage);
+    return fetchBibleTextSearchRowsByBook(query, translationId, maxPage);
   }
   return { rows, count: totalCount, page: Math.min(requestedPage, maxPage) };
 }
@@ -6455,10 +6487,10 @@ function clearGlobalSearchInput() {
 function renderHomeList() {
   const modules = homeModuleCards();
   const service = modules.find((module) => module.id === "service");
-  const contentModules = ["scripture", "praise", "activities"]
+  const contentModules = ["scripture", "praise"]
     .map((id) => modules.find((module) => module.id === id))
     .filter(Boolean);
-  const utilityModules = ["calendar", "references", "order-sheets"]
+  const utilityModules = ["calendar", "references", "order-sheets", "activities"]
     .map((id) => modules.find((module) => module.id === id))
     .filter(Boolean);
   refs.songCount.textContent = "";
@@ -6497,10 +6529,10 @@ function renderHomeDetail() {
 
   const modules = homeModuleCards();
   const service = modules.find((module) => module.id === "service");
-  const contentModules = ["scripture", "praise", "activities"]
+  const contentModules = ["scripture", "praise"]
     .map((id) => modules.find((module) => module.id === id))
     .filter(Boolean);
-  const utilityModules = ["calendar", "references", "order-sheets"]
+  const utilityModules = ["calendar", "references", "order-sheets", "activities"]
     .map((id) => modules.find((module) => module.id === id))
     .filter(Boolean);
   const verse = homeVerse();
@@ -10308,6 +10340,15 @@ function isUnavailableRelationError(error) {
     || code === "42501"
     || code === "PGRST205"
     || /permission denied|schema cache|could not find the table|relation .* does not exist/i.test(message);
+}
+
+function isUnavailableRpcError(error) {
+  const code = String(error?.code || "");
+  const message = `${error?.message || ""} ${error?.details || ""} ${error?.hint || ""}`;
+  return code === "42883"
+    || code === "PGRST202"
+    || code === "PGRST203"
+    || /could not find .*function|function .* does not exist|schema cache/i.test(message);
 }
 
 function isWorshipNotReadyError(error) {

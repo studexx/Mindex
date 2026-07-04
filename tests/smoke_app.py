@@ -732,7 +732,7 @@ def main() -> int:
                     [...document.querySelectorAll('.home-sidebar-card span')].map((node) => node.textContent.trim())
                     """
                 )
-                expected_home_order = ["Worship", "Scripture", "Praise", "Activities", "Calendar", "References", "Order Sheets"]
+                expected_home_order = ["Worship", "Scripture", "Praise", "Calendar", "References", "Order Sheets", "Activities"]
                 if home_order == expected_home_order:
                     pass_("home-sidebar-hierarchy", json.dumps(home_order, ensure_ascii=False))
                 else:
@@ -832,7 +832,7 @@ def main() -> int:
                     """
                 )
                 topbar_state.update(topbar_hover_state)
-                expected_topbar_order = ["Worship", "Scripture", "Praise", "Activities"]
+                expected_topbar_order = ["Worship", "Scripture", "Praise"]
                 if (
                     topbar_state["order"] == expected_topbar_order
                     and topbar_state["active"] == "scripture"
