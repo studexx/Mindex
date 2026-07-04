@@ -2684,8 +2684,8 @@ body[data-module="service"] .detail-pane {
 }
 .svc-header {
   position: sticky;
-  top: 0;
-  z-index: 7;
+  top: calc(var(--content-pad-y) * -1);
+  z-index: 30;
   display: flex;
   min-height: var(--svc-service-header-sticky-h);
   flex-direction: row;
@@ -3714,8 +3714,8 @@ body[data-module="service"] .detail-pane {
 }
 .svc-presenter-top {
   position: sticky;
-  top: var(--svc-service-header-sticky-h);
-  z-index: 6;
+  top: calc(var(--svc-service-header-sticky-h) - var(--content-pad-y));
+  z-index: 29;
   display: grid;
   min-width: 0;
   grid-template-columns: auto auto minmax(0, 1fr) minmax(0, auto);
