@@ -12,6 +12,8 @@ const {
 const TABLE_COLUMN_SUPPORT_CACHE = new Map();
 let presenterThumbClickTimer = null;
 let songLoadPromise = null;
+let songCatalogLoaded = false;
+let backgroundSongLoadScheduled = false;
 
 const { BIBLE_CHAPTER_COUNTS } = MINDEX_CONSTANTS;
 
@@ -578,7 +580,11 @@ async function init() {
 }
 
 function loadInitialData() {
-  loadSongs();
+  if (state.module === "praise" || state.selectedSongId) {
+    loadSongs();
+  } else {
+    scheduleBackgroundSongLoad();
+  }
   loadScriptureBooks({ silent: true });
   loadScriptures({ silent: true });
   loadBibleTranslations({ silent: true });
@@ -1655,6 +1661,10 @@ async function switchModule(moduleName, options = {}) {
     await loadForms(state.selectedVersionId);
   }
 
+  if (moduleName === "praise" && !songCatalogLoaded && !state.connectionError) {
+    await loadSongs();
+  }
+
   if (moduleName === "service" && !state.serviceTypes.length && !state.serviceError) {
     await loadServiceData();
   }
@@ -1683,6 +1693,20 @@ async function loadSongs() {
     return await songLoadPromise;
   } finally {
     songLoadPromise = null;
+  }
+}
+
+function scheduleBackgroundSongLoad() {
+  if (backgroundSongLoadScheduled || songLoadPromise || songCatalogLoaded || !canUseClientData()) return;
+  backgroundSongLoadScheduled = true;
+  const run = () => {
+    backgroundSongLoadScheduled = false;
+    if (!songLoadPromise && !songCatalogLoaded && canUseClientData()) void loadSongs();
+  };
+  if (typeof window.requestIdleCallback === "function") {
+    window.requestIdleCallback(run, { timeout: 3500 });
+  } else {
+    window.setTimeout(run, 1800);
   }
 }
 
@@ -1722,6 +1746,7 @@ async function loadSongsOnce() {
   if (!state.songs.some((song) => cleanList(song.related_song_ids).length)) {
     await attachSongRelations();
   }
+  songCatalogLoaded = true;
   if (state.selectedSongId && !state.songs.some((song) => song.id === state.selectedSongId)) {
     state.selectedSongId = null;
     state.selectedVersionId = null;
@@ -1747,6 +1772,99 @@ async function loadSongsOnce() {
   state.loading = false;
   persistUiState();
   render();
+}
+
+async function loadSongsForIds(songIds = []) {
+  if (!state.client) return;
+  if (songCatalogLoaded) return;
+  const ids = [...new Set(songIds.map((id) => String(id || "").trim()).filter(Boolean))];
+  const missingIds = ids.filter((id) => !state.songs.some((song) => song.id === id));
+  if (!missingIds.length) return;
+
+  let songRows = [];
+  try {
+    for (const batch of chunkArray(missingIds, 80)) {
+      const { data, error } = await state.client
+        .from("mindex_songs")
+        .select("*")
+        .in("id", batch)
+        .order("title", { ascending: true });
+      if (error) throw error;
+      songRows.push(...(data || []));
+    }
+  } catch (error) {
+    if (!isUnavailableRelationError(error)) console.warn("Could not load linked praise songs.", error);
+    return;
+  }
+
+  if (!songRows.length) return;
+
+  const songMap = new Map(state.songs.map((song) => [song.id, song]));
+  const linkedSongs = songRows.map(normalizeServerSong);
+  for (const song of linkedSongs) songMap.set(song.id, song);
+  state.songs = [...songMap.values()].sort(sortSongs);
+  await attachRelationalSongVersionsForSongs(linkedSongs.map((song) => song.id));
+}
+
+async function attachRelationalSongVersionsForSongs(songIds = []) {
+  const ids = [...new Set(songIds.map((id) => String(id || "").trim()).filter(Boolean))];
+  if (!ids.length) return;
+
+  let versionRows = [];
+  try {
+    for (const batch of chunkArray(ids, 80)) {
+      const [sourceResponse, canonicalResponse] = await Promise.all([
+        state.client
+          .from("mindex_song_versions")
+          .select("*")
+          .in("source_song_id", batch)
+          .order("source_song_id", { ascending: true })
+          .order("version_order", { ascending: true }),
+        state.client
+          .from("mindex_song_versions")
+          .select("*")
+          .in("canonical_song_id", batch)
+          .order("canonical_song_id", { ascending: true })
+          .order("version_order", { ascending: true }),
+      ]);
+      if (sourceResponse.error) throw sourceResponse.error;
+      if (canonicalResponse.error) throw canonicalResponse.error;
+      versionRows.push(...(sourceResponse.data || []), ...(canonicalResponse.data || []));
+    }
+  } catch (error) {
+    if (!isUnavailableRelationError(error)) console.warn("Could not load linked song versions.", error);
+    state.songVersionTablesSupported = false;
+    state.songVersionPraiseTypesSupported = false;
+    return;
+  }
+
+  versionRows = [...new Map(versionRows.map((row) => [row.id, row])).values()];
+  if (!versionRows.length) return;
+
+  let unitRows = [];
+  try {
+    for (const batch of chunkArray(versionRows.map((row) => row.id), 80)) {
+      const { data, error } = await state.client
+        .from("mindex_version_units")
+        .select("*")
+        .in("version_id", batch)
+        .order("version_id", { ascending: true })
+        .order("curated_order", { ascending: true })
+        .order("unit_order", { ascending: true });
+      if (error) throw error;
+      unitRows.push(...(data || []));
+    }
+  } catch (error) {
+    if (!isUnavailableRelationError(error)) console.warn("Could not load linked song units.", error);
+    state.songVersionTablesSupported = false;
+    state.songVersionPraiseTypesSupported = false;
+    return;
+  }
+
+  state.songVersionTablesSupported = true;
+  state.songVersionPraiseTypesSupported = state.songVersionPraiseTypesSupported
+    || versionRows.some((row) => Object.prototype.hasOwnProperty.call(row, "praise_types"));
+  attachRelationalSongVersionRows(versionRows, unitRows, ids);
 }
 
 async function attachRelationalSongVersions() {
@@ -1803,9 +1921,15 @@ async function attachRelationalSongVersions() {
     (versionResponse.data || []).some((row) => Object.prototype.hasOwnProperty.call(row, "praise_types"))
     || await detectSongVersionPraiseTypesSupport();
 
+  attachRelationalSongVersionRows(versionResponse.data || [], unitResponse.data || []);
+}
+
+function attachRelationalSongVersionRows(versionRows = [], unitRows = [], targetSongIds = null) {
+  const allowedSongIds = targetSongIds ? new Set(targetSongIds) : null;
+
   const songIds = new Set(state.songs.map((song) => song.id));
   const unitsByVersion = new Map();
-  for (const row of unitResponse.data || []) {
+  for (const row of unitRows || []) {
     if (!row.version_id) continue;
     const units = unitsByVersion.get(row.version_id) || [];
     units.push(normalizeRelationalUnit(row, units.length));
@@ -1814,7 +1938,7 @@ async function attachRelationalSongVersions() {
 
   const sourceVersionsBySong = new Map();
   const fallbackVersionsBySong = new Map();
-  for (const row of versionResponse.data || []) {
+  for (const row of versionRows || []) {
     const sourceSongId = row.source_song_id || null;
     const canonicalSongId = row.canonical_song_id || null;
     if (sourceSongId && songIds.has(sourceSongId)) {
@@ -1829,6 +1953,7 @@ async function attachRelationalSongVersions() {
   }
 
   for (const song of state.songs) {
+    if (allowedSongIds && !allowedSongIds.has(song.id)) continue;
     const rows = sourceVersionsBySong.get(song.id) || fallbackVersionsBySong.get(song.id) || [];
     if (!rows.length) continue;
     const versions = rows
@@ -1893,6 +2018,15 @@ async function fetchAllRows(buildQuery, { pageSize = SUPABASE_PAGE_SIZE } = {}) 
     rows.push(...page);
     if (page.length < pageSize) return { data: rows, error: null };
   }
+}
+
+function chunkArray(items = [], size = 80) {
+  const chunks = [];
+  const chunkSize = Math.max(1, Number(size) || 80);
+  for (let index = 0; index < items.length; index += chunkSize) {
+    chunks.push(items.slice(index, index + chunkSize));
+  }
+  return chunks;
 }
 
 async function loadScriptures({ silent = false } = {}) {
@@ -2032,9 +2166,7 @@ async function loadWorshipData() {
         .order("slide_order", { ascending: true })),
   ]);
 
-  if (!state.songs.length && elements.some((item) => item.song_id)) {
-    await loadSongs();
-  }
+  await loadSongsForIds(elements.map((item) => item.song_id));
 
   const resolvedTypes = types.length ? types : defaultWorshipServiceTypes();
   state.serviceTypes = resolvedTypes.map(normalizeWorshipServiceType);
