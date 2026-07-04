@@ -13795,6 +13795,12 @@ async function openPresenterOutput(serviceId = state.selectedServiceId) {
     renderPresenterControlState(serviceId);
     return;
   }
+  if (isPresenterOutputHeartbeatOpen()) {
+    startPresenterOutputWindowMonitor(serviceId);
+    window.setTimeout(() => publishPresenterState(), 250);
+    renderPresenterControlState(serviceId);
+    return;
+  }
 
   // Resolve the target display BEFORE creating the window. Chrome appears to
   // associate a popup's fullscreen target with whichever screen it was
@@ -13860,13 +13866,18 @@ function presenterOutputWindowFeatures(targetRect = null) {
 }
 
 function isPresenterOutputWindowOpen() {
-  const heartbeatOpen = state.presenter.outputConnectedAt
-    && Date.now() - state.presenter.outputConnectedAt <= PRESENTER_OUTPUT_HEARTBEAT_TTL_MS;
   try {
-    return Boolean((state.presenter.outputWindow && !state.presenter.outputWindow.closed) || heartbeatOpen);
+    return Boolean((state.presenter.outputWindow && !state.presenter.outputWindow.closed) || isPresenterOutputHeartbeatOpen());
   } catch {
-    return Boolean(heartbeatOpen);
+    return isPresenterOutputHeartbeatOpen();
   }
+}
+
+function isPresenterOutputHeartbeatOpen() {
+  return Boolean(
+    state.presenter.outputConnectedAt
+    && Date.now() - state.presenter.outputConnectedAt <= PRESENTER_OUTPUT_HEARTBEAT_TTL_MS,
+  );
 }
 
 function startPresenterOutputWindowMonitor(serviceId) {

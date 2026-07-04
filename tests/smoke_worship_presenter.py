@@ -915,6 +915,41 @@ def main() -> int:
                 else:
                     fail("presenter-output-heartbeat-direct-route", json.dumps(heartbeat_state, ensure_ascii=False))
 
+                page.evaluate(
+                    """
+                    (() => {
+                      window.__mindexPresenterOpenCalls = 0;
+                      window.open = () => {
+                        window.__mindexPresenterOpenCalls += 1;
+                        return null;
+                      };
+                    })()
+                    """
+                )
+                page.click(f'.svc-presenter-launch[data-service-id="{service["id"]}"]')
+                page.wait_for_timeout(350)
+                heartbeat_reuse_state = page.evaluate(
+                    """
+                    (() => ({
+                      openCalls: window.__mindexPresenterOpenCalls || 0,
+                      connected: state.presenter.outputConnectedAt > 0,
+                      open: isPresenterOutputWindowOpen(),
+                      hasWindowRef: Boolean(state.presenter.outputWindow),
+                      status: document.querySelector('.svc-presenter-status')?.textContent.trim() || '',
+                    }))()
+                    """
+                )
+                if (
+                    heartbeat_reuse_state["openCalls"] == 0
+                    and heartbeat_reuse_state["connected"]
+                    and heartbeat_reuse_state["open"]
+                    and not heartbeat_reuse_state["hasWindowRef"]
+                    and heartbeat_reuse_state["status"] == "Live"
+                ):
+                    pass_("presenter-open-reuses-heartbeat-output", json.dumps(heartbeat_reuse_state, ensure_ascii=False))
+                else:
+                    fail("presenter-open-reuses-heartbeat-output", json.dumps(heartbeat_reuse_state, ensure_ascii=False))
+
                 output_state = output_page.evaluate(
                     """
                     (() => {
