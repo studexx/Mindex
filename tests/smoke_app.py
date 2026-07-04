@@ -1775,7 +1775,8 @@ def main() -> int:
                         and presenter_terms["actionGroups"] == 4
                         and presenter_terms["helpLabel"] == "도움말"
                         and "Esc Esc" in presenter_terms["helpText"]
-                        and "Chrome 전체화면" in presenter_terms["helpText"]
+                        and "Mac: ⌃⌘F" in presenter_terms["helpText"]
+                        and "Windows/Linux: F11" in presenter_terms["helpText"]
                         and "번호 + Enter" in presenter_terms["helpText"]
                         and (
                             "슬라이드로 이동" in presenter_terms["firstThumbLabel"]

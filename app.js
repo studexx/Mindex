@@ -13700,7 +13700,7 @@ function renderPresenterHelpControl() {
     ["Esc Esc", "프레젠터 종료"],
     ["성구 입력 + Enter", "하단 bar에 레퍼런스 포함 송출"],
     ["찬양 입력 + Enter", "실시간 찬양 송출"],
-    ["Output에서 F", "전체화면 다시 시도"],
+    ["전체화면 안 될 때", "Mac: ⌃⌘F · Windows/Linux: F11"],
   ];
   return `
     <details class="svc-presenter-help" data-presenter-help>
@@ -13710,7 +13710,7 @@ function renderPresenterHelpControl() {
       <div class="svc-presenter-help-panel" role="dialog" aria-label="${escapeAttr(uiText("presenter.help.title"))}">
         <div class="svc-presenter-help-head">
           <strong>${escapeHtml(uiText("presenter.help.title"))}</strong>
-          <small>Chrome 전체화면은 브라우저 허용 범위 안에서 자동 시도</small>
+          <small>전체화면이 안 되면 출력 창에서 브라우저 전체화면 단축키를 눌러 주세요</small>
         </div>
         <dl>
           ${rows.map(([key, value]) => `
