@@ -12749,24 +12749,35 @@ function renderServiceDateCard(service, options = {}) {
 }
 
 function formatServiceDate(service, options = {}) {
-  const weekdays = ["일","월","화","수","목","금","토"];
   const start = new Date(`${service.date}T00:00:00`);
   const startText = options.compact
-    ? `${start.getMonth() + 1}/${start.getDate()} ${weekdays[start.getDay()]}`
-    : `${start.getMonth() + 1}월 ${start.getDate()}일 (${weekdays[start.getDay()]})`;
+    ? `${start.getMonth() + 1}/${start.getDate()} ${serviceWeekdayLabel(start)}`
+    : `${start.getMonth() + 1}월 ${start.getDate()}일 (${serviceWeekdayLabel(start)})`;
   if (!service.date_end) return startText;
   const end = new Date(`${service.date_end}T00:00:00`);
   const endText = options.compact
-    ? `${end.getMonth() + 1}/${end.getDate()} ${weekdays[end.getDay()]}`
-    : `${end.getMonth() + 1}월 ${end.getDate()}일 (${weekdays[end.getDay()]})`;
+    ? `${end.getMonth() + 1}/${end.getDate()} ${serviceWeekdayLabel(end)}`
+    : `${end.getMonth() + 1}월 ${end.getDate()}일 (${serviceWeekdayLabel(end)})`;
   return `${startText} - ${endText}`;
+}
+
+function serviceWeekdayLabel(date) {
+  return ["주일","월","화","수","목","금","토"][date.getDay()] || "";
 }
 
 function formatServiceIsoDate(service) {
   const start = String(service?.date || "").trim();
   const end = String(service?.date_end || "").trim();
   if (!start) return "";
-  return end && end !== start ? `${start} - ${end}` : start;
+  const startLabel = formatServiceIsoDatePart(start);
+  if (!end || end === start) return startLabel;
+  return `${startLabel} - ${formatServiceIsoDatePart(end)}`;
+}
+
+function formatServiceIsoDatePart(value) {
+  const date = new Date(`${value}T00:00:00`);
+  const label = Number.isNaN(date.getTime()) ? "" : serviceWeekdayLabel(date);
+  return label ? `${value} (${label})` : value;
 }
 
 function serviceItemPreview(serviceId) {

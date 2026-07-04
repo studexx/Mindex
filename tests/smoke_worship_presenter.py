@@ -190,7 +190,7 @@ def main() -> int:
                 if (
                     sticky_title_state["title"]
                     and sticky_title_state["date"]
-                    and re.match(r"^\d{4}-\d{2}-\d{2}", sticky_title_state["date"])
+                    and re.match(r"^\d{4}-\d{2}-\d{2} \((주일|월|화|수|목|금|토)\)", sticky_title_state["date"])
                     and sticky_title_state["usesExistingHeader"]
                     and sticky_title_state["headerPosition"] == "sticky"
                     and sticky_title_state["controlsPosition"] == "sticky"
