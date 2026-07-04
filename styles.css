@@ -2694,7 +2694,16 @@ body[data-module="service"] .detail-pane {
   gap: var(--s4);
   border-bottom: 0;
   background: var(--bg);
+  isolation: isolate;
   padding: 0 0 4px;
+}
+.svc-header::before {
+  content: "";
+  position: absolute;
+  inset: calc((var(--content-pad-y) + var(--svc-service-header-sticky-h)) * -1) 0 0;
+  z-index: -1;
+  background: var(--bg);
+  pointer-events: none;
 }
 .svc-header-date {
   display: flex;
