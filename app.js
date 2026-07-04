@@ -5382,11 +5382,15 @@ function startNewServiceForm(typeId = state.selectedServiceTypeId) {
     type_id: typeId,
     date: toLocalDateStr(new Date()),
     title: "",
-    leader: "",
+    leader: defaultServicePraiseLeader(typeId),
     tags: "",
   };
   renderServiceList();
   renderServiceDetail();
+}
+
+function defaultServicePraiseLeader(typeId) {
+  return String(typeId || "") === "friday" ? "이재희 청년" : "";
 }
 
 function canonicalWorshipServiceTypeId(typeId) {

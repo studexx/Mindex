@@ -1207,6 +1207,24 @@ def main() -> int:
                               })()
                             };
                           })(),
+                          fridayNewServiceLeader: (() => {
+                            const previousSelectedTypeId = state.selectedServiceTypeId;
+                            const previousSelectedServiceId = state.selectedServiceId;
+                            const previousForm = state.newServiceForm ? { ...state.newServiceForm } : null;
+                            startNewServiceForm('friday');
+                            const inputValue = document.querySelector('[data-new-service-field="leader"]')?.value || '';
+                            const formLeader = state.newServiceForm?.leader || '';
+                            state.selectedServiceTypeId = previousSelectedTypeId;
+                            state.selectedServiceId = previousSelectedServiceId;
+                            state.newServiceForm = previousForm;
+                            renderServiceTemplatesDetail();
+                            return {
+                              formLeader,
+                              inputValue,
+                              defaultLeader: defaultServicePraiseLeader('friday'),
+                              monthlyDefaultLeader: defaultServicePraiseLeader('monthly')
+                            };
+                          })(),
                           templateFormEditor: (() => {
                             const typeId = '__smoke_template_form__';
                             const previousDirty = state.dirty.service;
@@ -1360,6 +1378,12 @@ def main() -> int:
                             "forms": ["V2", "C"],
                             "strength": "manual",
                             "badgeText": "송폼 V2-C 찬송가 1절-2절-간주-마지막 절",
+                        }
+                        and template_terms["fridayNewServiceLeader"] == {
+                            "formLeader": "이재희 청년",
+                            "inputValue": "이재희 청년",
+                            "defaultLeader": "이재희 청년",
+                            "monthlyDefaultLeader": "",
                         }
                         and template_terms["templateFormEditor"] == {
                             "before": "V1-C",
