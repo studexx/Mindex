@@ -39,6 +39,7 @@ Use one shared base template unless we confirm meaningful differences between
 | 14 | 새가족환영 | 새가족환영 | plain_text |  | optional |
 | 15 | 송영 | 송영 | praise |  | song/version/form |
 | 16 | 축도 | 축도 | title_person | benediction pastor |  |
+| 17 | 마무리 | 마무리 | image |  | public closing visual |
 
 Open checks:
 
@@ -73,6 +74,7 @@ and response/sending flow are different.
 | 17 | 찬양 | 찬양 | praise |  | sending song |
 | 18 | 축도 | 축도 | title_person | benediction pastor |  |
 | 19 | 아멘송 | 아멘송 | praise |  | song/version/form |
+| 20 | 마무리 | 마무리 | image |  | public closing visual |
 
 Open checks:
 
@@ -98,6 +100,7 @@ as disciple dedication worship.
 | 9 | 교회소식 | 교회소식 | plain_text | announcements |  |
 | 10 | 송영 | 송영 | praise |  | song/version/form |
 | 11 | 축도 | 축도 | title_person | benediction pastor |  |
+| 12 | 마무리 | 마무리 | image |  | public closing visual |
 
 Open checks:
 

@@ -1222,6 +1222,37 @@ def main() -> int:
                               strength: rule?.formPreset?.strength || ''
                             };
                           })(),
+                          sundayPublicScaffold: (() => {
+                            const compact = (value) => String(value || '').replace(/\s+/g, '');
+                            const summarize = (typeId) => {
+                              const scaffold = buildWorshipServiceScaffold(`__smoke_${typeId}__`, typeId);
+                              const sections = scaffold.sections.map((section) => ({
+                                key: section.section_key || '',
+                                title: section.title || '',
+                                elements: scaffold.elements
+                                  .filter((element) => element.section_id === section.id)
+                                  .map((element) => ({
+                                    type: element.element_type || '',
+                                    label: element.source_ref?.label || '',
+                                    order: element.config?.orderSheet?.order || ''
+                                  }))
+                              }));
+                              return {
+                                sections: sections.length,
+                                elements: scaffold.elements.length,
+                                titles: sections.map((section) => section.title),
+                                keys: sections.map((section) => section.key),
+                                compactTitles: sections.map((section) => compact(section.title)),
+                                creedElements: sections.find((section) => section.key === 'creed')?.elements || [],
+                                offeringElements: sections.find((section) => section.key === 'offering')?.elements || []
+                              };
+                            };
+                            return {
+                              first: summarize('sunday-first'),
+                              third: summarize('sunday-main'),
+                              afternoon: summarize('sunday-afternoon')
+                            };
+                          })(),
                           formPresetUi: (() => {
                             const memo = serializeServiceItemMemo({
                               formHint: 'V2-C',
@@ -1437,6 +1468,21 @@ def main() -> int:
                             "hint": "1절-2절-간주-마지막 절",
                             "strength": "default",
                         }
+                        and template_terms["sundayPublicScaffold"]["first"]["titles"][:4] == ["준비", "환영", "신앙고백", "찬양"]
+                        and template_terms["sundayPublicScaffold"]["first"]["creedElements"] == [
+                            {"type": "body", "label": "사도신경", "order": "신앙고백"}
+                        ]
+                        and template_terms["sundayPublicScaffold"]["first"]["offeringElements"] == [
+                            {"type": "praise", "label": "봉헌찬양", "order": "봉헌"},
+                            {"type": "title_person", "label": "봉헌기도", "order": "봉헌기도"},
+                        ]
+                        and "사죄의선언" in template_terms["sundayPublicScaffold"]["third"]["titles"]
+                        and "공동체고백" in template_terms["sundayPublicScaffold"]["third"]["titles"]
+                        and "아멘송" in template_terms["sundayPublicScaffold"]["third"]["titles"]
+                        and template_terms["sundayPublicScaffold"]["third"]["keys"].count("praise") == 1
+                        and "hymn_praise" in template_terms["sundayPublicScaffold"]["third"]["keys"]
+                        and template_terms["sundayPublicScaffold"]["afternoon"]["titles"][:4] == ["준비", "찬양", "묵도", "찬양"]
+                        and "hymn_praise" in template_terms["sundayPublicScaffold"]["afternoon"]["keys"]
                         and template_terms["formPresetUi"] == {
                             "formHint": "V2-C",
                             "forms": ["V2", "C"],

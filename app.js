@@ -10863,11 +10863,120 @@ const PUBLIC_SPECIAL_HYMN_FORM_PRESET_RULE = {
   },
 };
 
+function publicWorshipImageClosingStep() {
+  return {
+    label: "마무리",
+    name: "마무리",
+    phase: "Sending",
+    required: true,
+    flex: false,
+    sectionKey: "closing_visual",
+    elementType: "image",
+    orderSheet: { hidden: true },
+  };
+}
+
+function publicWorshipOfferingStep() {
+  return {
+    label: "봉헌",
+    name: "봉헌",
+    phase: "Response",
+    required: true,
+    flex: false,
+    sectionKey: "offering",
+    elements: [
+      { label: "봉헌찬양", name: "봉헌찬양", elementType: "praise", orderSheet: { order: "봉헌", group: "praise" } },
+      { label: "봉헌기도", name: "봉헌기도", elementType: "title_person", orderSheet: { order: "봉헌기도" } },
+    ],
+  };
+}
+
+function publicWorshipSpecialSongStep() {
+  return {
+    label: "특송",
+    name: "특송",
+    phase: "Word",
+    required: false,
+    flex: true,
+    sectionKey: "special_song",
+    elementType: "title_person",
+  };
+}
+
+function publicSundayFirstSecondTemplate() {
+  return [
+    { label: "환영", name: "환영", phase: "Gathering", required: false, flex: true, sectionKey: "welcome", elementType: "plain_text" },
+    { label: "신앙고백", name: "신앙고백", phase: "Gathering", required: true, flex: false, sectionKey: "creed", elements: [
+      { label: "사도신경", name: "사도신경", elementType: "body", orderSheet: { order: "신앙고백" } },
+    ] },
+    { label: "찬양", name: "찬양", phase: "Gathering", required: false, flex: true, repeatable: true, sectionKey: "praise", elementType: "praise", orderSheet: { order: "찬양", group: "praise" } },
+    { label: "참회기도", name: "참회기도", phase: "Gathering", required: false, flex: true, sectionKey: "confession", elementType: "body" },
+    { label: "대표기도", name: "대표기도", phase: "Gathering", required: true, flex: false, sectionKey: "prayer", elementType: "title_person", orderSheet: { order: "대표기도" } },
+    { label: "성경봉독", name: "성경봉독", phase: "Word", required: true, flex: false, sectionKey: "scripture_reading", elementType: "scripture_reading" },
+    publicWorshipSpecialSongStep(),
+    { label: "설교", name: "설교", phase: "Word", required: true, flex: false, sectionKey: "sermon", elementType: "title_person" },
+    { label: "결단", name: "결단", phase: "Response", required: false, flex: true, sectionKey: "response_song", elements: [
+      { label: "결단기도", name: "결단기도", elementType: "title_person", orderSheet: { order: "결단기도" } },
+    ] },
+    publicWorshipOfferingStep(),
+    { label: "교회소식", name: "교회소식", phase: "Sending", required: true, flex: false, sectionKey: "announcements", elementType: "plain_text" },
+    { label: "새가족환영", name: "새가족환영", phase: "Sending", required: false, flex: true, sectionKey: "new_family", elementType: "plain_text" },
+    { label: "송영", name: "송영", phase: "Sending", required: true, flex: false, sectionKey: "doxology", elementType: "praise", orderSheet: { order: "송영", group: "praise" } },
+    { label: "축도", name: "축도", phase: "Sending", required: true, flex: false, sectionKey: "benediction", elementType: "title_person" },
+    publicWorshipImageClosingStep(),
+  ];
+}
+
+function publicSundayThirdTemplate() {
+  return [
+    { label: "찬양", name: "찬양", phase: "Gathering", required: true, flex: true, repeatable: true, sectionKey: "praise", elementType: "praise", orderSheet: { order: "찬양", group: "praise" } },
+    { label: "참회기도", name: "참회기도", phase: "Gathering", required: false, flex: true, sectionKey: "confession", elementType: "body" },
+    { label: "사죄의선언", name: "사죄의선언", phase: "Gathering", required: false, flex: true, sectionKey: "assurance", elementType: "body" },
+    { label: "찬양", name: "찬양", phase: "Gathering", required: false, flex: true, sectionKey: "hymn_praise", elementType: "praise", orderSheet: { order: "찬양", group: "praise" } },
+    { label: "대표기도", name: "대표기도", phase: "Gathering", required: true, flex: false, sectionKey: "prayer", elementType: "title_person", orderSheet: { order: "대표기도" } },
+    { label: "성경봉독", name: "성경봉독", phase: "Word", required: true, flex: false, sectionKey: "scripture_reading", elementType: "scripture_reading" },
+    publicWorshipSpecialSongStep(),
+    { label: "설교", name: "설교", phase: "Word", required: true, flex: false, sectionKey: "sermon", elementType: "title_person" },
+    { label: "결단", name: "결단", phase: "Response", required: false, flex: true, sectionKey: "response_song", elements: [
+      { label: "결단기도", name: "결단기도", elementType: "title_person", orderSheet: { order: "결단기도" } },
+    ] },
+    { label: "신앙고백", name: "신앙고백", phase: "Response", required: true, flex: false, sectionKey: "creed", elements: [
+      { label: "사도신경", name: "사도신경", elementType: "body", orderSheet: { order: "신앙고백" } },
+    ] },
+    publicWorshipOfferingStep(),
+    { label: "교회소식", name: "교회소식", phase: "Sending", required: true, flex: false, sectionKey: "announcements", elementType: "plain_text" },
+    { label: "새가족환영", name: "새가족환영", phase: "Sending", required: false, flex: true, sectionKey: "new_family", elementType: "plain_text" },
+    { label: "공동체고백", name: "공동체고백", phase: "Sending", required: false, flex: true, sectionKey: "community_confession", elementType: "body" },
+    { label: "찬양", name: "찬양", phase: "Sending", required: true, flex: false, sectionKey: "closing_song", elementType: "praise", orderSheet: { order: "찬양", group: "praise" } },
+    { label: "축도", name: "축도", phase: "Sending", required: true, flex: false, sectionKey: "benediction", elementType: "title_person" },
+    { label: "아멘송", name: "아멘송", phase: "Sending", required: false, flex: true, sectionKey: "amen_song", elementType: "praise", orderSheet: { order: "아멘송", group: "praise" } },
+    publicWorshipImageClosingStep(),
+  ];
+}
+
+function publicSundayAfternoonTemplate() {
+  return [
+    { label: "찬양", name: "찬양", phase: "Gathering", required: true, flex: true, repeatable: true, sectionKey: "praise", elementType: "praise", orderSheet: { order: "찬양", group: "praise" } },
+    { label: "묵도", name: "묵도", phase: "Gathering", required: true, flex: false, sectionKey: "silent_prayer", elementType: "body" },
+    { label: "찬양", name: "찬양", phase: "Gathering", required: true, flex: false, sectionKey: "hymn_praise", elementType: "praise", orderSheet: { order: "찬양", group: "praise" } },
+    { label: "대표기도", name: "대표기도", phase: "Gathering", required: true, flex: false, sectionKey: "prayer", elementType: "title_person", orderSheet: { order: "대표기도" } },
+    { label: "성경봉독", name: "성경봉독", phase: "Word", required: true, flex: false, sectionKey: "scripture_reading", elementType: "scripture_reading" },
+    { label: "설교", name: "설교", phase: "Word", required: true, flex: false, sectionKey: "sermon", elementType: "title_person" },
+    { label: "결단", name: "결단", phase: "Response", required: false, flex: true, sectionKey: "response_song", elements: [
+      { label: "결단기도", name: "결단기도", elementType: "title_person", orderSheet: { order: "결단기도" } },
+    ] },
+    { label: "교회소식", name: "교회소식", phase: "Sending", required: true, flex: false, sectionKey: "announcements", elementType: "plain_text" },
+    { label: "송영", name: "송영", phase: "Sending", required: true, flex: false, sectionKey: "doxology", elementType: "praise", orderSheet: { order: "송영", group: "praise" } },
+    { label: "축도", name: "축도", phase: "Sending", required: true, flex: false, sectionKey: "benediction", elementType: "title_person" },
+    publicWorshipImageClosingStep(),
+  ];
+}
+
 const SERVICE_ORDER_TEMPLATE_FALLBACKS = {
-  "sunday-first": ["사도신경", "찬양", "참회기도", "대표기도", "성경봉독", "특송", "설교", "결단기도", "봉헌", "봉헌기도", "교회소식", "송영", "축도", "마무리"],
-  "sunday-second": ["사도신경", "찬양", "참회기도", "대표기도", "성경봉독", "특송", "설교", "결단기도", "봉헌", "봉헌기도", "교회소식", "송영", "축도", "마무리"],
-  "sunday-main": ["사도신경", "찬양", "참회기도", "대표기도", "성경봉독", "특송", "설교", "결단기도", "봉헌", "봉헌기도", "교회소식", "송영", "축도", "마무리"],
-  "sunday-afternoon": ["찬양", "묵도", "찬송", "대표기도", "성경봉독", "설교", "결단기도", "교회소식", "송영", "축도", "마무리"],
+  "sunday-first": publicSundayFirstSecondTemplate(),
+  "sunday-second": publicSundayFirstSecondTemplate(),
+  "sunday-main": publicSundayThirdTemplate(),
+  "sunday-afternoon": publicSundayAfternoonTemplate(),
   wednesday: ["찬양", "대표기도", "교회소식", "성경봉독", "설교", responseSectionTemplate(), "축도", "마무리"],
   friday: ["찬양", "대표기도", "특송", "교회소식", "성경봉독", "설교", responseSectionTemplate(), "기도회", "찬양", "통성기도", "자율기도", "마무리"],
   monthly: MONTHLY_ORDER_TEMPLATE_FALLBACK,
