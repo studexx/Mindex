@@ -11338,14 +11338,13 @@ function renderRecentServiceShortcuts() {
         <small>${services.length}</small>
       </div>
       <div class="service-sidebar-stack">
-        ${services.map((service) => renderServiceSidebarCard(service, { showPreview: true })).join("")}
+        ${services.map(renderServiceSidebarCard).join("")}
       </div>
     </section>`;
 }
 
-function renderServiceSidebarCard(service, options = {}) {
+function renderServiceSidebarCard(service) {
   const active = service.id === state.selectedServiceId ? " active" : "";
-  const preview = options.showPreview ? serviceItemPreview(service.id) : "";
   return `
     <button
       class="service-sidebar-card${active}"
@@ -11354,7 +11353,6 @@ function renderServiceSidebarCard(service, options = {}) {
     >
       <span class="service-sidebar-date">${escapeHtml(formatServiceDate(service, { compact: true }))}</span>
       <span class="service-sidebar-title">${escapeHtml(serviceDisplayTypeName(service))}</span>
-      ${preview ? `<span class="service-sidebar-preview">${escapeHtml(preview)}</span>` : ""}
     </button>`;
 }
 

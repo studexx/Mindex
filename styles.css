@@ -2289,8 +2289,7 @@ body[data-module="service"] .detail-pane {
   padding: 0 7px;
   white-space: nowrap;
 }
-.service-sidebar-note,
-.service-sidebar-preview {
+.service-sidebar-note {
   grid-column: 2;
   min-width: 0;
   overflow: hidden;
@@ -2300,12 +2299,6 @@ body[data-module="service"] .detail-pane {
   line-height: 14px;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-.service-sidebar-preview {
-  display: -webkit-box;
-  white-space: normal;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
 }
 .service-sidebar-section--current,
 .service-sidebar-section--editor {
