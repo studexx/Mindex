@@ -4485,6 +4485,9 @@ body[data-module="service"] .detail-pane {
   background-repeat: no-repeat;
   background-size: cover;
 }
+.svc-slide-mini-output.no-chromakey.is-blank {
+  background: #000;
+}
 .svc-slide-mini-output[data-output-theme="children"] {
   --presenter-output-bg: #f4ead9;
   --presenter-output-fg: #553300;
@@ -5057,6 +5060,10 @@ body[data-module="service"] .detail-pane {
   background-position: center center;
   background-repeat: no-repeat;
   background-size: cover;
+}
+.presenter-output-body.presenter-output-body--clean.is-blank,
+.presenter-output-root.no-chromakey.is-blank {
+  background: #000;
 }
 .presenter-output-root.no-chromakey .presenter-output-empty,
 .presenter-output-root.no-chromakey .presenter-slide-meta,

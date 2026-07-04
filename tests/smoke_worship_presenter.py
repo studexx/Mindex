@@ -1120,6 +1120,24 @@ def main() -> int:
                 else:
                     fail("presenter-open-reuses-heartbeat-output", json.dumps(heartbeat_reuse_state, ensure_ascii=False))
 
+                payload = page.evaluate(
+                    """
+                    (serviceId) => {
+                      state.presenter.index = Math.min(2, Math.max(state.presenter.slides.length - 1, 0));
+                      state.presenter.safetyBlank = false;
+                      renderPresenterControlState(serviceId);
+                      publishPresenterState({ force: true });
+                      return presenterStatePayload(serviceId);
+                    }
+                    """,
+                    service["id"],
+                )
+                output_page.wait_for_function(
+                    "(expectedIndex) => JSON.parse(localStorage.getItem('mindex.presenter.state') || '{}').index === expectedIndex",
+                    arg=payload["index"],
+                    timeout=5000,
+                )
+
                 output_state = output_page.evaluate(
                     """
                     (() => {
@@ -1908,7 +1926,7 @@ def main() -> int:
                         },
                       ]);
                       preparePresenterService(service.id);
-                      state.presenter.index = Math.min(1, Math.max(state.presenter.slides.length - 1, 0));
+                      state.presenter.index = Math.min(2, Math.max(state.presenter.slides.length - 1, 0));
                       state.presenter.liveScripture = { reference: "", draft: "", active: false, slide: null };
                       state.presenter.livePraise = { query: "", draft: "", active: false, slides: [], index: 0, songId: "", versionId: "" };
                       state.module = 'service';

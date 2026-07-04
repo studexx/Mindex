@@ -14783,11 +14783,14 @@ function renderPresenterSlideMiniPreview(slide, serviceId = state.presenter.serv
   const chromakey = presenterServiceUsesChromakey(service);
   const backgroundImage = presenterBackgroundForService(service);
   const theme = presenterOutputTheme(service?.type_id);
-  const bgStyle = backgroundImage && !chromakey ? ` style="--presenter-bg-image: url('${escapeAttr(backgroundImage)}')"` : "";
+  const blank = presenterSlideLayout(slide) === PRESENTER_SLIDE_LAYOUTS.BLANK;
+  const showBackground = Boolean(backgroundImage && !chromakey && !blank);
+  const bgStyle = showBackground ? ` style="--presenter-bg-image: url('${escapeAttr(backgroundImage)}')"` : "";
   const outputClasses = [
     "svc-slide-mini-output",
     chromakey ? "" : "no-chromakey",
-    backgroundImage && !chromakey ? "has-background" : "",
+    showBackground ? "has-background" : "",
+    blank ? "is-blank" : "",
   ].filter(Boolean).join(" ");
   if (!slide) {
     return `<span class="${escapeAttr(outputClasses)}" data-output-theme="${escapeAttr(theme)}"${bgStyle}><span class="svc-slide-mini-canvas"></span></span>`;
@@ -15230,16 +15233,67 @@ function buildServicePresenterSlides(serviceId) {
   const worshipSlides = state.worshipPresenterSlides[serviceId] || [];
   if (worshipSlides.length) {
     const slides = worshipSlides.slice().sort((a, b) => a.sort - b.sort);
-    if (slides[0] && isPresenterPreparationSlide(slides[0])) return slides;
-    return [presenterReadySlide(service), ...slides];
+    const serviceSlides = slides[0] && isPresenterPreparationSlide(slides[0])
+      ? slides
+      : [presenterReadySlide(service), ...slides];
+    return withPresenterElementTrailingBlanks(serviceSlides);
   }
 
-  const slides = getServiceOutputItems(serviceId)
+  let slides = getServiceOutputItems(serviceId)
     .sort((a, b) => a.sort_order - b.sort_order)
     .flatMap((item, index) => buildPresenterSlidesForServiceItem(item, service, index))
     .filter(Boolean);
-  if (slides[0] && isPresenterPreparationSlide(slides[0])) return slides;
-  return [presenterReadySlide(service), ...slides];
+  if (!slides[0] || !isPresenterPreparationSlide(slides[0])) slides = [presenterReadySlide(service), ...slides];
+  return withPresenterElementTrailingBlanks(slides);
+}
+
+function withPresenterElementTrailingBlanks(slides = []) {
+  const prepared = [];
+  slides.filter(Boolean).forEach((slide, index, list) => {
+    prepared.push(slide);
+    if (!shouldAppendPresenterElementTrailingBlank(slide, list[index + 1])) return;
+    prepared.push(presenterElementTrailingBlankSlide(slide, prepared.length));
+  });
+  return prepared;
+}
+
+function shouldAppendPresenterElementTrailingBlank(slide, nextSlide) {
+  if (!slide || slide.autoTrailingBlank) return false;
+  if (presenterSlideLayout(slide) === PRESENTER_SLIDE_LAYOUTS.BLANK) return false;
+  const currentKey = presenterSlideElementGroupKey(slide);
+  const nextKey = presenterSlideElementGroupKey(nextSlide);
+  return Boolean(currentKey && currentKey !== nextKey);
+}
+
+function presenterSlideElementGroupKey(slide) {
+  if (!slide) return "";
+  return String(slide.elementId || slide.sectionId || slide.id || "").trim();
+}
+
+function presenterElementTrailingBlankSlide(slide, index) {
+  const idBase = slide.id || slide.elementId || slide.sectionId || `slide:${index}`;
+  return {
+    ...slide,
+    id: `${idBase}:after-blank`,
+    elementType: PRESENTER_ELEMENT_TYPES.BLANK,
+    layout: PRESENTER_SLIDE_LAYOUTS.BLANK,
+    type: "blank",
+    title: "빈 화면",
+    marker: "",
+    formKey: "",
+    segment: "",
+    text: "",
+    warnings: [],
+    imageSrc: "",
+    videoSrc: "",
+    media: {},
+    asset: {},
+    sourceType: "",
+    componentType: "",
+    scoreBackground: false,
+    autoTrailingBlank: true,
+    sort: (Number(slide.sort) || index) + 0.009,
+  };
 }
 
 function isPresenterPreparationSlide(slide) {
@@ -16710,13 +16764,17 @@ function renderPresenterOutput(payload) {
     : liveSlide || slides[clampPresenterIndex(payload?.index, slides.length)];
   const backgroundImage = payload?.backgroundImage || "";
   const cleanOutput = payload?.chromakey === false;
+  const blankOutput = presenterSlideLayout(slide) === PRESENTER_SLIDE_LAYOUTS.BLANK;
+  const showBackground = Boolean(backgroundImage && cleanOutput && !blankOutput);
   document.body.classList.toggle("presenter-output-body--clean", cleanOutput);
-  document.body.classList.toggle("has-background", Boolean(backgroundImage && cleanOutput));
+  document.body.classList.toggle("has-background", showBackground);
+  document.body.classList.toggle("is-blank", blankOutput);
   root.classList.toggle("no-chromakey", payload?.chromakey === false);
-  root.classList.toggle("has-background", Boolean(backgroundImage && payload?.chromakey === false));
+  root.classList.toggle("has-background", showBackground);
+  root.classList.toggle("is-blank", blankOutput);
   root.dataset.serviceType = payload?.serviceType || "";
   root.dataset.outputTheme = payload?.outputTheme || presenterOutputTheme(payload?.serviceType);
-  if (backgroundImage && cleanOutput) {
+  if (showBackground) {
     document.body.style.setProperty("--presenter-bg-image", `url("${backgroundImage}")`);
     root.style.setProperty("--presenter-bg-image", `url("${backgroundImage}")`);
   } else {
