@@ -1638,6 +1638,64 @@ def main() -> int:
                     fail("presenter-output-escape-stop", json.dumps(esc_stop_state, ensure_ascii=False))
                 if not output_page.is_closed():
                     output_page.close()
+                page.evaluate(
+                    """
+                    (serviceId) => {
+                      state.module = "service";
+                      state.selectedServiceId = serviceId;
+                      preparePresenterService(serviceId);
+                      state.presenter.outputWindow = null;
+                      state.presenter.outputConnectedAt = 0;
+                      state.presenter.outputClientId = "";
+                      stopPresenterOutputWindowMonitor();
+                      publishPresenterState({ force: true });
+                      renderServiceDetail();
+                      renderPresenterControlState(serviceId);
+                    }
+                    """,
+                    service["id"],
+                )
+                disconnect_page = context.new_page()
+                disconnect_page.set_viewport_size({"width": 1280, "height": 720})
+                disconnect_page.on("pageerror", lambda error: page_errors.append(f"disconnect output: {error}"))
+                disconnect_page.on(
+                    "console",
+                    lambda msg: console_messages.append(f"disconnect output {msg.type}: {msg.text}")
+                    if msg.type in ("error", "warning")
+                    else None,
+                )
+                disconnect_page.goto(presenter_output_url(app_url), wait_until="load")
+                disconnect_page.wait_for_selector("#presenterOutputRoot", timeout=5000)
+                page.wait_for_function(
+                    "() => state.presenter.outputConnectedAt > 0 && isPresenterOutputWindowOpen()",
+                    timeout=5000,
+                )
+                disconnect_page.evaluate("window.dispatchEvent(new PageTransitionEvent('pagehide'))")
+                page.wait_for_function(
+                    "() => state.presenter.outputConnectedAt === 0 && !isPresenterOutputWindowOpen()",
+                    timeout=5000,
+                )
+                disconnect_state = page.evaluate(
+                    """
+                    (() => ({
+                      outputConnectedAt: state.presenter.outputConnectedAt,
+                      outputWindowCleared: state.presenter.outputWindow === null,
+                      monitorCleared: state.presenter.outputWindowMonitor === null,
+                      open: isPresenterOutputWindowOpen(),
+                    }))()
+                    """
+                )
+                if (
+                    disconnect_state["outputConnectedAt"] == 0
+                    and disconnect_state["outputWindowCleared"]
+                    and disconnect_state["monitorCleared"]
+                    and not disconnect_state["open"]
+                ):
+                    pass_("presenter-output-pagehide-disconnect", json.dumps(disconnect_state, ensure_ascii=False))
+                else:
+                    fail("presenter-output-pagehide-disconnect", json.dumps(disconnect_state, ensure_ascii=False))
+                if not disconnect_page.is_closed():
+                    disconnect_page.close()
                 monitor_state = page.evaluate(
                     """
                     () => new Promise((resolve) => {

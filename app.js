@@ -228,6 +228,7 @@ const { STORAGE } = MINDEX_CONSTANTS;
 
 const PRESENTER_CHANNEL = "mindex.presenter";
 const PRESENTER_STORAGE_KEY = "mindex.presenter.state";
+const PRESENTER_SIGNAL_KEY = "mindex.presenter.signal";
 const PRESENTER_JUMP_MAX_DIGITS = 3;
 const PRESENTER_OUTPUT_HEARTBEAT_INTERVAL_MS = 1000;
 const PRESENTER_OUTPUT_HEARTBEAT_TTL_MS = 3000;
@@ -14739,6 +14740,7 @@ function presenterStatePayload(serviceId = state.presenter.serviceId) {
 }
 
 function bindPresenterChannel() {
+  window.addEventListener("storage", handlePresenterStorageSignal);
   if (!("BroadcastChannel" in window)) return;
   state.presenter.channel = new BroadcastChannel(PRESENTER_CHANNEL);
   state.presenter.channel.onmessage = (event) => {
@@ -14750,6 +14752,10 @@ function bindPresenterChannel() {
     }
     if (message.type === "presenter-heartbeat") {
       markPresenterOutputConnected(message.clientId);
+      return;
+    }
+    if (message.type === "presenter-output-disconnect") {
+      markPresenterOutputDisconnected(message.clientId);
       return;
     }
     if (message.type === "presenter-control") {
@@ -14766,6 +14772,16 @@ function bindPresenterChannel() {
   };
 }
 
+function handlePresenterStorageSignal(event) {
+  if (event.key !== PRESENTER_SIGNAL_KEY || !event.newValue) return;
+  try {
+    const message = JSON.parse(event.newValue);
+    if (message.type === "presenter-output-disconnect") markPresenterOutputDisconnected(message.clientId);
+  } catch {
+    // Ignore malformed cross-window presenter signals.
+  }
+}
+
 function markPresenterOutputConnected(clientId = "") {
   const wasConnected = state.presenter.outputConnectedAt
     && Date.now() - state.presenter.outputConnectedAt <= PRESENTER_OUTPUT_HEARTBEAT_TTL_MS;
@@ -14773,6 +14789,16 @@ function markPresenterOutputConnected(clientId = "") {
   if (clientId) state.presenter.outputClientId = clientId;
   if (!state.presenter.outputWindowMonitor) startPresenterOutputWindowMonitor(state.presenter.serviceId);
   if (!wasConnected) refreshPresenterOutputConnectionState();
+}
+
+function markPresenterOutputDisconnected(clientId = "") {
+  if (clientId && state.presenter.outputClientId && clientId !== state.presenter.outputClientId) return;
+  state.presenter.outputWindow = null;
+  state.presenter.outputConnectedAt = 0;
+  state.presenter.outputClientId = "";
+  stopPresenterOutputWindowMonitor();
+  refreshPresenterOutputConnectionState();
+  if (state.presenter.serviceId) renderPresenterControlState(state.presenter.serviceId);
 }
 
 function refreshPresenterOutputConnectionState() {
@@ -14983,6 +15009,15 @@ function initPresenterOutput() {
       window.close();
     }, 40);
   };
+  const postDisconnect = () => {
+    const payload = {
+      type: "presenter-output-disconnect",
+      clientId: outputClientId,
+      updatedAt: Date.now(),
+    };
+    channel?.postMessage(payload);
+    safeStorageSet("local", PRESENTER_SIGNAL_KEY, JSON.stringify(payload));
+  };
 
   const renderStoredState = () => {
     try {
@@ -15005,6 +15040,7 @@ function initPresenterOutput() {
     heartbeatTimer = window.setInterval(postHeartbeat, PRESENTER_OUTPUT_HEARTBEAT_INTERVAL_MS);
   }
   window.addEventListener("pagehide", () => {
+    postDisconnect();
     closeOutputChannel();
   });
 
