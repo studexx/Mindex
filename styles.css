@@ -3722,7 +3722,6 @@ body[data-module="service"] .detail-pane {
   gap: 10px;
   align-items: center;
   background: var(--bg);
-  box-shadow: 0 -52px 0 0 var(--bg);
   padding: 2px 0 6px;
 }
 .svc-presenter-main {
