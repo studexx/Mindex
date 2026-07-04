@@ -674,6 +674,10 @@ body[data-module="calendar"] .detail-pane { overflow: hidden; }
   padding-top: var(--s2);
   border-top: 1px solid color-mix(in srgb, var(--line) 56%, transparent);
 }
+.home-sidebar-section--disabled {
+  padding-top: var(--s2);
+  border-top: 1px solid color-mix(in srgb, var(--line) 44%, transparent);
+}
 .home-sidebar-heading {
   display: block;
   padding: 0 var(--sidebar-section-label-x) var(--s1);
@@ -701,6 +705,13 @@ body[data-module="calendar"] .detail-pane { overflow: hidden; }
   text-align: left;
 }
 .home-sidebar-card:hover { background: var(--sidebar-hover-bg); color: var(--sidebar-ink); }
+.home-sidebar-card.disabled,
+.home-sidebar-card.disabled:hover {
+  background: transparent;
+  color: var(--sidebar-label);
+  cursor: default;
+  opacity: .58;
+}
 .home-sidebar-card.active {
   background: var(--sidebar-active-bg);
   color: var(--sidebar-ink);
@@ -716,6 +727,15 @@ body[data-module="calendar"] .detail-pane { overflow: hidden; }
 .home-sidebar-card svg { width: 13px; height: 13px; stroke-width: 1.65; }
 .home-sidebar-card span { min-width: 0; overflow: hidden; color: var(--sidebar-ink); font-size: 13px; font-weight: 500; line-height: 18px; text-overflow: ellipsis; white-space: nowrap; }
 .home-sidebar-card small { display: none; }
+.home-sidebar-card.disabled span { color: currentColor; }
+.home-sidebar-card.disabled small {
+  display: block;
+  grid-column: 2;
+  color: currentColor;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 13px;
+}
 .home-screen {
   display: grid;
   width: 100%;
@@ -5047,7 +5067,7 @@ body[data-module="service"] .detail-pane {
   font-size: clamp(32px, 3.05cqw, 58px);
   font-weight: 600;
   line-height: 1.18;
-  padding: 2.1cqh 5.8cqw 2.4cqh;
+  padding: 2.25cqh 5.8cqw;
   -webkit-text-stroke: 0;
   overflow-wrap: normal;
   text-shadow: none;

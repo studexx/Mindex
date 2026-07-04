@@ -588,11 +588,23 @@ def main() -> int:
                           formPreset: { forms: ['V1', 'C', 'B'], hint: 'V1-C-B', strength: 'manual' }
                         })
                       };
+                      const scoreItem = {
+                        id: '__smoke_score_item__',
+                        label: '찬송',
+                        raw_title: '특송 테스트',
+                        song_id: hymnSong.id,
+                        version_id: '__smoke_hymn_version__',
+                        memo: serializeServiceItemMemo({
+                          elementType: 'praise',
+                          outputMode: 'score'
+                        })
+                      };
                       const hymnAllSlides = buildPresenterSlidesForServiceItem(hymnItem, service, 0);
                       const hymnSlides = hymnAllSlides.filter((slide) => slide.type === 'lyrics');
                       const hymnBlankSlides = hymnAllSlides.filter((slide) => slide.type === 'blank');
                       const ccmSlides = buildPresenterSlidesForServiceItem(ccmItem, service, 1).filter((slide) => slide.type === 'lyrics');
                       const missingSlides = buildPresenterSlidesForServiceItem(missingItem, service, 2);
+                      const scoreSlides = buildPresenterSlidesForServiceItem(scoreItem, service, 3);
                       const warningHtml = renderPresenterBoardSubgroup({
                         id: '__smoke_warning_group__',
                         label: '찬양',
@@ -613,6 +625,15 @@ def main() -> int:
                         ccmMarkers: ccmSlides.map((slide) => slide.marker),
                         ccmTexts: ccmSlides.map((slide) => slide.text),
                         ccmFormKeys: ccmSlides.map((slide) => slide.formKey),
+                        scoreSlides: scoreSlides.map((slide) => ({
+                          type: slide.type,
+                          layout: slide.layout,
+                          elementType: slide.elementType,
+                          sourceType: slide.sourceType,
+                          componentType: slide.componentType,
+                          marker: slide.marker,
+                          title: slide.title
+                        })),
                         missingWarnings: [...new Set(missingSlides.flatMap((slide) => slide.warnings || []))],
                         missingPreviewText: missingSlides.map((slide) => renderPresenterSlideMiniPreview(slide, service.id)).join(' '),
                         warningChipText: warningNode.querySelector('.svc-presenter-warning')?.textContent.trim() || ''
@@ -631,6 +652,15 @@ def main() -> int:
                     and form_preset_state["ccmMarkers"] == ["Verse 1", "Chorus", "Chorus"]
                     and form_preset_state["ccmTexts"] == ["V1 첫 줄\nV1 둘째 줄", "C 첫 줄\nC 둘째 줄", "C 첫 줄\nC 둘째 줄"]
                     and len(set(form_preset_state["ccmFormKeys"])) == 3
+                    and form_preset_state["scoreSlides"] == [{
+                        "type": "file",
+                        "layout": "file",
+                        "elementType": "file",
+                        "sourceType": "score",
+                        "componentType": "score",
+                        "marker": "악보",
+                        "title": "특송 테스트",
+                    }]
                     and form_preset_state["missingWarnings"] == ["Bridge 없음"]
                     and "Bridge 없음" not in form_preset_state["missingPreviewText"]
                     and form_preset_state["warningChipText"] == "Bridge 없음"
@@ -1771,6 +1801,77 @@ def main() -> int:
                     pass_("presenter-keyboard-active-service", json.dumps(active_keyboard_state, ensure_ascii=False))
                 else:
                     fail("presenter-keyboard-active-service", json.dumps(active_keyboard_state, ensure_ascii=False))
+
+                fullscreen_ready_state = page.evaluate(
+                    """
+                    () => {
+                      const service = {
+                        id: '__smoke_fullscreen_ready_image_service__',
+                        type_id: 'friday',
+                        date: '2026-07-03',
+                        title: 'Fullscreen Ready Image',
+                        leader: '테스트',
+                        tags: [],
+                      };
+                      if (!state.serviceTypes.some((item) => item.id === service.type_id)) {
+                        state.serviceTypes.push({ id: service.type_id, name: '금요기도회', sort_order: 2 });
+                      }
+                      state.services = [
+                        service,
+                        ...state.services.filter((item) => item.id !== service.id),
+                      ];
+                      state.serviceItems[service.id] = normalizeServiceItems([
+                        {
+                          id: '__smoke_fullscreen_ready_image_item__',
+                          service_id: service.id,
+                          sort_order: 1,
+                          label: '준비',
+                          raw_title: '준비',
+                          memo: JSON.stringify({
+                            elementType: 'image',
+                            asset: {
+                              kind: 'image',
+                              name: '첫 슬라이드',
+                              url: 'assets/worship-backgrounds/26-A1.jpg',
+                            },
+                          }),
+                        },
+                        {
+                          id: '__smoke_fullscreen_ready_image_song__',
+                          service_id: service.id,
+                          sort_order: 2,
+                          label: '찬양',
+                          raw_title: '금요기도회 찬양',
+                          memo: JSON.stringify({
+                            slides: ['[Verse 1]\\n보이지 않아도\\n주님만 의지해'],
+                          }),
+                        },
+                      ]);
+                      preparePresenterService(service.id);
+                      const first = state.presenter.slides[0] || {};
+                      return {
+                        chromakey: presenterServiceUsesChromakey(service),
+                        slideCount: state.presenter.slides.length,
+                        type: first.type || '',
+                        elementType: first.elementType || '',
+                        layout: first.layout || '',
+                        imageSrc: first.imageSrc || '',
+                        title: first.title || '',
+                      };
+                    }
+                    """
+                )
+                if (
+                    fullscreen_ready_state["chromakey"] is False
+                    and fullscreen_ready_state["slideCount"] >= 2
+                    and fullscreen_ready_state["type"] == "image"
+                    and fullscreen_ready_state["elementType"] == "image"
+                    and fullscreen_ready_state["layout"] == "media"
+                    and fullscreen_ready_state["imageSrc"].endswith("assets/worship-backgrounds/26-A1.jpg")
+                ):
+                    pass_("presenter-fullscreen-ready-image", json.dumps(fullscreen_ready_state, ensure_ascii=False))
+                else:
+                    fail("presenter-fullscreen-ready-image", json.dumps(fullscreen_ready_state, ensure_ascii=False))
 
                 no_chromakey_payload = page.evaluate(
                     """

@@ -733,13 +733,32 @@ def main() -> int:
                     [...document.querySelectorAll('.home-sidebar-card span')].map((node) => node.textContent.trim())
                     """
                 )
+                home_activity_state = page.evaluate(
+                    """
+                    (() => {
+                      const activity = document.querySelector('.home-sidebar-card.activities');
+                      return {
+                        disabled: Boolean(activity?.disabled),
+                        ariaDisabled: activity?.getAttribute('aria-disabled') || '',
+                        hasModuleTarget: Boolean(activity?.dataset.homeModule),
+                        separated: Boolean(activity?.closest('.home-sidebar-section--disabled'))
+                      };
+                    })()
+                    """
+                )
                 expected_home_order = ["Worship", "Scripture", "Praise", "Calendar", "References", "Order Sheets", "Activities"]
-                if home_order == expected_home_order:
-                    pass_("home-sidebar-hierarchy", json.dumps(home_order, ensure_ascii=False))
+                if (
+                    home_order == expected_home_order
+                    and home_activity_state["disabled"]
+                    and home_activity_state["ariaDisabled"] == "true"
+                    and not home_activity_state["hasModuleTarget"]
+                    and home_activity_state["separated"]
+                ):
+                    pass_("home-sidebar-hierarchy", json.dumps({"order": home_order, "activity": home_activity_state}, ensure_ascii=False))
                 else:
-                    fail("home-sidebar-hierarchy", json.dumps(home_order, ensure_ascii=False))
+                    fail("home-sidebar-hierarchy", json.dumps({"order": home_order, "activity": home_activity_state}, ensure_ascii=False))
 
-                spacing_modules = ["home", "service", "scripture", "praise", "activities", "calendar", "references", "order-sheets"]
+                spacing_modules = ["home", "service", "scripture", "praise", "calendar", "references", "order-sheets"]
                 module_spacing = []
                 for module_id in spacing_modules:
                     page.evaluate("(moduleId) => switchModule(moduleId)", module_id)
@@ -865,6 +884,7 @@ def main() -> int:
                         .filter((text) => text.includes('부')),
                       hasYearEndRow: document.body.textContent.includes('송구영신예배'),
                       hasFootnote: document.querySelector('.cal-footnote')?.textContent.includes('부활절 기간 동안 사도행전을 읽는 것으로') || false,
+                      footnoteHasBreak: Boolean(document.querySelector('.cal-footnote br')),
                       overflow: Math.max(document.documentElement.scrollWidth - window.innerWidth, document.body.scrollWidth - window.innerWidth)
                     }))()
                     """
@@ -883,6 +903,7 @@ def main() -> int:
                     and calendar_state["departmentHeaders"] == expected_department_headers
                     and calendar_state["hasYearEndRow"]
                     and calendar_state["hasFootnote"]
+                    and not calendar_state["footnoteHasBreak"]
                     and calendar_state["overflow"] <= 2
                 ):
                     pass_("calendar-utility-shell", json.dumps(calendar_state, ensure_ascii=False))
@@ -1235,7 +1256,8 @@ def main() -> int:
                                   .map((element) => ({
                                     type: element.element_type || '',
                                     label: element.source_ref?.label || '',
-                                    order: element.config?.orderSheet?.order || ''
+                                    order: element.config?.orderSheet?.order || '',
+                                    outputMode: element.config?.outputMode || ''
                                   }))
                               }));
                               return {
@@ -1253,13 +1275,28 @@ def main() -> int:
                                     label: element.source_ref?.label || '',
                                     title: element.title || '',
                                     orderSheetHidden: element.config?.orderSheet?.hidden === true
-                                  }))
+                                  })),
+                                scoreSlots: sections.flatMap((section) =>
+                                  section.elements
+                                    .filter((element) => element.outputMode === 'score')
+                                    .map((element) => `${section.key}:${element.label}`)
+                                )
                               };
                             };
                             return {
                               first: summarize('sunday-first'),
+                              second: summarize('sunday-second'),
                               third: summarize('sunday-main'),
                               afternoon: summarize('sunday-afternoon')
+                            };
+                          })(),
+                          scoreModeMemo: (() => {
+                            const memo = serializeServiceItemMemo({ elementType: 'praise', outputMode: 'score' });
+                            const parsed = parseServiceItemMemo(memo);
+                            return {
+                              memo,
+                              outputMode: parsed.outputMode || '',
+                              serializedKeepsMode: memo.includes('"outputMode":"score"')
                             };
                           })(),
                           formPresetUi: (() => {
@@ -1480,12 +1517,23 @@ def main() -> int:
                         and template_terms["sundayPublicScaffold"]["first"]["titles"][:4] == ["준비", "신앙고백", "찬양", "참회기도"]
                         and "환영" not in template_terms["sundayPublicScaffold"]["first"]["titles"]
                         and template_terms["sundayPublicScaffold"]["first"]["creedElements"] == [
-                            {"type": "body", "label": "사도신경", "order": "신앙고백"}
+                            {"type": "body", "label": "사도신경", "order": "신앙고백", "outputMode": ""}
                         ]
                         and template_terms["sundayPublicScaffold"]["first"]["offeringElements"] == [
-                            {"type": "praise", "label": "봉헌찬양", "order": "봉헌"},
-                            {"type": "title_person", "label": "봉헌기도", "order": "봉헌기도"},
+                            {"type": "praise", "label": "봉헌찬양", "order": "봉헌", "outputMode": "score"},
+                            {"type": "title_person", "label": "봉헌기도", "order": "봉헌기도", "outputMode": ""},
                         ]
+                        and set(template_terms["sundayPublicScaffold"]["first"]["scoreSlots"]) == {
+                            "praise:찬양",
+                            "special_song:특송",
+                            "offering:봉헌찬양",
+                            "doxology:송영",
+                        }
+                        and set(template_terms["sundayPublicScaffold"]["second"]["scoreSlots"]) == {
+                            "praise:찬양",
+                            "offering:봉헌찬양",
+                            "doxology:송영",
+                        }
                         and "사죄의선언" not in template_terms["sundayPublicScaffold"]["third"]["titles"]
                         and "공동체고백" in template_terms["sundayPublicScaffold"]["third"]["titles"]
                         and "아멘송" not in template_terms["sundayPublicScaffold"]["third"]["titles"]
@@ -1498,8 +1546,21 @@ def main() -> int:
                         }]
                         and template_terms["sundayPublicScaffold"]["third"]["keys"].count("praise") == 1
                         and "hymn_praise" in template_terms["sundayPublicScaffold"]["third"]["keys"]
-                        and template_terms["sundayPublicScaffold"]["afternoon"]["titles"][:4] == ["준비", "찬양", "묵도", "찬양"]
+                        and set(template_terms["sundayPublicScaffold"]["third"]["scoreSlots"]) == {
+                            "hymn_praise:찬송",
+                            "offering:봉헌찬송",
+                        }
+                        and template_terms["sundayPublicScaffold"]["afternoon"]["titles"][:4] == ["준비", "찬양", "묵도", "찬송"]
                         and "hymn_praise" in template_terms["sundayPublicScaffold"]["afternoon"]["keys"]
+                        and set(template_terms["sundayPublicScaffold"]["afternoon"]["scoreSlots"]) == {
+                            "hymn_praise:찬송",
+                            "doxology:송영",
+                        }
+                        and template_terms["scoreModeMemo"] == {
+                            "memo": '{"note":"","elementType":"praise","outputMode":"score"}',
+                            "outputMode": "score",
+                            "serializedKeepsMode": True,
+                        }
                         and template_terms["formPresetUi"] == {
                             "formHint": "V2-C",
                             "forms": ["V2", "C"],

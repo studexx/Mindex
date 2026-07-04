@@ -91,6 +91,18 @@ Normalize bulletin labels before matching:
 - `말씀선포` and `말씀` -> `설교`
 - `결단의기도` -> `결단기도`
 
+## Hymn Score Output Policy
+
+Keep the element type as `praise` so the item can still link to Mindex Praise.
+Use `outputMode: score` when a praise element should render as sheet music
+instead of lyrics.
+
+- Sunday 1st service: every praise/song slot uses score output.
+- Sunday 2nd service: every praise/song slot except `특송` uses score output.
+- Sunday 3rd service: only `찬송` and `봉헌찬송` use score output.
+- Sunday afternoon service: generally only `찬송` and `송영` use score output.
+  Dedication services may override this per service instance.
+
 ## Sunday Afternoon Service
 
 This covers regular Sunday afternoon worship and named dedication services such

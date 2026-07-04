@@ -336,7 +336,8 @@ const TITLE_COLLATOR = new Intl.Collator("ko-KR", {
 });
 
 const HANGUL_INITIALS = ["ㄱ", "ㄲ", "ㄴ", "ㄷ", "ㄸ", "ㄹ", "ㅁ", "ㅂ", "ㅃ", "ㅅ", "ㅆ", "ㅇ", "ㅈ", "ㅉ", "ㅊ", "ㅋ", "ㅌ", "ㅍ", "ㅎ"];
-const CONTENT_MODULES = ["service", "scripture", "praise", "activities", "calendar", "references", "order-sheets"];
+const ACTIVITY_MODULE_ENABLED = false;
+const CONTENT_MODULES = ["service", "scripture", "praise", "calendar", "references", "order-sheets"];
 const ROUTE_MODULES = ["home", ...CONTENT_MODULES];
 const SERVICE_FILTERS = ["all", "public", "ministry", "special"];
 const SERVICE_ELEMENT_LABELS = {
@@ -699,7 +700,7 @@ function loadInitialData() {
   loadBibleTranslations({ silent: true });
   loadServiceData({ silent: true });
   loadReferenceLinks({ silent: true });
-  if (state.module === "activities") loadActivities({ silent: true });
+  if (ACTIVITY_MODULE_ENABLED && state.module === "activities") loadActivities({ silent: true });
   if (state.module === "calendar") loadCalendarData({ silent: true });
 }
 
@@ -2388,6 +2389,7 @@ function groupWorshipElements(sections = [], elements = []) {
       song_version_id: element.song_version_id || null,
       memo: serializeServiceItemMemo({
         elementType: element.element_type,
+        outputMode: config.outputMode || config.output_mode || config.renderMode || config.render_mode,
         formHint,
         formPreset,
         formPresetRules,
@@ -2839,7 +2841,7 @@ function renderCalendarView() {
           <tbody>${tbodyHtml}</tbody>
         </table>
       </div>
-      <p class="cal-footnote">${CALENDAR_LECTIONARY_FOOTNOTE.map((line) => escapeHtml(line)).join("<br />")}</p>
+      <p class="cal-footnote">${escapeHtml(CALENDAR_LECTIONARY_FOOTNOTE.join(" "))}</p>
     </div>`;
   scrollCalendarToTargetMonth();
 }
@@ -5139,6 +5141,7 @@ function updateServiceItemField(field) {
     item.raw_title = normalizeServiceItemRawTitle(item.label, item.raw_title);
     applyServiceSongSelection(item);
   }
+  applyServicePreparationDefaults(item, state.selectedServiceId);
   state.serviceItems[state.selectedServiceId] = normalizeServiceItemsInCurrentOrder(items);
   state.dirty.service = true;
   refreshServiceOrderSheetPreview();
@@ -5230,6 +5233,21 @@ function normalizeServiceAsset(value) {
     name: String(value.name || value.title || "").trim(),
     url: String(value.url || value.path || value.href || "").trim(),
   };
+}
+
+function applyServicePreparationDefaults(item, serviceId = state.selectedServiceId) {
+  const parsed = parseServiceItemMemo(item?.memo);
+  if (!isServicePreparationItem(item, parsed)) return item;
+  const elementType = servicePreparationElementTypeForServiceId(serviceId);
+  const asset = normalizeServiceAsset(parsed.asset);
+  asset.kind = elementType;
+  item.label = "준비";
+  item.raw_title = "준비";
+  parsed.elementType = elementType;
+  parsed.componentType = elementType;
+  parsed.asset = asset;
+  item.memo = serializeServiceItemMemo(parsed);
+  return item;
 }
 
 function isLegacyImportArtifactName(value) {
@@ -5400,6 +5418,7 @@ function emptyServiceItemMemo(rawNote = "") {
     templateVariant: "",
     elementType: "",
     componentType: "",
+    outputMode: "",
     asset: { kind: "", name: "", url: "" },
     orderSheet: null,
   };
@@ -5439,6 +5458,7 @@ function parseServiceItemMemo(value) {
         templateVariant: String(parsed.templateVariant || parsed.template_variant || "").trim(),
         elementType,
         componentType: elementType,
+        outputMode: normalizeServiceOutputMode(parsed.outputMode || parsed.output_mode || parsed.renderMode || parsed.render_mode),
         asset,
         orderSheet,
       };
@@ -5471,6 +5491,7 @@ function serializeServiceItemMemo(value = {}) {
   const templateKey = String(value.templateKey || value.template_key || "").trim();
   const templateVariant = String(value.templateVariant || value.template_variant || "").trim();
   const elementType = serviceMemoElementType(value);
+  const outputMode = normalizeServiceOutputMode(value.outputMode || value.output_mode || value.renderMode || value.render_mode);
   const asset = normalizeServiceAsset(value.asset);
   const defaultAssetKind = serviceAssetKindForElementType(elementType);
   if (!asset.kind && defaultAssetKind && hasServiceAsset(asset)) asset.kind = defaultAssetKind;
@@ -5478,7 +5499,7 @@ function serializeServiceItemMemo(value = {}) {
     normalizeServiceOrderSheetPayload(value.orderSheet),
     normalizeServiceOrderSheetPayload(value.order_sheet),
   );
-  if (!slides.length && !formHint && !formPreset && !formPresetRules.length && !templateKey && !templateVariant && !elementType && !hasServiceAsset(asset) && !hasServiceOrderSheetPayload(orderSheet)) return note;
+  if (!slides.length && !formHint && !formPreset && !formPresetRules.length && !templateKey && !templateVariant && !elementType && !outputMode && !hasServiceAsset(asset) && !hasServiceOrderSheetPayload(orderSheet)) return note;
   const payload = { note };
   if (formHint) payload.formHint = formHint;
   if (formPreset) payload.formPreset = formPreset;
@@ -5486,10 +5507,25 @@ function serializeServiceItemMemo(value = {}) {
   if (templateKey) payload.templateKey = templateKey;
   if (templateVariant) payload.templateVariant = templateVariant;
   if (elementType) payload.elementType = elementType;
+  if (outputMode) payload.outputMode = outputMode;
   if (hasServiceAsset(asset)) payload.asset = asset;
   if (hasServiceOrderSheetPayload(orderSheet)) payload.orderSheet = orderSheet;
   if (slides.length) payload.slides = slides;
   return JSON.stringify(payload);
+}
+
+function normalizeServiceOutputMode(value) {
+  const mode = String(value || "").trim().toLowerCase().replace(/[-\s]+/g, "_");
+  const aliases = {
+    score: "score",
+    music_score: "score",
+    sheet_music: "score",
+    "악보": "score",
+    lyrics: "lyrics",
+    lyric: "lyrics",
+    "가사": "lyrics",
+  };
+  return aliases[mode] || "";
 }
 
 function applyServiceSongSelection(item) {
@@ -5793,6 +5829,7 @@ function buildWorshipServiceScaffold(serviceId, typeId) {
     elementSteps.forEach((elementStep, elementIndex) => {
       const elementLabel = String(elementStep.label || elementStep.name || label).trim() || label;
       const hiddenElementOrderSheet = isOrderSheetHiddenServiceTemplateLabel(elementLabel);
+      const elementType = ready ? servicePreparationElementTypeForType(typeId) : worshipTemplateElementType(elementStep, elementLabel);
       const orderSheet = ready || hiddenElementOrderSheet
         ? { hidden: true }
         : normalizeServiceOrderSheetPayload(elementStep.orderSheet || elementStep.order_sheet) || { order: elementLabel };
@@ -5804,13 +5841,14 @@ function buildWorshipServiceScaffold(serviceId, typeId) {
       );
       const formPresetRules = normalizeServiceFormPresetRules(elementStep.formPresetRules || elementStep.form_preset_rules);
       const formHint = String(elementStep.formHint || elementStep.form_hint || formPreset?.hint || "").trim();
+      const outputMode = normalizeServiceOutputMode(elementStep.outputMode || elementStep.output_mode || elementStep.renderMode || elementStep.render_mode);
       const asset = worshipTemplateElementAsset(elementStep, elementLabel);
       elements.push({
         id: createUuid(),
         section_id: sectionId,
         sort_order: elementIndex + 1,
-        element_type: worshipTemplateElementType(elementStep, elementLabel),
-        title: ready ? "예배 준비" : String(elementStep.default_text || elementStep.title || "").trim(),
+        element_type: elementType,
+        title: ready ? "준비" : String(elementStep.default_text || elementStep.title || "").trim(),
         person: "",
         body: "",
         scripture_reference: "",
@@ -5822,7 +5860,8 @@ function buildWorshipServiceScaffold(serviceId, typeId) {
           ...(formPreset ? { formPreset } : {}),
           ...(formPresetRules.length ? { formPresetRules } : {}),
           ...(defaultStrength ? { defaultStrength } : {}),
-          ...(asset.url ? { asset } : {}),
+          ...(outputMode ? { outputMode } : {}),
+          ...(asset.url ? { asset: { ...asset, kind: asset.kind || elementType } } : {}),
           ...(ready ? { presenterRole: "ready" } : hiddenElementOrderSheet ? {} : { orderSheetPlaceholder: true }),
         },
       });
@@ -6243,7 +6282,17 @@ const SERVICE_TYPE_LEGACY_NAMES = {
   special: "특별예배",
 };
 
-const CHROMAKEY_SERVICE_TYPES = new Set(["sunday-second", "sunday-main", "sunday-afternoon", "wednesday", "monthly"]);
+const CHROMAKEY_SERVICE_TYPES = new Set([
+  "sunday-second",
+  "sunday-main",
+  "sunday-afternoon",
+  "wednesday",
+  "monthly",
+  "sun_2nd",
+  "sun_3rd",
+  "sun_pm",
+  "wed",
+]);
 const WORSHIP_BACKGROUND_BASE = "assets/worship-backgrounds";
 const WORSHIP_BACKGROUND_GROUPS = {
   children: "C",
@@ -6257,8 +6306,26 @@ const WORSHIP_SEASON_BACKGROUNDS = {
 };
 
 function presenterServiceUsesChromakey(service) {
-  const typeId = String(service?.type_id || "");
-  return CHROMAKEY_SERVICE_TYPES.has(typeId);
+  return serviceTypeUsesChromakey(service?.type_id);
+}
+
+function serviceTypeUsesChromakey(typeId) {
+  const rawId = String(typeId || "");
+  const appId = worshipAppServiceTypeId(rawId);
+  const type = serviceTypeById(appId) || state.serviceTypes.find((candidate) => candidate._worshipId === rawId) || null;
+  if (type?._worship) {
+    return Boolean(type._worshipChromakey || type._worshipOutputContext === "chromakey");
+  }
+  return CHROMAKEY_SERVICE_TYPES.has(appId) || CHROMAKEY_SERVICE_TYPES.has(rawId);
+}
+
+function servicePreparationElementTypeForType(typeId) {
+  return serviceTypeUsesChromakey(typeId) ? "video" : "image";
+}
+
+function servicePreparationElementTypeForServiceId(serviceId) {
+  const service = state.services.find((svc) => svc.id === serviceId);
+  return servicePreparationElementTypeForType(service?.type_id || state.selectedServiceTypeId);
 }
 
 function presenterOutputTheme(typeId) {
@@ -6481,11 +6548,11 @@ function isGlobalSearchActive() {
 
 function renderGlobalSearchList() {
   const results = getGlobalSearchResults();
-  const total = results.praise.length + results.scripture.length + results.service.length + results.activities.length;
+  const total = results.praise.length + results.scripture.length + results.service.length;
   refs.songCount.textContent = `${total} ${total === 1 ? "result" : "results"}`;
 
   if (!total) {
-    refs.songList.innerHTML = renderListEmptyState("No results", "Search songs, scripture, services, or activities.");
+    refs.songList.innerHTML = renderListEmptyState("No results", "Search songs, scripture, or worship.");
     return;
   }
 
@@ -6504,13 +6571,13 @@ function getGlobalSearchSectionOrder() {
     { id: "praise", label: "Praise", items: (results) => results.praise.map(renderGlobalPraiseResult) },
     { id: "scripture", label: "Scripture", items: (results) => results.scripture.map(renderGlobalScriptureResult) },
     { id: "service", label: "Service", items: (results) => results.service.map(renderGlobalServiceResult) },
-    { id: "activities", label: "Activities", items: (results) => results.activities.map(renderGlobalActivityResult) },
+    ...(ACTIVITY_MODULE_ENABLED ? [{ id: "activities", label: "Activities", items: (results) => results.activities.map(renderGlobalActivityResult) }] : []),
   ];
   const modulePriority = {
     praise: "praise",
     scripture: "scripture",
     service: "service",
-    activities: "activities",
+    ...(ACTIVITY_MODULE_ENABLED ? { activities: "activities" } : {}),
   }[state.module];
   if (!modulePriority) return sections;
   return [
@@ -6536,7 +6603,7 @@ function getGlobalSearchResults() {
     praise: getGlobalPraiseResults(tokens),
     scripture: getGlobalScriptureResults(query, tokens),
     service: getGlobalServiceResults(query),
-    activities: getGlobalActivityResults(query),
+    activities: ACTIVITY_MODULE_ENABLED ? getGlobalActivityResults(query) : [],
   };
 }
 
@@ -6668,6 +6735,7 @@ function renderGlobalActivityResult(event) {
 }
 
 async function openGlobalActivityResult(eventId) {
+  if (!ACTIVITY_MODULE_ENABLED) return;
   if (!eventId) return;
   if (state.module !== "activities") {
     await switchModule("activities", { clearSearch: false, syncHistory: false });
@@ -6756,7 +6824,11 @@ function renderHomeList() {
     .filter(Boolean);
   const utilityModules = ["calendar", "references", "order-sheets", "activities"]
     .map((id) => modules.find((module) => module.id === id))
+    .filter((module) => module && (ACTIVITY_MODULE_ENABLED || module.id !== "activities"))
     .filter(Boolean);
+  const disabledModules = ["activities"]
+    .map((id) => modules.find((module) => module.id === id))
+    .filter((module) => module && !ACTIVITY_MODULE_ENABLED);
   refs.songCount.textContent = "";
   refs.songList.innerHTML = `
     <div class="home-sidebar">
@@ -6769,18 +6841,23 @@ function renderHomeList() {
       <section class="home-sidebar-section home-sidebar-section--utility">
         ${utilityModules.map(renderHomeSidebarCard).join("")}
       </section>
+      ${disabledModules.length ? `<section class="home-sidebar-section home-sidebar-section--disabled">
+        <span class="home-sidebar-heading">Disabled</span>
+        ${disabledModules.map((module) => renderHomeSidebarCard(module, { disabled: true })).join("")}
+      </section>` : ""}
     </div>
   `;
   finishListRender();
 }
 
-function renderHomeSidebarCard(module) {
+function renderHomeSidebarCard(module, options = {}) {
   const active = module.id === state.module ? " active" : "";
+  const disabled = options.disabled ? " disabled" : "";
   return `
-    <button class="home-sidebar-card ${escapeAttr(module.id)}${active}" type="button" data-home-module="${escapeAttr(module.id)}">
+    <button class="home-sidebar-card ${escapeAttr(module.id)}${active}${disabled}" type="button"${options.disabled ? " disabled aria-disabled=\"true\"" : ` data-home-module="${escapeAttr(module.id)}"`}>
       <i data-lucide="${escapeAttr(module.icon)}"></i>
       <span>${escapeHtml(module.title)}</span>
-      <small>${escapeHtml(module.sidebarMeta)}</small>
+      <small>${escapeHtml(options.disabled ? "Disabled" : module.sidebarMeta)}</small>
     </button>
   `;
 }
@@ -6798,6 +6875,7 @@ function renderHomeDetail() {
     .filter(Boolean);
   const utilityModules = ["calendar", "references", "order-sheets", "activities"]
     .map((id) => modules.find((module) => module.id === id))
+    .filter((module) => module && (ACTIVITY_MODULE_ENABLED || module.id !== "activities"))
     .filter(Boolean);
   const verse = homeVerse();
   refs.detailPane.innerHTML = `
@@ -6828,7 +6906,7 @@ function renderHomeDetail() {
 
 function renderHomeSearchDetail() {
   const results = getGlobalSearchResults();
-  const total = results.praise.length + results.scripture.length + results.service.length + results.activities.length;
+  const total = results.praise.length + results.scripture.length + results.service.length;
   refs.detailPane.innerHTML = `
     <div class="home-search-screen">
       <header class="home-search-head">
@@ -6844,7 +6922,7 @@ function renderHomeSearchDetail() {
         <div class="empty-detail">
           <div class="empty-detail-inner">
             <h2>No results</h2>
-            <p>Search praise, scripture, worship, or activities.</p>
+            <p>Search praise, scripture, or worship.</p>
           </div>
         </div>
       `}
@@ -10880,7 +10958,13 @@ function publicWorshipImageClosingStep() {
   };
 }
 
-function publicWorshipOfferingStep() {
+function scoreOutputMode(enabled = true) {
+  return enabled ? { outputMode: "score" } : {};
+}
+
+function publicWorshipOfferingStep(options = {}) {
+  const score = Boolean(options.score);
+  const praiseLabel = options.praiseLabel || "봉헌찬양";
   return {
     label: "봉헌",
     name: "봉헌",
@@ -10889,13 +10973,13 @@ function publicWorshipOfferingStep() {
     flex: false,
     sectionKey: "offering",
     elements: [
-      { label: "봉헌찬양", name: "봉헌찬양", elementType: "praise", orderSheet: { order: "봉헌", group: "praise" } },
+      { label: praiseLabel, name: praiseLabel, elementType: "praise", orderSheet: { order: "봉헌", group: "praise" }, ...scoreOutputMode(score) },
       { label: "봉헌기도", name: "봉헌기도", elementType: "title_person", orderSheet: { order: "봉헌기도" } },
     ],
   };
 }
 
-function publicWorshipSpecialSongStep() {
+function publicWorshipSpecialSongStep(options = {}) {
   return {
     label: "특송",
     name: "특송",
@@ -10903,28 +10987,31 @@ function publicWorshipSpecialSongStep() {
     required: false,
     flex: true,
     sectionKey: "special_song",
-    elementType: "title_person",
+    elementType: "praise",
+    ...scoreOutputMode(Boolean(options.score)),
   };
 }
 
-function publicSundayFirstSecondTemplate() {
+function publicSundayFirstSecondTemplate(options = {}) {
+  const score = Boolean(options.score);
+  const specialScore = options.specialScore !== undefined ? Boolean(options.specialScore) : score;
   return [
     { label: "신앙고백", name: "신앙고백", phase: "Gathering", required: true, flex: false, sectionKey: "creed", elements: [
       { label: "사도신경", name: "사도신경", elementType: "body", orderSheet: { order: "신앙고백" } },
     ] },
-    { label: "찬양", name: "찬양", phase: "Gathering", required: false, flex: true, repeatable: true, sectionKey: "praise", elementType: "praise", orderSheet: { order: "찬양", group: "praise" } },
+    { label: "찬양", name: "찬양", phase: "Gathering", required: false, flex: true, repeatable: true, sectionKey: "praise", elementType: "praise", orderSheet: { order: "찬양", group: "praise" }, ...scoreOutputMode(score) },
     { label: "참회기도", name: "참회기도", phase: "Gathering", required: false, flex: true, sectionKey: "confession", elementType: "body" },
     { label: "대표기도", name: "대표기도", phase: "Gathering", required: true, flex: false, sectionKey: "prayer", elementType: "title_person", orderSheet: { order: "대표기도" } },
     { label: "성경봉독", name: "성경봉독", phase: "Word", required: true, flex: false, sectionKey: "scripture_reading", elementType: "scripture_reading" },
-    publicWorshipSpecialSongStep(),
+    publicWorshipSpecialSongStep({ score: specialScore }),
     { label: "설교", name: "설교", phase: "Word", required: true, flex: false, sectionKey: "sermon", elementType: "title_person" },
     { label: "결단", name: "결단", phase: "Response", required: false, flex: true, sectionKey: "response_song", elements: [
       { label: "결단기도", name: "결단기도", elementType: "title_person", orderSheet: { order: "결단기도" } },
     ] },
-    publicWorshipOfferingStep(),
+    publicWorshipOfferingStep({ score }),
     { label: "교회소식", name: "교회소식", phase: "Sending", required: true, flex: false, sectionKey: "announcements", elementType: "plain_text" },
     { label: "새가족환영", name: "새가족환영", phase: "Sending", required: false, flex: true, sectionKey: "new_family", elementType: "plain_text" },
-    { label: "송영", name: "송영", phase: "Sending", required: true, flex: false, sectionKey: "doxology", elementType: "praise", orderSheet: { order: "송영", group: "praise" } },
+    { label: "송영", name: "송영", phase: "Sending", required: true, flex: false, sectionKey: "doxology", elementType: "praise", orderSheet: { order: "송영", group: "praise" }, ...scoreOutputMode(score) },
     { label: "축도", name: "축도", phase: "Sending", required: true, flex: false, sectionKey: "benediction", elementType: "title_person" },
     publicWorshipImageClosingStep(),
   ];
@@ -10934,7 +11021,7 @@ function publicSundayThirdTemplate() {
   return [
     { label: "찬양", name: "찬양", phase: "Gathering", required: true, flex: true, repeatable: true, sectionKey: "praise", elementType: "praise", orderSheet: { order: "찬양", group: "praise" } },
     { label: "참회기도", name: "참회기도", phase: "Gathering", required: false, flex: true, sectionKey: "confession", elementType: "body" },
-    { label: "찬양", name: "찬양", phase: "Gathering", required: false, flex: true, sectionKey: "hymn_praise", elementType: "praise", orderSheet: { order: "찬양", group: "praise" } },
+    { label: "찬송", name: "찬송", phase: "Gathering", required: false, flex: true, sectionKey: "hymn_praise", elementType: "praise", orderSheet: { order: "찬송", group: "praise" }, ...scoreOutputMode() },
     { label: "대표기도", name: "대표기도", phase: "Gathering", required: true, flex: false, sectionKey: "prayer", elementType: "title_person", orderSheet: { order: "대표기도" } },
     { label: "성경봉독", name: "성경봉독", phase: "Word", required: true, flex: false, sectionKey: "scripture_reading", elementType: "scripture_reading" },
     publicWorshipSpecialSongStep(),
@@ -10945,7 +11032,7 @@ function publicSundayThirdTemplate() {
     { label: "신앙고백", name: "신앙고백", phase: "Response", required: true, flex: false, sectionKey: "creed", elements: [
       { label: "사도신경", name: "사도신경", elementType: "body", orderSheet: { order: "신앙고백" } },
     ] },
-    publicWorshipOfferingStep(),
+    publicWorshipOfferingStep({ score: true, praiseLabel: "봉헌찬송" }),
     { label: "교회소식", name: "교회소식", phase: "Sending", required: true, flex: false, sectionKey: "announcements", elementType: "plain_text" },
     { label: "새가족환영", name: "새가족환영", phase: "Sending", required: false, flex: true, sectionKey: "new_family", elementType: "plain_text" },
     { label: "공동체고백", name: "공동체고백", phase: "Sending", required: false, flex: true, sectionKey: "community_confession", elementType: "body" },
@@ -10970,7 +11057,7 @@ function publicSundayAfternoonTemplate() {
   return [
     { label: "찬양", name: "찬양", phase: "Gathering", required: true, flex: true, repeatable: true, sectionKey: "praise", elementType: "praise", orderSheet: { order: "찬양", group: "praise" } },
     { label: "묵도", name: "묵도", phase: "Gathering", required: true, flex: false, sectionKey: "silent_prayer", elementType: "body" },
-    { label: "찬양", name: "찬양", phase: "Gathering", required: true, flex: false, sectionKey: "hymn_praise", elementType: "praise", orderSheet: { order: "찬양", group: "praise" } },
+    { label: "찬송", name: "찬송", phase: "Gathering", required: true, flex: false, sectionKey: "hymn_praise", elementType: "praise", orderSheet: { order: "찬송", group: "praise" }, ...scoreOutputMode() },
     { label: "대표기도", name: "대표기도", phase: "Gathering", required: true, flex: false, sectionKey: "prayer", elementType: "title_person", orderSheet: { order: "대표기도" } },
     { label: "성경봉독", name: "성경봉독", phase: "Word", required: true, flex: false, sectionKey: "scripture_reading", elementType: "scripture_reading" },
     { label: "설교", name: "설교", phase: "Word", required: true, flex: false, sectionKey: "sermon", elementType: "title_person" },
@@ -10978,15 +11065,15 @@ function publicSundayAfternoonTemplate() {
       { label: "결단기도", name: "결단기도", elementType: "title_person", orderSheet: { order: "결단기도" } },
     ] },
     { label: "교회소식", name: "교회소식", phase: "Sending", required: true, flex: false, sectionKey: "announcements", elementType: "plain_text" },
-    { label: "송영", name: "송영", phase: "Sending", required: true, flex: false, sectionKey: "doxology", elementType: "praise", orderSheet: { order: "송영", group: "praise" } },
+    { label: "송영", name: "송영", phase: "Sending", required: true, flex: false, sectionKey: "doxology", elementType: "praise", orderSheet: { order: "송영", group: "praise" }, ...scoreOutputMode() },
     { label: "축도", name: "축도", phase: "Sending", required: true, flex: false, sectionKey: "benediction", elementType: "title_person" },
     publicWorshipImageClosingStep(),
   ];
 }
 
 const SERVICE_ORDER_TEMPLATE_FALLBACKS = {
-  "sunday-first": publicSundayFirstSecondTemplate(),
-  "sunday-second": publicSundayFirstSecondTemplate(),
+  "sunday-first": publicSundayFirstSecondTemplate({ score: true }),
+  "sunday-second": publicSundayFirstSecondTemplate({ score: true, specialScore: false }),
   "sunday-main": publicSundayThirdTemplate(),
   "sunday-afternoon": publicSundayAfternoonTemplate(),
   wednesday: ["찬양", "대표기도", "교회소식", "성경봉독", "설교", responseSectionTemplate(), "축도", "마무리"],
@@ -11212,6 +11299,7 @@ function serializeServiceOrderTemplate(typeId) {
       const normalized = normalizeServiceTemplateStep(step, index, typeId);
       const formPresetRules = normalizeServiceFormPresetRules(normalized.formPresetRules || normalized.form_preset_rules);
       const orderSheet = normalizeServiceOrderSheetPayload(normalized.orderSheet || normalized.order_sheet);
+      const outputMode = normalizeServiceOutputMode(normalized.outputMode || normalized.output_mode || normalized.renderMode || normalized.render_mode);
       return {
         label: nullIfBlank(normalized.label || normalized.name || ""),
         name: nullIfBlank(normalized.name || normalized.label || ""),
@@ -11226,6 +11314,7 @@ function serializeServiceOrderTemplate(typeId) {
         formPreset: normalizeServiceFormPreset(normalized.formPreset || normalized.form_preset) || undefined,
         formPresetRules: formPresetRules.length ? formPresetRules : undefined,
         defaultStrength: nullIfBlank(normalized.defaultStrength || normalized.default_strength),
+        outputMode: nullIfBlank(outputMode),
         orderSheet: orderSheet || undefined,
         elements: serializeServiceTemplateElements(normalized.elements),
         notes: nullIfBlank(serializeServiceItemMemo({
@@ -11247,6 +11336,7 @@ function serializeServiceTemplateElements(elements = []) {
     .map((element, index) => {
       const elementType = normalizeWorshipElementType(element.elementType || element.element_type || element.componentType || element.component_type);
       const formPresetRules = normalizeServiceFormPresetRules(element.formPresetRules || element.form_preset_rules);
+      const outputMode = normalizeServiceOutputMode(element.outputMode || element.output_mode || element.renderMode || element.render_mode);
       return {
         label: nullIfBlank(element.label || element.name || ""),
         name: nullIfBlank(element.name || element.label || ""),
@@ -11256,6 +11346,7 @@ function serializeServiceTemplateElements(elements = []) {
         formPreset: normalizeServiceFormPreset(element.formPreset || element.form_preset) || undefined,
         formPresetRules: formPresetRules.length ? formPresetRules : undefined,
         defaultStrength: nullIfBlank(element.defaultStrength || element.default_strength),
+        outputMode: nullIfBlank(outputMode),
         orderSheet: normalizeServiceOrderSheetPayload(element.orderSheet || element.order_sheet) || undefined,
         sort_order: index + 1,
       };
@@ -11308,6 +11399,7 @@ function normalizeServiceTemplateStep(step = {}, index = 0, typeId = "") {
     typeId,
     label,
   );
+  const outputMode = normalizeServiceOutputMode(step.outputMode || step.output_mode || step.renderMode || step.render_mode);
   return {
     ...fallback,
     ...step,
@@ -11326,6 +11418,7 @@ function normalizeServiceTemplateStep(step = {}, index = 0, typeId = "") {
     formPreset,
     formPresetRules,
     defaultStrength,
+    outputMode,
     orderSheet: orderSheet || undefined,
     notes: nullIfBlank(step.notes),
     sort_order: index + 1,
@@ -12997,8 +13090,12 @@ function renderServiceEditorItem(item, mergedIndex, mergedItems, groupNum) {
 
 function renderServiceItemMemoEditor(item, index, options = {}) {
   const parsed = parseServiceItemMemo(item?.memo);
-  const elementType = serviceMemoElementType(parsed);
-  const hasContent = Boolean(parsed.note || parsed.slides.length || parsed.formHint || parsed.formPreset || parsed.formPresetRules?.length || elementType || hasServiceAsset(parsed.asset));
+  const preparation = isServicePreparationItem(item, parsed);
+  const elementType = preparation ? servicePreparationElementTypeForServiceId(item?.service_id || state.selectedServiceId) : serviceMemoElementType(parsed);
+  const assetNameLabel = elementType === "image" ? "이미지명" : "파일명";
+  const assetNamePlaceholder = elementType === "image" ? "예배 첫 슬라이드 이미지" : "준비 영상";
+  const assetUrlPlaceholder = elementType === "image" ? "assets/.../first-slide.jpg" : "assets/.../ready.mp4";
+  const hasContent = Boolean(preparation || parsed.note || parsed.slides.length || parsed.formHint || parsed.formPreset || parsed.formPresetRules?.length || elementType || hasServiceAsset(parsed.asset));
   return `
     <details class="svc-item-note${options.compact ? " compact" : ""}"${hasContent ? " open" : ""}>
       <summary>
@@ -13026,13 +13123,13 @@ function renderServiceItemMemoEditor(item, index, options = {}) {
           />
         </label>
         <label>
-          <span>파일명</span>
+          <span>${escapeHtml(assetNameLabel)}</span>
           <input
             type="text"
             data-service-item-field="asset_name"
             data-service-item-index="${index}"
             value="${escapeAttr(parsed.asset?.name || "")}"
-            placeholder="예배 준비 영상 또는 파일"
+            placeholder="${escapeAttr(assetNamePlaceholder)}"
           />
         </label>
         <label>
@@ -13042,7 +13139,7 @@ function renderServiceItemMemoEditor(item, index, options = {}) {
             data-service-item-field="asset_url"
             data-service-item-index="${index}"
             value="${escapeAttr(parsed.asset?.url || "")}"
-            placeholder="https:// 또는 파일 경로"
+            placeholder="${escapeAttr(assetUrlPlaceholder)}"
           />
         </label>
         <label>
@@ -15055,11 +15152,12 @@ function buildServicePresenterSlides(serviceId) {
 }
 
 function isPresenterPreparationSlide(slide) {
-  return /예배\s*준비|대기/i.test(`${slide.sectionLabel || ""} ${slide.title || ""}`);
+  if (slide?.type === "ready" || slide?.sectionRole === "ready") return true;
+  return /(?:예배\s*)?준비|대기/i.test(`${slide.sectionLabel || ""} ${slide.title || ""}`);
 }
 
 function presenterReadySlide(service) {
-  const title = "예배 준비";
+  const title = "준비";
   const serviceName = serviceDisplayTypeName(service) || "예배";
   return {
     id: `${service?.id || "service"}:ready`,
@@ -15132,6 +15230,7 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
   const displayText = serviceItemDisplayText(item);
   const memo = parseServiceItemMemo(item?.memo);
   const memoElementType = serviceMemoElementType(memo);
+  const outputMode = serviceItemOutputMode(item, memo);
   if (isServicePreparationItem(item, memo)) {
     return [presenterPreparationSlide(service, item, index)];
   }
@@ -15167,6 +15266,10 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
 
   const scriptureTextSlides = buildPresenterScriptureTextSlides(item, section, index);
   if (scriptureTextSlides.length) return scriptureTextSlides;
+
+  if (outputMode === "score" && (song || isSongServiceLabel(label))) {
+    return [presenterScoreSlideForServiceItem(item, section, index, song, version, displayText, memo)];
+  }
 
   if (song && forms.length) {
     const lyricsSlides = forms.flatMap((form, formIndex) => {
@@ -15226,6 +15329,66 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
     text: formatPresenterSongTitleText(title),
     sort: index,
   }];
+}
+
+function serviceItemOutputMode(item = {}, memo = parseServiceItemMemo(item?.memo)) {
+  return normalizeServiceOutputMode(
+    memo.outputMode
+    || item.outputMode
+    || item.output_mode
+    || item.renderMode
+    || item.render_mode,
+  );
+}
+
+function presenterScoreSlideForServiceItem(item, section, index, song, version, displayText, memo = parseServiceItemMemo(item?.memo)) {
+  const label = item?.label || "";
+  const asset = normalizeServiceAsset(memo.asset || item.asset);
+  const title = presenterPraiseTitle(song, displayText) || displayText || label || "악보";
+  const source = normalizePresenterMediaSource(asset.url || "");
+  if (source && presenterMediaSourceIsImage(source)) {
+    return {
+      id: `${item.id || index}:score-image`,
+      ...section,
+      sectionLabel: label || "악보",
+      sectionTitle: title,
+      sectionName: presenterNameParts(label, title).join(" / ") || title,
+      elementType: PRESENTER_ELEMENT_TYPES.IMAGE,
+      layout: PRESENTER_SLIDE_LAYOUTS.MEDIA,
+      type: "image",
+      label,
+      title,
+      subtitle: versionDisplayName(song, version),
+      marker: "악보",
+      text: title,
+      imageSrc: source,
+      asset: { ...asset, kind: asset.kind || "score" },
+      sourceType: "score",
+      componentType: "score",
+      sort: index,
+    };
+  }
+  const scoreAsset = { ...asset, kind: asset.kind || "score" };
+  const fileTitle = presenterFileDisplayTitle({ title, asset: scoreAsset }, "악보");
+  return {
+    id: `${item.id || index}:score`,
+    ...section,
+    sectionLabel: label || "악보",
+    sectionTitle: fileTitle,
+    sectionName: presenterNameParts(label, fileTitle).join(" / ") || fileTitle,
+    elementType: PRESENTER_ELEMENT_TYPES.FILE,
+    layout: PRESENTER_SLIDE_LAYOUTS.FILE,
+    type: "file",
+    label,
+    title: fileTitle,
+    subtitle: versionDisplayName(song, version),
+    marker: "악보",
+    text: [fileTitle, scoreAsset.url].filter(Boolean).join("\n"),
+    asset: scoreAsset,
+    sourceType: "score",
+    componentType: "score",
+    sort: index,
+  };
 }
 
 function presenterFormsForServiceItem(version, item, song = null) {
@@ -15363,12 +15526,50 @@ function isServicePreparationItem(item, memo = parseServiceItemMemo(item?.memo))
   return sectionKey === "ready"
     || label === "준비"
     || label === "예배준비"
+    || title === "준비"
     || title === "예배준비"
     || role === "ready"
     || role === "preparation";
 }
 
 function presenterPreparationSlide(service, item, index) {
+  const memo = parseServiceItemMemo(item?.memo);
+  const asset = normalizeServiceAsset(memo.asset);
+  const elementType = servicePreparationElementTypeForType(service?.type_id);
+  const source = normalizePresenterMediaSource(asset.url || "");
+  if (source) {
+    const title = asset.name || item?.raw_title || "준비";
+    const base = {
+      ...presenterReadySlide(service),
+      id: `${item?.id || index}:ready-media`,
+      sectionId: item?.id || `${service?.id || "service"}:ready`,
+      elementId: item?.id || `${service?.id || "service"}:ready`,
+      sectionIndex: index + 1,
+      sectionTitle: title,
+      elementTitle: title,
+      sectionName: title,
+      title,
+      text: title,
+      asset: { ...asset, kind: asset.kind || elementType },
+      sort: index,
+    };
+    if (elementType === "image") {
+      return {
+        ...base,
+        elementType: PRESENTER_ELEMENT_TYPES.IMAGE,
+        layout: PRESENTER_SLIDE_LAYOUTS.MEDIA,
+        type: "image",
+        imageSrc: source,
+      };
+    }
+    return {
+      ...base,
+      elementType: PRESENTER_ELEMENT_TYPES.VIDEO,
+      layout: PRESENTER_SLIDE_LAYOUTS.MEDIA,
+      type: "video",
+      videoSrc: source,
+    };
+  }
   return {
     ...presenterReadySlide(service),
     id: `${item?.id || index}:ready`,
