@@ -11266,6 +11266,10 @@ function getServiceSidebarServices() {
   return sortServicesByDate([...upcoming, ...getExpectedServicesInRange(today, end)]).slice(0, 36);
 }
 
+function getRecentServiceShortcuts(limit = 8) {
+  return sortServicesByDate(state.services, "desc").slice(0, limit);
+}
+
 function renderServiceList() {
   if (!state.client) {
     refs.songCount.textContent = "";
@@ -11293,6 +11297,20 @@ function renderServiceList() {
   const services = q ? getServiceSidebarServices() : [];
   refs.songCount.textContent = q ? `${services.length}개 결과` : "";
   const selectedService = state.services.find((service) => service.id === state.selectedServiceId);
+  const sidebarPrimary = q ? `
+    ${services.length
+      ? `<div class="service-sidebar-stack">${services.map(renderServiceSidebarCard).join("")}</div>`
+      : `<p class="service-no-results">검색 결과가 없습니다.</p>`}
+  ` : `
+    <button class="service-type-row${state.selectedServiceTypeId === SERVICE_LIST_PANEL_ID && !state.selectedServiceId ? " active" : ""}" type="button" data-service-list>
+      <span>전체 예배</span>
+      <small>${state.services.length}</small>
+    </button>
+    <button class="service-type-row service-type-row--templates${state.selectedServiceTypeId === SERVICE_TEMPLATES_PANEL_ID && !state.selectedServiceId ? " active" : ""}" type="button" data-service-templates>
+      <span>템플릿</span>
+      <small>예배 · 섹션</small>
+    </button>
+  `;
 
   refs.songList.innerHTML = `
     <div class="service-sidebar">
@@ -11301,29 +11319,33 @@ function renderServiceList() {
           <span>${q ? "검색 결과" : "예배"}</span>
           ${q ? `<small>${services.length}</small>` : ""}
         </div>
-        ${q ? `
-          ${services.length
-            ? `<div class="service-sidebar-stack">${services.map(renderServiceSidebarCard).join("")}</div>`
-            : `<p class="service-no-results">검색 결과가 없습니다.</p>`}
-          ${selectedService ? renderServiceCurrentSidebar(selectedService) : ""}
-        ` : `
-          <button class="service-type-row${!state.selectedServiceId && state.selectedServiceTypeId !== SERVICE_TEMPLATES_PANEL_ID ? " active" : ""}" type="button" data-service-list>
-            <span>목록</span>
-            <small>${state.services.length}</small>
-          </button>
-          <button class="service-type-row service-type-row--templates${state.selectedServiceTypeId === SERVICE_TEMPLATES_PANEL_ID && !state.selectedServiceId ? " active" : ""}" type="button" data-service-templates>
-            <span>템플릿</span>
-            <small>예배 · 섹션</small>
-          </button>
-            ${selectedService ? renderServiceCurrentSidebar(selectedService) : ""}`}
+        ${sidebarPrimary}
       </section>
+      ${q ? "" : renderRecentServiceShortcuts()}
+      ${selectedService ? renderServiceCurrentSidebar(selectedService) : ""}
     </div>`;
 
   finishListRender();
 }
 
-function renderServiceSidebarCard(service) {
+function renderRecentServiceShortcuts() {
+  const services = getRecentServiceShortcuts();
+  if (!services.length) return "";
+  return `
+    <section class="service-sidebar-section service-sidebar-section--recent">
+      <div class="service-sidebar-head">
+        <span>최근 예배</span>
+        <small>${services.length}</small>
+      </div>
+      <div class="service-sidebar-stack">
+        ${services.map((service) => renderServiceSidebarCard(service, { showPreview: true })).join("")}
+      </div>
+    </section>`;
+}
+
+function renderServiceSidebarCard(service, options = {}) {
   const active = service.id === state.selectedServiceId ? " active" : "";
+  const preview = options.showPreview ? serviceItemPreview(service.id) : "";
   return `
     <button
       class="service-sidebar-card${active}"
@@ -11332,6 +11354,7 @@ function renderServiceSidebarCard(service) {
     >
       <span class="service-sidebar-date">${escapeHtml(formatServiceDate(service, { compact: true }))}</span>
       <span class="service-sidebar-title">${escapeHtml(serviceDisplayTypeName(service))}</span>
+      ${preview ? `<span class="service-sidebar-preview">${escapeHtml(preview)}</span>` : ""}
     </button>`;
 }
 
@@ -11989,7 +12012,12 @@ function renderServiceDetail() {
     return;
   }
 
-  if (!state.selectedServiceTypeId || state.selectedServiceTypeId === SERVICE_LIST_PANEL_ID) {
+  if (!state.selectedServiceTypeId) {
+    renderServiceDashboard();
+    return;
+  }
+
+  if (state.selectedServiceTypeId === SERVICE_LIST_PANEL_ID) {
     renderServiceListDetail();
     return;
   }
@@ -12583,6 +12611,7 @@ function renderServiceDashboard() {
   }
 
   const services = getServiceDashboardServices();
+  const recentServices = getRecentServiceShortcuts(12);
   const q = normalizeSearchValue(state.search);
   const weekDays = serviceWeekDays();
   const servicesByDate = new Map();
@@ -12612,6 +12641,19 @@ function renderServiceDashboard() {
             ${weekDays.map((date) => renderServiceWeekDay(date, servicesByDate.get(toLocalDateStr(date)) || [])).join("")}
           </div>`}
       </section>
+      ${!q && recentServices.length ? `
+        <section class="service-dashboard-section">
+          <div class="service-section-head">
+            <h2 class="service-date-list-title">최근 예배</h2>
+            <button class="reference-new-btn secondary" type="button" data-service-list aria-label="전체 예배 보기">
+              <span>전체</span>
+            </button>
+          </div>
+          <div class="service-date-grid service-date-grid--dashboard">
+            ${recentServices.map((service) => renderServiceDateCard(service, { showType: true })).join("")}
+          </div>
+        </section>
+      ` : ""}
     </div>`;
   refreshIcons();
 }
