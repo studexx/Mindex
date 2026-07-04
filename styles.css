@@ -5068,22 +5068,23 @@ body[data-module="service"] .detail-pane {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 4.2cqw;
   align-content: center;
+  font-size: clamp(44px, 4.15cqw, 80px);
   text-align: left;
 }
 .presenter-title-assignee-title {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
-  font-size: min(1em, calc(52cqw / (var(--line-chars, 8) * .72)));
+  font-size: min(1em, calc(56cqw / (var(--line-chars, 8) * .72)));
   font-weight: 800;
 }
 .presenter-title-assignee-person {
   min-width: 0;
-  max-width: 42cqw;
+  max-width: 44cqw;
   overflow: hidden;
   text-align: right;
   text-overflow: ellipsis;
-  font-size: min(.72em, calc(38cqw / (var(--line-chars, 8) * .62)));
+  font-size: min(.86em, calc(42cqw / (var(--line-chars, 8) * .62)));
   font-weight: 600;
 }
 .svc-slide-mini-output:not(.no-chromakey) .presenter-slide--lyrics .presenter-slide-text,
