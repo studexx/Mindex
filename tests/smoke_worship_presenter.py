@@ -708,11 +708,13 @@ def main() -> int:
                           });
                           window.__mindexPresenterOpenArgs = null;
                           window.__mindexPresenterFullscreenCalls = 0;
+                          window.__mindexPresenterFocusCalls = 0;
                           window.open = (url, name, features) => {
                             window.__mindexPresenterOpenArgs = { url, name, features };
+                            window.__mindexPresenterOpenCalls = (window.__mindexPresenterOpenCalls || 0) + 1;
                             return {
                               closed: false,
-                              focus() {},
+                              focus() { window.__mindexPresenterFocusCalls += 1; },
                               addEventListener() {},
                               moveTo() {},
                               resizeTo() {},
@@ -737,6 +739,8 @@ def main() -> int:
                         (() => ({
                           args: window.__mindexPresenterOpenArgs,
                           fullscreenCalls: window.__mindexPresenterFullscreenCalls || 0,
+                          focusCalls: window.__mindexPresenterFocusCalls || 0,
+                          openCalls: window.__mindexPresenterOpenCalls || 0,
                         }))()
                         """
                     )
@@ -749,10 +753,34 @@ def main() -> int:
                         and "height=1080" in target_features
                         and "fullscreen=yes" in target_features
                         and target_state["fullscreenCalls"] > 0
+                        and target_state["focusCalls"] == 1
+                        and target_state["openCalls"] == 1
                     ):
                         pass_("presenter-secondary-fullscreen-launch", json.dumps(target_state, ensure_ascii=False))
                     else:
                         fail("presenter-secondary-fullscreen-launch", json.dumps(target_state, ensure_ascii=False))
+
+                    page.click(f'.svc-presenter-launch[data-service-id="{service["id"]}"]')
+                    page.wait_for_function("() => (window.__mindexPresenterFullscreenCalls || 0) > 1", timeout=5000)
+                    reuse_state = page.evaluate(
+                        """
+                        (() => ({
+                          openCalls: window.__mindexPresenterOpenCalls || 0,
+                          focusCalls: window.__mindexPresenterFocusCalls || 0,
+                          fullscreenCalls: window.__mindexPresenterFullscreenCalls || 0,
+                          hasWindowRef: Boolean(state.presenter.outputWindow),
+                        }))()
+                        """
+                    )
+                    if (
+                        reuse_state["openCalls"] == 1
+                        and reuse_state["focusCalls"] >= 2
+                        and reuse_state["fullscreenCalls"] >= 2
+                        and reuse_state["hasWindowRef"]
+                    ):
+                        pass_("presenter-open-reuses-existing-window", json.dumps(reuse_state, ensure_ascii=False))
+                    else:
+                        fail("presenter-open-reuses-existing-window", json.dumps(reuse_state, ensure_ascii=False))
 
                     dbl_target = min(service["slides"] - 1, 4)
                     page.evaluate(
@@ -781,20 +809,22 @@ def main() -> int:
                         f'.svc-slide-thumb[data-service-id="{service["id"]}"][data-presenter-index="{dbl_target}"]'
                     ).dblclick()
                     page.wait_for_function("(target) => state.presenter.index === target", arg=dbl_target, timeout=5000)
-                    page.wait_for_function("() => window.__mindexPresenterOpenCalls === 1", timeout=5000)
+                    page.wait_for_function("() => window.__mindexPresenterOpenCalls === 0", timeout=5000)
                     dbl_state = page.evaluate(
                         """
                         (() => ({
                           serviceId: state.presenter.serviceId,
                           index: state.presenter.index,
-                          openCalls: window.__mindexPresenterOpenCalls || 0
+                          openCalls: window.__mindexPresenterOpenCalls || 0,
+                          hasWindowRef: Boolean(state.presenter.outputWindow)
                         }))()
                         """
                     )
                     if (
                         dbl_state["serviceId"] == service["id"]
                         and dbl_state["index"] == dbl_target
-                        and dbl_state["openCalls"] == 1
+                        and dbl_state["openCalls"] == 0
+                        and dbl_state["hasWindowRef"]
                     ):
                         pass_("presenter-doubleclick-start", json.dumps(dbl_state, ensure_ascii=False))
                     else:

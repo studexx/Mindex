@@ -13785,6 +13785,16 @@ async function openPresenterOutput(serviceId = state.selectedServiceId) {
   preparePresenterService(serviceId);
   publishPresenterState();
 
+  const existingWindow = presenterOutputWindowRef();
+  if (existingWindow) {
+    startPresenterOutputWindowMonitor(serviceId);
+    existingWindow.focus?.();
+    requestOutputFullscreen(existingWindow, { retry: true });
+    window.setTimeout(() => publishPresenterState(), 250);
+    renderPresenterControlState(serviceId);
+    return;
+  }
+
   // Resolve the target display BEFORE creating the window. Chrome appears to
   // associate a popup's fullscreen target with whichever screen it was
   // created on; moving an already-open window with moveTo/resizeTo and then
@@ -13812,6 +13822,16 @@ async function openPresenterOutput(serviceId = state.selectedServiceId) {
   requestOutputFullscreen(outputWindow, { retry: true });
   window.setTimeout(() => publishPresenterState(), 250);
   renderPresenterControlState(serviceId);
+}
+
+function presenterOutputWindowRef() {
+  try {
+    return state.presenter.outputWindow && !state.presenter.outputWindow.closed
+      ? state.presenter.outputWindow
+      : null;
+  } catch {
+    return null;
+  }
 }
 
 function presenterOutputWindowFeatures(targetRect = null) {
