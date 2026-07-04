@@ -9829,7 +9829,8 @@ async function selectVersion(versionId) {
   updateSaveState();
 }
 
-function versionDisplayName(song, version) {
+function versionDisplayName(song, version = {}) {
+  version = version || {};
   const hymnalName = hymnalVersionName(song, version);
   if (hymnalName) return hymnalName;
   if (song?.hymn_no && isDefaultVersionName(version.name || version.curated_version_name)) return "새찬송가";
@@ -15441,7 +15442,8 @@ function presenterFormsForServiceItem(version, item, song = null) {
   return presenterFormPlanForServiceItem(version, item, song).forms;
 }
 
-function presenterFormPlanForServiceItem(version, item, song = null) {
+function presenterFormPlanForServiceItem(version = {}, item, song = null) {
+  version = version || {};
   const forms = normalizeForms(version.forms || []).filter((form) => normalizeLyricsForCopy(form.lyrics));
   const preset = serviceItemFormPreset(item) || matchedServiceItemFormPresetRule(item, song, version)?.formPreset || null;
   if (!preset?.forms?.length) return { forms, warnings: [] };
