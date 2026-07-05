@@ -3797,7 +3797,7 @@ body[data-module="service"] .detail-pane {
   z-index: 29;
   display: grid;
   min-width: 0;
-  grid-template-columns: auto auto minmax(0, 1fr) minmax(0, auto);
+  grid-template-columns: auto auto minmax(0, 1fr);
   gap: 10px;
   align-items: center;
   background: var(--bg);
@@ -3974,7 +3974,7 @@ body[data-module="service"] .detail-pane {
   margin: 0;
   -webkit-appearance: none;
 }
-.svc-presenter-actions { display: flex; min-width: 0; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px; }
+.svc-presenter-actions { display: flex; grid-column: 1 / -1; min-width: 0; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 6px; }
 .svc-presenter-actions .icon-btn { width: 28px; height: 28px; }
 .svc-presenter-actions .icon-btn.is-active { background: transparent; color: var(--accent); }
 .svc-presenter-help {
@@ -4919,7 +4919,6 @@ body[data-module="service"] .detail-pane {
 
 @media (max-width: 1180px) {
   .service-dashboard,
-  .svc-presenter-top,
   .order-sheet-tool-layout { grid-template-columns: 1fr; }
   .svc-board-grid { --svc-thumb-width: 168px; }
   .svc-presenter-main {
@@ -4931,6 +4930,10 @@ body[data-module="service"] .detail-pane {
   .svc-print-panel { position: static; }
   .service-week-board { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .service-week-day { min-height: 180px; }
+}
+
+@media (max-width: 620px) {
+  .svc-presenter-top { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 760px) {
@@ -5160,26 +5163,33 @@ body[data-module="service"] .detail-pane {
 }
 .presenter-slide--title-assignee .presenter-slide-text {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 44cqw);
   gap: 4.2cqw;
   align-content: center;
   font-size: clamp(44px, 4.15cqw, 80px);
   text-align: left;
 }
+.presenter-slide--title-assignee .presenter-title-assignee--solo {
+  grid-template-columns: minmax(0, 1fr);
+}
 .presenter-title-assignee-title {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-size: min(1em, calc(56cqw / (var(--line-chars, 8) * .72)));
+  overflow: visible;
+  text-overflow: clip;
+  white-space: nowrap;
+  font-size: min(1em, calc(36cqw / var(--line-chars, 8)));
   font-weight: 800;
+}
+.presenter-title-assignee--solo .presenter-title-assignee-title {
+  font-size: min(1em, calc(76cqw / var(--line-chars, 8)));
 }
 .presenter-title-assignee-person {
   min-width: 0;
-  max-width: 44cqw;
-  overflow: hidden;
+  overflow: visible;
   text-align: right;
-  text-overflow: ellipsis;
-  font-size: min(.86em, calc(42cqw / (var(--line-chars, 8) * .62)));
+  text-overflow: clip;
+  white-space: nowrap;
+  font-size: min(.86em, calc(42cqw / var(--line-chars, 8)));
   font-weight: 600;
 }
 .svc-slide-mini-output:not(.no-chromakey) .presenter-slide--lyrics .presenter-slide-text,

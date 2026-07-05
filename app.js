@@ -239,6 +239,7 @@ const PRESENTER_OUTPUT_ESCAPE_EXIT_MS = 1600;
 const PRESENTER_OUTPUT_IMAGE_PRELOAD_RADIUS = 4;
 const PRESENTER_OUTPUT_IMAGE_PRELOAD_LIMIT = 80;
 const presenterOutputImagePreloadCache = new Map();
+const presenterOutputRenderState = { token: 0 };
 const UI_DEFAULT_LOCALE = "ko";
 const UI_FALLBACK_LOCALE = "en";
 const UI_MESSAGES = {
@@ -16692,6 +16693,10 @@ function bindPresenterChannel() {
       return;
     }
     if (message.type === "presenter-control") {
+      if (message.action === "stop") {
+        stopPresenterOutput(state.presenter.serviceId);
+        return;
+      }
       markPresenterOutputConnected(message.clientId);
       runPresenterAction(message.action, state.presenter.serviceId, {
         index: Number.isFinite(Number(message.index)) ? Number(message.index) : undefined,
@@ -17177,6 +17182,19 @@ function renderPresenterOutput(payload) {
   const cleanOutput = payload?.chromakey === false;
   const blankOutput = presenterSlideLayout(slide) === PRESENTER_SLIDE_LAYOUTS.BLANK;
   const showBackground = Boolean(backgroundImage && cleanOutput && !blankOutput);
+  const activeImageSource = presenterSlideImageSource(slide);
+  preloadPresenterOutputImages(payload, slide);
+  if (activeImageSource && !presenterOutputImageIsReady(activeImageSource)) {
+    const token = ++presenterOutputRenderState.token;
+    root.setAttribute("aria-busy", "true");
+    preloadPresenterOutputImage(activeImageSource)?.finally(() => {
+      if (token === presenterOutputRenderState.token) renderPresenterOutput(payload);
+    });
+    return;
+  }
+
+  presenterOutputRenderState.token += 1;
+  root.removeAttribute("aria-busy");
   document.body.classList.toggle("presenter-output-body--clean", cleanOutput);
   document.body.classList.toggle("has-background", showBackground);
   document.body.classList.toggle("is-blank", blankOutput);
@@ -17198,7 +17216,6 @@ function renderPresenterOutput(payload) {
     return;
   }
 
-  preloadPresenterOutputImages(payload, slide);
   root.innerHTML = renderPresenterSlideFrame(slide);
 }
 
@@ -17247,6 +17264,7 @@ function preloadPresenterOutputImage(source) {
   if (!normalized || !presenterMediaSourceIsImage(normalized)) return null;
   const cached = presenterOutputImagePreloadCache.get(normalized);
   if (cached) {
+    if (cached.image?.complete && cached.image.naturalWidth > 0) cached.ready = true;
     cached.lastUsed = Date.now();
     return cached.promise;
   }
@@ -17261,9 +17279,23 @@ function preloadPresenterOutputImage(source) {
       image.onload = resolve;
       image.onerror = resolve;
     });
-  presenterOutputImagePreloadCache.set(normalized, { image, promise, lastUsed: Date.now() });
+  const record = { image, promise, lastUsed: Date.now(), ready: false };
+  promise.finally(() => { record.ready = true; });
+  presenterOutputImagePreloadCache.set(normalized, record);
   trimPresenterOutputImagePreloadCache();
   return promise;
+}
+
+function presenterOutputImageIsReady(source) {
+  const normalized = normalizePresenterMediaSource(source);
+  const cached = normalized ? presenterOutputImagePreloadCache.get(normalized) : null;
+  if (!cached) return false;
+  if (cached.ready) return true;
+  if (cached.image?.complete && cached.image.naturalWidth > 0) {
+    cached.ready = true;
+    return true;
+  }
+  return false;
 }
 
 function trimPresenterOutputImagePreloadCache() {
@@ -17365,10 +17397,13 @@ function renderPresenterImageSlide(slide) {
 function renderPresenterTitleAssigneeSlide(slide) {
   const title = String(slide.title || slide.text || slide.label || "").trim();
   const assignee = String(slide.assignee || slide.subtitle || "").trim();
+  const titleChars = presenterLineCharEstimate(title);
+  const assigneeChars = presenterLineCharEstimate(assignee);
+  const soloClass = assignee ? "" : " presenter-title-assignee--solo";
   return `
-    <div class="presenter-slide-text presenter-title-assignee">
-      <span class="presenter-title-assignee-title" style="--line-chars: ${escapeAttr(Math.max(1, title.length))}">${escapeHtml(title)}</span>
-      ${assignee ? `<span class="presenter-title-assignee-person" style="--line-chars: ${escapeAttr(Math.max(1, assignee.length))}">${escapeHtml(assignee)}</span>` : ""}
+    <div class="presenter-slide-text presenter-title-assignee${soloClass}">
+      <span class="presenter-title-assignee-title" style="--line-chars: ${escapeAttr(titleChars)}">${escapeHtml(title)}</span>
+      ${assignee ? `<span class="presenter-title-assignee-person" style="--line-chars: ${escapeAttr(assigneeChars)}">${escapeHtml(assignee)}</span>` : ""}
     </div>
   `;
 }

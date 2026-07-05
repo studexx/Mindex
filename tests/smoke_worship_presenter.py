@@ -1187,6 +1187,50 @@ def main() -> int:
                 else:
                     fail("presenter-horizontal-overflow", json.dumps(overflow_state, ensure_ascii=False))
 
+                responsive_control_states = []
+                for width in [1180, 900, 760, 620, 520, 390]:
+                    page.set_viewport_size({"width": width, "height": 820})
+                    page.wait_for_timeout(80)
+                    responsive_control_states.append(page.evaluate(
+                        """
+                        () => {
+                          const rect = (node) => {
+                            const r = node?.getBoundingClientRect();
+                            return r ? {
+                              x: Math.round(r.x),
+                              y: Math.round(r.y),
+                              right: Math.round(r.right),
+                              bottom: Math.round(r.bottom),
+                              width: Math.round(r.width),
+                              height: Math.round(r.height),
+                            } : null;
+                          };
+                          const top = document.querySelector('.svc-presenter-top');
+                          const boxes = [...(top?.children || [])].map(rect).filter(Boolean);
+                          let overlaps = 0;
+                          for (let i = 0; i < boxes.length; i += 1) {
+                            for (let j = i + 1; j < boxes.length; j += 1) {
+                              const a = boxes[i];
+                              const b = boxes[j];
+                              if (!(a.right <= b.x || b.right <= a.x || a.bottom <= b.y || b.bottom <= a.y)) overlaps += 1;
+                            }
+                          }
+                          return {
+                            width: window.innerWidth,
+                            top: rect(top),
+                            overlaps,
+                            overflow: Math.max(document.documentElement.scrollWidth - window.innerWidth, document.body.scrollWidth - window.innerWidth),
+                          };
+                        }
+                        """
+                    ))
+                page.set_viewport_size({"width": 1440, "height": 980})
+                page.wait_for_timeout(80)
+                if all(item["overlaps"] == 0 and item["overflow"] <= 2 for item in responsive_control_states):
+                    pass_("presenter-responsive-controls", json.dumps(responsive_control_states, ensure_ascii=False))
+                else:
+                    fail("presenter-responsive-controls", json.dumps(responsive_control_states, ensure_ascii=False))
+
                 payload = page.evaluate(
                     """
                     (serviceId) => {
@@ -1413,6 +1457,178 @@ def main() -> int:
                     pass_("presenter-output-pixel-match-chromakey", json.dumps(chromakey_pixels, ensure_ascii=False))
                 else:
                     fail("presenter-output-pixel-match-chromakey", json.dumps(chromakey_pixels, ensure_ascii=False))
+
+                image_swap_state = output_page.evaluate(
+                    """
+                    async () => {
+                      const root = document.getElementById('presenterOutputRoot');
+                      const src = normalizePresenterMediaSource('assets/worship-backgrounds/26-A1.jpg');
+                      let resolveReady;
+                      const pending = new Promise((resolve) => { resolveReady = resolve; });
+                      presenterOutputImagePreloadCache.clear();
+                      presenterOutputImagePreloadCache.set(src, {
+                        image: { complete: false, naturalWidth: 0 },
+                        promise: pending,
+                        lastUsed: Date.now(),
+                        ready: false,
+                      });
+                      root.innerHTML = '<section class="presenter-slide presenter-slide--lyrics" data-element-type="praise" data-slide-layout="lower_bar_text"><div class="presenter-slide-text"><span>OLD FRAME</span></div></section>';
+                      renderPresenterOutput({
+                        serviceId: '__smoke_image_wait__',
+                        serviceType: 'friday',
+                        chromakey: false,
+                        outputTheme: 'chromakey',
+                        backgroundImage: '',
+                        slides: [{
+                          id: '__smoke_image_slide__',
+                          type: 'image',
+                          elementType: PRESENTER_ELEMENT_TYPES.IMAGE,
+                          layout: PRESENTER_SLIDE_LAYOUTS.MEDIA,
+                          imageSrc: src,
+                        }],
+                        index: 0,
+                        safetyBlank: false,
+                      });
+                      const before = {
+                        busy: root.getAttribute('aria-busy'),
+                        oldVisible: root.innerText.includes('OLD FRAME'),
+                        hasImage: Boolean(root.querySelector('img.presenter-image')),
+                      };
+                      const record = presenterOutputImagePreloadCache.get(src);
+                      record.ready = true;
+                      resolveReady();
+                      await new Promise((resolve) => setTimeout(resolve, 40));
+                      const after = {
+                        busy: root.getAttribute('aria-busy'),
+                        oldVisible: root.innerText.includes('OLD FRAME'),
+                        hasImage: Boolean(root.querySelector('img.presenter-image')),
+                        source: root.querySelector('img.presenter-image')?.getAttribute('src') || '',
+                      };
+                      return { before, after };
+                    }
+                    """
+                )
+                if (
+                    image_swap_state["before"]["busy"] == "true"
+                    and image_swap_state["before"]["oldVisible"]
+                    and not image_swap_state["before"]["hasImage"]
+                    and image_swap_state["after"]["busy"] is None
+                    and not image_swap_state["after"]["oldVisible"]
+                    and image_swap_state["after"]["hasImage"]
+                    and "26-A1.jpg" in image_swap_state["after"]["source"]
+                ):
+                    pass_("presenter-output-image-ready-swap", json.dumps(image_swap_state, ensure_ascii=False))
+                else:
+                    fail("presenter-output-image-ready-swap", json.dumps(image_swap_state, ensure_ascii=False))
+
+                title_assignee_bounds = output_page.evaluate(
+                    """
+                    () => {
+                      renderPresenterOutput({
+                        serviceId: '__smoke_title_assignee_bounds__',
+                        serviceType: 'friday',
+                        chromakey: true,
+                        outputTheme: 'chromakey',
+                        backgroundImage: '',
+                        slides: [{
+                          id: '__smoke_long_title_assignee__',
+                          type: 'title-assignee',
+                          elementType: PRESENTER_ELEMENT_TYPES.TITLE_ASSIGNEE,
+                          layout: PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT,
+                          title: '성경봉독과 공동기도를 위한 안내',
+                          assignee: '김남영 담임목사 외 공동집례자',
+                        }],
+                        index: 0,
+                        safetyBlank: false,
+                      });
+                      const root = document.getElementById('presenterOutputRoot');
+                      const bar = root.querySelector('.presenter-title-assignee');
+                      const title = root.querySelector('.presenter-title-assignee-title');
+                      const person = root.querySelector('.presenter-title-assignee-person');
+                      const rect = (node) => {
+                        const r = node.getBoundingClientRect();
+                        return { left: r.left, right: r.right, top: r.top, bottom: r.bottom, width: r.width, height: r.height };
+                      };
+                      const rootRect = rect(root);
+                      const barRect = rect(bar);
+                      const titleRect = rect(title);
+                      const personRect = rect(person);
+                      const titleStyle = getComputedStyle(title);
+                      const personStyle = getComputedStyle(person);
+                      return {
+                        text: root.innerText,
+                        titleOverflow: titleStyle.textOverflow,
+                        personOverflow: personStyle.textOverflow,
+                        titleFontSize: Number.parseFloat(titleStyle.fontSize),
+                        personFontSize: Number.parseFloat(personStyle.fontSize),
+                        titleInside: titleRect.left >= rootRect.left - 1 && titleRect.right <= rootRect.right + 1,
+                        personInside: personRect.left >= rootRect.left - 1 && personRect.right <= rootRect.right + 1,
+                        noOverlap: titleRect.right <= personRect.left + 1,
+                        barCentered: Math.abs(((barRect.top + barRect.bottom) / 2) - ((titleRect.top + titleRect.bottom) / 2)) < 2
+                          && Math.abs(((barRect.top + barRect.bottom) / 2) - ((personRect.top + personRect.bottom) / 2)) < 2,
+                      };
+                    }
+                    """
+                )
+                if (
+                    "성경봉독과 공동기도를 위한 안내" in title_assignee_bounds["text"]
+                    and "김남영 담임목사 외 공동집례자" in title_assignee_bounds["text"]
+                    and title_assignee_bounds["titleOverflow"] == "clip"
+                    and title_assignee_bounds["personOverflow"] == "clip"
+                    and title_assignee_bounds["titleInside"]
+                    and title_assignee_bounds["personInside"]
+                    and title_assignee_bounds["noOverlap"]
+                    and title_assignee_bounds["barCentered"]
+                ):
+                    pass_("presenter-title-assignee-long-fit", json.dumps(title_assignee_bounds, ensure_ascii=False))
+                else:
+                    fail("presenter-title-assignee-long-fit", json.dumps(title_assignee_bounds, ensure_ascii=False))
+
+                title_assignee_solo = output_page.evaluate(
+                    """
+                    () => {
+                      renderPresenterOutput({
+                        serviceId: '__smoke_title_assignee_solo__',
+                        serviceType: 'friday',
+                        chromakey: true,
+                        outputTheme: 'chromakey',
+                        backgroundImage: '',
+                        slides: [{
+                          id: '__smoke_long_title_solo__',
+                          type: 'title-assignee',
+                          elementType: PRESENTER_ELEMENT_TYPES.TITLE_ASSIGNEE,
+                          layout: PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT,
+                          title: '공동체를 위한 길고 긴 안내 제목',
+                          assignee: '',
+                        }],
+                        index: 0,
+                        safetyBlank: false,
+                      });
+                      const root = document.getElementById('presenterOutputRoot');
+                      const bar = root.querySelector('.presenter-title-assignee');
+                      const title = root.querySelector('.presenter-title-assignee-title');
+                      const rootRect = root.getBoundingClientRect();
+                      const titleRect = title.getBoundingClientRect();
+                      return {
+                        text: root.innerText,
+                        hasSoloClass: bar.classList.contains('presenter-title-assignee--solo'),
+                        columnCount: getComputedStyle(bar).gridTemplateColumns.split(' ').filter(Boolean).length,
+                        titleInside: titleRect.left >= rootRect.left - 1 && titleRect.right <= rootRect.right + 1,
+                        hasPerson: Boolean(root.querySelector('.presenter-title-assignee-person')),
+                      };
+                    }
+                    """
+                )
+                if (
+                    "공동체를 위한 길고 긴 안내 제목" in title_assignee_solo["text"]
+                    and title_assignee_solo["hasSoloClass"]
+                    and not title_assignee_solo["hasPerson"]
+                    and title_assignee_solo["titleInside"]
+                    and title_assignee_solo["columnCount"] == 1
+                ):
+                    pass_("presenter-title-assignee-solo-fit", json.dumps(title_assignee_solo, ensure_ascii=False))
+                else:
+                    fail("presenter-title-assignee-solo-fit", json.dumps(title_assignee_solo, ensure_ascii=False))
 
                 page.evaluate(
                     """

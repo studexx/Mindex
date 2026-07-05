@@ -158,6 +158,8 @@ Presenter elements:
 Presenter UI:
 
 - Controller should feel closer to PowerPoint slide sorter / FreeShow controller, but simpler.
+- Presenter control strip should avoid cramming all actions into one line. Keep primary launch/status/jump controls visually separate from music/live-input/navigation actions so controls do not collide at normal desktop widths.
+- Presenter controls must be checked at reduced widths; wrapping is acceptable, horizontal overflow or overlapping controls are not.
 - Slide thumbnails must match the actual output aspect ratio and layout. Do not enlarge a single slide just because it is alone.
 - Thumbnail labels should not invent titles. Use actual section/form labels only when helpful.
 - A section can contain multiple slides/forms; show section grouping without making it visually heavy.
@@ -441,6 +443,9 @@ Presenter-specific checks:
 - Verify non-chromakey services do not flash chromakey green.
 - Verify fonts do not flash from one family to another after output opens.
 - Verify output slide matches thumbnail, including background, title, lyrics, and labels.
+- Verify output-window stop from the output screen does not leave stale heartbeat/monitor state in the controller.
+- Verify image/score slides do not swap to a blank frame before the active image is decoded; keep the previous rendered frame until the image is ready.
+- Verify lower-bar title/assignee output does not ellipsize long Korean titles or names; text should fit its column and stay vertically centered.
 
 Praise-specific checks:
 
