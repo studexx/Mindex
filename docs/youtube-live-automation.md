@@ -66,10 +66,12 @@ scripts/youtube-live-source-rpc.sql
 
 The YouTube description is intentionally empty.
 
-The default preacher is `김남영 위임목사`. If the exact `설교` service item
-assignee contains a trusted different preacher, that assignee overrides the
-default. This matches the normal yearly pattern while still allowing guest
-preachers to be reflected when Mindex has explicit data.
+The default preacher is `김남영 위임목사`. `김남영 목사` and `김남영 위임목사`
+are treated as senior pastor aliases for this automation and normalize to
+`김남영 위임목사`. If the exact `설교` service item assignee contains a trusted
+different preacher, that assignee overrides the default. This matches the normal
+yearly pattern while still allowing guest preachers to be reflected when Mindex
+has explicit data.
 
 ## GitHub Secrets
 

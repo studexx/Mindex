@@ -87,6 +87,9 @@ begin
         'code', 'ignored_sermon_assignee',
         'value', v_sermon_assignee
       ));
+    elsif v_assignee_key in ('김남영목사', '김남영위임목사') then
+      v_preacher := '김남영 위임목사';
+      v_preacher_source := 'default_senior_pastor';
     else
       v_preacher := v_sermon_assignee;
       v_preacher_source := 'sermon_assignee';

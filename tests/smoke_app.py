@@ -733,30 +733,23 @@ def main() -> int:
                     [...document.querySelectorAll('.home-sidebar-card span')].map((node) => node.textContent.trim())
                     """
                 )
-                home_activity_state = page.evaluate(
+                home_visibility_state = page.evaluate(
                     """
-                    (() => {
-                      const activity = document.querySelector('.home-sidebar-card.activities');
-                      return {
-                        disabled: Boolean(activity?.disabled),
-                        ariaDisabled: activity?.getAttribute('aria-disabled') || '',
-                        hasModuleTarget: Boolean(activity?.dataset.homeModule),
-                        separated: Boolean(activity?.closest('.home-sidebar-section--disabled'))
-                      };
-                    })()
+                    (() => ({
+                      hasActivities: Boolean(document.querySelector('.home-sidebar-card.activities')),
+                      disabledSections: document.querySelectorAll('.home-sidebar-section--disabled').length
+                    }))()
                     """
                 )
-                expected_home_order = ["Worship", "Scripture", "Praise", "Calendar", "References", "Order Sheets", "Activities"]
+                expected_home_order = ["Worship", "Scripture", "Praise", "Calendar", "References", "Order Sheets"]
                 if (
                     home_order == expected_home_order
-                    and home_activity_state["disabled"]
-                    and home_activity_state["ariaDisabled"] == "true"
-                    and not home_activity_state["hasModuleTarget"]
-                    and home_activity_state["separated"]
+                    and not home_visibility_state["hasActivities"]
+                    and home_visibility_state["disabledSections"] == 0
                 ):
-                    pass_("home-sidebar-hierarchy", json.dumps({"order": home_order, "activity": home_activity_state}, ensure_ascii=False))
+                    pass_("home-sidebar-hierarchy", json.dumps({"order": home_order, "visibility": home_visibility_state}, ensure_ascii=False))
                 else:
-                    fail("home-sidebar-hierarchy", json.dumps({"order": home_order, "activity": home_activity_state}, ensure_ascii=False))
+                    fail("home-sidebar-hierarchy", json.dumps({"order": home_order, "visibility": home_visibility_state}, ensure_ascii=False))
 
                 spacing_modules = ["home", "service", "scripture", "praise", "calendar", "references", "order-sheets"]
                 module_spacing = []
@@ -1257,6 +1250,7 @@ def main() -> int:
                                     type: element.element_type || '',
                                     label: element.source_ref?.label || '',
                                     order: element.config?.orderSheet?.order || '',
+                                    ...(element.config?.orderSheet?.assignee ? { assignee: element.config.orderSheet.assignee } : {}),
                                     outputMode: element.config?.outputMode || ''
                                   }))
                               }));
@@ -1289,6 +1283,36 @@ def main() -> int:
                               third: summarize('sunday-main'),
                               afternoon: summarize('sunday-afternoon')
                             };
+                          })(),
+                          secondCreedOrderSheetRow: (() => {
+                            const serviceId = '__smoke_second_creed_service__';
+                            const previousServices = state.services;
+                            const previousItems = state.serviceItems[serviceId];
+                            state.services = previousServices.filter((service) => service.id !== serviceId).concat([{
+                              id: serviceId,
+                              type_id: 'sunday-second',
+                              date: '2026-07-05'
+                            }]);
+                            state.serviceItems[serviceId] = [normalizeServiceItem({
+                              id: '__smoke_second_creed_item__',
+                              service_id: serviceId,
+                              sort_order: 1,
+                              label: '사도신경',
+                              assignee: '다같이',
+                              raw_title: '사도신경',
+                              memo: serializeServiceItemMemo({
+                                elementType: 'body',
+                                orderSheet: { order: '신앙고백' }
+                              }),
+                              _worshipSectionKey: 'creed'
+                            })];
+                            try {
+                              return orderSheetRowsForOutput(serviceId).find((row) => row.order === '신앙고백') || {};
+                            } finally {
+                              state.services = previousServices;
+                              if (previousItems === undefined) delete state.serviceItems[serviceId];
+                              else state.serviceItems[serviceId] = previousItems;
+                            }
                           })(),
                           scoreModeMemo: (() => {
                             const memo = serializeServiceItemMemo({ elementType: 'praise', outputMode: 'score' });
@@ -1510,15 +1534,19 @@ def main() -> int:
                             "sectionTitle": "특송",
                             "elementLabel": "특송",
                             "when": {"songType": "hymn"},
-                            "forms": ["1절", "2절", "간주", "마지막 절"],
-                            "hint": "1절-2절-간주-마지막 절",
+                            "forms": ["1절", "후렴", "2절", "후렴", "간주", "마지막 절", "후렴"],
+                            "hint": "1절-후렴-2절-후렴-간주-마지막 절-후렴",
                             "strength": "default",
                         }
                         and template_terms["sundayPublicScaffold"]["first"]["titles"][:4] == ["준비", "신앙고백", "찬양", "참회기도"]
                         and "환영" not in template_terms["sundayPublicScaffold"]["first"]["titles"]
                         and template_terms["sundayPublicScaffold"]["first"]["creedElements"] == [
-                            {"type": "body", "label": "사도신경", "order": "신앙고백", "outputMode": ""}
+                            {"type": "body", "label": "사도신경", "order": "신앙고백", "assignee": "사도신경", "outputMode": ""}
                         ]
+                        and template_terms["sundayPublicScaffold"]["second"]["creedElements"] == [
+                            {"type": "body", "label": "사도신경", "order": "신앙고백", "assignee": "사도신경", "outputMode": ""}
+                        ]
+                        and template_terms["secondCreedOrderSheetRow"] == {"order": "신앙고백", "assignee": "사도신경", "note": "사도신경"}
                         and template_terms["sundayPublicScaffold"]["first"]["offeringElements"] == [
                             {"type": "praise", "label": "봉헌찬양", "order": "봉헌", "outputMode": "score"},
                             {"type": "title_person", "label": "봉헌기도", "order": "봉헌기도", "outputMode": ""},
@@ -1565,7 +1593,7 @@ def main() -> int:
                             "formHint": "V2-C",
                             "forms": ["V2", "C"],
                             "strength": "manual",
-                            "badgeText": "송폼 V2-C 찬송가 1절-2절-간주-마지막 절",
+                            "badgeText": "송폼 V2-C 찬송가 1절-후렴-2절-후렴-간주-마지막 절-후렴",
                         }
                         and template_terms["fridayNewServiceLeader"] == {
                             "formLeader": "이재희 청년",

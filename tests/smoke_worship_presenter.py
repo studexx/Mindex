@@ -530,9 +530,10 @@ def main() -> int:
                           is_primary: true,
                           forms: [
                             { id: 'h-v1', part_type: 'Verse', part_number: 1, lyrics: '1절 첫 줄\\n1절 둘째 줄', sort_order: 1 },
-                            { id: 'h-v2', part_type: 'Verse', part_number: 2, lyrics: '2절 첫 줄\\n2절 둘째 줄', sort_order: 2 },
-                            { id: 'h-v3', part_type: 'Verse', part_number: 3, lyrics: '3절 첫 줄\\n3절 둘째 줄', sort_order: 3 },
-                            { id: 'h-v4', part_type: 'Verse', part_number: 4, lyrics: '마지막 절 첫 줄\\n마지막 절 둘째 줄', sort_order: 4 }
+                            { id: 'h-c', part_type: 'Chorus', part_number: null, lyrics: '후렴 첫 줄\\n후렴 둘째 줄', sort_order: 2 },
+                            { id: 'h-v2', part_type: 'Verse', part_number: 2, lyrics: '2절 첫 줄\\n2절 둘째 줄', sort_order: 3 },
+                            { id: 'h-v3', part_type: 'Verse', part_number: 3, lyrics: '3절 첫 줄\\n3절 둘째 줄', sort_order: 4 },
+                            { id: 'h-v4', part_type: 'Verse', part_number: 4, lyrics: '마지막 절 첫 줄\\n마지막 절 둘째 줄', sort_order: 5 }
                           ]
                         }]
                       };
@@ -550,7 +551,21 @@ def main() -> int:
                           ]
                         }]
                       };
-                      state.songs = state.songs.filter((song) => !String(song.id || '').startsWith('__smoke_')).concat([hymnSong, ccmSong]);
+                      const hymnScoreSong = {
+                        ...hymnSong,
+                        id: '__smoke_hymn_score_song__',
+                        hymn_no: '5',
+                      };
+                      state.hymnScoreManifest = {
+                        '5': {
+                          title: '이 천지간 만물들아',
+                          slides: [
+                            { src: 'assets/hymn-scores/5/slide-01.png', sourceSlide: 1 },
+                            { src: 'assets/hymn-scores/5/slide-02.png', sourceSlide: 2 },
+                          ],
+                        },
+                      };
+                      state.songs = state.songs.filter((song) => !String(song.id || '').startsWith('__smoke_')).concat([hymnSong, hymnScoreSong, ccmSong]);
                       const service = { id: '__smoke_form_service__', type_id: 'sunday-main', date: '2026-07-04' };
                       const hymnItem = {
                         id: '__smoke_hymn_item__',
@@ -603,12 +618,55 @@ def main() -> int:
                           outputMode: 'score'
                         })
                       };
+                      const scoreImageItem = {
+                        id: '__smoke_score_image_item__',
+                        label: '찬송',
+                        raw_title: '악보 이미지 테스트',
+                        song_id: hymnSong.id,
+                        version_id: '__smoke_hymn_version__',
+                        memo: serializeServiceItemMemo({
+                          elementType: 'praise',
+                          outputMode: 'score',
+                          asset: {
+                            kind: 'score',
+                            name: '찬양 PPT',
+                            slides: [
+                              { url: 'assets/worship-backgrounds/26-A1.jpg', name: '1' },
+                              { url: 'assets/worship-backgrounds/26-A2.jpg', name: '2' },
+                            ]
+                          }
+                        })
+                      };
+                      const scoreManifestItem = {
+                        id: '__smoke_score_manifest_item__',
+                        label: '찬송',
+                        raw_title: '5 이 천지간 만물들아',
+                        song_id: hymnScoreSong.id,
+                        version_id: '__smoke_hymn_version__',
+                        memo: serializeServiceItemMemo({
+                          elementType: 'praise',
+                          outputMode: 'score'
+                        })
+                      };
+                      const scoreRawTitleItem = {
+                        id: '__smoke_score_raw_title_item__',
+                        label: '찬송',
+                        raw_title: '5 이 천지간 만물들아',
+                        song_id: '',
+                        memo: serializeServiceItemMemo({
+                          elementType: 'praise',
+                          outputMode: 'score'
+                        })
+                      };
                       const hymnAllSlides = buildPresenterSlidesForServiceItem(hymnItem, service, 0);
                       const hymnSlides = hymnAllSlides.filter((slide) => slide.type === 'lyrics');
                       const hymnBlankSlides = hymnAllSlides.filter((slide) => slide.type === 'blank');
                       const ccmSlides = buildPresenterSlidesForServiceItem(ccmItem, service, 1).filter((slide) => slide.type === 'lyrics');
                       const missingSlides = buildPresenterSlidesForServiceItem(missingItem, service, 2);
                       const scoreSlides = buildPresenterSlidesForServiceItem(scoreItem, service, 3);
+                      const scoreImageSlides = buildPresenterSlidesForServiceItem(scoreImageItem, service, 4);
+                      const scoreManifestSlides = buildPresenterSlidesForServiceItem(scoreManifestItem, service, 5);
+                      const scoreRawTitleSlides = buildPresenterSlidesForServiceItem(scoreRawTitleItem, service, 6);
                       const warningHtml = renderPresenterBoardSubgroup({
                         id: '__smoke_warning_group__',
                         label: '찬양',
@@ -638,6 +696,38 @@ def main() -> int:
                           marker: slide.marker,
                           title: slide.title
                         })),
+                        scoreImageSlides: scoreImageSlides.map((slide) => ({
+                          type: slide.type,
+                          layout: slide.layout,
+                          elementType: slide.elementType,
+                          sourceType: slide.sourceType,
+                          componentType: slide.componentType,
+                          marker: slide.marker,
+                          imageSrc: slide.imageSrc
+                        })),
+                        scoreManifestSlides: scoreManifestSlides.map((slide) => ({
+                          type: slide.type,
+                          layout: slide.layout,
+                          elementType: slide.elementType,
+                          sourceType: slide.sourceType,
+                          componentType: slide.componentType,
+                          marker: slide.marker,
+                          imageSrc: slide.imageSrc
+                        })),
+                        scoreRawTitleSlides: scoreRawTitleSlides.map((slide) => ({
+                          type: slide.type,
+                          layout: slide.layout,
+                          elementType: slide.elementType,
+                          sourceType: slide.sourceType,
+                          componentType: slide.componentType,
+                          marker: slide.marker,
+                          imageSrc: slide.imageSrc
+                        })),
+                        scorePreloadSources: presenterOutputImageSourcesForPreload({
+                          slides: scoreImageSlides,
+                          index: 0,
+                          chromakey: false
+                        }, scoreImageSlides[0]),
                         missingWarnings: [...new Set(missingSlides.flatMap((slide) => slide.warnings || []))],
                         missingPreviewText: missingSlides.map((slide) => renderPresenterSlideMiniPreview(slide, service.id)).join(' '),
                         warningChipText: warningNode.querySelector('.svc-presenter-warning')?.textContent.trim() || ''
@@ -646,8 +736,16 @@ def main() -> int:
                     """
                 )
                 if (
-                    form_preset_state["hymnTypes"] == ["song-title", "lyrics", "lyrics", "blank", "lyrics"]
-                    and form_preset_state["hymnMarkers"] == ["Verse 1", "Verse 2", "Verse 4"]
+                    form_preset_state["hymnTypes"] == ["song-title", "lyrics", "lyrics", "lyrics", "lyrics", "blank", "lyrics", "lyrics"]
+                    and form_preset_state["hymnMarkers"] == ["Verse 1", "Chorus", "Verse 2", "Chorus", "Verse 4", "Chorus"]
+                    and form_preset_state["hymnTexts"] == [
+                        "1절 첫 줄\n1절 둘째 줄",
+                        "후렴 첫 줄\n후렴 둘째 줄",
+                        "2절 첫 줄\n2절 둘째 줄",
+                        "후렴 첫 줄\n후렴 둘째 줄",
+                        "마지막 절 첫 줄\n마지막 절 둘째 줄",
+                        "후렴 첫 줄\n후렴 둘째 줄",
+                    ]
                     and "3절 첫 줄" not in "\n".join(form_preset_state["hymnTexts"])
                     and form_preset_state["hymnWarnings"] == []
                     and form_preset_state["hymnBlankCount"] == 1
@@ -665,6 +763,70 @@ def main() -> int:
                         "marker": "악보",
                         "title": "특송 테스트",
                     }]
+                    and form_preset_state["scoreImageSlides"] == [
+                        {
+                            "type": "image",
+                            "layout": "media",
+                            "elementType": "image",
+                            "sourceType": "score",
+                            "componentType": "score",
+                            "marker": "악보 1",
+                            "imageSrc": "assets/worship-backgrounds/26-A1.jpg",
+                        },
+                        {
+                            "type": "image",
+                            "layout": "media",
+                            "elementType": "image",
+                            "sourceType": "score",
+                            "componentType": "score",
+                            "marker": "악보 2",
+                            "imageSrc": "assets/worship-backgrounds/26-A2.jpg",
+                        },
+                    ]
+                    and form_preset_state["scoreManifestSlides"] == [
+                        {
+                            "type": "image",
+                            "layout": "media",
+                            "elementType": "image",
+                            "sourceType": "score",
+                            "componentType": "score",
+                            "marker": "악보 1",
+                            "imageSrc": "assets/hymn-scores/5/slide-01.png",
+                        },
+                        {
+                            "type": "image",
+                            "layout": "media",
+                            "elementType": "image",
+                            "sourceType": "score",
+                            "componentType": "score",
+                            "marker": "악보 2",
+                            "imageSrc": "assets/hymn-scores/5/slide-02.png",
+                        },
+                    ]
+                    and form_preset_state["scoreRawTitleSlides"] == [
+                        {
+                            "type": "image",
+                            "layout": "media",
+                            "elementType": "image",
+                            "sourceType": "score",
+                            "componentType": "score",
+                            "marker": "악보 1",
+                            "imageSrc": "assets/hymn-scores/5/slide-01.png",
+                        },
+                        {
+                            "type": "image",
+                            "layout": "media",
+                            "elementType": "image",
+                            "sourceType": "score",
+                            "componentType": "score",
+                            "marker": "악보 2",
+                            "imageSrc": "assets/hymn-scores/5/slide-02.png",
+                        },
+                    ]
+                    and form_preset_state["scorePreloadSources"] == [
+                        "assets/worship-backgrounds/26-A1.jpg",
+                        "assets/worship-backgrounds/26-A2.jpg",
+                    ]
                     and form_preset_state["missingWarnings"] == ["Bridge 없음"]
                     and "Bridge 없음" not in form_preset_state["missingPreviewText"]
                     and form_preset_state["warningChipText"] == "Bridge 없음"
@@ -1304,6 +1466,7 @@ def main() -> int:
                         elementType: slide?.dataset.elementType || '',
                         layout: slide?.dataset.slideLayout || '',
                         text: slide?.innerText.trim() || '',
+                        html: firstLine?.innerHTML || '',
                         textAlign: style?.textAlign || '',
                         alignItems: style?.alignItems || '',
                         barRatio: rootRect && textRect ? Number((textRect.height / rootRect.height).toFixed(3)) : 0,
@@ -1319,6 +1482,7 @@ def main() -> int:
                     and live_scripture_state["layout"] == "lower_bar_text"
                     and "요 3:16" in live_scripture_state["text"]
                     and "하나님이 세상을" in live_scripture_state["text"]
+                    and "요 3:16&nbsp;&nbsp;&nbsp;하나님이" in live_scripture_state["html"]
                     and live_scripture_state["textAlign"] == "left"
                     and live_scripture_state["alignItems"] == "flex-start"
                     and abs(live_scripture_state["barRatio"] - (7 / 40)) <= 0.01

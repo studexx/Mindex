@@ -180,7 +180,6 @@ def find_existing_broadcast(youtube, service_date: str) -> dict[str, Any] | None
     request = youtube.liveBroadcasts().list(
         part="id,snippet,status",
         broadcastStatus="upcoming",
-        mine=True,
         maxResults=50,
     )
     while request is not None:

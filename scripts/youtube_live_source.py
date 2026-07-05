@@ -25,6 +25,7 @@ START_TIME = time(10, 45)
 REQUIRED_FIELDS = ("sermonTitle", "passage", "preacher")
 DEFAULT_STATE_DIR = ROOT / "output" / "youtube-live-source"
 DEFAULT_PREACHER = "김남영 위임목사"
+DEFAULT_PREACHER_ALIASES = {"김남영목사", "김남영위임목사"}
 
 
 @dataclass(frozen=True)
@@ -132,6 +133,14 @@ def clean_text(value: Any) -> str:
     return " ".join(str(value or "").split())
 
 
+def preacher_key(value: Any) -> str:
+    return "".join(ch for ch in clean_text(value).lower() if ch.isalnum())
+
+
+def is_default_preacher_alias(value: Any) -> bool:
+    return preacher_key(value) in DEFAULT_PREACHER_ALIASES
+
+
 def retry_marker_path(state_dir: Path, service_date: date) -> Path:
     return state_dir / f"{service_date.isoformat()}.retry.json"
 
@@ -177,7 +186,10 @@ def resolve_live_source(
     raw_preacher = clean_text(raw_result.get("preacher"))
     preacher_source = clean_text(raw_result.get("preacherSource"))
     preacher = raw_preacher
-    if not preacher_source:
+    if preacher_source and is_default_preacher_alias(raw_preacher):
+        preacher = DEFAULT_PREACHER
+        preacher_source = "default_senior_pastor"
+    elif not preacher_source:
         if raw_preacher and raw_preacher != DEFAULT_PREACHER:
             warnings = [
                 *warnings,

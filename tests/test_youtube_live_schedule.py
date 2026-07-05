@@ -1,8 +1,13 @@
 from __future__ import annotations
 
+import sys
 import unittest
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from scripts.youtube_live_schedule import (
+    find_existing_broadcast,
     is_same_service_date,
     live_description,
     live_title,
@@ -63,6 +68,33 @@ class YoutubeLiveScheduleTests(unittest.TestCase):
             }
         }
         self.assertFalse(is_same_service_date(broadcast, "2026-07-05"))
+
+    def test_find_existing_broadcast_does_not_mix_mine_and_broadcast_status(self) -> None:
+        class FakeLiveBroadcasts:
+            def __init__(self) -> None:
+                self.kwargs = None
+
+            def list(self, **kwargs):
+                self.kwargs = kwargs
+                return self
+
+            def list_next(self, request, response):
+                return None
+
+            def execute(self):
+                return {"items": []}
+
+        class FakeYoutube:
+            def __init__(self) -> None:
+                self.live_broadcasts = FakeLiveBroadcasts()
+
+            def liveBroadcasts(self):
+                return self.live_broadcasts
+
+        youtube = FakeYoutube()
+        self.assertIsNone(find_existing_broadcast(youtube, "2026-07-05"))
+        self.assertNotIn("mine", youtube.live_broadcasts.kwargs)
+        self.assertEqual(youtube.live_broadcasts.kwargs["broadcastStatus"], "upcoming")
 
 
 if __name__ == "__main__":

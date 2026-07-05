@@ -674,10 +674,6 @@ body[data-module="calendar"] .detail-pane { overflow: hidden; }
   padding-top: var(--s2);
   border-top: 1px solid color-mix(in srgb, var(--line) 56%, transparent);
 }
-.home-sidebar-section--disabled {
-  padding-top: var(--s2);
-  border-top: 1px solid color-mix(in srgb, var(--line) 44%, transparent);
-}
 .home-sidebar-heading {
   display: block;
   padding: 0 var(--sidebar-section-label-x) var(--s1);
@@ -3541,9 +3537,14 @@ body[data-module="service"] .detail-pane {
   padding: 0 6px;
 }
 .svc-item-link--linked { color: var(--accent); }
+.svc-item-link--manual { cursor: default; opacity: .75; }
 .svc-item-link:hover {
   background: color-mix(in srgb, var(--accent-soft) 40%, transparent);
   color: var(--accent);
+}
+.svc-item-link--manual:hover {
+  background: color-mix(in srgb, var(--panel-2) 28%, transparent);
+  color: var(--ink-4);
 }
 .svc-edit-title { min-width: 0; font-size: 13px; font-weight: 500; }
 .svc-edit-label:focus, .svc-edit-assignee:focus, .svc-edit-title:focus { background: color-mix(in srgb, var(--panel-2) 58%, transparent); }

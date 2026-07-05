@@ -236,6 +236,9 @@ const PRESENTER_OUTPUT_HEARTBEAT_INTERVAL_MS = 1000;
 const PRESENTER_OUTPUT_HEARTBEAT_TTL_MS = 3000;
 const PRESENTER_FULLSCREEN_RETRY_DELAYS_MS = [0, 80, 240, 600];
 const PRESENTER_OUTPUT_ESCAPE_EXIT_MS = 1600;
+const PRESENTER_OUTPUT_IMAGE_PRELOAD_RADIUS = 4;
+const PRESENTER_OUTPUT_IMAGE_PRELOAD_LIMIT = 80;
+const presenterOutputImagePreloadCache = new Map();
 const UI_DEFAULT_LOCALE = "ko";
 const UI_FALLBACK_LOCALE = "en";
 const UI_MESSAGES = {
@@ -336,7 +339,6 @@ const TITLE_COLLATOR = new Intl.Collator("ko-KR", {
 });
 
 const HANGUL_INITIALS = ["ㄱ", "ㄲ", "ㄴ", "ㄷ", "ㄸ", "ㄹ", "ㅁ", "ㅂ", "ㅃ", "ㅅ", "ㅆ", "ㅇ", "ㅈ", "ㅉ", "ㅊ", "ㅋ", "ㅌ", "ㅍ", "ㅎ"];
-const ACTIVITY_MODULE_ENABLED = false;
 const CONTENT_MODULES = ["service", "scripture", "praise", "calendar", "references", "order-sheets"];
 const ROUTE_MODULES = ["home", ...CONTENT_MODULES];
 const SERVICE_FILTERS = ["all", "public", "ministry", "special"];
@@ -704,7 +706,6 @@ function loadInitialData() {
   loadHymnScoreManifest({ silent: true });
   loadServiceData({ silent: true });
   loadReferenceLinks({ silent: true });
-  if (ACTIVITY_MODULE_ENABLED && state.module === "activities") loadActivities({ silent: true });
   if (state.module === "calendar") loadCalendarData({ silent: true });
 }
 
@@ -765,7 +766,6 @@ function bindStaticEvents() {
     if (state.module === "home") renderDetail();
     if (state.module === "scripture") renderDetail();
     if (state.module === "service") renderServiceDetail();
-    if (state.module === "activities") renderActivitiesDetail();
     if (state.module === "order-sheets") renderOrderSheetsDetail();
   });
   refs.searchInput.addEventListener("keydown", handleSearchKeydown);
@@ -845,12 +845,6 @@ function bindStaticEvents() {
     const globalServiceItem = event.target.closest("[data-global-service-id]");
     if (globalServiceItem) {
       await openGlobalServiceResult(globalServiceItem.dataset.globalServiceId);
-      return;
-    }
-
-    const globalActivityItem = event.target.closest("[data-global-activity-event-id]");
-    if (globalActivityItem) {
-      await openGlobalActivityResult(globalActivityItem.dataset.globalActivityEventId);
       return;
     }
 
@@ -1075,7 +1069,6 @@ async function handleSearchKeydown(event) {
     const firstSong = results.praise[0];
     const firstScripture = results.scripture[0];
     const firstService = results.service[0];
-    const firstActivity = results.activities[0];
     event.preventDefault();
     if (firstSong) {
       await openGlobalSongResult(firstSong.id);
@@ -1095,9 +1088,6 @@ async function handleSearchKeydown(event) {
     if (firstService) {
       await openGlobalServiceResult(firstService.id);
       return;
-    }
-    if (firstActivity) {
-      await openGlobalActivityResult(firstActivity.id);
     }
     return;
   }
@@ -1818,10 +1808,6 @@ async function switchModule(moduleName, options = {}) {
     await loadServiceData();
   }
 
-  if (moduleName === "activities" && !state.activityLoaded && !state.activityError) {
-    await loadActivities();
-  }
-
   if (moduleName === "calendar" && !state.calendarLoaded && !state.calendarLoading && !state.calendarError) {
     await loadCalendarData();
   }
@@ -2395,10 +2381,11 @@ function groupWorshipElements(sections = [], elements = []) {
       normalizeServiceOrderSheetPayload(sourceRef.orderSheet),
       normalizeServiceOrderSheetPayload(sourceRef.order_sheet),
     );
-    const asset = normalizeServiceAsset(config.asset || config.media || sourceRef.asset);
+    const asset = normalizeServiceAsset(config.asset || config.media || element.asset || sourceRef.asset);
     const formHint = serviceFormHintFromConfig(config);
     const formPreset = normalizeServiceFormPreset(config.formPreset || config.form_preset, formHint);
     const formPresetRules = normalizeServiceFormPresetRules(config.formPresetRules || config.form_preset_rules);
+    const manualSlides = serviceElementManualSlides(element, config);
     grouped[serviceId].push(normalizeServiceItem({
       id: element.id,
       service_id: serviceId,
@@ -2414,6 +2401,7 @@ function groupWorshipElements(sections = [], elements = []) {
         formHint,
         formPreset,
         formPresetRules,
+        slides: manualSlides,
         asset,
         orderSheet,
         reviewStatus: element.review_status,
@@ -2429,6 +2417,18 @@ function groupWorshipElements(sections = [], elements = []) {
     }));
     return grouped;
   }, {});
+}
+
+function serviceElementManualSlides(element = {}, config = {}) {
+  const configured = config.slides || config.slideOverrides || config.slide_overrides;
+  if (Array.isArray(configured)) return configured.map((slide) => String(slide || "").trim()).filter(Boolean);
+  const body = String(element.body || "").trim();
+  if (!body) return [];
+  if (!["praise", "plain_text", "body"].includes(normalizeWorshipElementType(element.element_type))) return [];
+  return body
+    .split(/\n\s*\n/g)
+    .map((block) => block.trim())
+    .filter(Boolean);
 }
 
 function serviceFormHintFromConfig(config = {}) {
@@ -3622,13 +3622,265 @@ async function saveScripture() {
 }
 
 async function saveService() {
-  state.dirty.service = false;
-  state.dirtyServiceTypeIds.clear();
+  if (!requireClient() || state.saving) return;
+
+  state.saving = true;
   updateSaveState();
+  try {
+    await saveDirtyServiceTypes();
+    const service = state.services.find((svc) => svc.id === state.selectedServiceId);
+    if (service && !service._isExpected) {
+      await saveWorshipServiceInstance(service);
+    }
+    state.dirty.service = false;
+    showToast("Worship saved.");
+    render();
+  } catch (error) {
+    showToast(error.message || "Worship save failed.", "error");
+  } finally {
+    state.saving = false;
+    updateSaveState();
+  }
 }
 
 async function saveDirtyServiceTypes() {
+  if (!state.dirtyServiceTypeIds.size || !state.client) return;
+  const types = [...state.dirtyServiceTypeIds]
+    .map((typeId) => serviceTypeById(typeId))
+    .filter(Boolean);
+  for (const type of types) {
+    const payload = {
+      display_name: type.name || type.id,
+      short_name: type.short_name || type.name || type.id,
+      group_key: type._worshipGroupKey || serviceTypeGroupKey(type.id),
+      sort_order: Number(type.sort_order) || serviceTypeSortOrder(type.id),
+      default_output_context: type._worshipOutputContext || "auto",
+      chromakey_enabled: Boolean(type._worshipChromakey),
+      config: {
+        fixedItems: serializeServiceDefaultItems(type.id),
+        orderTemplate: serializeServiceOrderTemplate(type.id),
+      },
+    };
+    const { error } = await state.client
+      .from("mindex_worship_service_types")
+      .update(payload)
+      .eq("id", type._worshipId || canonicalWorshipServiceTypeId(type.id));
+    if (error) throw error;
+  }
   state.dirtyServiceTypeIds.clear();
+}
+
+async function saveWorshipServiceInstance(service) {
+  const serviceId = service.id;
+  const canonicalTypeId = canonicalWorshipServiceTypeId(service.type_id);
+  const servicePayload = {
+    service_type_id: canonicalTypeId,
+    service_date: service.date,
+    service_date_end: service.date_end || null,
+    title: service.title || "",
+    status: service._worshipStatus || "draft",
+    worship_leader: "",
+    praise_leader: serviceUsesPraiseLeader(service.type_id) ? cleanServiceAssignee(service.leader) : "",
+    tags: Array.isArray(service.tags) ? service.tags : [],
+    notes: service.raw_text || "",
+  };
+  const { error: serviceError } = await state.client
+    .from("mindex_worship_services")
+    .update(servicePayload)
+    .eq("id", serviceId);
+  if (serviceError) throw serviceError;
+
+  const existingSections = state.worshipSections.filter((section) => section.service_id === serviceId);
+  const existingElements = state.worshipElements.filter((element) =>
+    existingSections.some((section) => section.id === element.section_id));
+  const existingSectionById = Object.fromEntries(existingSections.map((section) => [section.id, section]));
+  const existingElementById = Object.fromEntries(existingElements.map((element) => [element.id, element]));
+  const items = normalizeServiceItemsInCurrentOrder(getServiceItems(serviceId));
+  const rows = buildWorshipPersistenceRows(service, items, existingSectionById, existingElementById);
+
+  if (rows.sections.length) {
+    const { error } = await state.client
+      .from("mindex_worship_sections")
+      .upsert(rows.sections, { onConflict: "id" });
+    if (error) throw error;
+  }
+  if (rows.elements.length) {
+    const { error } = await state.client
+      .from("mindex_worship_elements")
+      .upsert(rows.elements, { onConflict: "id" });
+    if (error) throw error;
+  }
+
+  const nextElementIds = new Set(rows.elements.map((element) => element.id));
+  const removedElementIds = existingElements.map((element) => element.id).filter((id) => !nextElementIds.has(id));
+  if (removedElementIds.length) {
+    const { error } = await state.client
+      .from("mindex_worship_elements")
+      .delete()
+      .in("id", removedElementIds);
+    if (error) throw error;
+  }
+
+  const nextSectionIds = new Set(rows.sections.map((section) => section.id));
+  const removedSectionIds = existingSections.map((section) => section.id).filter((id) => !nextSectionIds.has(id));
+  if (removedSectionIds.length) {
+    const { error } = await state.client
+      .from("mindex_worship_sections")
+      .delete()
+      .in("id", removedSectionIds);
+    if (error) throw error;
+  }
+
+  state.worshipSections = [
+    ...state.worshipSections.filter((section) => section.service_id !== serviceId),
+    ...rows.sections,
+  ];
+  const existingSectionIdsForService = new Set(existingSections.map((section) => section.id));
+  state.worshipElements = [
+    ...state.worshipElements.filter((element) => !existingSectionIdsForService.has(element.section_id)),
+    ...rows.elements,
+  ];
+  state.serviceItems[serviceId] = groupWorshipElements(rows.sections, rows.elements)[serviceId] || [];
+  refreshPresenterForService(serviceId);
+}
+
+function buildWorshipPersistenceRows(service, items, existingSectionById = {}, existingElementById = {}) {
+  const sectionRows = [];
+  const elementRows = [];
+  const sectionSort = new Map();
+  const sectionElementCounts = new Map();
+
+  items.forEach((item, index) => {
+    const existingElement = isUuid(item.id) ? existingElementById[item.id] : null;
+    const existingSection = existingElement
+      ? existingSectionById[existingElement.section_id]
+      : (isUuid(item._worshipSectionId) ? existingSectionById[item._worshipSectionId] : null);
+    const sectionId = existingSection?.id || createUuid();
+    const elementId = existingElement?.id || createUuid();
+    const sortOrder = index + 1;
+    if (!sectionSort.has(sectionId)) sectionSort.set(sectionId, sortOrder);
+    sectionElementCounts.set(sectionId, (sectionElementCounts.get(sectionId) || 0) + 1);
+
+    const sectionLabel = String(item.label || item._worshipSectionTitle || "").trim() || "섹션";
+    const existingSectionRef = existingSection?.source_ref && typeof existingSection.source_ref === "object" ? existingSection.source_ref : {};
+    const existingSectionConfig = existingSection?.config && typeof existingSection.config === "object" ? existingSection.config : {};
+    if (!sectionRows.some((section) => section.id === sectionId)) {
+      sectionRows.push({
+        id: sectionId,
+        service_id: service.id,
+        sort_order: sortOrder,
+        section_key: existingSection?.section_key || item._worshipSectionKey || "",
+        title: sectionLabel,
+        person: existingSection?.person || "",
+        template_id: existingSection?.template_id || null,
+        template_modified: Boolean(existingSection?.template_modified),
+        source_kind: existingSection?.source_kind || "mindex",
+        source_ref: { ...existingSectionRef, label: sectionLabel },
+        config: existingSectionConfig,
+      });
+    }
+
+    const existingSourceRef = existingElement?.source_ref && typeof existingElement.source_ref === "object" ? existingElement.source_ref : {};
+    const existingConfig = existingElement?.config && typeof existingElement.config === "object" ? existingElement.config : {};
+    const parsed = parseServiceItemMemo(item.memo);
+    const elementType = serviceElementTypeForSave(item, parsed, existingElement);
+    const manualBody = serviceItemManualBodyForSave(item, parsed, elementType);
+    const config = serviceElementConfigForSave(existingConfig, parsed, { omitSlides: Boolean(manualBody) });
+    const asset = normalizeServiceAsset(parsed.asset || existingElement?.asset);
+    const sourceRef = serviceElementSourceRefForSave(existingSourceRef, item, parsed, Boolean(manualBody));
+    elementRows.push({
+      id: elementId,
+      section_id: sectionId,
+      sort_order: sectionElementCounts.get(sectionId),
+      element_type: worshipDbElementTypeForSave(elementType) || "plain_text",
+      title: manualBody ? String(item.raw_title || "").trim() : serviceElementTitleForSave(item, elementType),
+      person: cleanServiceAssignee(item.assignee),
+      body: manualBody || "",
+      song_id: item.song_id || null,
+      song_version_id: item.version_id || item.song_version_id || null,
+      scripture_id: existingElement?.scripture_id || null,
+      scripture_reference: isScriptureServiceLabel(item.label) ? normalizeServiceItemReferenceSpacing(item.raw_title) : (existingElement?.scripture_reference || ""),
+      asset,
+      template_id: existingElement?.template_id || null,
+      template_modified: Boolean(existingElement?.template_modified),
+      source_kind: manualBody ? "manual" : (existingElement?.source_kind || (item.song_id ? "mindex" : "manual")),
+      source_ref: sourceRef,
+      review_status: existingElement?.review_status || (manualBody ? "needs_review" : "draft"),
+      config,
+    });
+  });
+
+  sectionRows.forEach((section) => {
+    section.sort_order = sectionSort.get(section.id) || section.sort_order;
+  });
+  return { sections: sectionRows, elements: elementRows };
+}
+
+function serviceItemManualBodyForSave(item = {}, parsed = parseServiceItemMemo(item.memo), elementType = "") {
+  if (item.song_id) return "";
+  const normalizedType = normalizeWorshipElementType(elementType);
+  if (!["praise", "plain_text", "body"].includes(normalizedType)) return "";
+  if (parsed.slides.length) return parsed.slides.join("\n\n");
+  return "";
+}
+
+function serviceElementTypeForSave(item = {}, parsed = parseServiceItemMemo(item.memo), existingElement = null) {
+  const explicit = serviceMemoElementType(parsed);
+  if (explicit) return explicit;
+  if (!item.song_id && isSongServiceLabel(item.label) && parsed.slides.length) return "praise";
+  return normalizeWorshipElementType(existingElement?.element_type) || worshipTemplateElementType({}, item.label);
+}
+
+function worshipDbElementTypeForSave(elementType = "") {
+  const type = normalizeWorshipElementType(elementType) || normalizeServiceElementType(elementType);
+  if (type === "file" || type === "template") return "ppt";
+  if (type === "scripture") return "scripture_reading";
+  if (type === "live_praise") return "praise";
+  if (type === "activity") return "plain_text";
+  return type;
+}
+
+function serviceElementTitleForSave(item = {}, elementType = "") {
+  const rawTitle = String(item.raw_title || "").trim();
+  if (["video", "image", "score", "file"].includes(normalizeServiceElementType(elementType))) {
+    const parsed = parseServiceItemMemo(item.memo);
+    return parsed.asset?.name || rawTitle;
+  }
+  return rawTitle;
+}
+
+function serviceElementConfigForSave(existingConfig = {}, parsed = emptyServiceItemMemo(), options = {}) {
+  const config = { ...(existingConfig && typeof existingConfig === "object" ? existingConfig : {}) };
+  delete config.slides;
+  delete config.slideOverrides;
+  delete config.slide_overrides;
+  if (parsed.note) config.note = parsed.note;
+  else delete config.note;
+  if (parsed.formHint) config.formHint = parsed.formHint;
+  else delete config.formHint;
+  if (parsed.formPreset) config.formPreset = parsed.formPreset;
+  else delete config.formPreset;
+  if (parsed.formPresetRules?.length) config.formPresetRules = parsed.formPresetRules;
+  else delete config.formPresetRules;
+  if (parsed.outputMode) config.outputMode = parsed.outputMode;
+  else delete config.outputMode;
+  if (hasServiceAsset(parsed.asset)) config.asset = parsed.asset;
+  else delete config.asset;
+  if (hasServiceOrderSheetPayload(parsed.orderSheet)) config.orderSheet = parsed.orderSheet;
+  else delete config.orderSheet;
+  if (!options.omitSlides && parsed.slides.length) config.slides = parsed.slides;
+  return config;
+}
+
+function serviceElementSourceRefForSave(existingSourceRef = {}, item = {}, parsed = emptyServiceItemMemo(), manualBody = false) {
+  const sourceRef = { ...(existingSourceRef && typeof existingSourceRef === "object" ? existingSourceRef : {}) };
+  sourceRef.label = String(item.label || sourceRef.label || "").trim();
+  if (manualBody) {
+    sourceRef.content_source = sourceRef.content_source || "manual_worship_element_body";
+    sourceRef.note = sourceRef.note || "일회성 예배 본문은 Praise DB가 아니라 Worship element body에 보관";
+  }
+  if (hasServiceOrderSheetPayload(parsed.orderSheet)) sourceRef.orderSheet = parsed.orderSheet;
+  return sourceRef;
 }
 
 async function saveSongMeta(song) {
@@ -5418,6 +5670,10 @@ function hasServiceOrderSheetPayload(payload) {
   return Boolean(payload && typeof payload === "object" && Object.keys(payload).length);
 }
 
+const LEGACY_PUBLIC_SPECIAL_HYMN_FORM_PRESET_FORMS = ["1절", "2절", "간주", "마지막 절"];
+const PUBLIC_SPECIAL_HYMN_FORM_PRESET_FORMS = ["1절", "후렴", "2절", "후렴", "간주", "마지막 절", "후렴"];
+const PUBLIC_SPECIAL_HYMN_FORM_PRESET_HINT = "1절-후렴-2절-후렴-간주-마지막 절-후렴";
+
 function normalizeServiceFormPreset(value, fallbackHint = "", fallbackStrength = "") {
   const source = parseObjectPayload(value);
   const forms = Array.isArray(value)
@@ -5464,9 +5720,28 @@ function normalizeServiceFormPresetRules(value) {
         parsedRule.strength || parsedRule.defaultStrength || parsedRule.default_strength,
       );
       const when = parseObjectPayload(parsedRule.when || parsedRule.condition || parsedRule.conditions) || {};
-      return preset ? { when, formPreset: preset } : null;
+      return preset ? { when, formPreset: normalizeServiceFormPresetRulePreset(preset, when) } : null;
     })
     .filter(Boolean);
+}
+
+function normalizeServiceFormPresetRulePreset(preset, when = {}) {
+  if (!preset?.forms?.length) return preset;
+  const songTypes = normalizePraiseTypes(when.songType || when.song_type || when.praiseType || when.praise_type);
+  const isHymnRule = songTypes.includes("hymn");
+  if (!isHymnRule) return preset;
+  const formsKey = preset.forms.map((item) => compactSearchValue(item)).join("|");
+  const legacyKey = LEGACY_PUBLIC_SPECIAL_HYMN_FORM_PRESET_FORMS.map((item) => compactSearchValue(item)).join("|");
+  if (formsKey !== legacyKey) return preset;
+  const legacyHint = LEGACY_PUBLIC_SPECIAL_HYMN_FORM_PRESET_FORMS.join("-");
+  const hint = compactSearchValue(preset.hint || "") === compactSearchValue(legacyHint)
+    ? PUBLIC_SPECIAL_HYMN_FORM_PRESET_HINT
+    : firstNonBlankString(preset.hint, PUBLIC_SPECIAL_HYMN_FORM_PRESET_HINT);
+  return {
+    ...preset,
+    forms: [...PUBLIC_SPECIAL_HYMN_FORM_PRESET_FORMS],
+    hint,
+  };
 }
 
 function pickServiceOrderSheetFields(item = {}) {
@@ -5733,7 +6008,15 @@ function runServiceItemAction(action, index, label = "", title = "") {
     nextSelectedIndex = index + 1;
   }
   if (action === "duplicate" && item) {
-    items.splice(index + 1, 0, normalizeServiceItem({ ...item, id: createLocalId() }, index + 1));
+    items.splice(index + 1, 0, normalizeServiceItem({
+      ...item,
+      id: createLocalId(),
+      _worshipSectionId: "",
+      _worshipSectionKey: "",
+      _worshipSectionTitle: "",
+      _worshipSectionOrder: 0,
+      _worshipElementOrder: 0,
+    }, index + 1));
     nextSelectedIndex = index + 1;
   }
   if (action === "delete" && item) {
@@ -6305,8 +6588,6 @@ function renderModuleSwitcher() {
       ? "Save scripture"
       : state.module === "service"
         ? "Save service"
-      : state.module === "activities"
-        ? "Save activities"
       : state.module === "references"
           ? "Save references"
         : state.module === "calendar"
@@ -6462,7 +6743,7 @@ const SERVICE_RECURRENCE = {
 };
 
 function renderListFilter() {
-  if (state.module === "home" || state.module === "calendar" || state.module === "references" || state.module === "order-sheets" || state.module === "service" || state.module === "activities") {
+  if (state.module === "home" || state.module === "calendar" || state.module === "references" || state.module === "order-sheets" || state.module === "service") {
     refs.listFilter.hidden = true;
     refs.listFilterButtons.forEach((button) => {
       button.hidden = true;
@@ -6563,11 +6844,6 @@ function renderSongList() {
     renderHomeList();
     return;
   }
-  if (state.module === "activities") {
-    renderActivitiesList();
-    return;
-  }
-
   if (state.module === "scripture") {
     renderScriptureList();
     return;
@@ -6653,13 +6929,11 @@ function getGlobalSearchSectionOrder() {
     { id: "praise", label: "Praise", items: (results) => results.praise.map(renderGlobalPraiseResult) },
     { id: "scripture", label: "Scripture", items: (results) => results.scripture.map(renderGlobalScriptureResult) },
     { id: "service", label: "Service", items: (results) => results.service.map(renderGlobalServiceResult) },
-    ...(ACTIVITY_MODULE_ENABLED ? [{ id: "activities", label: "Activities", items: (results) => results.activities.map(renderGlobalActivityResult) }] : []),
   ];
   const modulePriority = {
     praise: "praise",
     scripture: "scripture",
     service: "service",
-    ...(ACTIVITY_MODULE_ENABLED ? { activities: "activities" } : {}),
   }[state.module];
   if (!modulePriority) return sections;
   return [
@@ -6685,7 +6959,6 @@ function getGlobalSearchResults() {
     praise: getGlobalPraiseResults(tokens),
     scripture: getGlobalScriptureResults(query, tokens),
     service: getGlobalServiceResults(query),
-    activities: ACTIVITY_MODULE_ENABLED ? getGlobalActivityResults(query) : [],
   };
 }
 
@@ -6729,11 +7002,6 @@ function getGlobalScriptureResults(query, tokens) {
 function getGlobalServiceResults(query) {
   if (!query) return [];
   return sortServicesByDate(state.services.filter((service) => serviceMatchesSearch(service, query)), "desc").slice(0, 8);
-}
-
-function getGlobalActivityResults(query) {
-  if (!query || !state.activityLoaded || state.activityError) return [];
-  return getFilteredActivityEvents(query).slice(0, 6);
 }
 
 function renderGlobalPraiseResult(song) {
@@ -6801,33 +7069,6 @@ function renderGlobalServiceResult(service) {
       <span class="song-meta-line">${escapeHtml([meta, preview].filter(Boolean).join(" · "))}</span>
     </button>
   `;
-}
-
-function renderGlobalActivityResult(event) {
-  const games = activityGamesForEvent(event.id);
-  const teams = activityTeamsForEvent(event.id);
-  return `
-    <button class="song-item global-search-result" type="button" data-global-activity-event-id="${escapeAttr(event.id)}">
-      <span class="song-title">
-        <span class="song-title-text">${escapeHtml(event.title)}</span>
-      </span>
-      <span class="song-meta-line">${escapeHtml(cleanList([formatActivityDate(event.date), `${games.length} games`, `${teams.length} teams`]).join(" · "))}</span>
-    </button>
-  `;
-}
-
-async function openGlobalActivityResult(eventId) {
-  if (!ACTIVITY_MODULE_ENABLED) return;
-  if (!eventId) return;
-  if (state.module !== "activities") {
-    await switchModule("activities", { clearSearch: false, syncHistory: false });
-    if (state.module !== "activities") return;
-  }
-  state.selectedActivityEventId = eventId;
-  clearGlobalSearchInput();
-  renderActivitiesList();
-  renderActivitiesDetail();
-  syncBrowserHistory();
 }
 
 async function openGlobalSongResult(songId) {
@@ -6904,13 +7145,9 @@ function renderHomeList() {
   const contentModules = ["scripture", "praise"]
     .map((id) => modules.find((module) => module.id === id))
     .filter(Boolean);
-  const utilityModules = ["calendar", "references", "order-sheets", "activities"]
+  const utilityModules = ["calendar", "references", "order-sheets"]
     .map((id) => modules.find((module) => module.id === id))
-    .filter((module) => module && (ACTIVITY_MODULE_ENABLED || module.id !== "activities"))
     .filter(Boolean);
-  const disabledModules = ["activities"]
-    .map((id) => modules.find((module) => module.id === id))
-    .filter((module) => module && !ACTIVITY_MODULE_ENABLED);
   refs.songCount.textContent = "";
   refs.songList.innerHTML = `
     <div class="home-sidebar">
@@ -6923,10 +7160,6 @@ function renderHomeList() {
       <section class="home-sidebar-section home-sidebar-section--utility">
         ${utilityModules.map(renderHomeSidebarCard).join("")}
       </section>
-      ${disabledModules.length ? `<section class="home-sidebar-section home-sidebar-section--disabled">
-        <span class="home-sidebar-heading">Disabled</span>
-        ${disabledModules.map((module) => renderHomeSidebarCard(module, { disabled: true })).join("")}
-      </section>` : ""}
     </div>
   `;
   finishListRender();
@@ -6955,9 +7188,8 @@ function renderHomeDetail() {
   const contentModules = ["scripture", "praise"]
     .map((id) => modules.find((module) => module.id === id))
     .filter(Boolean);
-  const utilityModules = ["calendar", "references", "order-sheets", "activities"]
+  const utilityModules = ["calendar", "references", "order-sheets"]
     .map((id) => modules.find((module) => module.id === id))
-    .filter((module) => module && (ACTIVITY_MODULE_ENABLED || module.id !== "activities"))
     .filter(Boolean);
   const verse = homeVerse();
   refs.detailPane.innerHTML = `
@@ -7199,8 +7431,6 @@ function homeModuleCards() {
   const nextService = services[0];
   const calendarRows = getCalendarDisplayRows();
   const referencesSummary = referenceSummaryText();
-  const activitiesSummary = activitySummaryText();
-
   return [
     {
       id: "service",
@@ -7213,20 +7443,6 @@ function homeModuleCards() {
       meta: cleanList([
         nextService ? serviceDisplayTypeName(nextService) : "",
         nextService ? serviceItemPreview(nextService.id) : "",
-      ]),
-    },
-    {
-      id: "activities",
-      title: "Activities",
-      eyebrow: "",
-      icon: "trophy",
-      sidebarMeta: activitiesSummary || "Games",
-      detail: activitiesSummary || "Games",
-      compactMeta: state.activityLoaded
-        ? { value: formatCount(state.activityEvents.length), label: "events" }
-        : { value: state.activityError === "setup" ? "Setup" : "Games", label: "" },
-      meta: cleanList([
-        activitiesSummary,
       ]),
     },
     {
@@ -7297,13 +7513,6 @@ function homeModuleCards() {
 function orderSheetSummaryText() {
   const count = getOrderSheetServices().length;
   return `${formatCount(count)} ${count === 1 ? "service" : "services"}`;
-}
-
-function activitySummaryText() {
-  if (state.activityError === "setup") return "Setup needed";
-  if (state.activityError) return "Unavailable";
-  if (!state.activityLoaded) return "";
-  return `${formatCount(state.activityGames.length)} ${state.activityGames.length === 1 ? "game" : "games"}`;
 }
 
 function referenceSummaryText() {
@@ -7697,7 +7906,6 @@ function getListScrollKey() {
   if (state.module === "scripture") return `scripture:${state.scriptureFilter}:${search}`;
   if (state.module === "service") return `service:${state.serviceFilter}:${search}`;
   if (state.module === "calendar") return `calendar:${search}`;
-  if (state.module === "activities") return `activities:${search}`;
   if (state.module === "references") return `references:${search}`;
   return `praise:${state.praiseFilter}:${search}`;
 }
@@ -7784,10 +7992,6 @@ function renderDetail() {
   }
   if (state.module === "service") {
     renderServiceDetail();
-    return;
-  }
-  if (state.module === "activities") {
-    renderActivitiesDetail();
     return;
   }
   if (state.module === "calendar") {
@@ -10651,7 +10855,7 @@ async function confirmSaveBeforeLeaving() {
 }
 
 function updateSaveState() {
-  if (state.module === "home" || state.module === "calendar" || state.module === "activities") {
+  if (state.module === "home" || state.module === "calendar") {
     refs.saveAllBtn.disabled = true;
     renderConnectionStatus();
     return;
@@ -11022,8 +11226,8 @@ function responseSectionTemplate() {
 const PUBLIC_SPECIAL_HYMN_FORM_PRESET_RULE = {
   when: { songType: "hymn" },
   formPreset: {
-    forms: ["1절", "2절", "간주", "마지막 절"],
-    hint: "1절-2절-간주-마지막 절",
+    forms: [...PUBLIC_SPECIAL_HYMN_FORM_PRESET_FORMS],
+    hint: PUBLIC_SPECIAL_HYMN_FORM_PRESET_HINT,
     strength: "default",
   },
 };
@@ -11080,7 +11284,7 @@ function publicSundayFirstSecondTemplate(options = {}) {
   const specialScore = options.specialScore !== undefined ? Boolean(options.specialScore) : score;
   return [
     { label: "신앙고백", name: "신앙고백", phase: "Gathering", required: true, flex: false, sectionKey: "creed", elements: [
-      { label: "사도신경", name: "사도신경", elementType: "body", orderSheet: { order: "신앙고백" } },
+      { label: "사도신경", name: "사도신경", elementType: "body", orderSheet: { order: "신앙고백", assignee: "사도신경" } },
     ] },
     { label: "찬양", name: "찬양", phase: "Gathering", required: false, flex: true, repeatable: true, sectionKey: "praise", elementType: "praise", orderSheet: { order: "찬양", group: "praise" }, ...scoreOutputMode(score) },
     { label: "참회기도", name: "참회기도", phase: "Gathering", required: false, flex: true, sectionKey: "confession", elementType: "body" },
@@ -11113,7 +11317,7 @@ function publicSundayThirdTemplate() {
       { label: "결단기도", name: "결단기도", elementType: "title_person", orderSheet: { order: "결단기도" } },
     ] },
     { label: "신앙고백", name: "신앙고백", phase: "Response", required: true, flex: false, sectionKey: "creed", elements: [
-      { label: "사도신경", name: "사도신경", elementType: "body", orderSheet: { order: "신앙고백" } },
+      { label: "사도신경", name: "사도신경", elementType: "body", orderSheet: { order: "신앙고백", assignee: "사도신경" } },
     ] },
     publicWorshipOfferingStep({ score: true, praiseLabel: "봉헌찬송" }),
     { label: "교회소식", name: "교회소식", phase: "Sending", required: true, flex: false, sectionKey: "announcements", elementType: "plain_text" },
@@ -13275,6 +13479,9 @@ function renderServicePraiseLinkControl(item, index) {
   if (item?.song_id) {
     return `<button class="svc-item-link svc-item-link--linked" type="button" data-open-song="${escapeAttr(item.song_id)}" aria-label="Praise에서 열기">DB</button>`;
   }
+  if (isOneOffSpecialPraiseItem(item)) {
+    return `<span class="svc-item-link svc-item-link--manual" aria-label="일회성 특송">일회성</span>`;
+  }
   const title = String(item?.raw_title || "").trim();
   if (!title) return "";
   return `
@@ -13285,6 +13492,11 @@ function renderServicePraiseLinkControl(item, index) {
 
 function renderServiceItemLinkControl(item, index) {
   return renderServicePraiseLinkControl(item, index) || renderServiceScriptureLinkControl(item);
+}
+
+function isOneOffSpecialPraiseItem(item = {}) {
+  const compact = compactSearchValue(item.label || "");
+  return compact === "특송" && !item.song_id;
 }
 
 function renderServiceScriptureLinkControl(item) {
@@ -13777,6 +13989,7 @@ function serviceOrderSheetPraiseAssignee(items = []) {
 }
 
 function serviceOrderSheetLabel(item, meta = serviceOrderSheetMeta(item)) {
+  if (isCreedServiceItem(item, meta)) return "신앙고백";
   if (meta.order) return meta.order;
   const label = String(item?.label || "").trim();
   if (label === "—") return "";
@@ -13788,10 +14001,27 @@ function isServiceSeparatorItem(item) {
 }
 
 function serviceOrderSheetAssignee(item, meta = serviceOrderSheetMeta(item)) {
+  if (isCreedServiceItem(item, meta)) return "사도신경";
   if (meta.assignee) return meta.assignee;
   const assignee = cleanServiceAssignee(item?.assignee);
   if (assignee) return assignee;
   return inferOrderSheetAssignee(item);
+}
+
+function isCreedServiceItem(item = {}, meta = serviceOrderSheetMeta(item)) {
+  const sectionKey = String(item?._worshipSectionKey || "").trim();
+  if (sectionKey === "creed") return true;
+  const order = compactSearchValue(meta?.order || "");
+  const label = compactSearchValue(item?.label || "");
+  const title = compactSearchValue(item?.raw_title || item?.title || "");
+  return order === "신앙고백" || label === "사도신경" || (label === "신앙고백" && title === "사도신경");
+}
+
+function isCreedPresenterItem(item = {}, label = "", displayText = "") {
+  if (isCreedServiceItem(item)) return true;
+  const compactLabel = compactSearchValue(label || item?.label || "");
+  const compactText = compactSearchValue(displayText || item?.raw_title || item?.title || "");
+  return compactLabel === "사도신경" || (compactLabel === "신앙고백" && compactText === "사도신경");
 }
 
 function inferOrderSheetAssignee(item) {
@@ -14499,8 +14729,8 @@ function formatLiveScriptureSlideText(reference, verses = []) {
   const multipleVerses = verses.length > 1;
   return verses.map((verse, index) => {
     const verseText = String(verse?.text || "").trim();
-    const versePrefix = multipleVerses ? `${verse?.verse || ""} `.trim() : "";
-    const line = [versePrefix, verseText].filter(Boolean).join(" ");
+    const versePrefix = multipleVerses ? String(verse?.verse || "").trim() : "";
+    const line = [versePrefix, verseText].filter(Boolean).join("   ");
     return [index === 0 ? title : "", line].filter(Boolean).join("   ");
   }).join("\n");
 }
@@ -15936,6 +16166,7 @@ function presenterMemoElementIsTitleSlide(elementType) {
 function presenterTitleAssigneeTitle(item = {}, label = "", displayText = "", elementType = "") {
   const compact = compactSearchValue(label);
   const text = String(displayText || "").trim();
+  if (isCreedPresenterItem(item, label, displayText)) return "신앙고백";
   if (compact === "대표기도" || compact === "기도") return "기도";
   if (compact === "성경봉독") return "성경봉독";
   if (compact === "특송") return "특송";
@@ -15948,6 +16179,7 @@ function presenterTitleAssigneeTitle(item = {}, label = "", displayText = "", el
 }
 
 function presenterTitleAssigneePerson(item = {}, label = "", displayText = "", titleText = "") {
+  if (isCreedPresenterItem(item, label, displayText)) return "사도신경";
   const assignee = cleanServiceAssignee(item.assignee);
   if (assignee) return assignee;
   const compact = compactSearchValue(label);
@@ -16787,7 +17019,80 @@ function renderPresenterOutput(payload) {
     return;
   }
 
+  preloadPresenterOutputImages(payload, slide);
   root.innerHTML = renderPresenterSlideFrame(slide);
+}
+
+function preloadPresenterOutputImages(payload = {}, activeSlide = null) {
+  presenterOutputImageSourcesForPreload(payload, activeSlide).forEach(preloadPresenterOutputImage);
+}
+
+function presenterOutputImageSourcesForPreload(payload = {}, activeSlide = null) {
+  const sources = [];
+  const pushSlide = (slide) => {
+    const source = presenterSlideImageSource(slide);
+    if (source) sources.push(source);
+  };
+  pushSlide(activeSlide);
+
+  if (payload?.livePraise?.active) {
+    const liveSlides = Array.isArray(payload.livePraise.slides) ? payload.livePraise.slides : [];
+    const index = clampPresenterIndex(payload.livePraise.index, liveSlides.length);
+    for (let offset = -PRESENTER_OUTPUT_IMAGE_PRELOAD_RADIUS; offset <= PRESENTER_OUTPUT_IMAGE_PRELOAD_RADIUS; offset += 1) {
+      pushSlide(liveSlides[index + offset]);
+    }
+  } else {
+    const slides = Array.isArray(payload?.slides) ? payload.slides : [];
+    const index = clampPresenterIndex(payload?.index, slides.length);
+    for (let offset = -PRESENTER_OUTPUT_IMAGE_PRELOAD_RADIUS; offset <= PRESENTER_OUTPUT_IMAGE_PRELOAD_RADIUS; offset += 1) {
+      pushSlide(slides[index + offset]);
+    }
+  }
+
+  const backgroundImage = normalizePresenterMediaSource(payload?.backgroundImage || "");
+  if (backgroundImage && presenterMediaSourceIsImage(backgroundImage)) sources.push(backgroundImage);
+  return [...new Set(sources)];
+}
+
+function presenterSlideImageSource(slide) {
+  if (!slide) return "";
+  const layout = presenterSlideLayout(slide);
+  const elementType = presenterSlideElementType(slide);
+  if (layout !== PRESENTER_SLIDE_LAYOUTS.MEDIA || elementType !== PRESENTER_ELEMENT_TYPES.IMAGE) return "";
+  const source = normalizePresenterMediaSource(slide.imageSrc || slide.asset?.url || slide.text);
+  return source && presenterMediaSourceIsImage(source) ? source : "";
+}
+
+function preloadPresenterOutputImage(source) {
+  const normalized = normalizePresenterMediaSource(source);
+  if (!normalized || !presenterMediaSourceIsImage(normalized)) return null;
+  const cached = presenterOutputImagePreloadCache.get(normalized);
+  if (cached) {
+    cached.lastUsed = Date.now();
+    return cached.promise;
+  }
+  const image = new Image();
+  image.decoding = "async";
+  image.loading = "eager";
+  if ("fetchPriority" in image) image.fetchPriority = "high";
+  image.src = normalized;
+  const promise = typeof image.decode === "function"
+    ? image.decode().catch(() => {})
+    : new Promise((resolve) => {
+      image.onload = resolve;
+      image.onerror = resolve;
+    });
+  presenterOutputImagePreloadCache.set(normalized, { image, promise, lastUsed: Date.now() });
+  trimPresenterOutputImagePreloadCache();
+  return promise;
+}
+
+function trimPresenterOutputImagePreloadCache() {
+  if (presenterOutputImagePreloadCache.size <= PRESENTER_OUTPUT_IMAGE_PRELOAD_LIMIT) return;
+  [...presenterOutputImagePreloadCache.entries()]
+    .sort((a, b) => a[1].lastUsed - b[1].lastUsed)
+    .slice(0, presenterOutputImagePreloadCache.size - PRESENTER_OUTPUT_IMAGE_PRELOAD_LIMIT)
+    .forEach(([source]) => presenterOutputImagePreloadCache.delete(source));
 }
 
 function renderPresenterSlideFrame(slide, options = {}) {
@@ -16875,7 +17180,7 @@ function renderPresenterVideoSlide(slide) {
 function renderPresenterImageSlide(slide) {
   const source = normalizePresenterMediaSource(slide.imageSrc || slide.asset?.url || slide.text);
   if (!source) return "";
-  return `<img class="presenter-image" src="${escapeAttr(source)}" alt="" />`;
+  return `<img class="presenter-image" src="${escapeAttr(source)}" alt="" decoding="sync" loading="eager" fetchpriority="high" draggable="false" />`;
 }
 
 function renderPresenterTitleAssigneeSlide(slide) {
@@ -16903,8 +17208,14 @@ function renderPresenterFileSlide(slide) {
 
 function renderPresenterSlideText(slide) {
   return presenterDisplayLines(slide)
-    .map((line) => `<span style="--line-chars: ${presenterLineCharEstimate(line)}">${escapeHtml(line || " ")}</span>`)
+    .map((line) => `<span style="--line-chars: ${presenterLineCharEstimate(line)}">${escapePresenterSlideLine(line, slide)}</span>`)
     .join("");
+}
+
+function escapePresenterSlideLine(line, slide) {
+  const escaped = escapeHtml(line || " ");
+  if (presenterSlideElementType(slide) !== PRESENTER_ELEMENT_TYPES.SCRIPTURE_TEXT) return escaped;
+  return escaped.replace(/ {2,}/g, (spaces) => "&nbsp;".repeat(spaces.length));
 }
 
 function presenterDisplayLines(slide) {

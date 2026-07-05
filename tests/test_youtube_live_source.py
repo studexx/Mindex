@@ -1,12 +1,16 @@
 from __future__ import annotations
 
+import sys
 import unittest
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 from scripts.youtube_live_source import (
     KST,
+    DEFAULT_PREACHER,
     clear_retry_marker,
     has_retry_marker,
     retry_marker_path,
@@ -86,8 +90,8 @@ class YoutubeLiveSourceTests(unittest.TestCase):
         self.assertEqual(result["scheduledStartTime"], "2026-07-05T10:45:00+09:00")
         self.assertEqual(result["sermonTitle"], "눈을 뜨시오")
         self.assertEqual(result["passage"], "요 9:1-7")
-        self.assertEqual(result["preacher"], "김남영 목사")
-        self.assertEqual(result["preacherSource"], "sermon_assignee")
+        self.assertEqual(result["preacher"], DEFAULT_PREACHER)
+        self.assertEqual(result["preacherSource"], "default_senior_pastor")
         self.assertEqual(result["serviceId"], "service-1")
 
     def test_resolve_live_source_normalizes_missing_and_warning_arrays(self) -> None:
@@ -125,7 +129,25 @@ class YoutubeLiveSourceTests(unittest.TestCase):
         }]), date(2026, 7, 5))
 
         self.assertTrue(result["ready"])
-        self.assertEqual(result["preacher"], "김남영 목사")
+        self.assertEqual(result["preacher"], DEFAULT_PREACHER)
+
+    def test_resolve_live_source_allows_different_sermon_assignee(self) -> None:
+        result = resolve_live_source(FakeClient({
+            "serviceDate": "2026-07-05",
+            "scheduledStartTime": "2026-07-05T10:45:00+09:00",
+            "sermonTitle": "눈을 뜨시오",
+            "passage": "요 9:1-7",
+            "preacher": "박천일 선교사",
+            "preacherSource": "sermon_assignee",
+            "serviceId": "service-1",
+            "ready": True,
+            "missing": [],
+            "warnings": [],
+        }), date(2026, 7, 5))
+
+        self.assertTrue(result["ready"])
+        self.assertEqual(result["preacher"], "박천일 선교사")
+        self.assertEqual(result["preacherSource"], "sermon_assignee")
 
     def test_resolve_live_source_defaults_preacher_when_source_is_missing(self) -> None:
         result = resolve_live_source(FakeClient({

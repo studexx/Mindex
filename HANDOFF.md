@@ -2,7 +2,7 @@
 
 Last updated: 2026-07-01
 
-Mindex is a church ministry operations app. It is not only a song database and not only a presenter. It should eventually support weekly worship preparation, lyrics/scripture management, worship presentation, order sheets, calendar, references, and activities while sharing one Supabase-backed data model and one coherent UI system.
+Mindex is a church ministry operations app. It is not only a song database and not only a presenter. It should support weekly worship preparation, lyrics/scripture management, worship presentation, order sheets, calendar, and references while sharing one Supabase-backed data model and one coherent UI system. Activities/event screens are deferred to standalone utilities unless promoted later.
 
 This document is the canonical handoff for new Codex/Claude/GPT threads. Read this before editing. Keep changes conservative, verify them, and never undo unrelated local work.
 
@@ -50,9 +50,10 @@ Top-level product areas:
    - Calendar, References, Order Sheets, and similar support tools.
    - These should not feel like full database modules unless their functionality grows enough.
 
-5. Activities
-   - Reusable activity/game system for retreats, quizzes, team games, and worship/service insertion later.
-   - It must be independent enough to run standalone and structured enough to be referenced by Worship.
+5. Activities / Event Screens
+   - Activities are not exposed as a standing Mindex tab or home module for now.
+   - Retreat games, quizzes, and event screens should be built as standalone HTML or small utilities when needed.
+   - If a repeated workflow emerges, promote it back into Mindex deliberately.
 
 ## Strong Behavioral Rules
 
@@ -102,11 +103,11 @@ Service/Worship structure:
 - Worship elements should be structured records, not loose text whenever possible.
 - Praise elements should link to Mindex Praise records.
 - Scripture elements should link to Mindex Scripture records or normalized references.
-- Activity elements should later link to Activity/Game records.
+- Activity/game elements are deferred. Do not expose them in the main app shell until a repeated workflow justifies it.
 - Detailed Worship terminology, template/type semantics, and examples live in
   `/Users/parkjihun/Code/Mindex/docs/thread-worship-presenter.md`.
 
-Activities structure:
+Deferred activities structure:
 
 - Activity Event: shared team/score context.
 - Game: reusable playable unit.
@@ -260,7 +261,7 @@ Home:
 
 - Home is not a dumping ground. It should clarify the hierarchy:
   - Worship as the main operational area.
-  - Activities, Praise, Scripture as major resources.
+  - Praise and Scripture as major resources.
   - Calendar, References, Order Sheets as home utilities.
 - Empty/home verses are data-managed UI verses, not hardcoded copy.
 - Current home verse candidates:
@@ -297,7 +298,7 @@ Order Sheets:
 
 ## Activities Direction
 
-Activities should be added inside Mindex, sharing Supabase, theme, and UI system.
+Activities are currently removed from the visible Mindex app shell. Build event/game screens as standalone HTML or small ad hoc utilities unless the user explicitly reopens the Activities module decision.
 
 Scope:
 
@@ -335,10 +336,7 @@ Initial game types:
   - Location.
   - Memo.
 
-Activity empty verse:
-
-- Psalm 133:1, NIV.
-- UI verse structure should match Home/Praise/Scripture, not a one-off implementation.
+If Activities returns later, its empty verse should use the shared UI verse system rather than a one-off implementation.
 
 ## UI System Rules
 
@@ -464,8 +462,8 @@ Calendar/Home/Reference checks:
 
 Activities checks:
 
-- Activity tab empty state uses the same UI verse system as Home/Praise/Scripture.
-- Event/team/game tables exist before exposing editing controls.
+- Activities should not appear in the app shell unless the module is intentionally revived.
+- If revived, event/team/game tables must exist before exposing editing controls.
 - Score changes should create score-event rows, not only mutate totals.
 
 Deployment sanity:
@@ -485,8 +483,8 @@ Use three focused threads:
 2. Database / Praise / Scripture
    - Song metadata, song forms, hymn/CCM/children tagging, Bible search/copy, scripture metadata.
 
-3. Shell / Home / Utilities / Activities
-   - App shell, navigation, home, calendar, references, order sheets, activities.
+3. Shell / Home / Utilities
+   - App shell, navigation, home, calendar, references, order sheets, and any future standalone event-screen integration.
 
 Each thread should read this document first, then inspect current files before editing.
 
