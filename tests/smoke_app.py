@@ -2183,13 +2183,62 @@ def main() -> int:
                 praise_actions = page.evaluate(
                     """
                     (() => {
-                      const heads = [...document.querySelectorAll('.version-compare-title')];
+                      const heads = [...document.querySelectorAll('.version-compare-title:not(.linked-version-title)')];
+                      const linkedHeads = [...document.querySelectorAll('.version-compare-title.linked-version-title')];
                       const versionCopyButtons = [...document.querySelectorAll('.version-copy-btn[data-copy-action="plain"][data-version-id]')];
                       const versionDuplicateButtons = [...document.querySelectorAll('.version-add-btn[data-add-version]')];
+                      const draft = buildNewPraiseSongDraft({ title: '테스트 새 찬양', praiseTypes: ['ccm'] });
+                      const originalSongs = state.songs;
+                      const originalSelectedSongId = state.selectedSongId;
+                      const originalSelectedVersionId = state.selectedVersionId;
+                      const originalForms = state.forms;
+                      const primary = {
+                        id: '__smoke_link_primary__',
+                        title: '링크 원곡',
+                        related_song_ids: ['__smoke_link_related__'],
+                        versions: [{
+                          id: '__smoke_link_primary_v1__',
+                          name: 'Default',
+                          is_primary: true,
+                          forms: [{ id: '__smoke_link_primary_f1__', part_type: 'Lyrics', lyrics: '원곡 가사', sort_order: 1 }]
+                        }]
+                      };
+                      const related = {
+                        id: '__smoke_link_related__',
+                        title: '링크된 곡',
+                        related_song_ids: [],
+                        versions: [{
+                          id: '__smoke_link_related_v1__',
+                          name: 'Default',
+                          is_primary: true,
+                          forms: [{ id: '__smoke_link_related_f1__', part_type: 'Lyrics', lyrics: '링크 가사', sort_order: 1 }]
+                        }]
+                      };
+                      state.songs = [primary, related, ...originalSongs];
+                      state.selectedSongId = primary.id;
+                      state.selectedVersionId = primary.versions[0].id;
+                      state.forms = normalizeForms(primary.versions[0].forms.map((form) => ({ ...form, song_id: primary.versions[0].id })));
+                      const linkedEntries = linkedSongVersionEntries(primary);
+                      const linkedHtml = renderFormsTab(primary);
+                      state.songs = originalSongs;
+                      state.selectedSongId = originalSelectedSongId;
+                      state.selectedVersionId = originalSelectedVersionId;
+                      state.forms = originalForms;
                       return {
                         heads: heads.length,
+                        linkedHeads: linkedHeads.length,
                         versionCopyButtons: versionCopyButtons.length,
                         versionDuplicateButtons: versionDuplicateButtons.length,
+                        createButtons: document.querySelectorAll('[data-create-song]').length,
+                        draftTitle: draft.title,
+                        draftVersions: draft.versions.length,
+                        draftPraiseType: draft.versions[0]?.praise_types?.[0] || '',
+                        linkedEntries: linkedEntries.length,
+                        linkedReadonly: linkedHtml.includes('linked-version-column')
+                          && linkedHtml.includes('data-open-song="__smoke_link_related__"')
+                          && linkedHtml.includes('링크 가사'),
+                        linkedEditableLeak: linkedHtml.includes('data-version-id="__smoke_link_related_v1__"')
+                          || linkedHtml.includes('data-source-version-id="__smoke_link_related_v1__"'),
                         downloadShowButtons: document.querySelectorAll('[data-copy-action="download-freeshow"]').length,
                         downloadXmlButtons: document.querySelectorAll('[data-copy-action="download-xml"]').length,
                         toolbarCopyStack: document.querySelectorAll('.form-toolbar .copy-actions').length,
@@ -2203,6 +2252,13 @@ def main() -> int:
                     praise_actions["heads"] > 0
                     and praise_actions["versionCopyButtons"] == praise_actions["heads"]
                     and praise_actions["versionDuplicateButtons"] == praise_actions["heads"]
+                    and praise_actions["createButtons"] >= 1
+                    and praise_actions["draftTitle"] == "테스트 새 찬양"
+                    and praise_actions["draftVersions"] == 1
+                    and praise_actions["draftPraiseType"] == "ccm"
+                    and praise_actions["linkedEntries"] == 1
+                    and praise_actions["linkedReadonly"]
+                    and not praise_actions["linkedEditableLeak"]
                     and praise_actions["downloadShowButtons"] == 0
                     and praise_actions["downloadXmlButtons"] == 0
                     and praise_actions["toolbarCopyStack"] == 0

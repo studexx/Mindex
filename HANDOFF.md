@@ -1,6 +1,6 @@
 # Mindex Handoff
 
-Last updated: 2026-07-01
+Last updated: 2026-07-05
 
 Mindex is a church ministry operations app. It is not only a song database and not only a presenter. It should support weekly worship preparation, lyrics/scripture management, worship presentation, order sheets, calendar, and references while sharing one Supabase-backed data model and one coherent UI system. Activities/event screens are deferred to standalone utilities unless promoted later.
 
@@ -215,6 +215,12 @@ Forms:
 - If multiple of a type exist, use numbered labels.
 - Do not auto-split by location or repeated pattern without review.
 - Children/audio-use lyrics should usually be `Lyrics`, not `Verse 1...Verse 6`.
+
+Praise UI:
+
+- The Praise tab should expose an in-context `곡 추가` action in the Praise detail area, not only through hidden/global chrome.
+- New songs should be created as real Praise records with a default version, then opened immediately for metadata and lyric editing.
+- Linked songs should be visible in the version comparison area as readonly linked columns, while editing remains scoped to the current song/version.
 
 Review markers:
 

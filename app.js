@@ -755,6 +755,7 @@ function bindStaticEvents() {
     button.addEventListener("click", () => switchModule(button.dataset.module));
   });
   refs.themeBtn.addEventListener("click", toggleTheme);
+  refs.newSongBtn?.addEventListener("click", () => createPraiseSong());
   refs.saveAllBtn.addEventListener("click", saveAll);
   refs.searchInput.addEventListener("input", (event) => {
     saveCurrentListScroll();
@@ -3310,6 +3311,97 @@ async function createReferenceLink(options = {}) {
   }
 }
 
+async function createPraiseSong(options = {}) {
+  if (!requireClient() || state.saving) return;
+  if (state.module !== "praise") await switchModule("praise", { clearSearch: false });
+  if (state.module !== "praise") return;
+
+  const draft = buildNewPraiseSongDraft(options);
+  state.saving = true;
+  updateSaveState();
+  try {
+    const useVersionTables = state.songVersionTablesSupported === true;
+    const payload = {
+      title: draft.title,
+      praise_types: draft.praise_types,
+      memo: useVersionTables ? null : serializeSongMemo(draft),
+    };
+    const { data, error } = await state.client
+      .from("mindex_songs")
+      .insert(payload)
+      .select("*")
+      .single();
+    if (error) throw error;
+
+    const song = normalizeServerSong(data);
+    song.versions = normalizeSongVersions(song, draft.versions);
+    song._memoHasVersions = !useVersionTables;
+    if (useVersionTables) {
+      try {
+        await saveSongVersions(song);
+      } catch (saveError) {
+        if (!isUnavailableRelationError(saveError)) throw saveError;
+        state.songVersionTablesSupported = false;
+        song._memoHasVersions = true;
+        await state.client
+          .from("mindex_songs")
+          .update({ memo: serializeSongMemo(song) })
+          .eq("id", song.id);
+      }
+    }
+
+    state.songs = [song, ...state.songs.filter((item) => item.id !== song.id)].sort(sortSongs);
+    state.selectedSongId = song.id;
+    state.selectedVersionId = getDefaultVersionId(song);
+    state.forms = normalizeForms((getSelectedVersion()?.forms || []).map((form) => withLocalId({ ...form, song_id: state.selectedVersionId })));
+    state.search = "";
+    refs.searchInput.value = "";
+    state.metadataPopupOpen = true;
+    state.dirty.song = false;
+    state.dirty.forms = false;
+    persistUiState();
+    render();
+    requestAnimationFrame(() => refs.detailPane.querySelector('[data-song-field="title"]')?.focus());
+    showToast("곡을 추가했습니다.");
+  } catch (error) {
+    showToast(error.message || "곡 추가 실패.", "error");
+  } finally {
+    state.saving = false;
+    updateSaveState();
+  }
+}
+
+function buildNewPraiseSongDraft(options = {}) {
+  const praiseTypes = normalizePraiseTypes(options.praiseTypes || options.praise_types || state.praiseFilter);
+  const version = {
+    id: createUuid(),
+    name: "Default",
+    raw_section_name: "Default",
+    is_primary: true,
+    praise_types: praiseTypes.length ? praiseTypes : ["ccm"],
+    forms: [],
+  };
+  return {
+    title: firstNonBlankString(options.title, nextPraiseSongTitle()),
+    praise_types: version.praise_types,
+    versions: [version],
+    scripture: [],
+    metadata: {},
+    related_song_ids: [],
+  };
+}
+
+function nextPraiseSongTitle() {
+  const base = "새 찬양";
+  const used = new Set((state.songs || []).map((song) => normalizeTitle(song.title)));
+  if (!used.has(normalizeTitle(base))) return base;
+  for (let index = 2; index < 1000; index += 1) {
+    const title = `${base} ${index}`;
+    if (!used.has(normalizeTitle(title))) return title;
+  }
+  return `${base} ${Date.now()}`;
+}
+
 async function deleteSelectedSong() {
   const song = getSelectedSong();
   if (!song || !requireClient()) return;
@@ -4569,6 +4661,12 @@ function handleDetailClick(event) {
     return;
   }
 
+  const createSongButton = event.target.closest("[data-create-song]");
+  if (createSongButton) {
+    createPraiseSong();
+    return;
+  }
+
   const addVersionButton = event.target.closest("[data-add-version]");
   if (addVersionButton) {
     addVersion(addVersionButton.dataset.sourceVersionId);
@@ -4692,6 +4790,13 @@ function handleDetailKeydown(event) {
   if (bibleSearchResult) {
     event.preventDefault();
     navigateToBibleSearchResult(Number(bibleSearchResult.dataset.bibleSearchResult));
+    return;
+  }
+
+  const openSongTarget = event.target.closest("[data-open-song]");
+  if (openSongTarget) {
+    event.preventDefault();
+    void openGlobalSongResult(openSongTarget.dataset.openSong);
     return;
   }
 
@@ -8022,7 +8127,7 @@ function renderDetail() {
   }
 
   if (!song) {
-    refs.detailPane.innerHTML = renderModuleEmptyDetail("praise", "Praise", "Select a song.");
+    refs.detailPane.innerHTML = renderPraiseEmptyDetail();
     refreshIcons();
     return;
   }
@@ -8048,6 +8153,10 @@ function renderDetail() {
             </button>
           </div>
           <div class="head-actions">
+            <button class="reference-new-btn praise-create-btn" type="button" data-create-song>
+              <i data-lucide="plus"></i>
+              <span>곡 추가</span>
+            </button>
             <span class="dirty-pill" ${hasDirtyChanges() ? "" : "hidden"}>Unsaved changes</span>
           </div>
         </div>
@@ -8060,6 +8169,30 @@ function renderDetail() {
 
   refreshIcons();
   resizeFormTextareas();
+}
+
+function renderPraiseEmptyDetail() {
+  const verse = moduleUiVerse("praise");
+  const content = verse?.text
+    ? `
+        <p class="empty-verse">${renderHomeVerseText(verse.text)}</p>
+        ${verse.reference ? `<span>${escapeHtml(verse.reference)}</span>` : ""}
+      `
+    : `
+        <h2>Praise</h2>
+        <p>Select a song.</p>
+      `;
+  return `
+    <div class="empty-detail">
+      <div class="empty-detail-inner">
+        ${content}
+        <button class="reference-new-btn praise-empty-create-btn" type="button" data-create-song>
+          <i data-lucide="plus"></i>
+          <span>곡 추가</span>
+        </button>
+      </div>
+    </div>
+  `;
 }
 
 function renderActivitiesDetail() {
@@ -8787,16 +8920,27 @@ function shouldReviewVersionStructure(song, version, forms = version?.forms || [
 
 function renderFormsTab(song) {
   const versions = song.versions || [];
+  const linkedEntries = linkedSongVersionEntries(song);
   return `
     <section class="panel">
       ${renderFormToolbar(song)}
       ${
-        versions.length > 1
-          ? renderVersionCompare(song, versions)
+        versions.length > 1 || linkedEntries.length
+          ? renderVersionCompare(song, versions, linkedEntries)
           : renderSingleVersionForms()
       }
     </section>
   `;
+}
+
+function linkedSongVersionEntries(song) {
+  return relatedSongsForSong(song).flatMap((linkedSong) =>
+    (linkedSong.versions?.length ? linkedSong.versions : normalizeSongVersions(linkedSong, [])).map((version) => ({
+      song: linkedSong,
+      version,
+      forms: normalizeForms((version.forms || []).map((form) => ({ ...form, song_id: version.id }))),
+    })),
+  );
 }
 
 function renderSingleVersionForms() {
@@ -8825,20 +8969,23 @@ function renderSingleVersionForms() {
   `;
 }
 
-function renderVersionCompare(song, versions) {
+function renderVersionCompare(song, versions, linkedEntries = []) {
   const versionForms = versions.map((version) => ({
     version,
     forms: getFormsForVersion(version),
   }));
-  const gridStyle = `grid-template-columns: repeat(${versions.length}, minmax(320px, 1fr));`;
+  const columnCount = Math.max(1, versions.length + linkedEntries.length);
+  const gridStyle = `grid-template-columns: repeat(${columnCount}, minmax(320px, 1fr));`;
 
   return `
     <div class="version-compare-grid">
       <div class="version-compare-head" style="${gridStyle}">
         ${versions.map((version) => renderVersionCompareHead(song, version)).join("")}
+        ${linkedEntries.map(renderLinkedSongVersionHead).join("")}
       </div>
       <div class="version-compare-columns" style="${gridStyle}">
         ${versionForms.map(({ version, forms }) => renderVersionCompareColumn(version, forms)).join("")}
+        ${linkedEntries.map(renderLinkedSongVersionColumn).join("")}
       </div>
     </div>
   `;
@@ -8858,6 +9005,17 @@ function renderVersionCompareColumn(version, forms) {
       }).join("")
     : `<div class="version-empty-cell" aria-hidden="true"></div>`;
   return `<div class="version-compare-column${active ? " active" : ""}">${content}</div>`;
+}
+
+function renderLinkedSongVersionColumn(entry) {
+  const content = entry.forms.length
+    ? entry.forms.map((form) => `
+        <div class="version-picker linked-version-picker" data-open-song="${escapeAttr(entry.song.id)}" role="button" tabindex="0">
+          ${renderReadonlyFormBlock(form, { song: entry.song, version: entry.version })}
+        </div>
+      `).join("")
+    : `<div class="version-empty-cell" aria-hidden="true"></div>`;
+  return `<div class="version-compare-column linked-version-column">${content}</div>`;
 }
 
 function renderAddVersionButton(sourceVersionId) {
@@ -8885,6 +9043,27 @@ function renderVersionCompareHead(song, version) {
       ${renderVersionTitleContent(song, version, forms, { active })}
     </div>
   `;
+}
+
+function renderLinkedSongVersionHead(entry) {
+  return `
+    <div class="version-compare-title linked-version-title" data-open-song="${escapeAttr(entry.song.id)}" role="button" tabindex="0">
+      <div class="version-title-main">
+        <span class="version-title-text">${escapeHtml(linkedSongVersionTitle(entry.song, entry.version))}</span>
+        <span class="linked-version-badge">Linked</span>
+      </div>
+      <div class="version-title-actions">
+        <span class="linked-version-open" aria-hidden="true"><i data-lucide="external-link"></i></span>
+      </div>
+    </div>
+  `;
+}
+
+function linkedSongVersionTitle(song, version) {
+  const title = songListView(song).title || song.title || "Untitled";
+  const versionName = versionDisplayName(song, version);
+  if ((song.versions || []).length <= 1 || isDefaultVersionName(versionName)) return title;
+  return `${title} · ${versionName}`;
 }
 
 function renderVersionTitleContent(song, version, forms, options = {}) {

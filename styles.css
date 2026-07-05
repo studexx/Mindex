@@ -642,6 +642,7 @@ body[data-module="calendar"] .detail-pane { overflow: hidden; }
 .empty-detail { display: grid; min-height: calc(100vh - 96px); place-items: center; text-align: center; }
 .empty-detail h2 { color: var(--ink-2); font-size: 20px; letter-spacing: .04em; text-transform: uppercase; }
 .empty-detail p { margin-top: var(--s2); color: var(--ink-4); }
+.empty-detail .reference-new-btn { margin-top: var(--s4); }
 .empty-detail .empty-verse {
   margin: 0;
   color: var(--ink-2);
@@ -974,6 +975,11 @@ body[data-module="calendar"] .detail-pane { overflow: hidden; }
 .reference-new-btn.secondary {
   background: color-mix(in srgb, var(--panel-2) 42%, transparent);
   color: var(--ink-3);
+}
+.praise-create-btn,
+.praise-empty-create-btn {
+  background: color-mix(in srgb, var(--accent-soft) 40%, transparent);
+  color: var(--accent);
 }
 .reference-group-stack {
   display: grid;
@@ -1977,6 +1983,14 @@ body[data-module="calendar"] .detail-pane { overflow: hidden; }
 .version-compare-title.active {
   background: color-mix(in srgb, var(--accent-soft) 34%, transparent);
 }
+.version-compare-title.linked-version-title {
+  background: color-mix(in srgb, var(--panel-2) 22%, transparent);
+  color: var(--ink-3);
+}
+.version-compare-title.linked-version-title:hover {
+  background: color-mix(in srgb, var(--panel-2) 42%, transparent);
+  color: var(--ink-2);
+}
 .version-compare-title.placeholder {
   visibility: hidden;
   pointer-events: none;
@@ -2054,6 +2068,29 @@ body[data-module="calendar"] .detail-pane { overflow: hidden; }
   border-color: var(--accent);
   background: color-mix(in srgb, var(--accent) 14%, transparent);
   color: var(--accent);
+}
+.linked-version-badge {
+  display: inline-flex;
+  flex: 0 0 auto;
+  height: 20px;
+  align-items: center;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel-2) 60%, transparent);
+  color: var(--ink-4);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 0 7px;
+}
+.linked-version-open {
+  display: inline-grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  color: var(--ink-4);
+}
+.linked-version-open svg {
+  width: 14px;
+  height: 14px;
 }
 .version-picker { min-width: 0; height: 100%; cursor: pointer; }
 .version-picker > .form-block, .version-compare-row > .form-block, .version-empty-cell { height: 100%; }
