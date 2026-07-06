@@ -36,7 +36,7 @@ can represent worship leaders or planning data.
 
 ## Stable DB Contract
 
-The workflow reads only the stable RPC contract:
+The workflow reads the stable RPC contract first:
 
 - `serviceDate`
 - `scheduledStartTime`
@@ -49,8 +49,21 @@ The workflow reads only the stable RPC contract:
 - `missing`
 - `warnings`
 
-The RPC owns all table details and fallback rules so GitHub Actions does not
-depend on the internal service table structure.
+The RPC should own all table details and fallback rules so GitHub Actions does
+not depend on the internal service table structure.
+
+As a resilience fallback, the local source resolver can read the current Worship
+domain flow directly when the RPC returns a stale `service_not_found`/missing
+payload:
+
+```text
+mindex_worship_services
+  > mindex_worship_sections
+    > mindex_worship_elements
+```
+
+This fallback is read-only and exists so the live reservation job can keep
+working while the RPC is being reapplied after Worship schema changes.
 
 Apply the RPC with:
 

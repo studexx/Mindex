@@ -24,13 +24,29 @@ from scripts.youtube_live_source import (
 
 
 class FakeClient:
-    def __init__(self, result: object) -> None:
+    def __init__(self, result: object, table_rows: dict[str, list[dict[str, object]]] | None = None) -> None:
         self.result = result
+        self.table_rows = table_rows or {}
         self.calls: list[tuple[str, dict[str, object]]] = []
+        self.get_calls: list[tuple[str, dict[str, str]]] = []
 
     def rpc(self, name: str, payload: dict[str, object]) -> object:
         self.calls.append((name, payload))
         return self.result
+
+    def get(self, table: str, params: dict[str, str]) -> list[dict[str, object]]:
+        self.get_calls.append((table, params))
+        rows = list(self.table_rows.get(table, []))
+        if table == "mindex_worship_services" and "service_date" in params:
+            expected = params["service_date"].replace("eq.", "")
+            rows = [row for row in rows if row.get("service_date") == expected]
+        if table == "mindex_worship_sections" and "service_id" in params:
+            expected = params["service_id"].replace("eq.", "")
+            rows = [row for row in rows if row.get("service_id") == expected]
+        if table == "mindex_worship_elements" and "section_id" in params:
+            expected = params["section_id"].replace("eq.", "")
+            rows = [row for row in rows if row.get("section_id") == expected]
+        return rows
 
 
 class YoutubeLiveSourceTests(unittest.TestCase):
@@ -183,6 +199,85 @@ class YoutubeLiveSourceTests(unittest.TestCase):
         self.assertEqual(result["preacher"], "김남영 위임목사")
         self.assertEqual(result["preacherSource"], "default_senior_pastor")
         self.assertEqual(result["warnings"][0]["code"], "ignored_untrusted_preacher")
+
+    def test_resolve_live_source_falls_back_to_actual_worship_flow_when_rpc_is_stale(self) -> None:
+        client = FakeClient(
+            {
+                "serviceDate": "2026-07-05",
+                "scheduledStartTime": "2026-07-05T10:45:00+09:00",
+                "sermonTitle": "",
+                "passage": "",
+                "preacher": "전도사님",
+                "preacherSource": "",
+                "serviceId": None,
+                "ready": False,
+                "missing": ["sermonTitle", "passage"],
+                "warnings": [{"code": "service_not_found"}],
+            },
+            {
+                "mindex_worship_services": [
+                    {
+                        "id": "service-1",
+                        "service_date": "2026-07-05",
+                        "service_type_id": "sun_3rd",
+                        "title": "주일예배 (3부)",
+                        "worship_leader": "김남영 목사",
+                        "created_at": "2026-07-04T21:35:50Z",
+                    }
+                ],
+                "mindex_worship_sections": [
+                    {
+                        "id": "scripture-section",
+                        "service_id": "service-1",
+                        "section_key": "scripture_reading",
+                        "title": "성경봉독",
+                        "person": "",
+                        "sort_order": 5,
+                    },
+                    {
+                        "id": "sermon-section",
+                        "service_id": "service-1",
+                        "section_key": "sermon",
+                        "title": "설교",
+                        "person": "",
+                        "sort_order": 7,
+                    },
+                ],
+                "mindex_worship_elements": [
+                    {
+                        "id": "scripture-element",
+                        "section_id": "scripture-section",
+                        "element_type": "scripture_reading",
+                        "title": "출 23:14-19",
+                        "body": "",
+                        "scripture_reference": "출 23:14-19",
+                        "person": "인도자",
+                        "sort_order": 1,
+                    },
+                    {
+                        "id": "sermon-element",
+                        "section_id": "sermon-section",
+                        "element_type": "title_person",
+                        "title": "지성소로 나아가라",
+                        "body": "",
+                        "scripture_reference": "",
+                        "person": "김남영 목사",
+                        "sort_order": 1,
+                    },
+                ],
+            },
+        )
+
+        result = resolve_live_source(client, date(2026, 7, 5))
+
+        self.assertTrue(result["ready"])
+        self.assertEqual(result["serviceId"], "service-1")
+        self.assertEqual(result["sermonTitle"], "지성소로 나아가라")
+        self.assertEqual(result["passage"], "출 23:14-19")
+        self.assertEqual(result["preacher"], DEFAULT_PREACHER)
+        self.assertEqual(result["preacherSource"], "default_senior_pastor")
+        self.assertIn("rpc_source_not_ready", [warning["code"] for warning in result["warnings"]])
+        self.assertIn("used_worship_table_fallback", [warning["code"] for warning in result["warnings"]])
 
 
 if __name__ == "__main__":

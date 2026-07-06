@@ -26,6 +26,7 @@ REQUIRED_FIELDS = ("sermonTitle", "passage", "preacher")
 DEFAULT_STATE_DIR = ROOT / "output" / "youtube-live-source"
 DEFAULT_PREACHER = "김남영 위임목사"
 DEFAULT_PREACHER_ALIASES = {"김남영목사", "김남영위임목사"}
+SUNDAY_MAIN_SERVICE_TYPE_IDS = ("sun_3rd", "sunday-main")
 
 
 @dataclass(frozen=True)
@@ -141,6 +142,39 @@ def is_default_preacher_alias(value: Any) -> bool:
     return preacher_key(value) in DEFAULT_PREACHER_ALIASES
 
 
+def is_title_fragment_assignee(assignee: Any, title: Any) -> bool:
+    assignee_key = preacher_key(assignee)
+    title_key = preacher_key(title)
+    assignee_text = clean_text(assignee)
+    return (
+        assignee_text.startswith(("\"", "'", "“", "”", "‘", "’"))
+        or (
+            title_key != ""
+            and len(assignee_key) >= 2
+            and (assignee_key in title_key or title_key in assignee_key)
+        )
+    )
+
+
+def preacher_from_assignee(assignee: Any, title: Any) -> tuple[str, str, list[dict[str, str]]]:
+    assignee_text = clean_text(assignee)
+    if not assignee_text or is_default_preacher_alias(assignee_text):
+        return DEFAULT_PREACHER, "default_senior_pastor", []
+    if is_title_fragment_assignee(assignee_text, title):
+        return DEFAULT_PREACHER, "default_senior_pastor", [
+            {"code": "ignored_sermon_assignee", "value": assignee_text}
+        ]
+    return assignee_text, "sermon_assignee", []
+
+
+def first_text(row: dict[str, Any], *keys: str) -> str:
+    for key in keys:
+        value = clean_text(row.get(key))
+        if value:
+            return value
+    return ""
+
+
 def retry_marker_path(state_dir: Path, service_date: date) -> Path:
     return state_dir / f"{service_date.isoformat()}.retry.json"
 
@@ -164,6 +198,154 @@ def write_retry_marker(state_dir: Path, service_date: date, result: dict[str, An
 
 def clear_retry_marker(state_dir: Path, service_date: date) -> None:
     retry_marker_path(state_dir, service_date).unlink(missing_ok=True)
+
+
+def build_source_payload(
+    service_date: date,
+    service_id: Any,
+    sermon_title: Any,
+    passage: Any,
+    preacher: Any,
+    preacher_source: Any,
+    warnings: list[dict[str, Any]] | None = None,
+    service_type: str = SERVICE_TYPE,
+) -> dict[str, Any]:
+    service_date_text = service_date.isoformat()
+    sermon_title_text = clean_text(sermon_title)
+    passage_text = clean_text(passage)
+    preacher_text = clean_text(preacher)
+    missing = []
+    if not sermon_title_text:
+        missing.append("sermonTitle")
+    if not passage_text:
+        missing.append("passage")
+    if not preacher_text:
+        missing.append("preacher")
+    return {
+        "ready": len(missing) == 0,
+        "serviceType": service_type,
+        "date": service_date_text,
+        "serviceDate": service_date_text,
+        "timezone": "UTC+09:00",
+        "startTime": START_TIME.isoformat(),
+        "scheduledStartTime": scheduled_start_at(service_date),
+        "sermonTitle": sermon_title_text,
+        "passage": passage_text,
+        "preacher": preacher_text,
+        "preacherSource": clean_text(preacher_source),
+        "serviceId": service_id,
+        "missing": missing,
+        "warnings": warnings or [],
+    }
+
+
+def resolve_live_source_from_worship_tables(
+    client: RestClient,
+    service_date: date,
+    service_type: str = SERVICE_TYPE,
+) -> dict[str, Any]:
+    date_text = service_date.isoformat()
+    warnings: list[dict[str, Any]] = [{"code": "used_worship_table_fallback"}]
+    services = client.get(
+        "mindex_worship_services",
+        {
+            "select": "id,service_date,service_type_id,title,worship_leader,created_at",
+            "service_date": f"eq.{date_text}",
+            "order": "created_at.asc",
+        },
+    )
+    matching_services = [
+        service
+        for service in services
+        if service.get("service_type_id") in SUNDAY_MAIN_SERVICE_TYPE_IDS
+    ]
+    if len(matching_services) > 1:
+        warnings.append({"code": "multiple_services", "count": len(matching_services)})
+    service = matching_services[0] if matching_services else None
+    if not service:
+        warnings.append({"code": "service_not_found"})
+        return build_source_payload(
+            service_date,
+            None,
+            "",
+            "",
+            DEFAULT_PREACHER,
+            "default_senior_pastor",
+            warnings,
+            service_type,
+        )
+
+    service_id = service["id"]
+    sections = client.get(
+        "mindex_worship_sections",
+        {
+            "select": "id,section_key,title,person,sort_order",
+            "service_id": f"eq.{service_id}",
+            "order": "sort_order.asc",
+        },
+    )
+    section_map = {section["id"]: section for section in sections}
+    elements: list[dict[str, Any]] = []
+    for section in sections:
+        elements.extend(
+            client.get(
+                "mindex_worship_elements",
+                {
+                    "select": "id,section_id,element_type,title,body,scripture_reference,person,sort_order",
+                    "section_id": f"eq.{section['id']}",
+                    "order": "sort_order.asc",
+                },
+            )
+        )
+
+    passage = ""
+    for element in elements:
+        section = section_map.get(element.get("section_id"), {})
+        if (
+            section.get("section_key") in ("scripture", "scripture_reading")
+            or clean_text(section.get("title")) == "성경봉독"
+            or element.get("element_type") in ("scripture_reading", "scripture_body")
+        ):
+            passage = first_text(element, "scripture_reference", "title", "body")
+            if passage:
+                break
+
+    sermon_title = ""
+    sermon_assignee = ""
+    for element in elements:
+        section = section_map.get(element.get("section_id"), {})
+        if not (
+            section.get("section_key") == "sermon"
+            or clean_text(section.get("title")) == "설교"
+        ):
+            continue
+        sermon_title = first_text(element, "title") or first_text(section, "title")
+        sermon_assignee = first_text(element, "person") or first_text(section, "person")
+        break
+
+    preacher, preacher_source, preacher_warnings = preacher_from_assignee(
+        sermon_assignee,
+        sermon_title,
+    )
+    warnings.extend(preacher_warnings)
+    return build_source_payload(
+        service_date,
+        service_id,
+        sermon_title,
+        passage,
+        preacher,
+        preacher_source,
+        warnings,
+        service_type,
+    )
+
+
+def should_try_worship_table_fallback(result: dict[str, Any]) -> bool:
+    if result.get("ready"):
+        return False
+    missing = set(result.get("missing") or [])
+    warning_codes = {warning.get("code") for warning in result.get("warnings") or []}
+    return bool(missing.intersection({"sermonTitle", "passage"})) or "service_not_found" in warning_codes
 
 
 def resolve_live_source(
@@ -203,7 +385,7 @@ def resolve_live_source(
         preacher_source = "default_senior_pastor"
         missing = [item for item in missing if item not in ("preacher", "preacherSource")]
     ready = len(missing) == 0
-    return {
+    result = {
         "ready": ready,
         "serviceType": service_type,
         "date": service_date_text,
@@ -219,6 +401,16 @@ def resolve_live_source(
         "missing": missing,
         "warnings": warnings,
     }
+    if should_try_worship_table_fallback(result):
+        fallback = resolve_live_source_from_worship_tables(client, service_date, service_type)
+        if fallback.get("ready"):
+            fallback["warnings"] = [
+                *warnings,
+                {"code": "rpc_source_not_ready", "missing": missing},
+                *fallback.get("warnings", []),
+            ]
+            return fallback
+    return result
 
 
 def main() -> int:
