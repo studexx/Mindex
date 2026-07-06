@@ -7,6 +7,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from scripts.youtube_live_schedule import (
+    find_playlist_by_title,
     find_existing_broadcast,
     is_same_service_date,
     live_description,
@@ -95,6 +96,41 @@ class YoutubeLiveScheduleTests(unittest.TestCase):
         self.assertIsNone(find_existing_broadcast(youtube, "2026-07-05"))
         self.assertNotIn("mine", youtube.live_broadcasts.kwargs)
         self.assertEqual(youtube.live_broadcasts.kwargs["broadcastStatus"], "upcoming")
+
+    def test_find_playlist_by_title_uses_latest_duplicate(self) -> None:
+        class FakePlaylists:
+            def list(self, **kwargs):
+                return self
+
+            def list_next(self, request, response):
+                return None
+
+            def execute(self):
+                return {
+                    "items": [
+                        {
+                            "id": "old-playlist",
+                            "snippet": {
+                                "title": "주일예배 LIVE 2026",
+                                "publishedAt": "2025-01-01T00:00:00Z",
+                            },
+                        },
+                        {
+                            "id": "new-playlist",
+                            "snippet": {
+                                "title": "주일예배 LIVE 2026",
+                                "publishedAt": "2026-07-03T03:04:15Z",
+                            },
+                        },
+                    ]
+                }
+
+        class FakeYoutube:
+            def playlists(self):
+                return FakePlaylists()
+
+        playlist = find_playlist_by_title(FakeYoutube(), "주일예배 LIVE 2026")
+        self.assertEqual(playlist["id"], "new-playlist")
 
 
 if __name__ == "__main__":

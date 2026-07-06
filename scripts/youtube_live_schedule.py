@@ -234,6 +234,7 @@ def add_to_playlist(youtube, video_id: str, playlist_id: str) -> None:
 
 
 def find_playlist_by_title(youtube, title: str) -> dict[str, Any] | None:
+    matches = []
     request = youtube.playlists().list(
         part="id,snippet",
         mine=True,
@@ -243,9 +244,14 @@ def find_playlist_by_title(youtube, title: str) -> dict[str, Any] | None:
         response = request.execute()
         for playlist in response.get("items", []):
             if clean_text(playlist.get("snippet", {}).get("title")) == title:
-                return playlist
+                matches.append(playlist)
         request = youtube.playlists().list_next(request, response)
-    return None
+    if not matches:
+        return None
+    return sorted(
+        matches,
+        key=lambda playlist: playlist.get("snippet", {}).get("publishedAt", ""),
+    )[-1]
 
 
 def playlist_contains_video(youtube, playlist_id: str, video_id: str) -> bool:
