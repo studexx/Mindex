@@ -271,11 +271,7 @@ Home:
   - Worship as the main operational area.
   - Praise and Scripture as major resources.
   - Calendar, References, Order Sheets as home utilities.
-- Empty/home verses are data-managed UI verses, not hardcoded copy.
-- Current home verse candidates:
-  - Amos 5:6a
-  - Psalm 29:2
-  - Psalm 42:5
+- Normal Home should prioritize module entry cards over a visible verse. Use data-managed UI verses for empty/loading/fallback states, not as the primary home content.
 - Fallback when service data cannot load:
   - Psalm 27:14, NIV.
 

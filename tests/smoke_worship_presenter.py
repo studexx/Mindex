@@ -358,6 +358,25 @@ def main() -> int:
                             meta: group.meta,
                             subgroups: group.subgroups.length
                           })),
+                        praiseTeamIntro: (() => {
+                          const service = state.services.find((item) => item.id === serviceId);
+                          if (!service) return null;
+                          const previousTags = [...(service.tags || [])];
+                          service.tags = ['찬양팀: 글로리아 찬양단', ...previousTags.filter((tag) => !isServicePraiseTeamTag(tag))];
+                          const teamSlides = buildServicePresenterSlides(serviceId);
+                          service.tags = previousTags;
+                          const intro = teamSlides.find((slide) => slide.type === 'praise-section-title') || {};
+                          return {
+                            type: intro.type || '',
+                            elementType: intro.elementType || '',
+                            layout: intro.layout || '',
+                            title: intro.title || '',
+                            subtitle: intro.subtitle || '',
+                            text: intro.text || '',
+                            skipTrailingBlank: intro.skipTrailingBlank === true,
+                            visibleTags: serviceVisibleTags({ tags: ['찬양팀: 글로리아 찬양단', '온세대'] }),
+                          };
+                        })(),
                         closingGroups: groupPresenterSlidesBySection(slides, serviceId)
                           .filter((group) => group.slides.some((entry) => entry.slide.sectionKey === 'closing_song'))
                           .map((group) => ({
@@ -381,6 +400,16 @@ def main() -> int:
                     )
                     and len(fallback_state["mainPraiseGroups"]) == 1
                     and fallback_state["mainPraiseGroups"][0]["label"] == "찬양"
+                    and fallback_state["praiseTeamIntro"] == {
+                        "type": "praise-section-title",
+                        "elementType": "title_assignee",
+                        "layout": "lower_bar_text",
+                        "title": "찬양",
+                        "subtitle": "글로리아 찬양단",
+                        "text": "찬양\n글로리아 찬양단",
+                        "skipTrailingBlank": True,
+                        "visibleTags": ["온세대"],
+                    }
                     and len(fallback_state["closingGroups"]) == 1
                     and fallback_state["closingGroups"][0]["kind"] == "item"
                     and fallback_state["closingGroups"][0]["label"] == "찬양"
@@ -516,6 +545,174 @@ def main() -> int:
                     pass_("presenter-db-title-assignee-slide", json.dumps(db_title_assignee_state, ensure_ascii=False))
                 else:
                     fail("presenter-db-title-assignee-slide", json.dumps(db_title_assignee_state, ensure_ascii=False))
+
+                title_content_state = page.evaluate(
+                    """
+                    () => {
+                      const dbSlide = normalizeWorshipPresenterSlide({
+                        service_id: '__smoke_title_content_service__',
+                        section_id: '__smoke_title_content_section__',
+                        section_order: 5,
+                        section_key: 'notice',
+                        section_title: '교회소식',
+                        section_person: '',
+                        element_id: '__smoke_title_content_element__',
+                        element_order: 1,
+                        element_type: 'body',
+                        element_title: '교회소식',
+                        element_person: '',
+                        slide_id: '__smoke_title_content_slide__',
+                        slide_order: 1,
+                        slide_type: 'body',
+                        slide_title: '교회소식',
+                        slide_body: '다음 주 공동의회가 있습니다\\n예배 후 본당에 남아 주세요'
+                      }, 0);
+                      const fallbackSlides = buildPresenterSlidesForServiceItem({
+                        id: '__smoke_plain_text_body__',
+                        label: '교회소식',
+                        raw_title: '교회소식',
+                        memo: serializeServiceItemMemo({
+                          elementType: 'body',
+                          slides: ['다음 주 공동의회가 있습니다\\n예배 후 본당에 남아 주세요']
+                        }),
+                      }, { id: '__smoke_title_content_fallback_service__', type_id: 'monthly', date: '2026-07-04' }, 0);
+                      const fallbackSlide = fallbackSlides[0] || {};
+                      return {
+                        db: {
+                          elementType: dbSlide.elementType || '',
+                          layout: dbSlide.layout || '',
+                          type: dbSlide.type || '',
+                          renderClass: presenterSlideRenderClass(dbSlide),
+                          title: dbSlide.title || '',
+                          assignee: dbSlide.assignee || '',
+                          text: dbSlide.text || '',
+                          body: renderPresenterSlideBody(dbSlide).trim(),
+                          html: renderPresenterSlideFrame(dbSlide),
+                        },
+                        fallback: {
+                          elementType: fallbackSlide.elementType || '',
+                          layout: fallbackSlide.layout || '',
+                          type: fallbackSlide.type || '',
+                          renderClass: presenterSlideRenderClass(fallbackSlide),
+                          title: fallbackSlide.title || '',
+                          assignee: fallbackSlide.assignee || '',
+                          text: fallbackSlide.text || '',
+                          body: renderPresenterSlideBody(fallbackSlide).trim(),
+                          html: renderPresenterSlideFrame(fallbackSlide),
+                        }
+                      };
+                    }
+                    """
+                )
+                if (
+                    title_content_state["db"]["elementType"] == "body_text"
+                    and title_content_state["db"]["layout"] == "center_text"
+                    and title_content_state["db"]["type"] == "title-content"
+                    and title_content_state["db"]["renderClass"] == "title-content"
+                    and title_content_state["db"]["title"] == "교회소식"
+                    and title_content_state["db"]["assignee"] == ""
+                    and "presenter-title-content" in title_content_state["db"]["html"]
+                    and "presenter-title-assignee" not in title_content_state["db"]["html"]
+                    and "다음 주 공동의회가 있습니다" in title_content_state["db"]["body"]
+                    and title_content_state["fallback"]["elementType"] == "freeform"
+                    and title_content_state["fallback"]["layout"] == "center_text"
+                    and title_content_state["fallback"]["renderClass"] == "title-content"
+                    and title_content_state["fallback"]["title"] == "교회소식"
+                    and title_content_state["fallback"]["assignee"] == ""
+                    and "presenter-title-content" in title_content_state["fallback"]["html"]
+                    and "presenter-title-assignee" not in title_content_state["fallback"]["html"]
+                ):
+                    pass_("presenter-title-content-slides", json.dumps(title_content_state, ensure_ascii=False))
+                else:
+                    fail("presenter-title-content-slides", json.dumps(title_content_state, ensure_ascii=False))
+
+                title_and_liturgical_state = page.evaluate(
+                    """
+                    () => {
+                      const confessionSlide = buildPresenterSlidesForServiceItem({
+                        id: '__smoke_confession_title__',
+                        label: '참회기도',
+                        raw_title: '',
+                        memo: serializeServiceItemMemo({ elementType: 'title' }),
+                        _worshipSectionKey: 'confession',
+                        _worshipOrderSheetPlaceholder: true,
+                      }, { id: '__smoke_chromakey_service__', type_id: 'sunday-main', date: '2026-07-05' }, 0)[0] || {};
+                      const creedItem = {
+                        id: '__smoke_creed_body__',
+                        label: '사도신경',
+                        raw_title: '사도신경',
+                        memo: serializeServiceItemMemo({
+                          elementType: 'body',
+                          slides: ['전능하사 천지를 만드신 하나님 아버지를 내가 믿사오며\\n그 외아들 우리 주 예수 그리스도를 믿사오니\\n이는 성령으로 잉태하사 동정녀 마리아에게 나시고\\n본디오 빌라도에게 고난을 받으사 십자가에 못 박혀 죽으시고\\n장사한 지 사흘 만에 죽은 자 가운데서 다시 살아나시며']
+                        }),
+                        _worshipSectionKey: 'creed',
+                      };
+                      const chromakeySlides = buildPresenterSlidesForServiceItem(
+                        creedItem,
+                        { id: '__smoke_creed_chromakey_service__', type_id: 'sunday-main', date: '2026-07-05' },
+                        1
+                      );
+                      const fullscreenSlides = buildPresenterSlidesForServiceItem(
+                        creedItem,
+                        { id: '__smoke_creed_fullscreen_service__', type_id: 'friday', date: '2026-07-03' },
+                        1
+                      );
+                      return {
+                        confession: {
+                          elementType: confessionSlide.elementType || '',
+                          layout: confessionSlide.layout || '',
+                          type: confessionSlide.type || '',
+                          renderClass: presenterSlideRenderClass(confessionSlide),
+                          title: confessionSlide.title || '',
+                          text: confessionSlide.text || '',
+                          html: renderPresenterSlideFrame(confessionSlide),
+                        },
+                        chromakey: chromakeySlides.map((slide) => ({
+                          elementType: slide.elementType || '',
+                          layout: slide.layout || '',
+                          type: slide.type || '',
+                          renderClass: presenterSlideRenderClass(slide),
+                          title: slide.title || '',
+                          marker: slide.marker || '',
+                          text: slide.text || '',
+                        })),
+                        fullscreen: fullscreenSlides.map((slide) => ({
+                          elementType: slide.elementType || '',
+                          layout: slide.layout || '',
+                          type: slide.type || '',
+                          renderClass: presenterSlideRenderClass(slide),
+                          title: slide.title || '',
+                          text: slide.text || '',
+                          html: renderPresenterSlideFrame(slide),
+                        })),
+                      };
+                    }
+                    """
+                )
+                if (
+                    title_and_liturgical_state["confession"]["elementType"] == "title"
+                    and title_and_liturgical_state["confession"]["layout"] == "center_text"
+                    and title_and_liturgical_state["confession"]["type"] == "title"
+                    and title_and_liturgical_state["confession"]["renderClass"] == "title"
+                    and title_and_liturgical_state["confession"]["title"] == "참회기도"
+                    and "presenter-title-assignee" not in title_and_liturgical_state["confession"]["html"]
+                    and len(title_and_liturgical_state["chromakey"]) >= 2
+                    and all(slide["elementType"] == "body_text" for slide in title_and_liturgical_state["chromakey"])
+                    and all(slide["layout"] == "lower_bar_text" for slide in title_and_liturgical_state["chromakey"])
+                    and all(slide["type"] == "lyrics" for slide in title_and_liturgical_state["chromakey"])
+                    and all(slide["renderClass"] == "lyrics" for slide in title_and_liturgical_state["chromakey"])
+                    and title_and_liturgical_state["chromakey"][0]["marker"] == "사도신경"
+                    and len(title_and_liturgical_state["fullscreen"]) == 1
+                    and title_and_liturgical_state["fullscreen"][0]["elementType"] == "body_text"
+                    and title_and_liturgical_state["fullscreen"][0]["layout"] == "center_text"
+                    and title_and_liturgical_state["fullscreen"][0]["type"] == "liturgical-body"
+                    and title_and_liturgical_state["fullscreen"][0]["renderClass"] == "liturgical-body"
+                    and "presenter-slide--liturgical-body" in title_and_liturgical_state["fullscreen"][0]["html"]
+                    and "본디오 빌라도" in title_and_liturgical_state["fullscreen"][0]["text"]
+                ):
+                    pass_("presenter-title-and-liturgical-body-contract", json.dumps(title_and_liturgical_state, ensure_ascii=False))
+                else:
+                    fail("presenter-title-and-liturgical-body-contract", json.dumps(title_and_liturgical_state, ensure_ascii=False))
 
                 form_preset_state = page.evaluate(
                     """
@@ -658,6 +855,17 @@ def main() -> int:
                           outputMode: 'score'
                         })
                       };
+                      const audioMemo = serializeServiceItemMemo({
+                        elementType: 'audio',
+                        asset: { kind: 'audio', name: '성가대 MR', url: 'assets/audio/choir.m4a' }
+                      });
+                      const audioItem = {
+                        id: '__smoke_audio_item__',
+                        label: '특송 음원',
+                        raw_title: '성가대 MR',
+                        song_id: '',
+                        memo: audioMemo
+                      };
                       const hymnAllSlides = buildPresenterSlidesForServiceItem(hymnItem, service, 0);
                       const hymnSlides = hymnAllSlides.filter((slide) => slide.type === 'lyrics');
                       const hymnBlankSlides = hymnAllSlides.filter((slide) => slide.type === 'blank');
@@ -667,6 +875,7 @@ def main() -> int:
                       const scoreImageSlides = buildPresenterSlidesForServiceItem(scoreImageItem, service, 4);
                       const scoreManifestSlides = buildPresenterSlidesForServiceItem(scoreManifestItem, service, 5);
                       const scoreRawTitleSlides = buildPresenterSlidesForServiceItem(scoreRawTitleItem, service, 6);
+                      const audioSlides = buildPresenterSlidesForServiceItem(audioItem, service, 7);
                       const warningHtml = renderPresenterBoardSubgroup({
                         id: '__smoke_warning_group__',
                         label: '찬양',
@@ -676,6 +885,26 @@ def main() -> int:
                       }, 0, service.id, { showHead: true });
                       const warningNode = document.createElement('div');
                       warningNode.innerHTML = warningHtml;
+                      const scoreSafeArea = (() => {
+                        const host = document.createElement('div');
+                        host.className = 'svc-slide-mini-output no-chromakey';
+                        host.style.cssText = 'position:fixed;left:-2000px;top:0;width:1152px;height:648px;';
+                        host.innerHTML = `<span class="svc-slide-mini-canvas" style="width:1152px;height:648px;transform:none">${renderPresenterSlideFrame(scoreManifestSlides[0], { preview: true })}</span>`;
+                        document.body.appendChild(host);
+                        const slideEl = host.querySelector('.presenter-slide');
+                        const imageEl = host.querySelector('.presenter-image');
+                        const slideRect = slideEl?.getBoundingClientRect();
+                        const imageRect = imageEl?.getBoundingClientRect();
+                        const metrics = slideRect && imageRect ? {
+                          className: slideEl.className,
+                          top: Math.round(imageRect.top - slideRect.top),
+                          right: Math.round(slideRect.right - imageRect.right),
+                          bottom: Math.round(slideRect.bottom - imageRect.bottom),
+                          left: Math.round(imageRect.left - slideRect.left),
+                        } : null;
+                        host.remove();
+                        return metrics;
+                      })();
                       return {
                         hymnTypes: hymnAllSlides.map((slide) => slide.type),
                         hymnMarkers: hymnSlides.map((slide) => slide.marker),
@@ -728,6 +957,20 @@ def main() -> int:
                           index: 0,
                           chromakey: false
                         }, scoreImageSlides[0]),
+                        scoreSafeArea,
+                        audioMemo: parseServiceItemMemo(audioMemo),
+                        audioDbType: worshipDbElementTypeForSave('audio'),
+                        audioConfig: serviceElementConfigForSave({}, parseServiceItemMemo(audioMemo)),
+                        audioSlides: audioSlides.map((slide) => ({
+                          type: slide.type,
+                          layout: slide.layout,
+                          elementType: slide.elementType,
+                          sourceType: slide.sourceType,
+                          componentType: slide.componentType,
+                          audioSrc: slide.audioSrc,
+                          body: renderPresenterSlideBody(slide).trim(),
+                          preview: renderPresenterSlidePreviewBody(slide),
+                        })),
                         missingWarnings: [...new Set(missingSlides.flatMap((slide) => slide.warnings || []))],
                         missingPreviewText: missingSlides.map((slide) => renderPresenterSlideMiniPreview(slide, service.id)).join(' '),
                         warningChipText: warningNode.querySelector('.svc-presenter-warning')?.textContent.trim() || ''
@@ -827,6 +1070,32 @@ def main() -> int:
                         "assets/worship-backgrounds/26-A1.jpg",
                         "assets/worship-backgrounds/26-A2.jpg",
                     ]
+                    and "presenter-slide--score" in form_preset_state["scoreSafeArea"]["className"]
+                    and form_preset_state["scoreSafeArea"]["top"] >= 10
+                    and form_preset_state["scoreSafeArea"]["right"] >= 10
+                    and form_preset_state["scoreSafeArea"]["bottom"] >= 10
+                    and form_preset_state["scoreSafeArea"]["left"] >= 10
+                    and form_preset_state["audioMemo"]["elementType"] == "audio"
+                    and form_preset_state["audioMemo"]["asset"] == {
+                        "kind": "audio",
+                        "name": "성가대 MR",
+                        "url": "assets/audio/choir.m4a",
+                    }
+                    and form_preset_state["audioDbType"] == "plain_text"
+                    and form_preset_state["audioConfig"]["elementType"] == "audio"
+                    and form_preset_state["audioConfig"]["asset"]["kind"] == "audio"
+                    and form_preset_state["audioSlides"] == [{
+                        "type": "audio",
+                        "layout": "file",
+                        "elementType": "audio",
+                        "sourceType": "audio",
+                        "componentType": "audio",
+                        "audioSrc": "assets/audio/choir.m4a",
+                        "body": "",
+                        "preview": form_preset_state["audioSlides"][0]["preview"],
+                    }]
+                    and "오디오" in form_preset_state["audioSlides"][0]["preview"]
+                    and "성가대 MR" in form_preset_state["audioSlides"][0]["preview"]
                     and form_preset_state["missingWarnings"] == ["Bridge 없음"]
                     and "Bridge 없음" not in form_preset_state["missingPreviewText"]
                     and form_preset_state["warningChipText"] == "Bridge 없음"
@@ -1329,7 +1598,10 @@ def main() -> int:
                 payload = page.evaluate(
                     """
                     (serviceId) => {
-                      state.presenter.index = Math.min(2, Math.max(state.presenter.slides.length - 1, 0));
+                      const songTitleIndex = state.presenter.slides.findIndex((slide) => slide.type === 'song-title');
+                      state.presenter.index = songTitleIndex >= 0
+                        ? songTitleIndex
+                        : Math.min(2, Math.max(state.presenter.slides.length - 1, 0));
                       state.presenter.safetyBlank = false;
                       renderPresenterControlState(serviceId);
                       publishPresenterState({ force: true });
@@ -2306,7 +2578,10 @@ def main() -> int:
                         },
                       ]);
                       preparePresenterService(service.id);
-                      state.presenter.index = Math.min(2, Math.max(state.presenter.slides.length - 1, 0));
+                      const lyricsIndex = state.presenter.slides.findIndex((slide) => slide.type === 'lyrics');
+                      state.presenter.index = lyricsIndex >= 0
+                        ? lyricsIndex
+                        : Math.min(2, Math.max(state.presenter.slides.length - 1, 0));
                       state.presenter.liveScripture = { reference: "", draft: "", active: false, slide: null };
                       state.presenter.livePraise = { query: "", draft: "", active: false, slides: [], index: 0, songId: "", versionId: "" };
                       state.module = 'service';

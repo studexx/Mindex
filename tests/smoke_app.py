@@ -751,6 +751,45 @@ def main() -> int:
                 else:
                     fail("home-sidebar-hierarchy", json.dumps({"order": home_order, "visibility": home_visibility_state}, ensure_ascii=False))
 
+                home_design_state = page.evaluate(
+                    """
+                    (() => {
+                      const board = document.querySelector('.home-board');
+                      const primary = document.querySelector('.home-primary-card');
+                      const verse = document.querySelector('.home-verse-card');
+                      const library = document.querySelector('.home-module-grid--library');
+                      const utilities = document.querySelector('.home-module-grid--utilities');
+                      const rect = (node) => {
+                        const r = node?.getBoundingClientRect();
+                        return r ? { width: Math.round(r.width), height: Math.round(r.height), top: Math.round(r.top) } : null;
+                      };
+                      return {
+                        hasBoard: Boolean(board),
+                        hasPrimary: Boolean(primary),
+                        hasVerse: Boolean(verse),
+                        libraryCards: library?.children.length || 0,
+                        utilityCards: utilities?.children.length || 0,
+                        primary: rect(primary),
+                        text: document.querySelector('.home-screen')?.innerText || '',
+                        overflow: Math.max(document.documentElement.scrollWidth - window.innerWidth, document.body.scrollWidth - window.innerWidth)
+                      };
+                    })()
+                    """
+                )
+                if (
+                    home_design_state["hasBoard"]
+                    and home_design_state["hasPrimary"]
+                    and not home_design_state["hasVerse"]
+                    and home_design_state["libraryCards"] == 2
+                    and home_design_state["utilityCards"] == 3
+                    and home_design_state["primary"]["height"] >= 130
+                    and "1 services" not in home_design_state["text"]
+                    and home_design_state["overflow"] <= 2
+                ):
+                    pass_("home-design-shell", json.dumps(home_design_state, ensure_ascii=False))
+                else:
+                    fail("home-design-shell", json.dumps(home_design_state, ensure_ascii=False))
+
                 spacing_modules = ["home", "service", "scripture", "praise", "calendar", "references", "order-sheets"]
                 module_spacing = []
                 for module_id in spacing_modules:
@@ -874,6 +913,7 @@ def main() -> int:
                       activeTab: document.querySelector('.cal-tab.active')?.textContent.trim() || '',
                       departmentHeaders: [...document.querySelectorAll('.cal-table thead th')]
                         .map((node) => node.textContent.replace(/\\s+/g, ' ').trim())
+                        .map((text) => text.normalize('NFC'))
                         .filter((text) => text.includes('부')),
                       hasYearEndRow: document.body.textContent.includes('송구영신예배'),
                       hasFootnote: document.querySelector('.cal-footnote')?.textContent.includes('부활절 기간 동안 사도행전을 읽는 것으로') || false,
@@ -888,6 +928,7 @@ def main() -> int:
                     "청소년부 기도자",
                     "청소년부 봉헌기도자",
                     "청소년부 설교자",
+                    "청년부 기도자",
                 ]
                 if (
                     calendar_state["placeholder"] == "Search..."
@@ -1901,7 +1942,7 @@ def main() -> int:
                             .map((node) => node.getAttribute('aria-label')),
                           elementTypes: [...document.querySelectorAll('[data-service-item-field="element_type"] option')]
                             .map((node) => node.textContent.trim())
-                            .slice(0, 10),
+                            .slice(0, 12),
                           visibleBadTerms: /컴포넌트|\\bcomponents\\b|\\bComponent\\b|\\bItem\\b|\\bElement\\b|\\bElem_/.test(document.body.innerText),
                           visiblePresentationTerms: /\\bPPTX?\\b|PowerPoint/i.test(document.body.innerText),
                           legacyArtifactLabels: [...document.querySelectorAll('[aria-label]')]
@@ -1919,7 +1960,7 @@ def main() -> int:
                         and presenter_terms["editorFields"][:4] == ["섹션", "담당", "항목", "타입"]
                         and not presenter_terms["hasLegacyDrawer"]
                         and presenter_terms["actionLabels"][:4] == ["항목 위로 이동", "항목 아래로 이동", "항목 복제", "항목 삭제"]
-                        and presenter_terms["elementTypes"][:10] == ["자동", "빈 화면", "동영상", "이미지", "악보", "찬양", "실시간 찬양", "말씀", "성경봉독", "성경 본문"]
+                        and presenter_terms["elementTypes"][:12] == ["자동", "빈 화면", "제목", "동영상", "오디오", "이미지", "악보", "찬양", "실시간 찬양", "말씀", "성경봉독", "성경 본문"]
                         and presenter_terms["status"] == "미리보기"
                         and presenter_terms["jumpLabel"] == "슬라이드로 이동"
                         and presenter_terms["controlLabels"][:3] == ["상태", "슬라이드", "음량"]
@@ -1942,6 +1983,121 @@ def main() -> int:
                         pass_("presenter-terminology", json.dumps(presenter_terms, ensure_ascii=False))
                     else:
                         fail("presenter-terminology", json.dumps(presenter_terms, ensure_ascii=False))
+
+                    page.click(f'[data-service-prep-editor-open="{service_for_slides["id"]}"]')
+                    page.wait_for_selector(".svc-prep-editor", timeout=5000)
+                    prep_editor_state = page.evaluate(
+                        """
+                        (() => {
+                          const dialog = document.querySelector('.svc-prep-editor');
+                          const rect = dialog?.getBoundingClientRect();
+                          const body = dialog?.querySelector('.svc-prep-editor-body')?.getBoundingClientRect();
+                          return {
+                            mounted: Boolean(dialog),
+                            title: document.querySelector('#svcPrepEditorTitle')?.textContent.trim() || '',
+                            hasMeta: Boolean(document.querySelector('.svc-prep-editor .svc-meta-editor')),
+                            hasTemplate: Boolean(document.querySelector('.svc-prep-editor .svc-template-guide')),
+                            hasSetlist: Boolean(document.querySelector('.svc-prep-editor .svc-setlist-composer')),
+                            hasEditorHeader: Boolean(document.querySelector('.svc-prep-editor .svc-editor-header')),
+                            itemRows: document.querySelectorAll('.svc-prep-editor [data-service-item-field="raw_title"]').length,
+                            addLabel: document.querySelector('.svc-prep-editor [data-service-item-action="add"] span')?.textContent.trim() || '',
+                            openState: state.servicePrepEditorOpenId || '',
+                            focusedInside: Boolean(dialog?.contains(document.activeElement)),
+                            width: Math.round(rect?.width || 0),
+                            bodyHeight: Math.round(body?.height || 0),
+                            overflow: Math.max(document.documentElement.scrollWidth - window.innerWidth, document.body.scrollWidth - window.innerWidth)
+                          };
+                        })()
+                        """
+                    )
+                    page.evaluate(
+                        """
+                        (serviceId) => {
+                          state.presenter.serviceId = serviceId;
+                          state.presenter.slides = buildServicePresenterSlides(serviceId);
+                          state.presenter.index = 0;
+                          state.presenter.exitArmedAt = 0;
+                        }
+                        """,
+                        service_for_slides["id"],
+                    )
+                    page.keyboard.press("Escape")
+                    page.wait_for_selector(".svc-prep-editor", state="detached", timeout=5000)
+                    prep_editor_closed = page.evaluate(
+                        """
+                        () => ({
+                          closed: !state.servicePrepEditorOpenId && !document.querySelector('.svc-prep-editor'),
+                          presenterExitArmedAt: state.presenter.exitArmedAt || 0,
+                          focusRestored: Boolean(document.activeElement?.matches?.('[data-service-prep-editor-open]'))
+                        })
+                        """
+                    )
+                    if (
+                        prep_editor_state["mounted"]
+                        and prep_editor_state["title"]
+                        and prep_editor_state["hasMeta"]
+                        and prep_editor_state["hasTemplate"]
+                        and prep_editor_state["hasSetlist"]
+                        and prep_editor_state["hasEditorHeader"]
+                        and prep_editor_state["itemRows"] >= 1
+                        and prep_editor_state["addLabel"] == "항목 추가"
+                        and prep_editor_state["openState"] == service_for_slides["id"]
+                        and prep_editor_state["focusedInside"]
+                        and prep_editor_state["width"] >= 900
+                        and prep_editor_state["bodyHeight"] >= 240
+                        and prep_editor_state["overflow"] <= 2
+                        and prep_editor_closed["closed"]
+                        and prep_editor_closed["presenterExitArmedAt"] == 0
+                        and prep_editor_closed["focusRestored"]
+                    ):
+                        pass_("service-prep-editor", json.dumps({**prep_editor_state, **prep_editor_closed}, ensure_ascii=False))
+                    else:
+                        fail("service-prep-editor", json.dumps({**prep_editor_state, **prep_editor_closed}, ensure_ascii=False))
+
+                    page.set_viewport_size({"width": 520, "height": 760})
+                    page.click(f'[data-service-prep-editor-open="{service_for_slides["id"]}"]')
+                    page.wait_for_selector(".svc-prep-editor", timeout=5000)
+                    prep_editor_narrow = page.evaluate(
+                        """
+                        (() => {
+                          const editor = document.querySelector('.svc-prep-editor')?.getBoundingClientRect();
+                          const editorLeft = editor?.left || 0;
+                          const editorRight = editor?.right || window.innerWidth;
+                          const nodes = [...document.querySelectorAll('.svc-prep-editor *')]
+                            .map((node) => {
+                              const rect = node.getBoundingClientRect();
+                              return {
+                                width: rect.width,
+                                left: rect.left,
+                                right: rect.right,
+                                height: rect.height
+                              };
+                            })
+                            .filter((item) => item.width > 0 && item.height > 0);
+                          return {
+                            viewport: window.innerWidth,
+                            editorWidth: Math.round(editor?.width || 0),
+                            overflow: Math.max(document.documentElement.scrollWidth - window.innerWidth, document.body.scrollWidth - window.innerWidth),
+                            leakingNodes: nodes.filter((item) => item.left < editorLeft - 2 || item.right > editorRight + 2).length,
+                            firstItemHeight: Math.round(document.querySelector('.svc-prep-editor .svc-edit-item')?.getBoundingClientRect().height || 0)
+                          };
+                        })()
+                        """
+                    )
+                    page.keyboard.press("Escape")
+                    page.wait_for_selector(".svc-prep-editor", state="detached", timeout=5000)
+                    page.set_viewport_size({"width": 1440, "height": 980})
+                    if (
+                        prep_editor_narrow["viewport"] == 520
+                        and 280 <= prep_editor_narrow["editorWidth"] <= prep_editor_narrow["viewport"]
+                        and prep_editor_narrow["overflow"] <= 2
+                        and prep_editor_narrow["leakingNodes"] == 0
+                        and prep_editor_narrow["firstItemHeight"] >= 80
+                    ):
+                        pass_("service-prep-editor-narrow", json.dumps(prep_editor_narrow, ensure_ascii=False))
+                    else:
+                        fail("service-prep-editor-narrow", json.dumps(prep_editor_narrow, ensure_ascii=False))
+
                     thumb_metrics = page.evaluate(
                         """
                         (() => [...document.querySelectorAll('.svc-slide-thumb-frame')]
