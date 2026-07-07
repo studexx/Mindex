@@ -599,38 +599,38 @@ def main() -> int:
                               height: Math.round(box.height)
                             } : null;
                           };
-	                          const topbar = rect('.topbar');
-	                          const sidebar = rect('.sidebar');
-	                          const search = rect('.sidebar-search-wrap');
-	                          const detail = rect('.detail-pane');
-	                          const switcher = document.querySelector('.primary-switcher');
-	                          return {
-	                            width,
-	                            topbarHeight: topbar?.height || 0,
-	                            sidebarWidth: sidebar?.width || 0,
-	                            sidebarHeight: sidebar?.height || 0,
-	                            sidebarLeftRail: Boolean(sidebar && detail && detail.left >= sidebar.right),
-	                            searchWithinSidebar: Boolean(search && sidebar && search.left >= sidebar.left && search.right <= sidebar.right),
-	                            switcherClientWidth: Math.round(switcher?.clientWidth || 0),
-	                            switcherScrollWidth: Math.round(switcher?.scrollWidth || 0),
-	                            overflow: Math.max(document.documentElement.scrollWidth - window.innerWidth, document.body.scrollWidth - window.innerWidth)
-	                          };
-	                        }
+                          const topbar = rect('.topbar');
+                          const sidebar = rect('.sidebar');
+                          const search = rect('.sidebar-search-wrap');
+                          const detail = rect('.detail-pane');
+                          const switcher = document.querySelector('.primary-switcher');
+                          return {
+                            width,
+                            topbarHeight: topbar?.height || 0,
+                            sidebarWidth: sidebar?.width || 0,
+                            sidebarHeight: sidebar?.height || 0,
+                            sidebarLeftRail: Boolean(sidebar && detail && detail.left >= sidebar.right),
+                            searchWithinSidebar: Boolean(search && sidebar && search.left >= sidebar.left && search.right <= sidebar.right),
+                            switcherClientWidth: Math.round(switcher?.clientWidth || 0),
+                            switcherScrollWidth: Math.round(switcher?.scrollWidth || 0),
+                            overflow: Math.max(document.documentElement.scrollWidth - window.innerWidth, document.body.scrollWidth - window.innerWidth)
+                          };
+                        }
                         """,
                         width,
                     )
                 )
             if all(
-	                item["topbarHeight"] == 40
-	                and item["sidebarWidth"] <= item["width"]
-	                and (item["width"] >= 780 or item["sidebarWidth"] == 170)
-	                and item["sidebarLeftRail"]
-	                and (item["width"] > 860 or item["sidebarHeight"] > 300)
-	                and item["searchWithinSidebar"]
-	                and item["switcherClientWidth"] > 0
-	                and item["overflow"] <= 2
-	                for item in responsive_shells
-	            ):
+                item["topbarHeight"] == 40
+                and item["sidebarWidth"] <= item["width"]
+                and (item["width"] >= 780 or item["sidebarWidth"] == 170)
+                and item["sidebarLeftRail"]
+                and (item["width"] > 860 or item["sidebarHeight"] > 300)
+                and item["searchWithinSidebar"]
+                and item["switcherClientWidth"] > 0
+                and item["overflow"] <= 2
+                for item in responsive_shells
+            ):
                 pass_("shell-responsive-geometry", json.dumps(responsive_shells, ensure_ascii=False))
             else:
                 fail("shell-responsive-geometry", json.dumps(responsive_shells, ensure_ascii=False))
@@ -915,6 +915,10 @@ def main() -> int:
                         .map((node) => node.textContent.replace(/\\s+/g, ' ').trim())
                         .map((text) => text.normalize('NFC'))
                         .filter((text) => text.includes('부')),
+                      widths: [...document.querySelectorAll('.cal-table thead th')]
+                        .map((node) => Math.round(node.getBoundingClientRect().width)),
+                      tableClass: document.querySelector('.cal-table')?.className || '',
+                      tableScrollWidth: Math.round(document.querySelector('.cal-table')?.scrollWidth || 0),
                       hasYearEndRow: document.body.textContent.includes('송구영신예배'),
                       hasFootnote: document.querySelector('.cal-footnote')?.textContent.includes('부활절 기간 동안 사도행전을 읽는 것으로') || false,
                       footnoteHasBreak: Boolean(document.querySelector('.cal-footnote br')),
@@ -935,6 +939,10 @@ def main() -> int:
                     and calendar_state["hasCalendar"]
                     and calendar_state["activeTab"] == "부서 일과"
                     and calendar_state["departmentHeaders"] == expected_department_headers
+                    and "cal-table--departments" in calendar_state["tableClass"]
+                    and 1190 <= calendar_state["tableScrollWidth"] <= 1235
+                    and calendar_state["widths"][:4] == [83, 133, 143, 180]
+                    and calendar_state["widths"][4:] == [107, 107, 107, 129, 107, 107]
                     and calendar_state["hasYearEndRow"]
                     and calendar_state["hasFootnote"]
                     and not calendar_state["footnoteHasBreak"]
@@ -952,6 +960,10 @@ def main() -> int:
                       headers: [...document.querySelectorAll('.cal-table thead th')]
                         .map((node) => node.textContent.replace(/\\s+/g, ' ').trim())
                         .slice(-5),
+                      widths: [...document.querySelectorAll('.cal-table thead th')]
+                        .map((node) => Math.round(node.getBoundingClientRect().width)),
+                      tableClass: document.querySelector('.cal-table')?.className || '',
+                      tableScrollWidth: Math.round(document.querySelector('.cal-table')?.scrollWidth || 0),
                       overflow: Math.max(document.documentElement.scrollWidth - window.innerWidth, document.body.scrollWidth - window.innerWidth)
                     }))()
                     """
@@ -960,6 +972,10 @@ def main() -> int:
                 if (
                     calendar_lectionary_state["activeTab"] == "성서일과"
                     and calendar_lectionary_state["headers"] == expected_lectionary_headers
+                    and "cal-table--lectionary" in calendar_lectionary_state["tableClass"]
+                    and 1240 <= calendar_lectionary_state["tableScrollWidth"] <= 1265
+                    and calendar_lectionary_state["widths"][:4] == [82, 132, 142, 178]
+                    and calendar_lectionary_state["widths"][4:] == [60, 170, 146, 170, 170]
                     and calendar_lectionary_state["overflow"] <= 2
                 ):
                     pass_("calendar-lectionary-tab", json.dumps(calendar_lectionary_state, ensure_ascii=False))
@@ -1325,6 +1341,22 @@ def main() -> int:
                               afternoon: summarize('sunday-afternoon')
                             };
                           })(),
+                          commonClosingTemplates: (() => {
+                            const summarize = (typeId) => {
+                              const template = serviceOrderTemplate(typeId);
+                              const last = template[template.length - 1] || {};
+                              const scaffold = buildWorshipServiceScaffold(`__smoke_common_${typeId}__`, typeId);
+                              const lastSection = scaffold.sections[scaffold.sections.length - 1] || {};
+                              return {
+                                typeId,
+                                lastLabel: last.label || last.name || '',
+                                lastSectionKey: last.sectionKey || last.section_key || '',
+                                lastScaffoldTitle: lastSection.title || '',
+                                lastScaffoldKey: lastSection.section_key || '',
+                              };
+                            };
+                            return ['holy-week-dawn', 'omer', 'special', 'children'].map(summarize);
+                          })(),
                           secondCreedOrderSheetRow: (() => {
                             const serviceId = '__smoke_second_creed_service__';
                             const previousServices = state.services;
@@ -1625,6 +1657,10 @@ def main() -> int:
                             "hymn_praise:찬송",
                             "doxology:송영",
                         }
+                        and all(item["lastLabel"] == "마무리" for item in template_terms["commonClosingTemplates"])
+                        and all(item["lastSectionKey"] == "closing_visual" for item in template_terms["commonClosingTemplates"])
+                        and all(item["lastScaffoldTitle"] == "마무리" for item in template_terms["commonClosingTemplates"])
+                        and all(item["lastScaffoldKey"] == "closing_visual" for item in template_terms["commonClosingTemplates"])
                         and template_terms["scoreModeMemo"] == {
                             "memo": '{"note":"","elementType":"praise","outputMode":"score"}',
                             "outputMode": "score",
@@ -1923,6 +1959,41 @@ def main() -> int:
                           sidebarHeadings: [...document.querySelectorAll('.service-sidebar-head span')]
                             .map((node) => node.textContent.trim()),
                           outlineRows: document.querySelectorAll('.service-outline-row').length,
+                          outlineGroups: document.querySelectorAll('.service-outline-group').length,
+                          multiOutlineGroups: document.querySelectorAll('.service-outline-group .service-outline-children .service-outline-row--child:nth-child(2)').length,
+                          childPraiseMarkers: [...document.querySelectorAll('.service-outline-group')]
+                            .filter((group) => group.querySelector('.service-outline-row--section strong')?.textContent.trim() === '찬양')
+                            .flatMap((group) => [...group.querySelectorAll('.service-outline-row--child strong')].map((node) => node.textContent.trim()))
+                            .filter((text) => text === '찬양').length,
+                          collapsedBoardSubgroups: document.querySelectorAll('.svc-board-subgroup.collapsed-head').length,
+                          mainPraiseSubgroupLabels: (() => {
+                            const group = { kind: 'main-praise', label: '찬양', subgroups: [] };
+                            addPresenterSlideToSubgroup(group, {
+                              slideIndex: 0,
+                              slide: { type: 'praise-section-title', sectionLabel: '찬양', elementId: 'marker' }
+                            });
+                            addPresenterSlideToSubgroup(group, {
+                              slideIndex: 1,
+                              slide: { type: 'image', sectionLabel: '찬양 2', elementTitle: '하나님의 크신 사랑', elementId: 'song-1' }
+                            });
+                            return group.subgroups.map((subgroup) => subgroup.label);
+                          })(),
+                          doxologyScoreSectionTitle: (() => {
+                            const section = presenterSectionForServiceItem({
+                              id: 'smoke-doxology',
+                              label: '찬양',
+                              _worshipSectionKey: 'doxology',
+                              raw_title: '이 천지간 만물들아'
+                            }, 0, '이 천지간 만물들아');
+                            return presenterScoreImageSlidesFromAsset(
+                              { slides: [{ url: '/assets/smoke-score.png' }] },
+                              { id: 'smoke-doxology', label: '찬양' },
+                              section,
+                              0,
+                              '이 천지간 만물들아',
+                              '찬양'
+                            )[0]?.sectionTitle || '';
+                          })(),
                           readyShortcutRows: document.querySelectorAll('.service-outline-row--ready').length,
                           editorFields: [...document.querySelectorAll('.service-sidebar-editor label > span')]
                             .map((node) => node.textContent.trim()),
@@ -1956,6 +2027,12 @@ def main() -> int:
                         "순서" in presenter_terms["sidebarHeadings"]
                         and "편집" in presenter_terms["sidebarHeadings"]
                         and presenter_terms["outlineRows"] >= 2
+                        and presenter_terms["outlineGroups"] >= 1
+                        and presenter_terms["multiOutlineGroups"] >= 1
+                        and presenter_terms["childPraiseMarkers"] == 0
+                        and presenter_terms["collapsedBoardSubgroups"] >= 1
+                        and presenter_terms["mainPraiseSubgroupLabels"] == ["찬양", "찬양 1"]
+                        and presenter_terms["doxologyScoreSectionTitle"] == "송영"
                         and presenter_terms["readyShortcutRows"] == 0
                         and presenter_terms["editorFields"][:4] == ["섹션", "담당", "항목", "타입"]
                         and not presenter_terms["hasLegacyDrawer"]
@@ -2433,11 +2510,20 @@ def main() -> int:
                       assignUniqueVersionLyricSignatures(rows, [
                         { id: '99999999-9999-4999-8999-999999999999', lyric_signature: 'mindex-other' },
                       ]);
+                      const versionOrderRows = [
+                        { id: '44444444-4444-4444-8444-444444444444', version_order: 1 },
+                        { id: '55555555-5555-4555-8555-555555555555', version_order: 2 },
+                      ];
+                      const orders = assignStableVersionOrders([
+                        { id: '66666666-6666-4666-8666-666666666666' },
+                        { id: '77777777-7777-4777-8777-777777777777' },
+                      ], versionOrderRows, 'other-song');
                       return {
                         signatures: rows.map((row) => row.lyric_signature),
                         unique: new Set(rows.map((row) => row.lyric_signature)).size === rows.length,
                         secondSuffixed: rows[1].lyric_signature.startsWith('mindex-same:'),
                         existingConflictSuffixed: rows[2].lyric_signature.startsWith('mindex-other:'),
+                        orders: [...orders.values()],
                       };
                     })()
                     """
@@ -2447,10 +2533,109 @@ def main() -> int:
                     and signature_state["signatures"][0] == "mindex-same"
                     and signature_state["secondSuffixed"]
                     and signature_state["existingConflictSuffixed"]
+                    and signature_state["orders"] == [3, 4]
                 ):
                     pass_("praise-version-lyric-signature-unique", json.dumps(signature_state, ensure_ascii=False))
                 else:
                     fail("praise-version-lyric-signature-unique", json.dumps(signature_state, ensure_ascii=False))
+                canonical_state = page.evaluate(
+                    """
+                    async () => {
+                      const originalClient = state.client;
+                      const existingId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+                      let directUpsertCalled = false;
+                      let raceMaybeCalls = 0;
+                      let raceUpsertCalled = false;
+                      try {
+                        state.client = {
+                          from() {
+                            return {
+                              select() { return this; },
+                              eq() { return this; },
+                              maybeSingle() {
+                                return Promise.resolve({
+                                  data: { id: existingId, title: '같은 제목', normalized_title: '같은제목' },
+                                  error: null,
+                                });
+                              },
+                              upsert() {
+                                directUpsertCalled = true;
+                                return this;
+                              },
+                              single() {
+                                return Promise.resolve({ data: { id: 'unexpected' }, error: null });
+                              },
+                            };
+                          },
+                        };
+                        const directSong = {
+                          id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+                          title: '같은 제목',
+                        };
+                        const directId = await ensureCanonicalSongRow(directSong);
+
+                        state.client = {
+                          from() {
+                            return {
+                              select() { return this; },
+                              eq() { return this; },
+                              maybeSingle() {
+                                raceMaybeCalls += 1;
+                                return Promise.resolve({
+                                  data: raceMaybeCalls === 1
+                                    ? null
+                                    : { id: existingId, title: '같은 제목', normalized_title: '같은제목' },
+                                  error: null,
+                                });
+                              },
+                              upsert() {
+                                raceUpsertCalled = true;
+                                return this;
+                              },
+                              single() {
+                                return Promise.resolve({
+                                  data: null,
+                                  error: {
+                                    code: '23505',
+                                    message: 'duplicate key value violates unique constraint "mindex_canonical_songs_normalized_title_key"',
+                                  },
+                                });
+                              },
+                            };
+                          },
+                        };
+                        const raceSong = {
+                          id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+                          title: '같은 제목',
+                        };
+                        const raceId = await ensureCanonicalSongRow(raceSong);
+                        return {
+                          directId,
+                          directCached: directSong._canonicalSongId,
+                          directUpsertCalled,
+                          raceId,
+                          raceCached: raceSong._canonicalSongId,
+                          raceMaybeCalls,
+                          raceUpsertCalled,
+                        };
+                      } finally {
+                        state.client = originalClient;
+                      }
+                    }
+                    """
+                )
+                if (
+                    canonical_state["directId"] == "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                    and canonical_state["directCached"] == canonical_state["directId"]
+                    and not canonical_state["directUpsertCalled"]
+                    and canonical_state["raceId"] == canonical_state["directId"]
+                    and canonical_state["raceCached"] == canonical_state["raceId"]
+                    and canonical_state["raceMaybeCalls"] == 2
+                    and canonical_state["raceUpsertCalled"]
+                ):
+                    pass_("praise-canonical-normalized-title-reuse", json.dumps(canonical_state, ensure_ascii=False))
+                else:
+                    fail("praise-canonical-normalized-title-reuse", json.dumps(canonical_state, ensure_ascii=False))
 
                 page.click('[data-module="scripture"]')
                 wait_for_scripture_data(page)

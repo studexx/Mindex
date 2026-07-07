@@ -358,6 +358,72 @@ def main() -> int:
                             meta: group.meta,
                             subgroups: group.subgroups.length
                           })),
+                        praiseTeamBoardMeta: (() => {
+                          const service = state.services.find((item) => item.id === serviceId);
+                          if (!service) return [];
+                          const previousTags = [...(service.tags || [])];
+                          const previousLeader = service.leader || '';
+                          service.tags = ['찬양팀: 헤세드 찬양단', ...previousTags.filter((tag) => !isServicePraiseTeamTag(tag))];
+                          service.leader = '김남영 목사';
+                          const teamSlides = buildServicePresenterSlides(serviceId);
+                          const groups = groupPresenterSlidesBySection(teamSlides, serviceId)
+                            .filter((group) => group.kind === 'main-praise')
+                            .map((group) => group.meta);
+                          service.tags = previousTags;
+                          service.leader = previousLeader;
+                          return groups;
+                        })(),
+                        praiseTeamNameAsLeaderMeta: (() => {
+                          const service = state.services.find((item) => item.id === serviceId);
+                          if (!service) return [];
+                          const previousTags = [...(service.tags || [])];
+                          const previousLeader = service.leader || '';
+                          service.tags = previousTags.filter((tag) => !isServicePraiseTeamTag(tag));
+                          service.leader = '헤세드 찬양단';
+                          const teamSlides = buildServicePresenterSlides(serviceId);
+                          const groups = groupPresenterSlidesBySection(teamSlides, serviceId)
+                            .filter((group) => group.kind === 'main-praise')
+                            .map((group) => group.meta);
+                          service.tags = previousTags;
+                          service.leader = previousLeader;
+                          return groups;
+                        })(),
+                        mainPraiseElementTitleMeta: (() => {
+                          const service = state.services.find((item) => item.id === serviceId) || { id: serviceId, type_id: 'monthly' };
+                          const song = {
+                            id: '__smoke_main_praise_meta_song__',
+                            title: '가서 제자 삼으라',
+                            subtitle: '갈릴리 마을 그 숲속에서',
+                            original_title: 'Go Make Disciples',
+                            versions: [{
+                              id: '__smoke_main_praise_meta_version__',
+                              name: 'Default',
+                              is_primary: true,
+                              forms: [
+                                { id: 'meta-v1', part_type: 'Verse', part_number: 1, lyrics: '가서 제자 삼으라\\n세상 모든 사람들을', sort_order: 1 }
+                              ]
+                            }]
+                          };
+                          const previousSongs = state.songs;
+                          state.songs = state.songs.filter((item) => item.id !== song.id).concat([song]);
+                          const slides = buildPresenterSlidesForServiceItem({
+                            id: '__smoke_main_praise_meta_item__',
+                            label: '찬양',
+                            raw_title: '가서 제자 삼으라',
+                            song_id: song.id,
+                            version_id: '__smoke_main_praise_meta_version__',
+                          }, service, 0);
+                          const group = groupPresenterSlidesBySection(slides, serviceId).find((item) => item.kind === 'main-praise');
+                          const subgroup = group?.subgroups.find((item) => item.title.includes('가서 제자 삼으라')) || {};
+                          const titleSlide = slides.find((slide) => slide.type === 'song-title') || {};
+                          state.songs = previousSongs;
+                          return {
+                            groupTitle: group?.title || '',
+                            subgroupTitle: subgroup.title || '',
+                            outputTitle: titleSlide.title || '',
+                            outputText: titleSlide.text || '',
+                          };
+                        })(),
                         praiseTeamIntro: (() => {
                           const service = state.services.find((item) => item.id === serviceId);
                           if (!service) return null;
@@ -384,7 +450,93 @@ def main() -> int:
                             label: group.label,
                             title: group.title,
                             subgroups: group.subgroups.length
-                          }))
+                          })),
+                        trailingBlankPolicy: (() => {
+                          const readySlides = withPresenterElementTrailingBlanks([
+                            {
+                              id: '__smoke_ready_media__',
+                              elementId: '__smoke_ready_media__',
+                              sectionId: '__smoke_ready__',
+                              sectionKey: 'ready',
+                              sectionRole: 'ready',
+                              sectionLabel: '준비',
+                              elementType: 'video',
+                              layout: 'media',
+                              type: 'ready',
+                              title: '준비',
+                              text: '',
+                            },
+                            {
+                              id: '__smoke_after_ready__',
+                              elementId: '__smoke_after_ready__',
+                              sectionId: '__smoke_praise__',
+                              sectionKey: 'praise',
+                              sectionLabel: '찬양',
+                              elementType: 'title_assignee',
+                              layout: 'lower_bar_text',
+                              type: 'title-assignee',
+                              title: '찬양',
+                              text: '찬양',
+                            },
+                          ]);
+                          const closingSlides = withPresenterElementTrailingBlanks([
+                            {
+                              id: '__smoke_closing_visual__',
+                              elementId: '__smoke_closing_visual__',
+                              sectionId: '__smoke_closing__',
+                              sectionKey: 'closing_visual',
+                              sectionLabel: '마무리',
+                              elementType: 'image',
+                              layout: 'media',
+                              type: 'image',
+                              title: '마무리',
+                              text: '마무리',
+                            },
+                            {
+                              id: '__smoke_after_closing__',
+                              elementId: '__smoke_after_closing__',
+                              sectionId: '__smoke_after__',
+                              sectionKey: 'after',
+                              sectionLabel: '다음',
+                              elementType: 'title_assignee',
+                              layout: 'lower_bar_text',
+                              type: 'title-assignee',
+                              title: '다음',
+                              text: '다음',
+                            },
+                          ]);
+                          const normalSlides = withPresenterElementTrailingBlanks([
+                            {
+                              id: '__smoke_prayer__',
+                              elementId: '__smoke_prayer__',
+                              sectionId: '__smoke_prayer_section__',
+                              sectionKey: 'prayer',
+                              sectionLabel: '대표기도',
+                              elementType: 'title_assignee',
+                              layout: 'lower_bar_text',
+                              type: 'title-assignee',
+                              title: '기도',
+                              text: '기도',
+                            },
+                            {
+                              id: '__smoke_scripture__',
+                              elementId: '__smoke_scripture__',
+                              sectionId: '__smoke_scripture_section__',
+                              sectionKey: 'scripture_reading',
+                              sectionLabel: '성경봉독',
+                              elementType: 'title_assignee',
+                              layout: 'lower_bar_text',
+                              type: 'title-assignee',
+                              title: '성경봉독',
+                              text: '성경봉독',
+                            },
+                          ]);
+                          return {
+                            readyHasBlankAfterReady: readySlides.some((slide) => slide.id === '__smoke_ready_media__:after-blank'),
+                            closingHasBlankAfterClosing: closingSlides.some((slide) => slide.id === '__smoke_closing_visual__:after-blank'),
+                            normalHasBlankAfterPrayer: normalSlides.some((slide) => slide.id === '__smoke_prayer__:after-blank'),
+                          };
+                        })()
                       };
                     }
                     """,
@@ -394,12 +546,30 @@ def main() -> int:
                     not fallback_state["centerFallbacks"]
                     and fallback_state["ready"] == {"elementType": "video", "layout": "media", "type": "ready"}
                     and fallback_state["monthlyPrayerGroups"]
+                    and all(group["title"] == "월삭기도" for group in fallback_state["monthlyPrayerGroups"])
+                    and any(
+                        any(
+                            subgroup["label"] == "월삭기도"
+                            and subgroup["title"]
+                            and subgroup["title"] != "월삭기도"
+                            for subgroup in group["subgroups"]
+                        )
+                        for group in fallback_state["monthlyPrayerGroups"]
+                    )
                     and any(
                         any(subgroup["label"] == "찬양" and subgroup["slides"] > 0 for subgroup in group["subgroups"])
                         for group in fallback_state["monthlyPrayerGroups"]
                     )
                     and len(fallback_state["mainPraiseGroups"]) == 1
                     and fallback_state["mainPraiseGroups"][0]["label"] == "찬양"
+                    and fallback_state["praiseTeamBoardMeta"] == ["헤세드 찬양단"]
+                    and fallback_state["praiseTeamNameAsLeaderMeta"] == ["헤세드 찬양단"]
+                    and fallback_state["mainPraiseElementTitleMeta"] == {
+                        "groupTitle": "찬양",
+                        "subgroupTitle": "가서 제자 삼으라 (갈릴리 마을 그 숲속에서 · Go Make Disciples)",
+                        "outputTitle": "가서 제자 삼으라",
+                        "outputText": "♪ 가서 제자 삼으라",
+                    }
                     and fallback_state["praiseTeamIntro"] == {
                         "type": "praise-section-title",
                         "elementType": "title_assignee",
@@ -413,6 +583,11 @@ def main() -> int:
                     and len(fallback_state["closingGroups"]) == 1
                     and fallback_state["closingGroups"][0]["kind"] == "item"
                     and fallback_state["closingGroups"][0]["label"] == "찬양"
+                    and fallback_state["trailingBlankPolicy"] == {
+                        "readyHasBlankAfterReady": False,
+                        "closingHasBlankAfterClosing": False,
+                        "normalHasBlankAfterPrayer": True,
+                    }
                 ):
                     pass_("presenter-section-element-model", json.dumps(fallback_state, ensure_ascii=False))
                 else:
@@ -690,12 +865,13 @@ def main() -> int:
                     """
                 )
                 if (
-                    title_and_liturgical_state["confession"]["elementType"] == "title"
-                    and title_and_liturgical_state["confession"]["layout"] == "center_text"
-                    and title_and_liturgical_state["confession"]["type"] == "title"
-                    and title_and_liturgical_state["confession"]["renderClass"] == "title"
+                    title_and_liturgical_state["confession"]["elementType"] == "title_assignee"
+                    and title_and_liturgical_state["confession"]["layout"] == "lower_bar_text"
+                    and title_and_liturgical_state["confession"]["type"] == "title-assignee"
+                    and title_and_liturgical_state["confession"]["renderClass"] == "title-assignee"
                     and title_and_liturgical_state["confession"]["title"] == "참회기도"
-                    and "presenter-title-assignee" not in title_and_liturgical_state["confession"]["html"]
+                    and "presenter-title-assignee" in title_and_liturgical_state["confession"]["html"]
+                    and 'presenter-slide--title"' not in title_and_liturgical_state["confession"]["html"]
                     and len(title_and_liturgical_state["chromakey"]) >= 2
                     and all(slide["elementType"] == "body_text" for slide in title_and_liturgical_state["chromakey"])
                     and all(slide["layout"] == "lower_bar_text" for slide in title_and_liturgical_state["chromakey"])
@@ -748,21 +924,48 @@ def main() -> int:
                           ]
                         }]
                       };
+                      const defaultFormSong = {
+                        id: '__smoke_default_form_song__',
+                        title: '감사',
+                        metadata: {
+                          presenter_form: { forms: ['V1', 'V2', 'C', 'V3', 'C', 'Coda'], hint: 'V1-V2-C-V3-C-Coda', strength: 'song-default' }
+                        },
+                        versions: [{
+                          id: '__smoke_default_form_version__',
+                          name: 'Default',
+                          is_primary: true,
+                          forms: [
+                            {
+                              id: 'df-lyrics',
+                              part_type: 'Lyrics',
+                              part_number: null,
+                              lyrics: '감사 1절 첫 줄\\n감사 1절 둘째 줄\\n\\n감사 2절 첫 줄\\n감사 2절 둘째 줄\\n\\n감사 후렴 첫 줄\\n감사 후렴 둘째 줄\\n\\n감사 3절 첫 줄\\n감사 3절 둘째 줄\\n\\n감사 코다 첫 줄\\n감사 코다 둘째 줄',
+                              sort_order: 1
+                            }
+                          ]
+                        }]
+                      };
                       const hymnScoreSong = {
                         ...hymnSong,
                         id: '__smoke_hymn_score_song__',
+                        title: '이 천지간 만물들아',
                         hymn_no: '5',
+                      };
+                      const offeringSong = {
+                        ...hymnSong,
+                        id: '__smoke_offering_song__',
+                        title: '하나님의 크신 사랑',
                       };
                       state.hymnScoreManifest = {
                         '5': {
                           title: '이 천지간 만물들아',
                           slides: [
-                            { src: 'assets/hymn-scores/5/slide-01.png', sourceSlide: 1 },
-                            { src: 'assets/hymn-scores/5/slide-02.png', sourceSlide: 2 },
+                            { src: 'assets/hymn-scores/5/slide-01.webp', sourceSlide: 1 },
+                            { src: 'assets/hymn-scores/5/slide-02.webp', sourceSlide: 2 },
                           ],
                         },
                       };
-                      state.songs = state.songs.filter((song) => !String(song.id || '').startsWith('__smoke_')).concat([hymnSong, hymnScoreSong, ccmSong]);
+                      state.songs = state.songs.filter((song) => !String(song.id || '').startsWith('__smoke_')).concat([hymnSong, hymnScoreSong, offeringSong, ccmSong, defaultFormSong]);
                       const service = { id: '__smoke_form_service__', type_id: 'sunday-main', date: '2026-07-04' };
                       const hymnItem = {
                         id: '__smoke_hymn_item__',
@@ -803,6 +1006,22 @@ def main() -> int:
                           elementType: 'praise',
                           formPreset: { forms: ['V1', 'C', 'B'], hint: 'V1-C-B', strength: 'manual' }
                         })
+                      };
+                      const defaultFormItem = {
+                        id: '__smoke_default_form_item__',
+                        label: '찬양',
+                        raw_title: '감사',
+                        song_id: defaultFormSong.id,
+                        version_id: '__smoke_default_form_version__',
+                        memo: serializeServiceItemMemo({ elementType: 'praise' })
+                      };
+                      const hymnAutoItem = {
+                        id: '__smoke_hymn_auto_item__',
+                        label: '찬양',
+                        raw_title: '특송 테스트',
+                        song_id: hymnSong.id,
+                        version_id: '__smoke_hymn_version__',
+                        memo: serializeServiceItemMemo({ elementType: 'praise' })
                       };
                       const scoreItem = {
                         id: '__smoke_score_item__',
@@ -855,6 +1074,46 @@ def main() -> int:
                           outputMode: 'score'
                         })
                       };
+                      const offeringScoreItem = {
+                        id: '__smoke_offering_score_item__',
+                        label: '봉헌찬송',
+                        raw_title: '하나님의 크신 사랑',
+                        song_id: offeringSong.id,
+                        version_id: '__smoke_hymn_version__',
+                        _worshipSectionId: '__smoke_offering_section__',
+                        _worshipSectionKey: 'offering',
+                        memo: serializeServiceItemMemo({
+                          elementType: 'praise',
+                          outputMode: 'score'
+                        })
+                      };
+                      const specialScoreItem = {
+                        id: '__smoke_special_score_item__',
+                        label: '특송',
+                        raw_title: '특송 테스트',
+                        song_id: '',
+                        _worshipSectionId: '__smoke_special_section__',
+                        _worshipSectionKey: 'special_song',
+                        assignee: '할렐루야 찬양대',
+                        _worshipSectionTitle: '특송',
+                        memo: serializeServiceItemMemo({
+                          elementType: 'praise',
+                          outputMode: 'score'
+                        })
+                      };
+                      const doxologyScoreItem = {
+                        id: '__smoke_doxology_score_item__',
+                        label: '송영',
+                        raw_title: '5 이 천지간 만물들아',
+                        song_id: hymnScoreSong.id,
+                        version_id: '__smoke_hymn_version__',
+                        _worshipSectionId: '__smoke_doxology_section__',
+                        _worshipSectionKey: 'doxology',
+                        memo: serializeServiceItemMemo({
+                          elementType: 'praise',
+                          outputMode: 'score'
+                        })
+                      };
                       const audioMemo = serializeServiceItemMemo({
                         elementType: 'audio',
                         asset: { kind: 'audio', name: '성가대 MR', url: 'assets/audio/choir.m4a' }
@@ -871,11 +1130,71 @@ def main() -> int:
                       const hymnBlankSlides = hymnAllSlides.filter((slide) => slide.type === 'blank');
                       const ccmSlides = buildPresenterSlidesForServiceItem(ccmItem, service, 1).filter((slide) => slide.type === 'lyrics');
                       const missingSlides = buildPresenterSlidesForServiceItem(missingItem, service, 2);
-                      const scoreSlides = buildPresenterSlidesForServiceItem(scoreItem, service, 3);
-                      const scoreImageSlides = buildPresenterSlidesForServiceItem(scoreImageItem, service, 4);
-                      const scoreManifestSlides = buildPresenterSlidesForServiceItem(scoreManifestItem, service, 5);
-                      const scoreRawTitleSlides = buildPresenterSlidesForServiceItem(scoreRawTitleItem, service, 6);
-                      const audioSlides = buildPresenterSlidesForServiceItem(audioItem, service, 7);
+                      const defaultFormSlides = buildPresenterSlidesForServiceItem(defaultFormItem, service, 2.2).filter((slide) => slide.type === 'lyrics');
+                      const hymnAutoSlides = buildPresenterSlidesForServiceItem(hymnAutoItem, service, 2.4).filter((slide) => slide.type === 'lyrics');
+                      const scoreAllSlides = buildPresenterSlidesForServiceItem(scoreItem, service, 3);
+                      const scoreSlides = scoreAllSlides.filter((slide) => slide.sourceType === 'score');
+                      const scoreImageAllSlides = buildPresenterSlidesForServiceItem(scoreImageItem, service, 4);
+                      const scoreImageSlides = scoreImageAllSlides.filter((slide) => slide.sourceType === 'score');
+                      const longScoreSlides = Array.from({ length: 12 }, (_, slideIndex) => ({
+                        id: `__smoke_long_score__:${slideIndex}`,
+                        sectionId: '__smoke_long_score_section__',
+                        elementId: '__smoke_long_score_element__',
+                        type: 'image',
+                        elementType: PRESENTER_ELEMENT_TYPES.IMAGE,
+                        layout: PRESENTER_SLIDE_LAYOUTS.MEDIA,
+                        sourceType: 'score',
+                        componentType: 'score',
+                        scoreBackground: true,
+                        imageSrc: `assets/hymn-scores/999/slide-${String(slideIndex + 1).padStart(2, '0')}.webp`,
+                      }));
+                      const scoreManifestAllSlides = buildPresenterSlidesForServiceItem(scoreManifestItem, service, 5);
+                      const scoreManifestSlides = scoreManifestAllSlides.filter((slide) => slide.sourceType === 'score');
+                      const scoreRawTitleAllSlides = buildPresenterSlidesForServiceItem(scoreRawTitleItem, service, 6);
+                      const scoreRawTitleSlides = scoreRawTitleAllSlides.filter((slide) => slide.sourceType === 'score');
+                      const offeringScoreSlides = buildPresenterSlidesForServiceItem(offeringScoreItem, service, 7);
+                      const specialScoreSlides = buildPresenterSlidesForServiceItem(specialScoreItem, service, 8);
+                      const doxologyScoreSlides = buildPresenterSlidesForServiceItem(doxologyScoreItem, service, 9);
+                      const sectionSongTitleSlides = {
+                        offering: offeringScoreSlides.filter((slide) => slide.type === 'song-title').map((slide) => ({
+                          type: slide.type,
+                          title: slide.title,
+                          text: slide.text,
+                          sectionHeading: slide.sectionHeading || '',
+                          sectionKey: slide.sectionKey,
+                          layout: slide.layout,
+                          body: renderPresenterSlideBody(slide).trim(),
+                        })),
+                        special: specialScoreSlides.filter((slide) => slide.type === 'song-title').map((slide) => ({
+                          type: slide.type,
+                          title: slide.title,
+                          text: slide.text,
+                          sectionHeading: slide.sectionHeading || '',
+                          sectionKey: slide.sectionKey,
+                          layout: slide.layout,
+                          body: renderPresenterSlideBody(slide).trim(),
+                        })),
+                        doxology: doxologyScoreSlides.filter((slide) => slide.type === 'song-title').map((slide) => ({
+                          type: slide.type,
+                          title: slide.title,
+                          text: slide.text,
+                          sectionHeading: slide.sectionHeading || '',
+                          sectionKey: slide.sectionKey,
+                          layout: slide.layout,
+                          body: renderPresenterSlideBody(slide).trim(),
+                        })),
+                      };
+                      const specialSectionTitleSlides = specialScoreSlides.filter((slide) => slide.type === 'title-assignee').map((slide) => ({
+                        type: slide.type,
+                        elementType: slide.elementType || '',
+                        layout: slide.layout || '',
+                        title: slide.title || '',
+                        assignee: slide.assignee || '',
+                        text: slide.text || '',
+                        sectionKey: slide.sectionKey || '',
+                        body: renderPresenterSlideBody(slide).trim(),
+                      }));
+                      const audioSlides = buildPresenterSlidesForServiceItem(audioItem, service, 9);
                       const warningHtml = renderPresenterBoardSubgroup({
                         id: '__smoke_warning_group__',
                         label: '찬양',
@@ -897,6 +1216,9 @@ def main() -> int:
                         const imageRect = imageEl?.getBoundingClientRect();
                         const metrics = slideRect && imageRect ? {
                           className: slideEl.className,
+                          slideBackground: getComputedStyle(slideEl).backgroundColor,
+                          imageBackground: getComputedStyle(imageEl).backgroundImage,
+                          imageBackgroundColor: getComputedStyle(imageEl).backgroundColor,
                           top: Math.round(imageRect.top - slideRect.top),
                           right: Math.round(slideRect.right - imageRect.right),
                           bottom: Math.round(slideRect.bottom - imageRect.bottom),
@@ -916,6 +1238,31 @@ def main() -> int:
                         ccmMarkers: ccmSlides.map((slide) => slide.marker),
                         ccmTexts: ccmSlides.map((slide) => slide.text),
                         ccmFormKeys: ccmSlides.map((slide) => slide.formKey),
+                        defaultFormMetadataSummary: serviceFormPresetSummary(normalizeSongMetadata(defaultFormSong.metadata).presenter_form),
+                        defaultFormMarkers: defaultFormSlides.map((slide) => slide.marker),
+                        defaultFormTexts: defaultFormSlides.map((slide) => slide.text),
+                        hymnAutoMarkers: hymnAutoSlides.map((slide) => slide.marker),
+                        hymnAutoTexts: hymnAutoSlides.map((slide) => slide.text),
+                        scoreTitleSlides: scoreAllSlides.filter((slide) => slide.type === 'song-title').map((slide) => ({
+                          type: slide.type,
+                          title: slide.title,
+                          text: slide.text
+                        })),
+                        scoreImageTitleSlides: scoreImageAllSlides.filter((slide) => slide.type === 'song-title').map((slide) => slide.title),
+                        scoreManifestTitleSlides: scoreManifestAllSlides.filter((slide) => slide.type === 'song-title').map((slide) => slide.title),
+                        scoreRawTitleTitleSlides: scoreRawTitleAllSlides.filter((slide) => slide.type === 'song-title').map((slide) => slide.title),
+                        offeringScoreTitleSlides: offeringScoreSlides.filter((slide) => slide.type === 'song-title').map((slide) => ({
+                          title: slide.title,
+                          sectionTitle: slide.sectionTitle,
+                          label: slide.label
+                        })),
+                        specialScoreTitleSlides: specialScoreSlides.filter((slide) => slide.type === 'song-title').map((slide) => ({
+                          title: slide.title,
+                          sectionTitle: slide.sectionTitle,
+                          label: slide.label
+                        })),
+                        specialSectionTitleSlides,
+                        sectionSongTitleSlides,
                         scoreSlides: scoreSlides.map((slide) => ({
                           type: slide.type,
                           layout: slide.layout,
@@ -957,6 +1304,11 @@ def main() -> int:
                           index: 0,
                           chromakey: false
                         }, scoreImageSlides[0]),
+                        longScorePreloadSources: presenterOutputImageSourcesForPreload({
+                          slides: longScoreSlides,
+                          index: 0,
+                          chromakey: false
+                        }, longScoreSlides[0]),
                         scoreSafeArea,
                         audioMemo: parseServiceItemMemo(audioMemo),
                         audioDbType: worshipDbElementTypeForSave('audio'),
@@ -997,6 +1349,93 @@ def main() -> int:
                     and form_preset_state["ccmMarkers"] == ["Verse 1", "Chorus", "Chorus"]
                     and form_preset_state["ccmTexts"] == ["V1 첫 줄\nV1 둘째 줄", "C 첫 줄\nC 둘째 줄", "C 첫 줄\nC 둘째 줄"]
                     and len(set(form_preset_state["ccmFormKeys"])) == 3
+                    and form_preset_state["defaultFormMetadataSummary"] == "V1-V2-C-V3-C-Coda"
+                    and form_preset_state["defaultFormMarkers"] == ["Verse 1", "Verse 2", "Chorus", "Verse 3", "Chorus", "Coda"]
+                    and form_preset_state["defaultFormTexts"] == [
+                        "감사 1절 첫 줄\n감사 1절 둘째 줄",
+                        "감사 2절 첫 줄\n감사 2절 둘째 줄",
+                        "감사 후렴 첫 줄\n감사 후렴 둘째 줄",
+                        "감사 3절 첫 줄\n감사 3절 둘째 줄",
+                        "감사 후렴 첫 줄\n감사 후렴 둘째 줄",
+                        "감사 코다 첫 줄\n감사 코다 둘째 줄",
+                    ]
+                    and form_preset_state["hymnAutoMarkers"] == ["Verse 1", "Chorus", "Verse 2", "Chorus", "Verse 3", "Chorus", "Verse 4", "Chorus"]
+                    and form_preset_state["hymnAutoTexts"] == [
+                        "1절 첫 줄\n1절 둘째 줄",
+                        "후렴 첫 줄\n후렴 둘째 줄",
+                        "2절 첫 줄\n2절 둘째 줄",
+                        "후렴 첫 줄\n후렴 둘째 줄",
+                        "3절 첫 줄\n3절 둘째 줄",
+                        "후렴 첫 줄\n후렴 둘째 줄",
+                        "마지막 절 첫 줄\n마지막 절 둘째 줄",
+                        "후렴 첫 줄\n후렴 둘째 줄",
+                    ]
+                    and form_preset_state["scoreTitleSlides"] == [{
+                        "type": "song-title",
+                        "title": "특송 테스트",
+                        "text": "♪ 특송 테스트",
+                    }]
+                    and form_preset_state["scoreImageTitleSlides"] == ["특송 테스트"]
+                    and form_preset_state["scoreManifestTitleSlides"] == ["이 천지간 만물들아"]
+                    and form_preset_state["scoreRawTitleTitleSlides"] == ["이 천지간 만물들아"]
+                    and form_preset_state["offeringScoreTitleSlides"] == [{
+                        "title": "하나님의 크신 사랑",
+                        "sectionTitle": "봉헌",
+                        "label": "봉헌찬송",
+                    }]
+                    and form_preset_state["specialScoreTitleSlides"] == [{
+                        "title": "특송 테스트",
+                        "sectionTitle": "특송",
+                        "label": "특송",
+                    }]
+                    and form_preset_state["specialSectionTitleSlides"] == [{
+                        "type": "title-assignee",
+                        "elementType": "title_assignee",
+                        "layout": "lower_bar_text",
+                        "title": "특송",
+                        "assignee": "할렐루야 찬양대",
+                        "text": "특송\n할렐루야 찬양대",
+                        "sectionKey": "special_song",
+                        "body": form_preset_state["specialSectionTitleSlides"][0]["body"],
+                    }]
+                    and "presenter-title-assignee" in form_preset_state["specialSectionTitleSlides"][0]["body"]
+                    and form_preset_state["sectionSongTitleSlides"]["offering"] == [
+                        {
+                            "type": "song-title",
+                            "title": "하나님의 크신 사랑",
+                            "text": "♪ 999 하나님의 크신 사랑",
+                            "sectionHeading": "봉헌",
+                            "sectionKey": "offering",
+                            "layout": "lower_bar_text",
+                            "body": form_preset_state["sectionSongTitleSlides"]["offering"][0]["body"],
+                        },
+                    ]
+                    and "presenter-section-song-title" in form_preset_state["sectionSongTitleSlides"]["offering"][0]["body"]
+                    and form_preset_state["sectionSongTitleSlides"]["special"] == [
+                        {
+                            "type": "song-title",
+                            "title": "특송 테스트",
+                            "text": "♪ 특송 테스트",
+                            "sectionHeading": "특송",
+                            "sectionKey": "special_song",
+                            "layout": "lower_bar_text",
+                            "body": form_preset_state["sectionSongTitleSlides"]["special"][0]["body"],
+                        },
+                    ]
+                    and "presenter-section-song-title-heading" in form_preset_state["sectionSongTitleSlides"]["special"][0]["body"]
+                    and form_preset_state["sectionSongTitleSlides"]["doxology"] == [
+                        {
+                            "type": "song-title",
+                            "title": "이 천지간 만물들아",
+                            "text": "♪ 5 이 천지간 만물들아",
+                            "sectionHeading": "송영",
+                            "sectionKey": "doxology",
+                            "layout": "lower_bar_text",
+                            "body": form_preset_state["sectionSongTitleSlides"]["doxology"][0]["body"],
+                        },
+                    ]
+                    and "presenter-section-song-title-name" in form_preset_state["sectionSongTitleSlides"]["doxology"][0]["body"]
+                    and "♪ 5 이 천지간 만물들아" in form_preset_state["sectionSongTitleSlides"]["doxology"][0]["body"]
                     and form_preset_state["scoreSlides"] == [{
                         "type": "file",
                         "layout": "file",
@@ -1034,7 +1473,7 @@ def main() -> int:
                             "sourceType": "score",
                             "componentType": "score",
                             "marker": "악보 1",
-                            "imageSrc": "assets/hymn-scores/5/slide-01.png",
+                            "imageSrc": "assets/hymn-scores/5/slide-01.webp",
                         },
                         {
                             "type": "image",
@@ -1043,7 +1482,7 @@ def main() -> int:
                             "sourceType": "score",
                             "componentType": "score",
                             "marker": "악보 2",
-                            "imageSrc": "assets/hymn-scores/5/slide-02.png",
+                            "imageSrc": "assets/hymn-scores/5/slide-02.webp",
                         },
                     ]
                     and form_preset_state["scoreRawTitleSlides"] == [
@@ -1054,7 +1493,7 @@ def main() -> int:
                             "sourceType": "score",
                             "componentType": "score",
                             "marker": "악보 1",
-                            "imageSrc": "assets/hymn-scores/5/slide-01.png",
+                            "imageSrc": "assets/hymn-scores/5/slide-01.webp",
                         },
                         {
                             "type": "image",
@@ -1063,18 +1502,24 @@ def main() -> int:
                             "sourceType": "score",
                             "componentType": "score",
                             "marker": "악보 2",
-                            "imageSrc": "assets/hymn-scores/5/slide-02.png",
+                            "imageSrc": "assets/hymn-scores/5/slide-02.webp",
                         },
                     ]
                     and form_preset_state["scorePreloadSources"] == [
                         "assets/worship-backgrounds/26-A1.jpg",
                         "assets/worship-backgrounds/26-A2.jpg",
                     ]
+                    and len(form_preset_state["longScorePreloadSources"]) == 12
+                    and form_preset_state["longScorePreloadSources"][0].endswith("slide-01.webp")
+                    and form_preset_state["longScorePreloadSources"][-1].endswith("slide-12.webp")
                     and "presenter-slide--score" in form_preset_state["scoreSafeArea"]["className"]
-                    and form_preset_state["scoreSafeArea"]["top"] >= 10
-                    and form_preset_state["scoreSafeArea"]["right"] >= 10
-                    and form_preset_state["scoreSafeArea"]["bottom"] >= 10
-                    and form_preset_state["scoreSafeArea"]["left"] >= 10
+                    and abs(form_preset_state["scoreSafeArea"]["top"]) <= 1
+                    and abs(form_preset_state["scoreSafeArea"]["right"]) <= 1
+                    and abs(form_preset_state["scoreSafeArea"]["bottom"]) <= 1
+                    and abs(form_preset_state["scoreSafeArea"]["left"]) <= 1
+                    and form_preset_state["scoreSafeArea"]["slideBackground"] == "rgb(0, 0, 0)"
+                    and form_preset_state["scoreSafeArea"]["imageBackground"] == "none"
+                    and form_preset_state["scoreSafeArea"]["imageBackgroundColor"] == "rgb(0, 0, 0)"
                     and form_preset_state["audioMemo"]["elementType"] == "audio"
                     and form_preset_state["audioMemo"]["asset"] == {
                         "kind": "audio",
