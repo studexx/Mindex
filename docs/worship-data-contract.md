@@ -41,6 +41,10 @@ One actual worship service instance on a date.
 Use this for date, status, service title, worship leader, praise leader,
 tags, template link, and source lineage.
 
+Presenter background is opt-in. Until a dedicated column exists, keep an
+explicit source in `source_ref.presenter_background`; Presenter must not infer
+or rotate backgrounds from service type, date, or season.
+
 ### `mindex_worship_sections`
 
 Practical order blocks used by humans and Presenter: preparation, praise,

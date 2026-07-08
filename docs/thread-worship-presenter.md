@@ -164,9 +164,8 @@ same content type may need separate chromakey and fullscreen slide templates.
 
 - Chromakey services use `#00ff00`.
 - Chroma range is narrow in the real broadcast setup.
-- Non-chromakey services use background images.
-- Department worship backgrounds may rotate by two-month theme cycles.
-- Youth and young adult services may use public-worship backgrounds where specified.
+- Non-chromakey services use black output unless the service explicitly provides a presenter background source.
+- Explicit presenter background sources are honored as-is; do not infer or rotate backgrounds from service type, date, or season.
 - Paperlogy may be used for department outputs, but never apply it to the whole app by accident.
 
 ## Verification
@@ -212,3 +211,38 @@ Manual checks when changing live presenter behavior:
   `Enter` first requests fullscreen again instead of advancing the slide.
 - Presenter smoke coverage now checks long hymn-score warmup ordering, score
   safe-area rendering, hymn Coda output, and a less flaky output key-sync wait.
+- Worship authoring and Presenter control are now separate topbar modules.
+  `Worship` owns service/template composition, metadata, setlist import, and
+  item editing. `Presenter` owns recent-service launch, slide outline, live
+  controls, shortcuts, and output-window state.
+- Shared service data still loads through the same adapter, but render paths now
+  branch through `service` versus `presenter` so controller-only shortcuts and
+  output state do not run from the authoring screen.
+- Preparation media can be split by `presenterRole`: `ready` for the generic
+  preparation item, `waiting_loop` for looping waiting media, `intro` for a
+  one-shot countdown/opening video, and `still` for the first still screen.
+  `intro` video defaults to non-looping playback and advances to the next
+  presenter slide when playback ends; waiting media does not auto-advance.
+- A waiting/preparation slide can set `playback.autoAdvanceAt`, e.g. `10:40`
+  on the service date or a full ISO timestamp. Presenter output arms a timer
+  only for the active slide, clears it on slide changes, and sends `next` at
+  the scheduled time. This supports `waiting_loop -> intro -> first worship
+  screen` flows such as a 10-minute countdown before a 10:50 service start.
+  When output starts late, presenter video uses the previous slide's
+  `autoAdvanceAt`, explicit `playback.startAt`, or `autoAdvanceAt -
+  durationSeconds` to seek into the correct point in the intro; if the intro
+  window has already elapsed, it advances to the next worship screen.
+- Narrow authoring layout now uses the same responsive editor rules as the old
+  dialog and keeps dense fields inside the viewport.
+- Non-chromakey output no longer infers A/B/C backgrounds from service type or
+  date. It stays black unless the service explicitly provides a presenter
+  background source.
+- Home is now a workbench-style entry screen: next worship service, direct
+  shortcuts, and utilities are grouped by actual user workflow instead of a
+  decorative card layout.
+- Page titles across Home utilities, Worship, Presenter, Calendar, References,
+  and Order Sheets now share the same title token so tab starts and
+  header scale stay consistent.
+- Worship authoring now surfaces the `Service > Section > Element > Slide`
+  hierarchy at the top of the editor and separates service metadata, section
+  templates, and praise/setlist input into distinct authoring panels.

@@ -1,4 +1,5 @@
 .DS_Store
+.cache/
 node_modules/
 __pycache__/
 *.pyc
@@ -15,11 +16,15 @@ scripts/*
 !scripts/admin-auth-rls.sql
 !scripts/db-maintenance-2026-06-23.sql
 !scripts/calendar-lectionary-2026.sql
+!scripts/render_hymn_score_assets.py
 !scripts/song-relations-schema.sql
 !scripts/worship-schema.sql
+!scripts/update_hymn_score_form_labels.py
+!scripts/vision_ocr_text.swift
 !scripts/youtube-live-source-rpc.sql
 !scripts/youtube_live_source.py
 !scripts/youtube_live_schedule.py
 output/
 backups/
 assets/youtube/
+\[external references\]/

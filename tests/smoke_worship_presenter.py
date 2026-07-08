@@ -64,6 +64,11 @@ def main() -> int:
     console_messages: list[str] = []
     page_errors: list[str] = []
 
+    def record_response(response, prefix: str = "") -> None:
+        if response.status >= 400:
+            label = f"{prefix} " if prefix else ""
+            console_messages.append(f"{label}response {response.status}: {response.url}")
+
     def pass_(name: str, detail: str = "") -> None:
         results.append(("PASS", name, detail))
 
@@ -93,6 +98,7 @@ def main() -> int:
             page = context.new_page()
             page.add_init_script("localStorage.clear(); sessionStorage.clear();")
             page.on("pageerror", lambda error: page_errors.append(str(error)))
+            page.on("response", record_response)
             page.on(
                 "console",
                 lambda msg: console_messages.append(f"{msg.type}: {msg.text}")
@@ -100,7 +106,7 @@ def main() -> int:
                 else None,
             )
 
-            page.goto(build_raw_connection_link(app_url, "service"), wait_until="load")
+            page.goto(build_raw_connection_link(app_url, "presenter"), wait_until="load")
             page.wait_for_selector(".app-shell", timeout=5000)
             wait_for_supabase_client(page)
             wait_for_service_data(page)
@@ -379,6 +385,230 @@ def main() -> int:
                 else:
                     fail("presenter-ready-thumb-chrome", json.dumps(ready_thumb_state, ensure_ascii=False))
 
+                intro_auto_advance_state = page.evaluate(
+                    """
+                    async () => {
+                      const existingRoot = document.getElementById('presenterOutputRoot');
+                      existingRoot?.remove();
+                      const root = document.createElement('main');
+                      root.id = 'presenterOutputRoot';
+                      root.className = 'presenter-output-root no-chromakey';
+                      document.body.appendChild(root);
+                      const hits = [];
+                      const makePayload = (role, playback = {}) => ({
+                        serviceId: '__smoke_intro_service__',
+                        serviceType: 'friday',
+                        serviceDate: '2026-07-12',
+                        chromakey: false,
+                        backgroundImages: [],
+                        index: 0,
+                        slides: [
+                          {
+                            id: `__smoke_${role}_slide__`,
+                            elementType: 'video',
+                            layout: 'media',
+                            type: 'video',
+                            presenterRole: role,
+                            title: role,
+                            videoSrc: '/',
+                            playback,
+                          },
+                          {
+                            id: '__smoke_after_intro__',
+                            elementType: 'title_assignee',
+                            layout: 'lower_bar_text',
+                            type: 'title-assignee',
+                            title: '예배',
+                            assignee: '',
+                            text: '예배',
+                          },
+                        ],
+                      });
+                      const fireEnded = (payload) => {
+                        renderPresenterOutput(payload, { onAutoAdvance: (detail) => hits.push(detail) });
+                        const video = root.querySelector('.presenter-output-layer.is-active video.presenter-video');
+                        video?.dispatchEvent(new Event('ended'));
+                        return {
+                          hitCount: hits.length,
+                          videoRole: video?.dataset.presenterRole || '',
+                          autoplay: video?.hasAttribute('autoplay') || false,
+                          muted: video?.hasAttribute('muted') || false,
+                          loop: video?.hasAttribute('loop') || false,
+                          detail: hits[hits.length - 1] || null,
+                        };
+                      };
+                      const introSlide = makePayload('intro').slides[0];
+                      const waitingSlide = makePayload('waiting_loop', { loop: true }).slides[0];
+                      const introLoopSlide = makePayload('intro', { loop: true }).slides[0];
+                      const intro = fireEnded(makePayload('intro'));
+                      hits.length = 0;
+                      const waiting = fireEnded(makePayload('waiting_loop', { loop: true }));
+                      hits.length = 0;
+                      const introLoop = fireEnded(makePayload('intro', { loop: true }));
+                      hits.length = 0;
+                      const scheduledPastPayload = makePayload('waiting_loop', {
+                        loop: true,
+                        autoAdvanceAt: new Date(Date.now() - 1000).toISOString(),
+                      });
+                      renderPresenterOutput(scheduledPastPayload, { onAutoAdvance: (detail) => hits.push(detail) });
+                      await new Promise((resolve) => setTimeout(resolve, 30));
+                      const scheduledPast = {
+                        hitCount: hits.length,
+                        detail: hits[hits.length - 1] || null,
+                      };
+                      hits.length = 0;
+                      const scheduledFuturePayload = makePayload('waiting_loop', {
+                        loop: true,
+                        autoAdvanceAt: new Date(Date.now() + 60000).toISOString(),
+                      });
+                      renderPresenterOutput(scheduledFuturePayload, { onAutoAdvance: (detail) => hits.push(detail) });
+                      await new Promise((resolve) => setTimeout(resolve, 30));
+                      const scheduledFuture = {
+                        hitCount: hits.length,
+                        timerArmed: Boolean(presenterOutputRenderState.autoAdvanceTimer),
+                      };
+                      const parsedClock = parsePresenterAutoAdvanceAt('10:40', '2026-07-12');
+                      const timelinePayload = {
+                        serviceId: '__smoke_timeline_service__',
+                        serviceType: 'friday',
+                        serviceDate: '2026-07-12',
+                        chromakey: false,
+                        index: 1,
+                        slides: [
+                          {
+                            id: '__smoke_waiting_timeline__',
+                            elementType: 'video',
+                            layout: 'media',
+                            presenterRole: 'waiting_loop',
+                            playback: { autoAdvanceAt: '10:40' },
+                          },
+                          {
+                            id: '__smoke_intro_timeline__',
+                            elementType: 'video',
+                            layout: 'media',
+                            presenterRole: 'intro',
+                            playback: { durationSeconds: 600 },
+                          },
+                          {
+                            id: '__smoke_first_screen__',
+                            elementType: 'title_assignee',
+                            layout: 'lower_bar_text',
+                            title: '예배 시작',
+                            text: '예배 시작',
+                          },
+                        ],
+                      };
+                      const timelineIntro = timelinePayload.slides[1];
+                      const catchUpMid = presenterVideoTimelineCatchUp(timelineIntro, timelinePayload, {
+                        now: new Date('2026-07-12T10:44:00').getTime(),
+                        durationSeconds: 600,
+                      });
+                      const catchUpDone = presenterVideoTimelineCatchUp(timelineIntro, timelinePayload, {
+                        now: new Date('2026-07-12T10:54:00').getTime(),
+                        durationSeconds: 600,
+                      });
+                      const endAtPayload = {
+                        ...timelinePayload,
+                        slides: [
+                          timelinePayload.slides[0],
+                          {
+                            ...timelineIntro,
+                            playback: { autoAdvanceAt: '10:50', durationSeconds: 600 },
+                          },
+                        ],
+                      };
+                      const catchUpFromEndAt = presenterVideoTimelineCatchUp(endAtPayload.slides[1], endAtPayload, {
+                        now: new Date('2026-07-12T10:45:00').getTime(),
+                        durationSeconds: 600,
+                      });
+                      clearPresenterOutputAutoAdvanceTimer();
+                      root.remove();
+                      if (existingRoot) document.body.appendChild(existingRoot);
+                      return {
+                        intro,
+                        waiting,
+                        introLoop,
+                        scheduledPast,
+                        scheduledFuture,
+                        parsedClock: parsedClock ? {
+                          year: parsedClock.getFullYear(),
+                          month: parsedClock.getMonth() + 1,
+                          day: parsedClock.getDate(),
+                          hour: parsedClock.getHours(),
+                          minute: parsedClock.getMinutes(),
+                        } : null,
+                        catchUpMid: catchUpMid ? {
+                          offsetSeconds: Math.round(catchUpMid.offsetSeconds),
+                          shouldAdvance: catchUpMid.shouldAdvance,
+                          startHour: catchUpMid.startAt.getHours(),
+                          startMinute: catchUpMid.startAt.getMinutes(),
+                        } : null,
+                        catchUpDone: catchUpDone ? {
+                          offsetSeconds: Math.round(catchUpDone.offsetSeconds),
+                          shouldAdvance: catchUpDone.shouldAdvance,
+                        } : null,
+                        catchUpFromEndAt: catchUpFromEndAt ? {
+                          offsetSeconds: Math.round(catchUpFromEndAt.offsetSeconds),
+                          shouldAdvance: catchUpFromEndAt.shouldAdvance,
+                          startHour: catchUpFromEndAt.startAt.getHours(),
+                          startMinute: catchUpFromEndAt.startAt.getMinutes(),
+                        } : null,
+                        shouldAdvanceIntro: presenterSlideShouldAutoAdvanceOnEnd(introSlide),
+                        shouldAdvanceWaiting: presenterSlideShouldAutoAdvanceOnEnd(waitingSlide),
+                        shouldAdvanceIntroLoop: presenterSlideShouldAutoAdvanceOnEnd(introLoopSlide),
+                        introDefaults: presenterPlaybackConfig(null, 'intro-video'),
+                        readyDefaults: presenterPlaybackConfig(null, 'ready-video'),
+                      };
+                    }
+                    """
+                )
+                if (
+                    intro_auto_advance_state["intro"]["hitCount"] == 1
+                    and intro_auto_advance_state["intro"]["videoRole"] == "intro"
+                    and intro_auto_advance_state["intro"]["autoplay"]
+                    and not intro_auto_advance_state["intro"]["muted"]
+                    and not intro_auto_advance_state["intro"]["loop"]
+                    and intro_auto_advance_state["intro"]["detail"]["slideId"] == "__smoke_intro_slide__"
+                    and intro_auto_advance_state["waiting"]["hitCount"] == 0
+                    and intro_auto_advance_state["waiting"]["videoRole"] == "waiting_loop"
+                    and intro_auto_advance_state["waiting"]["loop"]
+                    and intro_auto_advance_state["introLoop"]["hitCount"] == 0
+                    and intro_auto_advance_state["scheduledPast"]["hitCount"] == 1
+                    and intro_auto_advance_state["scheduledPast"]["detail"]["slideId"] == "__smoke_waiting_loop_slide__"
+                    and intro_auto_advance_state["scheduledFuture"]["hitCount"] == 0
+                    and intro_auto_advance_state["scheduledFuture"]["timerArmed"]
+                    and intro_auto_advance_state["catchUpMid"] == {
+                        "offsetSeconds": 240,
+                        "shouldAdvance": False,
+                        "startHour": 10,
+                        "startMinute": 40,
+                    }
+                    and intro_auto_advance_state["catchUpDone"]["shouldAdvance"]
+                    and intro_auto_advance_state["catchUpDone"]["offsetSeconds"] == 600
+                    and intro_auto_advance_state["catchUpFromEndAt"] == {
+                        "offsetSeconds": 300,
+                        "shouldAdvance": False,
+                        "startHour": 10,
+                        "startMinute": 40,
+                    }
+                    and intro_auto_advance_state["parsedClock"] == {
+                        "year": 2026,
+                        "month": 7,
+                        "day": 12,
+                        "hour": 10,
+                        "minute": 40,
+                    }
+                    and intro_auto_advance_state["shouldAdvanceIntro"]
+                    and not intro_auto_advance_state["shouldAdvanceWaiting"]
+                    and not intro_auto_advance_state["shouldAdvanceIntroLoop"]
+                    and intro_auto_advance_state["introDefaults"]["autoAdvanceOnEnd"]
+                    and not intro_auto_advance_state["introDefaults"]["loop"]
+                    and intro_auto_advance_state["readyDefaults"]["loop"]
+                ):
+                    pass_("presenter-intro-video-auto-advance", json.dumps(intro_auto_advance_state, ensure_ascii=False))
+                else:
+                    fail("presenter-intro-video-auto-advance", json.dumps(intro_auto_advance_state, ensure_ascii=False))
+
                 fallback_state = page.evaluate(
                     """
                     (serviceId) => {
@@ -447,6 +677,11 @@ def main() -> int:
                           service.leader = previousLeader;
                           return groups;
                         })(),
+                        praiseAutoAssigneeFallback: (() => ({
+                          group: servicePraiseAssignee({ type_id: 'monthly', leader: '', tags: [] }, [{ label: '찬양' }]),
+                          board: servicePraiseBoardMetaCandidate({ type_id: 'monthly', leader: '', tags: [] }, [{ label: '찬양' }]),
+                          orderSheet: inferOrderSheetAssignee({ label: '결단찬양', raw_title: '결단찬양' }),
+                        }))(),
                         mainPraiseElementTitleMeta: (() => {
                           const service = state.services.find((item) => item.id === serviceId) || { id: serviceId, type_id: 'monthly' };
                           const song = {
@@ -500,6 +735,41 @@ def main() -> int:
                             text: intro.text || '',
                             skipTrailingBlank: intro.skipTrailingBlank === true,
                             visibleTags: serviceVisibleTags({ tags: ['찬양팀: 글로리아 찬양단', '온세대'] }),
+                          };
+                        })(),
+                        specialPraiseLabelGuard: (() => {
+                          const slides = [
+                            {
+                              id: '__smoke_special_title__',
+                              sectionId: '__smoke_special_section__',
+                              sectionKey: 'special_song',
+                              sectionLabel: '특송',
+                              sectionTitle: '특송',
+                              elementType: 'title_assignee',
+                              layout: 'lower_bar_text',
+                              type: 'title-assignee',
+                              title: '특송',
+                              assignee: '청소년부 교사 일동',
+                              text: '특송\\n청소년부 교사 일동',
+                            },
+                            {
+                              id: '__smoke_special_song_title__',
+                              sectionId: '__smoke_special_section__',
+                              sectionLabel: '찬양',
+                              sectionTitle: '특송',
+                              elementLabel: '찬양',
+                              elementType: 'praise',
+                              layout: 'lower_bar_text',
+                              type: 'song-title',
+                              title: '청소년부 교사 일동',
+                              text: '♪ 청소년부 교사 일동',
+                            },
+                          ];
+                          const withIntro = withMainPraiseIntroSlides(slides, { id: serviceId });
+                          return {
+                            mainFlags: slides.map((slide) => isPresenterMainPraiseSlide(slide)),
+                            praiseIntroCount: withIntro.filter((slide) => slide.type === 'praise-section-title').length,
+                            types: withIntro.map((slide) => slide.type),
                           };
                         })(),
                         closingGroups: groupPresenterSlidesBySection(slides, serviceId)
@@ -623,6 +893,11 @@ def main() -> int:
                     and fallback_state["mainPraiseGroups"][0]["label"] == "찬양"
                     and fallback_state["praiseTeamBoardMeta"] == ["헤세드 찬양단"]
                     and fallback_state["praiseTeamNameAsLeaderMeta"] == ["헤세드 찬양단"]
+                    and fallback_state["praiseAutoAssigneeFallback"] == {
+                        "group": "",
+                        "board": {"text": "", "priority": 0},
+                        "orderSheet": "",
+                    }
                     and fallback_state["mainPraiseElementTitleMeta"] == {
                         "groupTitle": "찬양",
                         "subgroupTitle": "가서 제자 삼으라 (갈릴리 마을 그 숲속에서 · Go Make Disciples)",
@@ -638,6 +913,11 @@ def main() -> int:
                         "text": "찬양\n글로리아 찬양단",
                         "skipTrailingBlank": True,
                         "visibleTags": ["온세대"],
+                    }
+                    and fallback_state["specialPraiseLabelGuard"] == {
+                        "mainFlags": [False, False],
+                        "praiseIntroCount": 0,
+                        "types": ["title-assignee", "song-title"],
                     }
                     and len(fallback_state["closingGroups"]) == 1
                     and fallback_state["closingGroups"][0]["kind"] == "item"
@@ -1005,6 +1285,25 @@ def main() -> int:
                           ]
                         }]
                       };
+                      const fallbackSong = {
+                        id: '__smoke_presenter_fallback_song__',
+                        title: '하나님은 너를 지키시는 자 스모크',
+                        versions: [
+                          {
+                            id: '__smoke_presenter_empty_version__',
+                            name: '빈 버전',
+                            is_primary: true,
+                            forms: []
+                          },
+                          {
+                            id: '__smoke_presenter_lyrics_version__',
+                            name: '가사 버전',
+                            forms: [
+                              { id: 'fb-lyrics', part_type: 'Lyrics', part_number: null, lyrics: '하나님은 너를 지키시는 자\\n너의 우편에 그늘 되시니', sort_order: 1 }
+                            ]
+                          }
+                        ]
+                      };
                       const hymnScoreSong = {
                         ...hymnSong,
                         id: '__smoke_hymn_score_song__',
@@ -1025,7 +1324,7 @@ def main() -> int:
                           ],
                         },
                       };
-                      state.songs = state.songs.filter((song) => !String(song.id || '').startsWith('__smoke_')).concat([hymnSong, hymnScoreSong, offeringSong, ccmSong, defaultFormSong]);
+                      state.songs = state.songs.filter((song) => !String(song.id || '').startsWith('__smoke_')).concat([hymnSong, hymnScoreSong, offeringSong, ccmSong, defaultFormSong, fallbackSong]);
                       const service = { id: '__smoke_form_service__', type_id: 'sunday-main', date: '2026-07-04' };
                       const hymnItem = {
                         id: '__smoke_hymn_item__',
@@ -1075,6 +1374,27 @@ def main() -> int:
                         version_id: '__smoke_default_form_version__',
                         memo: serializeServiceItemMemo({ elementType: 'praise' })
                       };
+                      const fallbackVersionItem = {
+                        id: '__smoke_presenter_fallback_version_item__',
+                        label: '결단',
+                        raw_title: '하나님은 너를 지키시는 자 스모크',
+                        song_id: fallbackSong.id,
+                        version_id: '__smoke_presenter_empty_version__',
+                        memo: serializeServiceItemMemo({
+                          elementType: 'praise',
+                          formPreset: { forms: ['Lyrics'], hint: 'Lyrics', strength: 'manual' }
+                        })
+                      };
+                      const fallbackTitleItem = {
+                        id: '__smoke_presenter_fallback_title_item__',
+                        label: '결단',
+                        raw_title: '하나님은 너를 지키시는 자 스모크',
+                        song_id: '',
+                        memo: serializeServiceItemMemo({
+                          elementType: 'praise',
+                          formPreset: { forms: ['Lyrics'], hint: 'Lyrics', strength: 'manual' }
+                        })
+                      };
                       const hymnAutoItem = {
                         id: '__smoke_hymn_auto_item__',
                         label: '찬양',
@@ -1107,8 +1427,8 @@ def main() -> int:
                             kind: 'score',
                             name: '찬양 PPT',
                             slides: [
-                              { url: 'assets/worship-backgrounds/26-A1.jpg', name: '1' },
-                              { url: 'assets/worship-backgrounds/26-A2.jpg', name: '2' },
+                              { url: 'assets/worship-backgrounds/26-A1.png', name: '1', scoreFormLabel: 'Verse 1' },
+                              { url: 'assets/worship-backgrounds/26-A2.png', name: '2', scoreFormLabel: 'Chorus' },
                             ]
                           }
                         })
@@ -1191,6 +1511,8 @@ def main() -> int:
                       const ccmSlides = buildPresenterSlidesForServiceItem(ccmItem, service, 1).filter((slide) => slide.type === 'lyrics');
                       const missingSlides = buildPresenterSlidesForServiceItem(missingItem, service, 2);
                       const defaultFormSlides = buildPresenterSlidesForServiceItem(defaultFormItem, service, 2.2).filter((slide) => slide.type === 'lyrics');
+                      const fallbackVersionSlides = buildPresenterSlidesForServiceItem(fallbackVersionItem, service, 2.25);
+                      const fallbackTitleSlides = buildPresenterSlidesForServiceItem(fallbackTitleItem, service, 2.3);
                       const hymnAutoSlides = buildPresenterSlidesForServiceItem(hymnAutoItem, service, 2.4).filter((slide) => slide.type === 'lyrics');
                       const scoreAllSlides = buildPresenterSlidesForServiceItem(scoreItem, service, 3);
                       const scoreSlides = scoreAllSlides.filter((slide) => slide.sourceType === 'score');
@@ -1279,7 +1601,30 @@ def main() -> int:
                         slides: missingSlides.map((slide, slideIndex) => ({ slide, slideIndex }))
                       }, 0, service.id, { showHead: true });
                       const warningNode = document.createElement('div');
+                      warningNode.style.cssText = 'position:fixed;left:-10000px;top:0;width:900px;';
                       warningNode.innerHTML = warningHtml;
+                      document.body.appendChild(warningNode);
+                      const warningHead = warningNode.querySelector('.svc-board-subgroup-head');
+                      const warningTitle = warningNode.querySelector('.svc-board-subgroup-head strong');
+                      const warningChip = warningNode.querySelector('.svc-presenter-warning');
+                      const warningHeadRect = warningHead?.getBoundingClientRect();
+                      const warningTitleRect = warningTitle?.getBoundingClientRect();
+                      const warningChipRect = warningChip?.getBoundingClientRect();
+                      const warningLayout = {
+                        headDisplay: warningHead ? getComputedStyle(warningHead).display : '',
+                        headWidth: warningHeadRect?.width || 0,
+                        chipGap: warningChipRect && warningTitleRect ? Math.round(warningChipRect.left - warningTitleRect.right) : null,
+                      };
+                      warningNode.remove();
+                      const scoreBadgeHtml = renderPresenterBoardSubgroup({
+                        id: '__smoke_score_badge_group__',
+                        label: '찬송',
+                        title: '악보 이미지 테스트',
+                        name: '찬송 / 악보 이미지 테스트',
+                        slides: scoreImageSlides.map((slide, slideIndex) => ({ slide, slideIndex }))
+                      }, 0, service.id, { showHead: true });
+                      const scoreBadgeNode = document.createElement('div');
+                      scoreBadgeNode.innerHTML = scoreBadgeHtml;
                       const scoreSafeArea = (() => {
                         const host = document.createElement('div');
                         host.className = 'svc-slide-mini-output no-chromakey';
@@ -1317,6 +1662,10 @@ def main() -> int:
                         defaultFormMetadataSummary: serviceFormPresetSummary(normalizeSongMetadata(defaultFormSong.metadata).presenter_form),
                         defaultFormMarkers: defaultFormSlides.map((slide) => slide.marker),
                         defaultFormTexts: defaultFormSlides.map((slide) => slide.text),
+                        fallbackVersionTexts: fallbackVersionSlides.filter((slide) => slide.type === 'lyrics').map((slide) => slide.text),
+                        fallbackVersionWarnings: [...new Set(fallbackVersionSlides.flatMap((slide) => slide.warnings || []))],
+                        fallbackTitleTexts: fallbackTitleSlides.filter((slide) => slide.type === 'lyrics').map((slide) => slide.text),
+                        fallbackTitleWarnings: [...new Set(fallbackTitleSlides.flatMap((slide) => slide.warnings || []))],
                         hymnAutoMarkers: hymnAutoSlides.map((slide) => slide.marker),
                         hymnAutoTexts: hymnAutoSlides.map((slide) => slide.text),
                         scoreTitleSlides: scoreAllSlides.filter((slide) => slide.type === 'song-title').map((slide) => ({
@@ -1402,9 +1751,11 @@ def main() -> int:
                           body: renderPresenterSlideBody(slide).trim(),
                           preview: renderPresenterSlidePreviewBody(slide),
                         })),
+                        scoreFormBadges: [...scoreBadgeNode.querySelectorAll('.svc-slide-form-badge')].map((node) => node.textContent.trim()),
                         missingWarnings: [...new Set(missingSlides.flatMap((slide) => slide.warnings || []))],
                         missingPreviewText: missingSlides.map((slide) => renderPresenterSlideMiniPreview(slide, service.id)).join(' '),
-                        warningChipText: warningNode.querySelector('.svc-presenter-warning')?.textContent.trim() || ''
+                        warningChipText: warningChip?.textContent.trim() || '',
+                        warningLayout
                       };
                     }
                     """
@@ -1438,6 +1789,10 @@ def main() -> int:
                         "감사 후렴 첫 줄\n감사 후렴 둘째 줄",
                         "감사 코다 첫 줄\n감사 코다 둘째 줄",
                     ]
+                    and form_preset_state["fallbackVersionTexts"] == ["하나님은 너를 지키시는 자\n너의 우편에 그늘 되시니"]
+                    and form_preset_state["fallbackVersionWarnings"] == []
+                    and form_preset_state["fallbackTitleTexts"] == ["하나님은 너를 지키시는 자\n너의 우편에 그늘 되시니"]
+                    and form_preset_state["fallbackTitleWarnings"] == []
                     and form_preset_state["hymnAutoMarkers"] == ["Verse 1", "Chorus", "Verse 2", "Chorus", "Verse 3", "Chorus", "Verse 4", "Chorus", "Coda"]
                     and form_preset_state["hymnAutoTexts"] == [
                         "1절 첫 줄\n1절 둘째 줄",
@@ -1495,7 +1850,7 @@ def main() -> int:
                         {
                             "type": "song-title",
                             "title": "특송 테스트",
-                            "text": "♪ 특송 테스트",
+                            "text": "♪ 999 특송 테스트",
                             "sectionHeading": "특송",
                             "sectionKey": "special_song",
                             "layout": "lower_bar_text",
@@ -1532,8 +1887,8 @@ def main() -> int:
                             "elementType": "image",
                             "sourceType": "score",
                             "componentType": "score",
-                            "marker": "악보 1",
-                            "imageSrc": "assets/worship-backgrounds/26-A1.jpg",
+                            "marker": "",
+                            "imageSrc": "assets/worship-backgrounds/26-A1.png",
                         },
                         {
                             "type": "image",
@@ -1541,10 +1896,11 @@ def main() -> int:
                             "elementType": "image",
                             "sourceType": "score",
                             "componentType": "score",
-                            "marker": "악보 2",
-                            "imageSrc": "assets/worship-backgrounds/26-A2.jpg",
+                            "marker": "",
+                            "imageSrc": "assets/worship-backgrounds/26-A2.png",
                         },
                     ]
+                    and form_preset_state["scoreFormBadges"] == ["Verse 1", "Chorus"]
                     and form_preset_state["scoreManifestSlides"] == [
                         {
                             "type": "image",
@@ -1552,7 +1908,7 @@ def main() -> int:
                             "elementType": "image",
                             "sourceType": "score",
                             "componentType": "score",
-                            "marker": "악보 1",
+                            "marker": "",
                             "imageSrc": "assets/hymn-scores/5/slide-01.webp",
                         },
                         {
@@ -1561,7 +1917,7 @@ def main() -> int:
                             "elementType": "image",
                             "sourceType": "score",
                             "componentType": "score",
-                            "marker": "악보 2",
+                            "marker": "",
                             "imageSrc": "assets/hymn-scores/5/slide-02.webp",
                         },
                     ]
@@ -1572,7 +1928,7 @@ def main() -> int:
                             "elementType": "image",
                             "sourceType": "score",
                             "componentType": "score",
-                            "marker": "악보 1",
+                            "marker": "",
                             "imageSrc": "assets/hymn-scores/5/slide-01.webp",
                         },
                         {
@@ -1581,13 +1937,13 @@ def main() -> int:
                             "elementType": "image",
                             "sourceType": "score",
                             "componentType": "score",
-                            "marker": "악보 2",
+                            "marker": "",
                             "imageSrc": "assets/hymn-scores/5/slide-02.webp",
                         },
                     ]
                     and form_preset_state["scorePreloadSources"] == [
-                        "assets/worship-backgrounds/26-A1.jpg",
-                        "assets/worship-backgrounds/26-A2.jpg",
+                        "assets/worship-backgrounds/26-A1.png",
+                        "assets/worship-backgrounds/26-A2.png",
                     ]
                     and len(form_preset_state["longScorePreloadSources"]) == 12
                     and form_preset_state["longScorePreloadSources"][0].endswith("slide-01.webp")
@@ -1629,6 +1985,9 @@ def main() -> int:
                     and form_preset_state["missingWarnings"] == ["Bridge 없음"]
                     and "Bridge 없음" not in form_preset_state["missingPreviewText"]
                     and form_preset_state["warningChipText"] == "Bridge 없음"
+                    and form_preset_state["warningLayout"]["headDisplay"] in ("flex", "inline-flex")
+                    and form_preset_state["warningLayout"]["headWidth"] < 260
+                    and 0 <= form_preset_state["warningLayout"]["chipGap"] <= 16
                 ):
                     pass_("presenter-form-preset-sequence", json.dumps(form_preset_state, ensure_ascii=False))
                 else:
@@ -2051,6 +2410,7 @@ def main() -> int:
                 output_page = context.new_page()
                 output_page.set_viewport_size({"width": 1280, "height": 800})
                 output_page.on("pageerror", lambda error: page_errors.append(f"output: {error}"))
+                output_page.on("response", lambda response: record_response(response, "output"))
                 output_page.on(
                     "console",
                     lambda msg: console_messages.append(f"output {msg.type}: {msg.text}")
@@ -2229,7 +2589,8 @@ def main() -> int:
                 preview_state = page.evaluate(
                     """
                     (() => {
-                      const thumb = document.querySelector('.svc-slide-thumb.active .svc-slide-mini-output .presenter-slide');
+                      const thumb = document.querySelector('.svc-slide-thumb.active .svc-slide-mini-output .presenter-slide')
+                        || document.querySelector(`.svc-slide-thumb[data-presenter-index="${state.presenter.index}"] .svc-slide-mini-output .presenter-slide`);
                       const text = thumb?.innerText.trim() || '';
                       return {
                         hasSharedFrame: Boolean(thumb),
@@ -2265,12 +2626,14 @@ def main() -> int:
                 else:
                     fail("presenter-output-letterbox-empty", json.dumps(letterbox_pixels, ensure_ascii=False))
 
+                current_presenter_index = page.evaluate("state.presenter.index")
                 page.wait_for_function(
-                    "() => document.querySelectorAll('.svc-slide-thumb.active .svc-slide-mini-output').length === 1",
+                    "(index) => Boolean(document.querySelector(`.svc-slide-thumb[data-presenter-index=\"${index}\"] .svc-slide-mini-output`))",
+                    arg=current_presenter_index,
                     timeout=5000,
                 )
                 page.wait_for_timeout(250)
-                thumb_shot = screenshot_with_retry(page, page.locator(".svc-slide-thumb.active .svc-slide-mini-output").first)
+                thumb_shot = screenshot_with_retry(page, page.locator(f'.svc-slide-thumb[data-presenter-index="{current_presenter_index}"] .svc-slide-mini-output').first)
                 output_shot = output_page.locator("#presenterOutputRoot").screenshot()
                 chromakey_pixels = {
                     "thumbTop": rgb_at(thumb_shot, 0.5, 0.2),
@@ -2292,7 +2655,7 @@ def main() -> int:
                     """
                     async () => {
                       const root = document.getElementById('presenterOutputRoot');
-                      const src = normalizePresenterMediaSource('assets/worship-backgrounds/26-A1.jpg');
+                      const src = normalizePresenterMediaSource('assets/worship-backgrounds/26-A1.png');
                       let resolveReady;
                       const pending = new Promise((resolve) => { resolveReady = resolve; });
                       presenterOutputImagePreloadCache.clear();
@@ -2321,18 +2684,28 @@ def main() -> int:
                       });
                       const before = {
                         busy: root.getAttribute('aria-busy'),
-                        oldVisible: root.innerText.includes('OLD FRAME'),
-                        hasImage: Boolean(root.querySelector('img.presenter-image')),
+                        oldVisible: root.querySelector('.presenter-output-layer.is-active')?.innerText.includes('OLD FRAME') || root.innerText.includes('OLD FRAME'),
+                        activeHasImage: Boolean(root.querySelector('.presenter-output-layer.is-active img.presenter-image')),
+                        nextHasImage: Boolean(root.querySelector('.presenter-output-layer:not(.is-active) img.presenter-image')),
                       };
                       const record = presenterOutputImagePreloadCache.get(src);
                       record.ready = true;
                       resolveReady();
-                      await new Promise((resolve) => setTimeout(resolve, 40));
+                      await new Promise((resolve) => {
+                        const start = Date.now();
+                        const tick = () => {
+                          const imageReady = !root.getAttribute('aria-busy')
+                            && root.querySelector('.presenter-output-layer.is-active img.presenter-image');
+                          if (imageReady || Date.now() - start > 3000) resolve();
+                          else requestAnimationFrame(tick);
+                        };
+                        tick();
+                      });
                       const after = {
                         busy: root.getAttribute('aria-busy'),
-                        oldVisible: root.innerText.includes('OLD FRAME'),
-                        hasImage: Boolean(root.querySelector('img.presenter-image')),
-                        source: root.querySelector('img.presenter-image')?.getAttribute('src') || '',
+                        oldVisible: root.querySelector('.presenter-output-layer.is-active')?.innerText.includes('OLD FRAME') || false,
+                        activeHasImage: Boolean(root.querySelector('.presenter-output-layer.is-active img.presenter-image')),
+                        source: root.querySelector('.presenter-output-layer.is-active img.presenter-image')?.getAttribute('src') || '',
                       };
                       return { before, after };
                     }
@@ -2341,11 +2714,11 @@ def main() -> int:
                 if (
                     image_swap_state["before"]["busy"] == "true"
                     and image_swap_state["before"]["oldVisible"]
-                    and not image_swap_state["before"]["hasImage"]
+                    and not image_swap_state["before"]["activeHasImage"]
                     and image_swap_state["after"]["busy"] is None
                     and not image_swap_state["after"]["oldVisible"]
-                    and image_swap_state["after"]["hasImage"]
-                    and "26-A1.jpg" in image_swap_state["after"]["source"]
+                    and image_swap_state["after"]["activeHasImage"]
+                    and "26-A1.png" in image_swap_state["after"]["source"]
                 ):
                     pass_("presenter-output-image-ready-swap", json.dumps(image_swap_state, ensure_ascii=False))
                 else:
@@ -2815,10 +3188,10 @@ def main() -> int:
                           }),
                         },
                       ]);
-                      state.module = 'service';
+                      state.module = 'presenter';
                       state.selectedServiceTypeId = service.type_id;
                       state.selectedServiceId = service.id;
-                      renderServiceDetail();
+                      renderPresenterDetail();
                       renderServiceList();
                       const payload = JSON.parse(localStorage.getItem('mindex.presenter.state') || '{}');
                       return {
@@ -2892,7 +3265,7 @@ def main() -> int:
                       stopPresenterOutput = (serviceId) => {
                         stoppedServiceId = serviceId || '';
                       };
-                      state.module = 'service';
+                      state.module = 'presenter';
                       state.selectedServiceId = '__smoke_other_selected__';
                       state.presenter.serviceId = previousPresenterServiceId || '__smoke_active_presenter__';
                       state.presenter.exitArmedAt = 0;
@@ -3064,7 +3437,7 @@ def main() -> int:
                             asset: {
                               kind: 'image',
                               name: '첫 슬라이드',
-                              url: 'assets/worship-backgrounds/26-A1.jpg',
+                              url: 'assets/worship-backgrounds/26-A1.png',
                             },
                           }),
                         },
@@ -3099,7 +3472,7 @@ def main() -> int:
                     and fullscreen_ready_state["type"] == "image"
                     and fullscreen_ready_state["elementType"] == "image"
                     and fullscreen_ready_state["layout"] == "media"
-                    and fullscreen_ready_state["imageSrc"].endswith("assets/worship-backgrounds/26-A1.jpg")
+                    and fullscreen_ready_state["imageSrc"].endswith("assets/worship-backgrounds/26-A1.png")
                 ):
                     pass_("presenter-fullscreen-ready-image", json.dumps(fullscreen_ready_state, ensure_ascii=False))
                 else:
@@ -3108,10 +3481,13 @@ def main() -> int:
                 no_chromakey_payload = page.evaluate(
                     """
                     () => {
+                      const missingBackgroundFile = '26-A2.png';
+                      WORSHIP_BACKGROUND_STATIC_FILES.delete(missingBackgroundFile);
+                      delete state.worshipBackgroundRegistry[missingBackgroundFile];
                       const service = {
                         id: '__smoke_presenter_background_service__',
                         type_id: 'friday',
-                        date: '2026-07-03',
+                        date: '2026-03-06',
                         title: 'No Chroma Smoke',
                         leader: '테스트',
                         tags: [],
@@ -3142,12 +3518,14 @@ def main() -> int:
                         : Math.min(2, Math.max(state.presenter.slides.length - 1, 0));
                       state.presenter.liveScripture = { reference: "", draft: "", active: false, slide: null };
                       state.presenter.livePraise = { query: "", draft: "", active: false, slides: [], index: 0, songId: "", versionId: "" };
-                      state.module = 'service';
+                      state.module = 'presenter';
                       state.selectedServiceTypeId = service.type_id;
                       state.selectedServiceId = service.id;
-                      renderServiceDetail();
+                      renderPresenterDetail();
                       publishPresenterState({ force: true });
-                      return presenterStatePayload(service.id);
+                      const payload = presenterStatePayload(service.id);
+                      WORSHIP_BACKGROUND_STATIC_FILES.add(missingBackgroundFile);
+                      return payload;
                     }
                     """
                 )
@@ -3186,12 +3564,12 @@ def main() -> int:
                 )
                 if (
                     no_chromakey_payload["chromakey"] is False
-                    and no_chromakey_payload["backgroundImage"]
+                    and no_chromakey_payload["backgroundImage"] == ""
                     and no_chromakey_state["serviceType"] == no_chromakey_payload["serviceType"]
                     and no_chromakey_state["noChromakey"]
-                    and no_chromakey_state["hasBackground"]
-                    and no_chromakey_state["backgroundColor"] != "rgb(0, 255, 0)"
-                    and no_chromakey_payload["backgroundImage"] in no_chromakey_state["inlineBackground"]
+                    and not no_chromakey_state["hasBackground"]
+                    and no_chromakey_state["backgroundColor"] == "rgb(0, 0, 0)"
+                    and no_chromakey_state["inlineBackground"] == ""
                     and no_chromakey_state["slideClass"] == "presenter-slide--lyrics"
                     and no_chromakey_state["elementType"] == "praise"
                     and no_chromakey_state["layout"] == "lower_bar_text"
@@ -3204,12 +3582,14 @@ def main() -> int:
                         json.dumps({"payload": no_chromakey_payload, "output": no_chromakey_state}, ensure_ascii=False),
                     )
 
+                current_presenter_index = page.evaluate("state.presenter.index")
                 page.wait_for_function(
-                    "() => document.querySelectorAll('.svc-slide-thumb.active .svc-slide-mini-output').length === 1",
+                    "(index) => Boolean(document.querySelector(`.svc-slide-thumb[data-presenter-index=\"${index}\"] .svc-slide-mini-output`))",
+                    arg=current_presenter_index,
                     timeout=5000,
                 )
                 page.wait_for_timeout(250)
-                no_chromakey_thumb_shot = screenshot_with_retry(page, page.locator(".svc-slide-thumb.active .svc-slide-mini-output").first)
+                no_chromakey_thumb_shot = screenshot_with_retry(page, page.locator(f'.svc-slide-thumb[data-presenter-index="{current_presenter_index}"] .svc-slide-mini-output').first)
                 no_chromakey_output_shot = output_page.locator("#presenterOutputRoot").screenshot()
                 no_chromakey_pixels = {
                     "thumbTop": rgb_at(no_chromakey_thumb_shot, 0.5, 0.16),
@@ -3222,6 +3602,123 @@ def main() -> int:
                 else:
                     fail("presenter-output-pixel-match-no-chromakey", json.dumps(no_chromakey_pixels, ensure_ascii=False))
 
+                explicit_background_payload = page.evaluate(
+                    """
+                    () => {
+                      const service = {
+                        id: '__smoke_presenter_explicit_background_service__',
+                        type_id: 'youth',
+                        date: '2026-07-05',
+                        title: 'Explicit Background Smoke',
+                        leader: '테스트',
+                        tags: [],
+                        _worshipSourceRef: { presenter_background: '26-B2.png' },
+                      };
+                      if (!state.serviceTypes.some((item) => item.id === service.type_id)) {
+                        state.serviceTypes.push({
+                          id: service.type_id,
+                          name: '청소년부 예배',
+                          sort_order: 5,
+                          _worship: true,
+                          _worshipOutputContext: 'clean',
+                          _worshipChromakey: false,
+                        });
+                      }
+                      state.services = [
+                        service,
+                        ...state.services.filter((item) => item.id !== service.id),
+                      ];
+                      state.serviceItems[service.id] = normalizeServiceItems([
+                        {
+                          id: '__smoke_presenter_explicit_background_item__',
+                          service_id: service.id,
+                          sort_order: 1,
+                          label: '찬양',
+                          raw_title: '청소년부 찬양',
+                          memo: JSON.stringify({
+                            slides: ['[Verse 1]\\n주님만 바라봅니다'],
+                          }),
+                        },
+                      ]);
+                      preparePresenterService(service.id);
+                      return presenterStatePayload(service.id);
+                    }
+                    """
+                )
+                if (
+                    explicit_background_payload["chromakey"] is False
+                    and explicit_background_payload["backgroundImage"].endswith("assets/worship-backgrounds/26-B2.png")
+                    and all("26-B4" not in source for source in explicit_background_payload["backgroundImages"])
+                ):
+                    pass_("presenter-output-explicit-background", json.dumps(explicit_background_payload, ensure_ascii=False))
+                else:
+                    fail("presenter-output-explicit-background", json.dumps(explicit_background_payload, ensure_ascii=False))
+
+                clean_blank_background_state = output_page.evaluate(
+                    """
+                    (payload) => {
+                      const blankIndex = payload.slides.findIndex((slide) => slide?.layout === 'blank' && slide?.autoTrailingBlank);
+                      renderPresenterOutput({ ...payload, index: blankIndex, safetyBlank: false }, {});
+                      const root = document.getElementById('presenterOutputRoot');
+                      const slide = root?.querySelector('.presenter-slide');
+                      const cleanBlank = {
+                        blankIndex,
+                        hasBackground: root?.classList.contains('has-background') || false,
+                        isBlank: root?.classList.contains('is-blank') || false,
+                        noChromakey: root?.classList.contains('no-chromakey') || false,
+                        inlineBackground: root?.style.getPropertyValue('--presenter-bg-image') || '',
+                        slideClass: slide?.className || '',
+                        text: slide?.innerText.trim() || '',
+                      };
+                      renderPresenterOutput({ ...payload, index: blankIndex, safetyBlank: true }, {});
+                      const safetyRoot = document.getElementById('presenterOutputRoot');
+                      const safetySlide = safetyRoot?.querySelector('.presenter-slide');
+                      return {
+                        cleanBlank,
+                        safetyBlank: {
+                          hasBackground: safetyRoot?.classList.contains('has-background') || false,
+                          isBlank: safetyRoot?.classList.contains('is-blank') || false,
+                          noChromakey: safetyRoot?.classList.contains('no-chromakey') || false,
+                          inlineBackground: safetyRoot?.style.getPropertyValue('--presenter-bg-image') || '',
+                          slideClass: safetySlide?.className || '',
+                          text: safetySlide?.innerText.trim() || '',
+                        },
+                      };
+                    }
+                    """,
+                    explicit_background_payload,
+                )
+                if (
+                    clean_blank_background_state["cleanBlank"]["blankIndex"] >= 0
+                    and clean_blank_background_state["cleanBlank"]["hasBackground"]
+                    and not clean_blank_background_state["cleanBlank"]["isBlank"]
+                    and clean_blank_background_state["cleanBlank"]["noChromakey"]
+                    and "26-B2.png" in clean_blank_background_state["cleanBlank"]["inlineBackground"]
+                    and "presenter-slide--blank" in clean_blank_background_state["cleanBlank"]["slideClass"]
+                    and clean_blank_background_state["cleanBlank"]["text"] == ""
+                    and not clean_blank_background_state["safetyBlank"]["hasBackground"]
+                    and clean_blank_background_state["safetyBlank"]["isBlank"]
+                    and clean_blank_background_state["safetyBlank"]["inlineBackground"] == ""
+                    and "presenter-slide--blank" in clean_blank_background_state["safetyBlank"]["slideClass"]
+                    and clean_blank_background_state["safetyBlank"]["text"] == ""
+                ):
+                    pass_("presenter-clean-blank-keeps-background", json.dumps(clean_blank_background_state, ensure_ascii=False))
+                else:
+                    fail("presenter-clean-blank-keeps-background", json.dumps(clean_blank_background_state, ensure_ascii=False))
+                page.evaluate(
+                    """
+                    (serviceId) => {
+                      state.module = "presenter";
+                      state.selectedServiceId = serviceId;
+                      preparePresenterService(serviceId);
+                      state.presenter.outputConnectedAt = Date.now();
+                      renderPresenterDetail();
+                      publishPresenterState({ force: true });
+                    }
+                    """,
+                    service["id"],
+                )
+
                 theme_preview_state = page.evaluate(
                     """
                     (() => {
@@ -3230,13 +3727,15 @@ def main() -> int:
                       host.innerHTML = `
                         <span id="miniFormal" class="svc-slide-mini-output" data-output-theme="formal"></span>
                         <span id="miniChildren" class="svc-slide-mini-output" data-output-theme="children">
-                          <section class="presenter-slide presenter-slide--song-title" data-element-type="praise" data-slide-layout="lower_bar_text">
-                            <div class="presenter-slide-text"><span>♪ 어린이 찬양</span></div>
-                          </section>
+                          <span class="svc-slide-mini-canvas presenter-output-root" data-output-theme="children">
+                            <section class="presenter-slide presenter-slide--song-title" data-element-type="praise" data-slide-layout="lower_bar_text">
+                              <div class="presenter-slide-text"><span>♪ 어린이 찬양</span></div>
+                            </section>
+                          </span>
                         </span>
                         <span id="miniYouth" class="svc-slide-mini-output" data-output-theme="youth"></span>
                         <span id="miniYoungAdult" class="svc-slide-mini-output" data-output-theme="young-adult"></span>
-                        <span id="miniChildrenBg" class="svc-slide-mini-output no-chromakey has-background" data-output-theme="children" style="--presenter-bg-image: url('assets/worship-backgrounds/26-C1.jpg')"></span>
+                        <span id="miniChildrenBg" class="svc-slide-mini-output no-chromakey has-background" data-output-theme="children" style="--presenter-bg-image: url('assets/worship-backgrounds/26-C1.png')"></span>
                       `;
                       document.body.appendChild(host);
                       const css = (id) => getComputedStyle(host.querySelector(`#${id}`));
@@ -3260,7 +3759,7 @@ def main() -> int:
                     and theme_preview_state["childrenTextColor"] == "rgb(85, 51, 0)"
                     and "linear-gradient" in theme_preview_state["youthBgImage"]
                     and "radial-gradient" in theme_preview_state["youngAdultBgImage"]
-                    and "26-C1.jpg" in theme_preview_state["childrenHasBackgroundImage"]
+                    and "26-C1.png" in theme_preview_state["childrenHasBackgroundImage"]
                 ):
                     pass_("presenter-controller-preview-theme-parity", json.dumps(theme_preview_state, ensure_ascii=False))
                 else:
@@ -3299,7 +3798,7 @@ def main() -> int:
                 page.evaluate(
                     """
                     (serviceId) => {
-                      state.module = "service";
+                      state.module = "presenter";
                       state.selectedServiceId = serviceId;
                       preparePresenterService(serviceId);
                       state.presenter.outputWindow = null;
@@ -3307,7 +3806,7 @@ def main() -> int:
                       state.presenter.outputClientId = "";
                       stopPresenterOutputWindowMonitor();
                       publishPresenterState({ force: true });
-                      renderServiceDetail();
+                      renderPresenterDetail();
                       renderPresenterControlState(serviceId);
                     }
                     """,
@@ -3316,6 +3815,7 @@ def main() -> int:
                 disconnect_page = context.new_page()
                 disconnect_page.set_viewport_size({"width": 1280, "height": 720})
                 disconnect_page.on("pageerror", lambda error: page_errors.append(f"disconnect output: {error}"))
+                disconnect_page.on("response", lambda response: record_response(response, "disconnect output"))
                 disconnect_page.on(
                     "console",
                     lambda msg: console_messages.append(f"disconnect output {msg.type}: {msg.text}")

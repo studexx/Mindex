@@ -10,7 +10,7 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="MINDEX" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <link rel="stylesheet" href="./styles.css?v=mindex-presenter-show-001" />
+    <link rel="stylesheet" href="./styles.css?v=mindex-presenter-flow-002" />
   </head>
   <body>
     <div class="app-shell">
@@ -25,9 +25,13 @@
           <button id="brandNameHome" class="brand-name" type="button" aria-label="Go to Mindex home">MINDE<span class="brand-accent">X</span></button>
         </div>
         <nav class="primary-switcher" aria-label="Mindex areas">
-          <button class="top-module-entry presenter-entry module-tab module-tab--primary" type="button" data-module="service" aria-label="Open worship tools">
-            <i data-lucide="screen-share"></i>
+          <button class="top-module-entry worship-entry module-tab module-tab--primary" type="button" data-module="service" aria-label="Open worship tools">
+            <i data-lucide="layout-template"></i>
             <span>Worship</span>
+          </button>
+          <button class="top-module-entry presenter-entry module-tab module-tab--secondary" type="button" data-module="presenter" aria-label="Open presenter">
+            <i data-lucide="screen-share"></i>
+            <span>Presenter</span>
           </button>
           <button class="top-module-entry scripture-entry module-tab module-tab--secondary" type="button" data-module="scripture" aria-label="Open scripture">
             <i data-lucide="book-open"></i>
@@ -84,6 +88,6 @@
       };
     </script>
     <script src="./mindex.constants.js?v=mindex-app-split-001"></script>
-    <script src="./app.js?v=mindex-presenter-show-001"></script>
+    <script src="./app.js?v=mindex-presenter-flow-002"></script>
   </body>
 </html>

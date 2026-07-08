@@ -119,17 +119,21 @@ def launch_chromium(playwright):
 
 
 def wait_for_module_data(page, module: str) -> None:
-    if module == "service":
+    if module == "service" or module == "presenter":
+        expected_module = module
         page.wait_for_function(
             """
-            () => document.body.dataset.module === 'service'
+            (expectedModule) => document.body.dataset.module === expectedModule
               && (
                 document.querySelector('.service-dashboard')
+                || document.querySelector('.presenter-dashboard')
+                || document.querySelector('#servicePresenterControls')
                 || document.querySelector('.service-sidebar')
                 || document.querySelector('.empty-detail')
                 || document.body.textContent.includes('Psalm 27:14')
               )
             """,
+            arg=expected_module,
             timeout=15000,
         )
         return
@@ -377,7 +381,7 @@ def select_service_with_slides(page) -> dict[str, Any] | None:
           }
           if (!service) return null;
           const slides = buildServicePresenterSlides(service.id);
-          state.module = 'service';
+          state.module = 'presenter';
           state.search = '';
           if (typeof refs !== 'undefined' && refs.searchInput) refs.searchInput.value = '';
           state.selectedServiceTypeId = service.type_id;
@@ -741,7 +745,7 @@ def main() -> int:
                     }))()
                     """
                 )
-                expected_home_order = ["Worship", "Scripture", "Praise", "Calendar", "References", "Order Sheets"]
+                expected_home_order = ["Worship", "Presenter", "Scripture", "Praise", "Calendar", "References", "Order Sheets"]
                 if (
                     home_order == expected_home_order
                     and not home_visibility_state["hasActivities"]
@@ -780,7 +784,7 @@ def main() -> int:
                     home_design_state["hasBoard"]
                     and home_design_state["hasPrimary"]
                     and not home_design_state["hasVerse"]
-                    and home_design_state["libraryCards"] == 2
+                    and home_design_state["libraryCards"] == 3
                     and home_design_state["utilityCards"] == 3
                     and home_design_state["primary"]["height"] >= 130
                     and "1 services" not in home_design_state["text"]
@@ -790,7 +794,7 @@ def main() -> int:
                 else:
                     fail("home-design-shell", json.dumps(home_design_state, ensure_ascii=False))
 
-                spacing_modules = ["home", "service", "scripture", "praise", "calendar", "references", "order-sheets"]
+                spacing_modules = ["home", "service", "presenter", "scripture", "praise", "calendar", "references", "order-sheets"]
                 module_spacing = []
                 for module_id in spacing_modules:
                     page.evaluate("(moduleId) => switchModule(moduleId)", module_id)
@@ -884,7 +888,7 @@ def main() -> int:
                     """
                 )
                 topbar_state.update(topbar_hover_state)
-                expected_topbar_order = ["Worship", "Scripture", "Praise"]
+                expected_topbar_order = ["Worship", "Presenter", "Scripture", "Praise"]
                 if (
                     topbar_state["order"] == expected_topbar_order
                     and topbar_state["active"] == "scripture"
@@ -1371,7 +1375,6 @@ def main() -> int:
                               service_id: serviceId,
                               sort_order: 1,
                               label: '사도신경',
-                              assignee: '다같이',
                               raw_title: '사도신경',
                               memo: serializeServiceItemMemo({
                                 elementType: 'body',
@@ -2026,6 +2029,7 @@ def main() -> int:
                     if (
                         "순서" in presenter_terms["sidebarHeadings"]
                         and "편집" in presenter_terms["sidebarHeadings"]
+                        and "최근 예배" not in presenter_terms["sidebarHeadings"]
                         and presenter_terms["outlineRows"] >= 2
                         and presenter_terms["outlineGroups"] >= 1
                         and presenter_terms["multiOutlineGroups"] >= 1
@@ -2061,25 +2065,36 @@ def main() -> int:
                     else:
                         fail("presenter-terminology", json.dumps(presenter_terms, ensure_ascii=False))
 
-                    page.click(f'[data-service-prep-editor-open="{service_for_slides["id"]}"]')
-                    page.wait_for_selector(".svc-prep-editor", timeout=5000)
-                    prep_editor_state = page.evaluate(
+                    page.evaluate(
+                        """
+                        (serviceId) => {
+                          state.module = 'service';
+                          state.selectedServiceId = serviceId;
+                          const service = state.services.find((item) => item.id === serviceId);
+                          state.selectedServiceTypeId = service?.type_id || state.selectedServiceTypeId;
+                          render();
+                        }
+                        """,
+                        service_for_slides["id"],
+                    )
+                    page.wait_for_selector(".service-authoring-view .svc-prep-editor-body--inline", timeout=5000)
+                    authoring_state = page.evaluate(
                         """
                         (() => {
-                          const dialog = document.querySelector('.svc-prep-editor');
-                          const rect = dialog?.getBoundingClientRect();
-                          const body = dialog?.querySelector('.svc-prep-editor-body')?.getBoundingClientRect();
+                          const root = document.querySelector('.service-authoring-view');
+                          const rect = root?.getBoundingClientRect();
+                          const body = root?.querySelector('.svc-prep-editor-body--inline')?.getBoundingClientRect();
                           return {
-                            mounted: Boolean(dialog),
-                            title: document.querySelector('#svcPrepEditorTitle')?.textContent.trim() || '',
-                            hasMeta: Boolean(document.querySelector('.svc-prep-editor .svc-meta-editor')),
-                            hasTemplate: Boolean(document.querySelector('.svc-prep-editor .svc-template-guide')),
-                            hasSetlist: Boolean(document.querySelector('.svc-prep-editor .svc-setlist-composer')),
-                            hasEditorHeader: Boolean(document.querySelector('.svc-prep-editor .svc-editor-header')),
-                            itemRows: document.querySelectorAll('.svc-prep-editor [data-service-item-field="raw_title"]').length,
-                            addLabel: document.querySelector('.svc-prep-editor [data-service-item-action="add"] span')?.textContent.trim() || '',
+                            mounted: Boolean(root),
+                            title: document.querySelector('.service-authoring-view .svc-service-title')?.textContent.trim() || '',
+                            hasMeta: Boolean(document.querySelector('.service-authoring-view .svc-meta-editor')),
+                            hasTemplate: Boolean(document.querySelector('.service-authoring-view .svc-template-guide')),
+                            hasSetlist: Boolean(document.querySelector('.service-authoring-view .svc-setlist-composer')),
+                            hasEditorHeader: Boolean(document.querySelector('.service-authoring-view .svc-editor-header')),
+                            hasPresenterControls: Boolean(document.querySelector('#servicePresenterControls')),
+                            itemRows: document.querySelectorAll('.service-authoring-view [data-service-item-field="raw_title"]').length,
+                            addLabel: document.querySelector('.service-authoring-view [data-service-item-action="add"] span')?.textContent.trim() || '',
                             openState: state.servicePrepEditorOpenId || '',
-                            focusedInside: Boolean(dialog?.contains(document.activeElement)),
                             width: Math.round(rect?.width || 0),
                             bodyHeight: Math.round(body?.height || 0),
                             overflow: Math.max(document.documentElement.scrollWidth - window.innerWidth, document.body.scrollWidth - window.innerWidth)
@@ -2087,60 +2102,35 @@ def main() -> int:
                         })()
                         """
                     )
-                    page.evaluate(
-                        """
-                        (serviceId) => {
-                          state.presenter.serviceId = serviceId;
-                          state.presenter.slides = buildServicePresenterSlides(serviceId);
-                          state.presenter.index = 0;
-                          state.presenter.exitArmedAt = 0;
-                        }
-                        """,
-                        service_for_slides["id"],
-                    )
-                    page.keyboard.press("Escape")
-                    page.wait_for_selector(".svc-prep-editor", state="detached", timeout=5000)
-                    prep_editor_closed = page.evaluate(
-                        """
-                        () => ({
-                          closed: !state.servicePrepEditorOpenId && !document.querySelector('.svc-prep-editor'),
-                          presenterExitArmedAt: state.presenter.exitArmedAt || 0,
-                          focusRestored: Boolean(document.activeElement?.matches?.('[data-service-prep-editor-open]'))
-                        })
-                        """
-                    )
                     if (
-                        prep_editor_state["mounted"]
-                        and prep_editor_state["title"]
-                        and prep_editor_state["hasMeta"]
-                        and prep_editor_state["hasTemplate"]
-                        and prep_editor_state["hasSetlist"]
-                        and prep_editor_state["hasEditorHeader"]
-                        and prep_editor_state["itemRows"] >= 1
-                        and prep_editor_state["addLabel"] == "항목 추가"
-                        and prep_editor_state["openState"] == service_for_slides["id"]
-                        and prep_editor_state["focusedInside"]
-                        and prep_editor_state["width"] >= 900
-                        and prep_editor_state["bodyHeight"] >= 240
-                        and prep_editor_state["overflow"] <= 2
-                        and prep_editor_closed["closed"]
-                        and prep_editor_closed["presenterExitArmedAt"] == 0
-                        and prep_editor_closed["focusRestored"]
+                        authoring_state["mounted"]
+                        and authoring_state["title"]
+                        and authoring_state["hasMeta"]
+                        and authoring_state["hasTemplate"]
+                        and authoring_state["hasSetlist"]
+                        and authoring_state["hasEditorHeader"]
+                        and not authoring_state["hasPresenterControls"]
+                        and authoring_state["itemRows"] >= 1
+                        and authoring_state["addLabel"] == "항목 추가"
+                        and not authoring_state["openState"]
+                        and authoring_state["width"] >= 900
+                        and authoring_state["bodyHeight"] >= 240
+                        and authoring_state["overflow"] <= 2
                     ):
-                        pass_("service-prep-editor", json.dumps({**prep_editor_state, **prep_editor_closed}, ensure_ascii=False))
+                        pass_("worship-authoring-inline", json.dumps(authoring_state, ensure_ascii=False))
                     else:
-                        fail("service-prep-editor", json.dumps({**prep_editor_state, **prep_editor_closed}, ensure_ascii=False))
+                        fail("worship-authoring-inline", json.dumps(authoring_state, ensure_ascii=False))
 
                     page.set_viewport_size({"width": 520, "height": 760})
-                    page.click(f'[data-service-prep-editor-open="{service_for_slides["id"]}"]')
-                    page.wait_for_selector(".svc-prep-editor", timeout=5000)
-                    prep_editor_narrow = page.evaluate(
+                    page.evaluate("renderServiceDetail()")
+                    page.wait_for_selector(".service-authoring-view .svc-prep-editor-body--inline", timeout=5000)
+                    authoring_narrow = page.evaluate(
                         """
                         (() => {
-                          const editor = document.querySelector('.svc-prep-editor')?.getBoundingClientRect();
+                          const editor = document.querySelector('.service-authoring-view')?.getBoundingClientRect();
                           const editorLeft = editor?.left || 0;
                           const editorRight = editor?.right || window.innerWidth;
-                          const nodes = [...document.querySelectorAll('.svc-prep-editor *')]
+                          const nodes = [...document.querySelectorAll('.service-authoring-view *')]
                             .map((node) => {
                               const rect = node.getBoundingClientRect();
                               return {
@@ -2156,24 +2146,34 @@ def main() -> int:
                             editorWidth: Math.round(editor?.width || 0),
                             overflow: Math.max(document.documentElement.scrollWidth - window.innerWidth, document.body.scrollWidth - window.innerWidth),
                             leakingNodes: nodes.filter((item) => item.left < editorLeft - 2 || item.right > editorRight + 2).length,
-                            firstItemHeight: Math.round(document.querySelector('.svc-prep-editor .svc-edit-item')?.getBoundingClientRect().height || 0)
+                            firstItemHeight: Math.round(document.querySelector('.service-authoring-view .svc-edit-item')?.getBoundingClientRect().height || 0)
                           };
                         })()
                         """
                     )
-                    page.keyboard.press("Escape")
-                    page.wait_for_selector(".svc-prep-editor", state="detached", timeout=5000)
                     page.set_viewport_size({"width": 1440, "height": 980})
                     if (
-                        prep_editor_narrow["viewport"] == 520
-                        and 280 <= prep_editor_narrow["editorWidth"] <= prep_editor_narrow["viewport"]
-                        and prep_editor_narrow["overflow"] <= 2
-                        and prep_editor_narrow["leakingNodes"] == 0
-                        and prep_editor_narrow["firstItemHeight"] >= 80
+                        authoring_narrow["viewport"] == 520
+                        and 280 <= authoring_narrow["editorWidth"] <= authoring_narrow["viewport"]
+                        and authoring_narrow["overflow"] <= 2
+                        and authoring_narrow["leakingNodes"] == 0
+                        and authoring_narrow["firstItemHeight"] >= 80
                     ):
-                        pass_("service-prep-editor-narrow", json.dumps(prep_editor_narrow, ensure_ascii=False))
+                        pass_("worship-authoring-narrow", json.dumps(authoring_narrow, ensure_ascii=False))
                     else:
-                        fail("service-prep-editor-narrow", json.dumps(prep_editor_narrow, ensure_ascii=False))
+                        fail("worship-authoring-narrow", json.dumps(authoring_narrow, ensure_ascii=False))
+
+                    page.evaluate(
+                        """
+                        (serviceId) => {
+                          state.module = 'presenter';
+                          state.selectedServiceId = serviceId;
+                          renderPresenterDetail();
+                          renderServiceList();
+                        }
+                        """,
+                        service_for_slides["id"],
+                    )
 
                     thumb_metrics = page.evaluate(
                         """
@@ -2421,10 +2421,21 @@ def main() -> int:
                       const versionCopyButtons = [...document.querySelectorAll('.version-copy-btn[data-copy-action="plain"][data-version-id]')];
                       const versionDuplicateButtons = [...document.querySelectorAll('.version-add-btn[data-add-version]')];
                       const draft = buildNewPraiseSongDraft({ title: '테스트 새 찬양', praiseTypes: ['ccm'] });
+                      const emptyNewDraft = buildNewPraiseSongDraft({ title: '새 찬양', praiseTypes: ['ccm'] });
+                      const nonEmptyNewDraft = {
+                        ...emptyNewDraft,
+                        versions: [{
+                          ...emptyNewDraft.versions[0],
+                          forms: [{ part_type: 'Lyrics', lyrics: '이미 입력된 가사', sort_order: 1 }]
+                        }]
+                      };
+                      const renamedEmptyShell = buildNewPraiseSongDraft({ title: '날 구원하신 주 감사', praiseTypes: ['ccm'] });
                       const originalSongs = state.songs;
                       const originalSelectedSongId = state.selectedSongId;
                       const originalSelectedVersionId = state.selectedVersionId;
                       const originalForms = state.forms;
+                      const originalDirty = { ...state.dirty };
+                      const originalLoading = state.loading;
                       const primary = {
                         id: '__smoke_link_primary__',
                         title: '링크 원곡',
@@ -2453,19 +2464,49 @@ def main() -> int:
                       state.forms = normalizeForms(primary.versions[0].forms.map((form) => ({ ...form, song_id: primary.versions[0].id })));
                       const linkedEntries = linkedSongVersionEntries(primary);
                       const linkedHtml = renderFormsTab(primary);
+                      const titleHtml = renderVersionTitleContent(primary, primary.versions[0], primary.versions[0].forms, { active: true });
+                      updateVersionNameField({
+                        dataset: { versionNameField: primary.versions[0].id },
+                        value: '수정 버전'
+                      });
+                      const editedVersion = { ...primary.versions[0] };
+                      state.loading = true;
+                      syncPraiseCreateControls();
+                      const loadingCreateState = {
+                        canCreate: canCreatePraiseSong(),
+                        topbarHidden: refs.newSongBtn.hidden,
+                        topbarDisabled: refs.newSongBtn.disabled,
+                        detailButtonsHidden: [...document.querySelectorAll('[data-create-song]')]
+                          .every((button) => button.hidden && button.disabled)
+                      };
                       state.songs = originalSongs;
                       state.selectedSongId = originalSelectedSongId;
                       state.selectedVersionId = originalSelectedVersionId;
                       state.forms = originalForms;
+                      state.dirty = originalDirty;
+                      state.loading = originalLoading;
+                      syncPraiseCreateControls();
+                      updateSaveState();
                       return {
                         heads: heads.length,
                         linkedHeads: linkedHeads.length,
                         versionCopyButtons: versionCopyButtons.length,
                         versionDuplicateButtons: versionDuplicateButtons.length,
                         createButtons: document.querySelectorAll('[data-create-song]').length,
+                        deleteButtons: document.querySelectorAll('[data-delete-song]').length,
+                        deleteInMetaRow: Boolean(document.querySelector('.song-header-meta-row [data-delete-song]')),
+                        deleteInHeadActions: Boolean(document.querySelector('.head-actions [data-delete-song]')),
+                        versionNameInputs: document.querySelectorAll('[data-version-name-field]').length,
+                        versionTitleHasInput: titleHtml.includes('data-version-name-field="__smoke_link_primary_v1__"'),
+                        editedVersionName: editedVersion.name,
+                        editedVersionRawName: editedVersion.raw_section_name,
+                        loadingCreateState,
                         draftTitle: draft.title,
                         draftVersions: draft.versions.length,
                         draftPraiseType: draft.versions[0]?.praise_types?.[0] || '',
+                        emptyNewDraftDeletable: canDeletePraiseSong(emptyNewDraft),
+                        nonEmptyNewDraftDeletable: canDeletePraiseSong(nonEmptyNewDraft),
+                        renamedEmptyShellDeletable: canDeletePraiseSong(renamedEmptyShell),
                         linkedEntries: linkedEntries.length,
                         linkedReadonly: linkedHtml.includes('linked-version-column')
                           && linkedHtml.includes('data-open-song="__smoke_link_related__"')
@@ -2486,9 +2527,23 @@ def main() -> int:
                     and praise_actions["versionCopyButtons"] == praise_actions["heads"]
                     and praise_actions["versionDuplicateButtons"] == praise_actions["heads"]
                     and praise_actions["createButtons"] >= 1
+                    and praise_actions["deleteButtons"] >= 1
+                    and praise_actions["deleteInMetaRow"]
+                    and not praise_actions["deleteInHeadActions"]
+                    and praise_actions["versionNameInputs"] >= 1
+                    and praise_actions["versionTitleHasInput"]
+                    and praise_actions["editedVersionName"] == "수정 버전"
+                    and praise_actions["editedVersionRawName"] == "수정 버전"
+                    and not praise_actions["loadingCreateState"]["canCreate"]
+                    and praise_actions["loadingCreateState"]["topbarHidden"]
+                    and praise_actions["loadingCreateState"]["topbarDisabled"]
+                    and praise_actions["loadingCreateState"]["detailButtonsHidden"]
                     and praise_actions["draftTitle"] == "테스트 새 찬양"
                     and praise_actions["draftVersions"] == 1
                     and praise_actions["draftPraiseType"] == "ccm"
+                    and praise_actions["emptyNewDraftDeletable"]
+                    and not praise_actions["nonEmptyNewDraftDeletable"]
+                    and praise_actions["renamedEmptyShellDeletable"]
                     and praise_actions["linkedEntries"] == 1
                     and praise_actions["linkedReadonly"]
                     and not praise_actions["linkedEditableLeak"]
