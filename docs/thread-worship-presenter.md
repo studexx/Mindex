@@ -211,6 +211,12 @@ Manual checks when changing live presenter behavior:
   `Enter` first requests fullscreen again instead of advancing the slide.
 - Presenter smoke coverage now checks long hymn-score warmup ordering, score
   safe-area rendering, hymn Coda output, and a less flaky output key-sync wait.
+- Hymn-score asset generation now treats the source PPTX as a native rendered
+  asset source. Prefer PowerPoint-exported `Slide*.png` folders with
+  `render_hymn_score_assets.py --exported-slide-dir`; if those are unavailable,
+  the script can fall back to LibreOffice PDF export plus Poppler page rendering.
+  It no longer reconstructs PPT text boxes with PIL, which avoids broken label
+  weight, transparency, and layout drift in score slides.
 - Worship authoring and Presenter control are now separate topbar modules.
   `Worship` owns service/template composition, metadata, setlist import, and
   item editing. `Presenter` owns recent-service launch, slide outline, live
@@ -246,3 +252,14 @@ Manual checks when changing live presenter behavior:
 - Worship authoring now surfaces the `Service > Section > Element > Slide`
   hierarchy at the top of the editor and separates service metadata, section
   templates, and praise/setlist input into distinct authoring panels.
+- Presenter title/assignee slides now treat `인도자`, `담당자`, and similar
+  order-sheet placeholders as non-output data. If a worship-led element such as
+  `봉헌기도` needs a person, Presenter uses the service `worship_leader` value
+  rather than the praise leader or a generic placeholder. Board subgroup heads
+  show element label plus real content and suppress duplicate label/title text.
+- Worship authoring now hides non-weekly template fields from service item rows.
+  Preparation items no longer expose unused title/person inputs, worship-led
+  defaults such as `봉헌기도` use editable service-leader fallback text, strict
+  praise items require a linked Praise record before presenter output, and
+  scripture body rows resolve valid references into lower-bar verse slides while
+  blocking unnormalized free text from output.

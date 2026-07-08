@@ -739,10 +739,24 @@ def main() -> int:
                 )
                 home_visibility_state = page.evaluate(
                     """
-                    (() => ({
-                      hasActivities: Boolean(document.querySelector('.home-sidebar-card.activities')),
-                      disabledSections: document.querySelectorAll('.home-sidebar-section--disabled').length
-                    }))()
+                    (() => {
+                      const first = document.querySelector('.home-sidebar-card');
+                      const firstStyle = first ? getComputedStyle(first) : null;
+                      const probe = document.createElement('span');
+                      probe.style.position = 'absolute';
+                      probe.style.background = 'var(--sidebar-active-bg)';
+                      document.body.appendChild(probe);
+                      const activeBackground = getComputedStyle(probe).backgroundColor;
+                      probe.remove();
+                      return {
+                        hasActivities: Boolean(document.querySelector('.home-sidebar-card.activities')),
+                        disabledSections: document.querySelectorAll('.home-sidebar-section--disabled').length,
+                        activeCards: document.querySelectorAll('.home-sidebar-card.active').length,
+                        firstBackground: firstStyle?.backgroundColor || '',
+                        activeBackground,
+                        firstLooksActive: Boolean(firstStyle && firstStyle.backgroundColor === activeBackground)
+                      };
+                    })()
                     """
                 )
                 expected_home_order = ["Worship", "Presenter", "Scripture", "Praise", "Calendar", "References", "Order Sheets"]
@@ -750,6 +764,8 @@ def main() -> int:
                     home_order == expected_home_order
                     and not home_visibility_state["hasActivities"]
                     and home_visibility_state["disabledSections"] == 0
+                    and home_visibility_state["activeCards"] == 0
+                    and not home_visibility_state["firstLooksActive"]
                 ):
                     pass_("home-sidebar-hierarchy", json.dumps({"order": home_order, "visibility": home_visibility_state}, ensure_ascii=False))
                 else:
@@ -1311,6 +1327,8 @@ def main() -> int:
                                     type: element.element_type || '',
                                     label: element.source_ref?.label || '',
                                     order: element.config?.orderSheet?.order || '',
+                                    ...(element.config?.introSlide?.title ? { introTitle: element.config.introSlide.title } : {}),
+                                    ...(element.config?.introSlide?.body ? { introBody: element.config.introSlide.body } : {}),
                                     ...(element.config?.orderSheet?.assignee ? { assignee: element.config.orderSheet.assignee } : {}),
                                     outputMode: element.config?.outputMode || ''
                                   }))
@@ -1561,7 +1579,7 @@ def main() -> int:
                         template_terms["levels"] == ["Service", "Section", "Element", "Slide"]
                         and template_terms["monthlyFirst"] == {"label": "준비", "elementType": "video"}
                         and template_terms["monthlyScaffold"]["sections"] == 13
-                        and template_terms["monthlyScaffold"]["elements"] == 23
+                        and template_terms["monthlyScaffold"]["elements"] == 24
                         and template_terms["monthlyScaffold"]["firstSection"] == "준비"
                         and template_terms["monthlyScaffold"]["firstElementType"] == "video"
                         and "monthly_prayer" in template_terms["monthlyScaffold"]["sectionKeys"]
@@ -1617,25 +1635,28 @@ def main() -> int:
                         and template_terms["sundayPublicScaffold"]["first"]["titles"][:4] == ["준비", "신앙고백", "찬양", "참회기도"]
                         and "환영" not in template_terms["sundayPublicScaffold"]["first"]["titles"]
                         and template_terms["sundayPublicScaffold"]["first"]["creedElements"] == [
-                            {"type": "body", "label": "사도신경", "order": "신앙고백", "assignee": "사도신경", "outputMode": ""}
+                            {"type": "body", "label": "사도신경", "order": "신앙고백", "introTitle": "신앙고백", "introBody": "사도신경", "assignee": "사도신경", "outputMode": ""}
                         ]
                         and template_terms["sundayPublicScaffold"]["second"]["creedElements"] == [
-                            {"type": "body", "label": "사도신경", "order": "신앙고백", "assignee": "사도신경", "outputMode": ""}
+                            {"type": "body", "label": "사도신경", "order": "신앙고백", "introTitle": "신앙고백", "introBody": "사도신경", "assignee": "사도신경", "outputMode": ""}
                         ]
-                        and template_terms["secondCreedOrderSheetRow"] == {"order": "신앙고백", "assignee": "사도신경", "note": "사도신경"}
+                        and template_terms["secondCreedOrderSheetRow"] == {"order": "신앙고백", "assignee": "사도신경", "note": ""}
                         and template_terms["sundayPublicScaffold"]["first"]["offeringElements"] == [
-                            {"type": "praise", "label": "봉헌찬양", "order": "봉헌", "outputMode": "score"},
+                            {"type": "praise", "label": "봉헌찬송", "order": "봉헌", "outputMode": "score"},
                             {"type": "title_person", "label": "봉헌기도", "order": "봉헌기도", "outputMode": ""},
                         ]
                         and set(template_terms["sundayPublicScaffold"]["first"]["scoreSlots"]) == {
-                            "praise:찬양",
-                            "special_song:특송",
-                            "offering:봉헌찬양",
+                            "praise:찬양 1",
+                            "praise:찬양 2",
+                            "praise:찬양 3",
+                            "offering:봉헌찬송",
                             "doxology:송영",
                         }
                         and set(template_terms["sundayPublicScaffold"]["second"]["scoreSlots"]) == {
-                            "praise:찬양",
-                            "offering:봉헌찬양",
+                            "praise:찬양 1",
+                            "praise:찬양 2",
+                            "praise:찬양 3",
+                            "offering:봉헌찬송",
                             "doxology:송영",
                         }
                         and "사죄의선언" not in template_terms["sundayPublicScaffold"]["third"]["titles"]
@@ -1714,7 +1735,7 @@ def main() -> int:
                         }
                         and len(template_terms["monthlyScaffold"]["monthlyPrayerElements"]) == 5
                         and len(template_terms["monthlyScaffold"]["offeringElements"]) == 2
-                        and template_terms["monthlyScaffold"]["blankPlaceholders"] == 21
+                        and template_terms["monthlyScaffold"]["blankPlaceholders"] == 22
                         and template_terms["overflow"] <= 2
                     ):
                         pass_("service-template-terminology", json.dumps(template_terms, ensure_ascii=False))
@@ -1912,6 +1933,48 @@ def main() -> int:
                     else:
                         fail("order-sheet-data-adapter", json.dumps(order_sheet_adapter, ensure_ascii=False))
 
+                    order_sheet_density = page.evaluate(
+                        """
+                        (() => {
+                          const duplicateOrder = normalizeServiceOrderSheetRow({
+                            order: '결단기도',
+                            assignee: '',
+                            note: '결단기도'
+                          });
+                          const duplicateAssignee = normalizeServiceOrderSheetRow({
+                            order: '신앙고백',
+                            assignee: '사도신경',
+                            note: '사도신경'
+                          });
+                          const denseRows = Array.from({ length: 16 }, (_, index) => ({
+                            order: `순서 ${index + 1}`,
+                            assignee: '',
+                            note: '비고'
+                          }));
+                          const tightRows = Array.from({ length: 20 }, (_, index) => ({
+                            order: `순서 ${index + 1}`,
+                            assignee: '',
+                            note: '비고'
+                          }));
+                          return {
+                            duplicateOrder,
+                            duplicateAssignee,
+                            dense: renderOrderSheetCopy('테스트', '', denseRows).includes('order-sheet-copy is-dense'),
+                            tight: renderOrderSheetCopy('테스트', '', tightRows).includes('order-sheet-copy is-tight')
+                          };
+                        })()
+                        """
+                    )
+                    if (
+                        order_sheet_density["duplicateOrder"]["note"] == ""
+                        and order_sheet_density["duplicateAssignee"]["note"] == ""
+                        and order_sheet_density["dense"]
+                        and order_sheet_density["tight"]
+                    ):
+                        pass_("order-sheet-density-and-duplicates", json.dumps(order_sheet_density, ensure_ascii=False))
+                    else:
+                        fail("order-sheet-density-and-duplicates", json.dumps(order_sheet_density, ensure_ascii=False))
+
                     print_button = page.evaluate(
                         """
                         (() => {
@@ -1968,6 +2031,16 @@ def main() -> int:
                             .filter((group) => group.querySelector('.service-outline-row--section strong')?.textContent.trim() === '찬양')
                             .flatMap((group) => [...group.querySelectorAll('.service-outline-row--child strong')].map((node) => node.textContent.trim()))
                             .filter((text) => text === '찬양').length,
+                          outlineCountText: [...document.querySelectorAll('.service-outline-row small')]
+                            .map((node) => node.textContent.replace(/\\s+/g, ' ').trim())
+                            .filter((text) => /슬라이드|항목|곡/.test(text)),
+                          outlineStartNumbers: [...document.querySelectorAll('.service-outline-row[data-service-outline-slide]:not([disabled])')]
+                            .slice(0, 12)
+                            .map((row) => ({
+                              slide: Number(row.dataset.serviceOutlineSlide),
+                              start: row.querySelector('.service-outline-start')?.textContent.trim() || '',
+                              align: getComputedStyle(row.querySelector('.service-outline-start')).textAlign
+                            })),
                           collapsedBoardSubgroups: document.querySelectorAll('.svc-board-subgroup.collapsed-head').length,
                           mainPraiseSubgroupLabels: (() => {
                             const group = { kind: 'main-praise', label: '찬양', subgroups: [] };
@@ -2034,6 +2107,11 @@ def main() -> int:
                         and presenter_terms["outlineGroups"] >= 1
                         and presenter_terms["multiOutlineGroups"] >= 1
                         and presenter_terms["childPraiseMarkers"] == 0
+                        and presenter_terms["outlineCountText"] == []
+                        and all(
+                            item["start"] == str(item["slide"] + 1) and item["align"] == "right"
+                            for item in presenter_terms["outlineStartNumbers"]
+                        )
                         and presenter_terms["collapsedBoardSubgroups"] >= 1
                         and presenter_terms["mainPraiseSubgroupLabels"] == ["찬양", "찬양 1"]
                         and presenter_terms["doxologyScoreSectionTitle"] == "송영"
@@ -2064,6 +2142,87 @@ def main() -> int:
                         pass_("presenter-terminology", json.dumps(presenter_terms, ensure_ascii=False))
                     else:
                         fail("presenter-terminology", json.dumps(presenter_terms, ensure_ascii=False))
+
+                    outline_scroll_seed = page.evaluate(
+                        """
+                        () => {
+                          delete window.__mindexOutlineScrollTarget;
+                          if (!window.__mindexOriginalScrollIntoView) {
+                            window.__mindexOriginalScrollIntoView = Element.prototype.scrollIntoView;
+                          }
+                          Element.prototype.scrollIntoView = function(options) {
+                            if (this.matches?.('.svc-board-subgroup, .svc-slide-thumb')) {
+                              const thumb = this.matches('.svc-slide-thumb')
+                                ? this
+                                : this.querySelector('.svc-slide-thumb[data-presenter-index][data-service-id]');
+                              window.__mindexOutlineScrollTarget = {
+                                className: this.className || '',
+                                serviceId: thumb?.dataset.serviceId || '',
+                                index: Number(thumb?.dataset.presenterIndex ?? -1),
+                                block: options?.block || '',
+                                behavior: options?.behavior || ''
+                              };
+                            }
+                          };
+                          const rows = [...document.querySelectorAll('.service-outline-row[data-service-outline-slide]:not([disabled])')]
+                            .filter((row) => Number(row.dataset.serviceOutlineSlide) > 0);
+                          const row = rows[rows.length - 1] || null;
+                          if (!row) return null;
+                          row.dataset.smokeOutlineScroll = '1';
+                          return {
+                            serviceId: row.dataset.serviceOutlineService || '',
+                            index: Number(row.dataset.serviceOutlineSlide),
+                            text: row.textContent.replace(/\\s+/g, ' ').trim()
+                          };
+                        }
+                        """
+                    )
+                    if outline_scroll_seed:
+                        page.click('[data-smoke-outline-scroll="1"]')
+                        page.wait_for_function("() => Boolean(window.__mindexOutlineScrollTarget)", timeout=5000)
+                        outline_scroll_state = page.evaluate(
+                            """
+                            (expected) => {
+                              const target = window.__mindexOutlineScrollTarget || {};
+                              Element.prototype.scrollIntoView = window.__mindexOriginalScrollIntoView;
+                              return {
+                                expected,
+                                target,
+                                presenterIndex: state.presenter.index,
+                                activeThumbs: document.querySelectorAll(`.svc-slide-thumb.active[data-presenter-index="${expected.index}"]`).length
+                              };
+                            }
+                            """,
+                            outline_scroll_seed,
+                        )
+                        if (
+                            outline_scroll_state["target"]["serviceId"] == outline_scroll_seed["serviceId"]
+                            and outline_scroll_state["target"]["index"] == outline_scroll_seed["index"]
+                            and outline_scroll_state["target"]["block"] == "center"
+                            and outline_scroll_state["target"]["behavior"] == "smooth"
+                            and outline_scroll_state["presenterIndex"] == outline_scroll_seed["index"]
+                            and outline_scroll_state["activeThumbs"] >= 1
+                        ):
+                            pass_("presenter-outline-scroll", json.dumps(outline_scroll_state, ensure_ascii=False))
+                        else:
+                            fail("presenter-outline-scroll", json.dumps(outline_scroll_state, ensure_ascii=False))
+                    else:
+                        skip("presenter-outline-scroll", "No outline row with slide target.")
+
+                    page.evaluate(
+                        """
+                        (serviceId) => {
+                          if (state.presenter.serviceId === serviceId) {
+                            state.presenter.index = 0;
+                            state.presenter.safetyBlank = false;
+                            state.presenter.liveScripture = { ...state.presenter.liveScripture, active: false, slide: null };
+                            state.presenter.livePraise = emptyLivePraiseState(state.presenter.livePraise?.draft || state.presenter.livePraise?.query || "");
+                            renderPresenterControlState(serviceId);
+                          }
+                        }
+                        """,
+                        service_for_slides["id"],
+                    )
 
                     page.evaluate(
                         """

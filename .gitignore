@@ -7,6 +7,7 @@ __pycache__/
 .env.*
 mindex.local.js
 .claude/
+.cache/
 scripts/*
 !scripts/audit_mindex_content.py
 !scripts/activities-schema.sql

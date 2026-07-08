@@ -980,7 +980,12 @@ def main() -> int:
                 title_assignee_state = page.evaluate(
                     """
                     () => {
-                      const service = { id: '__smoke_title_service__', type_id: 'monthly', date: '2026-07-04' };
+                      const service = {
+                        id: '__smoke_title_service__',
+                        type_id: 'sunday-second',
+                        date: '2026-07-04',
+                        worshipLeader: '김남영 목사'
+                      };
                       const items = [
                         {
                           id: '__smoke_prayer_title__',
@@ -1001,8 +1006,15 @@ def main() -> int:
                           assignee: '김남영 목사',
                           memo: serializeServiceItemMemo({ elementType: 'title_person' }),
                         },
+                        {
+                          id: '__smoke_offering_prayer_title__',
+                          label: '봉헌기도',
+                          raw_title: '봉헌기도',
+                          assignee: '인도자',
+                          memo: serializeServiceItemMemo({ elementType: 'title_person' }),
+                        },
                       ];
-                      return items.map((item, index) => {
+                      const slides = items.map((item, index) => {
                         const slide = buildPresenterSlidesForServiceItem(item, service, index)[0] || {};
                         return {
                           elementType: slide.elementType || '',
@@ -1015,11 +1027,26 @@ def main() -> int:
                           html: renderPresenterSlideFrame(slide),
                         };
                       });
+                      const offeringSlides = buildPresenterSlidesForServiceItem(items[3], service, 3);
+                      const offeringGroup = groupPresenterSlidesBySection(offeringSlides, service.id)[0] || {};
+                      const offeringSubgroup = offeringGroup.subgroups?.[0] || {};
+                      const offeringHeadHtml = renderPresenterBoardSubgroup(offeringSubgroup, 0, service.id, { showHead: true });
+                      const offeringHead = document.createElement('div');
+                      offeringHead.innerHTML = offeringHeadHtml;
+                      return {
+                        slides,
+                        offeringBoard: {
+                          label: offeringSubgroup.label || '',
+                          title: offeringSubgroup.title || '',
+                          span: offeringHead.querySelector('.svc-board-subgroup-head span')?.textContent.trim() || '',
+                          strong: offeringHead.querySelector('.svc-board-subgroup-head strong')?.textContent.trim() || '',
+                        }
+                      };
                     }
                     """
                 )
                 if (
-                    title_assignee_state == [
+                    title_assignee_state["slides"] == [
                         {
                             "elementType": "title_assignee",
                             "layout": "lower_bar_text",
@@ -1028,7 +1055,7 @@ def main() -> int:
                             "title": "기도",
                             "assignee": "박귀서 장로",
                             "text": "기도\n박귀서 장로",
-                            "html": title_assignee_state[0]["html"],
+                            "html": title_assignee_state["slides"][0]["html"],
                         },
                         {
                             "elementType": "title_assignee",
@@ -1038,7 +1065,7 @@ def main() -> int:
                             "title": "성경봉독",
                             "assignee": "대하 15:8–15",
                             "text": "성경봉독\n대하 15:8–15",
-                            "html": title_assignee_state[1]["html"],
+                            "html": title_assignee_state["slides"][1]["html"],
                         },
                         {
                             "elementType": "title_assignee",
@@ -1048,10 +1075,26 @@ def main() -> int:
                             "title": "정함",
                             "assignee": "김남영 목사",
                             "text": "정함\n김남영 목사",
-                            "html": title_assignee_state[2]["html"],
+                            "html": title_assignee_state["slides"][2]["html"],
+                        },
+                        {
+                            "elementType": "title_assignee",
+                            "layout": "lower_bar_text",
+                            "type": "title-assignee",
+                            "renderClass": "title-assignee",
+                            "title": "봉헌기도",
+                            "assignee": "김남영 목사",
+                            "text": "봉헌기도\n김남영 목사",
+                            "html": title_assignee_state["slides"][3]["html"],
                         },
                     ]
-                    and all("presenter-title-assignee" in item["html"] for item in title_assignee_state)
+                    and all("presenter-title-assignee" in item["html"] for item in title_assignee_state["slides"])
+                    and title_assignee_state["offeringBoard"] == {
+                        "label": "봉헌기도",
+                        "title": "김남영 목사",
+                        "span": "봉헌기도",
+                        "strong": "김남영 목사",
+                    }
                 ):
                     pass_("presenter-title-assignee-slides", json.dumps(title_assignee_state, ensure_ascii=False))
                 else:
@@ -3226,10 +3269,10 @@ def main() -> int:
                           id: '__smoke_presenter_switch_item_1__',
                           service_id: service.id,
                           sort_order: 1,
-                          label: '찬양',
-                          raw_title: '전환 테스트 찬양',
+                          label: '안내',
+                          raw_title: '전환 테스트',
                           memo: JSON.stringify({
-                            slides: ['[Verse 1]\\n전환 후 첫 슬라이드', '[Chorus]\\n전환 후 후렴'],
+                            slides: ['전환 후 첫 슬라이드', '전환 후 둘째 슬라이드'],
                           }),
                         },
                       ]);
@@ -3466,6 +3509,7 @@ def main() -> int:
                       if (!state.serviceTypes.some((item) => item.id === service.type_id)) {
                         state.serviceTypes.push({ id: service.type_id, name: '금요기도회', sort_order: 2 });
                       }
+                      const smokeSong = state.songs[0] || null;
                       state.services = [
                         service,
                         ...state.services.filter((item) => item.id !== service.id),
@@ -3492,6 +3536,8 @@ def main() -> int:
                           sort_order: 2,
                           label: '찬양',
                           raw_title: '금요기도회 찬양',
+                          song_id: smokeSong?.id || '',
+                          version_id: smokeSong ? getDefaultVersionId(smokeSong) : '',
                           memo: JSON.stringify({
                             slides: ['[Verse 1]\\n보이지 않아도\\n주님만 의지해'],
                           }),
@@ -3523,12 +3569,53 @@ def main() -> int:
                 else:
                     fail("presenter-fullscreen-ready-image", json.dumps(fullscreen_ready_state, ensure_ascii=False))
 
+                default_background_state = page.evaluate(
+                    """
+                    () => {
+                      const cases = [
+                        { type_id: 'sunday-first', date: '2026-07-05', expected: '26-A4.png', chromakey: false },
+                        { type_id: 'young-adult', date: '2026-01-04', expected: '26-A1.png', chromakey: false },
+                        { type_id: 'friday', date: '2026-03-06', expected: '26-B2.png', chromakey: false },
+                        { type_id: 'youth', date: '2026-01-04', expected: '26-B1.png', chromakey: false },
+                        { type_id: 'children', date: '2026-01-04', expected: '26-C1.png', chromakey: false },
+                        { type_id: 'sunday-second', date: '2026-07-05', expected: '', chromakey: true },
+                        { type_id: 'sunday-main', date: '2026-07-05', expected: '', chromakey: true },
+                        { type_id: 'wednesday', date: '2026-07-08', expected: '', chromakey: true },
+                        { type_id: 'monthly', date: '2026-07-03', expected: '', chromakey: true },
+                      ];
+                      return cases.map((entry) => {
+                        const service = {
+                          id: `__smoke_default_bg_${entry.type_id}__`,
+                          type_id: entry.type_id,
+                          date: entry.date,
+                          title: '',
+                          tags: [],
+                        };
+                        return {
+                          ...entry,
+                          actualChromakey: presenterServiceUsesChromakey(service),
+                          sources: presenterBackgroundSourcesForService(service),
+                        };
+                      });
+                    }
+                    """
+                )
+                default_background_ok = all(
+                    item["actualChromakey"] == item["chromakey"]
+                    and (
+                        (not item["expected"] and not item["sources"])
+                        or any(item["expected"] in source for source in item["sources"])
+                    )
+                    for item in default_background_state
+                )
+                if default_background_ok:
+                    pass_("presenter-default-background-groups", json.dumps(default_background_state, ensure_ascii=False))
+                else:
+                    fail("presenter-default-background-groups", json.dumps(default_background_state, ensure_ascii=False))
+
                 no_chromakey_payload = page.evaluate(
                     """
                     () => {
-                      const missingBackgroundFile = '26-A2.png';
-                      WORSHIP_BACKGROUND_STATIC_FILES.delete(missingBackgroundFile);
-                      delete state.worshipBackgroundRegistry[missingBackgroundFile];
                       const service = {
                         id: '__smoke_presenter_background_service__',
                         type_id: 'friday',
@@ -3537,9 +3624,13 @@ def main() -> int:
                         leader: '테스트',
                         tags: [],
                       };
+                      const missingBackgroundFile = presenterDefaultBackgroundFileNameForService(service);
+                      WORSHIP_BACKGROUND_STATIC_FILES.delete(missingBackgroundFile);
+                      delete state.worshipBackgroundRegistry[missingBackgroundFile];
                       if (!state.serviceTypes.some((item) => item.id === service.type_id)) {
                         state.serviceTypes.push({ id: service.type_id, name: '금요기도회', sort_order: 2 });
                       }
+                      const smokeSong = state.songs[0] || null;
                       state.services = [
                         service,
                         ...state.services.filter((item) => item.id !== service.id),
@@ -3551,6 +3642,8 @@ def main() -> int:
                           sort_order: 1,
                           label: '찬양',
                           raw_title: '금요기도회 찬양',
+                          song_id: smokeSong?.id || '',
+                          version_id: smokeSong ? getDefaultVersionId(smokeSong) : '',
                           memo: JSON.stringify({
                             slides: ['[Verse 1]\\n보이지 않아도\\n주님만 의지해'],
                           }),
@@ -3669,6 +3762,7 @@ def main() -> int:
                           _worshipChromakey: false,
                         });
                       }
+                      const smokeSong = state.songs[0] || null;
                       state.services = [
                         service,
                         ...state.services.filter((item) => item.id !== service.id),
@@ -3680,6 +3774,8 @@ def main() -> int:
                           sort_order: 1,
                           label: '찬양',
                           raw_title: '청소년부 찬양',
+                          song_id: smokeSong?.id || '',
+                          version_id: smokeSong ? getDefaultVersionId(smokeSong) : '',
                           memo: JSON.stringify({
                             slides: ['[Verse 1]\\n주님만 바라봅니다'],
                           }),

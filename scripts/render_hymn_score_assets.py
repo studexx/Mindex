@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import shutil
 import subprocess
 import tempfile
@@ -60,14 +61,18 @@ class RenderTask:
 
 
 def run(command: list[str], *, cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
+    result = subprocess.run(
         command,
         cwd=str(cwd) if cwd else None,
         text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
-        check=True,
     )
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"Command failed ({result.returncode}): {' '.join(command)}\n{result.stdout}"
+        )
+    return result
 
 
 def otool_libraries(path: Path) -> str:
@@ -122,6 +127,8 @@ def export_deck_to_pdf(source_path: Path, cache_dir: Path, force: bool) -> Path:
         raise FileNotFoundError(f"Source PPTX not found: {source_path}")
     deck_dir = cache_dir / deck_cache_key(source_path)
     deck_dir.mkdir(parents=True, exist_ok=True)
+    if not deck_dir.is_dir():
+        raise RuntimeError(f"Could not create LibreOffice export directory: {deck_dir}")
     pdf_path = deck_dir / f"{source_path.stem}.pdf"
     if (
         pdf_path.exists()
@@ -147,40 +154,105 @@ def export_deck_to_pdf(source_path: Path, cache_dir: Path, force: bool) -> Path:
 
 
 def render_pdf_page_to_image(
-    pdf_path: Path,
-    page_number: int,
+    page_png_path: Path,
     output_path: Path,
     image_format: str,
     quality: int,
 ) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix="mindex-hymn-page-") as tmp:
-        prefix = Path(tmp) / "page"
-        run([
-            str(PDFTOPPM),
-            "-f",
-            str(page_number),
-            "-l",
-            str(page_number),
-            "-singlefile",
-            "-png",
-            "-r",
-            "160",
-            str(pdf_path),
-            str(prefix),
-        ])
-        png_path = prefix.with_suffix(".png")
-        if not png_path.exists():
-            raise RuntimeError(f"pdftoppm did not write expected page image: {png_path}")
-        image = Image.open(png_path).convert("RGB")
-        if image.size != OUTPUT_SIZE:
-            image = image.resize(OUTPUT_SIZE, Image.Resampling.LANCZOS)
-        if image_format == "webp":
-            image.save(output_path, format="WEBP", quality=quality, method=6)
-        elif image_format == "png":
-            image.save(output_path, format="PNG", optimize=True)
+    image = Image.open(page_png_path).convert("RGB")
+    if image.size != OUTPUT_SIZE:
+        image = image.resize(OUTPUT_SIZE, Image.Resampling.LANCZOS)
+    if image_format == "webp":
+        image.save(output_path, format="WEBP", quality=quality, method=6)
+    elif image_format == "png":
+        image.save(output_path, format="PNG", optimize=True)
+    else:
+        raise ValueError(f"Unsupported output format: {image_format}")
+
+
+def render_pdf_range_to_pngs(
+    pdf_path: Path,
+    first_page: int,
+    last_page: int,
+    tmp_dir: Path,
+    render_dpi: int,
+) -> dict[int, Path]:
+    prefix = tmp_dir / "page"
+    run([
+        str(PDFTOPPM),
+        "-f",
+        str(first_page),
+        "-l",
+        str(last_page),
+        "-png",
+        "-r",
+        str(render_dpi),
+        str(pdf_path),
+        str(prefix),
+    ])
+    rendered: dict[int, Path] = {}
+    for png_path in tmp_dir.glob("page-*.png"):
+        page_text = png_path.stem.removeprefix("page-")
+        if page_text.isdigit():
+            rendered[int(page_text)] = png_path
+    return rendered
+
+
+def parse_exported_slide_dirs(values: list[str] | None) -> dict[str, Path]:
+    mappings: dict[str, Path] = {}
+    for raw in values or []:
+        if "=" in raw:
+            source_name, directory = raw.split("=", 1)
         else:
-            raise ValueError(f"Unsupported output format: {image_format}")
+            directory = raw
+            source_name = f"{Path(raw).name}.pptx"
+        source_name = source_name.strip()
+        if source_name and not source_name.lower().endswith(".pptx"):
+            source_name = f"{source_name}.pptx"
+        path = Path(directory).expanduser()
+        if not source_name:
+            raise ValueError(f"Missing source name for exported slide directory: {raw}")
+        if not path.is_dir():
+            raise FileNotFoundError(f"Exported slide directory not found: {path}")
+        mappings[source_name] = path
+    return mappings
+
+
+def index_exported_slide_dir(directory: Path) -> dict[int, Path]:
+    indexed: dict[int, Path] = {}
+    for path in directory.iterdir():
+        if path.suffix.lower() not in {".png", ".jpg", ".jpeg", ".webp"}:
+            continue
+        match = re.search(r"(\d+)$", path.stem)
+        if match:
+            indexed[int(match.group(1))] = path
+    return indexed
+
+
+def render_exported_slide_tasks(
+    source_name: str,
+    source_tasks: list[RenderTask],
+    exported_dir: Path,
+    image_format: str,
+    quality: int,
+    done: int,
+    total: int,
+) -> int:
+    exported = index_exported_slide_dir(exported_dir)
+    missing = sorted({task.source_slide for task in source_tasks if task.source_slide not in exported})
+    if missing:
+        preview = ", ".join(str(value) for value in missing[:20])
+        more = f" ... {len(missing) - 20} more" if len(missing) > 20 else ""
+        raise RuntimeError(f"{source_name} exported slides missing: {preview}{more}")
+
+    print(f"PNG {source_name} <- {exported_dir}", flush=True)
+    for task in source_tasks:
+        render_pdf_page_to_image(exported[task.source_slide], task.output_path, image_format, quality)
+        done += 1
+        if done == total or done % 50 == 0:
+            print(f"WROTE {done}/{total} {task.output_path.relative_to(ROOT)}", flush=True)
+    return done
 
 
 def collect_tasks(
@@ -220,6 +292,9 @@ def render_tasks(
     quality: int,
     force_export: bool,
     dry_run: bool,
+    page_chunk_size: int,
+    render_dpi: int,
+    exported_slide_dirs: dict[str, Path],
 ) -> None:
     grouped: dict[Path, list[RenderTask]] = defaultdict(list)
     for task in tasks:
@@ -228,6 +303,22 @@ def render_tasks(
     total = len(tasks)
     done = 0
     for source_path, source_tasks in grouped.items():
+        exported_dir = exported_slide_dirs.get(source_path.name)
+        if exported_dir:
+            if dry_run:
+                print(f"DRY PNG {source_path.name} <- {exported_dir} :: {len(source_tasks)} slides")
+                continue
+            done = render_exported_slide_tasks(
+                source_path.name,
+                source_tasks,
+                exported_dir,
+                image_format,
+                quality,
+                done,
+                total,
+            )
+            continue
+
         if dry_run:
             print(f"DRY EXPORT {source_path} :: {len(source_tasks)} slides")
             for task in source_tasks[:5]:
@@ -237,25 +328,54 @@ def render_tasks(
             continue
 
         pdf_path = export_deck_to_pdf(source_path, cache_dir, force_export)
-        print(f"PDF {source_path.name} -> {pdf_path.relative_to(ROOT) if pdf_path.is_relative_to(ROOT) else pdf_path}")
+        pdf_display = pdf_path.relative_to(ROOT) if pdf_path.is_relative_to(ROOT) else pdf_path
+        print(f"PDF {source_path.name} -> {pdf_display}", flush=True)
+
+        tasks_by_page: dict[int, list[RenderTask]] = defaultdict(list)
         for task in source_tasks:
-            render_pdf_page_to_image(pdf_path, task.source_slide, task.output_path, image_format, quality)
-            done += 1
-            if done == total or done % 50 == 0:
-                print(f"WROTE {done}/{total} {task.output_path.relative_to(ROOT)}")
+            tasks_by_page[task.source_slide].append(task)
+
+        pages = sorted(tasks_by_page)
+        with tempfile.TemporaryDirectory(prefix="mindex-hymn-pages-") as tmp:
+            tmp_root = Path(tmp)
+            for chunk_start in range(0, len(pages), page_chunk_size):
+                chunk_pages = pages[chunk_start:chunk_start + page_chunk_size]
+                first_page = chunk_pages[0]
+                last_page = chunk_pages[-1]
+                chunk_dir = tmp_root / f"{first_page}-{last_page}"
+                chunk_dir.mkdir()
+                print(f"PAGES {first_page}-{last_page}", flush=True)
+                rendered_pages = render_pdf_range_to_pngs(pdf_path, first_page, last_page, chunk_dir, render_dpi)
+                for page in chunk_pages:
+                    page_png = rendered_pages.get(page)
+                    if not page_png:
+                        raise RuntimeError(f"Missing rendered PDF page {page} from {pdf_path}")
+                    for task in tasks_by_page[page]:
+                        render_pdf_page_to_image(page_png, task.output_path, image_format, quality)
+                        done += 1
+                        if done == total or done % 50 == 0:
+                            print(f"WROTE {done}/{total} {task.output_path.relative_to(ROOT)}", flush=True)
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Render hymn score assets from source PPTX decks using native PDF export."
+        description="Render hymn score assets from native PowerPoint exports or source PPTX decks."
     )
     parser.add_argument("--manifest", type=Path, default=DEFAULT_MANIFEST)
     parser.add_argument("--source-dir", type=Path, default=DEFAULT_SOURCE_DIR)
     parser.add_argument("--cache-dir", type=Path, default=DEFAULT_CACHE_DIR)
     parser.add_argument("--format", default="webp", choices=["png", "webp"])
     parser.add_argument("--quality", type=int, default=92)
+    parser.add_argument("--page-chunk-size", type=int, default=100)
+    parser.add_argument("--render-dpi", type=int, default=72)
     parser.add_argument("--hymns", nargs="*", help="Hymn numbers to render. Defaults to all manifest entries.")
     parser.add_argument("--force-export", action="store_true", help="Re-export deck PDFs even if cached.")
+    parser.add_argument(
+        "--exported-slide-dir",
+        action="append",
+        default=[],
+        help="Use PowerPoint-exported slide images for a source deck. Format: DB_HYMN1.pptx=/path/to/Slide*.png",
+    )
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
 
@@ -263,11 +383,24 @@ def main() -> int:
     source_dir = args.source_dir
     cache_dir = args.cache_dir if args.cache_dir.is_absolute() else ROOT / args.cache_dir
     hymns = {str(int(value)) if value.isdigit() else value for value in args.hymns} if args.hymns else None
+    exported_slide_dirs = parse_exported_slide_dirs(args.exported_slide_dir)
 
-    ensure_libreoffice_runtime()
     tasks = collect_tasks(manifest_path, source_dir, hymns, args.format)
-    print(f"READY {len(tasks)} slides from {len({task.source_path for task in tasks})} deck(s)")
-    render_tasks(tasks, cache_dir, args.format, args.quality, args.force_export, args.dry_run)
+    needs_pdf_fallback = any(task.source_path.name not in exported_slide_dirs for task in tasks)
+    if needs_pdf_fallback and not args.dry_run:
+        ensure_libreoffice_runtime()
+    print(f"READY {len(tasks)} slides from {len({task.source_path for task in tasks})} deck(s)", flush=True)
+    render_tasks(
+        tasks,
+        cache_dir,
+        args.format,
+        args.quality,
+        args.force_export,
+        args.dry_run,
+        args.page_chunk_size,
+        args.render_dpi,
+        exported_slide_dirs,
+    )
     return 0
 
 

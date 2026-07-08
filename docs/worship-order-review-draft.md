@@ -18,35 +18,42 @@ It is not runtime seed data yet.
 
 ## Public Sunday 1st And 2nd Service
 
-Use one shared base template unless we confirm meaningful differences between
-1st and 2nd service.
+Use shared section/element templates for common public worship pieces, with
+service-level order differences for 1st and 2nd service.
+
+1st service uses clean/fullscreen output. 2nd service uses chromakey output.
 
 | Order | Section | Element | Type | Bulletin Fill | Manual Fill |
 | --- | --- | --- | --- | --- | --- |
 | 1 | 준비 | 예배 준비 | video |  | asset |
-| 2 | 신앙고백 | 사도신경 | body |  | fixed body |
-| 3 | 찬양 | 찬양 | praise |  | song/version/form |
-| 4 | 참회기도 | 참회기도 | body |  | fixed or editable body |
-| 5 | 대표기도 | 대표기도 | title_person | prayer leader |  |
-| 6 | 성경봉독 | 성경봉독 | scripture_reading | scripture reference | scripture link |
-| 7 | 특송 | 특송 | title_person or praise | performer/title | song link when known |
-| 8 | 설교 | 설교 | title_person | sermon title, preacher |  |
-| 9 | 결단 | 결단기도 | title_person |  | optional |
-| 10 | 봉헌 | 봉헌찬양 | praise |  | song/version/form |
-| 11 | 봉헌 | 봉헌기도 | title_person | dedication prayer leader |  |
-| 12 | 교회소식 | 교회소식 | plain_text | announcements |  |
-| 13 | 새가족환영 | 새가족환영 | plain_text |  | optional |
-| 14 | 송영 | 송영 | praise |  | song/version/form |
-| 15 | 축도 | 축도 | title_person | benediction pastor |  |
-| 16 | 마무리 | 마무리 | image |  | public closing visual |
+| 2 | 신앙고백 | 섹션 제목 슬라이드 | title_content |  | fixed `신앙고백 / 사도신경` |
+| 3 | 신앙고백 | 사도신경 | body |  | fixed body |
+| 4 | 찬양 | 찬양 1-3 | praise/score | hymn number/title | song/version/form |
+| 5 | 참회기도 | 참회기도 | title |  | fixed title |
+| 6 | 대표기도 | 기도 | title_person | prayer leader | 2nd service normally includes; 1st omits |
+| 7 | 성경봉독 | 성경봉독 | scripture_reading | scripture reference | first title slide |
+| 8 | 성경봉독 | 성경 본문 | scripture_body | scripture reference | verse slides |
+| 9 | 특송 | 특송 | praise | performer/title | 2nd service only unless special case |
+| 10 | 설교 | 설교 | title_person | sermon title, preacher |  |
+| 11 | 설교 | 본문 | scripture_body | sermon scripture | optional verse slides |
+| 12 | 설교 | 실시간 성구 송출 | activity |  | runtime presenter control |
+| 13 | 결단 | 결단기도 | title |  | response song is special case |
+| 14 | 봉헌 | 봉헌찬송 | praise/score | hymn number/title | offering prayer leader usually worship leader unless special case |
+| 15 | 봉헌 | 봉헌기도 | title_person | dedication prayer leader |  |
+| 16 | 교회소식 | 교회소식 | title | announcements |  |
+| 17 | 송영 | 송영 | praise/score |  | 2026 1st/2nd default: hymn 5 |
+| 18 | 축도 | 축도 | title_person | leader | use when worship leader is pastor |
+| 19 | 주기도문 | 주기도문 | body | leader | 1st fallback when worship leader is not pastor |
+| 20 | 마무리 | 마무리 | image |  | public closing visual |
 
 Open checks:
 
 - `환영` can appear in source order material, but it is not an explicit
   presenter output element.
-- Confirm whether 1st service ends with `축도`, `주기도문`, or varies by week.
-- Confirm whether `결단기도` appears as an actual order item or only as a
-  presenter placeholder after sermon.
+- 1st service should choose `축도` when the worship leader is a pastor; otherwise
+  use `주기도문`, regardless of the bulletin shorthand.
+- Public worship usually has no response song; `결단찬양` is a special-case
+  addition.
 
 ## Public Sunday 3rd Service
 
@@ -145,10 +152,12 @@ Keep the already reviewed monthly first-day decisions:
 
 Public worship `특송` has a conditional hymn rule:
 
-- If the linked song is a hymn: `1절`, `2절`, blank interlude slide, `마지막 절`.
+- If the linked song is a hymn: `1절`, `후렴`, `2절`, `후렴`, blank interlude
+  slide, `마지막 절`, `후렴`, and `Coda` only when the linked version provides
+  `Coda` or `Amen`.
 - If the linked song is CCM: use a manual preset by performer/song when known.
 
-This rule belongs to the public-worship `특송` element template. It should not
+This rule belongs to the public-worship `특송` section/element template. It should not
 be applied globally to all praise elements.
 
 ## Presenter Desktop Direction
