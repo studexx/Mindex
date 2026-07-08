@@ -620,7 +620,7 @@ function liturgicalBodyTitle(item = {}) {
 function liturgicalBodyText(item = {}, memo = parseServiceItemMemo(item?.memo), displayText = "") {
   if (memo.slides?.length) return memo.slides.join("\n\n").trim();
   const title = liturgicalBodyTitle(item);
-  const text = String(displayText || item?.raw_title || "").trim();
+  const text = String(item?.raw_title || displayText || "").trim();
   if (!text || compactSearchValue(text) === compactSearchValue(title)) return "";
   return text;
 }

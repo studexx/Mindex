@@ -17355,9 +17355,10 @@ function buildServicePresenterSlides(serviceId) {
       .slice()
       .sort((a, b) => a.sort - b.sort)
       .map((slide) => presenterSlideWithServiceAssigneeFallback(slide, service));
+    const normalizedSlides = normalizePresenterSlidesForServiceOutput(slides, service);
     const serviceSlides = slides[0] && isPresenterPreparationSlide(slides[0])
-      ? slides
-      : [presenterReadySlide(service), ...slides];
+      ? normalizedSlides
+      : [presenterReadySlide(service), ...normalizedSlides];
     return withPresenterElementTrailingBlanks(withMainPraiseIntroSlides(serviceSlides, service), service);
   }
 
@@ -17365,8 +17366,35 @@ function buildServicePresenterSlides(serviceId) {
     .sort((a, b) => a.sort_order - b.sort_order)
     .flatMap((item, index) => buildPresenterSlidesForServiceItem(item, service, index))
     .filter(Boolean);
+  slides = normalizePresenterSlidesForServiceOutput(slides, service);
   if (!slides[0] || !isPresenterPreparationSlide(slides[0])) slides = [presenterReadySlide(service), ...slides];
   return withPresenterElementTrailingBlanks(withMainPraiseIntroSlides(slides, service), service);
+}
+
+function normalizePresenterSlidesForServiceOutput(slides = [], service = null) {
+  if (!presenterServiceUsesChromakey(service)) return slides;
+  return slides.map((slide) => {
+    if (String(slide?.sectionKey || "").trim() !== "closing_visual") return slide;
+    if (presenterSlideLayout(slide) !== PRESENTER_SLIDE_LAYOUTS.MEDIA) return slide;
+    return {
+      ...slide,
+      elementType: PRESENTER_ELEMENT_TYPES.BLANK,
+      layout: PRESENTER_SLIDE_LAYOUTS.BLANK,
+      type: "blank",
+      title: slide.title || "마무리",
+      text: "",
+      body: "",
+      bodyText: "",
+      marker: "",
+      imageSrc: "",
+      videoSrc: "",
+      media: {},
+      asset: {},
+      sourceType: "",
+      componentType: "",
+      outputContext: "chromakey",
+    };
+  });
 }
 
 function presenterSlideWithServiceAssigneeFallback(slide = {}, service = null) {
@@ -17698,6 +17726,24 @@ function presenterSlideIsTitleContent(slide) {
   return normalizeTitle(title) !== normalizeTitle(body);
 }
 
+function presenterPlaceholderHasOutputContent(item, memo, displayText, song, service) {
+  const elementType = serviceMemoElementType(memo);
+  if (isLiturgicalBodyServiceItem(item)) return Boolean(liturgicalBodyText(item, memo, displayText));
+  if (isScriptureBodyServiceItem(item)) return Boolean(serviceScriptureTextPayload(item, memo).verses.length);
+  if (elementType === "scripture_reading") return Boolean(String(displayText || item?.raw_title || "").trim());
+  if (elementType === "praise") return Boolean(song || normalizeServiceAsset(memo?.asset).url);
+  if (elementType === "title" || elementType === "title_content") return Boolean(String(displayText || item?.label || "").trim());
+  if (presenterMemoElementIsTitleSlide(elementType)) {
+    return Boolean(
+      String(displayText || item?.raw_title || item?.label || "").trim()
+      || cleanServiceAssignee(item?.assignee)
+      || serviceWorshipLeaderLabel(service)
+    );
+  }
+  if (["image", "video", "audio", "file"].includes(elementType)) return Boolean(normalizeServiceAsset(memo?.asset).url);
+  return false;
+}
+
 function buildPresenterSlidesForServiceItem(item, service, index) {
   const label = item.label || "";
   const displayText = serviceItemDisplayText(item);
@@ -17713,7 +17759,9 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
     return [presenterPreparationSlide(service, item, index)];
   }
   const confessionPrayer = isConfessionPrayerServiceItem(item);
-  if (isOrderSheetOnlyPlaceholderItem(item) && !confessionPrayer) return [];
+  if (isOrderSheetOnlyPlaceholderItem(item)
+    && !confessionPrayer
+    && !presenterPlaceholderHasOutputContent(item, memo, displayText, song, service)) return [];
   if (!displayText && !memoElementType && !confessionPrayer) return [];
   const section = presenterSectionForServiceItem(item, index, displayText, song, version);
   const withIntro = (slides) => presenterSlidesWithIntroSlide(item, section, index, memo, slides);

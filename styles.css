@@ -6017,7 +6017,7 @@ body[data-module="presenter"] .detail-pane {
   align-items: flex-start;
   justify-content: center;
   gap: 1.8cqh;
-  font-size: clamp(26px, 2.55cqw, 46px);
+  font-size: clamp(23px, 2.25cqw, 40px);
   font-weight: 800;
   line-height: 1.18;
   word-break: keep-all;
@@ -6025,7 +6025,7 @@ body[data-module="presenter"] .detail-pane {
 .presenter-liturgical-body-lines span {
   max-width: 100%;
   white-space: nowrap;
-  font-size: min(1em, calc(72cqw / (var(--line-chars, 24) * .72)));
+  font-size: min(1em, calc(64cqw / (var(--line-chars, 24) * .82)));
 }
 .presenter-liturgical-body-heading {
   display: flex;
@@ -6038,9 +6038,10 @@ body[data-module="presenter"] .detail-pane {
   text-align: right;
 }
 .presenter-liturgical-body-heading span {
+  display: block;
   max-width: 100%;
   white-space: nowrap;
-  font-size: min(clamp(72px, 8cqw, 132px), calc(28cqw / (var(--line-chars, 4) * .62)));
+  font-size: min(clamp(68px, 7.6cqw, 122px), calc(27cqw / (var(--line-chars, 4) * .7)));
   font-weight: 900;
   line-height: .95;
 }
@@ -6100,6 +6101,7 @@ body[data-module="presenter"] .detail-pane {
   word-break: keep-all;
 }
 .presenter-title-content-title {
+  display: block;
   max-width: 100%;
   color: var(--presenter-output-fg);
   font-size: min(clamp(58px, 7.2cqw, 122px), calc(86cqw / (var(--line-chars, 12) * .68)));

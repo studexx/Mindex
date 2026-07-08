@@ -1272,6 +1272,7 @@ def main() -> int:
                           slides: ['전능하사 천지를 만드신 하나님 아버지를 내가 믿사오며\\n그 외아들 우리 주 예수 그리스도를 믿사오니\\n이는 성령으로 잉태하사 동정녀 마리아에게 나시고\\n본디오 빌라도에게 고난을 받으사 십자가에 못 박혀 죽으시고\\n장사한 지 사흘 만에 죽은 자 가운데서 다시 살아나시며']
                         }),
                         _worshipSectionKey: 'creed',
+                        _worshipOrderSheetPlaceholder: true,
                       };
                       const chromakeySlides = buildPresenterSlidesForServiceItem(
                         creedItem,
@@ -1283,6 +1284,45 @@ def main() -> int:
                         { id: '__smoke_creed_fullscreen_service__', type_id: 'friday', date: '2026-07-03' },
                         1
                       );
+                      const previousServices = state.services.slice();
+                      const previousServiceItems = JSON.parse(JSON.stringify(state.serviceItems || {}));
+                      const scaffoldService = { id: '__smoke_public_creed_scaffold__', type_id: 'sunday-second', date: '2026-07-05', service_date: '2026-07-05' };
+                      state.services = state.services.filter((service) => service.id !== scaffoldService.id);
+                      state.services.push(scaffoldService);
+                      const scaffold = buildWorshipServiceScaffold(scaffoldService.id, scaffoldService.type_id);
+                      state.serviceItems[scaffoldService.id] = groupWorshipElements(scaffold.sections, scaffold.elements)[scaffoldService.id] || [];
+                      const scaffoldAllSlides = buildServicePresenterSlides(scaffoldService.id);
+                      const scaffoldSlides = scaffoldAllSlides
+                        .filter((slide) => slide.sectionKey === 'creed')
+                        .map((slide) => ({
+                          elementType: slide.elementType || '',
+                          layout: slide.layout || '',
+                          type: slide.type || '',
+                          title: slide.title || '',
+                          text: slide.text || '',
+                          lineCount: String(slide.text || '').split('\\n').length,
+                          chromakey: presenterSlideUsesChromakey(slide, true),
+                          outputContext: presenterSlideOutputContext(slide, true),
+                          renderClass: presenterSlideRenderClass(slide),
+                        }));
+                      const scaffoldClosingSlides = scaffoldAllSlides
+                        .filter((slide) => slide.sectionKey === 'closing_visual')
+                        .map((slide) => ({
+                          elementType: slide.elementType || '',
+                          layout: slide.layout || '',
+                          type: slide.type || '',
+                          title: slide.title || '',
+                          imageSrc: slide.imageSrc || '',
+                          chromakey: presenterSlideUsesChromakey(slide, true),
+                          outputContext: presenterSlideOutputContext(slide, true),
+                        }));
+                      const scaffoldOutputContexts = scaffoldAllSlides.reduce((contexts, slide) => {
+                        const context = presenterSlideOutputContext(slide, true);
+                        contexts[context] = (contexts[context] || 0) + 1;
+                        return contexts;
+                      }, {});
+                      state.services = previousServices;
+                      state.serviceItems = previousServiceItems;
                       return {
                         confession: {
                           elementType: confessionSlide.elementType || '',
@@ -1315,6 +1355,9 @@ def main() -> int:
                           text: slide.text || '',
                           html: renderPresenterSlideFrame(slide),
                         })),
+                        scaffold: scaffoldSlides,
+                        scaffoldClosing: scaffoldClosingSlides,
+                        scaffoldOutputContexts,
                       };
                     }
                     """
@@ -1354,6 +1397,26 @@ def main() -> int:
                     and title_and_liturgical_state["fullscreen"][1]["renderClass"] == "liturgical-body"
                     and "presenter-slide--liturgical-body" in title_and_liturgical_state["fullscreen"][1]["html"]
                     and "본디오 빌라도" in title_and_liturgical_state["fullscreen"][1]["text"]
+                    and len(title_and_liturgical_state["scaffold"]) >= 3
+                    and title_and_liturgical_state["scaffold"][0]["type"] == "title-content"
+                    and title_and_liturgical_state["scaffold"][0]["title"] == "신앙고백"
+                    and all(slide["chromakey"] is True for slide in title_and_liturgical_state["scaffold"])
+                    and all(slide["outputContext"] == "chromakey" for slide in title_and_liturgical_state["scaffold"])
+                    and title_and_liturgical_state["scaffoldOutputContexts"] == {"chromakey": 27}
+                    and title_and_liturgical_state["scaffoldClosing"] == [{
+                        "elementType": "blank",
+                        "layout": "blank",
+                        "type": "blank",
+                        "title": "마무리",
+                        "imageSrc": "",
+                        "chromakey": True,
+                        "outputContext": "chromakey",
+                    }]
+                    and all(
+                        slide["lineCount"] <= 2
+                        for slide in title_and_liturgical_state["scaffold"]
+                        if slide["type"] == "lyrics"
+                    )
                 ):
                     pass_("presenter-title-and-liturgical-body-contract", json.dumps(title_and_liturgical_state, ensure_ascii=False))
                 else:
