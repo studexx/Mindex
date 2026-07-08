@@ -5144,7 +5144,7 @@ body[data-module="presenter"] .detail-pane {
 }
 .svc-board-subgroup-head strong {
   min-width: 0;
-  max-width: min(56ch, 100%);
+  max-width: 100%;
   flex: 0 1 auto;
   overflow: hidden;
   color: var(--ink-2);
@@ -6158,14 +6158,21 @@ body[data-module="presenter"] .detail-pane {
   padding-left: 6.4cqw;
   text-align: left;
 }
+.presenter-slide--scripture .presenter-slide-text span {
+  display: block;
+  width: 100%;
+  font-size: min(1em, calc(76cqw / (var(--line-chars, 24) * .72)));
+}
 .presenter-slide--song-title .presenter-slide-text {
   font-size: clamp(38px, 3.7cqw, 72px);
   font-weight: 800;
 }
 .presenter-slide--song-title .presenter-section-song-title {
   display: grid;
-  grid-template-columns: minmax(0, 34cqw) minmax(0, 1fr);
-  gap: 4.2cqw;
+  width: 100%;
+  min-width: 0;
+  grid-template-columns: minmax(0, 28cqw) minmax(0, 1fr);
+  gap: 3.2cqw;
   align-content: center;
   align-items: center;
   text-align: left;
@@ -6173,18 +6180,19 @@ body[data-module="presenter"] .detail-pane {
 .presenter-section-song-title-heading,
 .presenter-section-song-title-name {
   min-width: 0;
-  overflow: visible;
-  text-overflow: clip;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 .presenter-section-song-title-heading {
-  font-size: min(1em, calc(31cqw / var(--line-chars, 8)));
+  font-size: min(1em, calc(25cqw / (var(--line-chars, 8) * .72)));
   font-weight: 800;
 }
 .presenter-section-song-title-name {
   justify-self: end;
   max-width: 100%;
-  font-size: min(.86em, calc(52cqw / var(--line-chars, 14)));
+  font-size: min(.82em, calc(48cqw / (var(--line-chars, 14) * .72)));
   font-weight: 700;
   text-align: right;
 }

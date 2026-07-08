@@ -1191,6 +1191,10 @@ def main() -> int:
                           elementType: dbSlide.elementType || '',
                           layout: dbSlide.layout || '',
                           type: dbSlide.type || '',
+                          chromakeyContext: presenterSlideOutputContext(dbSlide, true),
+                          chromakey: presenterSlideUsesChromakey(dbSlide, true),
+                          cleanContext: presenterSlideOutputContext(dbSlide, false),
+                          cleanChromakey: presenterSlideUsesChromakey(dbSlide, false),
                           renderClass: presenterSlideRenderClass(dbSlide),
                           title: dbSlide.title || '',
                           assignee: dbSlide.assignee || '',
@@ -1202,6 +1206,10 @@ def main() -> int:
                           elementType: fallbackSlide.elementType || '',
                           layout: fallbackSlide.layout || '',
                           type: fallbackSlide.type || '',
+                          chromakeyContext: presenterSlideOutputContext(fallbackSlide, true),
+                          chromakey: presenterSlideUsesChromakey(fallbackSlide, true),
+                          cleanContext: presenterSlideOutputContext(fallbackSlide, false),
+                          cleanChromakey: presenterSlideUsesChromakey(fallbackSlide, false),
                           renderClass: presenterSlideRenderClass(fallbackSlide),
                           title: fallbackSlide.title || '',
                           assignee: fallbackSlide.assignee || '',
@@ -1217,6 +1225,10 @@ def main() -> int:
                     title_content_state["db"]["elementType"] == "body_text"
                     and title_content_state["db"]["layout"] == "center_text"
                     and title_content_state["db"]["type"] == "title-content"
+                    and title_content_state["db"]["chromakeyContext"] == "chromakey"
+                    and title_content_state["db"]["chromakey"] is True
+                    and title_content_state["db"]["cleanContext"] == "clean"
+                    and title_content_state["db"]["cleanChromakey"] is False
                     and title_content_state["db"]["renderClass"] == "title-content"
                     and title_content_state["db"]["title"] == "교회소식"
                     and title_content_state["db"]["assignee"] == ""
@@ -1225,6 +1237,10 @@ def main() -> int:
                     and "다음 주 공동의회가 있습니다" in title_content_state["db"]["body"]
                     and title_content_state["fallback"]["elementType"] == "freeform"
                     and title_content_state["fallback"]["layout"] == "center_text"
+                    and title_content_state["fallback"]["chromakeyContext"] == "chromakey"
+                    and title_content_state["fallback"]["chromakey"] is True
+                    and title_content_state["fallback"]["cleanContext"] == "clean"
+                    and title_content_state["fallback"]["cleanChromakey"] is False
                     and title_content_state["fallback"]["renderClass"] == "title-content"
                     and title_content_state["fallback"]["title"] == "교회소식"
                     and title_content_state["fallback"]["assignee"] == ""
@@ -1252,6 +1268,7 @@ def main() -> int:
                         raw_title: '사도신경',
                         memo: serializeServiceItemMemo({
                           elementType: 'body',
+                          introSlide: { title: '신앙고백', body: '사도신경' },
                           slides: ['전능하사 천지를 만드신 하나님 아버지를 내가 믿사오며\\n그 외아들 우리 주 예수 그리스도를 믿사오니\\n이는 성령으로 잉태하사 동정녀 마리아에게 나시고\\n본디오 빌라도에게 고난을 받으사 십자가에 못 박혀 죽으시고\\n장사한 지 사흘 만에 죽은 자 가운데서 다시 살아나시며']
                         }),
                         _worshipSectionKey: 'creed',
@@ -1280,6 +1297,8 @@ def main() -> int:
                           elementType: slide.elementType || '',
                           layout: slide.layout || '',
                           type: slide.type || '',
+                          chromakey: presenterSlideUsesChromakey(slide, true),
+                          outputContext: presenterSlideOutputContext(slide, true),
                           renderClass: presenterSlideRenderClass(slide),
                           title: slide.title || '',
                           marker: slide.marker || '',
@@ -1289,6 +1308,8 @@ def main() -> int:
                           elementType: slide.elementType || '',
                           layout: slide.layout || '',
                           type: slide.type || '',
+                          chromakey: presenterSlideUsesChromakey(slide, false),
+                          outputContext: presenterSlideOutputContext(slide, false),
                           renderClass: presenterSlideRenderClass(slide),
                           title: slide.title || '',
                           text: slide.text || '',
@@ -1306,19 +1327,33 @@ def main() -> int:
                     and title_and_liturgical_state["confession"]["title"] == "참회기도"
                     and "presenter-title-assignee" in title_and_liturgical_state["confession"]["html"]
                     and 'presenter-slide--title"' not in title_and_liturgical_state["confession"]["html"]
-                    and len(title_and_liturgical_state["chromakey"]) >= 2
-                    and all(slide["elementType"] == "body_text" for slide in title_and_liturgical_state["chromakey"])
-                    and all(slide["layout"] == "lower_bar_text" for slide in title_and_liturgical_state["chromakey"])
-                    and all(slide["type"] == "lyrics" for slide in title_and_liturgical_state["chromakey"])
-                    and all(slide["renderClass"] == "lyrics" for slide in title_and_liturgical_state["chromakey"])
-                    and title_and_liturgical_state["chromakey"][0]["marker"] == "사도신경"
-                    and len(title_and_liturgical_state["fullscreen"]) == 1
-                    and title_and_liturgical_state["fullscreen"][0]["elementType"] == "body_text"
+                    and len(title_and_liturgical_state["chromakey"]) >= 3
+                    and title_and_liturgical_state["chromakey"][0]["elementType"] == "title_content"
+                    and title_and_liturgical_state["chromakey"][0]["layout"] == "center_text"
+                    and title_and_liturgical_state["chromakey"][0]["type"] == "title-content"
+                    and title_and_liturgical_state["chromakey"][0]["renderClass"] == "title-content"
+                    and title_and_liturgical_state["chromakey"][0]["title"] == "신앙고백"
+                    and all(slide["chromakey"] is True for slide in title_and_liturgical_state["chromakey"])
+                    and all(slide["outputContext"] == "chromakey" for slide in title_and_liturgical_state["chromakey"])
+                    and all(slide["elementType"] == "body_text" for slide in title_and_liturgical_state["chromakey"][1:])
+                    and all(slide["layout"] == "lower_bar_text" for slide in title_and_liturgical_state["chromakey"][1:])
+                    and all(slide["type"] == "lyrics" for slide in title_and_liturgical_state["chromakey"][1:])
+                    and all(slide["renderClass"] == "lyrics" for slide in title_and_liturgical_state["chromakey"][1:])
+                    and title_and_liturgical_state["chromakey"][1]["marker"] == "사도신경"
+                    and len(title_and_liturgical_state["fullscreen"]) == 2
+                    and title_and_liturgical_state["fullscreen"][0]["elementType"] == "title_content"
                     and title_and_liturgical_state["fullscreen"][0]["layout"] == "center_text"
-                    and title_and_liturgical_state["fullscreen"][0]["type"] == "liturgical-body"
-                    and title_and_liturgical_state["fullscreen"][0]["renderClass"] == "liturgical-body"
-                    and "presenter-slide--liturgical-body" in title_and_liturgical_state["fullscreen"][0]["html"]
-                    and "본디오 빌라도" in title_and_liturgical_state["fullscreen"][0]["text"]
+                    and title_and_liturgical_state["fullscreen"][0]["type"] == "title-content"
+                    and title_and_liturgical_state["fullscreen"][0]["renderClass"] == "title-content"
+                    and title_and_liturgical_state["fullscreen"][0]["title"] == "신앙고백"
+                    and all(slide["chromakey"] is False for slide in title_and_liturgical_state["fullscreen"])
+                    and all(slide["outputContext"] == "clean" for slide in title_and_liturgical_state["fullscreen"])
+                    and title_and_liturgical_state["fullscreen"][1]["elementType"] == "body_text"
+                    and title_and_liturgical_state["fullscreen"][1]["layout"] == "center_text"
+                    and title_and_liturgical_state["fullscreen"][1]["type"] == "liturgical-body"
+                    and title_and_liturgical_state["fullscreen"][1]["renderClass"] == "liturgical-body"
+                    and "presenter-slide--liturgical-body" in title_and_liturgical_state["fullscreen"][1]["html"]
+                    and "본디오 빌라도" in title_and_liturgical_state["fullscreen"][1]["text"]
                 ):
                     pass_("presenter-title-and-liturgical-body-contract", json.dumps(title_and_liturgical_state, ensure_ascii=False))
                 else:
@@ -2087,6 +2122,137 @@ def main() -> int:
                     pass_("presenter-form-preset-sequence", json.dumps(form_preset_state, ensure_ascii=False))
                 else:
                     fail("presenter-form-preset-sequence", json.dumps(form_preset_state, ensure_ascii=False))
+
+                section_song_title_fit_state = page.evaluate(
+                    """
+                    () => {
+                      const serviceId = '__smoke_section_song_title_fit_service__';
+                      state.services = state.services.filter((item) => item.id !== serviceId);
+                      state.services.push({
+                        id: serviceId,
+                        type_id: 'sunday-first',
+                        date: '2026-07-05',
+                        service_date: '2026-07-05',
+                      });
+                      const slide = {
+                        id: '__smoke_section_song_title_fit_slide__',
+                        elementType: PRESENTER_ELEMENT_TYPES.PRAISE,
+                        layout: PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT,
+                        type: 'song-title',
+                        title: '이 천지간 만물들아',
+                        text: '♪ 5 이 천지간 만물들아',
+                        sectionHeading: '송영',
+                        sectionKey: 'doxology',
+                      };
+                      const mount = document.createElement('div');
+                      mount.style.cssText = 'position:fixed;left:16px;top:16px;width:368px;height:207px;z-index:99999;pointer-events:none';
+                      mount.innerHTML = renderPresenterSlideMiniPreview(slide, serviceId);
+                      document.body.appendChild(mount);
+                      const host = mount.querySelector('.svc-slide-mini-output');
+                      const bar = mount.querySelector('.presenter-slide-text');
+                      const heading = mount.querySelector('.presenter-section-song-title-heading');
+                      const name = mount.querySelector('.presenter-section-song-title-name');
+                      const barRect = bar.getBoundingClientRect();
+                      const headingRect = heading.getBoundingClientRect();
+                      const nameRect = name.getBoundingClientRect();
+                      const style = getComputedStyle(name);
+                      const result = {
+                        noChromakey: host.classList.contains('no-chromakey'),
+                        hasBackground: host.classList.contains('has-background'),
+                        overflow: style.overflow,
+                        textOverflow: style.textOverflow,
+                        headingInsideBar: headingRect.left >= barRect.left - 1 && headingRect.right <= barRect.right + 1,
+                        nameInsideBar: nameRect.left >= barRect.left - 1 && nameRect.right <= barRect.right + 1,
+                        barWidth: Math.round(barRect.width),
+                        headingWidth: Math.round(headingRect.width),
+                        nameWidth: Math.round(nameRect.width),
+                      };
+                      mount.remove();
+                      state.services = state.services.filter((item) => item.id !== serviceId);
+                      return result;
+                    }
+                    """
+                )
+                if (
+                    section_song_title_fit_state["noChromakey"]
+                    and section_song_title_fit_state["hasBackground"]
+                    and section_song_title_fit_state["overflow"] == "hidden"
+                    and section_song_title_fit_state["textOverflow"] == "ellipsis"
+                    and section_song_title_fit_state["headingInsideBar"]
+                    and section_song_title_fit_state["nameInsideBar"]
+                ):
+                    pass_("presenter-section-song-title-fit", json.dumps(section_song_title_fit_state, ensure_ascii=False))
+                else:
+                    fail("presenter-section-song-title-fit", json.dumps(section_song_title_fit_state, ensure_ascii=False))
+
+                scripture_fit_state = page.evaluate(
+                    """
+                    () => {
+                      const serviceId = '__smoke_scripture_fit_service__';
+                      state.services = state.services.filter((item) => item.id !== serviceId);
+                      state.services.push({
+                        id: serviceId,
+                        type_id: 'sunday-first',
+                        date: '2026-07-05',
+                        service_date: '2026-07-05',
+                      });
+                      const verseText = '요 20:30–31  30 예수께서 제자들 앞에서 이 책에 기록되지 아니한 다른 표적도 많이 행하셨으나';
+                      const slide = {
+                        id: '__smoke_scripture_fit_slide__',
+                        elementType: PRESENTER_ELEMENT_TYPES.SCRIPTURE_TEXT,
+                        layout: PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT,
+                        type: 'scripture',
+                        title: '본문',
+                        text: verseText,
+                      };
+                      const mount = document.createElement('div');
+                      mount.style.cssText = 'position:fixed;left:16px;top:16px;width:368px;height:207px;z-index:99999;pointer-events:none';
+                      mount.innerHTML = renderPresenterSlideMiniPreview(slide, serviceId);
+                      document.body.appendChild(mount);
+                      const bar = mount.querySelector('.presenter-slide-text');
+                      const line = mount.querySelector('.presenter-slide-text span');
+                      const head = document.createElement('button');
+                      head.className = 'svc-board-subgroup-head';
+                      head.style.cssText = 'position:fixed;left:16px;top:240px;width:850px';
+                      head.innerHTML = `<span>본문</span><strong>${escapeHtml(verseText)}</strong>`;
+                      document.body.appendChild(head);
+                      const strong = head.querySelector('strong');
+                      const barRect = bar.getBoundingClientRect();
+                      const lineRect = line.getBoundingClientRect();
+                      const headRect = head.getBoundingClientRect();
+                      const strongRect = strong.getBoundingClientRect();
+                      const lineStyle = getComputedStyle(line);
+                      const strongStyle = getComputedStyle(strong);
+                      const result = {
+                        lineChars: line.style.getPropertyValue('--line-chars'),
+                        lineDisplay: lineStyle.display,
+                        lineFontSize: lineStyle.fontSize,
+                        lineFits: line.scrollWidth <= line.clientWidth + 1,
+                        lineInsideBar: lineRect.left >= barRect.left - 1 && lineRect.right <= barRect.right + 1,
+                        lineScrollWidth: line.scrollWidth,
+                        lineClientWidth: line.clientWidth,
+                        subgroupTitleMaxWidth: strongStyle.maxWidth,
+                        subgroupTitleUsesHeadWidth: strongRect.right <= headRect.right + 1,
+                        subgroupTitleScrollWidth: strong.scrollWidth,
+                        subgroupTitleClientWidth: strong.clientWidth,
+                      };
+                      mount.remove();
+                      head.remove();
+                      state.services = state.services.filter((item) => item.id !== serviceId);
+                      return result;
+                    }
+                    """
+                )
+                if (
+                    scripture_fit_state["lineDisplay"] == "block"
+                    and scripture_fit_state["lineFits"]
+                    and scripture_fit_state["lineInsideBar"]
+                    and scripture_fit_state["subgroupTitleMaxWidth"] == "100%"
+                    and scripture_fit_state["subgroupTitleUsesHeadWidth"]
+                ):
+                    pass_("presenter-scripture-line-fit", json.dumps(scripture_fit_state, ensure_ascii=False))
+                else:
+                    fail("presenter-scripture-line-fit", json.dumps(scripture_fit_state, ensure_ascii=False))
 
                 live_input = page.locator(f'[data-live-scripture-input][data-service-id="{service["id"]}"]')
                 live_input.fill("요")
@@ -2976,6 +3142,7 @@ def main() -> int:
                       const textRect = textEl?.getBoundingClientRect();
                       const firstRect = firstLine?.getBoundingClientRect();
                       const style = textEl ? getComputedStyle(textEl) : null;
+                      const lineStyle = firstLine ? getComputedStyle(firstLine) : null;
                       return {
                         slideClass: slide?.className || '',
                         elementType: slide?.dataset.elementType || '',
@@ -2985,6 +3152,9 @@ def main() -> int:
                         textAlign: style?.textAlign || '',
                         alignItems: style?.alignItems || '',
                         barRatio: rootRect && textRect ? Number((textRect.height / rootRect.height).toFixed(3)) : 0,
+                        lineDisplay: lineStyle?.display || '',
+                        lineFits: firstLine ? firstLine.scrollWidth <= firstLine.clientWidth + 1 : false,
+                        lineInsideBar: textRect && firstRect ? firstRect.left >= textRect.left - 1 && firstRect.right <= textRect.right + 1 : false,
                         lineLeftInset: rootRect && firstRect ? Math.round(firstRect.left - rootRect.left) : -1,
                         lineRightInset: rootRect && firstRect ? Math.round(rootRect.right - firstRect.right) : -1,
                       };
@@ -3001,8 +3171,11 @@ def main() -> int:
                     and live_scripture_state["textAlign"] == "left"
                     and live_scripture_state["alignItems"] == "flex-start"
                     and abs(live_scripture_state["barRatio"] - (7 / 40)) <= 0.01
+                    and live_scripture_state["lineDisplay"] == "block"
+                    and live_scripture_state["lineFits"]
+                    and live_scripture_state["lineInsideBar"]
                     and 60 <= live_scripture_state["lineLeftInset"] <= 180
-                    and live_scripture_state["lineRightInset"] > live_scripture_state["lineLeftInset"]
+                    and live_scripture_state["lineRightInset"] >= 40
                 ):
                     pass_("presenter-live-scripture-lower-bar", json.dumps(live_scripture_state, ensure_ascii=False))
                 else:
