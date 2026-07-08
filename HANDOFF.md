@@ -8,21 +8,21 @@ This document is the canonical handoff for new Codex/Claude/GPT threads. Read th
 
 ## Repository And Runtime
 
-- Repository: `/Users/parkjihun/Code/Mindex`
+- Repository: this repo root
 - Current app: static HTML/CSS/JS app
 - Main files:
-  - `/Users/parkjihun/Code/Mindex/index.html`
-  - `/Users/parkjihun/Code/Mindex/app.js`
-  - `/Users/parkjihun/Code/Mindex/styles.css`
-  - `/Users/parkjihun/Code/Mindex/supabase-schema.sql`
-  - `/Users/parkjihun/Code/Mindex/scripts/worship-schema.sql`
-  - `/Users/parkjihun/Code/Mindex/scripts/activities-schema.sql`
-  - `/Users/parkjihun/Code/Mindex/scripts/reference-links-schema.sql`
+  - `index.html`
+  - `app.js`
+  - `styles.css`
+  - `supabase-schema.sql`
+  - `scripts/worship-schema.sql`
+  - `scripts/activities-schema.sql`
+  - `scripts/reference-links-schema.sql`
 - Local Supabase config:
-  - `/Users/parkjihun/Code/Mindex/.env.supabase.local`
-  - `/Users/parkjihun/Code/Mindex/.env.supabase`
+  - `.env.supabase.local`
+  - `.env.supabase`
 - Preferred local server:
-  - `python3 /Users/parkjihun/Code/Mindex/serve.py`
+  - `python3 serve.py`
   - The app is often tested at `http://localhost:4173`.
 - GitHub Pages deployment exists, but do not assume remote pages are updated immediately after local edits. Local verification comes first.
 
@@ -105,7 +105,7 @@ Service/Worship structure:
 - Scripture elements should link to Mindex Scripture records or normalized references.
 - Activity/game elements are deferred. Do not expose them in the main app shell until a repeated workflow justifies it.
 - Detailed Worship terminology, template/type semantics, and examples live in
-  `/Users/parkjihun/Code/Mindex/docs/thread-worship-presenter.md`.
+  `docs/thread-worship-presenter.md`.
 
 Deferred activities structure:
 
@@ -169,7 +169,6 @@ Presenter UI:
   - Space/Right/Down: next
   - Left/Up: previous
   - Number + Enter: jump
-  - B: black
 - Do not expose browser-native title tooltips for dense shortcut text.
 
 PPT/reference rule:
@@ -408,15 +407,15 @@ Use the lightest verification that matches the risk, then broader tests before c
 Always after JS/CSS edits:
 
 ```bash
-cd /Users/parkjihun/Code/Mindex
-/Users/parkjihun/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node --check app.js
+cd "$(git rev-parse --show-toplevel)"
+node --check app.js
 git diff --check -- app.js styles.css index.html
 ```
 
 Schema/data sanity:
 
 ```bash
-cd /Users/parkjihun/Code/Mindex
+cd "$(git rev-parse --show-toplevel)"
 python3 tests/check_supabase_schema.py
 python3 scripts/audit_mindex_content.py --json
 ```
@@ -424,7 +423,7 @@ python3 scripts/audit_mindex_content.py --json
 App smoke:
 
 ```bash
-cd /Users/parkjihun/Code/Mindex
+cd "$(git rev-parse --show-toplevel)"
 python3 tests/smoke_app.py
 ```
 

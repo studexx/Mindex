@@ -1314,7 +1314,7 @@ def main() -> int:
                             };
                           })(),
                           sundayPublicScaffold: (() => {
-                            const compact = (value) => String(value || '').replace(/\s+/g, '');
+                            const compact = (value) => String(value || '').replace(/\\s+/g, '');
                             const summarize = (typeId) => {
                               const scaffold = buildWorshipServiceScaffold(`__smoke_${typeId}__`, typeId);
                               const sections = scaffold.sections.map((section) => ({

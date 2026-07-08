@@ -158,7 +158,6 @@ same content type may need separate chromakey and fullscreen slide templates.
   - Space, Right, Down: next.
   - Left, Up: previous.
   - Number plus Enter: jump.
-  - B: black.
 
 ## Output
 
@@ -173,8 +172,8 @@ same content type may need separate chromakey and fullscreen slide templates.
 For presenter work, run at least:
 
 ```bash
-cd /Users/parkjihun/Code/Mindex
-/Users/parkjihun/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node --check app.js
+cd "$(git rev-parse --show-toplevel)"
+node --check app.js
 git diff --check -- app.js styles.css index.html tests/smoke_app.py tests/smoke_worship_presenter.py
 python3 tests/smoke_worship_presenter.py
 ```

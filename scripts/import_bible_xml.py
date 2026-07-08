@@ -6,7 +6,7 @@ Usage:
   python3 scripts/import_bible_xml.py /path/to/bibles.zip
 
 The script expects SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY. It also reads
-/Users/parkjihun/Documents/INDEX/.env.supabase when present.
+the path from MINDEX_SUPABASE_ENV or the repo-local .env.supabase.local.
 """
 
 from __future__ import annotations
@@ -244,7 +244,7 @@ def main() -> int:
     parser.add_argument("--dry-run", action="store_true", help="Parse and print stats without writing Supabase")
     parser.add_argument("--only", action="append", default=[], help="Import only files whose name or title contains this text")
     parser.add_argument("--batch-size", type=int, default=1000)
-    parser.add_argument("--env", type=Path, default=Path("/Users/parkjihun/Documents/INDEX/.env.supabase"))
+    parser.add_argument("--env", type=Path, default=Path(os.environ.get("MINDEX_SUPABASE_ENV", ROOT / ".env.supabase.local")))
     args = parser.parse_args()
 
     files, temp_dir = find_xml_files(args.source)

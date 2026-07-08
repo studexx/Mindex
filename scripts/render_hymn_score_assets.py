@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -16,12 +17,12 @@ from PIL import Image
 
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_SOURCE_DIR = Path("/Users/parkjihun/Library/CloudStorage/OneDrive-Personal/02_Church/10_찬양")
+DEFAULT_SOURCE_DIR = Path(os.environ.get("MINDEX_HYMN_SCORE_SOURCE_DIR", ROOT / "[external references]" / "hymn-scores"))
 DEFAULT_MANIFEST = ROOT / "assets/hymn-scores/manifest.json"
 DEFAULT_CACHE_DIR = ROOT / ".cache/hymn-score-native"
 OUTPUT_SIZE = (1152, 648)
 
-RUNTIME_ROOT = Path("/Users/parkjihun/.cache/codex-runtimes/codex-primary-runtime/dependencies")
+RUNTIME_ROOT = Path(os.environ.get("CODEX_PRIMARY_RUNTIME_DEPS", Path.home() / ".cache/codex-runtimes/codex-primary-runtime/dependencies"))
 SOFFICE = RUNTIME_ROOT / "bin/soffice"
 PDFTOPPM = RUNTIME_ROOT / "bin/pdftoppm"
 LO_FRAMEWORKS = (
