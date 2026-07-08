@@ -42,8 +42,11 @@ For private hosting, injected config can use the same option:
 After `scripts/admin-auth-rls.sql`:
 
 - `anon` can read shared app data.
+- `anon` insert/update/delete grants and shared write policies are removed from
+  editable Mindex tables.
 - `authenticated` can insert/update/delete editable Mindex tables.
 - Bible verse/book/translation tables remain read-only from the browser.
+- Presenter read views remain readable by `anon` and `authenticated`.
 - Server-side imports and GitHub Actions should keep using server-side secrets
   or narrow RPC contracts, not browser write access.
 
