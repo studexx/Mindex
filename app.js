@@ -10,7 +10,6 @@ const {
   BIBLE_TEXT_SEARCH_PAGE_SIZE,
 } = MINDEX_CONSTANTS;
 const TABLE_COLUMN_SUPPORT_CACHE = new Map();
-let presenterThumbClickTimer = null;
 let songLoadPromise = null;
 let songCatalogLoaded = false;
 let backgroundSongLoadScheduled = false;
@@ -1112,16 +1111,9 @@ function handleDetailDoubleClick(event) {
   const slideThumb = event.target.closest("[data-presenter-index][data-service-id]");
   if (!slideThumb || !slideThumb.classList.contains("svc-slide-thumb")) return;
   event.preventDefault();
-  clearPresenterThumbClickTimer();
   const serviceId = slideThumb.dataset.serviceId;
   const index = Number(slideThumb.dataset.presenterIndex);
   startPresenterAtSlide(serviceId, index);
-}
-
-function clearPresenterThumbClickTimer() {
-  if (!presenterThumbClickTimer) return;
-  window.clearTimeout(presenterThumbClickTimer);
-  presenterThumbClickTimer = null;
 }
 
 async function handleSearchKeydown(event) {
@@ -4689,17 +4681,7 @@ function handleDetailClick(event) {
     const presenterThumb = event.target.closest(".svc-slide-thumb[data-presenter-index][data-service-id]");
     if (presenterThumb && presenterAction.dataset.presenterAction === "jump") {
       event.preventDefault();
-      if (event.detail > 1) {
-        clearPresenterThumbClickTimer();
-        return;
-      }
-      clearPresenterThumbClickTimer();
-      const serviceId = presenterThumb.dataset.serviceId;
-      const index = presenterThumb.dataset.presenterIndex;
-      presenterThumbClickTimer = window.setTimeout(() => {
-        presenterThumbClickTimer = null;
-        runPresenterAction("jump", serviceId, { index });
-      }, 300);
+      runPresenterAction("jump", presenterThumb.dataset.serviceId, { index: presenterThumb.dataset.presenterIndex });
       return;
     }
     if (presenterAction.dataset.presenterAction === "detect-screens") {
@@ -16030,13 +16012,21 @@ function renderPresenterHelpControl() {
 }
 
 function renderServicePresenterControls(service, slides, active, index) {
+  const boardKey = presenterControlBoardKey(service, slides, active, presenterServiceUsesChromakey(service));
+  return `
+    <section id="servicePresenterControls" class="${escapeAttr(presenterControlsClassName(active, presenterServiceUsesChromakey(service)))}" aria-label="${escapeAttr(uiText("presenter.controls"))}" data-board-key="${escapeAttr(boardKey)}">
+      ${renderPresenterControlsTop(service, slides, active, index)}
+      ${renderPresenterSlideBoard(slides, presenterBoardActiveIndex(slides, active, index), service.id)}
+    </section>`;
+}
+
+function renderPresenterControlsTop(service, slides, active, index) {
   const count = slides.length;
   const safeIndex = clampPresenterIndex(index, count);
   const current = active && state.presenter.safetyBlank ? 0 : count ? safeIndex + 1 : 0;
   const anyOutputOpen = isPresenterOutputWindowOpen();
   const outputOpen = active && anyOutputOpen;
   const outputOpenElsewhere = anyOutputOpen && state.presenter.serviceId && state.presenter.serviceId !== service.id;
-  const chromakey = presenterServiceUsesChromakey(service);
   const jumpInputValue = active && state.presenter.jumpDraft
     ? state.presenter.jumpDraft
     : (count || current === 0 ? current : "");
@@ -16048,13 +16038,9 @@ function renderServicePresenterControls(service, slides, active, index) {
         ? uiText("presenter.status.ready")
         : uiText("presenter.status.preview");
   const statusTone = outputOpen ? "live" : outputOpenElsewhere ? "other" : active ? "ready" : "preview";
-  const transientOutput = active && (state.presenter.safetyBlank || state.presenter.liveScripture?.active || state.presenter.livePraise?.active);
-  const boardActiveIndex = active && !transientOutput ? safeIndex : -1;
   const mode = presenterControllerMode(service, { active, count, current, outputOpen, outputOpenElsewhere, safeIndex });
   const warmup = presenterOutputWarmupUiState(service.id, { active, outputOpen });
-  const boardKey = presenterControlBoardKey(service, slides, boardActiveIndex, active, chromakey);
   return `
-    <section id="servicePresenterControls" class="svc-presenter-strip${active ? " is-active" : ""}${chromakey ? "" : " is-clean-output"}" aria-label="${escapeAttr(uiText("presenter.controls"))}" data-board-key="${escapeAttr(boardKey)}">
       <div class="svc-presenter-top">
         <button class="svc-present-btn svc-presenter-launch" type="button" data-presenter-action="open" data-service-id="${escapeAttr(service.id)}">
           <i data-lucide="screen-share"></i>
@@ -16098,12 +16084,19 @@ function renderServicePresenterControls(service, slides, active, index) {
           </span>
           ${renderPresenterHelpControl()}
         </div>
-      </div>
-      ${renderPresenterSlideBoard(slides, boardActiveIndex, service.id)}
-    </section>`;
+      </div>`;
 }
 
-function presenterControlBoardKey(service, slides = [], boardActiveIndex = -1, active = false, chromakey = true) {
+function presenterControlsClassName(active, chromakey) {
+  return `svc-presenter-strip${active ? " is-active" : ""}${chromakey ? "" : " is-clean-output"}`;
+}
+
+function presenterBoardActiveIndex(slides, active, index) {
+  if (!active || state.presenter.safetyBlank || state.presenter.liveScripture?.active || state.presenter.livePraise?.active) return -1;
+  return clampPresenterIndex(index, slides.length);
+}
+
+function presenterControlBoardKey(service, slides = [], active = false, chromakey = true) {
   const theme = presenterOutputTheme(service?.type_id);
   const slideKey = slides.map((slide, index) => [
     index,
@@ -16123,7 +16116,6 @@ function presenterControlBoardKey(service, slides = [], boardActiveIndex = -1, a
     theme,
     chromakey ? "chroma" : "clean",
     active ? "active" : "preview",
-    boardActiveIndex,
     slides.length,
     slideKey,
   ].join("::");
@@ -17306,18 +17298,20 @@ function renderPresenterControlState(serviceId = state.selectedServiceId) {
       const active = state.presenter.serviceId === serviceId;
       const slides = active ? state.presenter.slides : buildServicePresenterSlides(serviceId);
       const index = active ? clampPresenterIndex(state.presenter.index, slides.length) : 0;
-      const template = document.createElement("template");
-      template.innerHTML = renderServicePresenterControls(service, slides, active, index).trim();
-      const nextRoot = template.content.firstElementChild;
-      if (nextRoot && root.dataset.boardKey === nextRoot.dataset.boardKey) {
-        patchPresenterControlsTop(root, nextRoot);
+      const boardKey = presenterControlBoardKey(service, slides, active, presenterServiceUsesChromakey(service));
+      if (root.dataset.boardKey === boardKey) {
+        root.className = presenterControlsClassName(active, presenterServiceUsesChromakey(service));
+        patchPresenterControlsTop(root, service, slides, active, index);
+        patchPresenterBoardActiveState(root, serviceId, active, index);
         clearPresenterTransientBoardActiveMarks(root, serviceId);
         refreshIcons();
         updateSaveState();
         renderServiceList();
-        requestAnimationFrame(() => scrollActivePresenterThumbIntoView(serviceId));
         return;
       }
+      const template = document.createElement("template");
+      template.innerHTML = renderServicePresenterControls(service, slides, active, index).trim();
+      const nextRoot = template.content.firstElementChild;
       try {
         root.replaceWith(nextRoot);
       } catch (error) {
@@ -17329,7 +17323,6 @@ function renderPresenterControlState(serviceId = state.selectedServiceId) {
       refreshIcons();
       updateSaveState();
       renderServiceList();
-      requestAnimationFrame(() => scrollActivePresenterThumbIntoView(serviceId));
       return;
     }
     renderPresenterDetail();
@@ -17347,23 +17340,32 @@ function clearPresenterTransientBoardActiveMarks(root = document.getElementById(
     .forEach((node) => node.classList.remove("active"));
 }
 
-function patchPresenterControlsTop(root, nextRoot) {
-  if (!root || !nextRoot) return;
-  root.className = nextRoot.className;
-  root.setAttribute("aria-label", nextRoot.getAttribute("aria-label") || uiText("presenter.controls"));
+function patchPresenterControlsTop(root, service, slides, active, index) {
+  if (!root || !service) return;
+  root.setAttribute("aria-label", uiText("presenter.controls"));
   const currentTop = root.querySelector(".svc-presenter-top");
-  const nextTop = nextRoot.querySelector(".svc-presenter-top");
+  const template = document.createElement("template");
+  template.innerHTML = renderPresenterControlsTop(service, slides, active, index).trim();
+  const nextTop = template.content.firstElementChild;
   if (!currentTop || !nextTop) return;
   currentTop.replaceWith(nextTop);
 }
 
-function scrollActivePresenterThumbIntoView(serviceId = state.presenter.serviceId) {
-  const root = document.getElementById("servicePresenterControls");
-  if (!root || state.presenter.serviceId !== serviceId) return;
-  if (state.presenter.safetyBlank || state.presenter.liveScripture?.active || state.presenter.livePraise?.active) return;
-  root.querySelector(".svc-slide-thumb.active")?.scrollIntoView({
-    block: "center",
-    inline: "nearest",
+function patchPresenterBoardActiveState(root, serviceId, active, index) {
+  if (!root) return;
+  const activeIndex = presenterBoardActiveIndex(state.presenter.slides, active, index);
+  root.querySelectorAll(".svc-slide-thumb[data-presenter-index][data-service-id]").forEach((thumb) => {
+    const selected = activeIndex >= 0
+      && thumb.dataset.serviceId === serviceId
+      && Number(thumb.dataset.presenterIndex) === activeIndex;
+    thumb.classList.toggle("active", selected);
+    thumb.closest(".svc-slide-thumb-wrap")?.classList.toggle("active", selected);
+  });
+  root.querySelectorAll(".svc-board-subgroup").forEach((subgroup) => {
+    subgroup.classList.toggle("active", Boolean(subgroup.querySelector(".svc-slide-thumb.active")));
+  });
+  root.querySelectorAll(".svc-board-section").forEach((section) => {
+    section.classList.toggle("active", Boolean(section.querySelector(".svc-slide-thumb.active")));
   });
 }
 

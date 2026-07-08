@@ -265,6 +265,51 @@ def main() -> int:
                 else:
                     fail("presenter-active-ring-box", json.dumps(active_ring_state, ensure_ascii=False))
 
+                fast_jump_state = page.evaluate(
+                    """
+                    async (serviceId) => {
+                      preparePresenterService(serviceId);
+                      renderPresenterControlState(serviceId);
+                      const detail = refs.detailPane || document.getElementById('detailPane');
+                      const targetIndex = Math.min(18, Math.max(state.presenter.slides.length - 1, 0));
+                      detail.scrollTop = 320;
+                      const scrollBefore = detail.scrollTop;
+                      const boardBefore = document.querySelector('.svc-slide-board');
+                      const thumb = document.querySelector(`.svc-slide-thumb[data-service-id="${serviceId}"][data-presenter-index="${targetIndex}"]`);
+                      const startedAt = performance.now();
+                      thumb?.click();
+                      const immediateIndex = state.presenter.index;
+                      await new Promise((resolve) => requestAnimationFrame(resolve));
+                      const boardAfter = document.querySelector('.svc-slide-board');
+                      const activeThumb = document.querySelector('.svc-slide-thumb.active');
+                      const result = {
+                        targetIndex,
+                        immediateIndex,
+                        elapsedMs: Number((performance.now() - startedAt).toFixed(2)),
+                        sameBoard: boardBefore === boardAfter,
+                        scrollBefore,
+                        scrollAfter: detail.scrollTop,
+                        activeIndex: Number(activeThumb?.dataset.presenterIndex ?? -1),
+                      };
+                      state.presenter.index = 0;
+                      state.presenter.safetyBlank = false;
+                      renderPresenterControlState(serviceId);
+                      return result;
+                    }
+                    """,
+                    service["id"],
+                )
+                if (
+                    fast_jump_state["targetIndex"] == fast_jump_state["immediateIndex"]
+                    and fast_jump_state["targetIndex"] == fast_jump_state["activeIndex"]
+                    and fast_jump_state["sameBoard"]
+                    and abs(fast_jump_state["scrollAfter"] - fast_jump_state["scrollBefore"]) <= 1
+                    and fast_jump_state["elapsedMs"] < 120
+                ):
+                    pass_("presenter-thumb-click-fast-no-scroll", json.dumps(fast_jump_state, ensure_ascii=False))
+                else:
+                    fail("presenter-thumb-click-fast-no-scroll", json.dumps(fast_jump_state, ensure_ascii=False))
+
                 hover_thumb = page.locator(f'.svc-slide-thumb[data-service-id="{service["id"]}"][data-presenter-index="1"]')
                 hover_thumb.hover()
                 hover_state = page.evaluate(
