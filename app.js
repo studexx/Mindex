@@ -238,9 +238,20 @@ const PRESENTER_FULLSCREEN_RETRY_DELAYS_MS = [0, 80, 240, 600];
 const PRESENTER_OUTPUT_ESCAPE_EXIT_MS = 1600;
 const PRESENTER_OUTPUT_IMAGE_PRELOAD_RADIUS = 8;
 const PRESENTER_OUTPUT_SCORE_PRELOAD_LIMIT = 32;
-const PRESENTER_OUTPUT_IMAGE_PRELOAD_LIMIT = 180;
+const PRESENTER_OUTPUT_IMAGE_PRELOAD_LIMIT = 360;
+const PRESENTER_OUTPUT_WARMUP_EAGER_COUNT = 24;
+const PRESENTER_OUTPUT_WARMUP_BATCH_SIZE = 2;
+const PRESENTER_OUTPUT_WARMUP_IDLE_TIMEOUT_MS = 900;
 const presenterOutputImagePreloadCache = new Map();
 const presenterOutputRenderState = { token: 0 };
+const presenterOutputImageWarmupState = {
+  key: "",
+  serviceId: "",
+  sources: [],
+  index: 0,
+  handle: null,
+  onProgress: null,
+};
 const UI_DEFAULT_LOCALE = "ko";
 const UI_FALLBACK_LOCALE = "en";
 const UI_MESSAGES = {
@@ -608,6 +619,7 @@ const state = {
     outputWindowMonitor: null,
     outputConnectedAt: 0,
     outputClientId: "",
+    outputWarmup: null,
     serviceId: null,
     slides: [],
     index: 0,
@@ -15004,6 +15016,7 @@ function renderServicePresenterControls(service, slides, active, index) {
   const transientOutput = active && (state.presenter.safetyBlank || state.presenter.liveScripture?.active || state.presenter.livePraise?.active);
   const boardActiveIndex = active && !transientOutput ? safeIndex : -1;
   const mode = presenterControllerMode(service, { active, count, current, outputOpen, outputOpenElsewhere, safeIndex });
+  const warmup = presenterOutputWarmupUiState(service.id, { active, outputOpen });
   return `
     <section id="servicePresenterControls" class="svc-presenter-strip${active ? " is-active" : ""}${chromakey ? "" : " is-clean-output"}" aria-label="${escapeAttr(uiText("presenter.controls"))}">
       <div class="svc-presenter-top">
@@ -15017,6 +15030,7 @@ function renderServicePresenterControls(service, slides, active, index) {
             <span class="svc-presenter-mini-label">${escapeHtml(uiText("presenter.label.status"))}</span>
             <span class="svc-presenter-status svc-presenter-status--${escapeAttr(statusTone)}" aria-label="${escapeAttr(uiText("presenter.aria.status", { status: statusLabel }))}">${escapeHtml(statusLabel)}</span>
             ${mode.label ? `<span class="svc-presenter-mode svc-presenter-mode--${escapeAttr(mode.tone)}" aria-label="${escapeAttr(uiText("presenter.aria.mode", { mode: mode.label }))}">${escapeHtml(mode.label)}</span>` : ""}
+            ${warmup ? `<span class="svc-presenter-warmup svc-presenter-warmup--${escapeAttr(warmup.tone)}" aria-label="${escapeAttr(warmup.aria)}">${escapeHtml(warmup.label)}</span>` : ""}
           </span>
           <span class="svc-slide-counter" aria-label="${escapeAttr(uiText("presenter.aria.slideCount", { current, count }))}">
             <span class="svc-presenter-mini-label">${escapeHtml(uiText("presenter.label.slide"))}</span>
@@ -15051,6 +15065,22 @@ function renderServicePresenterControls(service, slides, active, index) {
       </div>
       ${renderPresenterSlideBoard(slides, boardActiveIndex, service.id)}
     </section>`;
+}
+
+function presenterOutputWarmupUiState(serviceId, options = {}) {
+  const warmup = state.presenter.outputWarmup;
+  if (!options.active || !options.outputOpen || !warmup) return null;
+  if (warmup.serviceId && serviceId && warmup.serviceId !== serviceId) return null;
+  if (Date.now() - (Number(warmup.updatedAt) || 0) > PRESENTER_OUTPUT_HEARTBEAT_TTL_MS * 2) return null;
+  const total = Math.max(0, Number(warmup.total) || 0);
+  if (!total) return null;
+  const ready = Math.max(0, Math.min(total, Number(warmup.ready) || 0));
+  const complete = Boolean(warmup.complete) || ready >= total;
+  return {
+    label: complete ? "이미지 준비 완료" : `이미지 준비 ${ready}/${total}`,
+    tone: complete ? "ready" : "warming",
+    aria: complete ? "출력 이미지 준비 완료" : `출력 이미지 준비 중 ${ready} / ${total}`,
+  };
 }
 
 function presenterControllerMode(service, context = {}) {
@@ -16020,6 +16050,7 @@ function stopPresenterOutput(serviceId = state.presenter.serviceId) {
   state.presenter.outputWindow = null;
   state.presenter.outputConnectedAt = 0;
   state.presenter.outputClientId = "";
+  state.presenter.outputWarmup = null;
   stopPresenterOutputWindowMonitor();
   try {
     if (outputWindow && !outputWindow.closed) outputWindow.close?.();
@@ -16167,6 +16198,7 @@ function startPresenterOutputWindowMonitor(serviceId) {
     state.presenter.outputWindow = null;
     state.presenter.outputConnectedAt = 0;
     state.presenter.outputClientId = "";
+    state.presenter.outputWarmup = null;
     refreshPresenterOutputConnectionState();
     if (serviceId) renderPresenterControlState(serviceId);
   }, 1000);
@@ -16829,15 +16861,20 @@ function presenterSongDefaultFormPreset(song = null, version = null) {
 function presenterDefaultHymnFormPreset(forms = [], song = null, version = null) {
   if (!versionEffectivePraiseTypes(song, version).includes("hymn")) return null;
   const normalizedForms = normalizeForms(forms || []);
-  const verses = normalizedForms.filter((form) => normalizePresenterFormPresetLabel(displayLabel(form)).type === "verse");
-  const chorus = normalizedForms.find((form) => normalizePresenterFormPresetLabel(displayLabel(form)).type === "chorus");
+  const verses = normalizedForms.filter((form) => normalizePresenterFormPresetLabel(presenterFormDisplayLabel(form)).type === "verse");
+  const chorus = normalizedForms.find((form) => normalizePresenterFormPresetLabel(presenterFormDisplayLabel(form)).type === "chorus");
   if (!verses.length || !chorus) return null;
   const presetForms = [];
   verses.forEach((verse, index) => {
-    const target = normalizePresenterFormPresetLabel(displayLabel(verse));
+    const target = normalizePresenterFormPresetLabel(presenterFormDisplayLabel(verse));
     presetForms.push(target.number ? `V${target.number}` : index === 0 ? "V" : `V${index + 1}`);
     presetForms.push("C");
   });
+  const hymnCoda = normalizedForms.find((form) => {
+    const target = normalizePresenterFormPresetLabel(presenterFormDisplayLabel(form));
+    return ["coda", "amen"].includes(target.type);
+  });
+  if (hymnCoda) presetForms.push("Coda");
   return normalizeServiceFormPreset(presetForms, presetForms.join("-"), "auto");
 }
 
@@ -16877,7 +16914,7 @@ function resolvePresenterFormPresetSequence(forms = [], presetForms = []) {
 
 function presenterFormsAreUnsplitLyrics(forms = []) {
   const normalizedForms = normalizeForms(forms || []).filter((form) => normalizeLyricsForCopy(form.lyrics));
-  return Boolean(normalizedForms.length) && normalizedForms.every((form) => normalizePresenterFormPresetLabel(displayLabel(form)).type === "lyrics");
+  return Boolean(normalizedForms.length) && normalizedForms.every((form) => normalizePresenterFormPresetLabel(presenterFormDisplayLabel(form)).type === "lyrics");
 }
 
 function resolvePresenterLyricsFormPresetSequence(forms = [], presetForms = []) {
@@ -16948,13 +16985,22 @@ function findPresenterFormForPresetLabel(forms = [], label = "") {
   if (!target.key) return null;
   if (target.blank) return presenterBlankFormPresetItem(label, target);
   if (target.lastVerse) {
-    return [...forms].reverse().find((form) => normalizePresenterFormPresetLabel(displayLabel(form)).type === "verse") || null;
+    return [...forms].reverse().find((form) => normalizePresenterFormPresetLabel(presenterFormDisplayLabel(form)).type === "verse") || null;
   }
-  return forms.find((form) => {
-    const candidate = normalizePresenterFormPresetLabel(displayLabel(form));
-    if (target.key === candidate.key) return true;
-    return target.type && target.type === candidate.type && (!target.number || target.number === candidate.number);
-  }) || null;
+  for (const form of forms) {
+    const candidate = normalizePresenterFormPresetLabel(presenterFormDisplayLabel(form));
+    if (target.key === candidate.key) return form;
+    if (target.type === "coda" && candidate.type === "amen") {
+      return { ...form, part_type: "Coda", label: "Coda", _presenterAmenAsCoda: true };
+    }
+    if (target.type && target.type === candidate.type && (!target.number || target.number === candidate.number)) return form;
+  }
+  return null;
+}
+
+function presenterFormDisplayLabel(form = {}) {
+  if (form._presenterVirtual) return displayLabel(form);
+  return String(form.label || "").trim() || displayLabel(form);
 }
 
 function normalizePresenterFormPresetLabel(value = "") {
@@ -16977,6 +17023,8 @@ function normalizePresenterFormPresetLabel(value = "") {
   if (preChorus) return { key: "pre-chorus", type: "pre-chorus", number: 0 };
   const coda = /^(coda|코다|ending|엔딩)$/i.test(compact);
   if (coda) return { key: "coda", type: "coda", number: 0 };
+  const amen = /^(amen|아멘)$/i.test(compact);
+  if (amen) return { key: "amen", type: "amen", number: 0 };
   const lyrics = /^(lyrics|가사)$/i.test(compact);
   if (lyrics) return { key: "lyrics", type: "lyrics", number: 0 };
   const instrumental = /^(간주|interlude|instrumental)$/i.test(compact);
@@ -16996,6 +17044,8 @@ function normalizePresenterFormType(value = "") {
   if (/^chorus$/i.test(compact)) return "chorus";
   if (/^bridge$/i.test(compact)) return "bridge";
   if (/^prechorus$/i.test(compact)) return "pre-chorus";
+  if (/^coda$/i.test(compact)) return "coda";
+  if (/^amen$/i.test(compact)) return "amen";
   if (/^(interlude|instrumental)$/i.test(compact)) return "instrumental";
   return compact;
 }
@@ -17008,6 +17058,8 @@ function normalizePresenterMissingFormLabel(value = "") {
   if (target.key === "chorus") return "C";
   if (target.key === "bridge") return "Bridge";
   if (target.key === "pre-chorus") return "Pre-Chorus";
+  if (target.key === "coda") return "Coda";
+  if (target.key === "amen") return "Amen";
   return raw || "송폼";
 }
 
@@ -17603,7 +17655,7 @@ function presenterPraiseMarker(song, fallbackText = "") {
 }
 
 function presenterFormMarker(form) {
-  const label = displayLabel(form);
+  const label = presenterFormDisplayLabel(form);
   return isGenericPresenterFormLabel(label) ? "" : label;
 }
 
@@ -17836,7 +17888,7 @@ function bindPresenterChannel() {
       return;
     }
     if (message.type === "presenter-heartbeat") {
-      markPresenterOutputConnected(message.clientId);
+      markPresenterOutputConnected(message.clientId, message.warmup);
       return;
     }
     if (message.type === "presenter-output-disconnect") {
@@ -17871,13 +17923,14 @@ function handlePresenterStorageSignal(event) {
   }
 }
 
-function markPresenterOutputConnected(clientId = "") {
+function markPresenterOutputConnected(clientId = "", warmup = null) {
   const wasConnected = state.presenter.outputConnectedAt
     && Date.now() - state.presenter.outputConnectedAt <= PRESENTER_OUTPUT_HEARTBEAT_TTL_MS;
   state.presenter.outputConnectedAt = Date.now();
   if (clientId) state.presenter.outputClientId = clientId;
+  updatePresenterOutputWarmupState(warmup);
   if (!state.presenter.outputWindowMonitor) startPresenterOutputWindowMonitor(state.presenter.serviceId);
-  if (!wasConnected) refreshPresenterOutputConnectionState();
+  if (!wasConnected || warmup) refreshPresenterOutputConnectionState();
 }
 
 function markPresenterOutputDisconnected(clientId = "") {
@@ -17885,9 +17938,25 @@ function markPresenterOutputDisconnected(clientId = "") {
   state.presenter.outputWindow = null;
   state.presenter.outputConnectedAt = 0;
   state.presenter.outputClientId = "";
+  state.presenter.outputWarmup = null;
   stopPresenterOutputWindowMonitor();
   refreshPresenterOutputConnectionState();
   if (state.presenter.serviceId) renderPresenterControlState(state.presenter.serviceId);
+}
+
+function updatePresenterOutputWarmupState(warmup = null) {
+  if (!warmup || typeof warmup !== "object") return;
+  const total = Math.max(0, Number(warmup.total) || 0);
+  const ready = Math.max(0, Math.min(total, Number(warmup.ready) || 0));
+  const queued = Math.max(0, Math.min(total, Number(warmup.queued) || 0));
+  state.presenter.outputWarmup = {
+    serviceId: warmup.serviceId || state.presenter.serviceId || "",
+    total,
+    ready,
+    queued,
+    complete: Boolean(warmup.complete) || (total > 0 && ready >= total),
+    updatedAt: Date.now(),
+  };
 }
 
 function refreshPresenterOutputConnectionState() {
@@ -18086,8 +18155,13 @@ function initPresenterOutput() {
     renderPresenterOutput(currentPayload);
   };
   const postHeartbeat = () => {
-    channel?.postMessage({ type: "presenter-heartbeat", clientId: outputClientId });
+    channel?.postMessage({
+      type: "presenter-heartbeat",
+      clientId: outputClientId,
+      warmup: presenterOutputWarmupSummary(),
+    });
   };
+  presenterOutputImageWarmupState.onProgress = postHeartbeat;
   const closeOutputChannel = () => {
     if (heartbeatTimer) {
       window.clearInterval(heartbeatTimer);
@@ -18095,6 +18169,7 @@ function initPresenterOutput() {
     }
     channel?.close?.();
     channel = null;
+    presenterOutputImageWarmupState.onProgress = null;
   };
   const canCloseOutputWindow = () => {
     try {
@@ -18371,10 +18446,12 @@ function renderPresenterOutput(payload) {
 
   if (!slide) {
     root.innerHTML = "";
+    warmPresenterOutputImages(payload, null);
     return;
   }
 
   root.innerHTML = renderPresenterSlideFrame(slide);
+  warmPresenterOutputImages(payload, slide);
 }
 
 function preloadPresenterOutputImages(payload = {}, activeSlide = null) {
@@ -18409,6 +18486,138 @@ function presenterOutputImageSourcesForPreload(payload = {}, activeSlide = null)
   const backgroundImage = normalizePresenterMediaSource(payload?.backgroundImage || "");
   if (backgroundImage && presenterMediaSourceIsImage(backgroundImage)) sources.push(backgroundImage);
   return [...new Set(sources)];
+}
+
+function warmPresenterOutputImages(payload = {}, activeSlide = null) {
+  const sources = presenterOutputWarmupSourcesForPayload(payload, activeSlide);
+  const key = presenterOutputWarmupKey(payload, sources);
+  if (!key || !sources.length) {
+    cancelPresenterOutputImageWarmup();
+    presenterOutputImageWarmupState.key = "";
+    presenterOutputImageWarmupState.serviceId = "";
+    presenterOutputImageWarmupState.sources = [];
+    presenterOutputImageWarmupState.index = 0;
+    return;
+  }
+  if (key === presenterOutputImageWarmupState.key) {
+    schedulePresenterOutputImageWarmup();
+    return;
+  }
+
+  cancelPresenterOutputImageWarmup();
+  presenterOutputImageWarmupState.key = key;
+  presenterOutputImageWarmupState.serviceId = payload?.serviceId || "";
+  presenterOutputImageWarmupState.sources = sources;
+  presenterOutputImageWarmupState.index = 0;
+
+  const eagerCount = Math.min(PRESENTER_OUTPUT_WARMUP_EAGER_COUNT, sources.length);
+  sources.slice(0, eagerCount).forEach((source) => preloadPresenterOutputImage(source));
+  presenterOutputImageWarmupState.index = eagerCount;
+  schedulePresenterOutputImageWarmup();
+}
+
+function presenterOutputWarmupSummary() {
+  const sources = presenterOutputImageWarmupState.sources || [];
+  const total = sources.length;
+  const ready = sources.filter(presenterOutputImageIsReady).length;
+  return {
+    serviceId: presenterOutputImageWarmupState.serviceId || "",
+    total,
+    ready,
+    queued: Math.max(0, total - presenterOutputImageWarmupState.index),
+    complete: total > 0 && ready >= total,
+  };
+}
+
+function presenterOutputWarmupSourcesForPayload(payload = {}, activeSlide = null) {
+  const sources = [];
+  const pushSource = (source) => {
+    const normalized = normalizePresenterMediaSource(source);
+    if (normalized && presenterMediaSourceIsImage(normalized)) sources.push(normalized);
+  };
+  const pushSlide = (slide) => pushSource(presenterSlideImageSource(slide));
+  const serviceSlides = Array.isArray(payload?.slides) ? payload.slides : [];
+  const serviceIndex = clampPresenterIndex(payload?.index, serviceSlides.length);
+
+  pushSlide(activeSlide);
+  if (payload?.livePraise?.active) {
+    const liveSlides = Array.isArray(payload.livePraise.slides) ? payload.livePraise.slides : [];
+    const liveIndex = clampPresenterIndex(payload.livePraise.index, liveSlides.length);
+    presenterSlidesByDistance(liveSlides, liveIndex).forEach(pushSlide);
+  } else if (payload?.liveScripture?.active) {
+    pushSlide(payload.liveScripture.slide);
+  }
+  presenterSlidesByDistance(serviceSlides, serviceIndex).forEach(pushSlide);
+  pushSource(payload?.backgroundImage || "");
+  return [...new Set(sources)].slice(0, PRESENTER_OUTPUT_IMAGE_PRELOAD_LIMIT);
+}
+
+function presenterSlidesByDistance(slides = [], activeIndex = 0) {
+  if (!Array.isArray(slides) || !slides.length) return [];
+  const safeIndex = clampPresenterIndex(activeIndex, slides.length);
+  return slides
+    .map((slide, index) => ({ slide, index, distance: Math.abs(index - safeIndex) }))
+    .sort((a, b) => a.distance - b.distance || a.index - b.index)
+    .map((item) => item.slide);
+}
+
+function presenterOutputWarmupKey(payload = {}, sources = []) {
+  if (!Array.isArray(sources) || !sources.length) return "";
+  const sourceSet = [...new Set(sources)].sort();
+  return [
+    payload?.serviceId || "no-service",
+    payload?.serviceType || "",
+    sourceSet.length,
+    presenterHashString(sourceSet.join("\n")),
+  ].join("|");
+}
+
+function presenterHashString(value) {
+  let hash = 0;
+  const text = String(value || "");
+  for (let index = 0; index < text.length; index += 1) {
+    hash = ((hash << 5) - hash + text.charCodeAt(index)) | 0;
+  }
+  return String(hash >>> 0);
+}
+
+function cancelPresenterOutputImageWarmup() {
+  const handle = presenterOutputImageWarmupState.handle;
+  if (!handle) return;
+  if (handle.type === "idle" && typeof window.cancelIdleCallback === "function") {
+    window.cancelIdleCallback(handle.id);
+  } else {
+    window.clearTimeout(handle.id);
+  }
+  presenterOutputImageWarmupState.handle = null;
+}
+
+function schedulePresenterOutputImageWarmup() {
+  if (presenterOutputImageWarmupState.handle) return;
+  if (presenterOutputImageWarmupState.index >= presenterOutputImageWarmupState.sources.length) return;
+  const run = (deadline = null) => {
+    presenterOutputImageWarmupState.handle = null;
+    let count = 0;
+    while (
+      presenterOutputImageWarmupState.index < presenterOutputImageWarmupState.sources.length
+      && count < PRESENTER_OUTPUT_WARMUP_BATCH_SIZE
+      && (!deadline || count === 0 || deadline.timeRemaining?.() > 4)
+    ) {
+      const source = presenterOutputImageWarmupState.sources[presenterOutputImageWarmupState.index];
+      presenterOutputImageWarmupState.index += 1;
+      count += 1;
+      preloadPresenterOutputImage(source, { priority: "low" });
+    }
+    presenterOutputImageWarmupState.onProgress?.();
+    schedulePresenterOutputImageWarmup();
+  };
+  if (typeof window.requestIdleCallback === "function") {
+    const id = window.requestIdleCallback(run, { timeout: PRESENTER_OUTPUT_WARMUP_IDLE_TIMEOUT_MS });
+    presenterOutputImageWarmupState.handle = { type: "idle", id };
+  } else {
+    const id = window.setTimeout(() => run(null), 50);
+    presenterOutputImageWarmupState.handle = { type: "timeout", id };
+  }
 }
 
 function presenterOutputScoreGroupSlidesForPreload(slides = [], activeSlide = null, activeIndex = 0) {
@@ -18447,7 +18656,7 @@ function presenterSlideImageSource(slide) {
   return source && presenterMediaSourceIsImage(source) ? source : "";
 }
 
-function preloadPresenterOutputImage(source) {
+function preloadPresenterOutputImage(source, options = {}) {
   const normalized = normalizePresenterMediaSource(source);
   if (!normalized || !presenterMediaSourceIsImage(normalized)) return null;
   const cached = presenterOutputImagePreloadCache.get(normalized);
@@ -18459,7 +18668,7 @@ function preloadPresenterOutputImage(source) {
   const image = new Image();
   image.decoding = "async";
   image.loading = "eager";
-  if ("fetchPriority" in image) image.fetchPriority = "high";
+  if ("fetchPriority" in image) image.fetchPriority = options.priority === "low" ? "low" : "high";
   image.src = normalized;
   const promise = typeof image.decode === "function"
     ? image.decode().catch(() => {})

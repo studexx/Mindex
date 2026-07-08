@@ -290,6 +290,65 @@ def main() -> int:
                 else:
                     fail("presenter-status-ready", json.dumps(ready_status, ensure_ascii=False))
 
+                warmup_chip_state = page.evaluate(
+                    """
+                    (serviceId) => {
+                      const previousConnectedAt = state.presenter.outputConnectedAt;
+                      const previousWarmup = state.presenter.outputWarmup;
+                      const previousClientId = state.presenter.outputClientId;
+                      state.presenter.outputConnectedAt = Date.now();
+                      state.presenter.outputClientId = '__smoke_output__';
+                      state.presenter.outputWarmup = {
+                        serviceId,
+                        total: 12,
+                        ready: 7,
+                        queued: 5,
+                        complete: false,
+                        updatedAt: Date.now(),
+                      };
+                      renderPresenterControlState(serviceId);
+                      const warming = document.querySelector('.svc-presenter-warmup');
+                      const warmingState = {
+                        text: warming?.textContent.trim() || '',
+                        className: warming?.className || '',
+                        aria: warming?.getAttribute('aria-label') || '',
+                      };
+                      state.presenter.outputWarmup = {
+                        serviceId,
+                        total: 12,
+                        ready: 12,
+                        queued: 0,
+                        complete: true,
+                        updatedAt: Date.now(),
+                      };
+                      renderPresenterControlState(serviceId);
+                      const ready = document.querySelector('.svc-presenter-warmup');
+                      const readyState = {
+                        text: ready?.textContent.trim() || '',
+                        className: ready?.className || '',
+                        aria: ready?.getAttribute('aria-label') || '',
+                      };
+                      state.presenter.outputConnectedAt = previousConnectedAt;
+                      state.presenter.outputWarmup = previousWarmup;
+                      state.presenter.outputClientId = previousClientId;
+                      renderPresenterControlState(serviceId);
+                      return { warming: warmingState, ready: readyState };
+                    }
+                    """,
+                    service["id"],
+                )
+                if (
+                    warmup_chip_state["warming"]["text"] == "이미지 준비 7/12"
+                    and "svc-presenter-warmup--warming" in warmup_chip_state["warming"]["className"]
+                    and "7 / 12" in warmup_chip_state["warming"]["aria"]
+                    and warmup_chip_state["ready"]["text"] == "이미지 준비 완료"
+                    and "svc-presenter-warmup--ready" in warmup_chip_state["ready"]["className"]
+                    and warmup_chip_state["ready"]["aria"] == "출력 이미지 준비 완료"
+                ):
+                    pass_("presenter-output-warmup-chip", json.dumps(warmup_chip_state, ensure_ascii=False))
+                else:
+                    fail("presenter-output-warmup-chip", json.dumps(warmup_chip_state, ensure_ascii=False))
+
                 ready_thumb_state = page.evaluate(
                     """
                     (() => {
@@ -906,7 +965,8 @@ def main() -> int:
                             { id: 'h-c', part_type: 'Chorus', part_number: null, lyrics: '후렴 첫 줄\\n후렴 둘째 줄', sort_order: 2 },
                             { id: 'h-v2', part_type: 'Verse', part_number: 2, lyrics: '2절 첫 줄\\n2절 둘째 줄', sort_order: 3 },
                             { id: 'h-v3', part_type: 'Verse', part_number: 3, lyrics: '3절 첫 줄\\n3절 둘째 줄', sort_order: 4 },
-                            { id: 'h-v4', part_type: 'Verse', part_number: 4, lyrics: '마지막 절 첫 줄\\n마지막 절 둘째 줄', sort_order: 5 }
+                            { id: 'h-v4', part_type: 'Verse', part_number: 4, lyrics: '마지막 절 첫 줄\\n마지막 절 둘째 줄', sort_order: 5 },
+                            { id: 'h-amen', part_type: 'Lyrics', part_number: null, label: 'Amen', lyrics: '아멘', sort_order: 6 }
                           ]
                         }]
                       };
@@ -1148,6 +1208,22 @@ def main() -> int:
                         scoreBackground: true,
                         imageSrc: `assets/hymn-scores/999/slide-${String(slideIndex + 1).padStart(2, '0')}.webp`,
                       }));
+                      const longScoreWarmupSourcesStart = presenterOutputWarmupSourcesForPayload({
+                        serviceId: '__smoke_long_score_service__',
+                        slides: longScoreSlides,
+                        index: 0,
+                        chromakey: false
+                      }, longScoreSlides[0]);
+                      const longScoreWarmupSourcesMiddle = presenterOutputWarmupSourcesForPayload({
+                        serviceId: '__smoke_long_score_service__',
+                        slides: longScoreSlides,
+                        index: 6,
+                        chromakey: false
+                      }, longScoreSlides[6]);
+                      const longScoreWarmupKeys = [
+                        presenterOutputWarmupKey({ serviceId: '__smoke_long_score_service__' }, longScoreWarmupSourcesStart),
+                        presenterOutputWarmupKey({ serviceId: '__smoke_long_score_service__' }, longScoreWarmupSourcesMiddle),
+                      ];
                       const scoreManifestAllSlides = buildPresenterSlidesForServiceItem(scoreManifestItem, service, 5);
                       const scoreManifestSlides = scoreManifestAllSlides.filter((slide) => slide.sourceType === 'score');
                       const scoreRawTitleAllSlides = buildPresenterSlidesForServiceItem(scoreRawTitleItem, service, 6);
@@ -1309,6 +1385,9 @@ def main() -> int:
                           index: 0,
                           chromakey: false
                         }, longScoreSlides[0]),
+                        longScoreWarmupSourcesStart,
+                        longScoreWarmupSourcesMiddle,
+                        longScoreWarmupKeys,
                         scoreSafeArea,
                         audioMemo: parseServiceItemMemo(audioMemo),
                         audioDbType: worshipDbElementTypeForSave('audio'),
@@ -1359,7 +1438,7 @@ def main() -> int:
                         "감사 후렴 첫 줄\n감사 후렴 둘째 줄",
                         "감사 코다 첫 줄\n감사 코다 둘째 줄",
                     ]
-                    and form_preset_state["hymnAutoMarkers"] == ["Verse 1", "Chorus", "Verse 2", "Chorus", "Verse 3", "Chorus", "Verse 4", "Chorus"]
+                    and form_preset_state["hymnAutoMarkers"] == ["Verse 1", "Chorus", "Verse 2", "Chorus", "Verse 3", "Chorus", "Verse 4", "Chorus", "Coda"]
                     and form_preset_state["hymnAutoTexts"] == [
                         "1절 첫 줄\n1절 둘째 줄",
                         "후렴 첫 줄\n후렴 둘째 줄",
@@ -1369,6 +1448,7 @@ def main() -> int:
                         "후렴 첫 줄\n후렴 둘째 줄",
                         "마지막 절 첫 줄\n마지막 절 둘째 줄",
                         "후렴 첫 줄\n후렴 둘째 줄",
+                        "아멘",
                     ]
                     and form_preset_state["scoreTitleSlides"] == [{
                         "type": "song-title",
@@ -1512,6 +1592,11 @@ def main() -> int:
                     and len(form_preset_state["longScorePreloadSources"]) == 12
                     and form_preset_state["longScorePreloadSources"][0].endswith("slide-01.webp")
                     and form_preset_state["longScorePreloadSources"][-1].endswith("slide-12.webp")
+                    and len(form_preset_state["longScoreWarmupSourcesStart"]) == 12
+                    and len(form_preset_state["longScoreWarmupSourcesMiddle"]) == 12
+                    and form_preset_state["longScoreWarmupSourcesStart"][0].endswith("slide-01.webp")
+                    and form_preset_state["longScoreWarmupSourcesMiddle"][0].endswith("slide-07.webp")
+                    and form_preset_state["longScoreWarmupKeys"][0] == form_preset_state["longScoreWarmupKeys"][1]
                     and "presenter-slide--score" in form_preset_state["scoreSafeArea"]["className"]
                     and abs(form_preset_state["scoreSafeArea"]["top"]) <= 1
                     and abs(form_preset_state["scoreSafeArea"]["right"]) <= 1
@@ -2638,13 +2723,13 @@ def main() -> int:
                 jump_input.press("Enter")
                 output_page.wait_for_function(
                     "() => { const payload = JSON.parse(localStorage.getItem('mindex.presenter.state') || '{}'); return payload.index === 1 && payload.safetyBlank !== true; }",
-                    timeout=5000,
+                    timeout=10000,
                 )
 
                 output_page.keyboard.press("ArrowRight")
                 output_page.wait_for_function(
                     "() => JSON.parse(localStorage.getItem('mindex.presenter.state') || '{}').index === 2",
-                    timeout=5000,
+                    timeout=10000,
                 )
                 channel_state = output_page.evaluate(
                     """

@@ -195,3 +195,18 @@ Manual checks when changing live presenter behavior:
 - Space/Right/Down and Left/Up only affect presenter where intended.
 - Non-chromakey services do not flash chromakey green.
 - Output slide matches thumbnail in background, title, lyrics, and labels.
+
+## Recent Updates
+
+2026-07-08:
+
+- Presenter output now warms nearby service/live-praise/image slides in the output
+  window so long hymn-score or image sequences are less likely to flicker when
+  moving between slides.
+- Presenter controls can show image warmup progress while an output window is
+  connected.
+- Hymn auto form presets include a trailing `Coda` form when the linked praise
+  version provides one, preserving the rule that each hymn verse is followed by
+  the chorus.
+- Presenter smoke coverage now checks long hymn-score warmup ordering, score
+  safe-area rendering, hymn Coda output, and a less flaky output key-sync wait.
