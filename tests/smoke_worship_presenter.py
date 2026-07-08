@@ -660,10 +660,13 @@ def main() -> int:
                       const slides = buildServicePresenterSlides(serviceId);
                       return {
                         centerFallbacks: slides.filter((slide) =>
-                          slide.layout === 'center_text'
-                          || slide.type === 'component'
-                          || slide.elementType === 'plain_text'
-                          || slide.elementType === 'freeform'
+                          !isPresenterPraiseSectionMarkerSlide(slide)
+                          && (
+                            slide.layout === 'center_text'
+                            || slide.type === 'component'
+                            || slide.elementType === 'plain_text'
+                            || slide.elementType === 'freeform'
+                          )
                         ).map((slide, index) => ({
                           index,
                           sectionLabel: slide.sectionLabel || '',
@@ -770,13 +773,14 @@ def main() -> int:
                           service.tags = ['찬양팀: 글로리아 찬양단', ...previousTags.filter((tag) => !isServicePraiseTeamTag(tag))];
                           const teamSlides = buildServicePresenterSlides(serviceId);
                           service.tags = previousTags;
-                          const intro = teamSlides.find((slide) => slide.type === 'praise-section-title') || {};
+                          const intro = teamSlides.find((slide) => isPresenterPraiseSectionMarkerSlide(slide)) || {};
                           return {
                             type: intro.type || '',
                             elementType: intro.elementType || '',
                             layout: intro.layout || '',
                             title: intro.title || '',
                             subtitle: intro.subtitle || '',
+                            bodyText: intro.bodyText || '',
                             text: intro.text || '',
                             skipTrailingBlank: intro.skipTrailingBlank === true,
                             visibleTags: serviceVisibleTags({ tags: ['찬양팀: 글로리아 찬양단', '온세대'] }),
@@ -936,11 +940,12 @@ def main() -> int:
                     )
                     and len(fallback_state["mainPraiseGroups"]) == 1
                     and fallback_state["mainPraiseGroups"][0]["label"] == "찬양"
+                    and fallback_state["mainPraiseGroups"][0]["meta"] == "썸프레이즈"
                     and fallback_state["praiseTeamBoardMeta"] == ["헤세드 찬양단"]
-                    and fallback_state["praiseTeamNameAsLeaderMeta"] == ["헤세드 찬양단"]
+                    and fallback_state["praiseTeamNameAsLeaderMeta"] == ["썸프레이즈"]
                     and fallback_state["praiseAutoAssigneeFallback"] == {
                         "group": "",
-                        "board": {"text": "", "priority": 0},
+                        "board": {"text": "썸프레이즈", "priority": 2.5},
                         "orderSheet": "",
                     }
                     and fallback_state["mainPraiseElementTitleMeta"] == {
@@ -950,11 +955,12 @@ def main() -> int:
                         "outputText": "♪ 가서 제자 삼으라",
                     }
                     and fallback_state["praiseTeamIntro"] == {
-                        "type": "praise-section-title",
-                        "elementType": "title_assignee",
-                        "layout": "lower_bar_text",
+                        "type": "title-content",
+                        "elementType": "title_content",
+                        "layout": "center_text",
                         "title": "찬양",
-                        "subtitle": "글로리아 찬양단",
+                        "subtitle": "",
+                        "bodyText": "글로리아 찬양단",
                         "text": "찬양\n글로리아 찬양단",
                         "skipTrailingBlank": True,
                         "visibleTags": ["온세대"],
@@ -997,6 +1003,7 @@ def main() -> int:
                           id: '__smoke_scripture_title__',
                           label: '성경봉독',
                           raw_title: '대하 15:8-15',
+                          assignee: '김남영 목사',
                           memo: serializeServiceItemMemo({ elementType: 'scripture_reading' }),
                         },
                         {
@@ -2084,6 +2091,7 @@ def main() -> int:
                 live_input = page.locator(f'[data-live-scripture-input][data-service-id="{service["id"]}"]')
                 live_input.fill("요")
                 live_input.focus()
+                live_input.evaluate("(node) => node.setSelectionRange(node.value.length, node.value.length)")
                 page.keyboard.press("Space")
                 page.keyboard.press("5")
                 page.keyboard.press("ArrowRight")

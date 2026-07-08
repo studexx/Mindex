@@ -2427,7 +2427,7 @@ function normalizeWorshipService(service = {}) {
     date: service.service_date,
     date_end: service.service_date_end || null,
     title: service.title || "",
-    leader: praiseLeader || worshipLeader,
+    leader: praiseLeader,
     worshipLeader,
     praiseLeader,
     tags: Array.isArray(service.tags) ? service.tags : [],
@@ -2547,8 +2547,17 @@ function groupWorshipPresenterSlides(rows = []) {
 function normalizeWorshipPresenterSlide(row = {}, index = 0) {
   const elementType = worshipPresenterElementType(row.element_type, row.slide_type);
   const layout = worshipPresenterLayout(row.slide_type, elementType);
-  const title = row.slide_title || row.element_title || row.section_title || "";
-  const assignee = cleanPresenterAssignee(row.element_person || row.section_person || "");
+  const scriptureReading = isPresenterScriptureReadingSource({
+    elementType: row.element_type,
+    sectionKey: row.section_key,
+    label: row.section_title,
+  });
+  const title = scriptureReading
+    ? (row.slide_title || row.section_title || "성경봉독")
+    : (row.slide_title || row.element_title || row.section_title || "");
+  const assignee = scriptureReading
+    ? cleanPresenterAssignee(row.element_title || row.slide_body || "")
+    : cleanPresenterAssignee(row.element_person || row.section_person || "");
   const text = row.slide_body || row.slide_title || row.element_title || "";
   const marker = row.slide_marker || inferWorshipSlideMarker(row, elementType);
   const hasTitleContent = presenterElementTypeSupportsTitleContent(elementType)
@@ -3926,11 +3935,10 @@ async function saveDirtyServiceTypes() {
 async function saveWorshipServiceInstance(service) {
   const serviceId = service.id;
   const canonicalTypeId = canonicalWorshipServiceTypeId(service.type_id);
-  const worshipLeader = cleanServiceAssignee(
-    service.worshipLeader
-    || service._worshipLeader
-    || (!serviceUsesPraiseLeader(service.type_id) ? service.leader : ""),
-  );
+  const worshipLeader = cleanServiceAssignee(service.worshipLeader || service._worshipLeader);
+  const praiseLeader = serviceUsesPraiseLeader(service.type_id)
+    ? cleanServiceAssignee(service.praiseLeader || service.leader)
+    : "";
   const servicePayload = {
     service_type_id: canonicalTypeId,
     service_date: service.date,
@@ -3938,7 +3946,7 @@ async function saveWorshipServiceInstance(service) {
     title: service.title || "",
     status: service._worshipStatus || "draft",
     worship_leader: worshipLeader,
-    praise_leader: serviceUsesPraiseLeader(service.type_id) ? cleanServiceAssignee(service.leader) : "",
+    praise_leader: praiseLeader,
     tags: Array.isArray(service.tags) ? service.tags : [],
     notes: service.raw_text || "",
   };
@@ -5784,9 +5792,11 @@ function updateServiceMetaField(field) {
   } else if (key === "leader") {
     if (!serviceUsesPraiseLeader(service.type_id)) {
       service.leader = "";
+      service.praiseLeader = "";
       return;
     }
     service.leader = field.value;
+    service.praiseLeader = field.value;
   } else if (key === "praiseTeam") {
     setServicePraiseTeamName(service, field.value);
   } else if (key === "tags") {
@@ -6940,9 +6950,11 @@ function buildWorshipServiceScaffold(serviceId, typeId) {
       const elementLabel = String(elementStep.label || elementStep.name || label).trim() || label;
       const hiddenElementOrderSheet = isOrderSheetHiddenServiceTemplateLabel(elementLabel);
       const elementType = ready ? servicePreparationElementTypeForType(typeId) : worshipTemplateElementType(elementStep, elementLabel);
+      const explicitOrderSheet = normalizeServiceOrderSheetPayload(elementStep.orderSheet || elementStep.order_sheet);
       const orderSheet = ready || hiddenElementOrderSheet
         ? { hidden: true }
-        : normalizeServiceOrderSheetPayload(elementStep.orderSheet || elementStep.order_sheet) || { order: elementLabel };
+        : explicitOrderSheet || { order: elementLabel };
+      const orderSheetHidden = Boolean(orderSheet?.hidden);
       const defaultStrength = String(elementStep.defaultStrength || elementStep.default_strength || "").trim();
       const formPreset = normalizeServiceFormPreset(
         elementStep.formPreset || elementStep.form_preset,
@@ -6974,7 +6986,7 @@ function buildWorshipServiceScaffold(serviceId, typeId) {
           ...(outputMode ? { outputMode } : {}),
           ...(introSlide ? { introSlide } : {}),
           ...(asset.url ? { asset: { ...asset, kind: asset.kind || elementType } } : {}),
-          ...(ready ? { presenterRole: "ready" } : hiddenElementOrderSheet ? {} : { orderSheetPlaceholder: true }),
+          ...(ready ? { presenterRole: "ready" } : hiddenElementOrderSheet || orderSheetHidden ? {} : { orderSheetPlaceholder: true }),
         },
       });
     });
@@ -13613,19 +13625,18 @@ function serviceWorshipLeaderLabel(service) {
     || sourceRef.worshipLeader,
   );
   if (direct) return direct;
-  if (!serviceUsesPraiseLeader(service?.type_id)) return cleanPresenterAssignee(service?.leader);
   return "";
 }
 
 function servicePraiseLeaderLabel(service) {
   if (!serviceUsesPraiseLeader(service?.type_id)) return "";
-  return cleanServiceAssignee(service?.leader);
+  return cleanServiceAssignee(service?.praiseLeader || service?.leader);
 }
 
 function serviceMatchesSearch(svc, q) {
   if (!q) return true;
   const norm = (s) => normalizeSearchValue(s);
-  const praiseLead = norm([svc.leader, servicePraiseLeaderLabel(svc)].filter(Boolean).join(" "));
+  const leaders = norm([serviceWorshipLeaderLabel(svc), servicePraiseLeaderLabel(svc)].filter(Boolean).join(" "));
   const tags = norm((svc.tags || []).join(" "));
   const date = svc.date || "";
   const d = new Date(date + "T00:00:00");
@@ -13636,7 +13647,7 @@ function serviceMatchesSearch(svc, q) {
     ...getServiceItems(svc.id),
     ...getServiceDefaultItems(svc.type_id),
   ].map((item) => `${item.label || ""} ${item.raw_title || ""}`).join(" "));
-  return praiseLead.includes(q) || date.includes(q) || tags.includes(q) || dateDisplay.includes(q) || type.includes(q) || items.includes(q);
+  return leaders.includes(q) || date.includes(q) || tags.includes(q) || dateDisplay.includes(q) || type.includes(q) || items.includes(q);
 }
 
 function getFilteredServicesForType(typeId) {
@@ -15181,7 +15192,7 @@ function renderServiceMetaEditor(service) {
       <label>
         <span>찬양 인도자</span>
         <input class="svc-meta-input" type="text" data-service-meta-field="leader"
-          value="${escapeAttr(service.leader || "")}"
+          value="${escapeAttr(servicePraiseLeaderLabel(service))}"
           placeholder="이름/직분"
           aria-label="찬양 인도자" />
       </label>`}
@@ -15309,7 +15320,7 @@ function renderServiceItemGroups(items) {
               class="svc-group-assignee svc-group-assignee-input"
               type="text"
               data-service-meta-field="leader"
-              value="${escapeAttr(selectedService?.leader || "")}"
+              value="${escapeAttr(servicePraiseLeaderLabel(selectedService))}"
               placeholder="인도자"
               aria-label="찬양 인도자"
             />`
@@ -16175,21 +16186,23 @@ function servicePraiseAssignee(service, items = []) {
 function servicePraiseBoardMetaCandidate(service, items = []) {
   const team = servicePraiseTeamName(service);
   if (team) return { text: team, priority: 3 };
+  const introAssignee = items
+    .map((item) => item?.praiseIntro ? cleanServiceAssignee(item.assignee) : "")
+    .find(Boolean);
+  if (introAssignee) return { text: introAssignee, priority: 2.75 };
   const itemAssignee = items.map((item) => cleanServiceAssignee(item?.assignee)).find(Boolean);
-  if (itemAssignee) {
-    return isPraiseTeamName(itemAssignee)
-      ? { text: itemAssignee, priority: 2 }
-      : { text: `인도 ${itemAssignee}`, priority: 1 };
-  }
+  if (itemAssignee && isPraiseTeamName(itemAssignee)) return { text: itemAssignee, priority: 2.6 };
   const leader = servicePraiseLeaderLabel(service);
+  if (leader && isPraiseTeamName(leader)) return { text: leader, priority: 2.6 };
+  const defaultTeam = serviceDefaultMainPraiseTeamName(service);
+  if (defaultTeam) return { text: defaultTeam, priority: 2.5 };
+  if (itemAssignee) return { text: `인도 ${itemAssignee}`, priority: 1 };
   if (!leader) return { text: "", priority: 0 };
-  return isPraiseTeamName(leader)
-    ? { text: leader, priority: 2 }
-    : { text: `인도 ${leader}`, priority: 1 };
+  return { text: `인도 ${leader}`, priority: 1 };
 }
 
 function isPraiseTeamName(value = "") {
-  return /(?:찬양\s*(?:팀|단)|성가대|콰이어|워십|밴드|praise\s*team|choir|worship|band)/i.test(String(value || ""));
+  return /(?:찬양\s*(?:팀|단)|성가대|콰이어|워십|밴드|썸프레이즈|praise\s*team|choir|worship|band|sum\s*praise|sumpraise)/i.test(String(value || ""));
 }
 
 function serviceOrderSheetPraiseAssignee(items = []) {
@@ -17102,8 +17115,12 @@ function groupPresenterSlidesBySection(slides, serviceId = state.selectedService
   const groups = [];
   slides.forEach((slide, slideIndex) => {
     const mainPraise = isPresenterMainPraiseSlide(slide);
+    const mainPraiseMarker = mainPraise && isPresenterPraiseSectionMarkerSlide(slide);
+    const mainPraiseAssignee = mainPraiseMarker
+      ? cleanPresenterAssignee(slide.bodyText || slide.subtitle || slide.assignee || slide.sectionAssignee)
+      : slide.sectionAssignee;
     const praiseMeta = mainPraise
-      ? servicePraiseBoardMetaCandidate(service, [{ assignee: slide.sectionAssignee }])
+      ? servicePraiseBoardMetaCandidate(service, [{ assignee: mainPraiseAssignee, praiseIntro: mainPraiseMarker }])
       : { text: "", priority: 0 };
     const id = mainPraise ? `main-praise:${groups.length}` : slide.sectionId || `section:${slideIndex}`;
     const previous = groups[groups.length - 1];
@@ -17984,6 +18001,27 @@ function buildServicePresenterSlides(serviceId) {
 }
 
 function presenterSlideWithServiceAssigneeFallback(slide = {}, service = null) {
+  if (isPresenterScriptureReadingSource(slide)) {
+    if (presenterSlideLayout(slide) === PRESENTER_SLIDE_LAYOUTS.BLANK || slide.type === "blank") {
+      return {
+        ...slide,
+        assignee: "",
+        sectionAssignee: "",
+        text: "",
+      };
+    }
+    const reference = cleanPresenterAssignee(slide.assignee || slide.text);
+    const title = slide.title || "성경봉독";
+    return {
+      ...slide,
+      title,
+      assignee: reference && compactSearchValue(reference) !== compactSearchValue(title) ? reference : "",
+      sectionAssignee: "",
+      text: slide.elementType === PRESENTER_ELEMENT_TYPES.TITLE_ASSIGNEE
+        ? cleanList([title, reference && compactSearchValue(reference) !== compactSearchValue(title) ? reference : ""]).join("\n")
+        : slide.text,
+    };
+  }
   const assignee = cleanPresenterAssignee(slide.assignee || slide.sectionAssignee);
   const worshipLeader = presenterSlideUsesWorshipLeaderAssignee(slide) ? serviceWorshipLeaderLabel(service) : "";
   const resolvedAssignee = assignee || worshipLeader;
@@ -18032,8 +18070,8 @@ function presenterMainPraiseIntroSlide(service, firstSlide, index = 0) {
     elementLabel: title,
     elementTitle: title,
     sectionAssignee: "",
-    elementType: PRESENTER_ELEMENT_TYPES.TITLE_ASSIGNEE,
-    layout: PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT,
+    elementType: PRESENTER_ELEMENT_TYPES.TITLE_CONTENT,
+    layout: PRESENTER_SLIDE_LAYOUTS.CENTER_TEXT,
     type: "praise-section-title",
     label: title,
     title,
@@ -18133,6 +18171,10 @@ function presenterElementTrailingBlankSlide(slide, index, service = null) {
     formKey: "",
     segment: "",
     text: "",
+    body: "",
+    bodyText: "",
+    assignee: "",
+    sectionAssignee: "",
     warnings: [],
     imageSrc: "",
     videoSrc: "",
@@ -19170,7 +19212,8 @@ function presenterElementSlideFromMemo(item, section, index, memo, displayText, 
   const title = assetTitle || displayText || label || serviceElementTypeLabel(elementType);
   if (elementType === "title") return presenterTitleOnlySlide(item, section, index, title);
   if (elementType === "title_content") {
-    const lines = String(displayText || "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+    const titleContentText = String(item?.raw_title || displayText || "");
+    const lines = titleContentText.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
     const titleText = lines[0] || item?.label || section.sectionTitle || "제목";
     const rawBodyText = lines.slice(1).join("\n") || memo.note || item?.assignee || "";
     const mainPraiseIntro = isMainPraiseTitleContentItem(item, section, titleText);
@@ -19197,10 +19240,12 @@ function presenterElementSlideFromMemo(item, section, index, memo, displayText, 
   if (presenterMemoElementIsTitleSlide(elementType)) {
     const titleText = presenterTitleAssigneeTitle(item, safeLabel, displayText, elementType);
     const assigneeText = presenterTitleAssigneePerson(item, safeLabel, displayText, titleText, service);
+    const scriptureReading = isPresenterScriptureReadingSource({ elementType, label: safeLabel, sectionKey: section.sectionKey });
     if (!titleText && !assigneeText) return null;
     return {
       id: `${item.id || index}:title-assignee`,
       ...section,
+      sectionAssignee: scriptureReading ? "" : section.sectionAssignee,
       elementLabel: safeLabel || section.elementLabel || serviceElementTypeLabel(elementType),
       elementTitle: titleText,
       elementType: PRESENTER_ELEMENT_TYPES.TITLE_ASSIGNEE,
@@ -19413,10 +19458,13 @@ function presenterTitleAssigneeTitle(item = {}, label = "", displayText = "", el
 
 function presenterTitleAssigneePerson(item = {}, label = "", displayText = "", titleText = "", service = null) {
   if (isCreedPresenterItem(item, label, displayText)) return "사도신경";
-  const assignee = cleanPresenterAssignee(item.assignee);
-  if (assignee) return assignee;
   const compact = compactSearchValue(label);
   const text = cleanPresenterAssignee(displayText);
+  if (compact === "성경봉독") {
+    return text && compactSearchValue(text) !== compactSearchValue(titleText) ? text : "";
+  }
+  const assignee = cleanPresenterAssignee(item.assignee);
+  if (assignee) return assignee;
   const fallback = presenterTitleAssigneeUsesWorshipLeader(compact)
     ? serviceWorshipLeaderLabel(service)
     : "";
@@ -19429,7 +19477,6 @@ function presenterTitleAssigneePerson(item = {}, label = "", displayText = "", t
 function presenterTitleAssigneeUsesWorshipLeader(compactLabel = "") {
   return [
     "봉헌기도",
-    "성경봉독",
     "교회소식",
     "광고",
     "축도",
@@ -19440,6 +19487,7 @@ function presenterTitleAssigneeUsesWorshipLeader(compactLabel = "") {
 }
 
 function presenterSlideUsesWorshipLeaderAssignee(slide = {}) {
+  if (isPresenterScriptureReadingSource(slide)) return false;
   const key = compactSearchValue([
     slide.elementLabel,
     slide.sectionLabel,
@@ -19448,7 +19496,6 @@ function presenterSlideUsesWorshipLeaderAssignee(slide = {}) {
   ].filter(Boolean).join(" "));
   return [
     "봉헌기도",
-    "성경봉독",
     "교회소식",
     "광고",
     "축도",
@@ -19456,6 +19503,22 @@ function presenterSlideUsesWorshipLeaderAssignee(slide = {}) {
     "사죄의선언",
     "묵도",
   ].some((label) => key.includes(label));
+}
+
+function isPresenterScriptureReadingSource(source = {}) {
+  const key = compactSearchValue([
+    source.elementType,
+    source.componentType,
+    source.sectionKey,
+    source.elementLabel,
+    source.sectionLabel,
+    source.label,
+    source.title,
+  ].filter(Boolean).join(" "));
+  return key.includes("scripturereading")
+    || key.includes("성경봉독")
+    || normalizeServiceElementType(source.elementType) === "scripture_reading"
+    || normalizeWorshipElementType(source.elementType) === "scripture_reading";
 }
 
 function serviceElementTypeLabel(type) {

@@ -1735,7 +1735,7 @@ def main() -> int:
                         }
                         and len(template_terms["monthlyScaffold"]["monthlyPrayerElements"]) == 5
                         and len(template_terms["monthlyScaffold"]["offeringElements"]) == 2
-                        and template_terms["monthlyScaffold"]["blankPlaceholders"] == 22
+                        and template_terms["monthlyScaffold"]["blankPlaceholders"] == 21
                         and template_terms["overflow"] <= 2
                     ):
                         pass_("service-template-terminology", json.dumps(template_terms, ensure_ascii=False))
