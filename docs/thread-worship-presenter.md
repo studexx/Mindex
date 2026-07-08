@@ -208,5 +208,7 @@ Manual checks when changing live presenter behavior:
 - Hymn auto form presets include a trailing `Coda` form when the linked praise
   version provides one, preserving the rule that each hymn verse is followed by
   the chorus.
+- If the presenter output window has fallen out of fullscreen, `Space` or
+  `Enter` first requests fullscreen again instead of advancing the slide.
 - Presenter smoke coverage now checks long hymn-score warmup ordering, score
   safe-area rendering, hymn Coda output, and a less flaky output key-sync wait.

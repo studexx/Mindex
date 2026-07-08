@@ -2090,6 +2090,34 @@ def main() -> int:
                 else:
                     fail("presenter-output-heartbeat-direct-route", json.dumps(heartbeat_state, ensure_ascii=False))
 
+                output_fullscreen_key_state = output_page.evaluate(
+                    """
+                    async () => {
+                      let requestCalls = 0;
+                      const originalRequestFullscreen = document.documentElement.requestFullscreen;
+                      document.documentElement.requestFullscreen = () => {
+                        requestCalls += 1;
+                        return Promise.resolve();
+                      };
+                      const before = JSON.parse(localStorage.getItem('mindex.presenter.state') || '{}').index;
+                      window.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true }));
+                      await new Promise((resolve) => setTimeout(resolve, 80));
+                      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+                      await new Promise((resolve) => setTimeout(resolve, 80));
+                      const after = JSON.parse(localStorage.getItem('mindex.presenter.state') || '{}').index;
+                      document.documentElement.requestFullscreen = originalRequestFullscreen;
+                      return { requestCalls, before, after };
+                    }
+                    """
+                )
+                if (
+                    output_fullscreen_key_state["requestCalls"] >= 2
+                    and output_fullscreen_key_state["before"] == output_fullscreen_key_state["after"]
+                ):
+                    pass_("presenter-output-enter-space-fullscreen", json.dumps(output_fullscreen_key_state, ensure_ascii=False))
+                else:
+                    fail("presenter-output-enter-space-fullscreen", json.dumps(output_fullscreen_key_state, ensure_ascii=False))
+
                 page.evaluate(
                     """
                     (() => {

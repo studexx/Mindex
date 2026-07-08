@@ -18231,6 +18231,19 @@ function initPresenterOutput() {
       document.documentElement.requestFullscreen?.().catch?.(() => {});
       return;
     }
+    if (
+      !document.fullscreenElement
+      && !jumpDraft
+      && !event.metaKey
+      && !event.ctrlKey
+      && !event.altKey
+      && (event.key === "Enter" || event.key === " ")
+    ) {
+      event.preventDefault();
+      requestLocalPresenterFullscreen();
+      postHeartbeat();
+      return;
+    }
     if (!event.metaKey && !event.ctrlKey && !event.altKey && /^\d$/.test(event.key)) {
       event.preventDefault();
       jumpDraft = `${jumpDraft}${event.key}`.slice(0, PRESENTER_JUMP_MAX_DIGITS);
