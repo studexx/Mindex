@@ -49,7 +49,7 @@ Service > Section > Element > Slide
 ```
 
 - `Service` is the top operational worship unit that drives the presenter.
-  Examples: `주일예배 (1부)`, `주일예배 (2부)`, `주일예배 (3부)`,
+  Examples: `주일예배 [1부]`, `주일예배 [2부]`, `주일예배 [3부]`,
   `수요예배`, `금요기도회`, `월삭예배`, department services, and special
   seasonal services. Recurring services can have stable service keys. Special
   services should normally stay in a special/seasonal grouping and receive

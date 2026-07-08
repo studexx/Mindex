@@ -220,7 +220,7 @@ class YoutubeLiveSourceTests(unittest.TestCase):
                         "id": "service-1",
                         "service_date": "2026-07-05",
                         "service_type_id": "sun_3rd",
-                        "title": "주일예배 (3부)",
+                        "title": "주일예배 [3부]",
                         "worship_leader": "김남영 목사",
                         "created_at": "2026-07-04T21:35:50Z",
                     }

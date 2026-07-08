@@ -1,0 +1,2885 @@
+// Presenter slide/output helpers split from app.js.
+// Loaded before app.js so the main controller can keep small wrappers.
+
+function presenterSlidesWithIntroSlide(item = {}, section = {}, index = 0, memo = emptyServiceItemMemo(), slides = []) {
+  const list = Array.isArray(slides) ? slides.filter(Boolean) : [];
+  if (!list.length) return list;
+  const introSlide = presenterIntroSlideFromMemo(item, section, index, memo);
+  if (!introSlide) return list;
+  const introBody = presenterTitleContentBodyText(introSlide);
+  const alreadyPresent = list.some((slide) =>
+    slide?._introSlide
+    || (
+      slide?.type === "title-content"
+      && normalizeTitle(slide.title) === normalizeTitle(introSlide.title)
+      && normalizeTitle(presenterTitleContentBodyText(slide)) === normalizeTitle(introBody)
+    ));
+  return alreadyPresent ? list : [introSlide, ...list];
+}
+
+function presenterIntroSlideFromMemo(item = {}, section = {}, index = 0, memo = emptyServiceItemMemo()) {
+  const intro = normalizeServiceIntroSlide(memo.introSlide);
+  if (!intro) return null;
+  const title = intro.title || section.sectionTitle || item.label || "제목";
+  const bodyText = intro.body || "";
+  return {
+    id: `${item.id || index}:intro-title`,
+    ...section,
+    elementLabel: item.label || section.elementLabel || "제목 / 내용",
+    elementTitle: title,
+    elementType: PRESENTER_ELEMENT_TYPES.TITLE_CONTENT,
+    layout: PRESENTER_SLIDE_LAYOUTS.CENTER_TEXT,
+    type: "title-content",
+    label: item.label || "",
+    title,
+    bodyText,
+    marker: "",
+    text: [title, bodyText].filter(Boolean).join("\n"),
+    sort: index - 0.001,
+    _introSlide: true,
+  };
+}
+
+function presenterSlidesWithSpecialSongTitle(item = {}, section = {}, slides = [], index = 0) {
+  if (!shouldIncludeSpecialSongSectionTitleSlide(item, section, slides)) return slides;
+  return [presenterSpecialSongSectionTitleSlide(item, section, index), ...slides];
+}
+
+function shouldIncludeSpecialSongSectionTitleSlide(item = {}, section = {}, slides = []) {
+  if (!slides.length) return false;
+  const sectionKey = String(section.sectionKey || item?._worshipSectionKey || "").trim();
+  if (sectionKey !== "special_song") return false;
+  return !slides.some((slide) => slide.type === "title-assignee" && normalizeTitle(slide.title) === normalizeTitle("특송"));
+}
+
+function presenterSpecialSongSectionTitleSlide(item = {}, section = {}, index = 0) {
+  const title = section.sectionLabel || "특송";
+  const assignee = cleanServiceAssignee(item.assignee);
+  const text = [title, assignee].filter(Boolean).join("\n");
+  return {
+    id: `${item.id || index}:special-title`,
+    ...section,
+    elementType: PRESENTER_ELEMENT_TYPES.TITLE_ASSIGNEE,
+    layout: PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT,
+    type: "title-assignee",
+    label: "특송",
+    title,
+    subtitle: assignee,
+    assignee,
+    marker: "",
+    text,
+    sort: index - 0.002,
+  };
+}
+
+function serviceItemOutputMode(item = {}, memo = parseServiceItemMemo(item?.memo)) {
+  return normalizeServiceOutputMode(
+    memo.outputMode
+    || item.outputMode
+    || item.output_mode
+    || item.renderMode
+    || item.render_mode,
+  );
+}
+
+function presenterScoreSlidesForServiceItem(
+  item,
+  section,
+  index,
+  song,
+  version,
+  displayText,
+  memo = parseServiceItemMemo(item?.memo),
+  forms = [],
+  formWarnings = [],
+) {
+  const label = item?.label || "";
+  const asset = normalizeServiceAsset(memo.asset || item.asset);
+  const title = presenterPraiseTitle(song, displayText) || displayText || label || "악보";
+  const imageSlides = presenterScoreImageSlidesFromAsset(asset, item, section, index, title, label, song, version, displayText, forms, formWarnings);
+  if (imageSlides.length) return imageSlides;
+  const scoreAsset = { ...asset, kind: asset.kind || "score" };
+  const fileTitle = presenterFileDisplayTitle({ title, asset: scoreAsset }, "악보");
+  const scoreForms = presenterScoreFormsFromImageSources([{ formLabel: asset.formLabel || asset.form_label || asset.scoreFormLabel || asset.score_form_label }]);
+  return [{
+    id: `${item.id || index}:score`,
+    ...section,
+    sectionLabel: section.sectionLabel || label || "악보",
+    sectionTitle: section.sectionTitle || section.sectionLabel || label || "악보",
+    sectionName: presenterNameParts(section.sectionLabel || label, fileTitle).join(" / ") || fileTitle,
+    elementTitle: fileTitle,
+    elementType: PRESENTER_ELEMENT_TYPES.FILE,
+    layout: PRESENTER_SLIDE_LAYOUTS.FILE,
+    type: "file",
+    label,
+    title: fileTitle,
+    subtitle: versionDisplayName(song, version),
+    marker: "악보",
+    text: [fileTitle, scoreAsset.url].filter(Boolean).join("\n"),
+    asset: scoreAsset,
+    ...presenterScoreFormMetadata(scoreForms, 0, formWarnings),
+    sourceType: "score",
+    componentType: "score",
+    sort: index,
+  }];
+}
+
+function presenterScoreImageSlidesFromAsset(
+  asset,
+  item,
+  section,
+  index,
+  title,
+  label,
+  song = null,
+  version = null,
+  displayText = "",
+  forms = [],
+  formWarnings = [],
+) {
+  const explicitSources = [
+    ...normalizeServiceAssetSlides(asset?.slides),
+    ...normalizeServiceAssetSlides(asset?.images),
+    ...normalizeServiceAssetSlides(asset?.urls),
+    ...presenterImageSourcesFromAssetUrl(asset?.url),
+  ];
+  const sources = explicitSources.length ? explicitSources : presenterHymnScoreAssetSlides(song, version, displayText);
+  const imageSources = sources
+    .map((slide, slideIndex) => ({
+      url: normalizePresenterMediaSource(slide.url),
+      name: String(slide.name || "").trim(),
+      formLabel: presenterScoreFormLabelFromAssetSlide(slide),
+      formKey: String(slide.formKey || slide.form_key || slide.scoreFormKey || slide.score_form_key || "").trim(),
+      order: Number(slide.order) || slideIndex + 1,
+    }))
+    .filter((slide) => slide.url && presenterMediaSourceIsImage(slide.url));
+  const count = imageSources.length;
+  const scoreForms = presenterScoreFormsFromImageSources(imageSources);
+  return imageSources.map((slide, slideIndex) => {
+    return {
+      id: `${item.id || index}:score-image:${slideIndex}`,
+      ...section,
+      sectionLabel: section.sectionLabel || label || "악보",
+      sectionTitle: section.sectionTitle || section.sectionLabel || label || "악보",
+      sectionName: presenterNameParts(section.sectionLabel || label, title).join(" / ") || title,
+      elementTitle: title,
+      elementType: PRESENTER_ELEMENT_TYPES.IMAGE,
+      layout: PRESENTER_SLIDE_LAYOUTS.MEDIA,
+      type: "image",
+      label,
+      title,
+      subtitle: versionDisplayName(song, version),
+      marker: "",
+      text: slide.name || title,
+      imageSrc: slide.url,
+      asset: { ...asset, kind: asset.kind || "score", url: slide.url, name: slide.name || asset.name || "" },
+      ...presenterScoreFormMetadata(scoreForms, slideIndex, formWarnings),
+      scoreBackground: true,
+      sourceType: "score",
+      componentType: "score",
+      sort: index + slideIndex / 100,
+    };
+  });
+}
+
+function presenterScoreFormMetadata(forms = [], slideIndex = 0, formWarnings = []) {
+  const form = Array.isArray(forms) ? forms[slideIndex] : null;
+  if (!form) return formWarnings?.length ? { warnings: formWarnings } : {};
+  const formId = form._localId || form.id || slideIndex;
+  return {
+    formKey: form._presenterScoreFormKey || `${formId}:${slideIndex}`,
+    formLabel: presenterFormMarker(form),
+    warnings: formWarnings,
+  };
+}
+
+function presenterScoreFormsFromImageSources(imageSources = []) {
+  return imageSources.map((source, index) => {
+    const label = presenterScoreFormLabelFromAssetSlide(source);
+    if (!label) return null;
+    const target = normalizePresenterFormPresetLabel(label);
+    if (!target.key || target.type === "lyrics") return null;
+    const partType = presenterFormPartTypeForPresetTarget(target);
+    const formKey = String(source.formKey || source.form_key || source.scoreFormKey || source.score_form_key || "").trim()
+      || `score:${target.key}:${index}`;
+    return {
+      _presenterVirtual: true,
+      _presenterScoreFormKey: formKey,
+      id: formKey,
+      part_type: partType,
+      part_number: target.number || null,
+      label,
+      lyrics: label,
+    };
+  });
+}
+
+function presenterScoreFormLabelFromAssetSlide(slide = {}) {
+  return normalizePresenterScoreFormLabel(
+    slide.formLabel
+    || slide.form_label
+    || slide.scoreFormLabel
+    || slide.score_form_label
+    || slide.form
+    || "",
+  );
+}
+
+function normalizePresenterScoreFormLabel(value = "") {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  const target = normalizePresenterFormPresetLabel(raw);
+  if (target.type === "lyrics") return "";
+  if (target.type === "verse" && target.number) return `Verse ${target.number}`;
+  if (target.key === "chorus") return "Chorus";
+  if (target.key === "bridge") return "Bridge";
+  if (target.key === "pre-chorus") return "Pre-Chorus";
+  if (target.key === "coda" || target.key === "amen") return "Coda";
+  return "";
+}
+
+function presenterHymnScoreAssetSlides(song = null, version = null, displayText = "") {
+  const hymnNo = normalizedHymnScoreNumber(song?.hymn_no || version?.hymn_no || displayText);
+  if (!hymnNo) return [];
+  const entry = state.hymnScoreManifest?.[hymnNo];
+  const slides = Array.isArray(entry?.slides) ? entry.slides : [];
+  return slides
+    .map((slide, index) => ({
+      url: slide.src || slide.url,
+      name: slide.name || `${hymnNo} ${entry.title || stripHymnNumber(song?.title || "")} ${index + 1}`,
+      formLabel: slide.scoreFormLabel || slide.score_form_label || slide.formLabel || slide.form_label || "",
+      formKey: slide.scoreFormKey || slide.score_form_key || slide.formKey || slide.form_key || "",
+      order: index + 1,
+    }))
+    .filter((slide) => slide.url);
+}
+
+function normalizedHymnScoreNumber(value = "") {
+  const match = String(value || "").match(/\d{1,3}/);
+  return match ? String(Number(match[0])) : "";
+}
+
+function presenterImageSourcesFromAssetUrl(value) {
+  const text = String(value || "").trim();
+  if (!text) return [];
+  return text
+    .split(/[\s,|]+/g)
+    .map((part) => normalizePresenterMediaSource(part))
+    .filter((source) => source && presenterMediaSourceIsImage(source))
+    .map((url, index) => ({ url, name: index === 0 ? "" : "", order: index + 1 }));
+}
+
+function presenterFormPlanForServiceItem(version = {}, item, song = null) {
+  version = version || {};
+  const forms = normalizeForms(version.forms || []).filter((form) => normalizeLyricsForCopy(form.lyrics));
+  const matchedRule = matchedServiceItemFormPresetRule(item, song, version);
+  const preset = serviceItemFormPreset(item)
+    || matchedRule?.formPreset
+    || presenterSongDefaultFormPreset(song, version)
+    || presenterDefaultHymnFormPreset(forms, song, version)
+    || null;
+  const effectivePreset = presenterFormPresetWithAvailableCoda(preset, matchedRule, forms, song, version);
+  if (!effectivePreset?.forms?.length) return { forms, warnings: [] };
+  const resolved = resolvePresenterFormPresetSequence(forms, effectivePreset.forms);
+  const warnings = resolved.missing.map((label) => `${label} 없음`);
+  return {
+    forms: resolved.items.length ? resolved.items : forms,
+    warnings,
+  };
+}
+
+function presenterFormPresetWithAvailableCoda(preset = null, rule = null, forms = [], song = null, version = null) {
+  if (!preset?.forms?.length || !rule?.appendCodaWhenAvailable) return preset;
+  if (!versionEffectivePraiseTypes(song, version).includes("hymn")) return preset;
+  const normalizedPresetForms = preset.forms.map((form) => normalizePresenterFormPresetLabel(form));
+  if (normalizedPresetForms.some((form) => form.type === "coda" || form.type === "amen")) return preset;
+  const hasCoda = normalizeForms(forms || []).some((form) => {
+    const target = normalizePresenterFormPresetLabel(presenterFormDisplayLabel(form));
+    return target.type === "coda" || target.type === "amen";
+  });
+  if (!hasCoda) return preset;
+  const formsWithCoda = [...preset.forms, "Coda"];
+  return {
+    ...preset,
+    forms: formsWithCoda,
+    hint: `${preset.hint || preset.forms.join("-")}-Coda`,
+  };
+}
+
+function presenterSongDefaultFormPreset(song = null, version = null) {
+  const versionMeta = normalizeSongMetadata(version?.metadata);
+  const songMeta = normalizeSongMetadata(song?.metadata);
+  return versionMeta.presenter_form || songMeta.presenter_form || null;
+}
+
+function presenterDefaultHymnFormPreset(forms = [], song = null, version = null) {
+  if (!versionEffectivePraiseTypes(song, version).includes("hymn")) return null;
+  const normalizedForms = normalizeForms(forms || []);
+  const verses = normalizedForms.filter((form) => normalizePresenterFormPresetLabel(presenterFormDisplayLabel(form)).type === "verse");
+  const chorus = normalizedForms.find((form) => normalizePresenterFormPresetLabel(presenterFormDisplayLabel(form)).type === "chorus");
+  if (!verses.length || !chorus) return null;
+  const presetForms = [];
+  verses.forEach((verse, index) => {
+    const target = normalizePresenterFormPresetLabel(presenterFormDisplayLabel(verse));
+    presetForms.push(target.number ? `V${target.number}` : index === 0 ? "V" : `V${index + 1}`);
+    presetForms.push("C");
+  });
+  const hymnCoda = normalizedForms.find((form) => {
+    const target = normalizePresenterFormPresetLabel(presenterFormDisplayLabel(form));
+    return ["coda", "amen"].includes(target.type);
+  });
+  if (hymnCoda) presetForms.push("Coda");
+  return normalizeServiceFormPreset(presetForms, presetForms.join("-"), "auto");
+}
+
+function matchedServiceItemFormPresetRule(item, song, version) {
+  return serviceItemFormPresetRules(item).find((rule) => serviceItemFormPresetRuleMatches(rule, item, song, version)) || null;
+}
+
+function serviceItemFormPresetRuleMatches(rule = {}, item = {}, song = null, version = null) {
+  const when = rule.when && typeof rule.when === "object" ? rule.when : {};
+  const songType = String(when.songType || when.song_type || when.praiseType || when.praise_type || "").trim();
+  if (songType) {
+    const requiredTypes = normalizePraiseTypes(songType);
+    const versionTypes = versionEffectivePraiseTypes(song, version);
+    if (requiredTypes.length && !requiredTypes.some((type) => versionTypes.includes(type))) return false;
+  }
+  const sectionKey = String(when.sectionKey || when.section_key || "").trim();
+  if (sectionKey && sectionKey !== String(item?._worshipSectionKey || "").trim()) return false;
+  const label = String(when.label || "").trim();
+  if (label && compactSearchValue(label) !== compactSearchValue(item?.label || "")) return false;
+  return true;
+}
+
+function resolvePresenterFormPresetSequence(forms = [], presetForms = []) {
+  if (presenterFormsAreUnsplitLyrics(forms)) {
+    const lyricsResolved = resolvePresenterLyricsFormPresetSequence(forms, presetForms);
+    if (lyricsResolved.items.length) return lyricsResolved;
+  }
+  const items = [];
+  const missing = [];
+  for (const label of cleanList(presetForms)) {
+    const resolved = findPresenterFormForPresetLabel(forms, label);
+    if (resolved) items.push(resolved);
+    else missing.push(normalizePresenterMissingFormLabel(label));
+  }
+  return { items, missing };
+}
+
+function presenterFormsAreUnsplitLyrics(forms = []) {
+  const normalizedForms = normalizeForms(forms || []).filter((form) => normalizeLyricsForCopy(form.lyrics));
+  return Boolean(normalizedForms.length) && normalizedForms.every((form) => normalizePresenterFormPresetLabel(presenterFormDisplayLabel(form)).type === "lyrics");
+}
+
+function resolvePresenterLyricsFormPresetSequence(forms = [], presetForms = []) {
+  const blocks = presenterLyricsBlocksFromForms(forms);
+  const items = [];
+  const missing = [];
+  const assigned = new Map();
+  let blockIndex = 0;
+  cleanList(presetForms).forEach((label, index) => {
+    const target = normalizePresenterFormPresetLabel(label);
+    if (!target.key) return;
+    if (target.blank) {
+      items.push(presenterBlankFormPresetItem(label, target));
+      return;
+    }
+    const assignedForm = assigned.get(target.key);
+    if (assignedForm) {
+      items.push({ ...assignedForm, id: `${assignedForm.id}:repeat:${index}` });
+      return;
+    }
+    const block = blocks[blockIndex];
+    if (!block) {
+      missing.push(normalizePresenterMissingFormLabel(label));
+      return;
+    }
+    blockIndex += 1;
+    const form = presenterVirtualFormPresetItem(label, target, block, index);
+    assigned.set(target.key, form);
+    items.push(form);
+  });
+  return { items, missing };
+}
+
+function presenterLyricsBlocksFromForms(forms = []) {
+  return normalizeForms(forms || [])
+    .flatMap((form) => String(form.lyrics || "").split(/\n\s*\n/g))
+    .map((block) => normalizeLyricsForCopy(block))
+    .filter(Boolean);
+}
+
+function presenterVirtualFormPresetItem(label = "", target = {}, lyrics = "", index = 0) {
+  const partType = presenterFormPartTypeForPresetTarget(target);
+  const partNumber = target.number || null;
+  const cleanLabel = String(label || "").trim();
+  return {
+    _presenterVirtual: true,
+    id: `preset-form:${target.key || compactSearchValue(cleanLabel) || index}`,
+    part_type: partType,
+    part_number: partNumber,
+    lyrics,
+    label: cleanLabel || (partNumber ? `${partType} ${partNumber}` : partType),
+  };
+}
+
+function presenterFormPartTypeForPresetTarget(target = {}) {
+  const type = String(target.type || "").trim();
+  if (type === "verse") return "Verse";
+  if (type === "chorus") return "Chorus";
+  if (type === "bridge") return "Bridge";
+  if (type === "pre-chorus") return "Pre-Chorus";
+  if (type === "coda") return "Coda";
+  if (type === "lyrics") return "Lyrics";
+  return PART_TYPES.includes(target.rawType) ? target.rawType : "Lyrics";
+}
+
+function findPresenterFormForPresetLabel(forms = [], label = "") {
+  const target = normalizePresenterFormPresetLabel(label);
+  if (!target.key) return null;
+  if (target.blank) return presenterBlankFormPresetItem(label, target);
+  if (target.lastVerse) {
+    return [...forms].reverse().find((form) => normalizePresenterFormPresetLabel(presenterFormDisplayLabel(form)).type === "verse") || null;
+  }
+  for (const form of forms) {
+    const candidate = normalizePresenterFormPresetLabel(presenterFormDisplayLabel(form));
+    if (target.key === candidate.key) return form;
+    if (target.type === "coda" && candidate.type === "amen") {
+      return { ...form, part_type: "Coda", label: "Coda", _presenterAmenAsCoda: true };
+    }
+    if (target.type && target.type === candidate.type && (!target.number || target.number === candidate.number)) return form;
+  }
+  return null;
+}
+
+function presenterFormDisplayLabel(form = {}) {
+  if (form._presenterVirtual) return displayLabel(form);
+  return String(form.label || "").trim() || displayLabel(form);
+}
+
+function normalizePresenterFormPresetLabel(value = "") {
+  const raw = String(value || "").trim();
+  const compact = compactSearchValue(raw);
+  const lastVerse = /^(마지막절|lastverse|last)$/i.test(compact);
+  if (lastVerse) return { key: "last-verse", type: "verse", number: 0, lastVerse: true };
+  const hymnVerse = raw.match(/^(\d+)\s*절$/u);
+  if (hymnVerse) return { key: `verse:${hymnVerse[1]}`, type: "verse", number: Number(hymnVerse[1]) };
+  const shorthand = raw.match(/^(v|verse)\s*(\d*)$/i);
+  if (shorthand) {
+    const number = shorthand[2] ? Number(shorthand[2]) : 0;
+    return { key: number ? `verse:${number}` : "verse", type: "verse", number };
+  }
+  const chorus = /^(c|chorus|후렴|코러스)$/i.test(compact);
+  if (chorus) return { key: "chorus", type: "chorus", number: 0 };
+  const bridge = /^(b|bridge|브릿지)$/i.test(compact);
+  if (bridge) return { key: "bridge", type: "bridge", number: 0 };
+  const preChorus = /^(pc|prechorus|pre-chorus|프리코러스)$/i.test(compact);
+  if (preChorus) return { key: "pre-chorus", type: "pre-chorus", number: 0 };
+  const coda = /^(coda|코다|ending|엔딩)$/i.test(compact);
+  if (coda) return { key: "coda", type: "coda", number: 0 };
+  const amen = /^(amen|아멘)$/i.test(compact);
+  if (amen) return { key: "amen", type: "amen", number: 0 };
+  const lyrics = /^(lyrics|가사)$/i.test(compact);
+  if (lyrics) return { key: "lyrics", type: "lyrics", number: 0 };
+  const instrumental = /^(간주|interlude|instrumental)$/i.test(compact);
+  if (instrumental) return { key: "instrumental", type: "instrumental", number: 0, blank: true };
+  const display = raw.match(/^([A-Za-z][A-Za-z -]*?)(?:\s+(\d+))?$/);
+  if (display) {
+    const type = normalizePresenterFormType(display[1]);
+    const number = display[2] ? Number(display[2]) : 0;
+    return { key: number ? `${type}:${number}` : type, type, number };
+  }
+  return { key: compact, type: compact, number: 0 };
+}
+
+function normalizePresenterFormType(value = "") {
+  const compact = compactSearchValue(value);
+  if (/^verse$/i.test(compact)) return "verse";
+  if (/^chorus$/i.test(compact)) return "chorus";
+  if (/^bridge$/i.test(compact)) return "bridge";
+  if (/^prechorus$/i.test(compact)) return "pre-chorus";
+  if (/^coda$/i.test(compact)) return "coda";
+  if (/^amen$/i.test(compact)) return "amen";
+  if (/^(interlude|instrumental)$/i.test(compact)) return "instrumental";
+  return compact;
+}
+
+function normalizePresenterMissingFormLabel(value = "") {
+  const raw = String(value || "").trim();
+  const target = normalizePresenterFormPresetLabel(raw);
+  if (target.lastVerse) return "마지막 절";
+  if (target.type === "verse" && target.number) return `${target.number}절`;
+  if (target.key === "chorus") return "C";
+  if (target.key === "bridge") return "Bridge";
+  if (target.key === "pre-chorus") return "Pre-Chorus";
+  if (target.key === "coda") return "Coda";
+  if (target.key === "amen") return "Amen";
+  return raw || "송폼";
+}
+
+function presenterBlankFormPresetItem(label = "", target = {}) {
+  const text = String(label || "").trim() || "빈 화면";
+  return {
+    _presenterBlank: true,
+    _presenterToken: target.key || compactSearchValue(text) || "blank",
+    id: `preset-blank:${target.key || compactSearchValue(text) || "blank"}`,
+    part_type: text,
+    part_number: null,
+    lyrics: "",
+    label: text,
+  };
+}
+
+function isOrderSheetOnlyPlaceholderItem(item = {}) {
+  return Boolean(item._worshipOrderSheetPlaceholder);
+}
+
+function isServicePreparationItem(item, memo = parseServiceItemMemo(item?.memo)) {
+  const label = String(item?.label || "").replace(/\s+/g, "");
+  const title = String(item?.raw_title || "").replace(/\s+/g, "");
+  const sectionKey = String(item?._worshipSectionKey || "").trim();
+  const role = normalizeServicePresenterRole(memo?.presenterRole || memo?.templateKey || memo?.templateVariant);
+  return sectionKey === "ready"
+    || label === "준비"
+    || label === "예배준비"
+    || label === "대기영상"
+    || label === "인트로"
+    || label === "카운트다운"
+    || title === "준비"
+    || title === "예배준비"
+    || title === "대기영상"
+    || title === "인트로"
+    || title === "카운트다운"
+    || role === "ready"
+    || role === "waiting_loop"
+    || role === "intro"
+    || role === "still";
+}
+
+function isConfessionPrayerLabel(...values) {
+  return values.some((value) => {
+    const compact = compactSearchValue(value);
+    return compact === "참회기도" || compact === "참회의기도";
+  });
+}
+
+function isConfessionPrayerServiceItem(item = {}) {
+  return String(item?._worshipSectionKey || "").trim() === "confession"
+    || isConfessionPrayerLabel(item?.label, item?.raw_title, item?._worshipSectionTitle);
+}
+
+function isConfessionPrayerElement(element = {}, section = {}, sourceRef = {}) {
+  return String(section?.section_key || "").trim() === "confession"
+    || isConfessionPrayerLabel(sourceRef?.label, section?.title, element?.title);
+}
+
+function presenterConfessionPrayerSlide(item, section, index) {
+  return presenterTitleOnlySlide(item, section, index, "참회기도");
+}
+
+function presenterTitleOnlySlide(item, section, index, titleText = "") {
+  const title = String(titleText || item?.raw_title || item?.label || "제목").trim();
+  return {
+    id: `${item?.id || index}:title`,
+    ...section,
+    sectionLabel: item?.label || section.sectionLabel || title,
+    sectionTitle: title,
+    sectionName: title,
+    elementType: PRESENTER_ELEMENT_TYPES.TITLE_ASSIGNEE,
+    layout: PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT,
+    type: "title-assignee",
+    label: item?.label || "",
+    title,
+    assignee: "",
+    marker: "",
+    text: title,
+    sort: index,
+  };
+}
+
+function isLiturgicalBodyServiceItem(item = {}) {
+  const sectionKey = String(item?._worshipSectionKey || "").trim();
+  if (sectionKey === "creed" || sectionKey === "lords_prayer") return true;
+  return isLiturgicalBodyLabel(item?.label, item?.raw_title, item?._worshipSectionTitle);
+}
+
+function isLiturgicalBodyLabel(...values) {
+  return values.some((value) => {
+    const compact = compactSearchValue(value);
+    return compact === "사도신경" || compact === "신앙고백" || compact === "주기도문";
+  });
+}
+
+function liturgicalBodyTitle(item = {}) {
+  const label = compactSearchValue(item?.label || "");
+  const title = compactSearchValue(item?.raw_title || "");
+  if (label === "주기도문" || title === "주기도문" || String(item?._worshipSectionKey || "") === "lords_prayer") return "주기도문";
+  return "사도신경";
+}
+
+function liturgicalBodyText(item = {}, memo = parseServiceItemMemo(item?.memo), displayText = "") {
+  if (memo.slides?.length) return memo.slides.join("\n\n").trim();
+  const title = liturgicalBodyTitle(item);
+  const text = String(displayText || item?.raw_title || "").trim();
+  if (!text || compactSearchValue(text) === compactSearchValue(title)) return "";
+  return text;
+}
+
+function buildPresenterLiturgicalBodySlides(item, section, index, service, memo, displayText) {
+  if (!isLiturgicalBodyServiceItem(item)) return [];
+  const text = liturgicalBodyText(item, memo, displayText);
+  if (!text) return [];
+  const title = liturgicalBodyTitle(item);
+  const base = {
+    ...section,
+    sectionLabel: item?.label || title,
+    sectionTitle: title,
+    sectionName: title,
+    elementType: PRESENTER_ELEMENT_TYPES.BODY_TEXT,
+    label: item?.label || title,
+    title,
+    marker: "",
+  };
+  if (!presenterServiceUsesChromakey(service)) {
+    return [{
+      id: `${item.id || index}:liturgical-body`,
+      ...base,
+      layout: PRESENTER_SLIDE_LAYOUTS.CENTER_TEXT,
+      type: "liturgical-body",
+      text,
+      bodyText: text,
+      sort: index,
+    }];
+  }
+  return splitPresenterLyricChunks(text).map((chunk, chunkIndex) => ({
+    id: `${item.id || index}:liturgical:${chunkIndex}`,
+    ...base,
+    layout: PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT,
+    type: "lyrics",
+    formKey: `liturgical:${item.id || index}`,
+    marker: chunkIndex === 0 ? title : "",
+    text: chunk,
+    bodyText: text,
+    sort: index + chunkIndex / 100,
+  }));
+}
+
+function presenterPreparationSlide(service, item, index) {
+  const memo = parseServiceItemMemo(item?.memo);
+  const asset = normalizeServiceAsset(memo.asset);
+  const elementType = servicePreparationElementTypeForType(service?.type_id);
+  const source = normalizePresenterMediaSource(asset.url || "");
+  const presenterRole = presenterPreparationRole(item, memo);
+  const playbackType = presenterRole === "intro" ? "intro-video" : "ready-video";
+  if (source) {
+    const title = asset.name || item?.raw_title || "준비";
+    const base = {
+      ...presenterReadySlide(service),
+      id: `${item?.id || index}:ready-media`,
+      sectionId: item?.id || `${service?.id || "service"}:ready`,
+      elementId: item?.id || `${service?.id || "service"}:ready`,
+      sectionIndex: index + 1,
+      sectionTitle: title,
+      elementTitle: title,
+      sectionName: title,
+      title,
+      text: title,
+      asset: { ...asset, kind: asset.kind || elementType },
+      presenterRole,
+      sort: index,
+    };
+    if (elementType === "image") {
+      return {
+        ...base,
+        elementType: PRESENTER_ELEMENT_TYPES.IMAGE,
+        layout: PRESENTER_SLIDE_LAYOUTS.MEDIA,
+        type: "image",
+        imageSrc: source,
+      };
+    }
+    return {
+      ...base,
+      elementType: PRESENTER_ELEMENT_TYPES.VIDEO,
+      layout: PRESENTER_SLIDE_LAYOUTS.MEDIA,
+      type: "video",
+      videoSrc: source,
+      playback: presenterPlaybackConfig(memo.playback, playbackType),
+    };
+  }
+  return {
+    ...presenterReadySlide(service),
+    id: `${item?.id || index}:ready`,
+    sectionId: item?.id || `${service?.id || "service"}:ready`,
+    elementId: item?.id || `${service?.id || "service"}:ready`,
+    sectionIndex: index + 1,
+    presenterRole,
+    sort: index,
+  };
+}
+
+function presenterPreparationRole(item = {}, memo = parseServiceItemMemo(item?.memo)) {
+  const explicit = normalizeServicePresenterRole(memo?.presenterRole);
+  if (explicit) return explicit;
+  const compact = compactSearchValue(`${item?.label || ""} ${item?.raw_title || ""}`);
+  if (compact.includes("인트로") || compact.includes("카운트다운") || compact.includes("시작영상")) return "intro";
+  if (compact.includes("대기")) return "waiting_loop";
+  if (compact.includes("첫화면") || compact.includes("정지화면")) return "still";
+  return "ready";
+}
+
+function presenterElementSlideFromMemoCore(item, section, index, memo, displayText, service = null) {
+  const elementType = serviceMemoElementType(memo);
+  if (!elementType || elementType === "praise" || elementType === "scripture") return null;
+  const label = item?.label || "";
+  const asset = normalizeServiceAsset(memo?.asset);
+  const safeLabel = isLegacyPresentationLabel(label) ? "" : label;
+  const assetTitle = asset.name && !isLegacyImportArtifactName(asset.name) ? asset.name : "";
+  const title = assetTitle || displayText || label || serviceElementTypeLabel(elementType);
+  if (elementType === "title") return presenterTitleOnlySlide(item, section, index, title);
+  if (elementType === "title_content") {
+    const titleContentText = String(item?.raw_title || displayText || "");
+    const lines = titleContentText.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+    const titleText = lines[0] || item?.label || section.sectionTitle || "제목";
+    const rawBodyText = lines.slice(1).join("\n") || memo.note || item?.assignee || "";
+    const mainPraiseIntro = isMainPraiseTitleContentItem(item, section, titleText);
+    const bodyText = mainPraiseIntro
+      ? resolveMainPraiseIntroBodyText(service, rawBodyText)
+      : rawBodyText;
+    return {
+      id: `${item.id || index}:title-content`,
+      ...section,
+      elementLabel: safeLabel || section.elementLabel || "제목 / 내용",
+      elementTitle: titleText,
+      elementType: PRESENTER_ELEMENT_TYPES.TITLE_CONTENT,
+      layout: PRESENTER_SLIDE_LAYOUTS.CENTER_TEXT,
+      type: "title-content",
+      label: safeLabel,
+      title: titleText,
+      bodyText,
+      marker: "",
+      text: [titleText, bodyText].filter(Boolean).join("\n"),
+      sort: index,
+      ...(mainPraiseIntro ? { skipTrailingBlank: true, _praiseIntroSlide: true } : {}),
+    };
+  }
+  if (presenterMemoElementIsTitleSlide(elementType)) {
+    const titleText = presenterTitleAssigneeTitle(item, safeLabel, displayText, elementType);
+    const assigneeText = presenterTitleAssigneePerson(item, safeLabel, displayText, titleText, service);
+    const scriptureReading = isPresenterScriptureReadingSource({ elementType, label: safeLabel, sectionKey: section.sectionKey });
+    if (!titleText && !assigneeText) return null;
+    return {
+      id: `${item.id || index}:title-assignee`,
+      ...section,
+      sectionAssignee: scriptureReading ? "" : section.sectionAssignee,
+      elementLabel: safeLabel || section.elementLabel || serviceElementTypeLabel(elementType),
+      elementTitle: titleText,
+      elementType: PRESENTER_ELEMENT_TYPES.TITLE_ASSIGNEE,
+      layout: PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT,
+      type: "title-assignee",
+      label: safeLabel,
+      title: titleText,
+      assignee: assigneeText,
+      marker: "",
+      text: cleanList([titleText, assigneeText]).join("\n"),
+      sort: index,
+    };
+  }
+  if (elementType === "blank") {
+    return {
+      id: `${item.id || index}:blank`,
+      ...section,
+      elementType: PRESENTER_ELEMENT_TYPES.BLANK,
+      layout: PRESENTER_SLIDE_LAYOUTS.BLANK,
+      type: "blank",
+      label,
+      title: title || "Blank",
+      marker: "",
+      text: "",
+      sort: index,
+    };
+  }
+  if (elementType === "video") {
+    const source = normalizePresenterMediaSource(asset.url || displayText);
+    if (!source) return null;
+    return {
+      id: `${item.id || index}:video`,
+      ...section,
+      sectionLabel: label || "Video",
+      sectionTitle: title,
+      sectionName: title,
+      elementType: PRESENTER_ELEMENT_TYPES.VIDEO,
+      layout: PRESENTER_SLIDE_LAYOUTS.MEDIA,
+      type: "video",
+      label,
+      title,
+      marker: label || "Video",
+      text: title,
+      videoSrc: source,
+      asset,
+      presenterRole: memo.presenterRole || "",
+      playback: presenterPlaybackConfig(memo.playback, "video"),
+      sourceType: "video",
+      componentType: "video",
+      sort: index,
+    };
+  }
+  if (elementType === "audio") {
+    const source = normalizePresenterMediaSource(asset.url || displayText);
+    if (!source) return null;
+    const audioAsset = { ...asset, kind: asset.kind || "audio", url: source };
+    const audioTitle = presenterFileDisplayTitle({ title, asset: audioAsset }, "오디오");
+    return {
+      id: `${item.id || index}:audio`,
+      ...section,
+      sectionLabel: label || "Audio",
+      sectionTitle: audioTitle,
+      sectionName: audioTitle,
+      elementType: PRESENTER_ELEMENT_TYPES.AUDIO,
+      layout: PRESENTER_SLIDE_LAYOUTS.FILE,
+      type: "audio",
+      label,
+      title: audioTitle,
+      marker: label || "Audio",
+      text: [audioTitle, source].filter(Boolean).join("\n"),
+      audioSrc: source,
+      asset: audioAsset,
+      playback: presenterPlaybackConfig(memo.playback, "audio"),
+      sourceType: audioAsset.kind || "audio",
+      componentType: "audio",
+      sort: index,
+    };
+  }
+  if (elementType === "image") {
+    const source = normalizePresenterMediaSource(asset.url || displayText);
+    if (!source) return null;
+    return {
+      id: `${item.id || index}:image`,
+      ...section,
+      sectionLabel: label || "Image",
+      sectionTitle: title,
+      sectionName: title,
+      elementType: PRESENTER_ELEMENT_TYPES.IMAGE,
+      layout: PRESENTER_SLIDE_LAYOUTS.MEDIA,
+      type: "image",
+      label,
+      title,
+      marker: label || "Image",
+      text: title,
+      imageSrc: source,
+      asset,
+      sort: index,
+    };
+  }
+  if (elementType === "score") {
+    const source = normalizePresenterMediaSource(asset.url || displayText);
+    const scoreAsset = source ? { ...asset, url: source } : asset;
+    const imageSlides = presenterScoreImageSlidesFromAsset(scoreAsset, item, section, index, title, safeLabel || "악보", null, null, displayText);
+    if (imageSlides.length) return imageSlides;
+    const fileLabel = presenterFileTypeLabel("score");
+    const fileTitle = presenterFileDisplayTitle({ title: assetTitle || displayText || safeLabel, asset }, fileLabel);
+    return {
+      id: `${item.id || index}:score`,
+      ...section,
+      sectionLabel: safeLabel || fileLabel,
+      sectionTitle: fileTitle,
+      sectionName: fileTitle,
+      elementType: PRESENTER_ELEMENT_TYPES.FILE,
+      layout: PRESENTER_SLIDE_LAYOUTS.FILE,
+      type: "file",
+      label: safeLabel,
+      title: fileTitle,
+      marker: fileLabel,
+      text: [fileTitle, asset.url].filter(Boolean).join("\n"),
+      asset,
+      sourceType: "score",
+      componentType: "score",
+      sort: index,
+    };
+  }
+  if (elementType === "activity") {
+    return {
+      id: `${item.id || index}:activity`,
+      ...section,
+      sectionLabel: label || "Activity",
+      sectionTitle: title,
+      sectionName: title,
+      elementType: PRESENTER_ELEMENT_TYPES.FREEFORM,
+      layout: PRESENTER_SLIDE_LAYOUTS.CENTER_TEXT,
+      type: "activity",
+      label,
+      title,
+      marker: "Activity",
+      text: [title, memo.note].filter(Boolean).join("\n"),
+      sort: index,
+    };
+  }
+  if (elementType === "file" || elementType === "template") {
+    const fileLabel = presenterFileTypeLabel(asset.kind || elementType);
+    const fileTitle = presenterFileDisplayTitle({ title: assetTitle || displayText || safeLabel, asset }, fileLabel);
+    return {
+      id: `${item.id || index}:${elementType}`,
+      ...section,
+      sectionLabel: safeLabel || fileLabel,
+      sectionTitle: fileTitle,
+      sectionName: fileTitle,
+      elementType: elementType === "file" ? PRESENTER_ELEMENT_TYPES.FILE : PRESENTER_ELEMENT_TYPES.FREEFORM,
+      layout: PRESENTER_SLIDE_LAYOUTS.FILE,
+      type: "file",
+      label: safeLabel,
+      title: fileTitle,
+      marker: fileLabel,
+      text: [fileTitle, asset.url].filter(Boolean).join("\n"),
+      asset,
+      sourceType: asset.kind || elementType,
+      componentType: elementType,
+      sort: index,
+    };
+  }
+  return null;
+}
+
+function isMainPraiseTitleContentItem(item = {}, section = {}, titleText = "") {
+  const titleKey = compactSearchValue(titleText);
+  if (titleKey !== "찬양") return false;
+  return String(section.sectionKey || item?._worshipSectionKey || "").trim() === "praise"
+    || isMainPraiseServiceItem(item, { allowUnlabeled: true });
+}
+
+function resolveMainPraiseIntroBodyText(service = null, bodyText = "") {
+  const explicitTeam = servicePraiseTeamName(service);
+  if (explicitTeam) return explicitTeam;
+  const defaultTeam = serviceDefaultMainPraiseTeamName(service);
+  if (!defaultTeam) return String(bodyText || "").trim();
+  const bodyKey = compactSearchValue(bodyText);
+  const defaultTeamKeys = new Set([
+    "",
+    "찬양팀",
+    "담당자",
+    "헤세드찬양단",
+    "테힐라찬양단",
+    "썸프레이즈",
+  ]);
+  return defaultTeamKeys.has(bodyKey) ? defaultTeam : String(bodyText || "").trim();
+}
+
+function presenterMemoElementIsTitleSlide(elementType) {
+  return ["title_person", "scripture_reading"].includes(elementType);
+}
+
+function presenterTitleAssigneeTitle(item = {}, label = "", displayText = "", elementType = "") {
+  const compact = compactSearchValue(label);
+  const text = String(displayText || "").trim();
+  if (isCreedPresenterItem(item, label, displayText)) return "신앙고백";
+  if (compact === "대표기도" || compact === "기도") return "기도";
+  if (compact === "성경봉독") return "성경봉독";
+  if (compact === "특송") return "특송";
+  if (compact === "봉헌기도") return "봉헌기도";
+  if (compact === "축도") return "축도";
+  if (compact === "교회소식" || compact === "광고") return "교회소식";
+  if (compact === "월삭기도") return text || "월삭기도";
+  if (compact === "설교") return text || "설교";
+  return text || label || serviceElementTypeLabel(elementType);
+}
+
+function presenterTitleAssigneePerson(item = {}, label = "", displayText = "", titleText = "", service = null) {
+  if (isCreedPresenterItem(item, label, displayText)) return "사도신경";
+  const compact = compactSearchValue(label);
+  const text = cleanPresenterAssignee(displayText);
+  if (compact === "성경봉독") {
+    return text && compactSearchValue(text) !== compactSearchValue(titleText) ? text : "";
+  }
+  const assignee = cleanPresenterAssignee(item.assignee);
+  if (assignee) return assignee;
+  const fallback = presenterTitleAssigneeUsesWorshipLeader(compact)
+    ? serviceWorshipLeaderLabel(service)
+    : "";
+  if (!text || compactSearchValue(text) === compactSearchValue(titleText)) return fallback;
+  if (["대표기도", "기도", "성경봉독", "특송", "봉헌기도", "축도"].includes(compact)) return text;
+  if (fallback) return fallback;
+  return "";
+}
+
+function presenterTitleAssigneeUsesWorshipLeader(compactLabel = "") {
+  return [
+    "봉헌기도",
+    "교회소식",
+    "광고",
+    "축도",
+    "예배의부름",
+    "사죄의선언",
+    "묵도",
+  ].includes(compactLabel);
+}
+
+function presenterSlideUsesWorshipLeaderAssignee(slide = {}) {
+  if (isPresenterScriptureReadingSource(slide)) return false;
+  const key = compactSearchValue([
+    slide.elementLabel,
+    slide.sectionLabel,
+    slide.label,
+    slide.title,
+  ].filter(Boolean).join(" "));
+  return [
+    "봉헌기도",
+    "교회소식",
+    "광고",
+    "축도",
+    "예배의부름",
+    "사죄의선언",
+    "묵도",
+  ].some((label) => key.includes(label));
+}
+
+function isPresenterScriptureReadingSource(source = {}) {
+  const key = compactSearchValue([
+    source.elementType,
+    source.componentType,
+    source.sectionKey,
+    source.elementLabel,
+    source.sectionLabel,
+    source.label,
+    source.title,
+  ].filter(Boolean).join(" "));
+  return key.includes("scripturereading")
+    || key.includes("성경봉독")
+    || normalizeServiceElementType(source.elementType) === "scripture_reading"
+    || normalizeWorshipElementType(source.elementType) === "scripture_reading";
+}
+
+function serviceElementTypeLabel(type) {
+  return SERVICE_ELEMENT_LABELS[normalizeServiceElementType(type)] || "항목";
+}
+
+function buildPresenterCustomSlides(item, section, index) {
+  const slides = parseServiceItemMemo(item?.memo).slides;
+  if (!slides.length) return [];
+  const label = item.label || "";
+  return slides.map((block, blockIndex) => {
+    const parsed = parsePresenterCustomSlideBlock(block);
+    return {
+      id: `${item.id || index}:custom:${blockIndex}`,
+      ...section,
+      elementType: isSongServiceLabel(label) ? PRESENTER_ELEMENT_TYPES.PRAISE : PRESENTER_ELEMENT_TYPES.FREEFORM,
+      layout: isSongServiceLabel(label) ? PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT : PRESENTER_SLIDE_LAYOUTS.CENTER_TEXT,
+      type: isSongServiceLabel(label) ? "lyrics" : "component",
+      label,
+      title: section.sectionTitle || item.raw_title || label || "Slide",
+      marker: parsed.marker,
+      formKey: `custom:${blockIndex}`,
+      text: parsed.text,
+      sort: index + blockIndex / 100,
+    };
+  }).filter((slide) => String(slide.text || "").trim());
+}
+
+function parsePresenterCustomSlideBlock(block) {
+  const lines = String(block || "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  if (!lines.length) return { marker: "", text: "" };
+  const first = lines[0];
+  const bracketed = first.match(/^\[([^\]]+)\]$/)?.[1]?.trim();
+  const markerCandidate = bracketed || first;
+  if (/^(Verse|Chorus|Pre-Chorus|Bridge|Coda|Amen|Lyrics)(?:\s+\d+)?$/i.test(markerCandidate)) {
+    return { marker: normalizePresenterCustomMarker(markerCandidate), text: lines.slice(1).join("\n") };
+  }
+  return { marker: "", text: lines.join("\n") };
+}
+
+function normalizePresenterCustomMarker(value) {
+  return String(value || "")
+    .replace(/^pre[\s-]?chorus/i, "Pre-Chorus")
+    .replace(/^verse/i, "Verse")
+    .replace(/^chorus/i, "Chorus")
+    .replace(/^bridge/i, "Bridge")
+    .replace(/^coda/i, "Coda")
+    .replace(/^amen/i, "Amen")
+    .replace(/^lyrics/i, "Lyrics");
+}
+
+function buildPresenterScriptureTextSlides(item, section, index) {
+  if (!isScriptureBodyServiceItem(item)) return [];
+  const payload = serviceScriptureTextPayload(item);
+  if (!payload.verses.length) return [];
+  return payload.verses.map((verse, verseIndex) => ({
+    id: `${item.id || index}:scripture:${verse.number || verseIndex + 1}`,
+    ...section,
+    elementType: PRESENTER_ELEMENT_TYPES.SCRIPTURE_TEXT,
+    layout: PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT,
+    type: "scripture",
+    label: item.label || "본문",
+    title: payload.reference || section.sectionTitle || "본문",
+    marker: payload.reference || "",
+    text: verse.number ? [payload.reference, verse.number, verse.text].filter(Boolean).join("   ") : verse.text,
+    sort: index + verseIndex / 100,
+  }));
+}
+
+function serviceScriptureTextPayload(item, memo = parseServiceItemMemo(item?.memo)) {
+  const reference = String(memo.scriptureReference || item?.raw_title || "").trim();
+  const payload = parsePresenterScriptureTextPayload([reference, ...(memo.slides || [])].filter(Boolean).join("\n"));
+  if (payload.verses.length) return payload;
+  return parsePresenterScriptureTextPayload(item?.raw_title);
+}
+
+function isScriptureBodyServiceItem(item) {
+  const label = String(item?.label || "").replace(/\s+/g, "");
+  return label === "본문" || label === "성경본문";
+}
+
+function parsePresenterScriptureTextPayload(value) {
+  const lines = String(value || "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const verses = [];
+  let reference = "";
+  for (const line of lines) {
+    const match = line.match(/^(\d{1,3})\s{3,}(.+)$/);
+    if (match) {
+      verses.push({ number: match[1], text: match[2].trim() });
+    } else if (!reference) {
+      reference = line;
+    }
+  }
+  return { reference, verses };
+}
+
+function shouldIncludeSongTitleSlide(item, label) {
+  const displayText = serviceItemDisplayText(item);
+  if (!displayText) return false;
+  return Boolean(item?.song_id || isSongServiceLabel(label) || isMainPraiseServiceItem(item, { allowUnlabeled: true }));
+}
+
+function presenterSongTitleSlide(item, section, song, version, displayText, index) {
+  const songTitle = presenterPraiseTitle(song, displayText);
+  const marker = presenterPraiseMarker(song, displayText);
+  const sectionHeading = presenterSongTitleSectionHeading(item, section);
+  const displayTitle = presenterSongTitleDisplayTitle(song, version, displayText, sectionHeading);
+  const titleText = formatPresenterSongTitleText(displayTitle);
+  return {
+    id: `${item.id || index}:song-title`,
+    ...section,
+    elementType: PRESENTER_ELEMENT_TYPES.PRAISE,
+    layout: PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT,
+    type: "song-title",
+    label: item.label || "",
+    title: songTitle,
+    subtitle: versionDisplayName(song, version),
+    marker,
+    sectionHeading,
+    text: titleText,
+    sort: index - 0.001,
+  };
+}
+
+function presenterSongTitleDisplayTitle(song = null, version = null, fallbackText = "", sectionHeading = "") {
+  const title = presenterPraiseTitle(song, fallbackText);
+  if (!String(sectionHeading || "").trim()) return title;
+  const hymnNo = presenterSongTitleHymnNo(song, version, fallbackText);
+  if (!hymnNo) return title;
+  const titleParts = splitHymnNo(title);
+  if (titleParts.no) return [titleParts.no, titleParts.title].filter(Boolean).join(" ");
+  return [hymnNo, title].filter(Boolean).join(" ");
+}
+
+function presenterSongTitleHymnNo(song = null, version = null, fallbackText = "") {
+  const rawNo = String(song?.hymn_no || version?.hymn_no || splitHymnNo(fallbackText).no || "").trim();
+  if (!rawNo) return "";
+  const match = rawNo.match(/^(통\s*)?(\d{1,4})/);
+  if (!match) return rawNo;
+  return `${match[1] ? "통 " : ""}${Number(match[2])}`;
+}
+
+function presenterSongTitleSectionHeading(item = {}, section = {}) {
+  if (!presenterSongTitleUsesSectionHeading(item, section)) return "";
+  const sectionKey = String(section.sectionKey || item?._worshipSectionKey || "").trim();
+  if (sectionKey === "offering") {
+    return String(section.sectionLabel || item?._worshipSectionTitle || "봉헌").trim();
+  }
+  return String(item?.label || section.elementLabel || section.sectionLabel || "").trim();
+}
+
+function presenterSongTitleUsesSectionHeading(item = {}, section = {}) {
+  if (section.sectionRole === "main-praise") return false;
+  const sectionKey = String(section.sectionKey || item?._worshipSectionKey || "").trim();
+  if (!sectionKey) return false;
+  return [
+    "hymn_praise",
+    "special_song",
+    "response_song",
+    "offering",
+    "doxology",
+    "closing_song",
+    "closing_hymn",
+  ].includes(sectionKey);
+}
+
+function formatPresenterSongTitleText(title) {
+  const cleanTitle = String(title || "").trim();
+  if (!cleanTitle) return "";
+  return cleanTitle.startsWith("♪") ? cleanTitle : `♪ ${cleanTitle}`;
+}
+
+function presenterPraiseTitle(song, fallbackText = "") {
+  const linkedTitle = String(song?.title || "").trim();
+  const cleanLinkedTitle = song?.hymn_no ? stripHymnNumber(linkedTitle) : linkedTitle;
+  const normalizedLinkedTitle = cleanLinkedTitle.replace(/^찬송가\s*\d+\s*장\s*/i, "").trim();
+  if (normalizedLinkedTitle) return normalizedLinkedTitle;
+  const { title } = splitHymnNo(fallbackText);
+  return title || fallbackText || "";
+}
+
+function presenterPraiseElementTitle(song, version = null, fallbackText = "") {
+  const title = presenterPraiseTitle(song, fallbackText);
+  if (!song) return title;
+  const meta = new Set();
+  [song.subtitle, song.original_title, version?.subtitle, version?.original_title]
+    .forEach((value) => addTitleMeta(meta, value));
+  const visibleMeta = [...meta].filter((value) => normalizeTitle(value) !== normalizeTitle(title));
+  return visibleMeta.length ? `${title} (${joinMetaItems(visibleMeta)})` : title;
+}
+
+function presenterPraiseMarker(song, fallbackText = "") {
+  void song;
+  void fallbackText;
+  return "";
+}
+
+function presenterFormMarker(form) {
+  const label = presenterFormDisplayLabel(form);
+  return isGenericPresenterFormLabel(label) ? "" : label;
+}
+
+function isGenericPresenterFormLabel(value) {
+  return /^(lyrics|가사)$/i.test(String(value || "").trim());
+}
+
+function presenterSectionForServiceItem(item, index, displayText, song = null, version = null) {
+  const label = String(item?.label || "").trim();
+  const sectionLabel = presenterSectionLabelForServiceItem(item, label);
+  const formHint = serviceItemFormHint(item);
+  const { no, title } = splitHymnNo(displayText);
+  const linkedSongTitle = song ? presenterPraiseTitle(song, displayText) : "";
+  const linkedElementTitle = isMainPraiseServiceItem(item, { allowUnlabeled: true })
+    ? presenterPraiseElementTitle(song, version, displayText)
+    : linkedSongTitle;
+  const elementTitle = linkedElementTitle || [no, title].filter(Boolean).join(" ") || displayText || label || `항목 ${index + 1}`;
+  const sectionLabelText = cleanList([label, formHint]).join(" · ");
+  return {
+    sectionId: item?._worshipSectionId || item?.id || `section:${index}:${normalizeTitle([label, displayText].filter(Boolean).join(" "))}`,
+    elementId: item?.id || `element:${index}:${normalizeTitle([label, displayText].filter(Boolean).join(" "))}`,
+    sectionIndex: Number(item?._worshipSectionOrder) || index + 1,
+    sectionKey: item?._worshipSectionKey || "",
+    sectionLabel,
+    sectionFormHint: formHint,
+    sectionRole: isMainPraiseServiceItem(item, { allowUnlabeled: true }) ? "main-praise" : "",
+    sectionTitle: sectionLabel,
+    elementLabel: label,
+    elementTitle,
+    sectionAssignee: item?.assignee || "",
+    sectionName: [sectionLabel || sectionLabelText, elementTitle].filter(Boolean).join(" / "),
+  };
+}
+
+function presenterSectionLabelForServiceItem(item = {}, fallbackLabel = "") {
+  const explicit = String(item?._worshipSectionTitle || "").trim();
+  if (explicit) return explicit;
+  const key = String(item?._worshipSectionKey || "").trim();
+  const canonicalByKey = {
+    creed: "신앙고백",
+    praise: "찬양",
+    confession: "참회기도",
+    hymn_praise: "찬송",
+    prayer: "대표기도",
+    scripture_reading: "성경봉독",
+    special_song: "특송",
+    sermon: "설교",
+    response_song: "결단",
+    offering: "봉헌",
+    offering_prayer: "봉헌기도",
+    announcements: "교회소식",
+    new_family: "새가족환영",
+    community_confession: "공동체고백",
+    doxology: "송영",
+    closing_hymn: "폐회찬송",
+    benediction: "축도",
+    closing: "마무리",
+  };
+  return canonicalByKey[key] || String(fallbackLabel || "").trim();
+}
+
+function presenterVideoSourceFromServiceItem(item, displayText) {
+  const label = String(item?.label || "").trim();
+  const rawTitle = String(item?.raw_title || "").trim();
+  const source = extractPresenterVideoSource(rawTitle) || extractPresenterVideoSource(displayText);
+  if (!source) return "";
+  const labelLooksLikeVideo = /영상|비디오|video|movie|media/i.test(label);
+  const sourceLooksLikeVideo = /\.(mp4|webm|mov|m4v)(?:[?#].*)?$/i.test(source);
+  return labelLooksLikeVideo || sourceLooksLikeVideo ? source : "";
+}
+
+function extractPresenterVideoSource(value) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  const cleaned = text.replace(/^(?:대기\s*)?(?:영상|비디오|video|movie)\s*:?\s*/i, "").trim();
+  const direct = normalizePresenterMediaSource(cleaned);
+  if (direct) return direct;
+  const match = text.match(/(?:https?:\/\/[^\s"'<>]+|\.{0,2}\/[^\s"'<>]+|[^\s"'<>]+\.(?:mp4|webm|mov|m4v)(?:[?#][^\s"'<>]*)?)/i);
+  return normalizePresenterMediaSource(match?.[0] || "");
+}
+
+function normalizePresenterMediaSource(value) {
+  const source = String(value || "").trim();
+  if (!source) return "";
+  if (/^(javascript|data):/i.test(source)) return "";
+  if (/^(https?:\/\/|\/|\.{1,2}\/)/i.test(source)) return source;
+  const worshipBackgroundSource = normalizePresenterWorshipBackgroundSource(source);
+  if (worshipBackgroundSource) return worshipBackgroundSource;
+  if (/\.(mp4|webm|mov|m4v|png|jpe?g|gif|webp|svg|pdf|mp3|m4a|wav|aac|ogg|flac)(?:[?#].*)?$/i.test(source)) return source;
+  return "";
+}
+
+function normalizePresenterWorshipBackgroundSource(source) {
+  const text = String(source || "").trim();
+  if (!text || !text.includes(`${WORSHIP_BACKGROUND_BASE}/`)) return "";
+  const suffixMatch = text.match(/([?#].*)$/);
+  const suffix = suffixMatch ? suffixMatch[1] : "";
+  const clean = suffix ? text.slice(0, -suffix.length) : text;
+  const fileName = worshipBackgroundFileNameFromPath(clean);
+  if (!fileName) return "";
+  const candidate = worshipBackgroundCandidateFileNames(fileName)
+    .find((name) => WORSHIP_BACKGROUND_STATIC_FILES.has(name));
+  if (!candidate) return "";
+  const prefix = clean.slice(0, clean.length - fileName.length);
+  return `${prefix}${candidate}${suffix}`;
+}
+
+function presenterMediaSourceIsImage(value) {
+  return /\.(png|jpe?g|gif|webp|svg)(?:[?#].*)?$/i.test(String(value || "").trim());
+}
+
+function presenterMediaSourceIsYoutube(value) {
+  return /(?:youtube\.com|youtu\.be)\//i.test(String(value || "").trim());
+}
+
+function presenterSlideAudioSource(slide) {
+  if (presenterSlideElementType(slide) !== PRESENTER_ELEMENT_TYPES.AUDIO) return "";
+  return normalizePresenterMediaSource(slide.audioSrc || slide.asset?.url || slide.text);
+}
+
+function presenterPlaybackConfig(value, elementType = "") {
+  const parsed = normalizeServicePlaybackConfig(value, elementType);
+  const type = String(elementType || "").trim().toLowerCase();
+  const defaults = type === "ready-video"
+    ? { autoplay: true, muted: true, loop: true, controls: false }
+    : type === "intro-video"
+      ? { autoplay: true, muted: false, loop: false, controls: false, autoAdvanceOnEnd: true }
+    : type === "audio"
+      ? { output: "controller-audio", autoplay: false, muted: false, loop: false, controls: false }
+      : { autoplay: true, muted: false, loop: false, controls: false };
+  return { ...defaults, ...(parsed || {}) };
+}
+
+function splitPresenterLyricChunks(lyrics, linesPerSlide = 2) {
+  const lines = splitFreeShowLines(normalizeLyricsForCopy(lyrics))
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const chunkSize = Math.max(1, Number(linesPerSlide) || 2);
+  const chunks = [];
+  for (let i = 0; i < lines.length; i += chunkSize) {
+    chunks.push(lines.slice(i, i + chunkSize).join("\n"));
+  }
+  return chunks;
+}
+
+function getServiceItemVersion(song, item, service) {
+  const versions = song?.versions || [];
+  if (!versions.length) return null;
+
+  const explicitVersionId = item?.version_id || item?.song_version_id;
+  if (explicitVersionId) {
+    const explicit = versions.find((version) => version.id === explicitVersionId);
+    if (explicit) return explicit;
+  }
+
+  const displayText = serviceItemDisplayText(item);
+  const { no, title } = splitHymnNo(displayText);
+  const lookupTitles = serviceItemVersionLookupTitles(displayText, title, item?.raw_title);
+  const directMatch = versions.find((version) =>
+    serviceVersionLookupNames(song, version).some((name) =>
+      lookupTitles.some((target) => name === target || name.startsWith(target) || target.startsWith(name)),
+    ),
+  );
+  if (directMatch) return directMatch;
+
+  const byServiceType = versions.find((version) =>
+    serviceTypePreferredPraiseTypes(service?.type_id).some((type) =>
+      versionEffectivePraiseTypes(song, version).includes(type),
+    ),
+  );
+  if (byServiceType) return byServiceType;
+
+  if (no) {
+    const hymnVersion = versions.find((version) => versionEffectivePraiseTypes(song, version).includes("hymn"));
+    if (hymnVersion) return hymnVersion;
+  } else if (song?.hymn_no) {
+    const nonHymnVersion = versions.find((version) =>
+      versionEffectivePraiseTypes(song, version).some((type) => type === "ccm" || type === "children"),
+    );
+    if (nonHymnVersion) return nonHymnVersion;
+  }
+
+  return versions.find((version) => version.id === getDefaultVersionId(song)) || versions[0];
+}
+
+function presenterSongForServiceItem(item = {}, displayText = serviceItemDisplayText(item), label = item?.label || "") {
+  const linkedSong = item.song_id ? state.songs.find((candidate) => candidate.id === item.song_id) : null;
+  if (linkedSong) return linkedSong;
+  if (!isSongServiceLabel(label)) return null;
+  return findServicePraiseSong(displayText);
+}
+
+function getPresenterServiceItemVersion(song, item, service) {
+  const preferred = getServiceItemVersion(song, item, service);
+  if (presenterVersionHasUsableLyrics(preferred)) return preferred;
+  return presenterFallbackLyricVersion(song, preferred) || preferred;
+}
+
+function presenterFallbackLyricVersion(song, preferred = null) {
+  const versions = song?.versions || [];
+  if (!versions.length) return null;
+  const defaultVersionId = getDefaultVersionId(song);
+  const candidates = [
+    versions.find((version) => version.id === defaultVersionId),
+    ...versions,
+  ].filter(Boolean);
+  return candidates.find((version) => version !== preferred && presenterVersionHasUsableLyrics(version)) || null;
+}
+
+function presenterVersionHasUsableLyrics(version = null) {
+  return normalizeForms(version?.forms || []).some((form) => normalizeLyricsForCopy(form.lyrics));
+}
+
+function serviceTypePreferredPraiseTypes(typeId) {
+  if (typeId === "children") return ["children"];
+  if (typeId === "youth" || typeId === "young-adult") return ["ccm"];
+  return [];
+}
+
+function serviceItemVersionLookupTitles(...values) {
+  return [...new Set(
+    values
+      .flatMap((value) => [value, stripTitleDecorations(value)])
+      .map(normalizeTitle)
+      .filter((value) => value && value.length > 1),
+  )];
+}
+
+function serviceVersionLookupNames(song, version) {
+  return serviceItemVersionLookupTitles(
+    version?.name,
+    version?.curated_version_name,
+    version?.raw_section_name,
+    version?.version_label,
+    versionDisplayName(song, version),
+  );
+}
+
+function isSongServiceLabel(label) {
+  const compact = String(label || "").replace(/\s+/g, "");
+  if (!compact) return false;
+  if (compact === "봉헌") return true;
+  if (compact === "결단" || compact === "파송") return true;
+  if (/찬양|찬송|특송|송영/.test(compact)) return true;
+  return /^(결단|봉헌|파송)(찬양|찬송)$/.test(compact);
+}
+
+function presenterStatePayload(serviceId = state.presenter.serviceId) {
+  const service = state.services.find((svc) => svc.id === serviceId);
+  const slides = state.presenter.serviceId === serviceId
+    ? state.presenter.slides
+    : buildServicePresenterSlides(serviceId);
+  const backgroundImages = presenterBackgroundSourcesForService(service);
+  return {
+    serviceId,
+    serviceType: service?.type_id || "",
+    serviceTitle: [serviceDisplayTypeName(service), service ? formatServiceDate(service) : ""].filter(Boolean).join(" · "),
+    serviceDate: service?.date || "",
+    chromakey: presenterServiceUsesChromakey(service),
+    outputTheme: presenterOutputTheme(service?.type_id),
+    backgroundImage: backgroundImages[0] || "",
+    backgroundImages,
+    slides,
+    index: clampPresenterIndex(state.presenter.index, slides.length),
+    safetyBlank: Boolean(state.presenter.safetyBlank),
+    liveScripture: state.presenter.liveScripture?.active ? state.presenter.liveScripture : null,
+    livePraise: state.presenter.livePraise?.active ? state.presenter.livePraise : null,
+    updatedAt: Date.now(),
+  };
+}
+
+function bindPresenterChannel() {
+  window.addEventListener("storage", handlePresenterStorageSignal);
+  if (!("BroadcastChannel" in window)) return;
+  state.presenter.channel = new BroadcastChannel(PRESENTER_CHANNEL);
+  state.presenter.channel.onmessage = (event) => {
+    const message = event.data || {};
+    if (message.type === "presenter-ready") {
+      markPresenterOutputConnected(message.clientId);
+      publishPresenterState();
+      return;
+    }
+    if (message.type === "presenter-heartbeat") {
+      markPresenterOutputConnected(message.clientId, message.warmup);
+      return;
+    }
+    if (message.type === "presenter-output-disconnect") {
+      markPresenterOutputDisconnected(message.clientId);
+      return;
+    }
+    if (message.type === "presenter-control") {
+      if (message.action === "stop") {
+        stopPresenterOutput(state.presenter.serviceId);
+        return;
+      }
+      markPresenterOutputConnected(message.clientId);
+      runPresenterAction(message.action, state.presenter.serviceId, {
+        index: Number.isFinite(Number(message.index)) ? Number(message.index) : undefined,
+      });
+      return;
+    }
+    if (message.type === "presenter-jump-draft") {
+      if (message.value) setPresenterJumpDraft(message.value, state.presenter.serviceId);
+      else clearPresenterJumpDraft(state.presenter.serviceId);
+    }
+  };
+}
+
+function handlePresenterStorageSignal(event) {
+  if (event.key !== PRESENTER_SIGNAL_KEY || !event.newValue) return;
+  try {
+    const message = JSON.parse(event.newValue);
+    if (message.type === "presenter-output-disconnect") markPresenterOutputDisconnected(message.clientId);
+  } catch {
+    // Ignore malformed cross-window presenter signals.
+  }
+}
+
+function markPresenterOutputConnected(clientId = "", warmup = null) {
+  const wasConnected = state.presenter.outputConnectedAt
+    && Date.now() - state.presenter.outputConnectedAt <= PRESENTER_OUTPUT_HEARTBEAT_TTL_MS;
+  state.presenter.outputConnectedAt = Date.now();
+  if (clientId) state.presenter.outputClientId = clientId;
+  updatePresenterOutputWarmupState(warmup);
+  if (!state.presenter.outputWindowMonitor) startPresenterOutputWindowMonitor(state.presenter.serviceId);
+  if (!wasConnected || warmup) refreshPresenterOutputConnectionState();
+}
+
+function markPresenterOutputDisconnected(clientId = "") {
+  if (clientId && state.presenter.outputClientId && clientId !== state.presenter.outputClientId) return;
+  state.presenter.outputWindow = null;
+  state.presenter.outputConnectedAt = 0;
+  state.presenter.outputClientId = "";
+  state.presenter.outputWarmup = null;
+  stopPresenterOutputWindowMonitor();
+  refreshPresenterOutputConnectionState();
+  if (state.presenter.serviceId) renderPresenterControlState(state.presenter.serviceId);
+}
+
+function updatePresenterOutputWarmupState(warmup = null) {
+  if (!warmup || typeof warmup !== "object") return;
+  const total = Math.max(0, Number(warmup.total) || 0);
+  const ready = Math.max(0, Math.min(total, Number(warmup.ready) || 0));
+  const queued = Math.max(0, Math.min(total, Number(warmup.queued) || 0));
+  state.presenter.outputWarmup = {
+    serviceId: warmup.serviceId || state.presenter.serviceId || "",
+    total,
+    ready,
+    queued,
+    complete: Boolean(warmup.complete) || (total > 0 && ready >= total),
+    updatedAt: Date.now(),
+  };
+}
+
+function refreshPresenterOutputConnectionState() {
+  const serviceIds = new Set([state.presenter.serviceId, state.selectedServiceId].filter(Boolean));
+  serviceIds.forEach((serviceId) => renderPresenterControlState(serviceId));
+}
+
+function publishPresenterState(options = {}) {
+  const payload = presenterStatePayload();
+  if (!options.force && !payload.serviceId && !payload.slides.length) return;
+  publishPresenterPayload(payload);
+}
+
+function publishPresenterPayload(payload) {
+  safeStorageSet("local", PRESENTER_STORAGE_KEY, JSON.stringify(payload));
+  state.presenter.channel?.postMessage({ type: "presenter-state", payload });
+}
+
+function presenterOutputUrl(options = {}) {
+  const url = new URL(window.location.href);
+  url.searchParams.set("output", "presenter");
+  if (options.fullscreen) url.searchParams.set("fullscreen", "1");
+  url.hash = "";
+  return url.toString();
+}
+
+function presenterScreenKey(screen) {
+  return `${screen.left ?? 0},${screen.top ?? 0}`;
+}
+
+async function requestPresenterScreens() {
+  if (!window.getScreenDetails || !window.isSecureContext) return;
+  try {
+    const details = await window.getScreenDetails();
+    const apply = () => {
+      state.presenter.screens = [...(details.screens || [])].map((screen, index) => ({
+        key: presenterScreenKey(screen),
+        label: screen.isPrimary ? `Display ${index + 1} (Primary)` : `Display ${index + 1}`,
+        isPrimary: Boolean(screen.isPrimary),
+      }));
+      if (state.presenter.serviceId) renderPresenterControlState(state.presenter.serviceId);
+    };
+    apply();
+    details.addEventListener?.("screenschange", apply);
+  } catch {
+    showToast("디스플레이 정보를 읽지 못했습니다. 브라우저 권한을 확인해 주세요.", "error");
+  }
+}
+
+function findPresenterTargetScreen(screens, currentScreen) {
+  const selectedKey = state.presenter.selectedScreenId;
+  return (selectedKey && screens.find((screen) => presenterScreenKey(screen) === selectedKey))
+    || screens.find((screen) => !screen.isPrimary)
+    || screens.find((screen) => screen !== currentScreen);
+}
+
+async function resolvePresenterTargetScreenRect() {
+  if (!window.getScreenDetails || !window.isSecureContext) return null;
+  try {
+    const details = await window.getScreenDetails();
+    const target = findPresenterTargetScreen([...(details.screens || [])], details.currentScreen);
+    if (!target) return null;
+    return {
+      left: target.availLeft ?? target.left ?? 0,
+      top: target.availTop ?? target.top ?? 0,
+      width: target.availWidth || target.width || 1280,
+      height: target.availHeight || target.height || 720,
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function positionPresenterOutputWindow(outputWindow) {
+  if (!outputWindow || !window.getScreenDetails || !window.isSecureContext) return;
+  try {
+    const details = await window.getScreenDetails();
+    const screens = [...(details.screens || [])];
+    const target = findPresenterTargetScreen(screens, details.currentScreen);
+    if (!target) return;
+    const left = target.availLeft ?? target.left ?? 0;
+    const top = target.availTop ?? target.top ?? 0;
+    const width = target.availWidth || target.width || 1280;
+    const height = target.availHeight || target.height || 720;
+    outputWindow.moveTo?.(left, top);
+    outputWindow.resizeTo?.(width, height);
+  } catch {
+    // Manual placement remains the fallback when window-management permission is unavailable.
+  }
+}
+
+function requestOutputFullscreen(outputWindow, options = {}) {
+  const delays = options.retry ? PRESENTER_FULLSCREEN_RETRY_DELAYS_MS : [0];
+  delays.forEach((delay) => {
+    window.setTimeout(() => {
+      try {
+        if (!outputWindow || outputWindow.closed) return;
+        outputWindow.document?.documentElement?.requestFullscreen?.().catch?.(() => {});
+      } catch {
+        // Browsers often require a direct activation in the output window.
+      }
+    }, delay);
+  });
+}
+
+function handlePresenterShortcut(event) {
+  const presenterServiceId = state.presenter.serviceId;
+  if (state.module !== "presenter" || !presenterServiceId) return false;
+  if (shouldKeepHorizontalNavigationInFocusedControl(event.target)) return false;
+  if (event.metaKey || event.ctrlKey || event.altKey) return false;
+  const activeServiceSelected = state.selectedServiceId === presenterServiceId;
+
+  if (event.key === "Escape") {
+    event.preventDefault();
+    if (activeServiceSelected && state.presenter.jumpDraft) {
+      clearPresenterJumpDraft(presenterServiceId);
+      return true;
+    }
+    const now = Date.now();
+    if (now - (state.presenter.exitArmedAt || 0) <= PRESENTER_OUTPUT_ESCAPE_EXIT_MS) {
+      stopPresenterOutput(presenterServiceId);
+      return true;
+    }
+    state.presenter.exitArmedAt = now;
+    return true;
+  }
+
+  if (!activeServiceSelected) return false;
+
+  if (/^\d$/.test(event.key)) {
+    event.preventDefault();
+    state.presenter.exitArmedAt = 0;
+    setPresenterJumpDraft(`${state.presenter.jumpDraft || ""}${event.key}`, presenterServiceId);
+    return true;
+  }
+
+  if (event.key === "Enter" && state.presenter.jumpDraft) {
+    event.preventDefault();
+    state.presenter.exitArmedAt = 0;
+    commitPresenterJumpDraft(presenterServiceId);
+    return true;
+  }
+
+  if (event.key === "ArrowRight" || event.key === "ArrowDown" || event.key === "PageDown" || event.key === " ") {
+    event.preventDefault();
+    state.presenter.exitArmedAt = 0;
+    runPresenterAction("next", presenterServiceId);
+    return true;
+  }
+
+  if (event.key === "ArrowLeft" || event.key === "ArrowUp" || event.key === "PageUp") {
+    event.preventDefault();
+    state.presenter.exitArmedAt = 0;
+    runPresenterAction("prev", presenterServiceId);
+    return true;
+  }
+
+  if (event.key === "Home") {
+    event.preventDefault();
+    state.presenter.exitArmedAt = 0;
+    runPresenterAction("first", presenterServiceId);
+    return true;
+  }
+
+  if (event.key === "End") {
+    event.preventDefault();
+    state.presenter.exitArmedAt = 0;
+    runPresenterAction("last", presenterServiceId);
+    return true;
+  }
+
+  return false;
+}
+
+function isPresenterOutputRoute() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("output") === "presenter" || params.get("mindex-output") === "presenter";
+}
+
+function initPresenterOutputCore() {
+  document.title = "MINDEX Output";
+  document.documentElement.classList.add("presenter-output-document");
+  document.body.className = "presenter-output-body";
+  document.body.innerHTML = `
+    <main id="presenterOutputRoot" class="presenter-output-root no-chromakey" aria-live="polite"></main>
+  `;
+
+  let currentPayload = null;
+  let channel = null;
+  let jumpDraft = "";
+  let exitArmedAt = 0;
+  const outputClientId = `presenter-output:${Date.now()}:${Math.random().toString(36).slice(2)}`;
+  let heartbeatTimer = null;
+  const applyPayload = (payload) => {
+    currentPayload = normalizePresenterPayload(payload);
+    renderPresenterOutput(currentPayload, { onAutoAdvance: requestPresenterOutputNext });
+  };
+  const postHeartbeat = () => {
+    channel?.postMessage({
+      type: "presenter-heartbeat",
+      clientId: outputClientId,
+      warmup: presenterOutputWarmupSummary(),
+    });
+  };
+  presenterOutputImageWarmupState.onProgress = postHeartbeat;
+  const closeOutputChannel = () => {
+    if (heartbeatTimer) {
+      window.clearInterval(heartbeatTimer);
+      heartbeatTimer = null;
+    }
+    channel?.close?.();
+    channel = null;
+    presenterOutputImageWarmupState.onProgress = null;
+  };
+  const canCloseOutputWindow = () => {
+    try {
+      return Boolean(window.opener && !window.opener.closed);
+    } catch {
+      return false;
+    }
+  };
+  const requestPresenterOutputStop = () => {
+    channel?.postMessage({ type: "presenter-control", action: "stop", clientId: outputClientId });
+    currentPayload = normalizePresenterPayload(presenterStoppedPayload());
+    renderPresenterOutput(currentPayload, { onAutoAdvance: requestPresenterOutputNext });
+    window.setTimeout(() => {
+      closeOutputChannel();
+      if (canCloseOutputWindow()) window.close();
+    }, 40);
+  };
+  const requestPresenterOutputNext = () => {
+    postHeartbeat();
+    if (channel) {
+      channel.postMessage({ type: "presenter-control", action: "next", clientId: outputClientId });
+      return;
+    }
+    currentPayload = applyPresenterActionToPayload(currentPayload, "next");
+    publishPresenterPayload(currentPayload);
+    renderPresenterOutput(currentPayload, { onAutoAdvance: requestPresenterOutputNext });
+  };
+  const postDisconnect = () => {
+    const payload = {
+      type: "presenter-output-disconnect",
+      clientId: outputClientId,
+      updatedAt: Date.now(),
+    };
+    channel?.postMessage(payload);
+    safeStorageSet("local", PRESENTER_SIGNAL_KEY, JSON.stringify(payload));
+  };
+
+  const renderStoredState = () => {
+    try {
+      const stored = JSON.parse(safeStorageGet("local", PRESENTER_STORAGE_KEY, "null") || "null");
+      applyPayload(stored);
+    } catch {
+      applyPayload(null);
+    }
+  };
+
+  if ("BroadcastChannel" in window) {
+    channel = new BroadcastChannel(PRESENTER_CHANNEL);
+    channel.onmessage = (event) => {
+      if (event.data?.type === "presenter-state") applyPayload(event.data.payload);
+    };
+    window.setTimeout(() => {
+      channel.postMessage({ type: "presenter-ready", clientId: outputClientId });
+      postHeartbeat();
+    }, 50);
+    heartbeatTimer = window.setInterval(postHeartbeat, PRESENTER_OUTPUT_HEARTBEAT_INTERVAL_MS);
+  }
+  window.addEventListener("pagehide", () => {
+    postDisconnect();
+    closeOutputChannel();
+  });
+
+  window.addEventListener("storage", (event) => {
+    if (event.key === PRESENTER_STORAGE_KEY) renderStoredState();
+  });
+  window.addEventListener("keydown", (event) => {
+    if (event.key.toLowerCase() === "f") {
+      event.preventDefault();
+      document.documentElement.requestFullscreen?.().catch?.(() => {});
+      return;
+    }
+    if (
+      !document.fullscreenElement
+      && !jumpDraft
+      && !event.metaKey
+      && !event.ctrlKey
+      && !event.altKey
+      && (event.key === "Enter" || event.key === " ")
+    ) {
+      event.preventDefault();
+      requestLocalPresenterFullscreen();
+      postHeartbeat();
+      return;
+    }
+    if (!event.metaKey && !event.ctrlKey && !event.altKey && /^\d$/.test(event.key)) {
+      event.preventDefault();
+      jumpDraft = `${jumpDraft}${event.key}`.slice(0, PRESENTER_JUMP_MAX_DIGITS);
+      channel?.postMessage({ type: "presenter-jump-draft", value: jumpDraft });
+      postHeartbeat();
+      return;
+    }
+    if (!event.metaKey && !event.ctrlKey && !event.altKey && event.key === "Enter" && jumpDraft) {
+      event.preventDefault();
+      const index = Number(jumpDraft) - 1;
+      jumpDraft = "";
+      channel?.postMessage({ type: "presenter-jump-draft", value: "" });
+      postHeartbeat();
+      if (channel) {
+        channel.postMessage({ type: "presenter-control", action: "jump", index, clientId: outputClientId });
+      } else {
+        currentPayload = applyPresenterActionToPayload(currentPayload, "jump", { index });
+        publishPresenterPayload(currentPayload);
+        renderPresenterOutput(currentPayload, { onAutoAdvance: requestPresenterOutputNext });
+      }
+      return;
+    }
+    if (!event.metaKey && !event.ctrlKey && !event.altKey && event.key === "Escape" && jumpDraft) {
+      event.preventDefault();
+      jumpDraft = "";
+      channel?.postMessage({ type: "presenter-jump-draft", value: "" });
+      postHeartbeat();
+      return;
+    }
+    if (!event.metaKey && !event.ctrlKey && !event.altKey && event.key === "Escape") {
+      event.preventDefault();
+      const now = Date.now();
+      if (now - exitArmedAt <= PRESENTER_OUTPUT_ESCAPE_EXIT_MS) {
+        requestPresenterOutputStop();
+        return;
+      }
+      exitArmedAt = now;
+      postHeartbeat();
+      return;
+    }
+    const action = presenterOutputKeyAction(event);
+    if (action) {
+      event.preventDefault();
+      jumpDraft = "";
+      channel?.postMessage({ type: "presenter-jump-draft", value: "" });
+      postHeartbeat();
+      if (channel) {
+        channel.postMessage({ type: "presenter-control", action, clientId: outputClientId });
+      } else {
+        currentPayload = applyPresenterActionToPayload(currentPayload, action);
+        publishPresenterPayload(currentPayload);
+        renderPresenterOutput(currentPayload, { onAutoAdvance: requestPresenterOutputNext });
+      }
+    }
+  });
+  window.addEventListener("pointerdown", () => {
+    document.documentElement.requestFullscreen?.().catch?.(() => {});
+  }, { once: true });
+  document.addEventListener("fullscreenchange", () => {
+    if (shouldAutoFullscreenPresenterOutput() && !document.fullscreenElement) exitArmedAt = Date.now();
+  });
+
+  renderStoredState();
+  if (shouldAutoFullscreenPresenterOutput()) requestLocalPresenterFullscreen({ retry: true });
+}
+
+function shouldAutoFullscreenPresenterOutput() {
+  return new URLSearchParams(window.location.search).get("fullscreen") === "1";
+}
+
+function requestLocalPresenterFullscreen(options = {}) {
+  const delays = options.retry ? PRESENTER_FULLSCREEN_RETRY_DELAYS_MS : [0];
+  delays.forEach((delay) => {
+    window.setTimeout(() => {
+      document.documentElement.requestFullscreen?.().catch?.(() => {});
+    }, delay);
+  });
+}
+
+function presenterOutputKeyAction(event) {
+  if (event.metaKey || event.ctrlKey || event.altKey) return "";
+  if (event.key === "ArrowRight" || event.key === "ArrowDown" || event.key === "PageDown" || event.key === " ") return "next";
+  if (event.key === "ArrowLeft" || event.key === "ArrowUp" || event.key === "PageUp") return "prev";
+  if (event.key === "Home") return "first";
+  if (event.key === "End") return "last";
+  return "";
+}
+
+function normalizePresenterPayload(payload) {
+  const slides = Array.isArray(payload?.slides) ? payload.slides : [];
+  return {
+    serviceId: payload?.serviceId || null,
+    serviceType: payload?.serviceType || "",
+    serviceTitle: payload?.serviceTitle || "",
+    serviceDate: payload?.serviceDate || payload?.service_date || "",
+    chromakey: payload ? payload.chromakey !== false : false,
+    outputTheme: payload?.outputTheme || presenterOutputTheme(payload?.serviceType),
+    backgroundImage: payload?.backgroundImage || "",
+    backgroundImages: Array.isArray(payload?.backgroundImages)
+      ? payload.backgroundImages.filter(Boolean)
+      : [payload?.backgroundImage].filter(Boolean),
+    slides,
+    index: clampPresenterIndex(payload?.index, slides.length),
+    safetyBlank: Boolean(payload?.safetyBlank),
+    liveScripture: normalizeLiveScripturePayload(payload?.liveScripture),
+    livePraise: normalizeLivePraisePayload(payload?.livePraise),
+    updatedAt: Number(payload?.updatedAt) || Date.now(),
+  };
+}
+
+function normalizeLiveScripturePayload(value) {
+  if (!value?.active || !value?.slide) return null;
+  return {
+    reference: value.reference || value.slide.title || "",
+    active: true,
+    slide: value.slide,
+  };
+}
+
+function normalizeLivePraisePayload(value) {
+  const slides = Array.isArray(value?.slides) ? value.slides.filter(Boolean) : [];
+  if (!value?.active || !slides.length) return null;
+  return {
+    query: value.query || value.draft || "",
+    active: true,
+    slides,
+    index: clampPresenterIndex(value.index, slides.length),
+    songId: value.songId || "",
+    versionId: value.versionId || "",
+  };
+}
+
+function applyPresenterActionToPayload(payload, action, options = {}) {
+  const next = normalizePresenterPayload(payload);
+  if (next.livePraise?.active && ["next", "prev", "first", "last"].includes(action)) {
+    const count = next.livePraise.slides.length;
+    if (action === "next") next.livePraise.index = Math.min(next.livePraise.index + 1, count - 1);
+    else if (action === "prev") next.livePraise.index = Math.max(next.livePraise.index - 1, 0);
+    else if (action === "first") next.livePraise.index = 0;
+    else if (action === "last") next.livePraise.index = count - 1;
+    next.safetyBlank = false;
+    next.updatedAt = Date.now();
+    return next;
+  }
+  if (["next", "prev", "first", "last", "jump"].includes(action)) {
+    next.liveScripture = null;
+    next.livePraise = null;
+  }
+  if (action === "next" && next.slides.length) {
+    next.safetyBlank = false;
+    next.index = Math.min(next.index + 1, next.slides.length - 1);
+  } else if (action === "prev" && next.slides.length) {
+    next.safetyBlank = false;
+    next.index = Math.max(next.index - 1, 0);
+  } else if (action === "first" && next.slides.length) {
+    next.safetyBlank = false;
+    next.index = 0;
+  } else if (action === "last" && next.slides.length) {
+    next.safetyBlank = false;
+    next.index = next.slides.length - 1;
+  } else if (action === "jump" && next.slides.length) {
+    const requestedIndex = Number(options.index);
+    if (isValidPresenterIndex(requestedIndex, next.slides.length)) {
+      next.index = requestedIndex;
+      next.safetyBlank = false;
+    } else {
+      next.safetyBlank = true;
+    }
+  }
+  next.updatedAt = Date.now();
+  return next;
+}
+
+function renderPresenterOutput(payload, options = {}) {
+  const root = document.getElementById("presenterOutputRoot");
+  if (!root) return;
+  clearPresenterOutputAutoAdvanceTimer();
+  const slides = Array.isArray(payload?.slides) ? payload.slides : [];
+  const livePraiseSlide = payload?.livePraise?.active
+    ? payload.livePraise.slides?.[clampPresenterIndex(payload.livePraise.index, payload.livePraise.slides.length)]
+    : null;
+  const liveSlide = livePraiseSlide || (payload?.liveScripture?.active ? payload.liveScripture.slide : null);
+  const slide = payload?.safetyBlank
+    ? presenterSafetyBlankSlide()
+    : liveSlide || slides[clampPresenterIndex(payload?.index, slides.length)];
+  const backgroundImages = presenterPayloadBackgroundImages(payload);
+  const backgroundImage = backgroundImages[0] || "";
+  const slideChromakey = presenterSlideUsesChromakey(slide, payload?.chromakey !== false);
+  const cleanOutput = !slideChromakey;
+  const blankSlide = presenterSlideLayout(slide) === PRESENTER_SLIDE_LAYOUTS.BLANK;
+  const showBackground = Boolean(backgroundImages.length && cleanOutput && !payload?.safetyBlank);
+  const blankOutput = Boolean(blankSlide && !showBackground);
+  const activeImageSource = presenterSlideImageSource(slide);
+  preloadPresenterOutputImages(payload, slide);
+  if (activeImageSource && !presenterOutputImageIsReady(activeImageSource)) {
+    const token = ++presenterOutputRenderState.token;
+    root.setAttribute("aria-busy", "true");
+    preloadPresenterOutputImage(activeImageSource)?.finally(() => {
+      if (token === presenterOutputRenderState.token) renderPresenterOutput(payload, options);
+    });
+    return;
+  }
+
+  const token = ++presenterOutputRenderState.token;
+  root.removeAttribute("aria-busy");
+  const frameState = {
+    cleanOutput,
+    showBackground,
+    blankOutput,
+    backgroundImage,
+    backgroundImages,
+    serviceType: payload?.serviceType || "",
+    outputTheme: payload?.outputTheme || presenterOutputTheme(payload?.serviceType),
+    noChromakey: !slideChromakey,
+  };
+  commitPresenterOutputFrame(root, payload, slide, frameState, token, options);
+}
+
+function commitPresenterOutputFrame(root, payload, slide, frameState, token, options = {}) {
+  const html = slide ? renderPresenterSlideFrame(slide, { noChromakey: frameState.noChromakey }) : "";
+  const activeImageSource = presenterSlideImageSource(slide);
+  const commit = () => {
+    if (token !== presenterOutputRenderState.token) return;
+    const layers = presenterOutputLayers(root);
+    if (!layers) return;
+    const nextLayer = layers.next;
+    if (nextLayer.dataset.presenterFrameToken !== String(token)) {
+      nextLayer.innerHTML = html;
+      nextLayer.dataset.presenterFrameToken = String(token);
+    }
+    nextLayer.classList.add("is-next");
+    applyPresenterOutputFrameState(root, frameState);
+    layers.active.classList.remove("is-active");
+    layers.active.classList.remove("is-next");
+    nextLayer.classList.add("is-active");
+    nextLayer.classList.remove("is-next");
+    layers.active.innerHTML = "";
+    layers.active.removeAttribute("data-presenter-frame-token");
+    warmPresenterOutputImages(payload, slide || null);
+    bindPresenterOutputAutoAdvance(root, payload, slide, options, token);
+  };
+  if (!activeImageSource) {
+    commit();
+    return;
+  }
+  const commitToken = ++presenterOutputRenderState.commitToken;
+  root.setAttribute("aria-busy", "true");
+  const layers = presenterOutputLayers(root);
+  if (!layers) return;
+  layers.next.innerHTML = html;
+  layers.next.dataset.presenterFrameToken = String(token);
+  layers.next.classList.add("is-next");
+  preparePresenterOutputFrameForPaint(layers.next)
+    .then(() => nextAnimationFrame())
+    .then(() => nextAnimationFrame())
+    .finally(() => {
+      if (token !== presenterOutputRenderState.token || commitToken !== presenterOutputRenderState.commitToken) return;
+      root.removeAttribute("aria-busy");
+      commit();
+    });
+}
+
+function bindPresenterOutputAutoAdvance(root, payload, slide, options = {}, token = presenterOutputRenderState.token) {
+  clearPresenterOutputAutoAdvanceTimer();
+  bindPresenterVideoTimelineCatchUp(root, payload, slide, options, token);
+  bindPresenterOutputAutoAdvanceOnEnd(root, payload, slide, options);
+  bindPresenterOutputAutoAdvanceAt(payload, slide, options, token);
+}
+
+function bindPresenterVideoTimelineCatchUp(root, payload, slide, options = {}, token = presenterOutputRenderState.token) {
+  if (!slide || presenterSlideElementType(slide) !== PRESENTER_ELEMENT_TYPES.VIDEO) return;
+  if (presenterSlideLayout(slide) !== PRESENTER_SLIDE_LAYOUTS.MEDIA) return;
+  const video = root?.querySelector(".presenter-output-layer.is-active video.presenter-video");
+  if (!video) return;
+  const onAutoAdvance = typeof options.onAutoAdvance === "function" ? options.onAutoAdvance : null;
+  const applyCatchUp = () => {
+    if (token !== presenterOutputRenderState.token) return;
+    const duration = Number.isFinite(video.duration) && video.duration > 0
+      ? video.duration
+      : Number(slide.playback?.durationSeconds || 0);
+    const catchUp = presenterVideoTimelineCatchUp(slide, payload, {
+      now: Date.now(),
+      durationSeconds: duration,
+    });
+    if (!catchUp) return;
+    if (catchUp.shouldAdvance) {
+      if (!onAutoAdvance) return;
+      onAutoAdvance({
+        serviceId: payload?.serviceId || "",
+        slideId: slide?.id || "",
+        slideIndex: clampPresenterIndex(payload?.index, Array.isArray(payload?.slides) ? payload.slides.length : 0),
+        scheduledAt: catchUp.endAt?.toISOString?.() || "",
+        catchUp: true,
+      });
+      return;
+    }
+    if (Number.isFinite(catchUp.offsetSeconds) && catchUp.offsetSeconds > 0) {
+      try {
+        video.currentTime = catchUp.offsetSeconds;
+      } catch {
+        // Some browsers reject seeking until more metadata is available.
+      }
+    }
+  };
+  if (Number.isFinite(video.duration) && video.duration > 0) {
+    applyCatchUp();
+    return;
+  }
+  video.addEventListener("loadedmetadata", applyCatchUp, { once: true });
+}
+
+function bindPresenterOutputAutoAdvanceOnEnd(root, payload, slide, options = {}) {
+  if (!presenterSlideShouldAutoAdvanceOnEnd(slide)) return;
+  const video = root?.querySelector(".presenter-output-layer.is-active video.presenter-video");
+  const onAutoAdvance = typeof options.onAutoAdvance === "function" ? options.onAutoAdvance : null;
+  if (!video || !onAutoAdvance) return;
+  const serviceId = payload?.serviceId || "";
+  const slideId = slide?.id || "";
+  const slideIndex = clampPresenterIndex(payload?.index, Array.isArray(payload?.slides) ? payload.slides.length : 0);
+  video.onended = () => onAutoAdvance({ serviceId, slideId, slideIndex });
+}
+
+function bindPresenterOutputAutoAdvanceAt(payload, slide, options = {}, token = presenterOutputRenderState.token) {
+  const onAutoAdvance = typeof options.onAutoAdvance === "function" ? options.onAutoAdvance : null;
+  if (!onAutoAdvance) return;
+  const target = presenterSlideAutoAdvanceAt(slide, payload);
+  if (!target) return;
+  const delay = Math.max(0, target.getTime() - Date.now());
+  const serviceId = payload?.serviceId || "";
+  const slideId = slide?.id || "";
+  const slideIndex = clampPresenterIndex(payload?.index, Array.isArray(payload?.slides) ? payload.slides.length : 0);
+  presenterOutputRenderState.autoAdvanceTimer = window.setTimeout(() => {
+    if (token !== presenterOutputRenderState.token) return;
+    onAutoAdvance({ serviceId, slideId, slideIndex, scheduledAt: target.toISOString() });
+  }, delay);
+}
+
+function clearPresenterOutputAutoAdvanceTimer() {
+  if (!presenterOutputRenderState.autoAdvanceTimer) return;
+  window.clearTimeout(presenterOutputRenderState.autoAdvanceTimer);
+  presenterOutputRenderState.autoAdvanceTimer = null;
+}
+
+function presenterSlideShouldAutoAdvanceOnEnd(slide) {
+  if (!slide || presenterSlideElementType(slide) !== PRESENTER_ELEMENT_TYPES.VIDEO) return false;
+  if (presenterSlideLayout(slide) !== PRESENTER_SLIDE_LAYOUTS.MEDIA) return false;
+  if (slide.live) return false;
+  const presenterRole = normalizeServicePresenterRole(slide.presenterRole);
+  if (presenterRole !== "intro") return false;
+  const playback = presenterPlaybackConfig(slide.playback, "intro-video");
+  return playback.autoAdvanceOnEnd !== false && playback.loop !== true;
+}
+
+function presenterSlideAutoAdvanceAt(slide, payload = {}) {
+  if (!slide || slide.live) return null;
+  const raw = String(slide.playback?.autoAdvanceAt || "").trim();
+  if (!raw) return null;
+  const target = parsePresenterAutoAdvanceAt(raw, payload?.serviceDate);
+  if (!target || Number.isNaN(target.getTime())) return null;
+  return target;
+}
+
+function presenterVideoTimelineCatchUp(slide, payload = {}, options = {}) {
+  if (!slide || slide.live) return null;
+  const startAt = presenterSlideTimelineStartAt(slide, payload);
+  if (!startAt) return null;
+  const now = Number(options.now) || Date.now();
+  const elapsedSeconds = (now - startAt.getTime()) / 1000;
+  if (!Number.isFinite(elapsedSeconds) || elapsedSeconds <= 0) return null;
+  const durationSeconds = Number(options.durationSeconds) || Number(slide.playback?.durationSeconds || 0);
+  const endAt = durationSeconds > 0 ? new Date(startAt.getTime() + (durationSeconds * 1000)) : presenterSlideAutoAdvanceAt(slide, payload);
+  const shouldAdvance = Boolean(durationSeconds > 0 && elapsedSeconds >= durationSeconds && presenterSlideShouldAutoAdvanceOnEnd(slide));
+  return {
+    startAt,
+    endAt,
+    elapsedSeconds,
+    offsetSeconds: durationSeconds > 0 ? Math.min(elapsedSeconds, Math.max(durationSeconds - 0.25, 0)) : elapsedSeconds,
+    shouldAdvance,
+  };
+}
+
+function presenterSlideTimelineStartAt(slide, payload = {}) {
+  if (!slide) return null;
+  const explicitStart = parsePresenterAutoAdvanceAt(slide.playback?.startAt, payload?.serviceDate);
+  if (explicitStart) return explicitStart;
+  const slides = Array.isArray(payload?.slides) ? payload.slides : [];
+  const index = clampPresenterIndex(payload?.index, slides.length);
+  const previous = slides[index - 1];
+  const previousAdvanceAt = presenterSlideAutoAdvanceAt(previous, payload);
+  if (previousAdvanceAt) return previousAdvanceAt;
+  const ownAdvanceAt = presenterSlideAutoAdvanceAt(slide, payload);
+  const durationSeconds = Number(slide.playback?.durationSeconds || 0);
+  if (ownAdvanceAt && durationSeconds > 0) {
+    return new Date(ownAdvanceAt.getTime() - (durationSeconds * 1000));
+  }
+  return null;
+}
+
+function parsePresenterAutoAdvanceAt(value, serviceDate = "") {
+  const raw = String(value || "").trim();
+  if (!raw) return null;
+  if (/^\d{1,2}:\d{2}(?::\d{2})?$/.test(raw)) {
+    const date = String(serviceDate || toLocalDateStr(new Date())).trim() || toLocalDateStr(new Date());
+    return new Date(`${date}T${raw.length === 5 ? `${raw}:00` : raw}`);
+  }
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function presenterOutputLayers(root) {
+  if (!root) return null;
+  let layers = [...root.querySelectorAll(":scope > .presenter-output-layer")];
+  if (layers.length < 2) {
+    const existing = [...root.childNodes];
+    root.textContent = "";
+    const first = document.createElement("div");
+    const second = document.createElement("div");
+    first.className = "presenter-output-layer is-active";
+    second.className = "presenter-output-layer";
+    existing.forEach((node) => first.appendChild(node));
+    root.append(first, second);
+    layers = [first, second];
+  }
+  const active = layers.find((layer) => layer.classList.contains("is-active")) || layers[0];
+  const next = layers.find((layer) => layer !== active) || layers[1];
+  return { active, next };
+}
+
+function applyPresenterOutputFrameState(root, frameState = {}) {
+  document.body.classList.toggle("presenter-output-body--clean", Boolean(frameState.cleanOutput));
+  document.body.classList.toggle("has-background", Boolean(frameState.showBackground));
+  document.body.classList.toggle("is-blank", Boolean(frameState.blankOutput));
+  root.classList.toggle("no-chromakey", Boolean(frameState.noChromakey));
+  root.classList.toggle("has-background", Boolean(frameState.showBackground));
+  root.classList.toggle("is-blank", Boolean(frameState.blankOutput));
+  root.dataset.serviceType = frameState.serviceType || "";
+  root.dataset.outputTheme = frameState.outputTheme || presenterOutputTheme(frameState.serviceType);
+  if (frameState.showBackground) {
+    const backgroundCssValue = presenterBackgroundCssValue(frameState.backgroundImages?.length ? frameState.backgroundImages : [frameState.backgroundImage]);
+    document.body.style.setProperty("--presenter-bg-image", backgroundCssValue);
+    root.style.setProperty("--presenter-bg-image", backgroundCssValue);
+  } else {
+    document.body.style.removeProperty("--presenter-bg-image");
+    root.style.removeProperty("--presenter-bg-image");
+  }
+}
+
+function presenterPayloadBackgroundImages(payload = {}) {
+  if (Array.isArray(payload?.backgroundImages) && payload.backgroundImages.length) {
+    return payload.backgroundImages.filter(Boolean);
+  }
+  return [payload?.backgroundImage].filter(Boolean);
+}
+
+function preparePresenterOutputFrameForPaint(host) {
+  if (!host) return Promise.resolve();
+  const images = [...host.querySelectorAll("img")];
+  const imageReady = images.map((image) => {
+    if (image.complete && image.naturalWidth > 0) return Promise.resolve();
+    if (typeof image.decode === "function") return image.decode().catch(() => {});
+    return new Promise((resolve) => {
+      image.onload = resolve;
+      image.onerror = resolve;
+    });
+  });
+  return Promise.all(imageReady)
+    .then(() => nextAnimationFrame());
+}
+
+function nextAnimationFrame() {
+  return new Promise((resolve) => requestAnimationFrame(() => resolve()));
+}
+
+function preloadPresenterOutputImages(payload = {}, activeSlide = null) {
+  presenterOutputImageSourcesForPreload(payload, activeSlide).forEach(preloadPresenterOutputImage);
+}
+
+function presenterOutputImageSourcesForPreload(payload = {}, activeSlide = null) {
+  const sources = [];
+  const pushSlide = (slide) => {
+    const source = presenterSlideImageSource(slide);
+    if (source) sources.push(source);
+  };
+  pushSlide(activeSlide);
+
+  let slideList = [];
+  let activeIndex = 0;
+  if (payload?.livePraise?.active) {
+    slideList = Array.isArray(payload.livePraise.slides) ? payload.livePraise.slides : [];
+    activeIndex = clampPresenterIndex(payload.livePraise.index, slideList.length);
+    for (let offset = -PRESENTER_OUTPUT_IMAGE_PRELOAD_RADIUS; offset <= PRESENTER_OUTPUT_IMAGE_PRELOAD_RADIUS; offset += 1) {
+      pushSlide(slideList[activeIndex + offset]);
+    }
+  } else {
+    slideList = Array.isArray(payload?.slides) ? payload.slides : [];
+    activeIndex = clampPresenterIndex(payload?.index, slideList.length);
+    for (let offset = -PRESENTER_OUTPUT_IMAGE_PRELOAD_RADIUS; offset <= PRESENTER_OUTPUT_IMAGE_PRELOAD_RADIUS; offset += 1) {
+      pushSlide(slideList[activeIndex + offset]);
+    }
+  }
+  presenterOutputScoreGroupSlidesForPreload(slideList, activeSlide, activeIndex).forEach(pushSlide);
+
+  presenterPayloadBackgroundImages(payload).forEach((source) => {
+    const backgroundImage = normalizePresenterMediaSource(source || "");
+    if (backgroundImage && presenterMediaSourceIsImage(backgroundImage)) sources.push(backgroundImage);
+  });
+  return [...new Set(sources)];
+}
+
+function warmPresenterOutputImages(payload = {}, activeSlide = null) {
+  const sources = presenterOutputWarmupSourcesForPayload(payload, activeSlide);
+  const key = presenterOutputWarmupKey(payload, sources);
+  if (!key || !sources.length) {
+    cancelPresenterOutputImageWarmup();
+    presenterOutputImageWarmupState.key = "";
+    presenterOutputImageWarmupState.serviceId = "";
+    presenterOutputImageWarmupState.sources = [];
+    presenterOutputImageWarmupState.index = 0;
+    return;
+  }
+  if (key === presenterOutputImageWarmupState.key) {
+    schedulePresenterOutputImageWarmup();
+    return;
+  }
+
+  cancelPresenterOutputImageWarmup();
+  presenterOutputImageWarmupState.key = key;
+  presenterOutputImageWarmupState.serviceId = payload?.serviceId || "";
+  presenterOutputImageWarmupState.sources = sources;
+  presenterOutputImageWarmupState.index = 0;
+
+  const eagerCount = Math.min(PRESENTER_OUTPUT_WARMUP_EAGER_COUNT, sources.length);
+  sources.slice(0, eagerCount).forEach((source) => preloadPresenterOutputImage(source));
+  presenterOutputImageWarmupState.index = eagerCount;
+  schedulePresenterOutputImageWarmup();
+}
+
+function presenterOutputWarmupSummary() {
+  const sources = presenterOutputImageWarmupState.sources || [];
+  const total = sources.length;
+  const ready = sources.filter(presenterOutputImageIsReady).length;
+  return {
+    serviceId: presenterOutputImageWarmupState.serviceId || "",
+    total,
+    ready,
+    queued: Math.max(0, total - presenterOutputImageWarmupState.index),
+    complete: total > 0 && ready >= total,
+  };
+}
+
+function presenterOutputWarmupSourcesForPayload(payload = {}, activeSlide = null) {
+  const sources = [];
+  const pushSource = (source) => {
+    const normalized = normalizePresenterMediaSource(source);
+    if (normalized && presenterMediaSourceIsImage(normalized)) sources.push(normalized);
+  };
+  const pushSlide = (slide) => pushSource(presenterSlideImageSource(slide));
+  const serviceSlides = Array.isArray(payload?.slides) ? payload.slides : [];
+  const serviceIndex = clampPresenterIndex(payload?.index, serviceSlides.length);
+
+  pushSlide(activeSlide);
+  if (payload?.livePraise?.active) {
+    const liveSlides = Array.isArray(payload.livePraise.slides) ? payload.livePraise.slides : [];
+    const liveIndex = clampPresenterIndex(payload.livePraise.index, liveSlides.length);
+    presenterSlidesByDistance(liveSlides, liveIndex).forEach(pushSlide);
+  } else if (payload?.liveScripture?.active) {
+    pushSlide(payload.liveScripture.slide);
+  }
+  presenterSlidesByDistance(serviceSlides, serviceIndex).forEach(pushSlide);
+  presenterPayloadBackgroundImages(payload).forEach(pushSource);
+  return [...new Set(sources)].slice(0, PRESENTER_OUTPUT_IMAGE_PRELOAD_LIMIT);
+}
+
+function presenterSlidesByDistance(slides = [], activeIndex = 0) {
+  if (!Array.isArray(slides) || !slides.length) return [];
+  const safeIndex = clampPresenterIndex(activeIndex, slides.length);
+  return slides
+    .map((slide, index) => ({ slide, index, distance: Math.abs(index - safeIndex) }))
+    .sort((a, b) => a.distance - b.distance || a.index - b.index)
+    .map((item) => item.slide);
+}
+
+function presenterOutputWarmupKey(payload = {}, sources = []) {
+  if (!Array.isArray(sources) || !sources.length) return "";
+  const sourceSet = [...new Set(sources)].sort();
+  return [
+    payload?.serviceId || "no-service",
+    payload?.serviceType || "",
+    sourceSet.length,
+    presenterHashString(sourceSet.join("\n")),
+  ].join("|");
+}
+
+function presenterHashString(value) {
+  let hash = 0;
+  const text = String(value || "");
+  for (let index = 0; index < text.length; index += 1) {
+    hash = ((hash << 5) - hash + text.charCodeAt(index)) | 0;
+  }
+  return String(hash >>> 0);
+}
+
+function cancelPresenterOutputImageWarmup() {
+  const handle = presenterOutputImageWarmupState.handle;
+  if (!handle) return;
+  if (handle.type === "idle" && typeof window.cancelIdleCallback === "function") {
+    window.cancelIdleCallback(handle.id);
+  } else {
+    window.clearTimeout(handle.id);
+  }
+  presenterOutputImageWarmupState.handle = null;
+}
+
+function schedulePresenterOutputImageWarmup() {
+  if (presenterOutputImageWarmupState.handle) return;
+  if (presenterOutputImageWarmupState.index >= presenterOutputImageWarmupState.sources.length) return;
+  const run = (deadline = null) => {
+    presenterOutputImageWarmupState.handle = null;
+    let count = 0;
+    while (
+      presenterOutputImageWarmupState.index < presenterOutputImageWarmupState.sources.length
+      && count < PRESENTER_OUTPUT_WARMUP_BATCH_SIZE
+      && (!deadline || count === 0 || deadline.timeRemaining?.() > 4)
+    ) {
+      const source = presenterOutputImageWarmupState.sources[presenterOutputImageWarmupState.index];
+      presenterOutputImageWarmupState.index += 1;
+      count += 1;
+      preloadPresenterOutputImage(source, { priority: "low" });
+    }
+    presenterOutputImageWarmupState.onProgress?.();
+    schedulePresenterOutputImageWarmup();
+  };
+  if (typeof window.requestIdleCallback === "function") {
+    const id = window.requestIdleCallback(run, { timeout: PRESENTER_OUTPUT_WARMUP_IDLE_TIMEOUT_MS });
+    presenterOutputImageWarmupState.handle = { type: "idle", id };
+  } else {
+    const id = window.setTimeout(() => run(null), 50);
+    presenterOutputImageWarmupState.handle = { type: "timeout", id };
+  }
+}
+
+function presenterOutputScoreGroupSlidesForPreload(slides = [], activeSlide = null, activeIndex = 0) {
+  if (!Array.isArray(slides) || !slides.length) return [];
+  const nearbyStart = Math.max(0, activeIndex - PRESENTER_OUTPUT_IMAGE_PRELOAD_RADIUS);
+  const nearbyEnd = Math.min(slides.length, activeIndex + PRESENTER_OUTPUT_IMAGE_PRELOAD_RADIUS + 1);
+  const nearbySlides = slides.slice(nearbyStart, nearbyEnd);
+  const scoreSlide = presenterSlideIsScoreImage(activeSlide)
+    ? activeSlide
+    : nearbySlides.find(presenterSlideIsScoreImage);
+  const groupKey = presenterSlidePreloadGroupKey(scoreSlide);
+  if (!groupKey) return [];
+  return slides
+    .filter((slide) => presenterSlideIsScoreImage(slide) && presenterSlidePreloadGroupKey(slide) === groupKey)
+    .slice(0, PRESENTER_OUTPUT_SCORE_PRELOAD_LIMIT);
+}
+
+function presenterSlideIsScoreImage(slide) {
+  return Boolean(
+    slide
+    && presenterSlideImageSource(slide)
+    && (slide.sourceType === "score" || slide.componentType === "score" || slide.scoreBackground),
+  );
+}
+
+function presenterSlidePreloadGroupKey(slide) {
+  return String(slide?.elementId || slide?.sectionId || slide?.asset?.name || slide?.title || "").trim();
+}
+
+function presenterSlideImageSource(slide) {
+  if (!slide) return "";
+  const layout = presenterSlideLayout(slide);
+  const elementType = presenterSlideElementType(slide);
+  if (layout !== PRESENTER_SLIDE_LAYOUTS.MEDIA || elementType !== PRESENTER_ELEMENT_TYPES.IMAGE) return "";
+  const source = normalizePresenterMediaSource(slide.imageSrc || slide.asset?.url || slide.text);
+  return source && presenterMediaSourceIsImage(source) ? source : "";
+}
+
+function preloadPresenterOutputImage(source, options = {}) {
+  const normalized = normalizePresenterMediaSource(source);
+  if (!normalized || !presenterMediaSourceIsImage(normalized)) return null;
+  const cached = presenterOutputImagePreloadCache.get(normalized);
+  if (cached) {
+    if (cached.image?.complete && cached.image.naturalWidth > 0) cached.ready = true;
+    cached.lastUsed = Date.now();
+    return cached.promise;
+  }
+  const image = new Image();
+  image.decoding = "async";
+  image.loading = "eager";
+  if ("fetchPriority" in image) image.fetchPriority = options.priority === "low" ? "low" : "high";
+  image.src = normalized;
+  const promise = typeof image.decode === "function"
+    ? image.decode().catch(() => {})
+    : new Promise((resolve) => {
+      image.onload = resolve;
+      image.onerror = resolve;
+    });
+  const record = { image, promise, lastUsed: Date.now(), ready: false };
+  promise.finally(() => { record.ready = true; });
+  presenterOutputImagePreloadCache.set(normalized, record);
+  trimPresenterOutputImagePreloadCache();
+  return promise;
+}
+
+function presenterOutputImageIsReady(source) {
+  const normalized = normalizePresenterMediaSource(source);
+  const cached = normalized ? presenterOutputImagePreloadCache.get(normalized) : null;
+  if (!cached) return false;
+  if (cached.ready) return true;
+  if (cached.image?.complete && cached.image.naturalWidth > 0) {
+    cached.ready = true;
+    return true;
+  }
+  return false;
+}
+
+function trimPresenterOutputImagePreloadCache() {
+  if (presenterOutputImagePreloadCache.size <= PRESENTER_OUTPUT_IMAGE_PRELOAD_LIMIT) return;
+  [...presenterOutputImagePreloadCache.entries()]
+    .sort((a, b) => a[1].lastUsed - b[1].lastUsed)
+    .slice(0, presenterOutputImagePreloadCache.size - PRESENTER_OUTPUT_IMAGE_PRELOAD_LIMIT)
+    .forEach(([source]) => presenterOutputImagePreloadCache.delete(source));
+}
+
+function renderPresenterSlideFrame(slide, options = {}) {
+  const slideClass = presenterSlideRenderClass(slide);
+  const extraClasses = presenterSlideExtraClasses(slide);
+  const body = options.preview ? renderPresenterSlidePreviewBody(slide) : renderPresenterSlideBody(slide, options);
+  return `
+    <section class="presenter-slide presenter-slide--${escapeAttr(slideClass)}${extraClasses ? ` ${escapeAttr(extraClasses)}` : ""}" data-element-type="${escapeAttr(presenterSlideElementType(slide))}" data-slide-layout="${escapeAttr(presenterSlideLayout(slide))}">
+      ${renderPresenterSlideMeta(slide)}
+      ${body}
+    </section>
+  `;
+}
+
+function presenterSlideExtraClasses(slide) {
+  return slide?.sourceType === "score" || slide?.componentType === "score" || slide?.scoreBackground
+    ? "presenter-slide--score"
+    : "";
+}
+
+function presenterSafetyBlankSlide() {
+  return {
+    id: "presenter:safety-blank",
+    elementType: PRESENTER_ELEMENT_TYPES.BLANK,
+    layout: PRESENTER_SLIDE_LAYOUTS.BLANK,
+    type: "blank",
+    title: "빈 화면",
+    text: "",
+  };
+}
+
+function renderPresenterSlideMeta(slide) {
+  if (!presenterSlideHasMeta(slide)) return "";
+  const marker = presenterVisibleMeta(slide);
+  if (!marker) return "";
+  return `<div class="presenter-slide-meta">${escapeHtml(marker)}</div>`;
+}
+
+function presenterVisibleMeta(slide) {
+  const marker = [slide?.marker, slide?.label].filter(Boolean).join(" · ").trim();
+  if (!marker) return "";
+  if (presenterLabelDuplicatesSlideText(marker, slide)) return "";
+  return marker;
+}
+
+function renderPresenterSlideBody(slide, options = {}) {
+  const layout = presenterSlideLayout(slide);
+  const elementType = presenterSlideElementType(slide);
+  if (elementType === PRESENTER_ELEMENT_TYPES.AUDIO) return "";
+  if (layout === PRESENTER_SLIDE_LAYOUTS.MEDIA && elementType === PRESENTER_ELEMENT_TYPES.VIDEO) return renderPresenterVideoSlide(slide, options);
+  if (layout === PRESENTER_SLIDE_LAYOUTS.MEDIA && elementType === PRESENTER_ELEMENT_TYPES.IMAGE) return renderPresenterImageSlide(slide);
+  if (layout === PRESENTER_SLIDE_LAYOUTS.FILE) return renderPresenterFileSlide(slide);
+  if (layout === PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT && elementType === PRESENTER_ELEMENT_TYPES.TITLE_ASSIGNEE) return renderPresenterTitleAssigneeSlide(slide);
+  if (layout === PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT && slide?.type === "song-title" && slide.sectionHeading) return renderPresenterSectionSongTitleSlide(slide);
+  if (layout === PRESENTER_SLIDE_LAYOUTS.BLANK) return "";
+  if (slide?.type === "liturgical-body") return renderPresenterLiturgicalBodySlide(slide);
+  if (presenterSlideIsTitleContent(slide)) return renderPresenterTitleContentSlide(slide);
+  return `<div class="presenter-slide-text">${renderPresenterSlideText(slide)}</div>`;
+}
+
+function renderPresenterSlidePreviewBody(slide) {
+  const layout = presenterSlideLayout(slide);
+  const elementType = presenterSlideElementType(slide);
+  if (elementType === PRESENTER_ELEMENT_TYPES.AUDIO) {
+    const source = presenterSlideAudioSource(slide);
+    return renderPresenterPreviewFileSlide(slide, presenterFileTypeLabel(slide.sourceType || slide.asset?.kind || "audio"), source);
+  }
+  if (layout === PRESENTER_SLIDE_LAYOUTS.MEDIA && elementType === PRESENTER_ELEMENT_TYPES.VIDEO) {
+    const source = normalizePresenterMediaSource(slide.videoSrc || slide.text);
+    if (!source) return "";
+    return renderPresenterPreviewFileSlide(slide, "VIDEO", source);
+  }
+  return renderPresenterSlideBody(slide);
+}
+
+function renderPresenterPreviewFileSlide(slide, typeLabel, source) {
+  return `
+    <div class="presenter-slide-file">
+      <small>${escapeHtml(typeLabel)}</small>
+      <strong>${escapeHtml(presenterFileDisplayTitle({ ...slide, asset: { ...slide.asset, url: source } }, typeLabel))}</strong>
+    </div>
+  `;
+}
+
+function renderPresenterVideoSlide(slide, options = {}) {
+  const source = normalizePresenterMediaSource(slide.videoSrc || slide.text);
+  if (!source) return "";
+  const presenterRole = normalizeServicePresenterRole(slide.presenterRole);
+  const playbackType = presenterRole === "intro"
+    ? "intro-video"
+    : (presenterRole === "ready" || presenterRole === "waiting_loop" || slide.type === "ready")
+      ? "ready-video"
+      : "video";
+  const playback = presenterPlaybackConfig(slide.playback, playbackType);
+  const attrs = [
+    "class=\"presenter-video\"",
+    `src="${escapeAttr(source)}"`,
+    presenterRole ? `data-presenter-role="${escapeAttr(presenterRole)}"` : "",
+    playback.autoplay ? "autoplay" : "",
+    playback.muted ? "muted" : "",
+    playback.loop ? "loop" : "",
+    playback.controls ? "controls" : "",
+    options.noChromakey ? "" : `poster="${PRESENTER_CHROMAKEY_VIDEO_POSTER}"`,
+    "playsinline",
+    "preload=\"auto\"",
+  ].filter(Boolean).join(" ");
+  return `
+    <video ${attrs}></video>
+  `;
+}
+
+function renderPresenterImageSlide(slide) {
+  const source = normalizePresenterMediaSource(slide.imageSrc || slide.asset?.url || slide.text);
+  if (!source) return "";
+  return `<img class="presenter-image" src="${escapeAttr(source)}" alt="" decoding="sync" loading="eager" fetchpriority="high" draggable="false" />`;
+}
+
+function renderPresenterTitleAssigneeSlide(slide) {
+  const title = String(slide.title || slide.text || slide.label || "").trim();
+  const assignee = String(slide.assignee || slide.subtitle || "").trim();
+  const titleChars = presenterLineCharEstimate(title);
+  const assigneeChars = presenterLineCharEstimate(assignee);
+  const soloClass = assignee ? "" : " presenter-title-assignee--solo";
+  return `
+    <div class="presenter-slide-text presenter-title-assignee${soloClass}">
+      <span class="presenter-title-assignee-title" style="--line-chars: ${escapeAttr(titleChars)}">${escapeHtml(title)}</span>
+      ${assignee ? `<span class="presenter-title-assignee-person" style="--line-chars: ${escapeAttr(assigneeChars)}">${escapeHtml(assignee)}</span>` : ""}
+    </div>
+  `;
+}
+
+function renderPresenterSectionSongTitleSlide(slide) {
+  const heading = String(slide.sectionHeading || slide.label || slide.sectionLabel || "").trim();
+  const title = String(slide.text || formatPresenterSongTitleText(slide.title || "")).trim();
+  const headingChars = presenterLineCharEstimate(heading);
+  const titleChars = presenterLineCharEstimate(title);
+  return `
+    <div class="presenter-slide-text presenter-section-song-title">
+      <span class="presenter-section-song-title-heading" style="--line-chars: ${escapeAttr(headingChars)}">${escapeHtml(heading)}</span>
+      <span class="presenter-section-song-title-name" style="--line-chars: ${escapeAttr(titleChars)}">${escapeHtml(title)}</span>
+    </div>
+  `;
+}
+
+function renderPresenterTitleContentSlide(slide) {
+  const title = String(slide.title || "").trim();
+  const bodyLines = presenterTitleContentLines(slide);
+  const titleChars = presenterLineCharEstimate(title);
+  return `
+    <div class="presenter-title-content">
+      <span class="presenter-title-content-title" style="--line-chars: ${escapeAttr(titleChars)}">${escapeHtml(title)}</span>
+      <div class="presenter-title-content-body">
+        ${bodyLines.map((line) => `<span style="--line-chars: ${presenterLineCharEstimate(line)}">${escapePresenterSlideLine(line, slide)}</span>`).join("")}
+      </div>
+    </div>
+  `;
+}
+
+function renderPresenterLiturgicalBodySlide(slide) {
+  const title = String(slide.title || slide.sectionTitle || "").trim();
+  const lines = presenterLiturgicalBodyLines(slide);
+  const titleChars = presenterLineCharEstimate(title);
+  return `
+    <div class="presenter-liturgical-body">
+      <div class="presenter-liturgical-body-lines">
+        ${lines.map((line) => `<span style="--line-chars: ${presenterLineCharEstimate(line)}">${escapePresenterSlideLine(line, slide)}</span>`).join("")}
+      </div>
+      <div class="presenter-liturgical-body-heading">
+        <span style="--line-chars: ${escapeAttr(titleChars)}">${escapeHtml(title)}</span>
+        <i aria-hidden="true"></i>
+      </div>
+    </div>
+  `;
+}
+
+function renderPresenterFileSlide(slide) {
+  const asset = normalizeServiceAsset(slide.asset);
+  const typeLabel = presenterFileTypeLabel(slide.sourceType || slide.componentType || asset.kind || "file");
+  const title = presenterFileDisplayTitle({ ...slide, asset }, typeLabel);
+  return `
+    <div class="presenter-slide-file">
+      <small>${escapeHtml(typeLabel)}</small>
+      <strong>${escapeHtml(title)}</strong>
+    </div>
+  `;
+}
+
+function renderPresenterSlideText(slide) {
+  const verseNumber = presenterLyricVerseNumber(slide);
+  let verseNumberUsed = false;
+  return presenterDisplayLines(slide)
+    .map((line) => {
+      const showVerseNumber = verseNumber && !verseNumberUsed && String(line || "").trim();
+      if (showVerseNumber) verseNumberUsed = true;
+      return `<span${showVerseNumber ? ` class="presenter-lyric-line presenter-lyric-line--numbered" data-verse-no="${escapeAttr(verseNumber)}"` : ""} style="--line-chars: ${presenterLineCharEstimate(line) + (showVerseNumber ? 1 : 0)}">${escapePresenterSlideLine(line, slide)}</span>`;
+    })
+    .join("");
+}
+
+function presenterLyricVerseNumber(slide) {
+  if (presenterSlideElementType(slide) !== PRESENTER_ELEMENT_TYPES.PRAISE) return "";
+  if (presenterSlideLayout(slide) !== PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT) return "";
+  if (slide?.type !== "lyrics") return "";
+  const marker = String(slide?.marker || slide?.formLabel || "").trim();
+  const match = marker.match(/^(?:verse|v)\s*(\d{1,2})$/i)
+    || marker.match(/^(\d{1,2})\s*절$/);
+  return match ? String(Number(match[1])) : "";
+}
+
+function escapePresenterSlideLine(line, slide) {
+  const escaped = escapeHtml(line || " ");
+  if (presenterSlideElementType(slide) !== PRESENTER_ELEMENT_TYPES.SCRIPTURE_TEXT) return escaped;
+  return escaped.replace(/ {2,}/g, (spaces) => "&nbsp;".repeat(spaces.length));
+}
+
+function presenterDisplayLines(slide) {
+  const baseText = slide?.text || slide?.title || "";
+  const lowerBar = presenterSlideLayout(slide) === PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT;
+  const text = lowerBar ? slide?.text : baseText;
+  const lines = String(text || "").split(/\n/);
+  if (lowerBar) return lines;
+
+  const deduped = [];
+  for (const line of lines) {
+    const previous = deduped[deduped.length - 1];
+    if (previous !== undefined && normalizeTitle(previous) === normalizeTitle(line)) continue;
+    deduped.push(line);
+  }
+  return deduped.length ? deduped : [""];
+}
+
+function presenterLiturgicalBodyLines(slide) {
+  return String(slide?.bodyText || slide?.text || "")
+    .split(/\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
+function presenterTitleContentBodyText(slide) {
+  return String(slide?.bodyText || slide?.body || slide?.text || "").trim();
+}
+
+function presenterTitleContentLines(slide) {
+  const title = String(slide?.title || "").trim();
+  const lines = presenterTitleContentBodyText(slide).split(/\n/);
+  const deduped = [];
+  for (const line of lines) {
+    if (title && normalizeTitle(line) === normalizeTitle(title)) continue;
+    const previous = deduped[deduped.length - 1];
+    if (previous !== undefined && normalizeTitle(previous) === normalizeTitle(line)) continue;
+    deduped.push(line);
+  }
+  return deduped.length ? deduped : [""];
+}
+
+function presenterLineCharEstimate(line) {
+  const text = String(line || "").replace(/\s+/g, " ").trim();
+  if (!text) return 1;
+  let score = 0;
+  for (const char of text) {
+    if (/\s/.test(char)) score += 0.35;
+    else if (/[A-Za-z0-9]/.test(char)) score += 0.58;
+    else score += 1;
+  }
+  return Math.max(1, Math.ceil(score));
+}
