@@ -1540,7 +1540,7 @@ function presenterStatePayload(serviceId = state.presenter.serviceId) {
     index: clampPresenterIndex(state.presenter.index, slides.length),
     safetyBlank: Boolean(state.presenter.safetyBlank),
     liveScripture: state.presenter.liveScripture?.active ? state.presenter.liveScripture : null,
-    livePraise: state.presenter.livePraise?.active ? state.presenter.livePraise : null,
+    livePraise: null,
     updatedAt: Date.now(),
   };
 }
@@ -2028,7 +2028,7 @@ function normalizePresenterPayload(payload) {
     index: clampPresenterIndex(payload?.index, slides.length),
     safetyBlank: Boolean(payload?.safetyBlank),
     liveScripture: normalizeLiveScripturePayload(payload?.liveScripture),
-    livePraise: normalizeLivePraisePayload(payload?.livePraise),
+    livePraise: null,
     updatedAt: Number(payload?.updatedAt) || Date.now(),
   };
 }
@@ -2043,33 +2043,13 @@ function normalizeLiveScripturePayload(value) {
 }
 
 function normalizeLivePraisePayload(value) {
-  const slides = Array.isArray(value?.slides) ? value.slides.filter(Boolean) : [];
-  if (!value?.active || !slides.length) return null;
-  return {
-    query: value.query || value.draft || "",
-    active: true,
-    slides,
-    index: clampPresenterIndex(value.index, slides.length),
-    songId: value.songId || "",
-    versionId: value.versionId || "",
-  };
+  return null;
 }
 
 function applyPresenterActionToPayload(payload, action, options = {}) {
   const next = normalizePresenterPayload(payload);
-  if (next.livePraise?.active && ["next", "prev", "first", "last"].includes(action)) {
-    const count = next.livePraise.slides.length;
-    if (action === "next") next.livePraise.index = Math.min(next.livePraise.index + 1, count - 1);
-    else if (action === "prev") next.livePraise.index = Math.max(next.livePraise.index - 1, 0);
-    else if (action === "first") next.livePraise.index = 0;
-    else if (action === "last") next.livePraise.index = count - 1;
-    next.safetyBlank = false;
-    next.updatedAt = Date.now();
-    return next;
-  }
   if (["next", "prev", "first", "last", "jump"].includes(action)) {
     next.liveScripture = null;
-    next.livePraise = null;
   }
   if (action === "next" && next.slides.length) {
     next.safetyBlank = false;
@@ -2101,10 +2081,7 @@ function renderPresenterOutput(payload, options = {}) {
   if (!root) return;
   clearPresenterOutputAutoAdvanceTimer();
   const slides = Array.isArray(payload?.slides) ? payload.slides : [];
-  const livePraiseSlide = payload?.livePraise?.active
-    ? payload.livePraise.slides?.[clampPresenterIndex(payload.livePraise.index, payload.livePraise.slides.length)]
-    : null;
-  const liveSlide = livePraiseSlide || (payload?.liveScripture?.active ? payload.liveScripture.slide : null);
+  const liveSlide = payload?.liveScripture?.active ? payload.liveScripture.slide : null;
   const slide = payload?.safetyBlank
     ? presenterSafetyBlankSlide()
     : liveSlide || slides[clampPresenterIndex(payload?.index, slides.length)];
@@ -2410,18 +2387,10 @@ function presenterOutputImageSourcesForPreload(payload = {}, activeSlide = null)
 
   let slideList = [];
   let activeIndex = 0;
-  if (payload?.livePraise?.active) {
-    slideList = Array.isArray(payload.livePraise.slides) ? payload.livePraise.slides : [];
-    activeIndex = clampPresenterIndex(payload.livePraise.index, slideList.length);
-    for (let offset = -PRESENTER_OUTPUT_IMAGE_PRELOAD_RADIUS; offset <= PRESENTER_OUTPUT_IMAGE_PRELOAD_RADIUS; offset += 1) {
-      pushSlide(slideList[activeIndex + offset]);
-    }
-  } else {
-    slideList = Array.isArray(payload?.slides) ? payload.slides : [];
-    activeIndex = clampPresenterIndex(payload?.index, slideList.length);
-    for (let offset = -PRESENTER_OUTPUT_IMAGE_PRELOAD_RADIUS; offset <= PRESENTER_OUTPUT_IMAGE_PRELOAD_RADIUS; offset += 1) {
-      pushSlide(slideList[activeIndex + offset]);
-    }
+  slideList = Array.isArray(payload?.slides) ? payload.slides : [];
+  activeIndex = clampPresenterIndex(payload?.index, slideList.length);
+  for (let offset = -PRESENTER_OUTPUT_IMAGE_PRELOAD_RADIUS; offset <= PRESENTER_OUTPUT_IMAGE_PRELOAD_RADIUS; offset += 1) {
+    pushSlide(slideList[activeIndex + offset]);
   }
   presenterOutputScoreGroupSlidesForPreload(slideList, activeSlide, activeIndex).forEach(pushSlide);
 
@@ -2484,11 +2453,7 @@ function presenterOutputWarmupSourcesForPayload(payload = {}, activeSlide = null
   const serviceIndex = clampPresenterIndex(payload?.index, serviceSlides.length);
 
   pushSlide(activeSlide);
-  if (payload?.livePraise?.active) {
-    const liveSlides = Array.isArray(payload.livePraise.slides) ? payload.livePraise.slides : [];
-    const liveIndex = clampPresenterIndex(payload.livePraise.index, liveSlides.length);
-    presenterSlidesByDistance(liveSlides, liveIndex).forEach(pushSlide);
-  } else if (payload?.liveScripture?.active) {
+  if (payload?.liveScripture?.active) {
     pushSlide(payload.liveScripture.slide);
   }
   presenterSlidesByDistance(serviceSlides, serviceIndex).forEach(pushSlide);

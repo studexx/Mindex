@@ -2292,7 +2292,7 @@ def main() -> int:
                         lineDisplay: lineStyle.display,
                         lineFontSize: lineStyle.fontSize,
                         lineFits: line.scrollWidth <= line.clientWidth + 1,
-                        lineInsideBar: lineRect.left >= barRect.left - 1 && lineRect.right <= barRect.right + 1,
+                        lineInsideTextBox: lineRect.left >= barRect.left - 1 && lineRect.right <= barRect.right + 1,
                         lineScrollWidth: line.scrollWidth,
                         lineClientWidth: line.clientWidth,
                         subgroupTitleMaxWidth: strongStyle.maxWidth,
@@ -2310,7 +2310,7 @@ def main() -> int:
                 if (
                     scripture_fit_state["lineDisplay"] == "block"
                     and scripture_fit_state["lineFits"]
-                    and scripture_fit_state["lineInsideBar"]
+                    and scripture_fit_state["lineInsideTextBox"]
                     and scripture_fit_state["subgroupTitleMaxWidth"] == "100%"
                     and scripture_fit_state["subgroupTitleUsesHeadWidth"]
                 ):
@@ -2318,6 +2318,42 @@ def main() -> int:
                 else:
                     fail("presenter-scripture-line-fit", json.dumps(scripture_fit_state, ensure_ascii=False))
 
+                page.evaluate(
+                    """
+                    (serviceId) => {
+                      state.presenter.liveScripture = {
+                        reference: "",
+                        draft: "",
+                        active: true,
+                        slide: {
+                          id: "__smoke_live_scripture_input_scope__",
+                          elementType: PRESENTER_ELEMENT_TYPES.SCRIPTURE_TEXT,
+                          layout: PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT,
+                          type: "scripture",
+                          title: "",
+                          text: "",
+                          live: true,
+                        },
+                      };
+                      state.presenter.safetyBlank = false;
+                      renderPresenterControlState(serviceId);
+                    }
+                    """,
+                    service["id"],
+                )
+                live_scripture_slide_index = page.evaluate(
+                    """
+                    (serviceId) => {
+                      const target = state.presenter.slides.findIndex((slide) =>
+                        `${slide.sectionLabel || ''} ${slide.title || ''} ${slide.text || ''}`.replace(/\\s+/g, '').includes('실시간성구송출')
+                      );
+                      state.presenter.index = Math.max(target, 0);
+                      renderPresenterControlState(serviceId);
+                      return target;
+                    }
+                    """,
+                    service["id"],
+                )
                 live_input = page.locator(f'[data-live-scripture-input][data-service-id="{service["id"]}"]')
                 live_input.fill("요")
                 live_input.focus()
@@ -2336,7 +2372,7 @@ def main() -> int:
                     service["id"],
                 )
                 if (
-                    focused_input_state["index"] == 0
+                    focused_input_state["index"] == max(live_scripture_slide_index, 0)
                     and focused_input_state["draft"] == ""
                     and focused_input_state["inputValue"] == "요 5"
                 ):
@@ -2344,18 +2380,36 @@ def main() -> int:
                 else:
                     fail("presenter-keyboard-input-scope", json.dumps(focused_input_state, ensure_ascii=False))
 
+                page.evaluate(
+                    """
+                    (serviceId) => {
+                      state.presenter.liveScripture = { reference: "", draft: "", active: false, slide: null };
+                      renderPresenterControlState(serviceId);
+                    }
+                    """,
+                    service["id"],
+                )
                 jump_scope_input = page.locator(f'[data-presenter-jump-input][data-service-id="{service["id"]}"]')
                 jump_scope_input.fill("1")
                 jump_scope_input.focus()
+                page.wait_for_function(
+                    """
+                    (serviceId) => document.activeElement?.matches(`[data-presenter-jump-input][data-service-id="${serviceId}"]`)
+                    """,
+                    arg=service["id"],
+                    timeout=1000,
+                )
                 page.keyboard.press("ArrowDown")
                 page.wait_for_timeout(250)
                 jump_scope_state = page.evaluate(
                     """
-                    (() => ({
+                    (serviceId) => ({
                       index: state.presenter.index,
                       draft: state.presenter.jumpDraft,
-                    }))()
-                    """
+                      focused: document.activeElement?.matches(`[data-presenter-jump-input][data-service-id="${serviceId}"]`) || false,
+                    })
+                    """,
+                    service["id"],
                 )
                 if jump_scope_state["index"] == 0 and jump_scope_state["draft"] == "":
                     pass_("presenter-keyboard-jump-input-arrows-ignored", json.dumps(jump_scope_state, ensure_ascii=False))
@@ -2885,7 +2939,7 @@ def main() -> int:
                           height: Math.round(rect.height),
                           ratio: rect.height ? Number((rect.width / rect.height).toFixed(3)) : 0,
                         } : null,
-                        lowerBarRatio: rect && textRect ? Number((textRect.height / rect.height).toFixed(3)) : 0,
+                        textRatio: rect && textRect ? Number((textRect.height / rect.height).toFixed(3)) : 0,
                         overflow: Math.max(
                           document.documentElement.scrollWidth - window.innerWidth,
                           document.documentElement.scrollHeight - window.innerHeight,
@@ -2905,7 +2959,7 @@ def main() -> int:
                     and output_state["layout"]
                     and (output_state["slideClass"] != "presenter-slide--song-title" or output_state["text"].startswith("♪ "))
                     and abs(output_state["frame"]["ratio"] - (16 / 9)) <= 0.01
-                    and abs(output_state["lowerBarRatio"] - (7 / 40)) <= 0.01
+                    and output_state["textRatio"] < 0.14
                     and output_state["overflow"] <= 2
                 ):
                     pass_("presenter-output-route", json.dumps(output_state, ensure_ascii=False))
@@ -2963,19 +3017,19 @@ def main() -> int:
                 output_shot = output_page.locator("#presenterOutputRoot").screenshot()
                 chromakey_pixels = {
                     "thumbTop": rgb_at(thumb_shot, 0.5, 0.2),
-                    "thumbBar": rgb_at(thumb_shot, 0.08, 0.92),
+                    "thumbBottom": rgb_at(thumb_shot, 0.08, 0.92),
                     "outputTop": rgb_at(output_shot, 0.5, 0.2),
-                    "outputBar": rgb_at(output_shot, 0.08, 0.92),
+                    "outputBottom": rgb_at(output_shot, 0.08, 0.92),
                 }
                 if (
                     is_chromakey_green(chromakey_pixels["thumbTop"])
                     and is_chromakey_green(chromakey_pixels["outputTop"])
-                    and is_dark_bar(chromakey_pixels["thumbBar"])
-                    and is_dark_bar(chromakey_pixels["outputBar"])
+                    and is_chromakey_green(chromakey_pixels["thumbBottom"])
+                    and is_chromakey_green(chromakey_pixels["outputBottom"])
                 ):
-                    pass_("presenter-output-pixel-match-chromakey", json.dumps(chromakey_pixels, ensure_ascii=False))
+                    pass_("presenter-output-pixel-match-chromakey-text-only", json.dumps(chromakey_pixels, ensure_ascii=False))
                 else:
-                    fail("presenter-output-pixel-match-chromakey", json.dumps(chromakey_pixels, ensure_ascii=False))
+                    fail("presenter-output-pixel-match-chromakey-text-only", json.dumps(chromakey_pixels, ensure_ascii=False))
 
                 image_swap_state = output_page.evaluate(
                     """
@@ -3215,10 +3269,10 @@ def main() -> int:
                         html: firstLine?.innerHTML || '',
                         textAlign: style?.textAlign || '',
                         alignItems: style?.alignItems || '',
-                        barRatio: rootRect && textRect ? Number((textRect.height / rootRect.height).toFixed(3)) : 0,
+                        textRatio: rootRect && textRect ? Number((textRect.height / rootRect.height).toFixed(3)) : 0,
                         lineDisplay: lineStyle?.display || '',
                         lineFits: firstLine ? firstLine.scrollWidth <= firstLine.clientWidth + 1 : false,
-                        lineInsideBar: textRect && firstRect ? firstRect.left >= textRect.left - 1 && firstRect.right <= textRect.right + 1 : false,
+                        lineInsideTextBox: textRect && firstRect ? firstRect.left >= textRect.left - 1 && firstRect.right <= textRect.right + 1 : false,
                         lineLeftInset: rootRect && firstRect ? Math.round(firstRect.left - rootRect.left) : -1,
                         lineRightInset: rootRect && firstRect ? Math.round(rootRect.right - firstRect.right) : -1,
                       };
@@ -3234,16 +3288,16 @@ def main() -> int:
                     and "요 3:16&nbsp;&nbsp;&nbsp;하나님이" in live_scripture_state["html"]
                     and live_scripture_state["textAlign"] == "left"
                     and live_scripture_state["alignItems"] == "flex-start"
-                    and abs(live_scripture_state["barRatio"] - (7 / 40)) <= 0.01
+                    and live_scripture_state["textRatio"] < 0.14
                     and live_scripture_state["lineDisplay"] == "block"
                     and live_scripture_state["lineFits"]
-                    and live_scripture_state["lineInsideBar"]
+                    and live_scripture_state["lineInsideTextBox"]
                     and 60 <= live_scripture_state["lineLeftInset"] <= 180
                     and live_scripture_state["lineRightInset"] >= 40
                 ):
-                    pass_("presenter-live-scripture-lower-bar", json.dumps(live_scripture_state, ensure_ascii=False))
+                    pass_("presenter-live-scripture-chromakey-text-only", json.dumps(live_scripture_state, ensure_ascii=False))
                 else:
-                    fail("presenter-live-scripture-lower-bar", json.dumps(live_scripture_state, ensure_ascii=False))
+                    fail("presenter-live-scripture-chromakey-text-only", json.dumps(live_scripture_state, ensure_ascii=False))
 
                 live_scripture_controller_state = page.evaluate(
                     """
@@ -3264,98 +3318,6 @@ def main() -> int:
                     pass_("presenter-live-scripture-controller-preview", json.dumps(live_scripture_controller_state, ensure_ascii=False))
                 else:
                     fail("presenter-live-scripture-controller-preview", json.dumps(live_scripture_controller_state, ensure_ascii=False))
-
-                page.evaluate(
-                    """
-                    (serviceId) => {
-                      const song = {
-                        id: '__smoke_live_praise_song__',
-                        title: '테스트 찬양',
-                        hymn_no: null,
-                        scripture: [],
-                        metadata: {},
-                        versions: [{
-                          id: '__smoke_live_praise_version__',
-                          name: 'Default',
-                          is_primary: true,
-                          forms: [
-                            { id: 'v1', part_type: 'Verse', part_number: 1, lyrics: '첫 줄\\n둘째 줄\\n셋째 줄\\n넷째 줄' },
-                            { id: 'c1', part_type: 'Chorus', part_number: null, lyrics: '후렴 첫 줄\\n후렴 둘째 줄' },
-                          ],
-                        }],
-                      };
-                      state.songs = [song, ...state.songs.filter((item) => item.id !== song.id)];
-                      preparePresenterService(serviceId);
-                      const result = buildLivePraisePayload('테스트 찬양', serviceId);
-                      state.presenter.livePraise = {
-                        query: '테스트 찬양',
-                        draft: '테스트 찬양',
-                        active: true,
-                        slides: result.slides,
-                        index: 0,
-                        songId: result.song.id,
-                        versionId: result.version.id,
-                      };
-                      state.presenter.liveScripture = { reference: '', draft: '', active: false, slide: null };
-                      state.presenter.safetyBlank = false;
-                      publishPresenterState({ force: true });
-                      renderPresenterControlState(serviceId);
-                    }
-                    """,
-                    service["id"],
-                )
-                output_page.wait_for_function(
-                    "() => JSON.parse(localStorage.getItem('mindex.presenter.state') || '{}').livePraise?.active === true",
-                    timeout=5000,
-                )
-                output_page.wait_for_function(
-                    "() => document.querySelector('.presenter-slide')?.classList.contains('presenter-slide--song-title')",
-                    timeout=5000,
-                )
-                page.evaluate("(serviceId) => runPresenterAction('next', serviceId)", service["id"])
-                output_page.wait_for_function(
-                    "() => JSON.parse(localStorage.getItem('mindex.presenter.state') || '{}').livePraise?.index === 1",
-                    timeout=5000,
-                )
-                output_page.wait_for_function(
-                    "() => document.querySelector('.presenter-slide')?.classList.contains('presenter-slide--lyrics')",
-                    timeout=5000,
-                )
-                live_praise_state = page.evaluate(
-                    """
-                    (() => {
-                      const payload = JSON.parse(localStorage.getItem('mindex.presenter.state') || '{}');
-                      return {
-                        active: Boolean(payload.livePraise?.active),
-                        index: payload.livePraise?.index ?? -1,
-                        slideCount: payload.livePraise?.slides?.length || 0,
-                        mode: document.querySelector('.svc-presenter-mode')?.textContent.trim() || '',
-                        activeThumbs: document.querySelectorAll('.svc-slide-thumb.active').length,
-                      };
-                    })()
-                    """
-                )
-                live_praise_output_state = output_page.evaluate(
-                    """
-                    (() => ({
-                      slideClass: document.querySelector('.presenter-slide')?.className || '',
-                      text: document.querySelector('.presenter-slide')?.innerText.trim() || '',
-                    }))()
-                    """
-                )
-                if (
-                    live_praise_state["active"]
-                    and live_praise_state["index"] == 1
-                    and live_praise_state["slideCount"] >= 3
-                    and live_praise_state["mode"] == "찬양"
-                    and live_praise_state["activeThumbs"] == 0
-                    and "presenter-slide--lyrics" in live_praise_output_state["slideClass"]
-                    and "첫 줄" in live_praise_output_state["text"]
-                    and "둘째 줄" in live_praise_output_state["text"]
-                ):
-                    pass_("presenter-live-praise-transient-output", json.dumps({**live_praise_state, **live_praise_output_state}, ensure_ascii=False))
-                else:
-                    fail("presenter-live-praise-transient-output", json.dumps({**live_praise_state, **live_praise_output_state}, ensure_ascii=False))
 
                 jump_input = page.locator(f'[data-presenter-jump-input][data-service-id="{service["id"]}"]')
                 jump_input.fill("1")

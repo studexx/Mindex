@@ -6349,6 +6349,7 @@ function serviceItemEditorModel(item = {}, options = {}) {
         || (!worshipLeaderItem && !genericRawTitle && Boolean(String(item.raw_title || "").trim()))
       )
     );
+  const scripturePayload = scriptureBody ? serviceScriptureTextPayload(item, parsed) : null;
   return {
     service,
     parsed,
@@ -6362,6 +6363,7 @@ function serviceItemEditorModel(item = {}, options = {}) {
     showAssignee: editableAssignee,
     showTitle: editableTitle,
     assigneeValue: serviceItemEditableAssigneeValue(item, service),
+    titleValue: scripturePayload?.reference || "",
     titlePlaceholder: song ? "곡 검색" : scripture ? "성경 구절" : isDefault ? "기본 내용" : "내용",
   };
 }
@@ -14816,7 +14818,7 @@ function renderServiceEditorTitleControl(item, origIndex, attrs = {}, model = se
         type="text"
         ${fieldAttr}="raw_title"
         ${indexAttr}="${origIndex}"
-        value="${escapeAttr(item.raw_title || "")}"
+        value="${escapeAttr(model.titleValue || item.raw_title || "")}"
         placeholder="${escapeAttr(model.titlePlaceholder)}"
         ${listAttr}
         ${strictAttr}
@@ -15049,7 +15051,9 @@ function isOneOffSpecialPraiseItem(item = {}) {
 
 function renderServiceScriptureLinkControl(item) {
   if (!isScriptureServiceLabel(item?.label)) return "";
-  const reference = normalizeServiceItemReferenceSpacing(item?.raw_title);
+  const parsed = parseServiceItemMemo(item?.memo);
+  const payload = isScriptureBodyServiceItem(item) ? serviceScriptureTextPayload(item, parsed) : null;
+  const reference = normalizeServiceItemReferenceSpacing(payload?.reference || item?.raw_title);
   if (!parseBibleReference(reference)) return "";
   return `<button class="svc-item-link" type="button" data-open-scripture-reference="${escapeAttr(reference)}" aria-label="Scripture에서 열기">Scripture</button>`;
 }
@@ -15833,7 +15837,7 @@ function renderPresenterHelpControl() {
     ["번호 + Enter", "해당 슬라이드로 이동"],
     ["0 또는 없는 번호", "빈 화면"],
     ["Esc Esc", "프레젠터 종료"],
-    ["성구 입력 + Enter", "하단 bar에 레퍼런스 포함 송출"],
+    ["실시간 성구 송출", "해당 엘리먼트 slide에서 성구 입력"],
     ["전체화면 안 될 때", "Mac: ⌃⌘F · Windows/Linux: F11"],
   ];
   return `
@@ -15869,6 +15873,8 @@ function renderServicePresenterControls(service, slides, active, index) {
 function renderPresenterControlsTop(service, slides, active, index) {
   const count = slides.length;
   const safeIndex = clampPresenterIndex(index, count);
+  const activeSlide = slides[safeIndex] || null;
+  const showLiveScriptureControl = state.presenter.liveScripture?.active || presenterSlideIsLiveScriptureElement(activeSlide);
   const current = active && state.presenter.safetyBlank ? 0 : count ? safeIndex + 1 : 0;
   const anyOutputOpen = isPresenterOutputWindowOpen();
   const outputOpen = active && anyOutputOpen;
@@ -15914,9 +15920,10 @@ function renderPresenterControlsTop(service, slides, active, index) {
           <span class="svc-presenter-action-group svc-presenter-action-group--music">
             ${renderServiceMusicPlayer()}
           </span>
-          <span class="svc-presenter-action-group svc-presenter-action-group--scripture">
-            ${renderLiveScriptureControl(service.id)}
-          </span>
+          ${showLiveScriptureControl ? `
+            <span class="svc-presenter-action-group svc-presenter-action-group--scripture">
+              ${renderLiveScriptureControl(service.id)}
+            </span>` : ""}
           <span class="svc-presenter-action-group svc-presenter-action-group--nav" aria-label="${escapeAttr(uiText("presenter.aria.slideNav"))}">
             <button class="icon-btn" type="button" data-presenter-action="prev" data-service-id="${escapeAttr(service.id)}" ${count ? "" : "disabled"} aria-label="${escapeAttr(uiText("presenter.action.prev"))}">
               <i data-lucide="chevron-left"></i>
@@ -15930,12 +15937,18 @@ function renderPresenterControlsTop(service, slides, active, index) {
       </div>`;
 }
 
+function presenterSlideIsLiveScriptureElement(slide = null) {
+  if (!slide) return false;
+  const key = compactSearchValue(`${slide.sectionKey || ""} ${slide.sectionLabel || ""} ${slide.title || ""} ${slide.text || ""}`);
+  return key.includes("실시간성구송출") || key.includes("livescripture");
+}
+
 function presenterControlsClassName(active, chromakey) {
   return `svc-presenter-strip${active ? " is-active" : ""}${chromakey ? "" : " is-clean-output"}`;
 }
 
 function presenterBoardActiveIndex(slides, active, index) {
-  if (!active || state.presenter.safetyBlank || state.presenter.liveScripture?.active || state.presenter.livePraise?.active) return -1;
+  if (!active || state.presenter.safetyBlank || state.presenter.liveScripture?.active) return -1;
   return clampPresenterIndex(index, slides.length);
 }
 
@@ -15984,7 +15997,6 @@ function presenterControllerMode(service, context = {}) {
   if (context.outputOpenElsewhere) return { label: uiText("presenter.mode.otherService"), tone: "other" };
   if (!context.active) return { label: "", tone: "preview" };
   if (state.presenter.safetyBlank) return { label: uiText("presenter.mode.blank"), tone: "blank" };
-  if (state.presenter.livePraise?.active) return { label: uiText("presenter.mode.praise"), tone: "praise" };
   if (state.presenter.liveScripture?.active) return { label: uiText("presenter.mode.scripture"), tone: "scripture" };
   if (context.count) return { label: uiText("presenter.mode.slide", { number: context.safeIndex + 1 }), tone: context.outputOpen ? "slide-live" : "slide-ready" };
   return { label: uiText("presenter.mode.noSlides"), tone: "empty" };
@@ -16034,7 +16046,7 @@ function renderLiveScriptureControl(serviceId) {
 
 function currentPresenterAudioContext(serviceId = state.presenter.serviceId) {
   if (!serviceId || state.presenter.serviceId !== serviceId) return { source: "", label: "", slideId: "", playback: null };
-  if (state.presenter.safetyBlank || state.presenter.liveScripture?.active || state.presenter.livePraise?.active) return { source: "", label: "", slideId: "", playback: null };
+  if (state.presenter.safetyBlank || state.presenter.liveScripture?.active) return { source: "", label: "", slideId: "", playback: null };
   const slide = state.presenter.slides[clampPresenterIndex(state.presenter.index, state.presenter.slides.length)];
   const source = presenterSlideAudioSource(slide);
   if (!source) return { source: "", label: "", slideId: "", playback: null };
@@ -16148,181 +16160,6 @@ function emptyLivePraiseState(draft = "") {
     songId: "",
     versionId: "",
   };
-}
-
-function updateLivePraiseDraft(value) {
-  state.presenter.livePraise = {
-    ...(state.presenter.livePraise || emptyLivePraiseState()),
-    draft: String(value || ""),
-  };
-}
-
-async function runLivePraiseAction(action, serviceId = state.selectedServiceId) {
-  const live = state.presenter.livePraise || emptyLivePraiseState();
-  if (action === "clear") {
-    state.presenter.livePraise = emptyLivePraiseState(live.draft || live.query || "");
-    publishPresenterState({ force: true });
-    renderPresenterControlState(serviceId);
-    return;
-  }
-  if (action !== "show") return;
-
-  const input = document.querySelector("[data-live-praise-input]");
-  const query = String(input?.value || live.draft || "").trim();
-  state.presenter.livePraise = { ...live, draft: query };
-  if (!query) {
-    showToast("찬양 제목을 입력해 주세요.", "error");
-    return;
-  }
-
-  try {
-    if (serviceId) preparePresenterService(serviceId);
-    const result = buildLivePraisePayload(query, serviceId);
-    if (!result?.slides?.length) return;
-    state.presenter.livePraise = {
-      query,
-      draft: query,
-      active: true,
-      slides: result.slides,
-      index: 0,
-      songId: result.song.id,
-      versionId: result.version.id,
-    };
-    state.presenter.liveScripture = {
-      ...state.presenter.liveScripture,
-      active: false,
-      slide: null,
-    };
-    state.presenter.safetyBlank = false;
-    publishPresenterState({ force: true });
-    renderPresenterControlState(serviceId);
-  } catch (error) {
-    showToast(error.message || "찬양을 불러오지 못했습니다.", "error");
-  }
-}
-
-function buildLivePraisePayload(query, serviceId = state.presenter.serviceId) {
-  const match = findLivePraiseSong(query);
-  if (!match?.song) {
-    showToast("해당 찬양을 찾지 못했습니다.", "error");
-    return null;
-  }
-  const version = findLivePraiseVersion(match.song, query);
-  if (!version) {
-    showToast("가사가 있는 찬양 버전을 찾지 못했습니다.", "error");
-    return null;
-  }
-  const service = state.services.find((svc) => svc.id === serviceId) || null;
-  const section = presenterLivePraiseSection(match.song, serviceId);
-  const titleSlide = presenterSongTitleSlide(
-    { id: `live-praise:${match.song.id}:${version.id}`, label: "찬양", song_id: match.song.id },
-    section,
-    match.song,
-    version,
-    match.song.title || query,
-    0,
-  );
-  const liveItem = { id: `live-praise:${match.song.id}:${version.id}`, label: "찬양", song_id: match.song.id };
-  const forms = presenterFormPlanForServiceItem(version, liveItem, match.song).forms;
-  const lyricsSlides = forms.flatMap((form, formIndex) => {
-    if (form._presenterBlank) {
-      return [{
-        id: `live-praise:${match.song.id}:${version.id}:blank:${form._presenterToken || formIndex}`,
-        ...section,
-        elementType: PRESENTER_ELEMENT_TYPES.BLANK,
-        layout: PRESENTER_SLIDE_LAYOUTS.BLANK,
-        type: "blank",
-        label: "실시간 찬양",
-        title: form.label || "빈 화면",
-        marker: "",
-        formKey: `blank:${form._presenterToken || formIndex}:${formIndex}`,
-        segment: "",
-        text: "",
-        live: true,
-        sort: formIndex,
-      }];
-    }
-    const chunks = splitPresenterLyricChunks(form.lyrics);
-    const formId = form._localId || form.id || formIndex;
-    const formKey = `${formId}:${formIndex}`;
-    return chunks.map((chunk, chunkIndex) => ({
-      id: `live-praise:${match.song.id}:${version.id}:form:${formId}:chunk:${chunkIndex}`,
-      ...section,
-      elementType: PRESENTER_ELEMENT_TYPES.PRAISE,
-      layout: PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT,
-      type: "lyrics",
-      label: "실시간 찬양",
-      title: presenterPraiseTitle(match.song, query),
-      subtitle: versionDisplayName(match.song, version),
-      marker: chunkIndex === 0 ? presenterFormMarker(form) : "",
-      formKey,
-      segment: "",
-      text: chunk,
-      live: true,
-      sort: formIndex + chunkIndex / 100,
-    }));
-  });
-  const slides = [titleSlide, ...lyricsSlides].map((slide) => ({ ...slide, live: true }));
-  return { song: match.song, version, service, slides };
-}
-
-function findLivePraiseSong(query) {
-  const tokens = getSearchTokens(query);
-  if (!tokens.length) return null;
-  return state.songs
-    .map((song) => ({ song, match: getSongSearchMatch(song, tokens) }))
-    .filter((item) => item.match && songHasPresenterLyrics(item.song))
-    .sort((a, b) => b.match.score - a.match.score || sortSongsForCurrentList(a.song, b.song))[0] || null;
-}
-
-function songHasPresenterLyrics(song) {
-  return Boolean((song?.versions || []).some((version) => versionHasLyrics(version)));
-}
-
-function findLivePraiseVersion(song, query = "") {
-  const versions = song?.versions || [];
-  const tokens = getSearchTokens(query);
-  const matchedVersion = tokens.length
-    ? versions
-      .map((version) => ({
-        version,
-        score: serviceVersionLookupNames(song, version)
-          .filter(Boolean)
-          .reduce((sum, name) => sum + (tokens.every((token) => matchSearchField(searchField("version", name, 1), token)) ? 1 : 0), 0),
-      }))
-      .filter((item) => item.score && versionHasLyrics(item.version))
-      .sort((a, b) => b.score - a.score)[0]?.version
-    : null;
-  return matchedVersion
-    || versions.find((version) => version.is_primary && versionHasLyrics(version))
-    || versions.find((version) => versionHasLyrics(version))
-    || null;
-}
-
-function presenterLivePraiseSection(song, serviceId = state.presenter.serviceId) {
-  const title = presenterPraiseTitle(song, song?.title || "");
-  return {
-    sectionId: `live-praise:${serviceId || "service"}`,
-    elementId: `live-praise:${song?.id || normalizeTitle(title)}`,
-    sectionIndex: 0,
-    sectionKey: "live_praise",
-    sectionLabel: "실시간 찬양",
-    sectionFormHint: "",
-    sectionRole: "live-praise",
-    sectionTitle: "실시간 찬양",
-    elementLabel: "실시간 찬양",
-    elementTitle: title,
-    sectionAssignee: "",
-    sectionName: ["실시간 찬양", title].filter(Boolean).join(" / "),
-  };
-}
-
-function moveLivePraiseSlide(delta) {
-  const live = state.presenter.livePraise;
-  const count = live?.slides?.length || 0;
-  if (!live?.active || !count) return false;
-  live.index = Math.min(Math.max((Number(live.index) || 0) + delta, 0), count - 1);
-  return true;
 }
 
 async function runLiveScriptureAction(action, serviceId = state.selectedServiceId) {
@@ -16929,17 +16766,6 @@ function runPresenterAction(action, serviceId = state.selectedServiceId, options
   }
 
   state.presenter.jumpDraft = "";
-  if (state.presenter.livePraise?.active && ["next", "prev", "first", "last"].includes(action)) {
-    if (action === "next") moveLivePraiseSlide(1);
-    else if (action === "prev") moveLivePraiseSlide(-1);
-    else if (action === "first") state.presenter.livePraise.index = 0;
-    else if (action === "last") state.presenter.livePraise.index = Math.max((state.presenter.livePraise.slides?.length || 1) - 1, 0);
-    state.presenter.safetyBlank = false;
-    syncServiceMusicWithPresenterContext(serviceId, { render: false });
-    publishPresenterState();
-    renderPresenterControlState(serviceId);
-    return;
-  }
   if (["next", "prev", "first", "last", "jump"].includes(action)) {
     state.presenter.liveScripture = {
       ...state.presenter.liveScripture,
@@ -17215,7 +17041,7 @@ function renderPresenterControlState(serviceId = state.selectedServiceId) {
 function clearPresenterTransientBoardActiveMarks(root = document.getElementById("servicePresenterControls"), serviceId = state.selectedServiceId) {
   if (!root) return;
   const shouldClear = state.presenter.serviceId !== serviceId
-    || Boolean(state.presenter.safetyBlank || state.presenter.liveScripture?.active || state.presenter.livePraise?.active);
+    || Boolean(state.presenter.safetyBlank || state.presenter.liveScripture?.active);
   if (!shouldClear) return;
   root.querySelectorAll(".svc-slide-thumb.active, .svc-slide-thumb-wrap.active, .svc-board-section.active, .svc-board-subgroup.active")
     .forEach((node) => node.classList.remove("active"));

@@ -2123,10 +2123,11 @@ def main() -> int:
                         and presenter_terms["status"] == "미리보기"
                         and presenter_terms["jumpLabel"] == "슬라이드로 이동"
                         and presenter_terms["controlLabels"][:3] == ["상태", "슬라이드", "음량"]
-                        and presenter_terms["actionButtonTexts"] == ["송출", "숨김"]
-                        and presenter_terms["actionGroups"] == 3
+                        and presenter_terms["actionButtonTexts"] == []
+                        and presenter_terms["actionGroups"] == 2
                         and presenter_terms["helpLabel"] == "도움말"
                         and "Esc Esc" in presenter_terms["helpText"]
+                        and "실시간 성구 송출" in presenter_terms["helpText"]
                         and "Mac: ⌃⌘F" in presenter_terms["helpText"]
                         and "Windows/Linux: F11" in presenter_terms["helpText"]
                         and "번호 + Enter" in presenter_terms["helpText"]
