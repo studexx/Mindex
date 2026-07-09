@@ -4876,7 +4876,6 @@ body[data-module="presenter"] .detail-pane {
   padding: 3px 4px;
 }
 .svc-music-player,
-.svc-live-praise,
 .svc-live-scripture {
   display: inline-flex;
   min-width: 0;
@@ -4916,13 +4915,11 @@ body[data-module="presenter"] .detail-pane {
   white-space: nowrap;
 }
 .svc-music-toggle.icon-btn,
-.svc-live-praise .icon-btn,
 .svc-live-scripture .icon-btn {
   width: 24px;
   height: 24px;
 }
 .svc-music-toggle.icon-btn.is-active,
-.svc-live-praise.is-active .svc-live-praise-show,
 .svc-live-scripture.is-active .svc-live-scripture-show {
   color: var(--accent);
 }
@@ -4948,7 +4945,6 @@ body[data-module="presenter"] .detail-pane {
   padding: 0 4px;
   outline: none;
 }
-.svc-live-praise-input,
 .svc-live-scripture-input {
   width: 116px;
   height: 24px;
@@ -4962,8 +4958,6 @@ body[data-module="presenter"] .detail-pane {
   padding: 0 8px;
   outline: none;
 }
-.svc-live-praise-input { width: 136px; }
-.svc-live-praise-input:focus,
 .svc-live-scripture-input:focus {
   background: color-mix(in srgb, var(--panel) 78%, transparent);
 }
@@ -5754,7 +5748,6 @@ body[data-module="presenter"] .detail-pane {
     min-width: 24px;
     padding: 0;
   }
-  .svc-live-praise-input,
   .svc-live-scripture-input { width: min(128px, 42vw); }
   .service-week-board { grid-template-columns: 1fr; }
 }
@@ -6120,9 +6113,9 @@ body[data-module="presenter"] .detail-pane {
   gap: .14em;
   background: var(--presenter-output-bar);
   color: #fff;
-  font-size: clamp(32px, 3.05cqw, 58px);
-  font-weight: 600;
-  line-height: 1.18;
+  font-size: clamp(34px, 3.25cqw, 60px);
+  font-weight: 800;
+  line-height: 1.12;
   padding: 2.25cqh 5.8cqw;
   -webkit-text-stroke: 0;
   overflow-wrap: normal;
@@ -6138,11 +6131,7 @@ body[data-module="presenter"] .detail-pane {
 .presenter-slide--scripture .presenter-slide-text span {
   display: block;
   width: 100%;
-  font-size: min(1em, calc(76cqw / (var(--line-chars, 24) * .72)));
-}
-.presenter-slide--song-title .presenter-slide-text {
-  font-size: clamp(38px, 3.7cqw, 72px);
-  font-weight: 800;
+  font-size: min(1em, calc(78cqw / (var(--line-chars, 24) * .78)));
 }
 .presenter-slide--song-title .presenter-section-song-title {
   display: grid;
@@ -6163,14 +6152,14 @@ body[data-module="presenter"] .detail-pane {
   white-space: nowrap;
 }
 .presenter-section-song-title-heading {
-  font-size: min(1em, calc(25cqw / (var(--line-chars, 8) * .72)));
+  font-size: min(.95em, calc(25cqw / (var(--line-chars, 8) * .72)));
   font-weight: 800;
 }
 .presenter-section-song-title-name {
   justify-self: end;
   max-width: 100%;
-  font-size: min(.82em, calc(60cqw / (var(--line-chars, 14) * .72)));
-  font-weight: 700;
+  font-size: min(.88em, calc(60cqw / (var(--line-chars, 14) * .68)));
+  font-weight: 800;
   text-align: right;
 }
 .presenter-slide--title-assignee .presenter-slide-text {
@@ -6178,7 +6167,6 @@ body[data-module="presenter"] .detail-pane {
   grid-template-columns: minmax(0, 1fr) minmax(0, 44cqw);
   gap: 4.2cqw;
   align-content: center;
-  font-size: clamp(44px, 4.15cqw, 80px);
   text-align: left;
 }
 .presenter-slide--title-assignee .presenter-title-assignee--solo {
@@ -6189,11 +6177,11 @@ body[data-module="presenter"] .detail-pane {
   overflow: visible;
   text-overflow: clip;
   white-space: nowrap;
-  font-size: min(1em, calc(36cqw / var(--line-chars, 8)));
+  font-size: min(1em, calc(36cqw / (var(--line-chars, 8) * .74)));
   font-weight: 800;
 }
 .presenter-title-assignee--solo .presenter-title-assignee-title {
-  font-size: min(1em, calc(76cqw / var(--line-chars, 8)));
+  font-size: min(1em, calc(76cqw / (var(--line-chars, 8) * .74)));
 }
 .presenter-title-assignee-person {
   min-width: 0;
@@ -6201,8 +6189,8 @@ body[data-module="presenter"] .detail-pane {
   text-align: right;
   text-overflow: clip;
   white-space: nowrap;
-  font-size: min(.86em, calc(42cqw / var(--line-chars, 8)));
-  font-weight: 600;
+  font-size: min(.9em, calc(42cqw / (var(--line-chars, 8) * .74)));
+  font-weight: 800;
 }
 :is(.svc-slide-mini-output, .presenter-output-root):not(.no-chromakey) .presenter-slide--lyrics .presenter-slide-text,
 :is(.svc-slide-mini-output, .presenter-output-root):not(.no-chromakey) .presenter-slide--song-title .presenter-slide-text,
@@ -6223,7 +6211,8 @@ body[data-module="presenter"] .detail-pane {
 }
 :is(.svc-slide-mini-output, .presenter-output-root):not(.no-chromakey) .presenter-slide--lyrics[data-element-type="praise"] .presenter-slide-text {
   gap: .06em;
-  font-size: clamp(30px, 3.35cqw, 52px);
+  font-size: clamp(34px, 3.25cqw, 60px);
+  font-weight: 800;
   line-height: 1.08;
   padding-block: 1.35cqh;
 }

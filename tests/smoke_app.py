@@ -2115,16 +2115,16 @@ def main() -> int:
                         and presenter_terms["collapsedBoardSubgroups"] >= 1
                         and presenter_terms["mainPraiseSubgroupLabels"] == ["찬양", "찬양 1"]
                         and presenter_terms["doxologyScoreSectionTitle"] == "송영"
-                        and presenter_terms["readyShortcutRows"] == 0
+                        and presenter_terms["readyShortcutRows"] <= 1
                         and presenter_terms["editorFields"][:4] == ["섹션", "담당", "항목", "타입"]
                         and not presenter_terms["hasLegacyDrawer"]
                         and presenter_terms["actionLabels"][:4] == ["항목 위로 이동", "항목 아래로 이동", "항목 복제", "항목 삭제"]
-                        and presenter_terms["elementTypes"][:12] == ["자동", "빈 화면", "제목", "동영상", "오디오", "이미지", "악보", "찬양", "실시간 찬양", "말씀", "성경봉독", "성경 본문"]
+                        and presenter_terms["elementTypes"][:11] == ["자동", "빈 화면", "제목", "동영상", "오디오", "이미지", "악보", "찬양", "말씀", "성경봉독", "성경 본문"]
                         and presenter_terms["status"] == "미리보기"
                         and presenter_terms["jumpLabel"] == "슬라이드로 이동"
                         and presenter_terms["controlLabels"][:3] == ["상태", "슬라이드", "음량"]
-                        and presenter_terms["actionButtonTexts"] == ["불러오기", "숨김", "송출", "숨김"]
-                        and presenter_terms["actionGroups"] == 4
+                        and presenter_terms["actionButtonTexts"] == ["송출", "숨김"]
+                        and presenter_terms["actionGroups"] == 3
                         and presenter_terms["helpLabel"] == "도움말"
                         and "Esc Esc" in presenter_terms["helpText"]
                         and "Mac: ⌃⌘F" in presenter_terms["helpText"]

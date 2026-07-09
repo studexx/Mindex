@@ -897,19 +897,23 @@ function presenterElementSlideFromMemoCore(item, section, index, memo, displayTe
     };
   }
   if (elementType === "activity") {
+    const cleanTitle = title || "Activity";
     return {
       id: `${item.id || index}:activity`,
       ...section,
-      sectionLabel: label || "Activity",
-      sectionTitle: title,
-      sectionName: title,
-      elementType: PRESENTER_ELEMENT_TYPES.FREEFORM,
+      sectionLabel: label || cleanTitle,
+      sectionTitle: cleanTitle,
+      sectionName: cleanTitle,
+      elementLabel: label || cleanTitle,
+      elementTitle: cleanTitle,
+      elementType: PRESENTER_ELEMENT_TYPES.TITLE_CONTENT,
       layout: PRESENTER_SLIDE_LAYOUTS.CENTER_TEXT,
-      type: "activity",
+      type: "title-content",
       label,
-      title,
-      marker: "Activity",
-      text: [title, memo.note].filter(Boolean).join("\n"),
+      title: cleanTitle,
+      bodyText: String(memo.note || "").trim(),
+      marker: "",
+      text: [cleanTitle, memo.note].filter(Boolean).join("\n"),
       sort: index,
     };
   }
@@ -1108,7 +1112,7 @@ function buildPresenterScriptureTextSlides(item, section, index) {
     label: item.label || "본문",
     title: payload.reference || section.sectionTitle || "본문",
     marker: payload.reference || "",
-    text: verse.number ? [payload.reference, verse.number, verse.text].filter(Boolean).join("   ") : verse.text,
+    text: verse.number ? [verse.number, verse.text].filter(Boolean).join("   ") : verse.text,
     sort: index + verseIndex / 100,
   }));
 }
