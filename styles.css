@@ -6173,8 +6173,8 @@ body[data-module="presenter"] .detail-pane {
   display: grid;
   width: 100%;
   min-width: 0;
-  grid-template-columns: minmax(0, 28cqw) minmax(0, 1fr);
-  gap: 3.2cqw;
+  grid-template-columns: minmax(0, 18cqw) minmax(0, 1fr);
+  gap: 2.2cqw;
   align-content: center;
   align-items: center;
   text-align: left;
@@ -6194,7 +6194,7 @@ body[data-module="presenter"] .detail-pane {
 .presenter-section-song-title-name {
   justify-self: end;
   max-width: 100%;
-  font-size: min(.82em, calc(48cqw / (var(--line-chars, 14) * .72)));
+  font-size: min(.82em, calc(60cqw / (var(--line-chars, 14) * .72)));
   font-weight: 700;
   text-align: right;
 }
