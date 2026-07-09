@@ -1140,10 +1140,34 @@ function parsePresenterScriptureTextPayload(value) {
     const match = line.match(/^(\d{1,3})\s{3,}(.+)$/);
     if (match) {
       verses.push({ number: match[1], text: match[2].trim() });
+      continue;
+    }
+    const inline = parsePresenterInlineScriptureText(line);
+    if (inline.verses.length) {
+      if (!reference && inline.reference) reference = inline.reference;
+      verses.push(...inline.verses);
     } else if (!reference) {
       reference = line;
     }
   }
+  return { reference, verses };
+}
+
+function parsePresenterInlineScriptureText(line) {
+  const text = String(line || "").trim();
+  const markerMatches = [...text.matchAll(/(?:^|\s)(\d{1,3})\s+(?=\S)/g)];
+  if (!markerMatches.length) return { reference: "", verses: [] };
+  const reference = text.slice(0, markerMatches[0].index).trim();
+  const verses = markerMatches
+    .map((match, index) => {
+      const start = match.index + match[0].length;
+      const end = markerMatches[index + 1]?.index ?? text.length;
+      return {
+        number: match[1],
+        text: text.slice(start, end).trim(),
+      };
+    })
+    .filter((verse) => verse.text);
   return { reference, verses };
 }
 
