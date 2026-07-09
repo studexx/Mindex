@@ -1247,6 +1247,7 @@ def main() -> int:
                               firstSection: scaffold.sections[0]?.title || '',
                               firstElementType: scaffold.elements[0]?.element_type || '',
                               sectionKeys: sections.map((section) => section.key),
+                              praiseElements: sections.find((section) => section.key === 'praise')?.elements || [],
                               monthlyPrayerElements: sections.find((section) => section.key === 'monthly_prayer')?.elements || [],
                               prayerSection: (() => {
                                 const prayer = sections.find((section) => section.key === 'prayer');
@@ -1339,6 +1340,7 @@ def main() -> int:
                                 titles: sections.map((section) => section.title),
                                 keys: sections.map((section) => section.key),
                                 compactTitles: sections.map((section) => compact(section.title)),
+                                praiseElements: sections.find((section) => section.key === 'praise')?.elements || [],
                                 creedElements: sections.find((section) => section.key === 'creed')?.elements || [],
                                 offeringElements: sections.find((section) => section.key === 'offering')?.elements || [],
                                 closingHymnDefaults: scaffold.elements
@@ -1585,6 +1587,10 @@ def main() -> int:
                         and "monthly_prayer" in template_terms["monthlyScaffold"]["sectionKeys"]
                         and "closing_song" in template_terms["monthlyScaffold"]["sectionKeys"]
                         and "closing_visual" in template_terms["monthlyScaffold"]["sectionKeys"]
+                        and template_terms["monthlyScaffold"]["praiseElements"][:2] == [
+                            {"type": "title_content", "label": "환영", "order": ""},
+                            {"type": "praise", "label": "찬양", "order": "찬양"},
+                        ]
                         and template_terms["monthlyScaffold"]["prayerSection"] == {
                             "title": "대표기도",
                             "elements": [{"type": "title_person", "label": "대표기도", "order": "대표기도"}],
@@ -1634,6 +1640,8 @@ def main() -> int:
                         }
                         and template_terms["sundayPublicScaffold"]["first"]["titles"][:4] == ["준비", "신앙고백", "찬양", "참회기도"]
                         and "환영" not in template_terms["sundayPublicScaffold"]["first"]["titles"]
+                        and all(element["label"] != "환영" for element in template_terms["sundayPublicScaffold"]["first"]["praiseElements"])
+                        and all(element["label"] != "환영" for element in template_terms["sundayPublicScaffold"]["second"]["praiseElements"])
                         and template_terms["sundayPublicScaffold"]["first"]["creedElements"] == [
                             {"type": "body", "label": "사도신경", "order": "신앙고백", "introTitle": "신앙고백", "introBody": "사도신경", "assignee": "사도신경", "outputMode": ""}
                         ]
@@ -1663,6 +1671,10 @@ def main() -> int:
                         and "공동체고백" in template_terms["sundayPublicScaffold"]["third"]["titles"]
                         and "아멘송" not in template_terms["sundayPublicScaffold"]["third"]["titles"]
                         and "폐회찬송" in template_terms["sundayPublicScaffold"]["third"]["titles"]
+                        and template_terms["sundayPublicScaffold"]["third"]["praiseElements"][:2] == [
+                            {"type": "title_content", "label": "환영", "order": "", "outputMode": ""},
+                            {"type": "praise", "label": "찬양 1", "order": "찬양", "outputMode": ""},
+                        ]
                         and template_terms["sundayPublicScaffold"]["third"]["closingHymnDefaults"] == [{
                             "type": "praise",
                             "label": "폐회찬송",
@@ -2113,7 +2125,7 @@ def main() -> int:
                             for item in presenter_terms["outlineStartNumbers"]
                         )
                         and presenter_terms["collapsedBoardSubgroups"] >= 1
-                        and presenter_terms["mainPraiseSubgroupLabels"] == ["찬양", "찬양 1"]
+                        and presenter_terms["mainPraiseSubgroupLabels"] == ["환영", "찬양 1"]
                         and presenter_terms["doxologyScoreSectionTitle"] == "송영"
                         and presenter_terms["readyShortcutRows"] <= 1
                         and presenter_terms["editorFields"][:4] == ["섹션", "담당", "항목", "타입"]

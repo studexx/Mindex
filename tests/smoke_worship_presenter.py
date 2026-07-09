@@ -814,11 +814,10 @@ def main() -> int:
                               text: '♪ 청소년부 교사 일동',
                             },
                           ];
-                          const withIntro = withMainPraiseIntroSlides(slides, { id: serviceId });
                           return {
                             mainFlags: slides.map((slide) => isPresenterMainPraiseSlide(slide)),
-                            praiseIntroCount: withIntro.filter((slide) => slide.type === 'praise-section-title').length,
-                            types: withIntro.map((slide) => slide.type),
+                            praiseIntroCount: slides.filter((slide) => slide.type === 'praise-section-title').length,
+                            types: slides.map((slide) => slide.type),
                           };
                         })(),
                         closingGroups: groupPresenterSlidesBySection(slides, serviceId)
@@ -2939,7 +2938,7 @@ def main() -> int:
                           height: Math.round(rect.height),
                           ratio: rect.height ? Number((rect.width / rect.height).toFixed(3)) : 0,
                         } : null,
-                        textRatio: rect && textRect ? Number((textRect.height / rect.height).toFixed(3)) : 0,
+                        lowerBarRatio: rect && textRect ? Number((textRect.height / rect.height).toFixed(3)) : 0,
                         overflow: Math.max(
                           document.documentElement.scrollWidth - window.innerWidth,
                           document.documentElement.scrollHeight - window.innerHeight,
@@ -2959,7 +2958,7 @@ def main() -> int:
                     and output_state["layout"]
                     and (output_state["slideClass"] != "presenter-slide--song-title" or output_state["text"].startswith("♪ "))
                     and abs(output_state["frame"]["ratio"] - (16 / 9)) <= 0.01
-                    and output_state["textRatio"] < 0.14
+                    and abs(output_state["lowerBarRatio"] - (7 / 40)) <= 0.01
                     and output_state["overflow"] <= 2
                 ):
                     pass_("presenter-output-route", json.dumps(output_state, ensure_ascii=False))
@@ -3017,19 +3016,19 @@ def main() -> int:
                 output_shot = output_page.locator("#presenterOutputRoot").screenshot()
                 chromakey_pixels = {
                     "thumbTop": rgb_at(thumb_shot, 0.5, 0.2),
-                    "thumbBottom": rgb_at(thumb_shot, 0.08, 0.92),
+                    "thumbBar": rgb_at(thumb_shot, 0.08, 0.92),
                     "outputTop": rgb_at(output_shot, 0.5, 0.2),
-                    "outputBottom": rgb_at(output_shot, 0.08, 0.92),
+                    "outputBar": rgb_at(output_shot, 0.08, 0.92),
                 }
                 if (
                     is_chromakey_green(chromakey_pixels["thumbTop"])
                     and is_chromakey_green(chromakey_pixels["outputTop"])
-                    and is_chromakey_green(chromakey_pixels["thumbBottom"])
-                    and is_chromakey_green(chromakey_pixels["outputBottom"])
+                    and is_dark_bar(chromakey_pixels["thumbBar"])
+                    and is_dark_bar(chromakey_pixels["outputBar"])
                 ):
-                    pass_("presenter-output-pixel-match-chromakey-text-only", json.dumps(chromakey_pixels, ensure_ascii=False))
+                    pass_("presenter-output-pixel-match-chromakey", json.dumps(chromakey_pixels, ensure_ascii=False))
                 else:
-                    fail("presenter-output-pixel-match-chromakey-text-only", json.dumps(chromakey_pixels, ensure_ascii=False))
+                    fail("presenter-output-pixel-match-chromakey", json.dumps(chromakey_pixels, ensure_ascii=False))
 
                 image_swap_state = output_page.evaluate(
                     """
@@ -3269,7 +3268,7 @@ def main() -> int:
                         html: firstLine?.innerHTML || '',
                         textAlign: style?.textAlign || '',
                         alignItems: style?.alignItems || '',
-                        textRatio: rootRect && textRect ? Number((textRect.height / rootRect.height).toFixed(3)) : 0,
+                        barRatio: rootRect && textRect ? Number((textRect.height / rootRect.height).toFixed(3)) : 0,
                         lineDisplay: lineStyle?.display || '',
                         lineFits: firstLine ? firstLine.scrollWidth <= firstLine.clientWidth + 1 : false,
                         lineInsideTextBox: textRect && firstRect ? firstRect.left >= textRect.left - 1 && firstRect.right <= textRect.right + 1 : false,
@@ -3288,16 +3287,16 @@ def main() -> int:
                     and "요 3:16&nbsp;&nbsp;&nbsp;하나님이" in live_scripture_state["html"]
                     and live_scripture_state["textAlign"] == "left"
                     and live_scripture_state["alignItems"] == "flex-start"
-                    and live_scripture_state["textRatio"] < 0.14
+                    and abs(live_scripture_state["barRatio"] - (7 / 40)) <= 0.01
                     and live_scripture_state["lineDisplay"] == "block"
                     and live_scripture_state["lineFits"]
                     and live_scripture_state["lineInsideTextBox"]
                     and 60 <= live_scripture_state["lineLeftInset"] <= 180
                     and live_scripture_state["lineRightInset"] >= 40
                 ):
-                    pass_("presenter-live-scripture-chromakey-text-only", json.dumps(live_scripture_state, ensure_ascii=False))
+                    pass_("presenter-live-scripture-lower-bar", json.dumps(live_scripture_state, ensure_ascii=False))
                 else:
-                    fail("presenter-live-scripture-chromakey-text-only", json.dumps(live_scripture_state, ensure_ascii=False))
+                    fail("presenter-live-scripture-lower-bar", json.dumps(live_scripture_state, ensure_ascii=False))
 
                 live_scripture_controller_state = page.evaluate(
                     """

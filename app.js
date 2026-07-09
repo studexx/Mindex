@@ -2378,17 +2378,13 @@ function normalizeWorshipServiceType(type = {}) {
     short_name: type.short_name || "",
     sort_order: Number(type.sort_order) || 0,
     fixed_items: normalizeServiceDefaultItems(config.fixedItems || config.fixed_items || []),
-    order_template: normalizeServiceOrderTemplateConfig(config.orderTemplate || config.order_template || []),
+    order_template: [],
     _worship: true,
     _worshipId: type.id || "",
     _worshipGroupKey: type.group_key || "",
     _worshipOutputContext: type.default_output_context || "auto",
     _worshipChromakey: Boolean(type.chromakey_enabled),
   };
-}
-
-function normalizeServiceOrderTemplateConfig(value) {
-  return Array.isArray(value) ? value.filter((step) => step && typeof step === "object") : [];
 }
 
 function normalizeWorshipService(service = {}) {
@@ -3769,7 +3765,6 @@ async function saveDirtyServiceTypes() {
       chromakey_enabled: Boolean(type._worshipChromakey),
       config: {
         fixedItems: serializeServiceDefaultItems(type.id),
-        orderTemplate: serializeServiceOrderTemplate(type.id),
       },
     };
     const { error } = await state.client
@@ -4514,27 +4509,6 @@ function handleDetailClick(event) {
     return;
   }
 
-  const serviceTemplateElementAction = event.target.closest("[data-service-template-element-action]");
-  if (serviceTemplateElementAction) {
-    runServiceTemplateElementAction(
-      serviceTemplateElementAction.dataset.serviceTemplateElementAction,
-      serviceTemplateElementAction.dataset.serviceTypeId,
-      Number(serviceTemplateElementAction.dataset.stepIndex),
-      Number(serviceTemplateElementAction.dataset.elementIndex),
-    );
-    return;
-  }
-
-  const serviceTemplateStepAction = event.target.closest("[data-service-template-step-action]");
-  if (serviceTemplateStepAction) {
-    runServiceTemplateStepAction(
-      serviceTemplateStepAction.dataset.serviceTemplateStepAction,
-      serviceTemplateStepAction.dataset.serviceTypeId,
-      Number(serviceTemplateStepAction.dataset.stepIndex),
-    );
-    return;
-  }
-
   const deleteServiceBtn = event.target.closest("[data-delete-service]");
   if (deleteServiceBtn) {
     deleteService(deleteServiceBtn.dataset.deleteService);
@@ -4900,7 +4874,7 @@ function handleDetailKeydown(event) {
 }
 
 function handleDetailPointerDown(event) {
-  if (event.target.closest("[data-form-action], [data-version-action], [data-version-name-field], [data-service-item-action], [data-service-template-step-action], [data-service-template-action], [data-presenter-action]")) {
+  if (event.target.closest("[data-form-action], [data-version-action], [data-version-name-field], [data-service-item-action], [data-presenter-action]")) {
     event.stopPropagation();
     return;
   }
@@ -4966,18 +4940,6 @@ function handleDetailInput(event) {
   const liveScriptureInput = event.target.closest("[data-live-scripture-input]");
   if (liveScriptureInput) {
     updateLiveScriptureDraft(liveScriptureInput.value);
-    return;
-  }
-
-  const serviceTemplateElementField = event.target.closest("[data-service-template-element-field]");
-  if (serviceTemplateElementField) {
-    updateServiceTemplateElementField(serviceTemplateElementField);
-    return;
-  }
-
-  const serviceTemplateStepField = event.target.closest("[data-service-template-step-field]");
-  if (serviceTemplateStepField) {
-    updateServiceTemplateStepField(serviceTemplateStepField);
     return;
   }
 
@@ -5069,18 +5031,6 @@ function handleDetailChange(event) {
   if (serviceMusicFile) {
     loadServiceMusicFile(serviceMusicFile.files?.[0]);
     serviceMusicFile.value = "";
-    return;
-  }
-
-  const serviceTemplateStepField = event.target.closest("[data-service-template-step-field]");
-  if (serviceTemplateStepField) {
-    updateServiceTemplateStepField(serviceTemplateStepField);
-    return;
-  }
-
-  const serviceTemplateElementField = event.target.closest("[data-service-template-element-field]");
-  if (serviceTemplateElementField) {
-    updateServiceTemplateElementField(serviceTemplateElementField);
     return;
   }
 
@@ -12079,8 +12029,8 @@ function publicWorshipCreedStep() {
 function publicWorshipMainPraiseIntroElement(defaultTeamName = "") {
   const teamName = String(defaultTeamName || "").trim();
   return {
-    label: "찬양",
-    name: "찬양 제목",
+    label: "환영",
+    name: "환영",
     elementType: "title_content",
     default_text: ["찬양", teamName].filter(Boolean).join("\n"),
     orderSheet: { hidden: true },
@@ -12489,13 +12439,6 @@ function serviceTypeById(typeId) {
 
 function serviceOrderTemplate(typeId) {
   const appTypeId = worshipAppServiceTypeId(typeId);
-  const template = serviceTypeById(appTypeId)?.order_template;
-  if (Array.isArray(template) && template.length) {
-    const steps = template
-      .filter((step) => step && typeof step === "object")
-      .map((step) => withServiceTemplateImplicitRules(step, appTypeId));
-    return withCommonServiceTemplateSteps(steps, appTypeId);
-  }
   const fallbackTemplate = SERVICE_ORDER_TEMPLATE_FALLBACKS[appTypeId] || [];
   const hasReadyStep = fallbackTemplate.some((step) => {
     const value = step && typeof step === "object" ? step : { label: String(step || ""), name: String(step || "") };
@@ -12563,72 +12506,6 @@ function serviceTemplateDefaultElementType(label) {
   return "";
 }
 
-function serializeServiceOrderTemplate(typeId) {
-  const typeObj = serviceTypeById(typeId);
-  const current = Array.isArray(typeObj?.order_template) ? typeObj.order_template : [];
-  const fallback = serviceOrderTemplate(typeId);
-  return (current.length ? current : fallback)
-    .map((step, index) => {
-      const normalized = normalizeServiceTemplateStep(step, index, typeId);
-      const formPresetRules = normalizeServiceFormPresetRules(normalized.formPresetRules || normalized.form_preset_rules);
-      const orderSheet = normalizeServiceOrderSheetPayload(normalized.orderSheet || normalized.order_sheet);
-      const outputMode = normalizeServiceOutputMode(normalized.outputMode || normalized.output_mode || normalized.renderMode || normalized.render_mode);
-      return {
-        label: nullIfBlank(normalized.label || normalized.name || ""),
-        name: nullIfBlank(normalized.name || normalized.label || ""),
-        phase: nullIfBlank(normalized.phase),
-        sectionKey: nullIfBlank(normalized.sectionKey || normalized.section_key),
-        required: Boolean(normalized.required),
-        flex: Boolean(normalized.flex),
-        repeatable: Boolean(normalized.repeatable),
-        elementType: nullIfBlank(normalized.elementType),
-        default_text: nullIfBlank(normalized.default_text),
-        formHint: nullIfBlank(normalized.formHint || normalized.form_hint),
-        formPreset: normalizeServiceFormPreset(normalized.formPreset || normalized.form_preset) || undefined,
-        formPresetRules: formPresetRules.length ? formPresetRules : undefined,
-        defaultStrength: nullIfBlank(normalized.defaultStrength || normalized.default_strength),
-        outputMode: nullIfBlank(outputMode),
-        orderSheet: orderSheet || undefined,
-        elements: serializeServiceTemplateElements(normalized.elements),
-        notes: nullIfBlank(serializeServiceItemMemo({
-          ...parseServiceItemMemo(normalized.notes),
-          templateKey: normalized.templateKey,
-          templateVariant: normalized.templateVariant,
-          elementType: normalized.elementType,
-        })),
-        sort_order: index + 1,
-      };
-    })
-    .filter((step) => step.label || step.name);
-}
-
-function serializeServiceTemplateElements(elements = []) {
-  if (!Array.isArray(elements) || !elements.length) return undefined;
-  const serialized = elements
-    .filter((element) => element && typeof element === "object")
-    .map((element, index) => {
-      const elementType = normalizeWorshipElementType(element.elementType || element.element_type || element.componentType || element.component_type);
-      const formPresetRules = normalizeServiceFormPresetRules(element.formPresetRules || element.form_preset_rules);
-      const outputMode = normalizeServiceOutputMode(element.outputMode || element.output_mode || element.renderMode || element.render_mode);
-      return {
-        label: nullIfBlank(element.label || element.name || ""),
-        name: nullIfBlank(element.name || element.label || ""),
-        elementType: nullIfBlank(elementType),
-        default_text: nullIfBlank(element.default_text || element.title || ""),
-        formHint: nullIfBlank(element.formHint || element.form_hint),
-        formPreset: normalizeServiceFormPreset(element.formPreset || element.form_preset) || undefined,
-        formPresetRules: formPresetRules.length ? formPresetRules : undefined,
-        defaultStrength: nullIfBlank(element.defaultStrength || element.default_strength),
-        outputMode: nullIfBlank(outputMode),
-        introSlide: normalizeServiceIntroSlide(element.introSlide || element.intro_slide || element.titleSlide || element.title_slide) || undefined,
-        orderSheet: normalizeServiceOrderSheetPayload(element.orderSheet || element.order_sheet) || undefined,
-        sort_order: index + 1,
-      };
-    })
-    .filter((element) => element.label || element.name || element.elementType || element.default_text);
-  return serialized.length ? serialized : undefined;
-}
-
 function defaultServiceTemplateStep(index = 0, typeId = "") {
   const serviceGroup = serviceTypeGroupKey(typeId);
   return {
@@ -12642,18 +12519,6 @@ function defaultServiceTemplateStep(index = 0, typeId = "") {
     componentType: "",
     templateKey: "",
     templateVariant: serviceGroup === "ministry" ? "부서예배" : serviceGroup === "public" ? "공예배" : "",
-    default_text: "",
-    sort_order: index + 1,
-  };
-}
-
-function defaultServiceTemplateElement(index = 0, step = {}) {
-  const label = "새 엘리먼트";
-  const elementType = normalizeWorshipElementType(step.elementType || step.element_type || step.componentType || step.component_type) || "plain_text";
-  return {
-    label,
-    name: label,
-    elementType,
     default_text: "",
     sort_order: index + 1,
   };
@@ -12697,153 +12562,6 @@ function normalizeServiceTemplateStep(step = {}, index = 0, typeId = "") {
     notes: nullIfBlank(step.notes),
     sort_order: index + 1,
   };
-}
-
-function ensureServiceOrderTemplate(typeId) {
-  const typeObj = serviceTypeById(typeId);
-  if (!typeObj) return [];
-  if (!Array.isArray(typeObj.order_template) || !typeObj.order_template.length) {
-    typeObj.order_template = serviceOrderTemplate(typeId).map((step, index) => normalizeServiceTemplateStep(step, index, typeId));
-  } else {
-    typeObj.order_template = typeObj.order_template.map((step, index) => normalizeServiceTemplateStep(step, index, typeId));
-  }
-  return typeObj.order_template;
-}
-
-function markServiceTypeTemplateDirty(typeId) {
-  state.dirtyServiceTypeIds.add(typeId);
-  state.dirty.service = true;
-  updateSaveState();
-}
-
-function updateServiceTemplateStepField(field) {
-  const typeId = field.dataset.serviceTypeId;
-  const steps = ensureServiceOrderTemplate(typeId);
-  const index = Number(field.dataset.stepIndex);
-  const step = steps[index];
-  if (!step) return;
-  const key = field.dataset.serviceTemplateStepField;
-  if (key === "required" || key === "flex" || key === "repeatable") {
-    step[key] = Boolean(field.checked);
-  } else if (key === "label") {
-    const value = String(field.value || "").trim();
-    step.label = value;
-    step.name = value;
-  } else if (key === "default_text") {
-    step.default_text = String(field.value || "").trim();
-  } else if (key === "phase") {
-    step.phase = String(field.value || "").trim();
-  } else if (key === "element_type" || key === "component_type") {
-    step.elementType = normalizeServiceElementType(field.value);
-    step.componentType = step.elementType;
-  } else if (key === "template_key") {
-    step.templateKey = String(field.value || "").trim();
-  } else if (key === "template_variant") {
-    step.templateVariant = String(field.value || "").trim();
-  } else if (key === "form_hint") {
-    step.formHint = String(field.value || "").trim();
-    step.formPreset = step.formHint ? normalizeServiceFormPreset(step.formHint, step.formHint, "manual") : null;
-    step.defaultStrength = step.formHint ? "manual" : "";
-  }
-  steps.forEach((item, itemIndex) => { item.sort_order = itemIndex + 1; });
-  markServiceTypeTemplateDirty(typeId);
-}
-
-function updateServiceTemplateElementField(field) {
-  const typeId = field.dataset.serviceTypeId;
-  const steps = ensureServiceOrderTemplate(typeId);
-  const stepIndex = Number(field.dataset.stepIndex);
-  const elementIndex = Number(field.dataset.elementIndex);
-  const step = steps[stepIndex];
-  if (!step) return;
-  if (!Array.isArray(step.elements)) step.elements = [];
-  const element = step.elements[elementIndex];
-  if (!element || typeof element !== "object") return;
-  const key = field.dataset.serviceTemplateElementField;
-  if (key === "label") {
-    const value = String(field.value || "").trim();
-    element.label = value;
-    if (!String(element.name || "").trim()) element.name = value;
-  } else if (key === "name") {
-    element.name = String(field.value || "").trim();
-  } else if (key === "default_text") {
-    element.default_text = String(field.value || "").trim();
-  } else if (key === "element_type" || key === "component_type") {
-    const elementType = normalizeWorshipElementType(field.value);
-    element.elementType = elementType;
-    element.componentType = elementType;
-  } else if (key === "order_sheet") {
-    const order = String(field.value || "").trim();
-    const previous = normalizeServiceOrderSheetPayload(element.orderSheet || element.order_sheet);
-    element.orderSheet = order ? { ...(previous || {}), order } : null;
-  } else if (key === "form_hint") {
-    element.formHint = String(field.value || "").trim();
-    element.formPreset = element.formHint ? normalizeServiceFormPreset(element.formHint, element.formHint, "manual") : null;
-    element.defaultStrength = element.formHint ? "manual" : "";
-  }
-  step.elements = step.elements
-    .filter((item) => item && typeof item === "object")
-    .map((item, itemIndex) => ({ ...item, sort_order: itemIndex + 1 }));
-  markServiceTypeTemplateDirty(typeId);
-}
-
-function runServiceTemplateElementAction(action, typeId, stepIndex, elementIndex) {
-  const steps = ensureServiceOrderTemplate(typeId);
-  const step = steps[stepIndex];
-  if (!step) return;
-  if (!Array.isArray(step.elements)) step.elements = [];
-  const elements = step.elements;
-  if (!elements.length && action !== "add") return;
-  if (action === "add") {
-    elements.push(defaultServiceTemplateElement(elements.length, step));
-  } else if (action === "add-after") {
-    const targetIndex = Number.isFinite(elementIndex) ? elementIndex + 1 : elements.length;
-    elements.splice(targetIndex, 0, defaultServiceTemplateElement(targetIndex, step));
-  } else if (action === "delete") {
-    if (!Number.isFinite(elementIndex)) return;
-    elements.splice(elementIndex, 1);
-  } else if (action === "up") {
-    if (!Number.isFinite(elementIndex) || elementIndex <= 0) return;
-    [elements[elementIndex - 1], elements[elementIndex]] = [elements[elementIndex], elements[elementIndex - 1]];
-  } else if (action === "down") {
-    if (!Number.isFinite(elementIndex) || elementIndex >= elements.length - 1) return;
-    [elements[elementIndex + 1], elements[elementIndex]] = [elements[elementIndex], elements[elementIndex + 1]];
-  }
-  step.elements = elements
-    .filter((element) => element && typeof element === "object")
-    .map((element, index) => ({
-      ...element,
-      sort_order: index + 1,
-      name: String(element.name || element.label || `엘리먼트 ${index + 1}`).trim(),
-    }));
-  markServiceTypeTemplateDirty(typeId);
-  renderServiceTemplatesDetail();
-}
-
-function runServiceTemplateStepAction(action, typeId, index) {
-  const steps = ensureServiceOrderTemplate(typeId);
-  if (!steps.length && action !== "add") return;
-  if (action === "add") {
-    steps.push(defaultServiceTemplateStep(steps.length, typeId));
-  } else if (action === "add-after") {
-    const targetIndex = Number.isFinite(index) ? index + 1 : steps.length;
-    steps.splice(targetIndex, 0, defaultServiceTemplateStep(targetIndex, typeId));
-  } else if (action === "delete") {
-    if (!Number.isFinite(index)) return;
-    steps.splice(index, 1);
-  } else if (action === "up") {
-    if (!Number.isFinite(index) || index <= 0) return;
-    [steps[index - 1], steps[index]] = [steps[index], steps[index - 1]];
-  } else if (action === "down") {
-    if (!Number.isFinite(index) || index >= steps.length - 1) return;
-    [steps[index + 1], steps[index]] = [steps[index], steps[index + 1]];
-  }
-  steps.forEach((step, stepIndex) => {
-    step.sort_order = stepIndex + 1;
-    if (!step.name) step.name = step.label || `섹션 ${stepIndex + 1}`;
-  });
-  markServiceTypeTemplateDirty(typeId);
-  renderServiceTemplatesDetail();
 }
 
 function serviceSectionTemplateMeta(typeId, label, memo = "") {
@@ -16377,7 +16095,7 @@ function addPresenterSlideToSubgroup(group, entry) {
     const number = group.kind === "main-praise" ? presenterMainPraiseSongSubgroupCount(group) + 1 : group.subgroups.length;
     const label = group.kind === "main-praise"
       ? mainPraiseMarker
-        ? slide.sectionLabel || group.label || "찬양"
+        ? slide.elementLabel || "환영"
         : presenterPraiseSubgroupLabel(slide.sectionLabel, number)
       : slide.elementLabel || slide.sectionLabel || "";
     const title = presenterBoardSubgroupTitle(slide, label);
@@ -16747,7 +16465,11 @@ function commitPresenterJumpDraft(serviceId = state.presenter.serviceId) {
   const requested = Number(state.presenter.jumpDraft);
   if (!Number.isFinite(requested)) return;
   state.presenter.jumpDraft = "";
-  runPresenterAction("jump", serviceId, { index: requested - 1 });
+  const index = requested - 1;
+  runPresenterAction("jump", serviceId, { index });
+  if (isValidPresenterIndex(index, state.presenter.slides.length)) {
+    scrollPresenterBoardToIndex(serviceId, index);
+  }
 }
 
 function runPresenterAction(action, serviceId = state.selectedServiceId, options = {}) {
@@ -16875,7 +16597,14 @@ function jumpPresenterToSlideInput(input) {
   const requested = Number(input?.value);
   if (!serviceId || !Number.isFinite(requested)) return;
   state.presenter.jumpDraft = "";
-  runPresenterAction("jump", serviceId, { index: requested - 1 });
+  const index = requested - 1;
+  runPresenterAction("jump", serviceId, { index });
+  const count = state.presenter.serviceId === serviceId
+    ? state.presenter.slides.length
+    : buildServicePresenterSlides(serviceId).length;
+  if (isValidPresenterIndex(index, count)) {
+    scrollPresenterBoardToIndex(serviceId, index);
+  }
 }
 
 async function openPresenterOutput(serviceId = state.selectedServiceId) {
@@ -17161,7 +16890,7 @@ function buildServicePresenterSlides(serviceId) {
     const serviceSlides = slides[0] && isPresenterPreparationSlide(slides[0])
       ? normalizedSlides
       : [presenterReadySlide(service), ...normalizedSlides];
-    return withPresenterElementTrailingBlanks(withMainPraiseIntroSlides(serviceSlides, service), service);
+    return withPresenterElementTrailingBlanks(serviceSlides, service);
   }
 
   let slides = getServiceOutputItems(serviceId)
@@ -17170,7 +16899,7 @@ function buildServicePresenterSlides(serviceId) {
     .filter(Boolean);
   slides = normalizePresenterSlidesForServiceOutput(slides, service);
   if (!slides[0] || !isPresenterPreparationSlide(slides[0])) slides = [presenterReadySlide(service), ...slides];
-  return withPresenterElementTrailingBlanks(withMainPraiseIntroSlides(slides, service), service);
+  return withPresenterElementTrailingBlanks(slides, service);
 }
 
 function normalizePresenterSlidesForServiceOutput(slides = [], service = null) {
@@ -17232,57 +16961,6 @@ function presenterSlideWithServiceAssigneeFallback(slide = {}, service = null) {
     text: slide.elementType === PRESENTER_ELEMENT_TYPES.TITLE_ASSIGNEE
       ? cleanList([slide.title, resolvedAssignee]).join("\n")
       : slide.text,
-  };
-}
-
-function withMainPraiseIntroSlides(slides = [], service = null) {
-  const prepared = [];
-  let inMainPraise = false;
-  slides.filter(Boolean).forEach((slide, index) => {
-    const mainPraise = isPresenterMainPraiseSlide(slide);
-    const introSlide = mainPraise && isPresenterPraiseSectionMarkerSlide(slide);
-    if (mainPraise && !inMainPraise && !introSlide) {
-      const generatedIntro = presenterMainPraiseIntroSlide(service, slide, index);
-      if (generatedIntro) prepared.push(generatedIntro);
-    }
-    prepared.push(slide);
-    inMainPraise = mainPraise;
-  });
-  return prepared;
-}
-
-function presenterMainPraiseIntroSlide(service, firstSlide, index = 0) {
-  if (!serviceUsesPraiseLeader(service?.type_id)) return null;
-  const teamName = serviceMainPraiseTeamName(service);
-  if (!teamName) return null;
-  const title = "찬양";
-  const text = [title, teamName].filter(Boolean).join("\n");
-  const sectionId = firstSlide?.sectionId || `${service?.id || "service"}:praise`;
-  return {
-    id: `${sectionId}:praise-intro`,
-    sectionId,
-    elementId: `${sectionId}:praise-intro`,
-    sectionIndex: Number(firstSlide?.sectionIndex) || index + 1,
-    sectionKey: "praise",
-    sectionLabel: title,
-    sectionRole: "main-praise",
-    sectionTitle: title,
-    elementLabel: title,
-    elementTitle: title,
-    sectionAssignee: "",
-    elementType: PRESENTER_ELEMENT_TYPES.TITLE_CONTENT,
-    layout: PRESENTER_SLIDE_LAYOUTS.CENTER_TEXT,
-    type: "praise-section-title",
-    label: title,
-    title,
-    subtitle: teamName,
-    assignee: teamName,
-    bodyText: teamName,
-    marker: "",
-    text,
-    sort: (Number(firstSlide?.sort) || index) - 0.01,
-    skipTrailingBlank: true,
-    _praiseIntroSlide: true,
   };
 }
 
