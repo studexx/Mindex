@@ -1396,6 +1396,7 @@ def main() -> int:
                     and title_and_liturgical_state["fullscreen"][1]["type"] == "liturgical-body"
                     and title_and_liturgical_state["fullscreen"][1]["renderClass"] == "liturgical-body"
                     and "presenter-slide--liturgical-body" in title_and_liturgical_state["fullscreen"][1]["html"]
+                    and "<i aria-hidden" not in title_and_liturgical_state["fullscreen"][1]["html"]
                     and "본디오 빌라도" in title_and_liturgical_state["fullscreen"][1]["text"]
                     and len(title_and_liturgical_state["scaffold"]) >= 3
                     and title_and_liturgical_state["scaffold"][0]["type"] == "title-content"

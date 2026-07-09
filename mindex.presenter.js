@@ -2786,7 +2786,6 @@ function renderPresenterLiturgicalBodySlide(slide) {
       </div>
       <div class="presenter-liturgical-body-heading">
         <span style="--line-chars: ${escapeAttr(titleChars)}">${escapeHtml(title)}</span>
-        <i aria-hidden="true"></i>
       </div>
     </div>
   `;

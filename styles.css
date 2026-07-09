@@ -6033,7 +6033,6 @@ body[data-module="presenter"] .detail-pane {
   flex-direction: column;
   align-items: flex-end;
   justify-content: flex-start;
-  gap: 16cqh;
   padding-top: 1cqh;
   text-align: right;
 }
@@ -6044,30 +6043,6 @@ body[data-module="presenter"] .detail-pane {
   font-size: min(clamp(68px, 7.6cqw, 122px), calc(27cqw / (var(--line-chars, 4) * .7)));
   font-weight: 900;
   line-height: .95;
-}
-.presenter-liturgical-body-heading i {
-  position: relative;
-  display: block;
-  width: min(18cqw, 250px);
-  height: min(27cqh, 270px);
-}
-.presenter-liturgical-body-heading i::before,
-.presenter-liturgical-body-heading i::after {
-  content: "";
-  position: absolute;
-  background: currentColor;
-}
-.presenter-liturgical-body-heading i::before {
-  left: calc(50% - 2px);
-  top: 0;
-  width: 4px;
-  height: 100%;
-}
-.presenter-liturgical-body-heading i::after {
-  left: 0;
-  top: 33%;
-  width: 100%;
-  height: 4px;
 }
 .presenter-slide--liturgical-body .presenter-title-content {
   width: min(92cqw, 1600px);
@@ -6088,25 +6063,25 @@ body[data-module="presenter"] .detail-pane {
 }
 .presenter-title-content {
   display: flex;
-  width: min(88cqw, 1500px);
+  width: min(78cqw, 1320px);
   max-width: 100%;
   max-height: 100%;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3.2cqh;
+  gap: 1.25cqh;
   color: var(--presenter-output-fg);
   text-align: center;
-  text-shadow: none;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, .28);
   word-break: keep-all;
 }
 .presenter-title-content-title {
   display: block;
   max-width: 100%;
   color: var(--presenter-output-fg);
-  font-size: min(clamp(58px, 7.2cqw, 122px), calc(86cqw / (var(--line-chars, 12) * .68)));
-  font-weight: 900;
-  line-height: 1.02;
+  font-size: min(clamp(28px, 2.9cqw, 50px), calc(72cqw / (var(--line-chars, 12) * .78)));
+  font-weight: 800;
+  line-height: 1.08;
   white-space: nowrap;
 }
 .presenter-title-content-body {
@@ -6114,16 +6089,16 @@ body[data-module="presenter"] .detail-pane {
   max-width: 100%;
   flex-direction: column;
   align-items: center;
-  gap: .2em;
-  color: color-mix(in srgb, var(--presenter-output-fg) 82%, transparent);
-  font-size: clamp(30px, 3.3cqw, 58px);
-  font-weight: 800;
-  line-height: 1.2;
+  gap: .12em;
+  color: color-mix(in srgb, var(--presenter-output-fg) 92%, transparent);
+  font-size: clamp(48px, 5.4cqw, 96px);
+  font-weight: 900;
+  line-height: 1.08;
 }
 .presenter-title-content-body span {
   max-width: 100%;
   white-space: nowrap;
-  font-size: min(1em, calc(86cqw / (var(--line-chars, 18) * .72)));
+  font-size: min(1em, calc(76cqw / (var(--line-chars, 18) * .76)));
 }
 .presenter-slide--lyrics,
 .presenter-slide--song-title,
