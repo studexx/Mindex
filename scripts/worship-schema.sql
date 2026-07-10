@@ -63,9 +63,13 @@ create table if not exists public.mindex_worship_templates (
     check (template_level in ('service', 'section', 'element', 'slide')),
   stable_key text not null,
   version int not null default 1,
+  version_key text not null default '',
   name text not null,
   service_type_id text references public.mindex_worship_service_types(id),
   parent_template_id uuid references public.mindex_worship_templates(id) on delete set null,
+  base_template_id uuid references public.mindex_worship_templates(id) on delete set null,
+  effective_from date not null default date '1900-01-01',
+  effective_to date,
   element_type text,
   slide_type text,
   output_context text not null default 'auto'
@@ -73,11 +77,19 @@ create table if not exists public.mindex_worship_templates (
   is_active boolean not null default true,
   is_default boolean not null default false,
   description text not null default '',
+  change_set jsonb not null default '{}'::jsonb,
   config jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique (stable_key, version)
 );
+
+alter table public.mindex_worship_templates
+  add column if not exists version_key text not null default '',
+  add column if not exists base_template_id uuid references public.mindex_worship_templates(id) on delete set null,
+  add column if not exists effective_from date not null default date '1900-01-01',
+  add column if not exists effective_to date,
+  add column if not exists change_set jsonb not null default '{}'::jsonb;
 
 drop trigger if exists mindex_worship_templates_touch_updated_at on public.mindex_worship_templates;
 create trigger mindex_worship_templates_touch_updated_at
@@ -86,10 +98,15 @@ for each row execute function public.mindex_touch_updated_at();
 
 create index if not exists mindex_worship_templates_level_key_idx
   on public.mindex_worship_templates (template_level, stable_key, version desc);
+create index if not exists mindex_worship_templates_effective_idx
+  on public.mindex_worship_templates (service_type_id, template_level, stable_key, effective_from desc, version desc)
+  where is_active;
 create index if not exists mindex_worship_templates_service_type_idx
   on public.mindex_worship_templates (service_type_id, template_level, is_active);
 create index if not exists mindex_worship_templates_parent_idx
   on public.mindex_worship_templates (parent_template_id);
+create index if not exists mindex_worship_templates_base_idx
+  on public.mindex_worship_templates (base_template_id);
 
 create table if not exists public.mindex_worship_template_items (
   id uuid primary key default gen_random_uuid(),

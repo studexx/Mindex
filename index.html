@@ -10,38 +10,68 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="MINDEX" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <link rel="stylesheet" href="./styles.css?v=mindex-presenter-flow-002" />
-    <link rel="stylesheet" href="./styles.calendar.css?v=mindex-app-split-001" />
+    <link rel="stylesheet" href="./styles.css?v=mindex-sidebar-align-006" />
+    <link rel="stylesheet" href="./styles.presenter-output.css?v=mindex-presenter-output-001" />
+    <link rel="stylesheet" href="./styles.calendar.css?v=mindex-calendar-ui-010" />
   </head>
   <body>
     <div class="app-shell">
-      <header class="topbar">
-        <div class="brand-cluster">
-          <button id="sidebarToggleBtn" class="top-left-tool" type="button" aria-label="Toggle sidebar">
-            <i data-lucide="panel-left"></i>
-          </button>
-          <button id="brandHome" class="brand-home" type="button" aria-label="Go to Mindex home">
-            <i data-lucide="home"></i>
-          </button>
-          <button id="brandNameHome" class="brand-name" type="button" aria-label="Go to Mindex home">MINDE<span class="brand-accent">X</span></button>
-        </div>
-        <nav class="primary-switcher" aria-label="Mindex areas">
-          <button class="top-module-entry worship-entry module-tab module-tab--primary" type="button" data-module="service" aria-label="Open worship tools">
+      <aside class="nav-sidebar" aria-label="Mindex navigation and list panel">
+        <button id="sidebarToggleBtn" class="top-left-tool active" type="button" aria-label="Toggle sidebar" aria-controls="mindexSidebarPanel" aria-expanded="true" aria-pressed="true">
+          <i data-lucide="panel-left"></i>
+        </button>
+        <nav class="nav-rail" aria-label="Mindex pages">
+          <button class="nav-rail-tab" type="button" data-home-module="service" aria-label="Worship" title="Worship">
             <i data-lucide="layout-template"></i>
-            <span>Worship</span>
           </button>
-          <button class="top-module-entry presenter-entry module-tab module-tab--secondary" type="button" data-module="presenter" aria-label="Open presenter">
-            <i data-lucide="screen-share"></i>
-            <span>Presenter</span>
-          </button>
-          <button class="top-module-entry scripture-entry module-tab module-tab--secondary" type="button" data-module="scripture" aria-label="Open scripture">
+          <button class="nav-rail-tab" type="button" data-home-module="scripture" aria-label="Scripture" title="Scripture">
             <i data-lucide="book-open"></i>
-            <span>Scripture</span>
           </button>
-          <button class="top-module-entry praise-entry module-tab module-tab--secondary" type="button" data-module="praise" aria-label="Open praise">
+          <button class="nav-rail-tab" type="button" data-home-module="praise" aria-label="Praise" title="Praise">
             <i data-lucide="music-2"></i>
-            <span>Praise</span>
           </button>
+          <button class="nav-rail-tab" type="button" data-home-module="calendar" aria-label="Calendar" title="Calendar">
+            <i data-lucide="calendar-days"></i>
+          </button>
+          <button class="nav-rail-tab" type="button" data-home-module="references" aria-label="References" title="References">
+            <i data-lucide="external-link"></i>
+          </button>
+          <button class="nav-rail-tab" type="button" data-home-module="order-sheets" aria-label="Order Sheets" title="Order Sheets">
+            <i data-lucide="newspaper"></i>
+          </button>
+          <button class="nav-rail-tab" type="button" data-home-module="backgrounds" aria-label="Backgrounds" title="Backgrounds">
+            <i data-lucide="images"></i>
+          </button>
+        </nav>
+        <div id="mindexSidebarPanel" class="sidebar" aria-label="Mindex list">
+          <div class="sidebar-brand-row">
+            <button id="brandNameHome" class="sidebar-wordmark" type="button" aria-label="Go to Mindex home">MINDE<span class="brand-accent">X</span></button>
+          </div>
+          <div class="search-wrap global-search-wrap sidebar-search-wrap">
+            <i data-lucide="search"></i>
+            <input id="searchInput" type="search" placeholder="Search..." autocomplete="off" />
+          </div>
+          <div id="listFilter" class="list-filter" aria-label="List filter">
+            <button class="filter-tab active" type="button" data-list-filter="all">All</button>
+            <button class="filter-tab" type="button" data-list-filter="hymns">Hymns</button>
+            <button class="filter-tab" type="button" data-list-filter="ccm">CCM</button>
+            <button class="filter-tab" type="button" data-list-filter="children" hidden>Kids</button>
+          </div>
+          <div id="songCount" class="sidebar-count">0 songs</div>
+          <div id="songList" class="song-list" tabindex="0"></div>
+        </div>
+      </aside>
+
+      <header class="topbar">
+        <nav class="primary-switcher" aria-label="Open pages">
+          <div id="pageTabs" class="page-tabs" role="tablist" aria-label="Open Mindex tabs">
+            <button class="page-tab active" type="button" role="tab" aria-current="page">
+              <span id="pageTabLabel">Worship</span>
+            </button>
+            <button id="pageTabAddBtn" class="icon-btn page-tab-add" type="button" aria-label="New tab" title="New tab">
+              <i data-lucide="plus"></i>
+            </button>
+          </div>
         </nav>
         <div class="topbar-actions">
           <button id="themeBtn" class="icon-btn" type="button">
@@ -59,21 +89,6 @@
       </header>
 
       <main class="workspace">
-        <aside class="sidebar" aria-label="Mindex list">
-          <div class="search-wrap global-search-wrap sidebar-search-wrap">
-            <i data-lucide="search"></i>
-            <input id="searchInput" type="search" placeholder="Search..." autocomplete="off" />
-          </div>
-          <div id="listFilter" class="list-filter" aria-label="List filter">
-            <button class="filter-tab active" type="button" data-list-filter="all">All</button>
-            <button class="filter-tab" type="button" data-list-filter="hymns">Hymns</button>
-            <button class="filter-tab" type="button" data-list-filter="ccm">CCM</button>
-            <button class="filter-tab" type="button" data-list-filter="children" hidden>Kids</button>
-          </div>
-          <div id="songCount" class="sidebar-count">0 songs</div>
-          <div id="songList" class="song-list" tabindex="0"></div>
-        </aside>
-
         <section id="detailPane" class="detail-pane" aria-live="polite"></section>
       </main>
     </div>
@@ -90,6 +105,6 @@
     </script>
     <script src="./mindex.constants.js?v=mindex-app-split-001"></script>
     <script src="./mindex.presenter.js?v=mindex-app-split-001"></script>
-    <script src="./app.js?v=mindex-presenter-flow-002"></script>
+    <script src="./app.js?v=mindex-tabs-005"></script>
   </body>
 </html>

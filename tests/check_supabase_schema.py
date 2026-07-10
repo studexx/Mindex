@@ -36,7 +36,19 @@ REQUIRED_TABLES: dict[str, tuple[str, ...]] = {
     "mindex_worship_import_candidates": ("id", "import_source_id", "candidate_level", "review_status", "raw_title"),
     "mindex_worship_import_mappings": ("id", "import_source_id", "target_level", "review_status"),
     "mindex_reference_links": ("id", "title", "url", "sort_order"),
-    "mindex_sunday_calendar": ("id", "date"),
+    "mindex_sunday_calendar": (
+        "id",
+        "date",
+        "liturgical",
+        "note",
+        "church_schedule",
+        "youth_offering_prayer",
+        "liturgical_color",
+        "first_reading",
+        "psalm",
+        "second_reading",
+        "gospel",
+    ),
 }
 
 OPTIONAL_COLUMNS: dict[str, tuple[str, ...]] = {

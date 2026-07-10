@@ -137,6 +137,15 @@ def block_text_issues(row: dict[str, Any], row_id: str, fields: tuple[str, ...])
     return issues
 
 
+def looks_like_embedded_scripture_body(value: Any) -> bool:
+    if not isinstance(value, str):
+        return False
+    text = value.strip()
+    if not text:
+        return False
+    return bool(re.search(r"(?:^|\n)\s*\d{1,3}\s{2,}\S", text))
+
+
 def audit(
     supa_url: str,
     supa_key: str,
@@ -241,6 +250,15 @@ def audit(
             issues.append({"type": "worship-element-missing-song", "id": row_id, "song_id": row.get("song_id"), "title": row.get("title")})
         if row.get("scripture_id") and row.get("scripture_id") not in scripture_ids:
             issues.append({"type": "worship-element-missing-scripture", "id": row_id, "scripture_id": row.get("scripture_id"), "title": row.get("title")})
+        if row.get("element_type") == "scripture_body":
+            if looks_like_embedded_scripture_body(row.get("title")):
+                issues.append({"type": "scripture-body-title-contains-verses", "id": row_id, "title": row.get("title")})
+            if looks_like_embedded_scripture_body(row.get("body")):
+                issues.append({"type": "scripture-body-body-contains-verses", "id": row_id})
+            config = row.get("config") if isinstance(row.get("config"), dict) else {}
+            config_slides = config.get("slides") or config.get("slideOverrides") or config.get("slide_overrides")
+            if isinstance(config_slides, list) and any(looks_like_embedded_scripture_body(slide) for slide in config_slides):
+                issues.append({"type": "scripture-body-config-contains-verses", "id": row_id})
         issues.extend(edge_text_issues(row, row_id, ("element_type", "title", "person", "scripture_reference")))
         warnings.extend(block_text_issues(row, row_id, ("body",)))
 

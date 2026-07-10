@@ -471,7 +471,7 @@ def main() -> int:
 
             icon_metrics = page.evaluate(
                 """
-                [...document.querySelectorAll('#sidebarToggleBtn,#brandHome,#themeBtn,#saveAllBtn')]
+                [...document.querySelectorAll('#sidebarToggleBtn,#themeBtn,#saveAllBtn')]
                   .filter((node) => node.offsetParent !== null)
                   .map((node) => {
                     const rect = node.getBoundingClientRect();
@@ -491,7 +491,7 @@ def main() -> int:
             topbar_offsets = page.evaluate(
                 """
                 (() => {
-                  const leftRail = document.querySelector('.brand-cluster')?.getBoundingClientRect();
+                  const leftRail = document.querySelector('.nav-sidebar')?.getBoundingClientRect();
                   const rightRail = document.querySelector('.topbar-actions')?.getBoundingClientRect();
                   const leftFirst = document.querySelector('#sidebarToggleBtn')?.getBoundingClientRect();
                   const rightFirst = document.querySelector('#themeBtn')?.getBoundingClientRect();
@@ -504,7 +504,7 @@ def main() -> int:
                 })()
                 """
             )
-            if topbar_offsets["leftFirst"] == 12 and topbar_offsets["rightLastInset"] == 12:
+            if topbar_offsets["leftFirst"] == 4 and topbar_offsets["rightLastInset"] == 4:
                 pass_("topbar-action-offset", json.dumps(topbar_offsets, ensure_ascii=False))
             else:
                 fail("topbar-action-offset", json.dumps(topbar_offsets, ensure_ascii=False))
@@ -525,11 +525,12 @@ def main() -> int:
                 desktop_shell["bodyScrollWidth"] - desktop_shell["viewport"],
             )
             if (
-                desktop_shell["detailPaddingLeft"] == 25
-                and desktop_shell["detailPaddingTop"] == 25
-                and desktop_shell["sidebarSearchTop"] == 8
+                desktop_shell["detailPaddingLeft"] in {24, 25}
+                and desktop_shell["detailPaddingTop"] in {24, 25}
+                and desktop_shell["sidebarSearchTop"] == 0
                 and desktop_shell["sidebarSearchInputLineHeight"] == 30
-                and desktop_shell["toggleWidth"] == desktop_shell["toggleHeight"] == 32
+                and desktop_shell["topbarHeight"] == 48
+                and desktop_shell["toggleWidth"] == desktop_shell["toggleHeight"] == 40
                 and desktop_overflow <= 2
             ):
                 pass_("shell-desktop-geometry", json.dumps(desktop_shell, ensure_ascii=False))
@@ -550,7 +551,7 @@ def main() -> int:
                 })()
                 """
             )
-            if home_gutter["left"] == 25 and home_gutter["top"] == 25 and home_gutter["overflow"] <= 2:
+            if home_gutter["left"] in {24, 25} and home_gutter["top"] in {24, 25} and home_gutter["overflow"] <= 2:
                 pass_("home-screen-gutter", json.dumps(home_gutter, ensure_ascii=False))
             else:
                 fail("home-screen-gutter", json.dumps(home_gutter, ensure_ascii=False))
@@ -573,11 +574,11 @@ def main() -> int:
                 mobile_shell["bodyScrollWidth"] - mobile_shell["viewport"],
             )
             if (
-                mobile_shell["detailPaddingLeft"] == 25
-                and mobile_shell["detailPaddingTop"] == 25
-                and mobile_shell["sidebarSearchTop"] == 8
+                mobile_shell["detailPaddingLeft"] in {24, 25}
+                and mobile_shell["detailPaddingTop"] in {24, 25}
+                and mobile_shell["sidebarSearchTop"] == 0
                 and mobile_shell["sidebarSearchInputLineHeight"] == 30
-                and mobile_shell["topbarHeight"] == 40
+                and mobile_shell["topbarHeight"] == 48
                 and mobile_overflow <= 2
             ):
                 pass_("shell-mobile-geometry", json.dumps(mobile_shell, ensure_ascii=False))
@@ -604,6 +605,7 @@ def main() -> int:
                             } : null;
                           };
                           const topbar = rect('.topbar');
+                          const navSidebar = rect('.nav-sidebar');
                           const sidebar = rect('.sidebar');
                           const search = rect('.sidebar-search-wrap');
                           const detail = rect('.detail-pane');
@@ -611,6 +613,7 @@ def main() -> int:
                           return {
                             width,
                             topbarHeight: topbar?.height || 0,
+                            railWidth: navSidebar?.width || 0,
                             sidebarWidth: sidebar?.width || 0,
                             sidebarHeight: sidebar?.height || 0,
                             sidebarLeftRail: Boolean(sidebar && detail && detail.left >= sidebar.right),
@@ -625,9 +628,9 @@ def main() -> int:
                     )
                 )
             if all(
-                item["topbarHeight"] == 40
-                and item["sidebarWidth"] <= item["width"]
-                and (item["width"] >= 780 or item["sidebarWidth"] == 170)
+                item["topbarHeight"] == 48
+                and item["sidebarWidth"] <= item["railWidth"] <= item["width"]
+                and (item["width"] >= 780 or item["railWidth"] == 170)
                 and item["sidebarLeftRail"]
                 and (item["width"] > 860 or item["sidebarHeight"] > 300)
                 and item["searchWithinSidebar"]
@@ -759,7 +762,7 @@ def main() -> int:
                     })()
                     """
                 )
-                expected_home_order = ["Worship", "Presenter", "Scripture", "Praise", "Calendar", "References", "Order Sheets"]
+                expected_home_order = ["Worship", "Scripture", "Praise", "Calendar", "References", "Order Sheets"]
                 if (
                     home_order == expected_home_order
                     and not home_visibility_state["hasActivities"]
@@ -800,7 +803,7 @@ def main() -> int:
                     home_design_state["hasBoard"]
                     and home_design_state["hasPrimary"]
                     and not home_design_state["hasVerse"]
-                    and home_design_state["libraryCards"] == 3
+                    and home_design_state["libraryCards"] == 2
                     and home_design_state["utilityCards"] == 3
                     and home_design_state["primary"]["height"] >= 130
                     and "1 services" not in home_design_state["text"]
@@ -834,93 +837,82 @@ def main() -> int:
                             module_id,
                         )
                     )
-                if all(item["searchTop"] == 8 and item["firstTop"] == 25 and item["overflow"] <= 2 for item in module_spacing):
+                if all(item["searchTop"] == 0 and item["firstTop"] in {24, 25} and item["overflow"] <= 2 for item in module_spacing):
                     pass_("module-start-gutters", json.dumps(module_spacing, ensure_ascii=False))
                 else:
                     fail("module-start-gutters", json.dumps(module_spacing, ensure_ascii=False))
 
-                page.click('[data-module="scripture"]')
+                page.click('[data-home-module="scripture"]')
                 page.wait_for_function("() => document.body.dataset.module === 'scripture'", timeout=5000)
                 page.mouse.move(12, 200)
                 topbar_state = page.evaluate(
                     """
                     (() => {
-                      const tabs = [...document.querySelectorAll('.primary-switcher .top-module-entry')];
-                      const active = document.querySelector('.primary-switcher .top-module-entry.active');
-                      const activeLabel = active?.querySelector('span');
+                      const tabs = [...document.querySelectorAll('.nav-rail .nav-rail-tab')];
+                      const active = document.querySelector('.nav-rail .nav-rail-tab.active');
                       const activeIcon = active?.querySelector('svg');
                       const activeStyles = active ? getComputedStyle(active) : null;
-                      const activeLabelStyles = activeLabel ? getComputedStyle(activeLabel) : null;
                       const activeIconStyles = activeIcon ? getComputedStyle(activeIcon) : null;
                       const activeIconRect = activeIcon?.getBoundingClientRect();
                       const probe = document.createElement('span');
                       probe.style.position = 'absolute';
-                      probe.style.background = 'var(--tab-active-bg)';
-                      probe.style.color = 'var(--ink)';
+                      probe.style.color = 'var(--sidebar-ink)';
                       document.body.appendChild(probe);
                       const expected = getComputedStyle(probe);
-                      const expectedBackground = expected.backgroundColor;
                       const expectedColor = expected.color;
-                      probe.style.color = 'var(--accent)';
-                      const expectedAccent = getComputedStyle(probe).color;
                       const output = {
-                        order: tabs.map((tab) => tab.textContent.trim()),
-                        active: active?.dataset.module || '',
-                        activeBackground: activeStyles?.backgroundColor || '',
-                        expectedBackground,
+                        order: tabs.map((tab) => tab.getAttribute('aria-label') || ''),
+                        active: active?.dataset.homeModule || '',
                         activeColor: activeStyles?.color || '',
                         expectedColor,
-                        activeLabelColor: activeLabelStyles?.color || '',
-                        expectedLabelColor: expectedAccent,
                         activeIconColor: activeIconStyles?.color || '',
                         activeIconWidth: Math.round(activeIconRect?.width || 0),
                         activeIconHeight: Math.round(activeIconRect?.height || 0),
-                        activeIconStroke: activeIconStyles?.strokeWidth || '',
-                        activeWeight: activeStyles?.fontWeight || ''
+                        activeIconStroke: activeIconStyles?.strokeWidth || ''
                       };
                       probe.remove();
                       return output;
                     })()
                     """
                 )
-                page.locator(".primary-switcher .top-module-entry.active").hover()
-                topbar_hover_state = page.evaluate(
-                    """
-                    (() => {
-                      const active = document.querySelector('.primary-switcher .top-module-entry.active');
-                      const activeStyles = active ? getComputedStyle(active) : null;
-                      const probe = document.createElement('span');
-                      probe.style.position = 'absolute';
-                      probe.style.background = 'var(--tab-active-bg)';
-                      document.body.appendChild(probe);
-                      const expected = getComputedStyle(probe);
-                      const output = {
-                        activeHoverBackground: activeStyles?.backgroundColor || '',
-                        expectedHoverBackground: expected.backgroundColor,
-                      };
-                      probe.remove();
-                      return output;
-                    })()
-                    """
-                )
-                topbar_state.update(topbar_hover_state)
-                expected_topbar_order = ["Worship", "Presenter", "Scripture", "Praise"]
+                expected_topbar_order = ["Worship", "Scripture", "Praise", "Calendar", "References", "Order Sheets", "Backgrounds"]
                 if (
                     topbar_state["order"] == expected_topbar_order
                     and topbar_state["active"] == "scripture"
-                    and topbar_state["activeBackground"] == topbar_state["expectedBackground"]
-                    and topbar_state["activeHoverBackground"] == topbar_state["expectedHoverBackground"]
                     and topbar_state["activeColor"] == topbar_state["expectedColor"]
-                    and topbar_state["activeLabelColor"] == topbar_state["expectedLabelColor"]
                     and topbar_state["activeIconColor"] == topbar_state["expectedColor"]
-                    and topbar_state["activeIconWidth"] == 14
-                    and topbar_state["activeIconHeight"] == 14
-                    and topbar_state["activeIconStroke"] == "1.7px"
-                    and topbar_state["activeWeight"] == "600"
+                    and topbar_state["activeIconWidth"] == 16
+                    and topbar_state["activeIconHeight"] == 16
+                    and topbar_state["activeIconStroke"] == "1.5px"
                 ):
-                    pass_("topbar-module-order-active-style", json.dumps(topbar_state, ensure_ascii=False))
+                    pass_("navigation-rail-order-active-style", json.dumps(topbar_state, ensure_ascii=False))
                 else:
-                    fail("topbar-module-order-active-style", json.dumps(topbar_state, ensure_ascii=False))
+                    fail("navigation-rail-order-active-style", json.dumps(topbar_state, ensure_ascii=False))
+
+                page.click('.nav-rail [data-home-module="scripture"]')
+                nav_repeat_state = page.evaluate(
+                    """() => ({
+                      module: document.body.dataset.module,
+                      collapsed: document.body.classList.contains('sidebar-collapsed')
+                    })"""
+                )
+                if nav_repeat_state == {"module": "scripture", "collapsed": False}:
+                    pass_("navigation-rail-does-not-toggle", json.dumps(nav_repeat_state, ensure_ascii=False))
+                else:
+                    fail("navigation-rail-does-not-toggle", json.dumps(nav_repeat_state, ensure_ascii=False))
+
+                page.click("#brandNameHome")
+                page.wait_for_function("() => document.body.dataset.module === 'home'", timeout=5000)
+                wordmark_state = page.evaluate(
+                    """() => ({
+                      module: document.body.dataset.module,
+                      collapsed: document.body.classList.contains('sidebar-collapsed')
+                    })"""
+                )
+                if wordmark_state == {"module": "home", "collapsed": False}:
+                    pass_("wordmark-goes-home", json.dumps(wordmark_state, ensure_ascii=False))
+                else:
+                    fail("wordmark-goes-home", json.dumps(wordmark_state, ensure_ascii=False))
 
                 page.evaluate("switchModule('calendar')")
                 page.wait_for_function("() => document.body.dataset.module === 'calendar'", timeout=5000)
@@ -937,6 +929,7 @@ def main() -> int:
                         .filter((text) => text.includes('부')),
                       widths: [...document.querySelectorAll('.cal-table thead th')]
                         .map((node) => Math.round(node.getBoundingClientRect().width)),
+                      wrapperWidth: Math.round(document.querySelector('.cal-table-wrap')?.clientWidth || 0),
                       tableClass: document.querySelector('.cal-table')?.className || '',
                       tableScrollWidth: Math.round(document.querySelector('.cal-table')?.scrollWidth || 0),
                       hasYearEndRow: document.body.textContent.includes('송구영신예배'),
@@ -960,9 +953,9 @@ def main() -> int:
                     and calendar_state["activeTab"] == "부서 일과"
                     and calendar_state["departmentHeaders"] == expected_department_headers
                     and "cal-table--departments" in calendar_state["tableClass"]
-                    and 1190 <= calendar_state["tableScrollWidth"] <= 1235
-                    and calendar_state["widths"][:4] == [83, 133, 143, 180]
-                    and calendar_state["widths"][4:] == [107, 107, 107, 129, 107, 107]
+                    and abs(calendar_state["tableScrollWidth"] - calendar_state["wrapperWidth"]) <= 2
+                    and calendar_state["widths"][4] >= 90
+                    and calendar_state["widths"][7] > calendar_state["widths"][4]
                     and calendar_state["hasYearEndRow"]
                     and calendar_state["hasFootnote"]
                     and not calendar_state["footnoteHasBreak"]
@@ -982,6 +975,7 @@ def main() -> int:
                         .slice(-5),
                       widths: [...document.querySelectorAll('.cal-table thead th')]
                         .map((node) => Math.round(node.getBoundingClientRect().width)),
+                      wrapperWidth: Math.round(document.querySelector('.cal-table-wrap')?.clientWidth || 0),
                       tableClass: document.querySelector('.cal-table')?.className || '',
                       tableScrollWidth: Math.round(document.querySelector('.cal-table')?.scrollWidth || 0),
                       overflow: Math.max(document.documentElement.scrollWidth - window.innerWidth, document.body.scrollWidth - window.innerWidth)
@@ -993,9 +987,9 @@ def main() -> int:
                     calendar_lectionary_state["activeTab"] == "성서일과"
                     and calendar_lectionary_state["headers"] == expected_lectionary_headers
                     and "cal-table--lectionary" in calendar_lectionary_state["tableClass"]
-                    and 1240 <= calendar_lectionary_state["tableScrollWidth"] <= 1265
-                    and calendar_lectionary_state["widths"][:4] == [82, 132, 142, 178]
-                    and calendar_lectionary_state["widths"][4:] == [60, 170, 146, 170, 170]
+                    and abs(calendar_lectionary_state["tableScrollWidth"] - calendar_lectionary_state["wrapperWidth"]) <= 2
+                    and calendar_lectionary_state["widths"][4] < calendar_lectionary_state["widths"][5]
+                    and calendar_lectionary_state["widths"][7] == calendar_lectionary_state["widths"][8]
                     and calendar_lectionary_state["overflow"] <= 2
                 ):
                     pass_("calendar-lectionary-tab", json.dumps(calendar_lectionary_state, ensure_ascii=False))
@@ -1018,7 +1012,7 @@ def main() -> int:
                 else:
                     fail("references-utility-shell", json.dumps(references_state, ensure_ascii=False))
 
-                page.click('[data-module="service"]')
+                page.click('[data-home-module="service"]')
                 wait_for_service_data(page)
                 wait_for_module_data(page, "service")
                 snapshot = get_app_snapshot(page)
@@ -1079,8 +1073,8 @@ def main() -> int:
                 if (
                     service_sidebar_gap["gap"] == 16
                     and service_sidebar_gap["headHeight"] < 18
-                    and service_sidebar_gap["headLeft"] == 12
-                    and service_sidebar_gap["labelLeft"] == 20
+                    and service_sidebar_gap["headLeft"] == 0
+                    and service_sidebar_gap["labelLeft"] == 8
                 ):
                     pass_("service-sidebar-section-label-gap", json.dumps(service_sidebar_gap, ensure_ascii=False))
                 else:
@@ -1106,8 +1100,8 @@ def main() -> int:
                     """
                 )
                 if (
-                    service_gutter["listLeft"] == 25
-                    and service_gutter["titleLeft"] == 25
+                    service_gutter["listLeft"] in {24, 25}
+                    and service_gutter["titleLeft"] in {24, 25}
                     and service_gutter["paddingLeft"] == 0
                     and service_gutter["hasGroups"]
                     and service_gutter["overflow"] <= 2
@@ -1143,9 +1137,9 @@ def main() -> int:
                     """
                 )
                 if (
-                    template_gutter["rootLeft"] == 25
-                    and template_gutter["titleLeft"] == 25
-                    and template_gutter["gridLeft"] == 25
+                    template_gutter["rootLeft"] in {24, 25}
+                    and template_gutter["titleLeft"] in {24, 25}
+                    and template_gutter["gridLeft"] in {24, 25}
                     and template_gutter["paddingLeft"] == 0
                     and template_gutter["overflow"] <= 2
                 ):
@@ -1274,7 +1268,7 @@ def main() -> int:
                               offeringElements: sections.find((section) => section.key === 'offering')?.elements || [],
                               offeringDefaults: defaultsFor('offering'),
                               closingSection: (() => {
-                                const closing = sections.find((section) => section.key === 'closing_song');
+                                const closing = sections.find((section) => section.key === 'closing_visual');
                                 return {
                                   title: closing?.title || '',
                                   elements: closing?.elements || []
@@ -1294,7 +1288,7 @@ def main() -> int:
                                     }))
                                 };
                               })(),
-                              closingDefaults: defaultsFor('closing_song'),
+                              closingDefaults: defaultsFor('closing_visual'),
                               blankPlaceholders: scaffold.elements
                                 .filter((item) => item.config?.orderSheetPlaceholder === true)
                                 .length
@@ -1316,8 +1310,9 @@ def main() -> int:
                           })(),
                           sundayPublicScaffold: (() => {
                             const compact = (value) => String(value || '').replace(/\\s+/g, '');
-                            const summarize = (typeId) => {
-                              const scaffold = buildWorshipServiceScaffold(`__smoke_${typeId}__`, typeId);
+                            const summarize = (typeId, service = null) => {
+                              const serviceId = service?.id || `__smoke_${typeId}__`;
+                              const scaffold = buildWorshipServiceScaffold(serviceId, typeId, service ? { service } : {});
                               const sections = scaffold.sections.map((section) => ({
                                 id: section.id || '',
                                 key: section.section_key || '',
@@ -1327,10 +1322,15 @@ def main() -> int:
                                   .map((element) => ({
                                     type: element.element_type || '',
                                     label: element.source_ref?.label || '',
+                                    ...(element.person ? { person: element.person } : {}),
                                     order: element.config?.orderSheet?.order || '',
                                     ...(element.config?.introSlide?.title ? { introTitle: element.config.introSlide.title } : {}),
                                     ...(element.config?.introSlide?.body ? { introBody: element.config.introSlide.body } : {}),
                                     ...(element.config?.orderSheet?.assignee ? { assignee: element.config.orderSheet.assignee } : {}),
+                                    ...(element.config?.textHighlights?.length ? { textHighlights: element.config.textHighlights } : {}),
+                                    ...(element.config?.formHint ? { formHint: element.config.formHint } : {}),
+                                    ...(element.config?.formPreset?.forms ? { forms: element.config.formPreset.forms } : {}),
+                                    ...(element.config?.defaultStrength || element.config?.formPreset?.strength ? { strength: element.config.defaultStrength || element.config.formPreset.strength } : {}),
                                     outputMode: element.config?.outputMode || ''
                                   }))
                               }));
@@ -1341,25 +1341,47 @@ def main() -> int:
                                 keys: sections.map((section) => section.key),
                                 compactTitles: sections.map((section) => compact(section.title)),
                                 praiseElements: sections.find((section) => section.key === 'praise')?.elements || [],
+                                silentPrayerElements: sections.find((section) => section.key === 'silent_prayer')?.elements || [],
+                                hymnElements: sections.find((section) => section.key === 'hymn_praise')?.elements || [],
                                 creedElements: sections.find((section) => section.key === 'creed')?.elements || [],
+                                prayerElements: sections.find((section) => section.key === 'prayer')?.elements || [],
+                                scriptureElements: sections.find((section) => section.key === 'scripture_reading')?.elements || [],
+                                communityElements: sections.find((section) => section.key === 'community_confession')?.elements || [],
+                                sermonElements: sections.find((section) => section.key === 'sermon')?.elements || [],
                                 offeringElements: sections.find((section) => section.key === 'offering')?.elements || [],
+                                announcementsElements: sections.find((section) => section.key === 'announcements')?.elements || [],
+                                sendingElements: sections.find((section) => section.key === 'sending')?.elements || [],
+                                closingElements: sections.find((section) => section.key === 'closing_visual')?.elements || [],
                                 closingHymnDefaults: scaffold.elements
-                                  .filter((element) => element.section_id === sections.find((section) => section.key === 'closing_hymn')?.id)
+                                  .filter((element) =>
+                                    element.section_id === sections.find((section) => section.key === 'closing_visual')?.id
+                                    && element.source_ref?.label === '폐회찬송'
+                                  )
                                   .map((element) => ({
                                     type: element.element_type || '',
                                     label: element.source_ref?.label || '',
                                     title: element.title || '',
+                                    formHint: element.config?.formHint || '',
+                                    forms: element.config?.formPreset?.forms || [],
+                                    strength: element.config?.defaultStrength || element.config?.formPreset?.strength || '',
                                     orderSheetHidden: element.config?.orderSheet?.hidden === true
                                   })),
                                 scoreSlots: sections.flatMap((section) =>
                                   section.elements
                                     .filter((element) => element.outputMode === 'score')
                                     .map((element) => `${section.key}:${element.label}`)
-                                )
+                                ),
+                                doxologyDefaults: scaffold.elements
+                                  .filter((element) => element.source_ref?.label === '송영')
+                                  .map((element) => ({
+                                    sectionKey: scaffold.sections.find((section) => section.id === element.section_id)?.section_key || '',
+                                    title: element.title || ''
+                                  }))
                               };
                             };
                             return {
                               first: summarize('sunday-first'),
+                              firstPastor: summarize('sunday-first', { id: '__smoke_sunday_first_pastor__', type_id: 'sunday-first', worshipLeader: '김남영 목사' }),
                               second: summarize('sunday-second'),
                               third: summarize('sunday-main'),
                               afternoon: summarize('sunday-afternoon')
@@ -1459,118 +1481,142 @@ def main() -> int:
                               monthlyDefaultLeader: defaultServicePraiseLeader('monthly')
                             };
                           })(),
-                          templateFormEditor: (() => {
-                            const typeId = '__smoke_template_form__';
+                          serviceInstanceOverride: (() => {
+                            const serviceId = '__smoke_instance_override__';
+                            const previousServices = state.services;
+                            const previousItems = state.serviceItems[serviceId];
+                            const previousSelectedServiceId = state.selectedServiceId;
                             const previousDirty = state.dirty.service;
-                            const previousDirtyTypeIds = new Set(state.dirtyServiceTypeIds);
-                            state.serviceTypes = state.serviceTypes.filter((type) => type.id !== typeId);
-                            state.serviceTypes.push({
-                              id: typeId,
-                              name: 'Smoke Template',
-                              sort_order: 9999,
-                              order_template: [{
-                                label: '찬양',
-                                name: '찬양',
-                                phase: 'Gathering',
-                                elementType: 'praise',
-                                formHint: 'V1-C',
-                                orderSheet: { order: '찬양', group: 'praise' }
-                              }]
-                            });
-                            const steps = ensureServiceOrderTemplate(typeId);
-                            const host = document.createElement('div');
-                            host.innerHTML = renderServiceTemplateStepRow(typeId, steps[0], 0, 1);
-                            const input = host.querySelector('[data-service-template-step-field="form_hint"]');
-                            const before = input?.value || '';
-                            input.value = 'V2-C';
-                            updateServiceTemplateStepField(input);
-                            const updatedStep = ensureServiceOrderTemplate(typeId)[0] || {};
-                            const serialized = serializeServiceOrderTemplate(typeId)[0] || {};
-                            state.serviceTypes = state.serviceTypes.filter((type) => type.id !== typeId);
-                            state.dirtyServiceTypeIds = previousDirtyTypeIds;
+                            const scaffold = buildWorshipServiceScaffold(serviceId, 'sunday-main');
+                            state.services = previousServices.filter((service) => service.id !== serviceId).concat([{
+                              id: serviceId,
+                              type_id: 'sunday-main',
+                              date: '2026-07-05',
+                              tags: []
+                            }]);
+                            state.serviceItems[serviceId] = groupWorshipElements(scaffold.sections, scaffold.elements)[serviceId] || [];
+                            state.selectedServiceId = serviceId;
+                            const items = state.serviceItems[serviceId];
+                            const index = items.findIndex((item) => item._worshipSectionKey === 'offering' && item.label === '봉헌찬송');
+                            const beforeTitle = items[index]?.raw_title || '';
+                            const input = document.createElement('input');
+                            input.dataset.serviceItemField = 'raw_title';
+                            input.dataset.serviceItemIndex = String(index);
+                            input.value = '봉헌특송';
+                            updateServiceItemField(input);
+                            const afterItem = state.serviceItems[serviceId][index] || {};
+                            const afterMemo = parseServiceItemMemo(afterItem.memo);
+                            const legacyMemo = parseServiceItemMemo(JSON.stringify({ outputMode: 'score' }));
+                            const templateOffering = serviceOrderTemplate('sunday-main')
+                              .find((step) => (step.sectionKey || step.section_key) === 'offering')
+                              ?.elements?.find((element) => element.label === '봉헌찬송') || {};
+                            state.services = previousServices;
+                            if (previousItems === undefined) delete state.serviceItems[serviceId];
+                            else state.serviceItems[serviceId] = previousItems;
+                            state.selectedServiceId = previousSelectedServiceId;
                             state.dirty.service = previousDirty;
                             return {
-                              before,
-                              fieldLabel: host.querySelector('[data-service-template-step-field="form_hint"]')?.closest('label')?.querySelector('small')?.textContent.trim() || '',
-                              stepFormHint: updatedStep.formHint || '',
-                              serializedFormHint: serialized.formHint || '',
-                              serializedForms: serialized.formPreset?.forms || [],
-                              serializedStrength: serialized.formPreset?.strength || '',
-                              serializedDefaultStrength: serialized.defaultStrength || '',
-                              serializedOrder: serialized.orderSheet?.order || '',
-                              serializedGroup: serialized.orderSheet?.group || ''
+                              label: afterItem.label || '',
+                              sectionKey: afterItem._worshipSectionKey || '',
+                              beforeTitle,
+                              afterTitle: afterItem.raw_title || '',
+                              orderSheet: parseServiceItemMemo(afterItem.memo).orderSheet?.order || '',
+                              outputMode: afterMemo.outputMode || '',
+                              effectiveOutputMode: serviceItemOutputMode(afterItem, afterMemo),
+                              legacyEffectiveOutputMode: serviceItemOutputMode({ ...afterItem, memo: JSON.stringify({ outputMode: 'score' }) }, legacyMemo),
+                              templateTitle: templateOffering.default_text || '',
+                              templateLabel: templateOffering.label || ''
                             };
                           })(),
-                          templateElementEditor: (() => {
-                            const typeId = '__smoke_template_element__';
-                            const previousDirty = state.dirty.service;
-                            const previousDirtyTypeIds = new Set(state.dirtyServiceTypeIds);
-                            state.serviceTypes = state.serviceTypes.filter((type) => type.id !== typeId);
-                            state.serviceTypes.push({
-                              id: typeId,
-                              name: 'Smoke Template Element',
-                              sort_order: 9999,
-                              order_template: [{
-                                label: '봉헌',
-                                name: '봉헌',
-                                phase: 'Response',
-                                elements: [{
-                                  label: '봉헌',
-                                  name: '봉헌찬양',
-                                  elementType: 'praise',
-                                  default_text: '이런 교회 되게 하소서',
-                                  formHint: 'V-C',
-                                  orderSheet: { order: '봉헌', group: 'praise' }
-                                }, {
-                                  label: '봉헌기도',
-                                  name: '봉헌기도',
-                                  elementType: 'title_person',
-                                  orderSheet: { order: '봉헌기도' }
-                                }]
-                              }]
-                            });
-                            const steps = ensureServiceOrderTemplate(typeId);
-                            const host = document.createElement('div');
-                            host.innerHTML = renderServiceTemplateStepRow(typeId, steps[0], 0, 1);
-                            const formInput = host.querySelector('[data-service-template-element-field="form_hint"][data-element-index="0"]');
-                            const orderInput = host.querySelector('[data-service-template-element-field="order_sheet"][data-element-index="0"]');
-                            const typeSelect = host.querySelector('[data-service-template-element-field="element_type"][data-element-index="1"]');
-                            const before = formInput?.value || '';
-                            formInput.value = 'V2-C';
-                            updateServiceTemplateElementField(formInput);
-                            orderInput.value = '봉헌찬양';
-                            updateServiceTemplateElementField(orderInput);
-                            typeSelect.value = 'title_person';
-                            updateServiceTemplateElementField(typeSelect);
-                            const snapshots = [];
-                            runServiceTemplateElementAction('add-after', typeId, 0, 0);
-                            snapshots.push((ensureServiceOrderTemplate(typeId)[0]?.elements || []).map((item) => item.label || item.name || ''));
-                            runServiceTemplateElementAction('down', typeId, 0, 1);
-                            snapshots.push((ensureServiceOrderTemplate(typeId)[0]?.elements || []).map((item) => item.label || item.name || ''));
-                            runServiceTemplateElementAction('up', typeId, 0, 2);
-                            snapshots.push((ensureServiceOrderTemplate(typeId)[0]?.elements || []).map((item) => item.label || item.name || ''));
-                            runServiceTemplateElementAction('delete', typeId, 0, 1);
-                            snapshots.push((ensureServiceOrderTemplate(typeId)[0]?.elements || []).map((item) => item.label || item.name || ''));
-                            const updatedElements = ensureServiceOrderTemplate(typeId)[0]?.elements || [];
-                            const serializedElements = serializeServiceOrderTemplate(typeId)[0]?.elements || [];
-                            state.serviceTypes = state.serviceTypes.filter((type) => type.id !== typeId);
-                            state.dirtyServiceTypeIds = previousDirtyTypeIds;
-                            state.dirty.service = previousDirty;
-                            return {
-                              before,
-                              rowCount: host.querySelectorAll('.svc-template-element-row').length,
-                              actionButtons: host.querySelectorAll('[data-service-template-element-action]').length,
-                              fieldLabels: [...host.querySelectorAll('.svc-template-element-field small')].map((node) => node.textContent.trim()).slice(0, 5),
-                              snapshots,
-                              firstFormHint: updatedElements[0]?.formHint || '',
-                              firstForms: updatedElements[0]?.formPreset?.forms || [],
-                              firstStrength: updatedElements[0]?.formPreset?.strength || '',
-                              serializedFirstOrder: serializedElements[0]?.orderSheet?.order || '',
-                              serializedFirstGroup: serializedElements[0]?.orderSheet?.group || '',
-                              serializedFirstForms: serializedElements[0]?.formPreset?.forms || [],
-                              serializedFirstStrength: serializedElements[0]?.formPreset?.strength || '',
-                              serializedSecondType: serializedElements[1]?.elementType || ''
+                          legacyHierarchyCleanup: (() => {
+                            const service = {
+                              id: '__smoke_legacy_hierarchy__',
+                              type_id: 'sunday-main',
+                              date: '2026-07-05'
                             };
+                            const sectionIds = {
+                              sending: '11111111-1111-4111-8111-111111111111',
+                              closing: '22222222-2222-4222-8222-222222222222',
+                              oldBenediction: '33333333-3333-4333-8333-333333333333',
+                              oldLordsPrayer: '44444444-4444-4444-8444-444444444444',
+                              oldClosingHymn: '55555555-5555-4555-8555-555555555555'
+                            };
+                            const item = (id, label, key, sectionId, order) => normalizeServiceItem({
+                              id,
+                              service_id: service.id,
+                              sort_order: order,
+                              label,
+                              raw_title: label,
+                              _worshipSectionId: sectionId,
+                              _worshipSectionKey: key,
+                              _worshipSectionTitle: label,
+                              _worshipSectionOrder: order,
+                              _worshipElementOrder: 1,
+                              memo: serializeServiceItemMemo({ elementType: label === '폐회찬송' ? 'praise' : 'title_person' })
+                            });
+                            const items = [
+                              item('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', '축도', 'benediction', sectionIds.oldBenediction, 3),
+                              item('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', '주기도문', 'lords_prayer', sectionIds.oldLordsPrayer, 4),
+                              item('cccccccc-cccc-4ccc-8ccc-cccccccccccc', '마무리', 'closing_visual', sectionIds.closing, 5),
+                              item('dddddddd-dddd-4ddd-8ddd-dddddddddddd', '폐회찬송', 'closing_hymn', sectionIds.oldClosingHymn, 2),
+                            ];
+                            const normalized = normalizeServiceItemsForTemplateHierarchy(service, items);
+                            const sections = [
+                              { id: sectionIds.sending, service_id: service.id, sort_order: 14, section_key: 'sending', title: '파송', source_ref: {}, config: {} },
+                              { id: sectionIds.closing, service_id: service.id, sort_order: 15, section_key: 'closing_visual', title: '폐회', source_ref: {}, config: {} },
+                              { id: sectionIds.oldBenediction, service_id: service.id, sort_order: 9, section_key: 'benediction', title: '축도', source_ref: {}, config: {} },
+                              { id: sectionIds.oldLordsPrayer, service_id: service.id, sort_order: 10, section_key: 'lords_prayer', title: '주기도문', source_ref: {}, config: {} },
+                              { id: sectionIds.oldClosingHymn, service_id: service.id, sort_order: 11, section_key: 'closing_hymn', title: '폐회찬송', source_ref: {}, config: {} },
+                            ];
+                            const existingSectionById = Object.fromEntries(sections.map((section) => [section.id, section]));
+                            const existingElementById = Object.fromEntries(items.map((row) => [row.id, { id: row.id, section_id: row._worshipSectionId, source_ref: {}, config: {} }]));
+                            const rows = buildWorshipPersistenceRows(service, normalized, existingSectionById, existingElementById);
+                            return {
+                              normalized: normalized.map((row) => ({
+                                label: row.label,
+                                key: row._worshipSectionKey,
+                                title: row._worshipSectionTitle,
+                                sectionId: row._worshipSectionId
+                              })),
+                              persistedSections: rows.sections.map((section) => ({
+                                id: section.id,
+                                key: section.section_key,
+                                title: section.title
+                              })),
+                              persistedElementSections: rows.elements.map((element) => ({
+                                id: element.id,
+                                sectionId: element.section_id
+                              }))
+                            };
+                          })(),
+                          sundayFirstSendingPrune: (() => {
+                            const sectionId = '66666666-6666-4666-8666-666666666666';
+                            const item = (id, label, key, order) => normalizeServiceItem({
+                              id,
+                              service_id: '__smoke_sunday_first_sending__',
+                              sort_order: order,
+                              label,
+                              raw_title: label,
+                              _worshipSectionId: sectionId,
+                              _worshipSectionKey: key,
+                              _worshipSectionTitle: label,
+                              _worshipSectionOrder: order,
+                              _worshipElementOrder: order,
+                              memo: serializeServiceItemMemo({ elementType: label === '주기도문' ? 'body' : 'title_person' })
+                            });
+                            const items = [
+                              item('77777777-7777-4777-8777-777777777777', '축도', 'benediction', 1),
+                              item('88888888-8888-4888-8888-888888888888', '주기도문', 'lords_prayer', 2),
+                            ];
+                            const layLeader = normalizeServiceItemsForTemplateHierarchy(
+                              { id: '__smoke_sunday_first_lay__', type_id: 'sunday-first', worshipLeader: '인도자' },
+                              items,
+                            ).map((row) => row.label);
+                            const pastorLeader = normalizeServiceItemsForTemplateHierarchy(
+                              { id: '__smoke_sunday_first_pastor_existing__', type_id: 'sunday-first', worshipLeader: '김남영 목사' },
+                              items,
+                            ).map((row) => row.label);
+                            return { layLeader, pastorLeader };
                           })(),
                           cards: document.querySelectorAll('.svc-template-draft-card, .svc-template-inventory-card').length,
                           overflow: Math.max(document.documentElement.scrollWidth - window.innerWidth, document.body.scrollWidth - window.innerWidth)
@@ -1580,12 +1626,12 @@ def main() -> int:
                     if (
                         template_terms["levels"] == ["Service", "Section", "Element", "Slide"]
                         and template_terms["monthlyFirst"] == {"label": "준비", "elementType": "video"}
-                        and template_terms["monthlyScaffold"]["sections"] == 13
+                        and template_terms["monthlyScaffold"]["sections"] == 12
                         and template_terms["monthlyScaffold"]["elements"] == 24
                         and template_terms["monthlyScaffold"]["firstSection"] == "준비"
                         and template_terms["monthlyScaffold"]["firstElementType"] == "video"
                         and "monthly_prayer" in template_terms["monthlyScaffold"]["sectionKeys"]
-                        and "closing_song" in template_terms["monthlyScaffold"]["sectionKeys"]
+                        and "sending" in template_terms["monthlyScaffold"]["sectionKeys"]
                         and "closing_visual" in template_terms["monthlyScaffold"]["sectionKeys"]
                         and template_terms["monthlyScaffold"]["praiseElements"][:2] == [
                             {"type": "title_content", "label": "환영", "order": ""},
@@ -1607,15 +1653,26 @@ def main() -> int:
                                 {"type": "title_person", "label": "결단기도", "order": "결단기도"},
                             ],
                         }
-                        and template_terms["monthlyScaffold"]["closingSection"]["title"] == "찬양"
-                        and template_terms["monthlyScaffold"]["closingSection"]["elements"] == [{"type": "praise", "label": "찬양", "order": "찬양"}]
-                        and template_terms["monthlyScaffold"]["closingVisualSection"]["title"] == "마무리"
-                        and template_terms["monthlyScaffold"]["closingVisualSection"]["elements"] == [{
-                            "type": "image",
-                            "label": "마무리",
-                            "order": "",
-                            "assetUrl": "assets/worship-templates/public-closing.png",
-                        }]
+                        and template_terms["monthlyScaffold"]["closingSection"]["title"] == "폐회"
+                        and template_terms["monthlyScaffold"]["closingSection"]["elements"] == [
+                            {"type": "praise", "label": "찬양", "order": "찬양"},
+                            {"type": "image", "label": "마무리", "order": ""},
+                        ]
+                        and template_terms["monthlyScaffold"]["closingVisualSection"]["title"] == "폐회"
+                        and template_terms["monthlyScaffold"]["closingVisualSection"]["elements"] == [
+                            {
+                                "type": "praise",
+                                "label": "찬양",
+                                "order": "찬양",
+                                "assetUrl": "",
+                            },
+                            {
+                                "type": "image",
+                                "label": "마무리",
+                                "order": "",
+                                "assetUrl": "assets/worship-templates/public-closing.png",
+                            },
+                        ]
                         and template_terms["monthlyScaffold"]["offeringDefaults"][0] == {
                             "label": "봉헌",
                             "title": "이런 교회 되게 하소서",
@@ -1653,45 +1710,162 @@ def main() -> int:
                             {"type": "praise", "label": "봉헌찬송", "order": "봉헌", "outputMode": "score"},
                             {"type": "title_person", "label": "봉헌기도", "order": "봉헌기도", "outputMode": ""},
                         ]
+                        and template_terms["sundayPublicScaffold"]["first"]["sermonElements"] == [
+                            {"type": "title_person", "label": "설교 제목", "order": "설교", "outputMode": ""},
+                            {"type": "scripture_body", "label": "설교 본문", "order": "", "outputMode": ""},
+                            {"type": "activity", "label": "실시간 성구 송출", "order": "", "outputMode": ""},
+                        ]
+                        and template_terms["sundayPublicScaffold"]["second"]["sermonElements"] == [
+                            {"type": "title_person", "label": "설교 제목", "order": "설교", "outputMode": ""},
+                            {"type": "scripture_body", "label": "설교 본문", "order": "", "outputMode": ""},
+                            {"type": "activity", "label": "실시간 성구 송출", "order": "", "outputMode": ""},
+                        ]
+                        and template_terms["sundayPublicScaffold"]["second"]["prayerElements"] == [
+                            {"type": "title_person", "label": "기도", "order": "대표기도", "outputMode": ""}
+                        ]
+                        and template_terms["sundayPublicScaffold"]["first"]["announcementsElements"] == [
+                            {"type": "plain_text", "label": "교회소식", "order": "교회소식", "outputMode": ""}
+                        ]
+                        and template_terms["sundayPublicScaffold"]["second"]["announcementsElements"] == [
+                            {"type": "plain_text", "label": "교회소식", "order": "교회소식", "outputMode": ""}
+                        ]
+                        and template_terms["sundayPublicScaffold"]["first"]["sendingElements"] == [
+                            {"type": "praise", "label": "송영", "order": "송영", "outputMode": "score"},
+                            {"type": "body", "label": "주기도문", "order": "주기도문", "introTitle": "주기도문", "outputMode": ""},
+                        ]
+                        and template_terms["sundayPublicScaffold"]["firstPastor"]["sendingElements"] == [
+                            {"type": "praise", "label": "송영", "order": "송영", "outputMode": "score"},
+                            {"type": "title_person", "label": "축도", "order": "축도", "outputMode": ""},
+                        ]
                         and set(template_terms["sundayPublicScaffold"]["first"]["scoreSlots"]) == {
                             "praise:찬양 1",
                             "praise:찬양 2",
                             "praise:찬양 3",
                             "offering:봉헌찬송",
-                            "doxology:송영",
+                            "sending:송영",
                         }
                         and set(template_terms["sundayPublicScaffold"]["second"]["scoreSlots"]) == {
                             "praise:찬양 1",
                             "praise:찬양 2",
                             "praise:찬양 3",
                             "offering:봉헌찬송",
-                            "doxology:송영",
+                            "sending:송영",
+                        }
+                        and template_terms["sundayPublicScaffold"]["afternoon"]["titles"] == [
+                            "준비",
+                            "찬양",
+                            "묵도",
+                            "찬송",
+                            "대표기도",
+                            "성경봉독",
+                            "설교",
+                            "결단",
+                            "교회소식",
+                            "파송",
+                            "폐회",
+                        ]
+                        and template_terms["sundayPublicScaffold"]["afternoon"]["silentPrayerElements"] == [
+                            {"type": "title", "label": "묵도", "order": "묵도", "outputMode": ""}
+                        ]
+                        and template_terms["sundayPublicScaffold"]["afternoon"]["hymnElements"] == [
+                            {"type": "praise", "label": "찬송", "order": "찬송", "outputMode": "score"}
+                        ]
+                        and template_terms["sundayPublicScaffold"]["afternoon"]["prayerElements"] == [
+                            {"type": "title_person", "label": "기도", "order": "대표기도", "outputMode": ""}
+                        ]
+                        and template_terms["sundayPublicScaffold"]["afternoon"]["scriptureElements"] == [
+                            {"type": "scripture_reading", "label": "성경봉독", "order": "성경봉독", "outputMode": ""},
+                            {"type": "scripture_body", "label": "성경 본문", "order": "", "outputMode": ""},
+                        ]
+                        and template_terms["sundayPublicScaffold"]["afternoon"]["sermonElements"] == [
+                            {"type": "title_person", "label": "설교 제목", "person": "김남영 목사", "order": "설교", "assignee": "김남영 목사", "outputMode": ""},
+                            {"type": "scripture_body", "label": "설교 본문", "order": "", "outputMode": ""},
+                            {"type": "activity", "label": "실시간 성구 송출", "order": "", "outputMode": ""},
+                        ]
+                        and template_terms["sundayPublicScaffold"]["afternoon"]["sendingElements"] == [
+                            {"type": "praise", "label": "송영", "order": "송영", "outputMode": "score"},
+                            {"type": "title_person", "label": "축도", "person": "김남영 목사", "order": "축도", "assignee": "김남영 목사", "outputMode": ""},
+                        ]
+                        and template_terms["sundayPublicScaffold"]["afternoon"]["doxologyDefaults"] == [
+                            {"sectionKey": "sending", "title": "찬 1장"}
+                        ]
+                        and set(template_terms["sundayPublicScaffold"]["afternoon"]["scoreSlots"]) == {
+                            "hymn_praise:찬송",
+                            "sending:송영",
                         }
                         and "사죄의선언" not in template_terms["sundayPublicScaffold"]["third"]["titles"]
                         and "공동체고백" in template_terms["sundayPublicScaffold"]["third"]["titles"]
+                        and template_terms["sundayPublicScaffold"]["third"]["communityElements"][0]["type"] == "body"
+                        and template_terms["sundayPublicScaffold"]["third"]["communityElements"][0]["label"] == "공동체고백"
+                        and template_terms["sundayPublicScaffold"]["third"]["communityElements"][0]["introTitle"] == "공동체고백"
+                        and any(
+                            item.get("text") == "예배자" and item.get("color") == "#FFC832"
+                            for item in template_terms["sundayPublicScaffold"]["third"]["communityElements"][0]["textHighlights"]
+                        )
+                        and any(
+                            item.get("text") == "검단우리교회 공동체" and item.get("bold") is True
+                            for item in template_terms["sundayPublicScaffold"]["third"]["communityElements"][0]["textHighlights"]
+                        )
                         and "아멘송" not in template_terms["sundayPublicScaffold"]["third"]["titles"]
-                        and "폐회찬송" in template_terms["sundayPublicScaffold"]["third"]["titles"]
+                        and "폐회" in template_terms["sundayPublicScaffold"]["third"]["titles"]
                         and template_terms["sundayPublicScaffold"]["third"]["praiseElements"][:2] == [
                             {"type": "title_content", "label": "환영", "order": "", "outputMode": ""},
                             {"type": "praise", "label": "찬양 1", "order": "찬양", "outputMode": ""},
                         ]
+                        and [
+                            item["label"]
+                            for item in template_terms["sundayPublicScaffold"]["third"]["praiseElements"]
+                        ] == ["환영", "찬양 1", "찬양 2", "찬양 3", "찬양 4", "입례 찬양"]
+                        and template_terms["sundayPublicScaffold"]["third"]["praiseElements"][-1] == {
+                            "type": "praise",
+                            "label": "입례 찬양",
+                            "order": "입례 찬양",
+                            "formHint": "V-V-C-V-V-C",
+                            "forms": ["V", "V", "C", "V", "V", "C"],
+                            "strength": "default",
+                            "outputMode": "",
+                        }
+                        and template_terms["sundayPublicScaffold"]["third"]["sermonElements"] == [
+                            {"type": "title_person", "label": "설교 제목", "order": "설교", "outputMode": ""},
+                            {"type": "scripture_body", "label": "설교 본문", "order": "", "outputMode": ""},
+                            {"type": "activity", "label": "실시간 성구 송출", "order": "", "outputMode": ""},
+                        ]
+                        and template_terms["sundayPublicScaffold"]["third"]["sendingElements"] == [
+                            {
+                                "type": "praise",
+                                "label": "파송찬송",
+                                "order": "파송찬송",
+                                "formHint": "V1-V2-C-간주-V3-C-C",
+                                "forms": ["V1", "V2", "C", "간주", "V3", "C", "C"],
+                                "strength": "default",
+                                "outputMode": "",
+                            },
+                            {"type": "title_person", "label": "축도", "order": "축도", "outputMode": ""},
+                        ]
                         and template_terms["sundayPublicScaffold"]["third"]["closingHymnDefaults"] == [{
                             "type": "praise",
                             "label": "폐회찬송",
-                            "title": "십자가 군병들아",
+                            "title": "352 십자가 군병들아",
+                            "formHint": "V1A-간주-V1-V2-간주-V4-V1B",
+                            "forms": ["V1A", "간주", "V1", "V2", "간주", "V4", "V1B"],
+                            "strength": "default",
                             "orderSheetHidden": True,
                         }]
+                        and [
+                            item["label"]
+                            for item in template_terms["sundayPublicScaffold"]["third"]["closingElements"]
+                        ] == ["마무리", "폐회찬송"]
                         and template_terms["sundayPublicScaffold"]["third"]["keys"].count("praise") == 1
                         and "hymn_praise" in template_terms["sundayPublicScaffold"]["third"]["keys"]
                         and set(template_terms["sundayPublicScaffold"]["third"]["scoreSlots"]) == {
-                            "hymn_praise:찬송",
-                            "offering:봉헌찬송",
+	                            "hymn_praise:찬송",
+	                            "offering:봉헌찬송",
                         }
                         and template_terms["sundayPublicScaffold"]["afternoon"]["titles"][:4] == ["준비", "찬양", "묵도", "찬송"]
                         and "hymn_praise" in template_terms["sundayPublicScaffold"]["afternoon"]["keys"]
                         and set(template_terms["sundayPublicScaffold"]["afternoon"]["scoreSlots"]) == {
                             "hymn_praise:찬송",
-                            "doxology:송영",
+                            "sending:송영",
                         }
                         and all(item["lastLabel"] == "마무리" for item in template_terms["commonClosingTemplates"])
                         and all(item["lastSectionKey"] == "closing_visual" for item in template_terms["commonClosingTemplates"])
@@ -1714,36 +1888,59 @@ def main() -> int:
                             "defaultLeader": "이재희 청년",
                             "monthlyDefaultLeader": "",
                         }
-                        and template_terms["templateFormEditor"] == {
-                            "before": "V1-C",
-                            "fieldLabel": "송폼",
-                            "stepFormHint": "V2-C",
-                            "serializedFormHint": "V2-C",
-                            "serializedForms": ["V2", "C"],
-                            "serializedStrength": "manual",
-                            "serializedDefaultStrength": "manual",
-                            "serializedOrder": "찬양",
-                            "serializedGroup": "praise",
+                        and template_terms["serviceInstanceOverride"] == {
+                            "label": "봉헌찬송",
+                            "sectionKey": "offering",
+                            "beforeTitle": "",
+                            "afterTitle": "봉헌특송",
+                            "orderSheet": "봉헌",
+                            "outputMode": "",
+                            "effectiveOutputMode": "",
+                            "legacyEffectiveOutputMode": "",
+                            "templateTitle": "",
+                            "templateLabel": "봉헌찬송",
                         }
-                        and template_terms["templateElementEditor"] == {
-                            "before": "V-C",
-                            "rowCount": 2,
-                            "actionButtons": 9,
-                            "fieldLabels": ["엘리먼트", "기본 항목", "타입", "순서지", "송폼"],
-                            "snapshots": [
-                                ["봉헌", "새 엘리먼트", "봉헌기도"],
-                                ["봉헌", "봉헌기도", "새 엘리먼트"],
-                                ["봉헌", "새 엘리먼트", "봉헌기도"],
-                                ["봉헌", "봉헌기도"],
-                            ],
-                            "firstFormHint": "V2-C",
-                            "firstForms": ["V2", "C"],
-                            "firstStrength": "manual",
-                            "serializedFirstOrder": "봉헌찬양",
-                            "serializedFirstGroup": "praise",
-                            "serializedFirstForms": ["V2", "C"],
-                            "serializedFirstStrength": "manual",
-                            "serializedSecondType": "title_person",
+	                        and template_terms["legacyHierarchyCleanup"]["normalized"] == [
+	                            {
+	                                "label": "주기도문",
+	                                "key": "sending",
+	                                "title": "파송",
+	                                "sectionId": "33333333-3333-4333-8333-333333333333",
+	                            },
+	                            {
+	                                "label": "축도",
+	                                "key": "sending",
+	                                "title": "파송",
+	                                "sectionId": "33333333-3333-4333-8333-333333333333",
+	                            },
+                            {
+                                "label": "마무리",
+                                "key": "closing_visual",
+                                "title": "폐회",
+                                "sectionId": "22222222-2222-4222-8222-222222222222",
+                            },
+                            {
+                                "label": "폐회찬송",
+                                "key": "closing_visual",
+                                "title": "폐회",
+                                "sectionId": "22222222-2222-4222-8222-222222222222",
+                            },
+                        ]
+                        and template_terms["legacyHierarchyCleanup"]["persistedSections"] == [
+                            {
+                                "id": "33333333-3333-4333-8333-333333333333",
+                                "key": "sending",
+                                "title": "파송",
+                            },
+                            {
+                                "id": "22222222-2222-4222-8222-222222222222",
+                                "key": "closing_visual",
+                                "title": "폐회",
+                            },
+                        ]
+                        and template_terms["sundayFirstSendingPrune"] == {
+                            "layLeader": ["주기도문"],
+                            "pastorLeader": ["축도"],
                         }
                         and len(template_terms["monthlyScaffold"]["monthlyPrayerElements"]) == 5
                         and len(template_terms["monthlyScaffold"]["offeringElements"]) == 2
@@ -1753,6 +1950,187 @@ def main() -> int:
                         pass_("service-template-terminology", json.dumps(template_terms, ensure_ascii=False))
                     else:
                         fail("service-template-terminology", json.dumps(template_terms, ensure_ascii=False))
+
+                    strict_song_picker = page.evaluate(
+                        """
+                        (() => {
+                          const previous = {
+                            songs: state.songs,
+                            services: state.services,
+                            serviceItems: state.serviceItems,
+                            selectedServiceId: state.selectedServiceId,
+                            selectedServiceTypeId: state.selectedServiceTypeId,
+                            dirtyService: state.dirty.service,
+                          };
+                          const service = { id: '__smoke_strict_song_service__', type_id: 'sunday-first', date: '2099-07-05', title: '' };
+                          const hymn = {
+                            id: '__smoke_hymn_song__',
+                            title: '만복의 근원 하나님',
+                            hymn_no: '1',
+                            subtitle: 'Doxology',
+                            metadata: {},
+                            praise_types: ['hymn'],
+                          };
+                          hymn.versions = normalizeSongVersions(hymn, [
+                            { id: '__smoke_hymn_new__', name: '새찬송가', praise_types: ['hymn'], forms: [] },
+                            { id: '__smoke_hymn_unified__', name: '통일 1', hymn_no: '통 1', praise_types: ['hymn'], forms: [] },
+                          ]);
+                          const ccm = {
+                            id: '__smoke_ccm_song__',
+                            title: '은혜',
+                            subtitle: '내가 누려왔던 모든 것들이',
+                            metadata: { artist: '손경민' },
+                            praise_types: ['ccm'],
+                          };
+                          ccm.versions = normalizeSongVersions(ccm, [
+                            { id: '__smoke_ccm_v1__', name: 'Original', praise_types: ['ccm'], forms: [] },
+                            { id: '__smoke_ccm_v2__', name: 'Female Key', praise_types: ['ccm'], forms: [] },
+                          ]);
+                          try {
+                            state.songs = [hymn, ccm];
+                            state.services = [service];
+                            state.selectedServiceId = service.id;
+                            state.selectedServiceTypeId = service.type_id;
+                            const strictItem = normalizeServiceItem({
+                              service_id: service.id,
+                              label: '찬양 1',
+                              raw_title: '',
+                              memo: serializeServiceItemMemo({ elementType: 'praise' }),
+                            }, 0);
+                            const scoreItem = normalizeServiceItem({
+                              service_id: service.id,
+                              label: '봉헌찬송',
+                              raw_title: '',
+                              memo: serializeServiceItemMemo({ elementType: 'praise', outputMode: 'score' }),
+                            }, 1);
+                            state.serviceItems = { [service.id]: [strictItem, scoreItem] };
+                            updateServiceItemField({
+                              dataset: { serviceItemIndex: '0', serviceItemField: 'raw_title' },
+                              value: '은혜',
+                            });
+                            const typed = state.serviceItems[service.id][0];
+                            const typedSongId = typed.song_id || '';
+                            const typedVersionId = typed.version_id || '';
+                            const strictResults = serviceSongPickerResults('은혜', strictItem, service).map((song) => song.id);
+                            const scoreCcmResults = serviceSongPickerResults('은혜', scoreItem, service).map((song) => song.id);
+                            const scoreHymnResults = serviceSongPickerResults('만복', scoreItem, service).map((song) => song.id);
+                            selectServiceSongForItem(0, ccm.id);
+                            const selected = state.serviceItems[service.id][0];
+                            const selectedVersionImmediately = selected.version_id || '';
+                            const invalidAfterSong = serviceItemSongSelectionInvalid(selected, service);
+                            updateServiceItemField({
+                              dataset: { serviceItemIndex: '0', serviceItemField: 'version_id' },
+                              value: '__smoke_ccm_v2__',
+                            });
+                            const withVersion = state.serviceItems[service.id][0];
+                            const oneOffThirdSpecial = normalizeServiceItem({
+                              service_id: service.id,
+                              label: '특송',
+                              raw_title: '청년부 특송',
+                              memo: serializeServiceItemMemo({ elementType: 'praise' }),
+                            }, 2);
+                            return {
+                              strictRequires: serviceItemRequiresSongSelection(strictItem, service),
+                              typedSongId,
+                              typedVersionId,
+                              strictResults,
+                              scoreCcmResults,
+                              scoreHymnResults,
+                              selectedSongId: selected.song_id || '',
+                              selectedVersionId: selectedVersionImmediately,
+                              invalidAfterSong,
+                              selectedVersionAfterPick: withVersion.version_id || '',
+                              invalidAfterVersion: serviceItemSongSelectionInvalid(withVersion, service),
+                              renderedHasPicker: renderServiceEditorTitleControl(strictItem, 0, { service }, serviceItemEditorModel(strictItem, { service })).includes('svc-song-picker'),
+                              thirdSpecialManual: serviceItemAllowsManualSongText(oneOffThirdSpecial, { ...service, type_id: 'sunday-main' }),
+                            };
+                          } finally {
+                            state.songs = previous.songs;
+                            state.services = previous.services;
+                            state.serviceItems = previous.serviceItems;
+                            state.selectedServiceId = previous.selectedServiceId;
+                            state.selectedServiceTypeId = previous.selectedServiceTypeId;
+                            state.dirty.service = previous.dirtyService;
+                            renderCurrentServiceModuleDetail();
+                          }
+                        })()
+                        """
+                    )
+                    if (
+                        strict_song_picker["strictRequires"]
+                        and strict_song_picker["typedSongId"] == ""
+                        and strict_song_picker["typedVersionId"] == ""
+                        and strict_song_picker["strictResults"] == ["__smoke_ccm_song__"]
+                        and "__smoke_ccm_song__" not in strict_song_picker["scoreCcmResults"]
+                        and strict_song_picker["scoreHymnResults"] == ["__smoke_hymn_song__"]
+                        and strict_song_picker["selectedSongId"] == "__smoke_ccm_song__"
+                        and strict_song_picker["selectedVersionId"] == ""
+                        and strict_song_picker["invalidAfterSong"]
+                        and strict_song_picker["selectedVersionAfterPick"] == "__smoke_ccm_v2__"
+                        and not strict_song_picker["invalidAfterVersion"]
+                        and strict_song_picker["renderedHasPicker"]
+                        and strict_song_picker["thirdSpecialManual"]
+                    ):
+                        pass_("service-strict-song-picker", json.dumps(strict_song_picker, ensure_ascii=False))
+                    else:
+                        fail("service-strict-song-picker", json.dumps(strict_song_picker, ensure_ascii=False))
+
+                    service_title_normalization = page.evaluate(
+                        """
+                        () => ({
+                          monthly: serviceDisplayTypeName({
+                            type_id: 'monthly',
+                            title: '7월 월삭예배',
+                            date: '2026-07-03',
+                          }),
+                          otherMonth: serviceDisplayTypeName({
+                            type_id: 'monthly',
+                            title: '8월 월삭예배',
+                            date: '2026-07-03',
+                          }),
+                          monthlyCustomTitle: serviceDisplayTypeName({
+                            type_id: 'monthly',
+                            title: '청년 연합 월삭예배',
+                            date: '2026-07-03',
+                          }),
+                          specialCustomTitle: serviceDisplayTypeName({
+                            type_id: 'special',
+                            title: '청년 연합 월삭예배',
+                            date: '2026-07-03',
+                          }),
+                          normalizedRowTitle: normalizeWorshipService({
+                            id: '__title_normalization__',
+                            service_type_id: 'monthly',
+                            service_date: '2026-07-03',
+                            title: '7월 월삭예배',
+                          }).title,
+                          normalizedOtherMonthRowTitle: normalizeWorshipService({
+                            id: '__title_normalization_other__',
+                            service_type_id: 'monthly',
+                            service_date: '2026-07-03',
+                            title: '8월 월삭예배',
+                          }).title,
+                          normalizedSundayRowTitle: normalizeWorshipService({
+                            id: '__title_normalization_sunday__',
+                            service_type_id: 'sunday-first',
+                            service_date: '2026-07-05',
+                            title: '7월 주일예배 [1부]',
+                          }).title,
+                        })
+                        """
+                    )
+                    if service_title_normalization == {
+                        "monthly": "월삭예배",
+                        "otherMonth": "월삭예배",
+                        "monthlyCustomTitle": "월삭예배",
+                        "specialCustomTitle": "청년 연합 월삭예배",
+                        "normalizedRowTitle": "월삭예배",
+                        "normalizedOtherMonthRowTitle": "월삭예배",
+                        "normalizedSundayRowTitle": "주일예배 [1부]",
+                    }:
+                        pass_("service-title-normalization", json.dumps(service_title_normalization, ensure_ascii=False))
+                    else:
+                        fail("service-title-normalization", json.dumps(service_title_normalization, ensure_ascii=False))
 
                 service_for_print = select_service_for_print(page)
                 if not service_for_print:
@@ -2051,7 +2429,8 @@ def main() -> int:
                             .map((row) => ({
                               slide: Number(row.dataset.serviceOutlineSlide),
                               start: row.querySelector('.service-outline-start')?.textContent.trim() || '',
-                              align: getComputedStyle(row.querySelector('.service-outline-start')).textAlign
+                              align: getComputedStyle(row.querySelector('.service-outline-start')).textAlign,
+                              child: row.classList.contains('service-outline-row--child')
                             })),
                           collapsedBoardSubgroups: document.querySelectorAll('.svc-board-subgroup.collapsed-head').length,
                           mainPraiseSubgroupLabels: (() => {
@@ -2113,7 +2492,7 @@ def main() -> int:
                     )
                     if (
                         "순서" in presenter_terms["sidebarHeadings"]
-                        and "편집" in presenter_terms["sidebarHeadings"]
+                        and "편집" not in presenter_terms["sidebarHeadings"]
                         and "최근 예배" not in presenter_terms["sidebarHeadings"]
                         and presenter_terms["outlineRows"] >= 2
                         and presenter_terms["outlineGroups"] >= 1
@@ -2121,17 +2500,17 @@ def main() -> int:
                         and presenter_terms["childPraiseMarkers"] == 0
                         and presenter_terms["outlineCountText"] == []
                         and all(
-                            item["start"] == str(item["slide"] + 1) and item["align"] == "right"
+                            (item["start"] == "" if item["child"] else item["start"] == str(item["slide"] + 1) and item["align"] == "right")
                             for item in presenter_terms["outlineStartNumbers"]
                         )
                         and presenter_terms["collapsedBoardSubgroups"] >= 1
                         and presenter_terms["mainPraiseSubgroupLabels"] == ["환영", "찬양 1"]
                         and presenter_terms["doxologyScoreSectionTitle"] == "송영"
                         and presenter_terms["readyShortcutRows"] <= 1
-                        and presenter_terms["editorFields"][:4] == ["섹션", "담당", "항목", "타입"]
+                        and presenter_terms["editorFields"] == []
                         and not presenter_terms["hasLegacyDrawer"]
-                        and presenter_terms["actionLabels"][:4] == ["항목 위로 이동", "항목 아래로 이동", "항목 복제", "항목 삭제"]
-                        and presenter_terms["elementTypes"][:11] == ["자동", "빈 화면", "제목", "동영상", "오디오", "이미지", "악보", "찬양", "말씀", "성경봉독", "성경 본문"]
+                        and presenter_terms["actionLabels"] == []
+                        and presenter_terms["elementTypes"] == []
                         and presenter_terms["status"] == "미리보기"
                         and presenter_terms["jumpLabel"] == "슬라이드로 이동"
                         and presenter_terms["controlLabels"][:3] == ["상태", "슬라이드", "음량"]
@@ -2144,7 +2523,8 @@ def main() -> int:
                         and "Windows/Linux: F11" in presenter_terms["helpText"]
                         and "번호 + Enter" in presenter_terms["helpText"]
                         and (
-                            "슬라이드로 이동" in presenter_terms["firstThumbLabel"]
+                            "슬라이드 선택" in presenter_terms["firstThumbLabel"]
+                            or "슬라이드로 이동" in presenter_terms["firstThumbLabel"]
                             or "준비 화면으로 이동" in presenter_terms["firstThumbLabel"]
                         )
                         and not presenter_terms["visibleBadTerms"]
@@ -2155,6 +2535,99 @@ def main() -> int:
                         pass_("presenter-terminology", json.dumps(presenter_terms, ensure_ascii=False))
                     else:
                         fail("presenter-terminology", json.dumps(presenter_terms, ensure_ascii=False))
+
+                    sorter_state = page.evaluate(
+                        """
+                        (serviceId) => {
+                          state.presenter.outputWindow = null;
+                          state.presenter.outputConnectedAt = 0;
+                          state.presenter.serviceId = null;
+                          state.presenterBoardSelection = {
+                            serviceId: null,
+                            elementKey: '',
+                            indexes: [],
+                            anchorIndex: null,
+                            drag: null,
+                            clipboard: null
+                          };
+                          renderPresenterDetail();
+                          const first = document.querySelector('.svc-slide-thumb[data-presenter-index][data-service-id]');
+                          first?.click();
+                          const selectedAfterClick = document.querySelectorAll('.svc-slide-thumb.selected').length;
+                          const activeAfterClick = document.querySelectorAll('.svc-slide-thumb.active').length;
+                          openPresenterSectionEditorForSlide(serviceId, Number(first?.dataset.presenterIndex || 0));
+                          const editor = document.querySelector('[data-presenter-section-editor]');
+                          const reference = parseBibleReference('ckd 1:1');
+                          const beforeItems = JSON.parse(JSON.stringify(state.serviceItems[serviceId] || []));
+                          const editableSectionKey = (() => {
+                            const counts = {};
+                            for (const item of state.serviceItems[serviceId] || []) {
+                              const key = item._worshipSectionKey || '';
+                              if (!key) continue;
+                              counts[key] = (counts[key] || 0) + 1;
+                            }
+                            return Object.entries(counts).find(([, count]) => count > 1)?.[0] || '';
+                          })();
+                          let editorContract = {};
+                          if (editableSectionKey) {
+                            state.presenterSectionEditor = { serviceId, itemId: '', sectionKey: `section-key:${editableSectionKey}` };
+                            renderPresenterDetail();
+                            const sectionInput = document.querySelector('[data-presenter-section-field="label"]');
+                            const contextBefore = presenterSectionEditorContext(state.services.find((svc) => svc.id === serviceId));
+                            const labelsBefore = (contextBefore?.sectionItems || []).map((item) => item.label);
+                            if (sectionInput) {
+                              sectionInput.value = '편집 섹션';
+                              updatePresenterSectionField(sectionInput);
+                            }
+                            const addRoot = document.querySelector('[data-presenter-section-editor]');
+                            const typeSelect = addRoot?.querySelector('[data-presenter-section-new-type]');
+                            const nameInput = addRoot?.querySelector('[data-presenter-section-new-name]');
+                            if (typeSelect && nameInput) {
+                              typeSelect.value = 'title';
+                              nameInput.value = '새 엘리멘트';
+                              runPresenterSectionItemAction('add', -1);
+                            }
+                            const contextAfter = presenterSectionEditorContext(state.services.find((svc) => svc.id === serviceId));
+                            editorContract = {
+                              sectionTitle: contextAfter?.sectionTitle || '',
+                              labelsPreserved: labelsBefore.every((label, index) => (contextAfter?.sectionItems || [])[index]?.label === label),
+                              addedElementLabel: (contextAfter?.sectionItems || []).some((item) => item.label === '새 엘리멘트'),
+                            };
+                          }
+                          const result = {
+                            selectedAfterClick,
+                            activeAfterClick,
+                            selectionService: state.presenterBoardSelection.serviceId || '',
+                            editorOpen: Boolean(editor),
+                            editorItems: editor ? editor.querySelectorAll('.presenter-section-editor-item').length : 0,
+                            editorHasAdd: Boolean(editor?.querySelector('[data-presenter-section-add]')),
+                            restoredReference: reference ? `${reference.book.code} ${reference.chapter}:${reference.verse}` : '',
+                            editorContract,
+                          };
+                          state.serviceItems[serviceId] = beforeItems;
+                          state.dirty.service = false;
+                          state.presenterSectionEditor = null;
+                          renderPresenterDetail();
+                          return result;
+                        }
+                        """,
+                        service_for_slides["id"],
+                    )
+                    if (
+                        sorter_state["selectedAfterClick"] == 1
+                        and sorter_state["activeAfterClick"] == 0
+                        and sorter_state["selectionService"] == service_for_slides["id"]
+                        and sorter_state["editorOpen"]
+                        and sorter_state["editorItems"] >= 1
+                        and sorter_state["editorHasAdd"]
+                        and sorter_state["restoredReference"] == "GEN 1:1"
+                        and sorter_state["editorContract"].get("sectionTitle") == "편집 섹션"
+                        and sorter_state["editorContract"].get("labelsPreserved")
+                        and sorter_state["editorContract"].get("addedElementLabel")
+                    ):
+                        pass_("presenter-sorter-and-editor", json.dumps(sorter_state, ensure_ascii=False))
+                    else:
+                        fail("presenter-sorter-and-editor", json.dumps(sorter_state, ensure_ascii=False))
 
                     outline_scroll_seed = page.evaluate(
                         """
@@ -2188,7 +2661,7 @@ def main() -> int:
                             text: row.textContent.replace(/\\s+/g, ' ').trim()
                           };
                         }
-                        """
+                        """,
                     )
                     if outline_scroll_seed:
                         page.click('[data-smoke-outline-scroll="1"]')
@@ -2202,7 +2675,8 @@ def main() -> int:
                                 expected,
                                 target,
                                 presenterIndex: state.presenter.index,
-                                activeThumbs: document.querySelectorAll(`.svc-slide-thumb.active[data-presenter-index="${expected.index}"]`).length
+                                activeThumbs: document.querySelectorAll(`.svc-slide-thumb.active[data-presenter-index="${expected.index}"]`).length,
+                                selectedThumbs: document.querySelectorAll(`.svc-slide-thumb.selected[data-presenter-index="${expected.index}"]`).length
                               };
                             }
                             """,
@@ -2213,8 +2687,10 @@ def main() -> int:
                             and outline_scroll_state["target"]["index"] == outline_scroll_seed["index"]
                             and outline_scroll_state["target"]["block"] == "center"
                             and outline_scroll_state["target"]["behavior"] == "smooth"
-                            and outline_scroll_state["presenterIndex"] == outline_scroll_seed["index"]
-                            and outline_scroll_state["activeThumbs"] >= 1
+                            and (
+                                outline_scroll_state["presenterIndex"] == outline_scroll_seed["index"]
+                                or outline_scroll_state["selectedThumbs"] >= 1
+                            )
                         ):
                             pass_("presenter-outline-scroll", json.dumps(outline_scroll_state, ensure_ascii=False))
                         else:
@@ -2249,23 +2725,23 @@ def main() -> int:
                         """,
                         service_for_slides["id"],
                     )
-                    page.wait_for_selector(".service-authoring-view .svc-prep-editor-body--inline", timeout=5000)
+                    page.wait_for_selector(".service-readonly-view .service-readonly-order", timeout=5000)
                     authoring_state = page.evaluate(
                         """
                         (() => {
-                          const root = document.querySelector('.service-authoring-view');
+                          const root = document.querySelector('.service-readonly-view');
                           const rect = root?.getBoundingClientRect();
-                          const body = root?.querySelector('.svc-prep-editor-body--inline')?.getBoundingClientRect();
+                          const body = root?.querySelector('.service-readonly-order')?.getBoundingClientRect();
                           return {
                             mounted: Boolean(root),
-                            title: document.querySelector('.service-authoring-view .svc-service-title')?.textContent.trim() || '',
-                            hasMeta: Boolean(document.querySelector('.service-authoring-view .svc-meta-editor')),
-                            hasTemplate: Boolean(document.querySelector('.service-authoring-view .svc-template-guide')),
-                            hasSetlist: Boolean(document.querySelector('.service-authoring-view .svc-setlist-composer')),
-                            hasEditorHeader: Boolean(document.querySelector('.service-authoring-view .svc-editor-header')),
+                            title: document.querySelector('.service-readonly-view .svc-service-title')?.textContent.trim() || '',
+                            hasMeta: Boolean(document.querySelector('.service-readonly-view .svc-meta-editor')),
+                            hasTemplate: Boolean(document.querySelector('.service-readonly-view .svc-template-guide')),
+                            hasSetlist: Boolean(document.querySelector('.service-readonly-view .svc-setlist-composer')),
+                            hasEditorHeader: Boolean(document.querySelector('.service-readonly-view .svc-editor-header')),
                             hasPresenterControls: Boolean(document.querySelector('#servicePresenterControls')),
-                            itemRows: document.querySelectorAll('.service-authoring-view [data-service-item-field="raw_title"]').length,
-                            addLabel: document.querySelector('.service-authoring-view [data-service-item-action="add"] span')?.textContent.trim() || '',
+                            readonlyGroups: document.querySelectorAll('.service-readonly-group').length,
+                            presenterLabel: document.querySelector('.service-readonly-view [data-open-presenter-service] span')?.textContent.trim() || '',
                             openState: state.servicePrepEditorOpenId || '',
                             width: Math.round(rect?.width || 0),
                             bodyHeight: Math.round(body?.height || 0),
@@ -2277,32 +2753,32 @@ def main() -> int:
                     if (
                         authoring_state["mounted"]
                         and authoring_state["title"]
-                        and authoring_state["hasMeta"]
-                        and authoring_state["hasTemplate"]
-                        and authoring_state["hasSetlist"]
-                        and authoring_state["hasEditorHeader"]
+                        and not authoring_state["hasMeta"]
+                        and not authoring_state["hasTemplate"]
+                        and not authoring_state["hasSetlist"]
+                        and not authoring_state["hasEditorHeader"]
                         and not authoring_state["hasPresenterControls"]
-                        and authoring_state["itemRows"] >= 1
-                        and authoring_state["addLabel"] == "항목 추가"
+                        and authoring_state["readonlyGroups"] >= 1
+                        and authoring_state["presenterLabel"] == "송출"
                         and not authoring_state["openState"]
                         and authoring_state["width"] >= 900
-                        and authoring_state["bodyHeight"] >= 240
+                        and authoring_state["bodyHeight"] >= 120
                         and authoring_state["overflow"] <= 2
                     ):
-                        pass_("worship-authoring-inline", json.dumps(authoring_state, ensure_ascii=False))
+                        pass_("worship-readonly-detail", json.dumps(authoring_state, ensure_ascii=False))
                     else:
-                        fail("worship-authoring-inline", json.dumps(authoring_state, ensure_ascii=False))
+                        fail("worship-readonly-detail", json.dumps(authoring_state, ensure_ascii=False))
 
                     page.set_viewport_size({"width": 520, "height": 760})
                     page.evaluate("renderServiceDetail()")
-                    page.wait_for_selector(".service-authoring-view .svc-prep-editor-body--inline", timeout=5000)
+                    page.wait_for_selector(".service-readonly-view .service-readonly-order", timeout=5000)
                     authoring_narrow = page.evaluate(
                         """
                         (() => {
-                          const editor = document.querySelector('.service-authoring-view')?.getBoundingClientRect();
+                          const editor = document.querySelector('.service-readonly-view')?.getBoundingClientRect();
                           const editorLeft = editor?.left || 0;
                           const editorRight = editor?.right || window.innerWidth;
-                          const nodes = [...document.querySelectorAll('.service-authoring-view *')]
+                          const nodes = [...document.querySelectorAll('.service-readonly-view *')]
                             .map((node) => {
                               const rect = node.getBoundingClientRect();
                               return {
@@ -2318,7 +2794,7 @@ def main() -> int:
                             editorWidth: Math.round(editor?.width || 0),
                             overflow: Math.max(document.documentElement.scrollWidth - window.innerWidth, document.body.scrollWidth - window.innerWidth),
                             leakingNodes: nodes.filter((item) => item.left < editorLeft - 2 || item.right > editorRight + 2).length,
-                            firstItemHeight: Math.round(document.querySelector('.service-authoring-view .svc-edit-item')?.getBoundingClientRect().height || 0)
+                            firstItemHeight: Math.round(document.querySelector('.service-readonly-view .service-readonly-group')?.getBoundingClientRect().height || 0)
                           };
                         })()
                         """
@@ -2326,14 +2802,14 @@ def main() -> int:
                     page.set_viewport_size({"width": 1440, "height": 980})
                     if (
                         authoring_narrow["viewport"] == 520
-                        and 280 <= authoring_narrow["editorWidth"] <= authoring_narrow["viewport"]
+                        and 220 <= authoring_narrow["editorWidth"] <= authoring_narrow["viewport"]
                         and authoring_narrow["overflow"] <= 2
                         and authoring_narrow["leakingNodes"] == 0
-                        and authoring_narrow["firstItemHeight"] >= 80
+                        and authoring_narrow["firstItemHeight"] >= 24
                     ):
-                        pass_("worship-authoring-narrow", json.dumps(authoring_narrow, ensure_ascii=False))
+                        pass_("worship-readonly-narrow", json.dumps(authoring_narrow, ensure_ascii=False))
                     else:
-                        fail("worship-authoring-narrow", json.dumps(authoring_narrow, ensure_ascii=False))
+                        fail("worship-readonly-narrow", json.dumps(authoring_narrow, ensure_ascii=False))
 
                     page.evaluate(
                         """
@@ -2349,35 +2825,59 @@ def main() -> int:
 
                     thumb_metrics = page.evaluate(
                         """
-                        (() => [...document.querySelectorAll('.svc-slide-thumb-frame')]
-                          .slice(0, 12)
-                          .map((node) => {
+                        (() => {
+                          const frameMetric = (node) => {
                             const rect = node.getBoundingClientRect();
                             return {
+                              left: Math.round(rect.left),
+                              top: Math.round(rect.top),
                               width: Math.round(rect.width),
                               height: Math.round(rect.height),
                               ratio: rect.height ? Number((rect.width / rect.height).toFixed(3)) : 0
                             };
-                          }))()
+                          };
+                          const frames = [...document.querySelectorAll('.svc-slide-thumb-frame')].map(frameMetric);
+                          const grids = [...document.querySelectorAll('.svc-board-grid')].map((grid) => {
+                            const gridFrames = [...grid.querySelectorAll('.svc-slide-thumb-frame')].map(frameMetric);
+                            const rows = Object.values(gridFrames.reduce((acc, item) => {
+                              const key = Object.keys(acc).find((top) => Math.abs(Number(top) - item.top) <= 2) || String(item.top);
+                              acc[key] = acc[key] || [];
+                              acc[key].push(item);
+                              return acc;
+                            }, {})).map((row) => row.sort((a, b) => a.left - b.left));
+                            const row = rows.find((candidate) => candidate.length > 1) || [];
+                            const horizontalGaps = row.slice(0, -1).map((item, index) => row[index + 1].left - (item.left + item.width));
+                            return { count: gridFrames.length, row, horizontalGaps };
+                          });
+                          const grid = grids
+                            .filter((candidate) => candidate.horizontalGaps.length)
+                            .sort((a, b) => b.row.length - a.row.length)[0] || { row: [], horizontalGaps: [] };
+                          return { frames: frames.slice(0, 12), row: grid.row, horizontalGaps: grid.horizontalGaps };
+                        })()
                         """
                     )
-                    if thumb_metrics:
-                        widths = [item["width"] for item in thumb_metrics]
-                        heights = [item["height"] for item in thumb_metrics]
-                        ratios = [item["ratio"] for item in thumb_metrics]
+                    if thumb_metrics["frames"]:
+                        widths = [item["width"] for item in thumb_metrics["frames"]]
+                        heights = [item["height"] for item in thumb_metrics["frames"]]
+                        ratios = [item["ratio"] for item in thumb_metrics["frames"]]
+                        horizontal_gaps = thumb_metrics["horizontalGaps"]
                         uniform = (
                             max(widths) - min(widths) <= 2
                             and max(heights) - min(heights) <= 2
                             and all(1.75 <= ratio <= 1.79 for ratio in ratios)
+                            and horizontal_gaps
+                            and max(horizontal_gaps) - min(horizontal_gaps) <= 2
+                            and 18 <= horizontal_gaps[0] <= 24
                         )
                         if uniform:
-                            pass_("presenter-thumbnail-grid", json.dumps(thumb_metrics[:4], ensure_ascii=False))
+                            pass_("presenter-thumbnail-grid", json.dumps(thumb_metrics, ensure_ascii=False))
                         else:
-                            fail("presenter-thumbnail-grid", json.dumps(thumb_metrics[:8], ensure_ascii=False))
+                            fail("presenter-thumbnail-grid", json.dumps(thumb_metrics, ensure_ascii=False))
                     page.evaluate(
                         """
                         (serviceId) => {
                           preparePresenterService(serviceId);
+                          state.presenter.outputConnectedAt = Date.now();
                           renderPresenterControlState(serviceId);
                         }
                         """,
@@ -2501,10 +3001,12 @@ def main() -> int:
 
                         dbl_target = min(service_for_slides["slides"] - 1, 4)
                         page.evaluate(
-                            """
-                            (() => {
-                              window.__mindexPresenterOpenCalls = 0;
-                              window.open = () => {
+	                        """
+	                        (() => {
+	                          window.__mindexPresenterOpenCalls = 0;
+                              state.presenter.outputWindow = null;
+                              state.presenter.outputConnectedAt = 0;
+	                          window.open = () => {
                                 window.__mindexPresenterOpenCalls += 1;
                                 return {
                                   closed: false,
@@ -2573,7 +3075,7 @@ def main() -> int:
 
                 cleanup_presenter_fixture(page)
 
-                page.click('[data-module="praise"]')
+                page.click('[data-home-module="praise"]')
                 wait_for_praise_data(page)
                 wait_for_module_data(page, "praise")
                 praise_placeholder = page.input_value("#searchInput")
@@ -2864,7 +3366,7 @@ def main() -> int:
                 else:
                     fail("praise-canonical-normalized-title-reuse", json.dumps(canonical_state, ensure_ascii=False))
 
-                page.click('[data-module="scripture"]')
+                page.click('[data-home-module="scripture"]')
                 wait_for_scripture_data(page)
                 wait_for_module_data(page, "scripture")
                 snapshot = get_app_snapshot(page)
