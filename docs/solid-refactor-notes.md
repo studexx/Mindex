@@ -8,7 +8,7 @@ Use SOLID as a way to keep change boundaries small and predictable.
 
 - `app.js` is the main pressure point. It contains app shell logic, data loading,
   persistence, rendering, editor events, Worship templates, Presenter controls,
-  Presenter output, Praise, Scripture, Calendar, References, and Order Sheets.
+  Presenter output, Praise, Scripture, Calendar, and References.
 - Small visible bugs can take too long because the same change often crosses
   slide rendering, presenter output, preview thumbnails, DB fallback/loading,
   and service templates. Treat this as an operational bottleneck, not just a

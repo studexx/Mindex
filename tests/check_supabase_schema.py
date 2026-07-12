@@ -28,7 +28,7 @@ REQUIRED_TABLES: dict[str, tuple[str, ...]] = {
     "mindex_worship_service_types": ("id", "display_name", "group_key", "sort_order", "default_output_context"),
     "mindex_worship_services": ("id", "service_type_id", "service_date", "title", "status", "worship_leader", "praise_leader"),
     "mindex_worship_sections": ("id", "service_id", "sort_order", "section_key", "title", "person"),
-    "mindex_worship_elements": ("id", "section_id", "sort_order", "element_type", "title", "person", "song_id", "scripture_reference"),
+    "mindex_worship_elements": ("id", "section_id", "sort_order", "element_type", "title", "person", "song_id", "scripture_reference", "input_mode", "content_state"),
     "mindex_worship_slides": ("id", "element_id", "sort_order", "slide_type", "output_context", "title", "body", "marker"),
     "mindex_worship_templates": ("id", "template_level", "stable_key", "version", "name"),
     "mindex_worship_template_items": ("id", "template_id", "sort_order", "slot_key", "default_title"),

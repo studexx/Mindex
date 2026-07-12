@@ -20,7 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_SOURCE_DIR = Path(os.environ.get("MINDEX_HYMN_SCORE_SOURCE_DIR", ROOT / "[external references]" / "hymn-scores"))
 DEFAULT_MANIFEST = ROOT / "assets/hymn-scores/manifest.json"
 DEFAULT_CACHE_DIR = ROOT / ".cache/hymn-score-native"
-OUTPUT_SIZE = (1152, 648)
+DEFAULT_OUTPUT_SIZE = (1920, 1080)
 
 RUNTIME_ROOT = Path(os.environ.get("CODEX_PRIMARY_RUNTIME_DEPS", Path.home() / ".cache/codex-runtimes/codex-primary-runtime/dependencies"))
 SOFFICE = RUNTIME_ROOT / "bin/soffice"
@@ -159,11 +159,12 @@ def render_pdf_page_to_image(
     output_path: Path,
     image_format: str,
     quality: int,
+    output_size: tuple[int, int],
 ) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     image = Image.open(page_png_path).convert("RGB")
-    if image.size != OUTPUT_SIZE:
-        image = image.resize(OUTPUT_SIZE, Image.Resampling.LANCZOS)
+    if image.size != output_size:
+        image = image.resize(output_size, Image.Resampling.LANCZOS)
     if image_format == "webp":
         image.save(output_path, format="WEBP", quality=quality, method=6)
     elif image_format == "png":
@@ -237,6 +238,7 @@ def render_exported_slide_tasks(
     exported_dir: Path,
     image_format: str,
     quality: int,
+    output_size: tuple[int, int],
     done: int,
     total: int,
 ) -> int:
@@ -249,7 +251,7 @@ def render_exported_slide_tasks(
 
     print(f"PNG {source_name} <- {exported_dir}", flush=True)
     for task in source_tasks:
-        render_pdf_page_to_image(exported[task.source_slide], task.output_path, image_format, quality)
+        render_pdf_page_to_image(exported[task.source_slide], task.output_path, image_format, quality, output_size)
         done += 1
         if done == total or done % 50 == 0:
             print(f"WROTE {done}/{total} {task.output_path.relative_to(ROOT)}", flush=True)
@@ -291,6 +293,7 @@ def render_tasks(
     cache_dir: Path,
     image_format: str,
     quality: int,
+    output_size: tuple[int, int],
     force_export: bool,
     dry_run: bool,
     page_chunk_size: int,
@@ -315,6 +318,7 @@ def render_tasks(
                 exported_dir,
                 image_format,
                 quality,
+                output_size,
                 done,
                 total,
             )
@@ -352,10 +356,25 @@ def render_tasks(
                     if not page_png:
                         raise RuntimeError(f"Missing rendered PDF page {page} from {pdf_path}")
                     for task in tasks_by_page[page]:
-                        render_pdf_page_to_image(page_png, task.output_path, image_format, quality)
+                        render_pdf_page_to_image(page_png, task.output_path, image_format, quality, output_size)
                         done += 1
                         if done == total or done % 50 == 0:
                             print(f"WROTE {done}/{total} {task.output_path.relative_to(ROOT)}", flush=True)
+
+
+def parse_output_size(value: str) -> tuple[int, int]:
+    match = re.fullmatch(r"\s*(\d{2,5})\s*[xX,]\s*(\d{2,5})\s*", value)
+    if not match:
+        raise argparse.ArgumentTypeError("Use WIDTHxHEIGHT, for example 1920x1080.")
+    width, height = (int(match.group(1)), int(match.group(2)))
+    if width <= 0 or height <= 0:
+        raise argparse.ArgumentTypeError("Output size must be positive.")
+    return width, height
+
+
+def normalize_output_size(output_size: tuple[int, int]) -> tuple[int, int]:
+    width, height = output_size
+    return max(width, DEFAULT_OUTPUT_SIZE[0]), max(height, DEFAULT_OUTPUT_SIZE[1])
 
 
 def main() -> int:
@@ -367,6 +386,12 @@ def main() -> int:
     parser.add_argument("--cache-dir", type=Path, default=DEFAULT_CACHE_DIR)
     parser.add_argument("--format", default="webp", choices=["png", "webp"])
     parser.add_argument("--quality", type=int, default=92)
+    parser.add_argument(
+        "--output-size",
+        type=parse_output_size,
+        default=DEFAULT_OUTPUT_SIZE,
+        help="Final slide image size as WIDTHxHEIGHT. Minimum/default: 1920x1080.",
+    )
     parser.add_argument("--page-chunk-size", type=int, default=100)
     parser.add_argument("--render-dpi", type=int, default=72)
     parser.add_argument("--hymns", nargs="*", help="Hymn numbers to render. Defaults to all manifest entries.")
@@ -385,6 +410,7 @@ def main() -> int:
     cache_dir = args.cache_dir if args.cache_dir.is_absolute() else ROOT / args.cache_dir
     hymns = {str(int(value)) if value.isdigit() else value for value in args.hymns} if args.hymns else None
     exported_slide_dirs = parse_exported_slide_dirs(args.exported_slide_dir)
+    output_size = normalize_output_size(args.output_size)
 
     tasks = collect_tasks(manifest_path, source_dir, hymns, args.format)
     needs_pdf_fallback = any(task.source_path.name not in exported_slide_dirs for task in tasks)
@@ -396,6 +422,7 @@ def main() -> int:
         cache_dir,
         args.format,
         args.quality,
+        output_size,
         args.force_export,
         args.dry_run,
         args.page_chunk_size,

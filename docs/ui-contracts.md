@@ -37,13 +37,12 @@ Primary app modules:
 4. `scripture` - Bible/search/copy tools.
 5. `calendar` - Home utility.
 6. `references` - Home utility.
-7. `order-sheets` - Home utility.
 
 Home hierarchy:
 
 - Worship is the primary operational area.
 - Activities, Praise, and Scripture are major resources.
-- Calendar, References, and Order Sheets are home utilities.
+- Calendar and References are home utilities.
 
 Inactive module tabs should stay visually quiet. Active tabs may show a clearer label and accent.
 
@@ -76,12 +75,6 @@ Inactive module tabs should stay visually quiet. Active tabs may show a clearer 
 - Opening Calendar should scroll to the current month when data exists.
 - Header summary may show church year and series, such as `2026 · Series A`.
 - Fixed feasts may appear visually, but should not behave like editable Sunday services.
-
-## Order Sheets
-
-- Order-sheet generation is a home utility.
-- Friday/monthly order sheets use landscape A4 split into two vertical halves.
-- Order sheets should be generated from service data.
 
 ## Presenter
 

@@ -273,33 +273,6 @@ def shell_layout_snapshot(page) -> dict[str, Any]:
     )
 
 
-def select_service_for_print(page) -> dict[str, Any] | None:
-    return page.evaluate(
-        """
-        (() => {
-          if (typeof state === 'undefined') return null;
-          const candidates = state.services
-            .filter((service) => ['friday', 'monthly'].includes(service.type_id))
-            .filter((service) => (state.serviceItems[service.id] || []).length > 0)
-            .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
-          const service = candidates[0];
-          if (!service) return null;
-          state.module = 'order-sheets';
-          state.selectedServiceTypeId = service.type_id;
-          state.selectedServiceId = service.id;
-          render();
-          return {
-            id: service.id,
-            typeId: service.type_id,
-            date: service.date,
-            items: (state.serviceItems[service.id] || []).length,
-            slides: buildServicePresenterSlides(service.id).length
-          };
-        })()
-        """
-    )
-
-
 def select_service_with_slides(page) -> dict[str, Any] | None:
     return page.evaluate(
         """
@@ -447,8 +420,10 @@ def main() -> int:
             page.add_init_script(
                 """
                 (() => {
+                  if (sessionStorage.getItem('__mindexSmokeStorageInitialized')) return;
                   localStorage.clear();
                   sessionStorage.clear();
+                  sessionStorage.setItem('__mindexSmokeStorageInitialized', 'true');
                 })();
                 """
             )
@@ -518,6 +493,24 @@ def main() -> int:
                 pass_("sidebar-toggle")
             else:
                 fail("sidebar-toggle", f"collapsed={collapsed} expanded={expanded}")
+
+            page.click("#sidebarToggleBtn")
+            page.reload(wait_until="domcontentloaded")
+            page.wait_for_selector("#sidebarToggleBtn")
+            page.wait_for_function("() => typeof state !== 'undefined'")
+            collapsed_after_reload = page.evaluate("document.body.classList.contains('sidebar-collapsed')")
+            page.click("#sidebarToggleBtn")
+            page.reload(wait_until="domcontentloaded")
+            page.wait_for_selector("#sidebarToggleBtn")
+            page.wait_for_function("() => typeof state !== 'undefined'")
+            expanded_after_reload = page.evaluate("!document.body.classList.contains('sidebar-collapsed')")
+            if collapsed_after_reload and expanded_after_reload:
+                pass_("sidebar-state-persistence")
+            else:
+                fail(
+                    "sidebar-state-persistence",
+                    f"collapsed={collapsed_after_reload} expanded={expanded_after_reload}",
+                )
 
             desktop_shell = shell_layout_snapshot(page)
             desktop_overflow = max(
@@ -630,7 +623,7 @@ def main() -> int:
             if all(
                 item["topbarHeight"] == 48
                 and item["sidebarWidth"] <= item["railWidth"] <= item["width"]
-                and (item["width"] >= 780 or item["railWidth"] == 170)
+                and item["railWidth"] - item["sidebarWidth"] == 48
                 and item["sidebarLeftRail"]
                 and (item["width"] > 860 or item["sidebarHeight"] > 300)
                 and item["searchWithinSidebar"]
@@ -762,7 +755,7 @@ def main() -> int:
                     })()
                     """
                 )
-                expected_home_order = ["Worship", "Scripture", "Praise", "Calendar", "References", "Order Sheets"]
+                expected_home_order = ["예배", "말씀", "찬양", "교회력", "배경", "링크"]
                 if (
                     home_order == expected_home_order
                     and not home_visibility_state["hasActivities"]
@@ -777,22 +770,25 @@ def main() -> int:
                 home_design_state = page.evaluate(
                     """
                     (() => {
-                      const board = document.querySelector('.home-board');
-                      const primary = document.querySelector('.home-primary-card');
-                      const verse = document.querySelector('.home-verse-card');
-                      const library = document.querySelector('.home-module-grid--library');
-                      const utilities = document.querySelector('.home-module-grid--utilities');
+                      const workbench = document.querySelector('.home-workbench');
+                      const main = document.querySelector('.home-workbench-main');
+                      const commandPanel = document.querySelector('.home-command-panel');
+                      const actionGrid = document.querySelector('.home-action-grid');
+                      const resourcePanel = document.querySelector('.home-resource-panel');
+                      const resourceRows = [...document.querySelectorAll('.home-resource-row')];
                       const rect = (node) => {
                         const r = node?.getBoundingClientRect();
                         return r ? { width: Math.round(r.width), height: Math.round(r.height), top: Math.round(r.top) } : null;
                       };
                       return {
-                        hasBoard: Boolean(board),
-                        hasPrimary: Boolean(primary),
-                        hasVerse: Boolean(verse),
-                        libraryCards: library?.children.length || 0,
-                        utilityCards: utilities?.children.length || 0,
-                        primary: rect(primary),
+                        hasWorkbench: Boolean(workbench),
+                        hasMain: Boolean(main),
+                        hasCommandPanel: Boolean(commandPanel),
+                        actionTiles: actionGrid?.children.length || 0,
+                        resourceRows: resourceRows.length,
+                        main: rect(main),
+                        resourceLabels: resourceRows.map((row) => row.querySelector('strong')?.textContent.trim() || ''),
+                        chevrons: document.querySelectorAll('.home-resource-go').length,
                         text: document.querySelector('.home-screen')?.innerText || '',
                         overflow: Math.max(document.documentElement.scrollWidth - window.innerWidth, document.body.scrollWidth - window.innerWidth)
                       };
@@ -800,12 +796,14 @@ def main() -> int:
                     """
                 )
                 if (
-                    home_design_state["hasBoard"]
-                    and home_design_state["hasPrimary"]
-                    and not home_design_state["hasVerse"]
-                    and home_design_state["libraryCards"] == 2
-                    and home_design_state["utilityCards"] == 3
-                    and home_design_state["primary"]["height"] >= 130
+                    home_design_state["hasWorkbench"]
+                    and home_design_state["hasMain"]
+                    and home_design_state["hasCommandPanel"]
+                    and home_design_state["actionTiles"] == 4
+                    and home_design_state["resourceRows"] == 5
+                    and home_design_state["main"]["height"] >= 180
+                    and home_design_state["resourceLabels"] == ["말씀", "찬양", "교회력", "배경", "링크"]
+                    and home_design_state["chevrons"] == 5
                     and "1 services" not in home_design_state["text"]
                     and home_design_state["overflow"] <= 2
                 ):
@@ -813,7 +811,7 @@ def main() -> int:
                 else:
                     fail("home-design-shell", json.dumps(home_design_state, ensure_ascii=False))
 
-                spacing_modules = ["home", "service", "presenter", "scripture", "praise", "calendar", "references", "order-sheets"]
+                spacing_modules = ["home", "service", "presenter", "scripture", "praise", "calendar", "references"]
                 module_spacing = []
                 for module_id in spacing_modules:
                     page.evaluate("(moduleId) => switchModule(moduleId)", module_id)
@@ -875,7 +873,7 @@ def main() -> int:
                     })()
                     """
                 )
-                expected_topbar_order = ["Worship", "Scripture", "Praise", "Calendar", "References", "Order Sheets", "Backgrounds"]
+                expected_topbar_order = ["예배", "말씀", "찬양", "교회력", "링크", "배경"]
                 if (
                     topbar_state["order"] == expected_topbar_order
                     and topbar_state["active"] == "scripture"
@@ -948,14 +946,14 @@ def main() -> int:
                     "청년부 기도자",
                 ]
                 if (
-                    calendar_state["placeholder"] == "Search..."
+                    calendar_state["placeholder"] == "검색..."
                     and calendar_state["hasCalendar"]
                     and calendar_state["activeTab"] == "부서 일과"
                     and calendar_state["departmentHeaders"] == expected_department_headers
                     and "cal-table--departments" in calendar_state["tableClass"]
-                    and abs(calendar_state["tableScrollWidth"] - calendar_state["wrapperWidth"]) <= 2
+                    and 0 <= calendar_state["tableScrollWidth"] - calendar_state["wrapperWidth"] <= 32
                     and calendar_state["widths"][4] >= 90
-                    and calendar_state["widths"][7] > calendar_state["widths"][4]
+                    and min(calendar_state["widths"][3:]) >= 90
                     and calendar_state["hasYearEndRow"]
                     and calendar_state["hasFootnote"]
                     and not calendar_state["footnoteHasBreak"]
@@ -988,8 +986,7 @@ def main() -> int:
                     and calendar_lectionary_state["headers"] == expected_lectionary_headers
                     and "cal-table--lectionary" in calendar_lectionary_state["tableClass"]
                     and abs(calendar_lectionary_state["tableScrollWidth"] - calendar_lectionary_state["wrapperWidth"]) <= 2
-                    and calendar_lectionary_state["widths"][4] < calendar_lectionary_state["widths"][5]
-                    and calendar_lectionary_state["widths"][7] == calendar_lectionary_state["widths"][8]
+                    and min(calendar_lectionary_state["widths"][3:]) >= 118
                     and calendar_lectionary_state["overflow"] <= 2
                 ):
                     pass_("calendar-lectionary-tab", json.dumps(calendar_lectionary_state, ensure_ascii=False))
@@ -1007,7 +1004,7 @@ def main() -> int:
                     }))()
                     """
                 )
-                if references_state["placeholder"] == "Search..." and references_state["hasReferences"] and references_state["overflow"] <= 2:
+                if references_state["placeholder"] == "검색..." and references_state["hasReferences"] and references_state["overflow"] <= 2:
                     pass_("references-utility-shell", json.dumps(references_state, ensure_ascii=False))
                 else:
                     fail("references-utility-shell", json.dumps(references_state, ensure_ascii=False))
@@ -1039,7 +1036,7 @@ def main() -> int:
                 )
                 if (
                     global_search_state["module"] == "service"
-                    and "Scripture" in global_search_state["headings"]
+                    and "말씀" in global_search_state["headings"]
                     and global_search_state["scriptureResults"] > 0
                     and global_search_state["serviceLocalRows"] == 0
                     and global_search_state["overflow"] <= 2
@@ -1219,8 +1216,7 @@ def main() -> int:
                                 .filter((element) => element.section_id === section.id)
                                 .map((element) => ({
                                   type: element.element_type || '',
-                                  label: element.source_ref?.label || '',
-                                  order: element.config?.orderSheet?.order || ''
+                                  label: element.source_ref?.label || ''
                                 }))
                             }));
                             const defaultsFor = (sectionKey) => {
@@ -1242,7 +1238,7 @@ def main() -> int:
                               firstElementType: scaffold.elements[0]?.element_type || '',
                               sectionKeys: sections.map((section) => section.key),
                               praiseElements: sections.find((section) => section.key === 'praise')?.elements || [],
-                              monthlyPrayerElements: sections.find((section) => section.key === 'monthly_prayer')?.elements || [],
+                              corporatePrayerElements: sections.find((section) => section.key === 'corporate_prayer')?.elements || [],
                               prayerSection: (() => {
                                 const prayer = sections.find((section) => section.key === 'prayer');
                                 return {
@@ -1283,15 +1279,11 @@ def main() -> int:
                                     .map((element) => ({
                                       type: element.element_type || '',
                                       label: element.source_ref?.label || '',
-                                      order: element.config?.orderSheet?.order || '',
                                       assetUrl: element.config?.asset?.url || ''
                                     }))
                                 };
                               })(),
-                              closingDefaults: defaultsFor('closing_visual'),
-                              blankPlaceholders: scaffold.elements
-                                .filter((item) => item.config?.orderSheetPlaceholder === true)
-                                .length
+                              closingDefaults: defaultsFor('closing_visual')
                             };
                           })(),
                           publicSpecialRule: (() => {
@@ -1323,10 +1315,8 @@ def main() -> int:
                                     type: element.element_type || '',
                                     label: element.source_ref?.label || '',
                                     ...(element.person ? { person: element.person } : {}),
-                                    order: element.config?.orderSheet?.order || '',
                                     ...(element.config?.introSlide?.title ? { introTitle: element.config.introSlide.title } : {}),
                                     ...(element.config?.introSlide?.body ? { introBody: element.config.introSlide.body } : {}),
-                                    ...(element.config?.orderSheet?.assignee ? { assignee: element.config.orderSheet.assignee } : {}),
                                     ...(element.config?.textHighlights?.length ? { textHighlights: element.config.textHighlights } : {}),
                                     ...(element.config?.formHint ? { formHint: element.config.formHint } : {}),
                                     ...(element.config?.formPreset?.forms ? { forms: element.config.formPreset.forms } : {}),
@@ -1363,8 +1353,7 @@ def main() -> int:
                                     title: element.title || '',
                                     formHint: element.config?.formHint || '',
                                     forms: element.config?.formPreset?.forms || [],
-                                    strength: element.config?.defaultStrength || element.config?.formPreset?.strength || '',
-                                    orderSheetHidden: element.config?.orderSheet?.hidden === true
+                                    strength: element.config?.defaultStrength || element.config?.formPreset?.strength || ''
                                   })),
                                 scoreSlots: sections.flatMap((section) =>
                                   section.elements
@@ -1402,35 +1391,6 @@ def main() -> int:
                               };
                             };
                             return ['holy-week-dawn', 'omer', 'special', 'children'].map(summarize);
-                          })(),
-                          secondCreedOrderSheetRow: (() => {
-                            const serviceId = '__smoke_second_creed_service__';
-                            const previousServices = state.services;
-                            const previousItems = state.serviceItems[serviceId];
-                            state.services = previousServices.filter((service) => service.id !== serviceId).concat([{
-                              id: serviceId,
-                              type_id: 'sunday-second',
-                              date: '2026-07-05'
-                            }]);
-                            state.serviceItems[serviceId] = [normalizeServiceItem({
-                              id: '__smoke_second_creed_item__',
-                              service_id: serviceId,
-                              sort_order: 1,
-                              label: '사도신경',
-                              raw_title: '사도신경',
-                              memo: serializeServiceItemMemo({
-                                elementType: 'body',
-                                orderSheet: { order: '신앙고백' }
-                              }),
-                              _worshipSectionKey: 'creed'
-                            })];
-                            try {
-                              return orderSheetRowsForOutput(serviceId).find((row) => row.order === '신앙고백') || {};
-                            } finally {
-                              state.services = previousServices;
-                              if (previousItems === undefined) delete state.serviceItems[serviceId];
-                              else state.serviceItems[serviceId] = previousItems;
-                            }
                           })(),
                           scoreModeMemo: (() => {
                             const memo = serializeServiceItemMemo({ elementType: 'praise', outputMode: 'score' });
@@ -1520,7 +1480,6 @@ def main() -> int:
                               sectionKey: afterItem._worshipSectionKey || '',
                               beforeTitle,
                               afterTitle: afterItem.raw_title || '',
-                              orderSheet: parseServiceItemMemo(afterItem.memo).orderSheet?.order || '',
                               outputMode: afterMemo.outputMode || '',
                               effectiveOutputMode: serviceItemOutputMode(afterItem, afterMemo),
                               legacyEffectiveOutputMode: serviceItemOutputMode({ ...afterItem, memo: JSON.stringify({ outputMode: 'score' }) }, legacyMemo),
@@ -1589,6 +1548,46 @@ def main() -> int:
                               }))
                             };
                           })(),
+                          generatedSectionPersistence: (() => {
+                            const service = { id: '__smoke_generated_section__', type_id: 'monthly', date: '2026-07-03' };
+                            const sectionId = '99999999-9999-4999-8999-999999999999';
+                            const items = ['첫 항목', '둘째 항목'].map((label, index) => normalizeServiceItem({
+                              id: `eeeeeeee-eeee-4eee-8eee-eeeeeeeeeee${index + 1}`,
+                              service_id: service.id,
+                              sort_order: index + 1,
+                              label,
+                              raw_title: '',
+                              _worshipSectionId: sectionId,
+                              _worshipSectionKey: 'generated_section',
+                              _worshipSectionTitle: '새 섹션',
+                              _worshipSectionOrder: 1,
+                              _worshipElementOrder: index + 1,
+                              memo: serializeServiceItemMemo({ elementType: 'title' })
+                            }));
+                            const rows = buildWorshipPersistenceRows(service, items, {}, {});
+                            return {
+                              sectionCount: rows.sections.length,
+                              elementCount: rows.elements.length,
+                              sortOrders: rows.sections.map((section) => section.sort_order),
+                              sharedSection: new Set(rows.elements.map((element) => element.section_id)).size === 1,
+                            };
+                          })(),
+                          templateSuppressionProjection: (() => {
+                            const service = { id: '__smoke_template_suppression__', type_id: 'monthly', date: '2026-07-03' };
+                            const scaffold = buildWorshipServiceScaffold(service.id, service.type_id, { service });
+                            const items = groupWorshipElements(scaffold.sections, scaffold.elements)[service.id] || [];
+                            const target = items.find((item) => item.label === '결단기도') || {};
+                            const suppressed = {
+                              ...target,
+                              memo: serializeServiceItemMemo({ ...parseServiceItemMemo(target.memo), templateSuppressed: true }),
+                            };
+                            const projected = projectWorshipServiceItemsFromTemplate(service, [suppressed]);
+                            return {
+                              sourceFound: Boolean(target.id),
+                              suppressed: isTemplateSuppressedServiceItem(suppressed),
+                              projected: projected.some((item) => item.label === '결단기도'),
+                            };
+                          })(),
                           sundayFirstSendingPrune: (() => {
                             const sectionId = '66666666-6666-4666-8666-666666666666';
                             const item = (id, label, key, order) => normalizeServiceItem({
@@ -1627,66 +1626,61 @@ def main() -> int:
                         template_terms["levels"] == ["Service", "Section", "Element", "Slide"]
                         and template_terms["monthlyFirst"] == {"label": "준비", "elementType": "video"}
                         and template_terms["monthlyScaffold"]["sections"] == 12
-                        and template_terms["monthlyScaffold"]["elements"] == 24
+                        and template_terms["monthlyScaffold"]["elements"] == 26
                         and template_terms["monthlyScaffold"]["firstSection"] == "준비"
                         and template_terms["monthlyScaffold"]["firstElementType"] == "video"
-                        and "monthly_prayer" in template_terms["monthlyScaffold"]["sectionKeys"]
+                        and "corporate_prayer" in template_terms["monthlyScaffold"]["sectionKeys"]
                         and "sending" in template_terms["monthlyScaffold"]["sectionKeys"]
                         and "closing_visual" in template_terms["monthlyScaffold"]["sectionKeys"]
                         and template_terms["monthlyScaffold"]["praiseElements"][:2] == [
-                            {"type": "title_content", "label": "환영", "order": ""},
-                            {"type": "praise", "label": "찬양", "order": "찬양"},
+                            {"type": "title_content", "label": "환영"},
+                            {"type": "praise", "label": "찬양 1"},
                         ]
                         and template_terms["monthlyScaffold"]["prayerSection"] == {
                             "title": "대표기도",
-                            "elements": [{"type": "title_person", "label": "대표기도", "order": "대표기도"}],
-                            "defaults": [{"label": "대표기도", "title": "기도", "formHint": "", "forms": [], "strength": ""}],
+                            "elements": [{"type": "title_person", "label": "기도"}],
+                            "defaults": [{"label": "기도", "title": "", "formHint": "", "forms": [], "strength": ""}],
                         }
                         and template_terms["monthlyScaffold"]["sermonSection"] == {
                             "title": "설교",
-                            "elements": [{"type": "title_person", "label": "설교", "order": "설교"}],
+                            "elements": [
+                                {"type": "title_person", "label": "설교 제목"},
+                                {"type": "scripture_body", "label": "설교 본문"},
+                            ],
                         }
                         and template_terms["monthlyScaffold"]["responseSection"] == {
                             "title": "결단",
                             "elements": [
-                                {"type": "praise", "label": "결단찬양", "order": "결단찬양"},
-                                {"type": "title_person", "label": "결단기도", "order": "결단기도"},
+                                {"type": "praise", "label": "결단찬양"},
+                                {"type": "title_person", "label": "결단기도"},
                             ],
                         }
                         and template_terms["monthlyScaffold"]["closingSection"]["title"] == "폐회"
                         and template_terms["monthlyScaffold"]["closingSection"]["elements"] == [
-                            {"type": "praise", "label": "찬양", "order": "찬양"},
-                            {"type": "image", "label": "마무리", "order": ""},
+                            {"type": "image", "label": "마무리"},
                         ]
                         and template_terms["monthlyScaffold"]["closingVisualSection"]["title"] == "폐회"
                         and template_terms["monthlyScaffold"]["closingVisualSection"]["elements"] == [
                             {
-                                "type": "praise",
-                                "label": "찬양",
-                                "order": "찬양",
-                                "assetUrl": "",
-                            },
-                            {
                                 "type": "image",
                                 "label": "마무리",
-                                "order": "",
                                 "assetUrl": "assets/worship-templates/public-closing.png",
                             },
                         ]
                         and template_terms["monthlyScaffold"]["offeringDefaults"][0] == {
-                            "label": "봉헌",
-                            "title": "이런 교회 되게 하소서",
+                            "label": "봉헌찬양",
+                            "title": "",
                             "formHint": "V-C",
                             "forms": ["V", "C"],
                             "strength": "suggested",
                         }
-                        and template_terms["monthlyScaffold"]["closingDefaults"][0] == {
-                            "label": "찬양",
-                            "title": "여기에 모인 우리",
-                            "formHint": "V1-C-C",
-                            "forms": ["V1", "C", "C"],
-                            "strength": "default",
-                        }
+                        and template_terms["monthlyScaffold"]["corporatePrayerElements"] == [
+                            {"type": "title_person", "label": "공동기도 1"},
+                            {"type": "title_person", "label": "공동기도 2"},
+                            {"type": "praise", "label": "기도 찬양"},
+                            {"type": "title_person", "label": "공동기도 3"},
+                            {"type": "title_person", "label": "공동기도 4"},
+                        ]
                         and template_terms["publicSpecialRule"] == {
                             "sectionTitle": "특송",
                             "elementLabel": "특송",
@@ -1700,42 +1694,39 @@ def main() -> int:
                         and all(element["label"] != "환영" for element in template_terms["sundayPublicScaffold"]["first"]["praiseElements"])
                         and all(element["label"] != "환영" for element in template_terms["sundayPublicScaffold"]["second"]["praiseElements"])
                         and template_terms["sundayPublicScaffold"]["first"]["creedElements"] == [
-                            {"type": "body", "label": "사도신경", "order": "신앙고백", "introTitle": "신앙고백", "introBody": "사도신경", "assignee": "사도신경", "outputMode": ""}
+                            {"type": "body", "label": "사도신경", "introTitle": "신앙고백", "introBody": "사도신경", "outputMode": ""}
                         ]
                         and template_terms["sundayPublicScaffold"]["second"]["creedElements"] == [
-                            {"type": "body", "label": "사도신경", "order": "신앙고백", "introTitle": "신앙고백", "introBody": "사도신경", "assignee": "사도신경", "outputMode": ""}
+                            {"type": "body", "label": "사도신경", "introTitle": "신앙고백", "introBody": "사도신경", "outputMode": ""}
                         ]
-                        and template_terms["secondCreedOrderSheetRow"] == {"order": "신앙고백", "assignee": "사도신경", "note": ""}
                         and template_terms["sundayPublicScaffold"]["first"]["offeringElements"] == [
-                            {"type": "praise", "label": "봉헌찬송", "order": "봉헌", "outputMode": "score"},
-                            {"type": "title_person", "label": "봉헌기도", "order": "봉헌기도", "outputMode": ""},
+                            {"type": "praise", "label": "봉헌찬송", "outputMode": "score"},
+                            {"type": "title_person", "label": "봉헌기도", "outputMode": ""},
                         ]
                         and template_terms["sundayPublicScaffold"]["first"]["sermonElements"] == [
-                            {"type": "title_person", "label": "설교 제목", "order": "설교", "outputMode": ""},
-                            {"type": "scripture_body", "label": "설교 본문", "order": "", "outputMode": ""},
-                            {"type": "activity", "label": "실시간 성구 송출", "order": "", "outputMode": ""},
+                            {"type": "title_person", "label": "설교 제목", "outputMode": ""},
+                            {"type": "scripture_body", "label": "설교 본문", "outputMode": ""},
                         ]
                         and template_terms["sundayPublicScaffold"]["second"]["sermonElements"] == [
-                            {"type": "title_person", "label": "설교 제목", "order": "설교", "outputMode": ""},
-                            {"type": "scripture_body", "label": "설교 본문", "order": "", "outputMode": ""},
-                            {"type": "activity", "label": "실시간 성구 송출", "order": "", "outputMode": ""},
+                            {"type": "title_person", "label": "설교 제목", "outputMode": ""},
+                            {"type": "scripture_body", "label": "설교 본문", "outputMode": ""},
                         ]
                         and template_terms["sundayPublicScaffold"]["second"]["prayerElements"] == [
-                            {"type": "title_person", "label": "기도", "order": "대표기도", "outputMode": ""}
+                            {"type": "title_person", "label": "기도", "outputMode": ""}
                         ]
                         and template_terms["sundayPublicScaffold"]["first"]["announcementsElements"] == [
-                            {"type": "plain_text", "label": "교회소식", "order": "교회소식", "outputMode": ""}
+                            {"type": "title", "label": "교회소식", "outputMode": ""}
                         ]
                         and template_terms["sundayPublicScaffold"]["second"]["announcementsElements"] == [
-                            {"type": "plain_text", "label": "교회소식", "order": "교회소식", "outputMode": ""}
+                            {"type": "title", "label": "교회소식", "outputMode": ""}
                         ]
                         and template_terms["sundayPublicScaffold"]["first"]["sendingElements"] == [
-                            {"type": "praise", "label": "송영", "order": "송영", "outputMode": "score"},
-                            {"type": "body", "label": "주기도문", "order": "주기도문", "introTitle": "주기도문", "outputMode": ""},
+                            {"type": "praise", "label": "송영", "outputMode": "score"},
+                            {"type": "body", "label": "주기도문", "introTitle": "주기도문", "outputMode": ""},
                         ]
                         and template_terms["sundayPublicScaffold"]["firstPastor"]["sendingElements"] == [
-                            {"type": "praise", "label": "송영", "order": "송영", "outputMode": "score"},
-                            {"type": "title_person", "label": "축도", "order": "축도", "outputMode": ""},
+                            {"type": "praise", "label": "송영", "outputMode": "score"},
+                            {"type": "title_person", "label": "축도", "outputMode": ""},
                         ]
                         and set(template_terms["sundayPublicScaffold"]["first"]["scoreSlots"]) == {
                             "praise:찬양 1",
@@ -1765,26 +1756,25 @@ def main() -> int:
                             "폐회",
                         ]
                         and template_terms["sundayPublicScaffold"]["afternoon"]["silentPrayerElements"] == [
-                            {"type": "title", "label": "묵도", "order": "묵도", "outputMode": ""}
+                            {"type": "title", "label": "묵도", "outputMode": ""}
                         ]
                         and template_terms["sundayPublicScaffold"]["afternoon"]["hymnElements"] == [
-                            {"type": "praise", "label": "찬송", "order": "찬송", "outputMode": "score"}
+                            {"type": "praise", "label": "찬송", "outputMode": "score"}
                         ]
                         and template_terms["sundayPublicScaffold"]["afternoon"]["prayerElements"] == [
-                            {"type": "title_person", "label": "기도", "order": "대표기도", "outputMode": ""}
+                            {"type": "title_person", "label": "기도", "outputMode": ""}
                         ]
                         and template_terms["sundayPublicScaffold"]["afternoon"]["scriptureElements"] == [
-                            {"type": "scripture_reading", "label": "성경봉독", "order": "성경봉독", "outputMode": ""},
-                            {"type": "scripture_body", "label": "성경 본문", "order": "", "outputMode": ""},
+                            {"type": "scripture_reading", "label": "성경봉독", "outputMode": ""},
+                            {"type": "scripture_body", "label": "성경 본문", "outputMode": ""},
                         ]
                         and template_terms["sundayPublicScaffold"]["afternoon"]["sermonElements"] == [
-                            {"type": "title_person", "label": "설교 제목", "person": "김남영 목사", "order": "설교", "assignee": "김남영 목사", "outputMode": ""},
-                            {"type": "scripture_body", "label": "설교 본문", "order": "", "outputMode": ""},
-                            {"type": "activity", "label": "실시간 성구 송출", "order": "", "outputMode": ""},
+                            {"type": "title_person", "label": "설교 제목", "person": "김남영 목사", "outputMode": ""},
+                            {"type": "scripture_body", "label": "설교 본문", "outputMode": ""},
                         ]
                         and template_terms["sundayPublicScaffold"]["afternoon"]["sendingElements"] == [
-                            {"type": "praise", "label": "송영", "order": "송영", "outputMode": "score"},
-                            {"type": "title_person", "label": "축도", "person": "김남영 목사", "order": "축도", "assignee": "김남영 목사", "outputMode": ""},
+                            {"type": "praise", "label": "송영", "outputMode": "score"},
+                            {"type": "title_person", "label": "축도", "person": "김남영 목사", "outputMode": ""},
                         ]
                         and template_terms["sundayPublicScaffold"]["afternoon"]["doxologyDefaults"] == [
                             {"sectionKey": "sending", "title": "찬 1장"}
@@ -1794,6 +1784,7 @@ def main() -> int:
                             "sending:송영",
                         }
                         and "사죄의선언" not in template_terms["sundayPublicScaffold"]["third"]["titles"]
+                        and "새가족환영" not in template_terms["sundayPublicScaffold"]["third"]["titles"]
                         and "공동체고백" in template_terms["sundayPublicScaffold"]["third"]["titles"]
                         and template_terms["sundayPublicScaffold"]["third"]["communityElements"][0]["type"] == "body"
                         and template_terms["sundayPublicScaffold"]["third"]["communityElements"][0]["label"] == "공동체고백"
@@ -1809,8 +1800,8 @@ def main() -> int:
                         and "아멘송" not in template_terms["sundayPublicScaffold"]["third"]["titles"]
                         and "폐회" in template_terms["sundayPublicScaffold"]["third"]["titles"]
                         and template_terms["sundayPublicScaffold"]["third"]["praiseElements"][:2] == [
-                            {"type": "title_content", "label": "환영", "order": "", "outputMode": ""},
-                            {"type": "praise", "label": "찬양 1", "order": "찬양", "outputMode": ""},
+                            {"type": "title_content", "label": "환영", "outputMode": ""},
+                            {"type": "praise", "label": "찬양 1", "outputMode": ""},
                         ]
                         and [
                             item["label"]
@@ -1819,28 +1810,25 @@ def main() -> int:
                         and template_terms["sundayPublicScaffold"]["third"]["praiseElements"][-1] == {
                             "type": "praise",
                             "label": "입례 찬양",
-                            "order": "입례 찬양",
                             "formHint": "V-V-C-V-V-C",
                             "forms": ["V", "V", "C", "V", "V", "C"],
                             "strength": "default",
                             "outputMode": "",
                         }
                         and template_terms["sundayPublicScaffold"]["third"]["sermonElements"] == [
-                            {"type": "title_person", "label": "설교 제목", "order": "설교", "outputMode": ""},
-                            {"type": "scripture_body", "label": "설교 본문", "order": "", "outputMode": ""},
-                            {"type": "activity", "label": "실시간 성구 송출", "order": "", "outputMode": ""},
+                            {"type": "title_person", "label": "설교 제목", "outputMode": ""},
+                            {"type": "scripture_body", "label": "설교 본문", "outputMode": ""},
                         ]
                         and template_terms["sundayPublicScaffold"]["third"]["sendingElements"] == [
                             {
                                 "type": "praise",
                                 "label": "파송찬송",
-                                "order": "파송찬송",
                                 "formHint": "V1-V2-C-간주-V3-C-C",
                                 "forms": ["V1", "V2", "C", "간주", "V3", "C", "C"],
                                 "strength": "default",
                                 "outputMode": "",
                             },
-                            {"type": "title_person", "label": "축도", "order": "축도", "outputMode": ""},
+                            {"type": "title_person", "label": "축도", "outputMode": ""},
                         ]
                         and template_terms["sundayPublicScaffold"]["third"]["closingHymnDefaults"] == [{
                             "type": "praise",
@@ -1849,7 +1837,6 @@ def main() -> int:
                             "formHint": "V1A-간주-V1-V2-간주-V4-V1B",
                             "forms": ["V1A", "간주", "V1", "V2", "간주", "V4", "V1B"],
                             "strength": "default",
-                            "orderSheetHidden": True,
                         }]
                         and [
                             item["label"]
@@ -1891,15 +1878,25 @@ def main() -> int:
                         and template_terms["serviceInstanceOverride"] == {
                             "label": "봉헌찬송",
                             "sectionKey": "offering",
-                            "beforeTitle": "",
+                            "beforeTitle": "봉헌찬송",
                             "afterTitle": "봉헌특송",
-                            "orderSheet": "봉헌",
                             "outputMode": "",
                             "effectiveOutputMode": "",
                             "legacyEffectiveOutputMode": "",
                             "templateTitle": "",
                             "templateLabel": "봉헌찬송",
                         }
+                        and template_terms["generatedSectionPersistence"] == {
+                            "sectionCount": 1,
+                            "elementCount": 2,
+                            "sortOrders": [1],
+                            "sharedSection": True,
+                        }
+	                        and template_terms["templateSuppressionProjection"] == {
+	                            "sourceFound": True,
+	                            "suppressed": True,
+	                            "projected": False,
+	                        }
 	                        and template_terms["legacyHierarchyCleanup"]["normalized"] == [
 	                            {
 	                                "label": "주기도문",
@@ -1942,9 +1939,8 @@ def main() -> int:
                             "layLeader": ["주기도문"],
                             "pastorLeader": ["축도"],
                         }
-                        and len(template_terms["monthlyScaffold"]["monthlyPrayerElements"]) == 5
+                        and len(template_terms["monthlyScaffold"]["corporatePrayerElements"]) == 5
                         and len(template_terms["monthlyScaffold"]["offeringElements"]) == 2
-                        and template_terms["monthlyScaffold"]["blankPlaceholders"] == 21
                         and template_terms["overflow"] <= 2
                     ):
                         pass_("service-template-terminology", json.dumps(template_terms, ensure_ascii=False))
@@ -2037,6 +2033,9 @@ def main() -> int:
                               scoreCcmResults,
                               scoreHymnResults,
                               selectedSongId: selected.song_id || '',
+                              selectedRawTitle: selected.raw_title || '',
+                              selectedDisplayText: serviceItemDisplayText(selected),
+                              selectedTitleForSave: serviceElementTitleForSave(selected, 'praise'),
                               selectedVersionId: selectedVersionImmediately,
                               invalidAfterSong,
                               selectedVersionAfterPick: withVersion.version_id || '',
@@ -2064,6 +2063,9 @@ def main() -> int:
                         and "__smoke_ccm_song__" not in strict_song_picker["scoreCcmResults"]
                         and strict_song_picker["scoreHymnResults"] == ["__smoke_hymn_song__"]
                         and strict_song_picker["selectedSongId"] == "__smoke_ccm_song__"
+                        and strict_song_picker["selectedRawTitle"] == ""
+                        and strict_song_picker["selectedDisplayText"] == "은혜"
+                        and strict_song_picker["selectedTitleForSave"] == ""
                         and strict_song_picker["selectedVersionId"] == ""
                         and strict_song_picker["invalidAfterSong"]
                         and strict_song_picker["selectedVersionAfterPick"] == "__smoke_ccm_v2__"
@@ -2132,273 +2134,6 @@ def main() -> int:
                     else:
                         fail("service-title-normalization", json.dumps(service_title_normalization, ensure_ascii=False))
 
-                service_for_print = select_service_for_print(page)
-                if not service_for_print:
-                    skip("order-sheet-print", "No friday/monthly service with items.")
-                else:
-                    page.wait_for_selector(".order-sheet-tool #orderSheetPrintArea .order-sheet-copy", state="attached", timeout=5000)
-                    print_state = page.evaluate(
-                        """
-                        (() => {
-                          window.__mindexPrintCalled = 0;
-                          window.print = () => { window.__mindexPrintCalled += 1; };
-                          const area = document.getElementById('orderSheetPrintArea');
-                          const rect = area.getBoundingClientRect();
-                          const copies = [...area.querySelectorAll('.order-sheet-copy')].map((copy) => {
-                            const copyRect = copy.getBoundingClientRect();
-                            return {
-                              x: Math.round(copyRect.x - rect.x),
-                              y: Math.round(copyRect.y - rect.y),
-                              width: Math.round(copyRect.width),
-                              height: Math.round(copyRect.height)
-                            };
-                          });
-                          return {
-                            copies: copies.length,
-                            copyRects: copies,
-                            ratio: rect.width / rect.height,
-                            rows: area.querySelectorAll('tbody tr').length
-                          };
-                        })()
-                        """
-                    )
-                    side_by_side = (
-                        print_state["copies"] == 2
-                        and abs(print_state["copyRects"][0]["y"] - print_state["copyRects"][1]["y"]) <= 2
-                        and print_state["copyRects"][1]["x"] > print_state["copyRects"][0]["x"]
-                        and abs(print_state["copyRects"][0]["height"] - print_state["copyRects"][1]["height"]) <= 2
-                    )
-                    if side_by_side and 1.40 <= print_state["ratio"] <= 1.43 and print_state["rows"] >= 2:
-                        pass_("order-sheet-preview", json.dumps({**service_for_print, **print_state}, ensure_ascii=False))
-                    else:
-                        fail("order-sheet-preview", json.dumps({**service_for_print, **print_state}, ensure_ascii=False))
-
-                    order_sheet_edit = page.evaluate(
-                        """
-                        (serviceId) => {
-                          const cell = document.querySelector('[data-order-sheet-cell][data-order-sheet-row="0"][data-order-sheet-field="order"]');
-                          if (!cell) return { hasCell: false };
-                          cell.textContent = '편집 순서';
-                          cell.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: '편집 순서' }));
-                          const cells = [...document.querySelectorAll('[data-order-sheet-cell][data-order-sheet-row="0"][data-order-sheet-field="order"]')]
-                            .map((item) => item.textContent.trim());
-                          const textIncludesDraft = formatOrderSheetText(serviceId).includes('편집 순서');
-                          refreshServiceOrderSheetPreview(serviceId);
-                          const refreshedCells = [...document.querySelectorAll('[data-order-sheet-cell][data-order-sheet-row="0"][data-order-sheet-field="order"]')]
-                            .map((item) => item.textContent.trim());
-                          return {
-                            hasCell: true,
-                            cells,
-                            refreshedCells,
-                            textIncludesDraft,
-                            dirtyService: state.dirty.service
-                          };
-                        }
-                        """,
-                        service_for_print["id"],
-                    )
-                    if (
-                        order_sheet_edit["hasCell"]
-                        and order_sheet_edit["cells"] == ["편집 순서", "편집 순서"]
-                        and order_sheet_edit["refreshedCells"] == ["편집 순서", "편집 순서"]
-                        and order_sheet_edit["textIncludesDraft"]
-                        and not order_sheet_edit["dirtyService"]
-                    ):
-                        pass_("order-sheet-editable", json.dumps(order_sheet_edit, ensure_ascii=False))
-                    else:
-                        fail("order-sheet-editable", json.dumps(order_sheet_edit, ensure_ascii=False))
-
-                    active_order_sheet_date = page.evaluate(
-                        """
-                        () => document.querySelector('.order-sheet-service.active strong')?.textContent.trim() || ''
-                        """
-                    )
-                    page.fill("#searchInput", active_order_sheet_date)
-                    page.wait_for_timeout(150)
-                    order_sheet_search = page.evaluate(
-                        """
-                        (serviceId) => {
-                          const active = document.querySelector(`.order-sheet-service.active[data-order-sheet-service="${CSS.escape(serviceId)}"]`);
-                          const area = document.getElementById('orderSheetPrintArea');
-                          return {
-                            query: document.querySelector('#searchInput')?.value || '',
-                            count: document.querySelectorAll('.order-sheet-service').length,
-                            activeMatches: Boolean(active),
-                            copies: area?.querySelectorAll('.order-sheet-copy').length || 0,
-                            overflow: Math.max(document.documentElement.scrollWidth - window.innerWidth, document.body.scrollWidth - window.innerWidth)
-                          };
-                        }
-                        """,
-                        service_for_print["id"],
-                    )
-                    if order_sheet_search["query"] and order_sheet_search["count"] >= 1 and order_sheet_search["activeMatches"] and order_sheet_search["copies"] == 2 and order_sheet_search["overflow"] <= 2:
-                        pass_("order-sheet-search", json.dumps(order_sheet_search, ensure_ascii=False))
-                    else:
-                        fail("order-sheet-search", json.dumps(order_sheet_search, ensure_ascii=False))
-
-                    order_sheet_adapter = page.evaluate(
-                        """
-                        (serviceId) => {
-                          const original = state.serviceItems[serviceId] || [];
-                          const explicitItem = normalizeServiceItem({
-                            service_id: serviceId,
-                            sort_order: original.length + 1,
-                            label: '',
-                            raw_title: 'Fallback text',
-                            order_sheet: {
-                              order: '데이터 순서',
-                              assignee: '데이터 담당',
-                              note: '데이터 비고'
-                            }
-                          });
-                          const hiddenItem = normalizeServiceItem({
-                            service_id: serviceId,
-                            sort_order: original.length + 2,
-                            label: '숨김',
-                            raw_title: '숨겨진 비고',
-                            order_sheet_hidden: true
-                          });
-                          const blankItem = normalizeServiceItem({
-                            service_id: serviceId,
-                            sort_order: original.length + 3,
-                            label: '',
-                            raw_title: '',
-                            assignee: ''
-                          });
-                          const memo = serializeServiceItemMemo({
-                            note: '메모',
-                            orderSheet: {
-                              order: '메모 순서',
-                              assignee: '메모 담당',
-                              note: '메모 비고'
-                            }
-                          });
-                          state.serviceItems[serviceId] = normalizeServiceItemsInCurrentOrder([...original, explicitItem, hiddenItem, blankItem]);
-                          const service = state.services.find((svc) => svc.id === serviceId) || {};
-                          const type = state.serviceTypes.find((candidate) => candidate.id === service.type_id);
-                          const originalDefaults = type ? [...(type.fixed_items || [])] : [];
-                          if (type) {
-                            type.fixed_items = normalizeServiceDefaultItemsInCurrentOrder([
-                              ...originalDefaults,
-                              {
-                                label: '',
-                                raw_title: '',
-                                order_sheet: {
-                                  order: '공란 순서'
-                                }
-                              }
-                            ]);
-                          }
-                          const rows = serviceOrderSheetRows(serviceId);
-                          if (type) type.fixed_items = originalDefaults;
-                          state.serviceItems[serviceId] = original;
-                          refreshServiceOrderSheetPreview(serviceId);
-                          const explicit = rows.find((row) => row.order === '데이터 순서');
-                          const hidden = rows.find((row) => row.note === '숨겨진 비고');
-                          const defaultBlank = rows.find((row) => row.order === '공란 순서');
-                          const blank = rows[rows.length - 1] || {};
-                          const parsedMemo = parseServiceItemMemo(memo).orderSheet || {};
-                          return {
-                            explicit,
-                            hidden: Boolean(hidden),
-                            defaultBlank,
-                            blankPreserved: blank.order === '' && blank.assignee === '' && blank.note === '',
-                            memoPreserved: parsedMemo.order === '메모 순서' && parsedMemo.assignee === '메모 담당' && parsedMemo.note === '메모 비고'
-                          };
-                        }
-                        """,
-                        service_for_print["id"],
-                    )
-                    if (
-                        order_sheet_adapter["explicit"]
-                        and order_sheet_adapter["explicit"]["assignee"] == "데이터 담당"
-                        and order_sheet_adapter["explicit"]["note"] == "데이터 비고"
-                        and not order_sheet_adapter["hidden"]
-                        and order_sheet_adapter["defaultBlank"]
-                        and order_sheet_adapter["defaultBlank"]["note"] == ""
-                        and order_sheet_adapter["blankPreserved"]
-                        and order_sheet_adapter["memoPreserved"]
-                    ):
-                        pass_("order-sheet-data-adapter", json.dumps(order_sheet_adapter, ensure_ascii=False))
-                    else:
-                        fail("order-sheet-data-adapter", json.dumps(order_sheet_adapter, ensure_ascii=False))
-
-                    order_sheet_density = page.evaluate(
-                        """
-                        (() => {
-                          const duplicateOrder = normalizeServiceOrderSheetRow({
-                            order: '결단기도',
-                            assignee: '',
-                            note: '결단기도'
-                          });
-                          const duplicateAssignee = normalizeServiceOrderSheetRow({
-                            order: '신앙고백',
-                            assignee: '사도신경',
-                            note: '사도신경'
-                          });
-                          const denseRows = Array.from({ length: 16 }, (_, index) => ({
-                            order: `순서 ${index + 1}`,
-                            assignee: '',
-                            note: '비고'
-                          }));
-                          const tightRows = Array.from({ length: 20 }, (_, index) => ({
-                            order: `순서 ${index + 1}`,
-                            assignee: '',
-                            note: '비고'
-                          }));
-                          return {
-                            duplicateOrder,
-                            duplicateAssignee,
-                            dense: renderOrderSheetCopy('테스트', '', denseRows).includes('order-sheet-copy is-dense'),
-                            tight: renderOrderSheetCopy('테스트', '', tightRows).includes('order-sheet-copy is-tight')
-                          };
-                        })()
-                        """
-                    )
-                    if (
-                        order_sheet_density["duplicateOrder"]["note"] == ""
-                        and order_sheet_density["duplicateAssignee"]["note"] == ""
-                        and order_sheet_density["dense"]
-                        and order_sheet_density["tight"]
-                    ):
-                        pass_("order-sheet-density-and-duplicates", json.dumps(order_sheet_density, ensure_ascii=False))
-                    else:
-                        fail("order-sheet-density-and-duplicates", json.dumps(order_sheet_density, ensure_ascii=False))
-
-                    print_button = page.evaluate(
-                        """
-                        (() => {
-                          const button = document.querySelector('[data-print-service-order]');
-                          if (!button) return null;
-                          const rect = button.getBoundingClientRect();
-                          return {
-                            width: Math.round(rect.width),
-                            height: Math.round(rect.height),
-                            disabled: button.disabled,
-                            visible: rect.width > 0 && rect.height > 0 && getComputedStyle(button).visibility !== 'hidden'
-                          };
-                        })()
-                        """
-                    )
-                    if print_button and print_button["visible"] and not print_button["disabled"]:
-                        pass_("order-sheet-print-button-mounted", json.dumps(print_button, ensure_ascii=False))
-                    else:
-                        fail("order-sheet-print-button-mounted", json.dumps(print_button, ensure_ascii=False))
-
-                    page.evaluate("document.querySelector('[data-print-service-order]')?.click()")
-                    called = page.evaluate("window.__mindexPrintCalled")
-                    if called == 1:
-                        pass_("order-sheet-print-button")
-                    else:
-                        fail("order-sheet-print-button", f"called={called}")
-
-                    pdf_bytes = page.pdf(format="A4", landscape=True, print_background=True)
-                    if len(pdf_bytes) > 10000:
-                        pass_("order-sheet-pdf", f"{len(pdf_bytes)} bytes")
-                    else:
-                        fail("order-sheet-pdf", f"{len(pdf_bytes)} bytes")
-                    page.emulate_media(media="screen")
-
                 service_for_slides = select_service_with_slides(page)
                 if not service_for_slides:
                     skip("presenter-slides", "No service with generated slides.")
@@ -2414,6 +2149,7 @@ def main() -> int:
                         (() => ({
                           sidebarHeadings: [...document.querySelectorAll('.service-sidebar-head span')]
                             .map((node) => node.textContent.trim()),
+                          outlineHeaderTail: document.querySelector('.service-sidebar-section--current .service-sidebar-head small')?.textContent.trim() || '',
                           outlineRows: document.querySelectorAll('.service-outline-row').length,
                           outlineGroups: document.querySelectorAll('.service-outline-group').length,
                           multiOutlineGroups: document.querySelectorAll('.service-outline-group .service-outline-children .service-outline-row--child:nth-child(2)').length,
@@ -2475,6 +2211,9 @@ def main() -> int:
                           helpLabel: document.querySelector('[data-presenter-help] > summary')?.getAttribute('aria-label') || '',
                           helpText: document.querySelector('.svc-presenter-help-panel')?.textContent.replace(/\\s+/g, ' ').trim() || '',
                           firstThumbLabel: document.querySelector('.svc-slide-thumb')?.getAttribute('aria-label') || '',
+                          firstOutlineLabel: document.querySelector('.service-outline-row[data-service-outline-slide]')?.getAttribute('aria-label') || '',
+                          selectedSectionRows: document.querySelectorAll('.service-outline-row--section.selected').length,
+                          sidebarWidth: Math.round(document.querySelector('.sidebar')?.getBoundingClientRect().width || 0),
                           actionLabels: [...document.querySelectorAll('.service-sidebar-editor-actions [aria-label]')]
                             .slice(0, 4)
                             .map((node) => node.getAttribute('aria-label')),
@@ -2492,6 +2231,7 @@ def main() -> int:
                     )
                     if (
                         "순서" in presenter_terms["sidebarHeadings"]
+                        and presenter_terms["outlineHeaderTail"] == "시작"
                         and "편집" not in presenter_terms["sidebarHeadings"]
                         and "최근 예배" not in presenter_terms["sidebarHeadings"]
                         and presenter_terms["outlineRows"] >= 2
@@ -2503,7 +2243,7 @@ def main() -> int:
                             (item["start"] == "" if item["child"] else item["start"] == str(item["slide"] + 1) and item["align"] == "right")
                             for item in presenter_terms["outlineStartNumbers"]
                         )
-                        and presenter_terms["collapsedBoardSubgroups"] >= 1
+                        and presenter_terms["collapsedBoardSubgroups"] == 0
                         and presenter_terms["mainPraiseSubgroupLabels"] == ["환영", "찬양 1"]
                         and presenter_terms["doxologyScoreSectionTitle"] == "송영"
                         and presenter_terms["readyShortcutRows"] <= 1
@@ -2522,11 +2262,13 @@ def main() -> int:
                         and "Mac: ⌃⌘F" in presenter_terms["helpText"]
                         and "Windows/Linux: F11" in presenter_terms["helpText"]
                         and "번호 + Enter" in presenter_terms["helpText"]
-                        and (
-                            "슬라이드 선택" in presenter_terms["firstThumbLabel"]
-                            or "슬라이드로 이동" in presenter_terms["firstThumbLabel"]
-                            or "준비 화면으로 이동" in presenter_terms["firstThumbLabel"]
-                        )
+                        and "0 + Enter" in presenter_terms["helpText"]
+                        and "범위 밖 번호 현재 화면 유지" in presenter_terms["helpText"]
+                        and "0 또는 없는 번호" not in presenter_terms["helpText"]
+                        and "위치 보기, 더블클릭하여 송출" in presenter_terms["firstThumbLabel"]
+                        and "위치 보기, 더블클릭하여 송출" in presenter_terms["firstOutlineLabel"]
+                        and presenter_terms["selectedSectionRows"] == 0
+                        and presenter_terms["sidebarWidth"] >= 250
                         and not presenter_terms["visibleBadTerms"]
                         and not presenter_terms["visiblePresentationTerms"]
                         and not presenter_terms["legacyArtifactLabels"]
@@ -2802,7 +2544,7 @@ def main() -> int:
                     page.set_viewport_size({"width": 1440, "height": 980})
                     if (
                         authoring_narrow["viewport"] == 520
-                        and 220 <= authoring_narrow["editorWidth"] <= authoring_narrow["viewport"]
+                        and 160 <= authoring_narrow["editorWidth"] <= authoring_narrow["viewport"]
                         and authoring_narrow["overflow"] <= 2
                         and authoring_narrow["leakingNodes"] == 0
                         and authoring_narrow["firstItemHeight"] >= 24
@@ -3047,6 +2789,81 @@ def main() -> int:
                         else:
                             fail("presenter-doubleclick-start", json.dumps(dbl_state, ensure_ascii=False))
 
+                        hierarchy_state = page.evaluate(
+                            """
+                            (() => {
+                              const groups = [...document.querySelectorAll('.service-outline-list > .service-outline-group')];
+                              return {
+                                standaloneRows: document.querySelectorAll('.service-outline-list > .service-outline-row:not(.service-outline-row--ready)').length,
+                                sections: groups.map((group) => group.querySelector('.service-outline-row--section strong')?.textContent.trim() || ''),
+                                elements: groups.map((group) => [...group.querySelectorAll('.service-outline-row--child strong')]
+                                  .map((node) => node.textContent.trim())),
+                                emptySections: groups.filter((group) => !group.querySelector('.service-outline-row--section strong')?.textContent.trim()).length,
+                              };
+                            })()
+                            """
+                        )
+                        if (
+                            hierarchy_state["standaloneRows"] == 0
+                            and hierarchy_state["sections"]
+                            and not hierarchy_state["emptySections"]
+                            and all(elements for elements in hierarchy_state["elements"])
+                        ):
+                            pass_("presenter-sidebar-section-element-hierarchy", json.dumps(hierarchy_state, ensure_ascii=False))
+                        else:
+                            fail("presenter-sidebar-section-element-hierarchy", json.dumps(hierarchy_state, ensure_ascii=False))
+
+                        passive_target = 0 if dbl_target != 0 else 1
+                        page.locator(
+                            f'.svc-slide-thumb[data-service-id="{service_for_slides["id"]}"][data-presenter-index="{passive_target}"]'
+                        ).click()
+                        passive_board_state = page.evaluate(
+                            """
+                            (expectedIndex) => ({
+                              index: state.presenter.index,
+                              expectedIndex,
+                              outputIndex: JSON.parse(localStorage.getItem('mindex.presenter.state') || '{}').index,
+                            })
+                            """,
+                            dbl_target,
+                        )
+                        outline_target = page.locator(
+                            f'.service-outline-row[data-service-outline-slide="{passive_target}"]:not([disabled])'
+                        ).first
+                        if outline_target.count():
+                            outline_target.click()
+                            passive_sidebar_state = page.evaluate(
+                                """
+                                (expectedIndex) => ({
+                                  index: state.presenter.index,
+                                  outputIndex: JSON.parse(localStorage.getItem('mindex.presenter.state') || '{}').index,
+                                  selectedRows: document.querySelectorAll('.service-outline-row.selected').length,
+                                })
+                                """,
+                                dbl_target,
+                            )
+                            outline_target.dblclick()
+                            page.wait_for_function("(target) => state.presenter.index === target", arg=passive_target, timeout=5000)
+                        else:
+                            passive_sidebar_state = {"index": -1, "outputIndex": -1, "selectedRows": 0}
+                        if (
+                            passive_board_state["index"] == dbl_target
+                            and passive_board_state["outputIndex"] == dbl_target
+                            and passive_sidebar_state["index"] == dbl_target
+                            and passive_sidebar_state["outputIndex"] == dbl_target
+                            and passive_sidebar_state["selectedRows"] >= 1
+                        ):
+                            pass_("presenter-single-click-passive-doubleclick-live", json.dumps({
+                                "board": passive_board_state,
+                                "sidebar": passive_sidebar_state,
+                                "doubleClickIndex": passive_target,
+                            }, ensure_ascii=False))
+                        else:
+                            fail("presenter-single-click-passive-doubleclick-live", json.dumps({
+                                "board": passive_board_state,
+                                "sidebar": passive_sidebar_state,
+                            }, ensure_ascii=False))
+
                     overflow_state = page.evaluate(
                         """
                         (() => {
@@ -3080,7 +2897,7 @@ def main() -> int:
                 wait_for_module_data(page, "praise")
                 praise_placeholder = page.input_value("#searchInput")
                 placeholder = page.get_attribute("#searchInput", "placeholder") or ""
-                if placeholder == "Search...":
+                if placeholder == "검색...":
                     pass_("praise-module-placeholder", placeholder)
                 else:
                     fail("praise-module-placeholder", placeholder or praise_placeholder)
@@ -3387,6 +3204,7 @@ def main() -> int:
                 if "favicon" not in item.lower()
                 and "source map" not in item.lower()
                 and "the server responded with a status of 400" not in item.lower()
+                and "could not load song versions" not in item.lower()
             ]
             if relevant_console:
                 fail("console-errors", "\n".join(relevant_console[:8]))

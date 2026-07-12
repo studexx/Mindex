@@ -276,12 +276,18 @@ def main() -> int:
                       const targetIndex = Math.min(18, Math.max(state.presenter.slides.length - 1, 0));
                       detail.scrollTop = 320;
                       const scrollBefore = detail.scrollTop;
-                      const boardBefore = document.querySelector('.svc-slide-board');
-                      const thumb = document.querySelector(`.svc-slide-thumb[data-service-id="${serviceId}"][data-presenter-index="${targetIndex}"]`);
-                      const startedAt = performance.now();
-                      thumb?.click();
-                      const immediateIndex = state.presenter.index;
-                      await new Promise((resolve) => requestAnimationFrame(resolve));
+	                      const boardBefore = document.querySelector('.svc-slide-board');
+	                      const thumb = document.querySelector(`.svc-slide-thumb[data-service-id="${serviceId}"][data-presenter-index="${targetIndex}"]`);
+	                      const originalScrollIntoView = Element.prototype.scrollIntoView;
+	                      let scrolledIndex = -1;
+	                      Element.prototype.scrollIntoView = function scrollIntoView() {
+	                        scrolledIndex = Number(this.dataset?.presenterIndex ?? -1);
+	                      };
+	                      const startedAt = performance.now();
+	                      thumb?.click();
+	                      const immediateIndex = state.presenter.index;
+	                      await new Promise((resolve) => requestAnimationFrame(resolve));
+	                      Element.prototype.scrollIntoView = originalScrollIntoView;
                       const boardAfter = document.querySelector('.svc-slide-board');
                       const activeThumb = document.querySelector('.svc-slide-thumb.active');
                       const result = {
@@ -291,7 +297,8 @@ def main() -> int:
                         sameBoard: boardBefore === boardAfter,
                         scrollBefore,
                         scrollAfter: detail.scrollTop,
-                        activeIndex: Number(activeThumb?.dataset.presenterIndex ?? -1),
+	                        activeIndex: Number(activeThumb?.dataset.presenterIndex ?? -1),
+	                        scrolledIndex,
                       };
                       state.presenter.index = 0;
                       state.presenter.safetyBlank = false;
@@ -302,18 +309,72 @@ def main() -> int:
                     service["id"],
                 )
                 if (
-                    fast_jump_state["targetIndex"] == fast_jump_state["immediateIndex"]
-                    and fast_jump_state["targetIndex"] == fast_jump_state["activeIndex"]
+                    fast_jump_state["immediateIndex"] == 0
+                    and fast_jump_state["activeIndex"] == 0
+                    and fast_jump_state["scrolledIndex"] == fast_jump_state["targetIndex"]
                     and fast_jump_state["sameBoard"]
                     and abs(fast_jump_state["scrollAfter"] - fast_jump_state["scrollBefore"]) <= 1
                     and fast_jump_state["elapsedMs"] < 120
                 ):
-                    pass_("presenter-thumb-click-fast-no-scroll", json.dumps(fast_jump_state, ensure_ascii=False))
+                    pass_("presenter-thumb-click-passive-navigation", json.dumps(fast_jump_state, ensure_ascii=False))
                 else:
-                    fail("presenter-thumb-click-fast-no-scroll", json.dumps(fast_jump_state, ensure_ascii=False))
+                    fail("presenter-thumb-click-passive-navigation", json.dumps(fast_jump_state, ensure_ascii=False))
+
+                outline_follow_state = page.evaluate(
+                    """
+                    async (serviceId) => {
+                      const targetIndex = Math.min(24, Math.max(state.presenter.slides.length - 1, 0));
+                      const originalScrollIntoView = Element.prototype.scrollIntoView;
+                      const calls = [];
+                      Element.prototype.scrollIntoView = function scrollIntoView(options) {
+                        if (this.classList?.contains('service-outline-row')) {
+                          calls.push({
+                            classes: this.className,
+                            slide: Number(this.dataset.serviceOutlineSlide ?? -1),
+                            block: options?.block || '',
+                          });
+                        }
+                      };
+                      runPresenterAction('jump', serviceId, { index: targetIndex });
+                      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+                      Element.prototype.scrollIntoView = originalScrollIntoView;
+                      const result = {
+                        targetIndex,
+                        presenterIndex: state.presenter.index,
+                        calls,
+                        activeRows: document.querySelectorAll('.service-outline-row.active').length,
+                      };
+                      state.presenter.index = 0;
+                      state.presenter.safetyBlank = false;
+                      renderPresenterControlState(serviceId);
+                      return result;
+                    }
+                    """,
+                    service["id"],
+                )
+                if (
+                    outline_follow_state["presenterIndex"] == outline_follow_state["targetIndex"]
+                    and outline_follow_state["calls"]
+                    and "service-outline-row--child" in outline_follow_state["calls"][-1]["classes"]
+                    and outline_follow_state["calls"][-1]["block"] == "nearest"
+                    and outline_follow_state["activeRows"] >= 1
+                ):
+                    pass_("presenter-outline-follows-live-transition", json.dumps(outline_follow_state, ensure_ascii=False))
+                else:
+                    fail("presenter-outline-follows-live-transition", json.dumps(outline_follow_state, ensure_ascii=False))
 
                 hover_thumb = page.locator(f'.svc-slide-thumb[data-service-id="{service["id"]}"][data-presenter-index="1"]')
                 hover_thumb.hover()
+                page.wait_for_function(
+                    """
+                    (serviceId) => {
+                      const frame = document.querySelector(`.svc-slide-thumb[data-service-id="${serviceId}"][data-presenter-index="1"] .svc-slide-thumb-frame`);
+                      return Boolean(frame && getComputedStyle(frame).boxShadow.includes('0px 0px 0px 2px'));
+                    }
+                    """,
+                    arg=service["id"],
+                    timeout=1500,
+                )
                 hover_state = page.evaluate(
                     """
                     (serviceId) => {
@@ -441,8 +502,8 @@ def main() -> int:
                     and ready_thumb_state["numberBadges"] >= 2
 	                    and ready_thumb_state["firstNumber"] == "1"
 	                    and ready_thumb_state["secondNumber"] == "2"
-	                    and "1번 슬라이드로 이동" in ready_thumb_state["firstLabel"]
-	                    and "2번 슬라이드로 이동" in ready_thumb_state["secondLabel"]
+	                    and "1번 슬라이드 위치 보기, 더블클릭하여 송출" in ready_thumb_state["firstLabel"]
+	                    and "2번 슬라이드 위치 보기, 더블클릭하여 송출" in ready_thumb_state["secondLabel"]
 	                    and ready_thumb_state["numberOutsidePreview"]
 	                ):
                     pass_("presenter-ready-thumb-chrome", json.dumps(ready_thumb_state, ensure_ascii=False))
@@ -697,8 +758,8 @@ def main() -> int:
                           layout: slides[0]?.layout || '',
                           type: slides[0]?.type || ''
                         },
-                        monthlyPrayerGroups: groupPresenterSlidesBySection(slides, serviceId)
-                          .filter((group) => group.label === '월삭기도')
+                        corporatePrayerGroups: groupPresenterSlidesBySection(slides, serviceId)
+                          .filter((group) => group.label === '공동기도')
                           .map((group) => ({
                             title: group.title,
                             subgroups: group.subgroups.map((subgroup) => ({
@@ -747,7 +808,6 @@ def main() -> int:
                         praiseAutoAssigneeFallback: (() => ({
                           group: servicePraiseAssignee({ type_id: 'monthly', leader: '', tags: [] }, [{ label: '찬양' }]),
                           board: servicePraiseBoardMetaCandidate({ type_id: 'monthly', leader: '', tags: [] }, [{ label: '찬양' }]),
-                          orderSheet: inferOrderSheetAssignee({ label: '결단찬양', raw_title: '결단찬양' }),
                         }))(),
                         mainPraiseElementTitleMeta: (() => {
                           const service = state.services.find((item) => item.id === serviceId) || { id: serviceId, type_id: 'monthly' };
@@ -775,7 +835,9 @@ def main() -> int:
                             version_id: '__smoke_main_praise_meta_version__',
                           }, service, 0);
                           const group = groupPresenterSlidesBySection(slides, serviceId).find((item) => item.kind === 'main-praise');
-                          const subgroup = group?.subgroups.find((item) => item.title.includes('가서 제자 삼으라')) || {};
+                          const subgroup = group?.subgroups.find((item) =>
+                            item.slides?.some(({ slide }) => slide.type === 'song-title')
+                          ) || {};
                           const titleSlide = slides.find((slide) => slide.type === 'song-title') || {};
                           state.songs = previousSongs;
                           return {
@@ -811,7 +873,6 @@ def main() -> int:
                             boardGroupLabel: introGroup.label || '',
                             boardSubgroupLabel: introSubgroup.label || '',
                             boardSubgroupTitle: introSubgroup.title || '',
-                            boardSubgroupCollapsed: presenterBoardSubgroupCanCollapse(introGroup, introSubgroup),
                             visibleTags: serviceVisibleTags({ tags: ['찬양팀: 글로리아 찬양단', '온세대'] }),
                           };
                         })(),
@@ -972,20 +1033,15 @@ def main() -> int:
                 if (
                     not fallback_state["centerFallbacks"]
                     and fallback_state["ready"] == {"elementType": "video", "layout": "media", "type": "ready"}
-                    and fallback_state["monthlyPrayerGroups"]
-                    and all(group["title"] == "월삭기도" for group in fallback_state["monthlyPrayerGroups"])
+                    and fallback_state["corporatePrayerGroups"]
+                    and all(group["title"] == "공동기도" for group in fallback_state["corporatePrayerGroups"])
                     and any(
-                        any(
-                            subgroup["label"] == "월삭기도"
-                            and subgroup["title"]
-                            and subgroup["title"] != "월삭기도"
-                            for subgroup in group["subgroups"]
-                        )
-                        for group in fallback_state["monthlyPrayerGroups"]
+                        any(subgroup["label"] == "공동기도 1" and subgroup["slides"] > 0 for subgroup in group["subgroups"])
+                        for group in fallback_state["corporatePrayerGroups"]
                     )
                     and any(
-                        any(subgroup["label"] == "찬양" and subgroup["slides"] > 0 for subgroup in group["subgroups"])
-                        for group in fallback_state["monthlyPrayerGroups"]
+                        any(subgroup["label"] == "기도 찬양" and subgroup["slides"] > 0 for subgroup in group["subgroups"])
+                        for group in fallback_state["corporatePrayerGroups"]
                     )
                     and len(fallback_state["mainPraiseGroups"]) == 1
                     and fallback_state["mainPraiseGroups"][0]["label"] == "찬양"
@@ -995,7 +1051,6 @@ def main() -> int:
                     and fallback_state["praiseAutoAssigneeFallback"] == {
                         "group": "",
                         "board": {"text": "썸프레이즈", "priority": 2.5},
-                        "orderSheet": "",
                     }
                     and fallback_state["mainPraiseElementTitleMeta"] == {
                         "groupTitle": "찬양",
@@ -1016,7 +1071,6 @@ def main() -> int:
                         "boardGroupLabel": "찬양",
                         "boardSubgroupLabel": "환영",
                         "boardSubgroupTitle": "",
-                        "boardSubgroupCollapsed": False,
                         "visibleTags": ["온세대"],
                     }
                     and fallback_state["specialPraiseLabelGuard"] == {
@@ -1118,6 +1172,13 @@ def main() -> int:
                       offeringHead.innerHTML = offeringHeadHtml;
                       return {
                         slides,
+                        sermonTitleQuote: presenterTitleAssigneePerson(
+                          { assignee: '김남영 목사' },
+                          '설교 제목',
+                          '정함',
+                          '설교',
+                          service,
+                        ),
                         offeringBoard: {
                           label: offeringSubgroup.label || '',
                           title: offeringSubgroup.title || '',
@@ -1173,11 +1234,12 @@ def main() -> int:
                         },
                     ]
                     and all("presenter-title-assignee" in item["html"] for item in title_assignee_state["slides"])
+                    and title_assignee_state["sermonTitleQuote"] == "'정함'\n김남영 목사"
                     and title_assignee_state["offeringBoard"] == {
                         "label": "봉헌기도",
-                        "title": "김남영 목사",
+                        "title": "",
                         "span": "봉헌기도",
-                        "strong": "김남영 목사",
+                        "strong": "",
                     }
                     and title_assignee_state["cleanSlides"] == [
                         {
@@ -1381,7 +1443,6 @@ def main() -> int:
                         raw_title: '',
                         memo: serializeServiceItemMemo({ elementType: 'title' }),
                         _worshipSectionKey: 'confession',
-                        _worshipOrderSheetPlaceholder: true,
                       }, { id: '__smoke_chromakey_service__', type_id: 'sunday-main', date: '2026-07-05' }, 0)[0] || {};
                       const creedItem = {
                         id: '__smoke_creed_body__',
@@ -1393,7 +1454,6 @@ def main() -> int:
 	                          slides: ['전능하사 천지를 만드신 하나님 아버지를 내가 믿사오며\\n그 외아들 우리 주 예수 그리스도를 믿사오니\\n이는 성령으로 잉태하사 동정녀 마리아에게 나시고\\n본디오 빌라도에게 고난을 받으사 십자가에 못 박혀 죽으시고\\n장사한 지 사흘 만에 죽은 자 가운데서 다시 살아나시며\\n하늘에 오르사 전능하신 하나님 우편에 앉아 계시다가\\n저리로서 산 자와 죽은 자를 심판하러 오시리라\\n성령을 믿사오며 거룩한 공회와 성도가 서로 교통하는 것과\\n죄를 사하여 주시는 것과 몸이 다시 사는 것과\\n영원히 사는 것을 믿사옵나이다. 아멘']
 	                        }),
                         _worshipSectionKey: 'creed',
-                        _worshipOrderSheetPlaceholder: true,
                       };
                       const chromakeySlides = normalizePresenterSlidesForServiceOutput(buildPresenterSlidesForServiceItem(
                         creedItem,
@@ -1622,7 +1682,7 @@ def main() -> int:
                     and all(slide["chromakey"] is True for slide in title_and_liturgical_state["scaffold"])
                     and all(slide["outputContext"] == "chromakey" for slide in title_and_liturgical_state["scaffold"])
                     and title_and_liturgical_state["chromakeyCenterTextSlides"] == []
-                    and title_and_liturgical_state["scaffoldOutputContexts"] == {"chromakey": 22, "clean": 1}
+                    and title_and_liturgical_state["scaffoldOutputContexts"] == {"chromakey": 26, "clean": 1}
                     and [slide["text"] for slide in title_and_liturgical_state["scaffold"] if slide["type"] == "lyrics"] == [
                         "나는 전능하신 아버지 하나님, 천지의 창조주를 믿습니다.\n나는 그의 유일하신 아들, 우리 주 예수 그리스도를 믿습니다.",
                         "그는 성령으로 잉태되어 동정녀 마리아에게서 나시고,\n본디오 빌라도에게 고난을 받아 십자가에 못 박혀 죽으시고,",
@@ -2075,6 +2135,102 @@ def main() -> int:
                         sectionKey: slide.sectionKey || '',
                         body: renderPresenterSlideBody(slide).trim(),
                       }));
+                      const thirdManualSpecialTitleSlides = buildPresenterSlidesForServiceItem({
+                        id: '__smoke_third_manual_special_item__',
+                        label: '특송',
+                        raw_title: '',
+                        song_id: '',
+                        assignee: '할렐루야 찬양대',
+                        _worshipSectionId: '__smoke_third_special_section__',
+                        _worshipSectionKey: 'special_song',
+                        _worshipSectionTitle: '특송',
+                        memo: serializeServiceItemMemo({ elementType: 'praise' })
+                      }, { ...service, type_id: 'sunday-main' }, 8.5)
+                        .filter((slide) => slide.type === 'title-assignee')
+                        .map((slide) => ({
+                          type: slide.type,
+                          elementType: slide.elementType || '',
+                          layout: slide.layout || '',
+                          title: slide.title || '',
+                          assignee: slide.assignee || '',
+                          text: slide.text || '',
+                          sectionKey: slide.sectionKey || '',
+                        }));
+                      const thirdEmptySpecialMissingSlides = buildPresenterSlidesForServiceItem({
+                        id: '__smoke_third_empty_special_item__',
+                        label: '특송',
+                        raw_title: '',
+                        song_id: '',
+                        assignee: '',
+                        _worshipSectionId: '__smoke_third_special_section__',
+                        _worshipSectionKey: 'special_song',
+                        _worshipSectionTitle: '특송',
+                        memo: serializeServiceItemMemo({ elementType: 'praise' })
+                      }, { ...service, type_id: 'sunday-main' }, 8.6)
+                        .map((slide) => ({
+                          type: slide.type,
+                          elementType: slide.elementType || '',
+                          layout: slide.layout || '',
+                          title: slide.title || '',
+                          assignee: slide.assignee || '',
+                          text: slide.text || '',
+                          sectionKey: slide.sectionKey || '',
+                          missingContent: Boolean(slide.missingContent),
+                          missingReason: slide.missingReason || '',
+                          inputMode: slide.inputMode || '',
+                          contentState: slide.contentState || '',
+                          warnings: slide.warnings || [],
+                        }));
+                      const emptyTemplateInputSlides = buildPresenterSlidesForServiceItem({
+                        id: '__smoke_empty_template_input_item__',
+                        label: '대표기도',
+                        raw_title: '',
+                        song_id: '',
+                        assignee: '',
+                        _worshipSectionId: '__smoke_empty_template_input_section__',
+                        _worshipSectionKey: 'prayer',
+                        _worshipSectionTitle: '대표기도',
+                        _worshipTemplateProjected: true,
+                        _worshipTemplatePlaceholder: true,
+                        memo: serializeServiceItemMemo({ elementType: 'title_person' })
+                      }, { ...service, type_id: 'sunday-main' }, 8.7)
+                        .map((slide) => ({
+                          type: slide.type,
+                          elementType: slide.elementType || '',
+                          layout: slide.layout || '',
+                          title: slide.title || '',
+                          assignee: slide.assignee || '',
+                          text: slide.text || '',
+                          sectionKey: slide.sectionKey || '',
+                          missingContent: Boolean(slide.missingContent),
+                          missingReason: slide.missingReason || '',
+                          inputMode: slide.inputMode || '',
+                          contentState: slide.contentState || '',
+                          warnings: slide.warnings || [],
+                        }));
+                      const defaultTemplateInputSlides = buildPresenterSlidesForServiceItem({
+                        id: '__smoke_default_template_input_item__',
+                        label: '대표기도',
+                        raw_title: '',
+                        song_id: '',
+                        assignee: '김남영 목사',
+                        _worshipSectionId: '__smoke_default_template_input_section__',
+                        _worshipSectionKey: 'prayer',
+                        _worshipSectionTitle: '대표기도',
+                        _worshipTemplateProjected: true,
+                        _worshipTemplatePlaceholder: true,
+                        memo: serializeServiceItemMemo({ elementType: 'title_person' })
+                      }, { ...service, type_id: 'sunday-main' }, 8.8)
+                        .map((slide) => ({
+                          type: slide.type,
+                          elementType: slide.elementType || '',
+                          layout: slide.layout || '',
+                          title: slide.title || '',
+                          assignee: slide.assignee || '',
+                          text: slide.text || '',
+                          missingContent: Boolean(slide.missingContent),
+                          warnings: slide.warnings || [],
+                        }));
                       const audioSlides = buildPresenterSlidesForServiceItem(audioItem, service, 9);
                       const warningHtml = renderPresenterBoardSubgroup({
                         id: '__smoke_warning_group__',
@@ -2131,6 +2287,50 @@ def main() -> int:
                         host.remove();
                         return metrics;
                       })();
+                      const persistenceStateRows = buildWorshipPersistenceRows({ ...service, id: '__smoke_content_state_service__' }, [
+                        {
+                          id: '__smoke_persist_empty_special_item__',
+                          service_id: '__smoke_content_state_service__',
+                          label: '특송',
+                          raw_title: '',
+                          song_id: '',
+                          assignee: '',
+                          _worshipSectionKey: 'special_song',
+                          _worshipSectionTitle: '특송',
+                          memo: serializeServiceItemMemo({ elementType: 'praise' })
+                        },
+                        {
+                          id: '__smoke_persist_default_prayer_item__',
+                          service_id: '__smoke_content_state_service__',
+                          label: '대표기도',
+                          raw_title: '',
+                          song_id: '',
+                          assignee: '김남영 목사',
+                          _worshipSectionKey: 'prayer',
+                          _worshipSectionTitle: '대표기도',
+                          memo: serializeServiceItemMemo({ elementType: 'title_person' })
+                        },
+                        {
+                          id: '__smoke_persist_song_id_item__',
+                          service_id: '__smoke_content_state_service__',
+                          label: '찬양',
+                          raw_title: '',
+                          song_id: '__smoke_missing_song_object__',
+                          assignee: '',
+                          _worshipSectionKey: 'praise',
+                          _worshipSectionTitle: '찬양',
+                          memo: serializeServiceItemMemo({ elementType: 'praise' })
+                        }
+                      ], {}, {}, {
+                        elementTypedStateColumns: { inputMode: true, contentState: true }
+                      }).elements.map((element) => ({
+                        label: element.source_ref?.label || '',
+                        songId: element.song_id || '',
+                        inputMode: element.config?.inputMode || '',
+                        typedInputMode: element.input_mode || '',
+                        contentState: element.config?.contentState || null,
+                        typedContentState: element.content_state || null,
+                      }));
                       return {
                         hymnTypes: hymnAllSlides.map((slide) => slide.type),
                         hymnTitleTexts: hymnAllSlides.filter((slide) => slide.type === 'song-title').map((slide) => slide.text),
@@ -2185,6 +2385,11 @@ def main() -> int:
                           label: slide.label
                         })),
                         specialSectionTitleSlides,
+                        thirdManualSpecialTitleSlides,
+                        thirdEmptySpecialMissingSlides,
+                        emptyTemplateInputSlides,
+                        defaultTemplateInputSlides,
+                        persistenceStateRows,
                         sectionSongTitleSlides,
                         scoreSlides: scoreSlides.map((slide) => ({
                           type: slide.type,
@@ -2326,7 +2531,116 @@ def main() -> int:
                         "body": form_preset_state["specialSectionTitleSlides"][0]["body"],
                     }]
                     and "presenter-title-assignee" in form_preset_state["specialSectionTitleSlides"][0]["body"]
-                    and len(form_preset_state["sectionSongTitleSlides"]["offering"]) == 1
+                    and form_preset_state["thirdManualSpecialTitleSlides"] == [{
+                        "type": "title-assignee",
+                        "elementType": "title_assignee",
+                        "layout": "lower_bar_text",
+                        "title": "특송",
+                        "assignee": "할렐루야 찬양대",
+                        "text": "특송\n할렐루야 찬양대",
+                        "sectionKey": "special_song",
+                    }]
+                    and form_preset_state["thirdEmptySpecialMissingSlides"] == [{
+                        "type": "title-assignee",
+                        "elementType": "title_assignee",
+                        "layout": "lower_bar_text",
+                        "title": "특송",
+                        "assignee": "입력 필요",
+                        "text": "특송\n입력 필요",
+                        "sectionKey": "special_song",
+                        "missingContent": True,
+                        "missingReason": "empty",
+                        "inputMode": "praise_db",
+                        "contentState": "missing",
+                        "warnings": ["입력 필요"],
+                    }]
+                    and form_preset_state["emptyTemplateInputSlides"] == [{
+                        "type": "title-assignee",
+                        "elementType": "title_assignee",
+                        "layout": "lower_bar_text",
+                        "title": "대표기도",
+                        "assignee": "입력 필요",
+                        "text": "대표기도\n입력 필요",
+                        "sectionKey": "prayer",
+                        "missingContent": True,
+                        "missingReason": "template_placeholder",
+                        "inputMode": "text",
+                        "contentState": "missing",
+                        "warnings": ["입력 필요"],
+                    }]
+	                    and form_preset_state["defaultTemplateInputSlides"] == [{
+	                        "type": "title-assignee",
+	                        "elementType": "title_assignee",
+	                        "layout": "lower_bar_text",
+	                        "title": "기도",
+                        "assignee": "김남영 목사",
+                        "text": "기도\n김남영 목사",
+	                        "missingContent": False,
+	                        "warnings": [],
+	                    }]
+	                    and form_preset_state["persistenceStateRows"] == [
+	                        {
+	                            "label": "특송",
+	                            "songId": "",
+	                            "inputMode": "praise_db",
+	                            "typedInputMode": "praise_db",
+	                            "contentState": {
+	                                "state": "missing",
+	                                "reason": "empty",
+	                                "inputMode": "praise_db",
+	                                "elementType": "praise",
+	                                "required": True,
+	                            },
+	                            "typedContentState": {
+	                                "state": "missing",
+	                                "reason": "empty",
+	                                "inputMode": "praise_db",
+	                                "elementType": "praise",
+	                                "required": True,
+	                            },
+	                        },
+	                        {
+	                            "label": "대표기도",
+	                            "songId": "",
+	                            "inputMode": "text",
+	                            "typedInputMode": "text",
+	                            "contentState": {
+	                                "state": "filled",
+	                                "reason": "assignee",
+	                                "inputMode": "text",
+	                                "elementType": "title_person",
+	                                "required": False,
+	                            },
+	                            "typedContentState": {
+	                                "state": "filled",
+	                                "reason": "assignee",
+	                                "inputMode": "text",
+	                                "elementType": "title_person",
+	                                "required": False,
+	                            },
+	                        },
+	                        {
+	                            "label": "찬양",
+	                            "songId": "__smoke_missing_song_object__",
+	                            "inputMode": "praise_db",
+	                            "typedInputMode": "praise_db",
+	                            "contentState": {
+	                                "state": "filled",
+	                                "reason": "song",
+	                                "inputMode": "praise_db",
+	                                "elementType": "praise",
+	                                "required": False,
+	                            },
+	                            "typedContentState": {
+	                                "state": "filled",
+	                                "reason": "song",
+	                                "inputMode": "praise_db",
+	                                "elementType": "praise",
+	                                "required": False,
+	                            },
+	                        },
+	                    ]
+	                    and len(form_preset_state["sectionSongTitleSlides"]["offering"]) == 1
                     and form_preset_state["sectionSongTitleSlides"]["special"] == []
                     and len(form_preset_state["sectionSongTitleSlides"]["doxology"]) == 1
                     and form_preset_state["scoreSlides"] == [{
@@ -2626,25 +2940,48 @@ def main() -> int:
                       document.body.appendChild(mount);
                       const outputs = [...mount.querySelectorAll('.svc-slide-mini-output')];
                       const slides = [...mount.querySelectorAll('.presenter-slide')];
+                      const readingHead = mount.querySelector('.presenter-scripture-reading-head');
                       const readingRef = mount.querySelector('.presenter-scripture-reading-ref');
+                      const readingVersion = mount.querySelector('.presenter-scripture-reading-version');
                       const readingNo = mount.querySelector('.presenter-scripture-reading-no');
                       const readingText = mount.querySelector('.presenter-scripture-reading-text');
+                      const sermonText = slides[1]?.querySelector('.presenter-slide-text');
+                      const readingHeadRect = readingHead?.getBoundingClientRect();
+                      const readingRefRect = readingRef?.getBoundingClientRect();
+                      const readingVersionRect = readingVersion?.getBoundingClientRect();
+                      const readingTextRect = readingText?.getBoundingClientRect();
+                      const readingTextStyle = readingText ? getComputedStyle(readingText) : null;
+                      const readingNoStyle = readingNo ? getComputedStyle(readingNo) : null;
+                      const sermonTextStyle = sermonText ? getComputedStyle(sermonText) : null;
                       const result = {
                         readingContext: readingSlide.scriptureContext || '',
                         readingElementTitle: readingSlide.elementTitle || '',
+                        readingReferenceBook: readingSlide.referenceBook || '',
+                        readingReferenceRange: readingSlide.referenceRange || '',
+                        readingTranslationLabel: readingSlide.translationLabel || '',
                         readingOutputContext: presenterSlideOutputContext(readingSlide, true),
                         readingNoChromakey: outputs[0]?.classList.contains('no-chromakey') || false,
                         readingHasClass: slides[0]?.classList.contains('presenter-slide--scripture-reading') || false,
                         readingHasLowerBarText: Boolean(slides[0]?.querySelector('.presenter-slide-text')),
                         readingReference: readingRef?.textContent?.trim() || '',
+                        readingVersion: readingVersion?.textContent?.trim() || '',
+                        readingHeaderSplit: Boolean(readingHead && readingRef && readingVersion && readingRefRect && readingVersionRect && readingRefRect.left < readingVersionRect.left),
+                        readingBodyBelowHeader: Boolean(readingHeadRect && readingTextRect && readingTextRect.top > readingHeadRect.bottom),
                         readingNumber: readingNo?.textContent?.trim() || '',
                         readingText: readingText?.textContent?.trim() || '',
+                        readingFontFamily: readingTextStyle?.fontFamily || '',
+                        readingFontWeight: readingTextStyle?.fontWeight || '',
+                        readingLineHeight: readingTextStyle?.lineHeight || '',
+                        readingNumberFontWeight: readingNoStyle?.fontWeight || '',
                         sermonContext: sermonSlide.scriptureContext || '',
                         sermonElementTitle: sermonSlide.elementTitle || '',
                         sermonOutputContext: presenterSlideOutputContext(sermonSlide, true),
                         sermonNoChromakey: outputs[1]?.classList.contains('no-chromakey') || false,
                         sermonHasClass: slides[1]?.classList.contains('presenter-slide--scripture-sermon') || false,
                         sermonHasLowerBarText: Boolean(slides[1]?.querySelector('.presenter-slide-text')),
+                        sermonFontFamily: sermonTextStyle?.fontFamily || '',
+                        sermonFontWeight: sermonTextStyle?.fontWeight || '',
+                        sermonLineHeight: sermonTextStyle?.lineHeight || '',
                       };
                       mount.remove();
                       state.services = state.services.filter((item) => item.id !== service.id);
@@ -2659,9 +2996,18 @@ def main() -> int:
                     and scripture_context_state["readingNoChromakey"]
                     and scripture_context_state["readingHasClass"]
                     and not scripture_context_state["readingHasLowerBarText"]
-                    and scripture_context_state["readingReference"] == "출 23:14–19"
+                    and scripture_context_state["readingReference"] == "출애굽기 23:14–19"
+                    and scripture_context_state["readingReferenceBook"] == "출애굽기"
+                    and scripture_context_state["readingReferenceRange"] == "23:14–19"
+                    and scripture_context_state["readingTranslationLabel"] == "개역개정"
+                    and scripture_context_state["readingVersion"] == "개역개정"
+                    and scripture_context_state["readingHeaderSplit"]
+                    and scripture_context_state["readingBodyBelowHeader"]
                     and scripture_context_state["readingNumber"] == "14"
                     and "너는 매년 세 번" in scripture_context_state["readingText"]
+                    and scripture_context_state["readingFontFamily"] == scripture_context_state["sermonFontFamily"]
+                    and scripture_context_state["readingFontWeight"] == scripture_context_state["sermonFontWeight"]
+                    and scripture_context_state["readingNumberFontWeight"] == scripture_context_state["readingFontWeight"]
                     and scripture_context_state["sermonContext"] == "sermon"
                     and scripture_context_state["sermonElementTitle"] == "출 23:14–19"
                     and scripture_context_state["sermonOutputContext"] == "chromakey"
@@ -2745,6 +3091,7 @@ def main() -> int:
                     service["id"],
                 )
                 jump_scope_input = page.locator(f'[data-presenter-jump-input][data-service-id="{service["id"]}"]')
+                jump_scope_index_before = page.evaluate("() => state.presenter.index")
                 jump_scope_input.fill("1")
                 jump_scope_input.focus()
                 page.wait_for_function(
@@ -2766,7 +3113,7 @@ def main() -> int:
                     """,
                     service["id"],
                 )
-                if jump_scope_state["index"] == 0 and jump_scope_state["draft"] == "":
+                if jump_scope_state["index"] == jump_scope_index_before and jump_scope_state["draft"] == "":
                     pass_("presenter-keyboard-jump-input-arrows-ignored", json.dumps(jump_scope_state, ensure_ascii=False))
                 else:
                     fail("presenter-keyboard-jump-input-arrows-ignored", json.dumps(jump_scope_state, ensure_ascii=False))
@@ -2935,12 +3282,17 @@ def main() -> int:
                           window.__mindexPresenterOpenArgs = null;
                           window.__mindexPresenterFullscreenCalls = 0;
                           window.__mindexPresenterFocusCalls = 0;
+                          window.__mindexPresenterCloseCalls = 0;
                           window.open = (url, name, features) => {
                             window.__mindexPresenterOpenArgs = { url, name, features };
                             window.__mindexPresenterOpenCalls = (window.__mindexPresenterOpenCalls || 0) + 1;
                             return {
                               closed: false,
                               focus() { window.__mindexPresenterFocusCalls += 1; },
+                              close() {
+                                this.closed = true;
+                                window.__mindexPresenterCloseCalls += 1;
+                              },
                               addEventListener() {},
                               moveTo() {},
                               resizeTo() {},
@@ -2987,26 +3339,31 @@ def main() -> int:
                         fail("presenter-secondary-fullscreen-launch", json.dumps(target_state, ensure_ascii=False))
 
                     page.click(f'.svc-presenter-launch[data-service-id="{service["id"]}"]')
-                    page.wait_for_function("() => (window.__mindexPresenterFullscreenCalls || 0) > 1", timeout=5000)
-                    reuse_state = page.evaluate(
+                    page.wait_for_function("() => (window.__mindexPresenterCloseCalls || 0) === 1", timeout=5000)
+                    stop_state = page.evaluate(
                         """
                         (() => ({
                           openCalls: window.__mindexPresenterOpenCalls || 0,
-                          focusCalls: window.__mindexPresenterFocusCalls || 0,
-                          fullscreenCalls: window.__mindexPresenterFullscreenCalls || 0,
+                          closeCalls: window.__mindexPresenterCloseCalls || 0,
                           hasWindowRef: Boolean(state.presenter.outputWindow),
+                          action: document.querySelector('.svc-presenter-launch')?.dataset.presenterAction || '',
+                          label: document.querySelector('.svc-presenter-launch span')?.textContent.trim() || '',
                         }))()
                         """
                     )
                     if (
-                        reuse_state["openCalls"] == 1
-                        and reuse_state["focusCalls"] >= 2
-                        and reuse_state["fullscreenCalls"] >= 2
-                        and reuse_state["hasWindowRef"]
+                        stop_state["openCalls"] == 1
+                        and stop_state["closeCalls"] == 1
+                        and not stop_state["hasWindowRef"]
+                        and stop_state["action"] == "open"
+                        and stop_state["label"] == "SHOW"
                     ):
-                        pass_("presenter-open-reuses-existing-window", json.dumps(reuse_state, ensure_ascii=False))
+                        pass_("presenter-show-stop-toggle", json.dumps(stop_state, ensure_ascii=False))
                     else:
-                        fail("presenter-open-reuses-existing-window", json.dumps(reuse_state, ensure_ascii=False))
+                        fail("presenter-show-stop-toggle", json.dumps(stop_state, ensure_ascii=False))
+
+                    page.click(f'.svc-presenter-launch[data-service-id="{service["id"]}"]')
+                    page.wait_for_function("() => (window.__mindexPresenterOpenCalls || 0) === 2", timeout=5000)
 
                     dbl_target = min(service["slides"] - 1, 4)
                     page.evaluate(
@@ -3226,9 +3583,7 @@ def main() -> int:
                     })()
                     """
                 )
-                page.click(f'.svc-presenter-launch[data-service-id="{service["id"]}"]')
-                page.wait_for_timeout(350)
-                heartbeat_reuse_state = page.evaluate(
+                heartbeat_stop_state = page.evaluate(
                     """
                     (() => ({
                       openCalls: window.__mindexPresenterOpenCalls || 0,
@@ -3236,19 +3591,23 @@ def main() -> int:
                       open: isPresenterOutputWindowOpen(),
                       hasWindowRef: Boolean(state.presenter.outputWindow),
                       status: document.querySelector('.svc-presenter-status')?.textContent.trim() || '',
+                      action: document.querySelector('.svc-presenter-launch')?.dataset.presenterAction || '',
+                      label: document.querySelector('.svc-presenter-launch span')?.textContent.trim() || '',
                     }))()
                     """
                 )
                 if (
-                    heartbeat_reuse_state["openCalls"] == 0
-                    and heartbeat_reuse_state["connected"]
-                    and heartbeat_reuse_state["open"]
-                    and not heartbeat_reuse_state["hasWindowRef"]
-                    and heartbeat_reuse_state["status"] == "송출 중"
+                    heartbeat_stop_state["openCalls"] == 0
+                    and heartbeat_stop_state["connected"]
+                    and heartbeat_stop_state["open"]
+                    and not heartbeat_stop_state["hasWindowRef"]
+                    and heartbeat_stop_state["status"] == "송출 중"
+                    and heartbeat_stop_state["action"] == "stop"
+                    and heartbeat_stop_state["label"] == "STOP"
                 ):
-                    pass_("presenter-open-reuses-heartbeat-output", json.dumps(heartbeat_reuse_state, ensure_ascii=False))
+                    pass_("presenter-heartbeat-output-stop-affordance", json.dumps(heartbeat_stop_state, ensure_ascii=False))
                 else:
-                    fail("presenter-open-reuses-heartbeat-output", json.dumps(heartbeat_reuse_state, ensure_ascii=False))
+                    fail("presenter-heartbeat-output-stop-affordance", json.dumps(heartbeat_stop_state, ensure_ascii=False))
 
                 payload = page.evaluate(
                     """
@@ -3799,6 +4158,27 @@ def main() -> int:
                     "() => { const payload = JSON.parse(localStorage.getItem('mindex.presenter.state') || '{}'); return payload.index === 1 && payload.safetyBlank !== true; }",
                     timeout=10000,
                 )
+
+                jump_input.fill(str(service["slides"] + 100))
+                jump_input.press("Enter")
+                page.wait_for_timeout(150)
+                invalid_jump_state = page.evaluate(
+                    """
+                    (() => ({
+                      index: state.presenter.index,
+                      safetyBlank: Boolean(state.presenter.safetyBlank),
+                      inputValue: document.querySelector('[data-presenter-jump-input]')?.value || '',
+                    }))()
+                    """
+                )
+                if (
+                    invalid_jump_state["index"] == 1
+                    and not invalid_jump_state["safetyBlank"]
+                    and invalid_jump_state["inputValue"] == "2"
+                ):
+                    pass_("presenter-invalid-jump-noop", json.dumps(invalid_jump_state, ensure_ascii=False))
+                else:
+                    fail("presenter-invalid-jump-noop", json.dumps(invalid_jump_state, ensure_ascii=False))
 
                 output_page.keyboard.press("ArrowRight")
                 output_page.wait_for_function(

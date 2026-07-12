@@ -11,7 +11,6 @@ Focus on:
 - Presenter controller controls and keyboard behavior.
 - Presenter output route and projector-facing layout.
 - Service templates and import/reference mapping when needed.
-- Order-sheet integration only where it touches service data or Friday/monthly print output.
 
 Avoid:
 
@@ -245,14 +244,14 @@ Manual checks when changing live presenter behavior:
 - Home is now a workbench-style entry screen: next worship service, direct
   shortcuts, and utilities are grouped by actual user workflow instead of a
   decorative card layout.
-- Page titles across Home utilities, Worship, Presenter, Calendar, References,
-  and Order Sheets now share the same title token so tab starts and
+- Page titles across Home utilities, Worship, Presenter, Calendar, and References
+  now share the same title token so tab starts and
   header scale stay consistent.
 - Worship authoring now surfaces the `Service > Section > Element > Slide`
   hierarchy at the top of the editor and separates service metadata, section
   templates, and praise/setlist input into distinct authoring panels.
-- Presenter title/assignee slides now treat `인도자`, `담당자`, and similar
-  order-sheet placeholders as non-output data. If a worship-led element such as
+- Presenter title/assignee slides treat `인도자`, `담당자`, and similar
+  generic placeholders as non-output data. If a worship-led element such as
   `봉헌기도` needs a person, Presenter uses the service `worship_leader` value
   rather than the praise leader or a generic placeholder. Board subgroup heads
   show element label plus real content and suppress duplicate label/title text.

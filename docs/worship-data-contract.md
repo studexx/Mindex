@@ -23,6 +23,361 @@ mindex_worship_services
       > mindex_worship_slides
 ```
 
+## Data Structure
+
+```text
+mindex_worship_service_types (예배 타입)
+├─ id / name / sort_order
+└─ taxonomy only: not weekly content, not a template instance
+
+mindex_worship_services (특정 날짜 예배)
+├─ id / service_type_id / service_date
+├─ title / status / tags
+├─ worship_leader / praise_leader
+├─ template link / source lineage
+└─ owns ordered sections for that date
+
+mindex_worship_sections (예배 순서 묶음)
+├─ id / service_id / sort_order
+├─ section_key
+├─ title / person
+├─ template_id / template_modified
+└─ owns ordered elements
+
+mindex_worship_elements (순서 안의 콘텐츠 단위)
+├─ id / section_id / sort_order
+├─ element_type
+├─ title / person / body / scripture_reference
+├─ song_id / song_version_id
+├─ input_mode / content_state
+├─ asset / config / source_ref
+├─ template_id / template_modified
+└─ may generate presenter slides
+
+mindex_worship_slides (인스턴스 출력 프레임)
+├─ id / element_id / sort_order
+├─ layout / elementType / text / media
+└─ instance-level slide override, not canonical Praise/Scripture data
+```
+
+## Runtime Projection Tree
+
+This is the structure the app should keep in mind when turning a recurring
+service type into one actual worship instance and then into Presenter output.
+
+```text
+Service Type (예배 타입)
+└─ Service Template / Scaffold (예배 구조 템플릿)
+   └─ Section[] (순서 묶음, ordered)
+      ├─ sectionKey (구조 식별자)
+      ├─ label / name (표시 이름)
+      ├─ required / flex / repeatable (필수 / 유동 / 반복 가능)
+      └─ Element[] (입력/출력 항목, ordered)
+         ├─ elementType (입력/출력 타입)
+         ├─ label / name (항목 이름)
+         ├─ default_text / person / defaultSong / asset (기본값)
+         ├─ formPreset / formHint / outputMode (출력 보조 규칙)
+         └─ input mode (입력 방식)
+            ├─ praise DB search (찬양 DB 검색)
+            ├─ text/person input (텍스트/담당자 입력)
+            ├─ scripture lookup/manual text (성경 조회/직접 입력)
+            └─ asset picker/url (미디어/파일 연결)
+
+Service Instance (특정 날짜 예배)
+├─ service metadata (날짜, 타입, 인도자, 태그)
+└─ Projected Service Item[] (템플릿에서 투영된 실제 순서)
+   ├─ template identity (템플릿 정체성)
+   │  ├─ _worshipSectionKey
+   │  ├─ _worshipSectionTitle
+   │  ├─ _worshipSectionOrder
+   │  ├─ _worshipElementOrder
+   │  ├─ _worshipTemplateProjected
+   │  └─ _worshipTemplatePlaceholder
+   ├─ user input (사용자 입력)
+   │  ├─ raw_title
+   │  ├─ assignee
+   │  ├─ song_id / version_id
+   │  └─ memo
+   ├─ content state (콘텐츠 상태; stored in element config for now)
+   │  ├─ default/input/song/asset exists
+   │  │  └─ build Presenter slide
+   │  ├─ no default and no user input
+   │  │  └─ missingContent / Input Required (입력 필요)
+   │  └─ deleted for this service only
+   │     └─ templateSuppressed
+   └─ Presenter Slide[] (출력 슬라이드)
+      ├─ title-assignee
+      ├─ song-title / lyrics / score
+      ├─ scripture / liturgical-body
+      ├─ image / video / file / audio
+      ├─ blank
+      └─ missingContent
+```
+
+## Worship Structures
+
+These trees are structural order definitions. They are not theological
+validation metadata.
+
+```text
+sunday-first
+├─ 01. Ready / ready
+│  └─ video / 준비
+├─ 02. Creed / creed
+│  └─ body / 사도신경
+├─ 03. Praise / praise
+│  ├─ praise / 찬양 1
+│  ├─ praise / 찬양 2
+│  └─ praise / 찬양 3
+├─ 04. Confession Prayer / confession
+│  └─ title / 참회기도
+├─ 05. Scripture Reading / scripture_reading
+│  ├─ scripture_reading / 성경봉독
+│  └─ scripture_body / 성경 본문
+├─ 06. Sermon / sermon
+│  ├─ title_person / 설교 제목
+│  ├─ scripture_body / 설교 본문
+│  └─ activity / 실시간 성구 송출
+├─ 07. Response / response_song
+│  └─ title / 결단기도
+├─ 08. Offering / offering
+│  ├─ praise / 봉헌찬송
+│  └─ title_person / 봉헌기도
+├─ 09. Announcements / announcements
+│  └─ title / 교회소식
+├─ 10. Sending / sending
+│  ├─ praise / 송영, unless disabled
+│  ├─ title_person / 축도, when enabled
+│  └─ body / 주기도문, when enabled
+└─ 11. Closing Visual / closing_visual
+   └─ image / 마무리
+
+sunday-second
+├─ 01. Ready / ready
+├─ 02. Creed / creed
+├─ 03. Praise / praise
+│  ├─ praise / 찬양 1
+│  ├─ praise / 찬양 2
+│  └─ praise / 찬양 3
+├─ 04. Confession Prayer / confession
+├─ 05. Prayer / prayer
+│  └─ title_person / 기도
+├─ 06. Scripture Reading / scripture_reading
+├─ 07. Special Song / special_song
+│  └─ praise / 특송
+├─ 08. Sermon / sermon
+├─ 09. Response / response_song
+│  └─ title / 결단기도
+├─ 10. Offering / offering
+├─ 11. Announcements / announcements
+├─ 12. Sending / sending
+│  ├─ praise / 송영
+│  └─ title_person / 축도
+└─ 13. Closing Visual / closing_visual
+
+sunday-main
+├─ 01. Ready / ready
+│  └─ video / 준비
+├─ 02. Praise / praise
+│  ├─ title_content / 환영
+│  ├─ praise / 찬양 1
+│  ├─ praise / 찬양 2
+│  ├─ praise / 찬양 3
+│  ├─ praise / 찬양 4
+│  └─ praise / 입례 찬양
+├─ 03. Confession Prayer / confession
+│  └─ title / 참회기도
+├─ 04. Hymn Praise / hymn_praise
+│  └─ praise / 찬송
+├─ 05. Prayer / prayer
+│  └─ title_person / 기도
+├─ 06. Scripture Reading / scripture_reading
+│  ├─ scripture_reading / 성경봉독
+│  └─ scripture_body / 성경 본문
+├─ 07. Special Song / special_song
+│  └─ praise / 특송
+├─ 08. Sermon / sermon
+│  ├─ title_person / 설교 제목
+│  ├─ scripture_body / 설교 본문
+│  └─ activity / 실시간 성구 송출
+├─ 09. Response / response_song
+│  └─ title_person / 결단기도
+├─ 10. Creed / creed
+│  └─ body / 사도신경
+├─ 11. Offering / offering
+│  ├─ praise / 봉헌찬송
+│  └─ title_person / 봉헌기도
+├─ 12. Announcements / announcements
+│  └─ title / 교회소식
+├─ 13. Community Confession / community_confession
+│  └─ body / 공동체고백
+├─ 14. Sending / sending
+│  ├─ praise / 파송찬송
+│  └─ title_person / 축도
+└─ 15. Closing Visual / closing_visual
+   ├─ image / 마무리
+   └─ praise / 폐회찬송
+
+sunday-afternoon
+├─ 01. Ready / ready
+├─ 02. Praise / praise
+│  └─ praise / 찬양
+├─ 03. Silent Prayer / silent_prayer
+│  └─ title / 묵도
+├─ 04. Hymn Praise / hymn_praise
+│  └─ praise / 찬송
+├─ 05. Prayer / prayer
+├─ 06. Scripture Reading / scripture_reading
+├─ 07. Sermon / sermon
+├─ 08. Response / response_song
+│  └─ title / 결단기도
+├─ 09. Announcements / announcements
+├─ 10. Sending / sending
+│  ├─ praise / 송영
+│  └─ title_person / 축도
+└─ 11. Closing Visual / closing_visual
+
+monthly
+├─ 01. Ready / ready
+├─ 02. Praise / praise
+│  ├─ title_content / 환영
+│  ├─ praise / 찬양 1
+│  ├─ praise / 찬양 2
+│  ├─ praise / 찬양 3
+│  ├─ praise / 찬양 4
+│  └─ praise / 찬양 5
+├─ 03. Prayer / prayer
+├─ 04. Scripture Reading / scripture_reading
+├─ 05. Special Song / special_song
+├─ 06. Sermon / sermon
+├─ 07. Response / response_song
+│  ├─ praise / 결단찬양
+│  └─ title_person / 결단기도
+├─ 08. Corporate Prayer / corporate_prayer
+│  ├─ title_person / 공동기도 1
+│  ├─ title_person / 공동기도 2
+│  ├─ praise / 기도 찬양
+│  ├─ title_person / 공동기도 3
+│  └─ title_person / 공동기도 4
+├─ 09. Offering / offering
+│  ├─ praise / 봉헌찬양
+│  └─ title_person / 봉헌기도
+├─ 10. Announcements / announcements
+├─ 11. Sending / sending
+│  ├─ praise / 파송찬송
+│  └─ title_person / 축도
+└─ 12. Closing Visual / closing_visual
+```
+
+## Element Type Structure
+
+```text
+Element Type (템플릿/저장 타입)
+├─ blank (빈 화면)
+│  ├─ input: none
+│  ├─ storage: element_type=blank
+│  └─ presenter: blank / blank layout
+├─ title (제목)
+│  ├─ input: text title
+│  ├─ storage: title or raw_title/default_text
+│  └─ presenter: title-assignee or title slide
+├─ title_content (제목 + 내용)
+│  ├─ input: first line title, following lines body
+│  ├─ storage: title/body-like text in raw_title or memo note
+│  └─ presenter: title-content / center text
+├─ title_person (제목 + 담당자)
+│  ├─ input: assignee/person text
+│  ├─ storage: person/assignee plus optional title
+│  └─ presenter: title-assignee / lower bar
+├─ praise (찬양)
+│  ├─ input: Praise DB search, version, optional manual title
+│  ├─ storage: song_id / song_version_id / raw_title / formPreset
+│  ├─ outputMode=score: score image/file path
+│  └─ presenter: song-title, lyrics, score image/file
+├─ scripture_reading (성경봉독)
+│  ├─ input: scripture reference
+│  ├─ storage: scripture_reference or raw_title
+│  └─ presenter: title-assignee / clean scripture reading
+├─ scripture_body (성경 본문)
+│  ├─ input: scripture reference + resolved Bible text
+│  ├─ storage: scripture_reference/body payload
+│  └─ presenter: scripture lower bar or body slides
+├─ body (본문)
+│  ├─ input: fixed/manual body text
+│  ├─ storage: body/default_text/memo slides
+│  └─ presenter: liturgical-body or lower-bar body chunks
+├─ plain_text (일반 텍스트)
+│  ├─ input: manual text
+│  ├─ storage: raw_title/body-like text
+│  └─ presenter: title-content/freeform text
+├─ image (이미지)
+│  ├─ input: asset picker/url
+│  ├─ storage: asset.url
+│  └─ presenter: image / media layout
+├─ video (동영상)
+│  ├─ input: asset picker/url
+│  ├─ storage: asset.url + playback config
+│  └─ presenter: video / media layout
+├─ audio (오디오)
+│  ├─ input: asset picker/url
+│  ├─ storage: asset.url + playback config
+│  └─ presenter: audio/file preview
+├─ score (악보)
+│  ├─ input: score asset or hymn score manifest
+│  ├─ storage: asset.url or linked Praise/hymn metadata
+│  └─ presenter: score image slides or file slide
+├─ file (파일)
+│  ├─ input: asset picker/url
+│  ├─ storage: asset.url
+│  └─ presenter: file slide
+├─ activity (실시간 활동)
+│  ├─ input: live activity config
+│  ├─ storage: memo/config
+│  └─ presenter: activity slide or live scripture bridge
+└─ template (슬라이드 템플릿)
+   ├─ input: reusable template asset/config
+   ├─ storage: asset/config
+   └─ presenter: freeform/file-like slide until specialized
+```
+
+```text
+Content State By Element (콘텐츠 상태)
+├─ has default value
+│  └─ filled, builds presenter output
+├─ has user input
+│  └─ filled, builds presenter output
+├─ no default + no user input
+│  └─ missingContent / Input Required with inputMode
+└─ deleted for this service
+   └─ templateSuppressed, excluded from projection
+```
+
+## Structural Risks
+
+These are the problems exposed by the projection tree above.
+
+- Runtime template authority: structural templates currently live in app code.
+  That is now the only active runtime source, but it should eventually move to
+  reviewed template data so service structures can be versioned and compared.
+- Mixed template shapes: fallback templates may be strings, section-like
+  objects, or section objects with nested elements. Normalize early so later
+  code only sees one shape.
+- Content state is now persisted on the element instance config, but it is still
+  derived from loose fields: `raw_title`, `assignee`, `song_id`, `asset`, and
+  `memo` feed the resolver before save. A later schema should promote this from
+  JSON config into typed instance fields.
+- Placeholder lifecycle is subtle: an unfilled template slot, a filled instance
+  item, and a one-service deletion must never collapse into the same state.
+- Presenter currently resolves too much: slide generation is doing content
+  resolution, missing-content detection, and output rendering decisions. Those
+  should be split into a resolver step and a renderer step.
+- Labels still carry too much meaning: section labels are useful for display,
+  but matching and behavior should rely on stable keys and element types.
+- Input mode is now explicit in the runtime content-state payload and persisted
+  on the service element config. It should eventually become a typed instance
+  field so validation can happen before Presenter output without reading JSON
+  config.
+
 ### `mindex_worship_service_types`
 
 Recurring worship categories such as Sunday 1st service, Wednesday service,
@@ -50,7 +405,7 @@ or rotate backgrounds from service type, date, or season.
 Practical order blocks used by humans and Presenter: preparation, praise,
 scripture reading, sermon, offering, announcements, benediction.
 
-This is not a theological phase taxonomy.
+This is not a theological order taxonomy.
 
 ### `mindex_worship_elements`
 

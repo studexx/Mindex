@@ -33,6 +33,16 @@
   --presenter-output-bar: linear-gradient(180deg, #000A64 0%, #000A32 100%);
   --presenter-output-bar-edge: #000A32;
   --presenter-output-stroke: #000;
+  --presenter-scripture-font: var(--font-presenter);
+  --presenter-scripture-weight: 760;
+  --presenter-scripture-line-height: 1.1;
+  --presenter-scripture-fit-width: 64cqw;
+  --presenter-scripture-fit-ratio: .74;
+  --presenter-scripture-bar-size: clamp(34px, 3.25cqw, 60px);
+  --presenter-scripture-clean-size: clamp(42px, 5cqw, 86px);
+  --presenter-scripture-reading-ref-size: clamp(30px, 3.05cqw, 52px);
+  --presenter-scripture-reading-version-size: clamp(22px, 2.05cqw, 36px);
+  --presenter-scripture-reading-text-size: clamp(50px, 5.3cqw, 90px);
   display: grid;
   width: min(100vw, calc(100vh * 16 / 9));
   height: min(100vh, calc(100vw * 9 / 16));
@@ -363,6 +373,10 @@
 }
 .presenter-slide--scripture .presenter-slide-text {
   align-items: flex-start;
+  font-family: var(--presenter-scripture-font);
+  font-size: var(--presenter-scripture-bar-size);
+  font-weight: var(--presenter-scripture-weight);
+  line-height: var(--presenter-scripture-line-height);
   padding-right: 4.8cqw;
   padding-left: 6.4cqw;
   text-align: left;
@@ -370,7 +384,7 @@
 .presenter-slide--scripture .presenter-slide-text span {
   display: block;
   width: 100%;
-  font-size: min(1em, calc(64cqw / (var(--line-chars, 24) * .78)));
+  font-size: min(1em, calc(var(--presenter-scripture-fit-width) / (var(--line-chars, 24) * var(--presenter-scripture-fit-ratio))));
 }
 .presenter-slide--song-title .presenter-section-song-title {
   display: grid;
@@ -439,6 +453,7 @@
   padding-block: 1.35cqh;
 }
 .presenter-output-root.no-chromakey .presenter-slide--lyrics,
+.presenter-output-root.no-chromakey .presenter-slide--song-title,
 .presenter-output-root.no-chromakey .presenter-slide--scripture,
 .presenter-output-root.no-chromakey .presenter-slide--title-assignee {
   justify-content: center;
@@ -446,11 +461,13 @@
   padding: 9cqh 9cqw;
 }
 .presenter-output-root.no-chromakey .presenter-slide--lyrics::before,
+.presenter-output-root.no-chromakey .presenter-slide--song-title::before,
 .presenter-output-root.no-chromakey .presenter-slide--scripture::before,
 .presenter-output-root.no-chromakey .presenter-slide--title-assignee::before {
   content: none;
 }
 .presenter-output-root.no-chromakey .presenter-slide--lyrics .presenter-slide-text,
+.presenter-output-root.no-chromakey .presenter-slide--song-title .presenter-slide-text,
 .presenter-output-root.no-chromakey .presenter-slide--scripture .presenter-slide-text,
 .presenter-output-root.no-chromakey .presenter-slide--title-assignee .presenter-slide-text {
   width: auto;
@@ -467,9 +484,18 @@
   text-align: center;
   text-shadow: 0 2px 18px rgba(0, 0, 0, .28);
 }
+.presenter-output-root.no-chromakey .presenter-slide--scripture .presenter-slide-text {
+  font-family: var(--presenter-scripture-font);
+  font-size: var(--presenter-scripture-clean-size);
+  font-weight: var(--presenter-scripture-weight);
+  line-height: var(--presenter-scripture-line-height);
+}
 .presenter-output-root.no-chromakey .presenter-slide--lyrics .presenter-slide-text span,
-.presenter-output-root.no-chromakey .presenter-slide--scripture .presenter-slide-text span {
+.presenter-output-root.no-chromakey .presenter-slide--song-title .presenter-slide-text span {
   font-size: min(1em, calc(64cqw / (var(--line-chars, 18) * .78)));
+}
+.presenter-output-root.no-chromakey .presenter-slide--scripture .presenter-slide-text span {
+  font-size: min(1em, calc(var(--presenter-scripture-fit-width) / (var(--line-chars, 18) * var(--presenter-scripture-fit-ratio))));
 }
 .presenter-output-root.no-chromakey .presenter-slide--scripture-reading {
   justify-content: flex-start;
@@ -485,18 +511,39 @@
   flex-direction: column;
   align-items: flex-start;
   color: var(--presenter-output-fg);
+  font-family: var(--presenter-scripture-font);
+  font-weight: var(--presenter-scripture-weight);
+  line-height: var(--presenter-scripture-line-height);
   text-align: left;
   text-shadow: 0 2px 18px rgba(0, 0, 0, .38);
   word-break: keep-all;
 }
-.presenter-scripture-reading-ref {
+.presenter-scripture-reading-head {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 4cqw;
+}
+.presenter-scripture-reading-ref,
+.presenter-scripture-reading-version {
   max-width: 100%;
   overflow: hidden;
-  font-size: min(clamp(32px, 3.2cqw, 54px), calc(66cqw / (var(--line-chars, 8) * .66)));
-  font-weight: 500;
-  line-height: 1.1;
+  line-height: var(--presenter-scripture-line-height);
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.presenter-scripture-reading-ref {
+  font-size: min(var(--presenter-scripture-reading-ref-size), calc(var(--presenter-scripture-fit-width) / (var(--line-chars, 8) * .66)));
+  font-weight: 560;
+}
+.presenter-scripture-reading-version {
+  justify-self: end;
+  font-size: min(var(--presenter-scripture-reading-version-size), calc(24cqw / (var(--line-chars, 4) * .72)));
+  font-weight: 560;
+  opacity: .82;
+  text-align: right;
 }
 .presenter-scripture-reading-line {
   display: flex;
@@ -508,8 +555,8 @@
 }
 .presenter-scripture-reading-no {
   flex: 0 0 auto;
-  font-size: clamp(52px, 5.5cqw, 90px);
-  font-weight: 700;
+  font-size: var(--presenter-scripture-reading-text-size);
+  font-weight: var(--presenter-scripture-weight);
   line-height: 1;
 }
 .presenter-scripture-reading-text {
@@ -517,9 +564,9 @@
   min-width: 0;
   max-width: 100%;
   overflow: hidden;
-  font-size: min(clamp(52px, 5.5cqw, 92px), calc(78cqw / (var(--line-chars, 18) * .62)));
-  font-weight: 700;
-  line-height: 1.08;
+  font-size: min(var(--presenter-scripture-reading-text-size), calc(78cqw / (var(--line-chars, 18) * .62)));
+  font-weight: var(--presenter-scripture-weight);
+  line-height: var(--presenter-scripture-line-height);
   text-overflow: ellipsis;
   white-space: nowrap;
 }

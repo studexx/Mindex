@@ -53,8 +53,14 @@ function presenterSlidesWithSpecialSongTitle(item = {}, section = {}, slides = [
 function shouldIncludeSpecialSongSectionTitleSlide(item = {}, section = {}, slides = []) {
   if (!slides.length) return false;
   const sectionKey = String(section.sectionKey || item?._worshipSectionKey || "").trim();
-  if (sectionKey !== "special_song") return false;
+  if (!isPresenterSpecialSongItem(item, section)) return false;
   return !slides.some((slide) => slide.type === "title-assignee" && normalizeTitle(slide.title) === normalizeTitle("특송"));
+}
+
+function isPresenterSpecialSongItem(item = {}, section = {}) {
+  const sectionKey = String(section.sectionKey || item?._worshipSectionKey || "").trim();
+  if (sectionKey === "special_song") return true;
+  return compactSearchValue(item?._worshipSectionTitle || "") === "특송";
 }
 
 function presenterSpecialSongSectionTitleSlide(item = {}, section = {}, index = 0, songTitleSlide = null) {
@@ -80,12 +86,15 @@ function presenterSpecialSongSectionTitleSlide(item = {}, section = {}, index = 
 }
 
 function presenterSpecialSongDisplayTitle(item = {}, songTitleSlide = null) {
+  const rawTitle = String(item.raw_title || item.title || "").trim();
+  const genericLabel = compactSearchValue(item.label || "특송");
   const fromSlideText = String(songTitleSlide?.text || "").replace(/^♪\s*/, "").trim();
-  if (fromSlideText) return fromSlideText;
+  if (fromSlideText && (rawTitle || compactSearchValue(fromSlideText) !== genericLabel)) return fromSlideText;
   const marker = String(songTitleSlide?.marker || "").trim();
   const title = String(songTitleSlide?.title || "").trim();
-  if (marker || title) return [marker, title].filter(Boolean).join(" ");
-  return String(serviceItemDisplayText(item) || item.raw_title || "").replace(/^♪\s*/, "").trim();
+  const titleText = [marker, title].filter(Boolean).join(" ");
+  if (titleText && (rawTitle || compactSearchValue(titleText) !== genericLabel)) return titleText;
+  return rawTitle.replace(/^♪\s*/, "").trim();
 }
 
 const PRESENTER_PUBLIC_LORDS_PRAYER_TEXT = `하늘에 계신 우리 아버지,
@@ -580,10 +589,6 @@ function presenterBlankFormPresetItem(label = "", target = {}) {
   };
 }
 
-function isOrderSheetOnlyPlaceholderItem(item = {}) {
-  return Boolean(item._worshipOrderSheetPlaceholder);
-}
-
 function isServicePreparationItem(item, memo = parseServiceItemMemo(item?.memo)) {
   const label = String(item?.label || "").replace(/\s+/g, "");
   const title = String(item?.raw_title || "").replace(/\s+/g, "");
@@ -867,23 +872,6 @@ function presenterElementSlideFromMemoCore(item, section, index, memo, displayTe
       sort: index,
     };
   }
-  if (elementType === "activity" && compactSearchValue(label).includes("실시간성구송출")) {
-    return {
-      id: `${item.id || index}:live-scripture-activity`,
-      ...section,
-      elementLabel: safeLabel || "실시간 성구 송출",
-      elementTitle: "실시간 성구 송출",
-      elementType: PRESENTER_ELEMENT_TYPES.SCRIPTURE_TEXT,
-      layout: PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT,
-      type: "scripture",
-      label: safeLabel,
-      title: "실시간 성구 송출",
-      marker: "",
-      text: "",
-      sort: index,
-      _liveScriptureActivity: true,
-    };
-  }
   if (elementType === "blank") {
     return {
       id: `${item.id || index}:blank`,
@@ -1095,7 +1083,7 @@ function presenterTitleAssigneePerson(item = {}, label = "", displayText = "", t
     return text && compactSearchValue(text) !== compactSearchValue(titleText) ? text : "";
   }
   const assignee = cleanPresenterAssignee(item.assignee);
-  if (compact === "설교제목") return cleanList([text, assignee]).join("\n");
+  if (compact === "설교제목") return cleanList([presenterSermonContentTitle(text), assignee]).join("\n");
   if (assignee) return assignee;
   const fallback = presenterTitleAssigneeUsesWorshipLeader(compact)
     ? serviceWorshipLeaderLabel(service)
@@ -1221,6 +1209,9 @@ function buildPresenterScriptureTextSlides(item, section, index) {
     label: item.label || "본문",
     title: reference,
     marker: payload.reference || "",
+    referenceBook: payload.referenceBook || "",
+    referenceRange: payload.referenceRange || "",
+    translationLabel: payload.translationLabel || "",
     text: verse.number ? [verse.number, verse.text].filter(Boolean).join("   ") : verse.text,
     ...(context === "reading" ? { outputContext: "clean" } : {}),
     ...(context === "sermon" ? { outputContext: "chromakey" } : {}),
@@ -1246,7 +1237,7 @@ function serviceScriptureTextPayload(item, memo = parseServiceItemMemo(item?.mem
 
 function isScriptureBodyServiceItem(item) {
   const label = String(item?.label || "").replace(/\s+/g, "");
-  return label === "본문" || label === "성경본문";
+  return label === "본문" || label === "성경본문" || label === "설교본문";
 }
 
 function parsePresenterScriptureTextPayload(value) {
@@ -1428,6 +1419,7 @@ function presenterSectionForServiceItem(item, index, displayText, song = null, v
     sectionIndex: Number(item?._worshipSectionOrder) || index + 1,
     sectionKey: item?._worshipSectionKey || "",
     sectionLabel,
+    sectionHeading: sectionLabel,
     sectionFormHint: formHint,
     sectionRole: isMainPraiseServiceItem(item, { allowUnlabeled: true }) ? "main-praise" : "",
     sectionTitle: sectionLabel,
@@ -1455,7 +1447,6 @@ function presenterSectionLabelForServiceItem(item = {}, fallbackLabel = "") {
     offering: "봉헌",
     offering_prayer: "봉헌기도",
     announcements: "교회소식",
-    new_family: "새가족환영",
     community_confession: "공동체고백",
     doxology: "송영",
     closing_hymn: "폐회",
@@ -1848,20 +1839,6 @@ async function positionPresenterOutputWindow(outputWindow) {
   }
 }
 
-function requestOutputFullscreen(outputWindow, options = {}) {
-  const delays = options.retry ? PRESENTER_FULLSCREEN_RETRY_DELAYS_MS : [0];
-  delays.forEach((delay) => {
-    window.setTimeout(() => {
-      try {
-        if (!outputWindow || outputWindow.closed) return;
-        outputWindow.document?.documentElement?.requestFullscreen?.().catch?.(() => {});
-      } catch {
-        // Browsers often require a direct activation in the output window.
-      }
-    }, delay);
-  });
-}
-
 function handlePresenterShortcut(event) {
   const presenterServiceId = state.presenter.serviceId;
   if (state.module !== "presenter" || !presenterServiceId) return false;
@@ -2019,7 +1996,18 @@ function initPresenterOutputCore() {
   if ("BroadcastChannel" in window) {
     channel = new BroadcastChannel(PRESENTER_CHANNEL);
     channel.onmessage = (event) => {
-      if (event.data?.type === "presenter-state") applyPayload(event.data.payload);
+      if (event.data?.type === "presenter-state") {
+        applyPayload(event.data.payload);
+        return;
+      }
+      if (event.data?.type === "presenter-output-close") {
+        currentPayload = normalizePresenterPayload(presenterStoppedPayload());
+        renderPresenterOutput(currentPayload, { onAutoAdvance: requestPresenterOutputNext });
+        window.setTimeout(() => {
+          closeOutputChannel();
+          window.close();
+        }, 40);
+      }
     };
     window.setTimeout(() => {
       channel.postMessage({ type: "presenter-ready", clientId: outputClientId });
@@ -2117,7 +2105,6 @@ function initPresenterOutputCore() {
   });
 
   renderStoredState();
-  if (shouldAutoFullscreenPresenterOutput()) requestLocalPresenterFullscreen({ retry: true });
 }
 
 function shouldAutoFullscreenPresenterOutput() {
@@ -2125,6 +2112,10 @@ function shouldAutoFullscreenPresenterOutput() {
 }
 
 function requestLocalPresenterFullscreen(options = {}) {
+  if (!options.retry) {
+    document.documentElement.requestFullscreen?.().catch?.(() => {});
+    return;
+  }
   const delays = options.retry ? PRESENTER_FULLSCREEN_RETRY_DELAYS_MS : [0];
   delays.forEach((delay) => {
     window.setTimeout(() => {
@@ -2179,7 +2170,11 @@ function normalizeLivePraisePayload(value) {
 
 function applyPresenterActionToPayload(payload, action, options = {}) {
   const next = normalizePresenterPayload(payload);
-  if (["next", "prev", "first", "last", "jump"].includes(action)) {
+  const requestedIndex = Number(options.index);
+  const appliesJump = action !== "jump"
+    || requestedIndex === -1
+    || isValidPresenterIndex(requestedIndex, next.slides.length);
+  if (["next", "prev", "first", "last", "jump"].includes(action) && appliesJump) {
     next.liveScripture = null;
   }
   if (action === "next" && next.slides.length) {
@@ -2195,12 +2190,11 @@ function applyPresenterActionToPayload(payload, action, options = {}) {
     next.safetyBlank = false;
     next.index = next.slides.length - 1;
   } else if (action === "jump" && next.slides.length) {
-    const requestedIndex = Number(options.index);
-    if (isValidPresenterIndex(requestedIndex, next.slides.length)) {
+    if (requestedIndex === -1) {
+      next.safetyBlank = true;
+    } else if (isValidPresenterIndex(requestedIndex, next.slides.length)) {
       next.index = requestedIndex;
       next.safetyBlank = false;
-    } else {
-      next.safetyBlank = true;
     }
   }
   next.updatedAt = Date.now();
@@ -2821,12 +2815,20 @@ function renderPresenterSlidePreviewBody(slide) {
 
 function renderPresenterScriptureReadingSlide(slide) {
   const reference = String(slide?.title || slide?.marker || "").trim();
+  const referenceBook = String(slide?.referenceBook || "").trim();
+  const referenceRange = String(slide?.referenceRange || "").trim();
+  const translationLabel = String(slide?.translationLabel || "").trim();
+  const headerReference = [referenceBook, referenceRange].filter(Boolean).join(" ") || reference;
   const { number, text } = presenterScriptureVerseParts(slide?.text || "");
-  const referenceChars = presenterLineCharEstimate(reference || "본문");
+  const referenceChars = presenterLineCharEstimate(headerReference || "본문");
+  const translationChars = presenterLineCharEstimate(translationLabel || "역본");
   const verseChars = presenterLineCharEstimate(text || slide?.text || "");
   return `
     <div class="presenter-scripture-reading">
-      ${reference ? `<div class="presenter-scripture-reading-ref" style="--line-chars: ${escapeAttr(referenceChars)}">${escapeHtml(reference)}</div>` : ""}
+      <div class="presenter-scripture-reading-head">
+        <div class="presenter-scripture-reading-ref" style="--line-chars: ${escapeAttr(referenceChars)}">${escapeHtml(headerReference || "본문")}</div>
+        ${translationLabel ? `<div class="presenter-scripture-reading-version" style="--line-chars: ${escapeAttr(translationChars)}">${escapeHtml(translationLabel)}</div>` : ""}
+      </div>
       <div class="presenter-scripture-reading-line">
         ${number ? `<span class="presenter-scripture-reading-no">${escapeHtml(number)}</span>` : ""}
         <span class="presenter-scripture-reading-text" style="--line-chars: ${escapeAttr(verseChars)}">${escapePresenterSlideLine(text || slide?.text || " ", slide)}</span>

@@ -2,7 +2,7 @@
 
 Last updated: 2026-07-05
 
-Mindex is a church ministry operations app. It is not only a song database and not only a presenter. It should support weekly worship preparation, lyrics/scripture management, worship presentation, order sheets, calendar, and references while sharing one Supabase-backed data model and one coherent UI system. Activities/event screens are deferred to standalone utilities unless promoted later.
+Mindex is a church ministry operations app. It is not only a song database and not only a presenter. It should support weekly worship preparation, lyrics/scripture management, worship presentation, calendar, and references while sharing one Supabase-backed data model and one coherent UI system. Activities/event screens are deferred to standalone utilities unless promoted later.
 
 This document is the canonical handoff for new Codex/Claude/GPT threads. Read this before editing. Keep changes conservative, verify them, and never undo unrelated local work.
 
@@ -47,7 +47,7 @@ Top-level product areas:
    - Used by Worship/Presenter, but not subordinate to Worship.
 
 4. Home Utilities
-   - Calendar, References, Order Sheets, and similar support tools.
+   - Calendar, References, and similar support tools.
    - These should not feel like full database modules unless their functionality grows enough.
 
 5. Activities / Event Screens
@@ -262,14 +262,14 @@ Display:
 - Chapter count can appear like song version count.
 - Metadata panes should share visual grammar with Praise.
 
-## Home / Calendar / References / Order Sheets
+## Home / Calendar / References
 
 Home:
 
 - Home is not a dumping ground. It should clarify the hierarchy:
   - Worship as the main operational area.
   - Praise and Scripture as major resources.
-  - Calendar, References, Order Sheets as home utilities.
+  - Calendar and References as home utilities.
 - Normal Home should prioritize module entry cards over a visible verse. Use data-managed UI verses for empty/loading/fallback states, not as the primary home content.
 - Fallback when service data cannot load:
   - Psalm 27:14, NIV.
@@ -292,12 +292,6 @@ References:
 - Links should be editable inline from each card.
 - Avoid category/description fields if groups already cover the organizational need.
 - References should not have a strong independent accent color unless the design system later calls for it.
-
-Order Sheets:
-
-- Order-sheet generation is a home utility, not the core Worship controller.
-- Friday prayer meeting order sheet uses landscape A4 split into two vertical halves.
-- It should be generated from database/service data.
 
 ## Activities Direction
 
@@ -490,7 +484,7 @@ Use three focused threads:
    - Song metadata, song forms, hymn/CCM/children tagging, Bible search/copy, scripture metadata.
 
 3. Shell / Home / Utilities
-   - App shell, navigation, home, calendar, references, order sheets, and any future standalone event-screen integration.
+   - App shell, navigation, home, calendar, references, and any future standalone event-screen integration.
 
 Each thread should read this document first, then inspect current files before editing.
 
