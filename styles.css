@@ -1,100 +1,51 @@
 @font-face {
+  font-family: "Pretendard Variable";
+  src: url("./vendor/fonts/pretendard/PretendardVariable.woff2") format("woff2-variations");
+  font-weight: 45 930;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
   font-family: "Freesentation";
-  src: local("Freesentation 4Regular"), local("Freesentation-4Regular");
+  src: url("./vendor/fonts/freesentation/Freesentation-4Regular.woff2") format("woff2");
   font-weight: 400;
   font-style: normal;
-  font-display: block;
+  font-display: swap;
 }
 @font-face {
   font-family: "Freesentation";
-  src: local("Freesentation 6SemiBold"), local("Freesentation-6SemiBold");
-  font-weight: 600;
-  font-style: normal;
-  font-display: block;
-}
-@font-face {
-  font-family: "Freesentation";
-  src: local("Freesentation 7Bold"), local("Freesentation-7Bold");
-  font-weight: 700;
-  font-style: normal;
-  font-display: block;
-}
-@font-face {
-  font-family: "Freesentation";
-  src: local("Freesentation 8ExtraBold"), local("Freesentation-8ExtraBold");
-  font-weight: 800;
-  font-style: normal;
-  font-display: block;
-}
-@font-face {
-  font-family: "Freesentation";
-  src: local("Freesentation 9Black"), local("Freesentation-9Black");
-  font-weight: 900;
-  font-style: normal;
-  font-display: block;
-}
-@font-face {
-  font-family: "Paperlogy";
-  src: url("./vendor/fonts/paperlogy/Paperlogy-1Thin.woff2") format("woff2");
-  font-weight: 100;
-  font-style: normal;
-  font-display: block;
-}
-@font-face {
-  font-family: "Paperlogy";
-  src: url("./vendor/fonts/paperlogy/Paperlogy-2ExtraLight.woff2") format("woff2");
-  font-weight: 200;
-  font-style: normal;
-  font-display: block;
-}
-@font-face {
-  font-family: "Paperlogy";
-  src: url("./vendor/fonts/paperlogy/Paperlogy-3Light.woff2") format("woff2");
-  font-weight: 300;
-  font-style: normal;
-  font-display: block;
-}
-@font-face {
-  font-family: "Paperlogy";
-  src: url("./vendor/fonts/paperlogy/Paperlogy-4Regular.woff2") format("woff2");
-  font-weight: 400;
-  font-style: normal;
-  font-display: block;
-}
-@font-face {
-  font-family: "Paperlogy";
-  src: url("./vendor/fonts/paperlogy/Paperlogy-5Medium.woff2") format("woff2");
+  src: url("./vendor/fonts/freesentation/Freesentation-5Medium.woff2") format("woff2");
   font-weight: 500;
   font-style: normal;
-  font-display: block;
+  font-display: swap;
 }
 @font-face {
-  font-family: "Paperlogy";
-  src: url("./vendor/fonts/paperlogy/Paperlogy-6SemiBold.woff2") format("woff2");
+  font-family: "Freesentation";
+  src: url("./vendor/fonts/freesentation/Freesentation-6SemiBold.woff2") format("woff2");
   font-weight: 600;
   font-style: normal;
-  font-display: block;
+  font-display: swap;
 }
 @font-face {
-  font-family: "Paperlogy";
-  src: url("./vendor/fonts/paperlogy/Paperlogy-7Bold.woff2") format("woff2");
+  font-family: "Freesentation";
+  src: url("./vendor/fonts/freesentation/Freesentation-7Bold.woff2") format("woff2");
   font-weight: 700;
   font-style: normal;
-  font-display: block;
+  font-display: swap;
 }
 @font-face {
-  font-family: "Paperlogy";
-  src: url("./vendor/fonts/paperlogy/Paperlogy-8ExtraBold.woff2") format("woff2");
+  font-family: "Freesentation";
+  src: url("./vendor/fonts/freesentation/Freesentation-8ExtraBold.woff2") format("woff2");
   font-weight: 800;
   font-style: normal;
-  font-display: block;
+  font-display: swap;
 }
 @font-face {
-  font-family: "Paperlogy";
-  src: url("./vendor/fonts/paperlogy/Paperlogy-9Black.woff2") format("woff2");
+  font-family: "Freesentation";
+  src: url("./vendor/fonts/freesentation/Freesentation-9Black.woff2") format("woff2");
   font-weight: 900;
   font-style: normal;
-  font-display: block;
+  font-display: swap;
 }
 @property --shell-left-w {
   syntax: "<length>";
@@ -122,7 +73,7 @@
   --sidebar-reference-w-compact: 170px;
   --sidebar-shared-edge-reduction: 12px;
   --sidebar-content-w: calc(var(--sidebar-reference-w) - var(--sidebar-shared-edge-reduction));
-  --rail-w: calc(var(--nav-rail-w) + var(--sidebar-content-w)); --topbar-h: 48px; --sidebar-row-h: 32px; --sidebar-sub-row-h: 28px; --sidebar-pad-x: 18px; --topbar-edge-x: 12px;
+  --rail-w: calc(var(--nav-rail-w) + var(--sidebar-content-w)); --topbar-h: 48px; --sidebar-row-h: 36px; --sidebar-sub-row-h: 32px; --sidebar-pad-x: 18px; --topbar-edge-x: 12px;
   --topbar-left-compact-w: var(--nav-rail-w);
   --sidebar-item-x: 0px; --sidebar-item-end: var(--s3); --sidebar-item-pad-x: var(--s2); --sidebar-icon-gap: var(--s2);
   --sidebar-section-x: var(--sidebar-item-x); --sidebar-section-label-x: var(--sidebar-item-pad-x); --sidebar-section-label-gap: var(--s2);
@@ -134,8 +85,8 @@
   --rail-motion: 160ms ease;
   --module-tab-w: 180px;
   --topbar-compact-w: calc((var(--topbar-btn-size) * 2) + (var(--shell-edge-inset) * 2));
-  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-presenter: "Freesentation", "Paperlogy", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-presenter: "Freesentation", sans-serif;
   font-family: var(--font-sans);
   font-size: 14px;
 }
@@ -711,10 +662,21 @@ body[data-module="praise"] .list-filter {
 }
 .nav-rail-tab.active {
   background: transparent;
-  color: var(--sidebar-ink);
+  color: var(--accent);
 }
 .nav-rail-tab.active::before {
   background: transparent;
+}
+.nav-rail-tab.active::after {
+  position: absolute;
+  top: 50%;
+  left: 2px;
+  width: 2px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--accent);
+  content: "";
+  transform: translateY(-50%);
 }
 .nav-rail-tab svg {
   position: relative;
@@ -751,7 +713,7 @@ body[data-module="backgrounds"] .sidebar-count,
 .global-search-wrap {
   max-width: none;
   min-width: 200px;
-  height: 30px;
+  height: 34px;
   width: 100%;
 }
 .sidebar-search-wrap {
@@ -944,6 +906,7 @@ body[data-module="calendar"] .detail-pane { overflow: hidden; }
   text-transform: uppercase;
 }
 .home-sidebar-card {
+  position: relative;
   display: grid;
   width: 100%;
   min-height: var(--sidebar-row-h);
@@ -977,7 +940,17 @@ body[data-module="calendar"] .detail-pane { overflow: hidden; }
 }
 .home-sidebar-card.active {
   background: transparent;
-  color: var(--sidebar-ink);
+  color: var(--accent);
+}
+.home-sidebar-card.active::before {
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  left: 0;
+  width: 2px;
+  border-radius: 999px;
+  background: var(--accent);
+  content: "";
 }
 .home-sidebar-card i { color: currentColor; }
 .home-sidebar-card.has-meta i { grid-row: 1 / span 2; }
@@ -6190,7 +6163,7 @@ body[data-module="presenter"] .detail-pane {
   background: var(--presenter-output-bg);
   color: var(--presenter-output-fg);
   container-type: size;
-  font-family: var(--font-sans);
+  font-family: var(--font-presenter);
 }
 .svc-slide-mini-output.no-chromakey {
   --presenter-output-bg: #050807;

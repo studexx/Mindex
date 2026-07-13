@@ -380,9 +380,8 @@ Typography:
 - Metadata labels should share a consistent style across Praise and Scripture.
 - Functional UI can be English.
 - Worship/service labels may remain Korean.
-- Presenter output font choices:
-  - Paperlogy may be used for department worship outputs.
-  - Do not apply Paperlogy to the whole app by accident.
+- UX/UI uses the self-hosted Pretendard Variable face.
+- All Presenter previews and output themes use the self-hosted Freesentation family.
 
 Color:
 

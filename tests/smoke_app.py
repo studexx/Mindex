@@ -755,7 +755,7 @@ def main() -> int:
                     })()
                     """
                 )
-                expected_home_order = ["예배", "말씀", "찬양", "교회력", "배경", "링크"]
+                expected_home_order = ["예배"]
                 if (
                     home_order == expected_home_order
                     and not home_visibility_state["hasActivities"]
@@ -854,7 +854,7 @@ def main() -> int:
                       const activeIconRect = activeIcon?.getBoundingClientRect();
                       const probe = document.createElement('span');
                       probe.style.position = 'absolute';
-                      probe.style.color = 'var(--sidebar-ink)';
+                      probe.style.color = 'var(--accent)';
                       document.body.appendChild(probe);
                       const expected = getComputedStyle(probe);
                       const expectedColor = expected.color;
@@ -1008,6 +1008,44 @@ def main() -> int:
                     pass_("references-utility-shell", json.dumps(references_state, ensure_ascii=False))
                 else:
                     fail("references-utility-shell", json.dumps(references_state, ensure_ascii=False))
+
+                reference_search_state = page.evaluate(
+                    """
+                    (() => ({
+                      title: document.querySelector('.reference-card strong')?.textContent.trim() || '',
+                      before: document.querySelectorAll('.reference-card').length
+                    }))()
+                    """
+                )
+                if reference_search_state["title"]:
+                    page.fill("#searchInput", reference_search_state["title"])
+                    page.wait_for_function(
+                        """
+                        () => !document.querySelector('.global-search-section')
+                          && document.querySelector('.references-shell')
+                          && document.querySelectorAll('.reference-card').length > 0
+                        """,
+                        timeout=5000,
+                    )
+                    reference_search_state.update(page.evaluate(
+                        """
+                        () => ({
+                          after: document.querySelectorAll('.reference-card').length,
+                          globalSections: document.querySelectorAll('.global-search-section').length
+                        })
+                        """
+                    ))
+                    if reference_search_state["after"] < reference_search_state["before"] and reference_search_state["globalSections"] == 0:
+                        pass_("references-local-search", json.dumps(reference_search_state, ensure_ascii=False))
+                    else:
+                        fail("references-local-search", json.dumps(reference_search_state, ensure_ascii=False))
+                    page.press("#searchInput", "Enter")
+                    reference_search_state["moduleAfterEnter"] = page.evaluate("() => document.body.dataset.module || ''")
+                    if reference_search_state["moduleAfterEnter"] != "references":
+                        fail("references-search-enter", json.dumps(reference_search_state, ensure_ascii=False))
+                    else:
+                        pass_("references-search-enter", json.dumps(reference_search_state, ensure_ascii=False))
+                    page.fill("#searchInput", "")
 
                 page.click('[data-home-module="service"]')
                 wait_for_service_data(page)

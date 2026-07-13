@@ -834,6 +834,7 @@ function bindStaticEvents() {
     renderSongList();
     if (state.module === "home") renderDetail();
     if (state.module === "scripture") renderDetail();
+    if (state.module === "references") renderDetail();
     if (isServiceDataModule()) renderCurrentServiceModuleDetail();
   });
   refs.searchInput.addEventListener("keydown", handleSearchKeydown);
@@ -1246,35 +1247,32 @@ async function handleSearchKeydown(event) {
   if (event.key !== "Enter") return;
 
   const scriptureShortcut = await getScriptureSearchShortcut(state.search);
-  if (scriptureShortcut && (state.module !== "scripture" || scriptureShortcut.type !== "text")) {
+  if (state.module !== "references" && scriptureShortcut && (state.module !== "scripture" || scriptureShortcut.type !== "text")) {
     event.preventDefault();
     await runScriptureSearchShortcut(scriptureShortcut);
     return;
   }
 
-  if (state.module === "home") {
+  if (["home", "praise", "service", "presenter"].includes(state.module)) {
     const results = getGlobalSearchResults();
-    const firstSong = results.praise[0];
-    const firstScripture = results.scripture[0];
-    const firstService = results.service[0];
-    event.preventDefault();
-    if (firstSong) {
-      await openGlobalSongResult(firstSong.id);
-      return;
-    }
-    if (firstScripture?.kind === "text") {
-      await openGlobalBibleTextResult();
-      return;
-    }
-    if (firstScripture?.book) {
-      await openGlobalBookResult(firstScripture.book.code, {
-        chapter: firstScripture.chapter,
-        verse: firstScripture.verse,
-      });
-      return;
-    }
-    if (firstService) {
-      await openGlobalServiceResult(firstService.id);
+    for (const section of getGlobalSearchSectionOrder()) {
+      const firstResult = section.items(results)[0];
+      if (!firstResult) continue;
+      event.preventDefault();
+      if (section.id === "praise") {
+        await openGlobalSongResult(firstResult.id);
+      } else if (section.id === "scripture") {
+        if (firstResult.kind === "text") {
+          await openGlobalBibleTextResult();
+        } else if (firstResult.book) {
+          await openGlobalBookResult(firstResult.book.code, {
+            chapter: firstResult.chapter,
+            verse: firstResult.verse,
+          });
+        }
+      } else if (section.id === "service") {
+        await openGlobalServiceResult(firstResult.id);
+      }
       return;
     }
     return;
@@ -2971,7 +2969,7 @@ async function loadCalendarData({ silent = false } = {}) {
   } finally {
     state.calendarLoading = false;
     if (state.module === "calendar") {
-      renderHomeList();
+      renderSongList();
       renderCalendarView();
     }
   }
@@ -8285,6 +8283,12 @@ function syncSidebarCollapsedState() {
   refs.sidebarToggleBtn?.classList.toggle("active", !collapsed);
   refs.sidebarToggleBtn?.setAttribute("aria-pressed", String(!collapsed));
   refs.sidebarToggleBtn?.setAttribute("aria-expanded", String(!collapsed));
+  refs.sidebarToggleBtn?.setAttribute("aria-label", collapsed ? "사이드바 열기" : "사이드바 닫기");
+  refs.sidebarToggleBtn?.setAttribute("title", collapsed ? "사이드바 열기" : "사이드바 닫기");
+  if (refs.sidebarToggleBtn) {
+    refs.sidebarToggleBtn.innerHTML = `<i data-lucide="${collapsed ? "panel-left-open" : "panel-left-close"}"></i>`;
+    refreshIcons();
+  }
   if (refs.sidebarToggleBtn) refs.sidebarToggleBtn.disabled = false;
   if (refs.sidebar) {
     refs.sidebar.inert = collapsed;
@@ -8664,7 +8668,7 @@ async function registerSelectedWorshipBackground(fileName) {
   if (input) input.value = "";
   refreshPresenterBackgrounds();
   renderWorshipBackgroundsDetail();
-  renderHomeList();
+  renderSongList();
   showToast(`${fileName} registered.`);
 }
 
@@ -8693,7 +8697,7 @@ function clearRegisteredWorshipBackground(fileName) {
   state.worshipBackgroundRegistry = nextRegistry;
   refreshPresenterBackgrounds();
   renderWorshipBackgroundsDetail();
-  renderHomeList();
+  renderSongList();
   showToast(`${fileName} cleared.`);
 }
 
@@ -8842,8 +8846,8 @@ function renderSongList() {
     return;
   }
 
-  if (state.module === "references" || state.module === "backgrounds") {
-    renderHomeList();
+  if (["calendar", "references", "backgrounds"].includes(state.module)) {
+    renderModuleSidebarContext();
     return;
   }
   if (state.module === "scripture") {
@@ -8854,11 +8858,6 @@ function renderSongList() {
     renderServiceList();
     return;
   }
-  if (state.module === "calendar") {
-    renderHomeList();
-    return;
-  }
-
   if (!state.client) {
     refs.songCount.textContent = "";
     refs.songList.innerHTML = renderConnectionList();
@@ -8903,7 +8902,7 @@ function renderSongList() {
 }
 
 function isGlobalSearchActive() {
-  return Boolean(normalizeSearchValue(state.search));
+  return Boolean(normalizeSearchValue(state.search)) && state.module !== "references";
 }
 
 function renderGlobalSearchList() {
@@ -9034,9 +9033,9 @@ function renderGlobalScriptureResult(result) {
     return `
       <button class="song-item global-search-result global-search-result--primary" type="button" data-global-bible-text="true">
         <span class="song-title">
-          <span class="song-title-text">Search Bible text</span>
+          <span class="song-title-text">성경 본문 검색</span>
         </span>
-        <span class="song-meta-line">${escapeHtml(query ? `"${query}" in selected translation` : "Selected translation")}</span>
+        <span class="song-meta-line">${escapeHtml(query ? `선택된 역본에서 "${query}" 검색` : "선택된 역본")}</span>
       </button>
     `;
   }
@@ -9152,12 +9151,6 @@ function clearGlobalSearchInput() {
 function renderHomeList() {
   const modules = homeModuleCards();
   const service = modules.find((module) => module.id === "service");
-  const contentModules = ["scripture", "praise"]
-    .map((id) => modules.find((module) => module.id === id))
-    .filter(Boolean);
-  const utilityModules = ["calendar", "backgrounds", "references"]
-    .map((id) => modules.find((module) => module.id === id))
-    .filter(Boolean);
   refs.songCount.textContent = "";
   refs.songList.innerHTML = `
     <div class="home-sidebar">
@@ -9165,16 +9158,14 @@ function renderHomeList() {
         <span class="home-sidebar-heading">다음 예배</span>
         ${renderHomeSidebarCard(service)}
       </section>` : ""}
-      <section class="home-sidebar-section">
-        <span class="home-sidebar-heading">라이브러리</span>
-        ${contentModules.map(renderHomeSidebarCard).join("")}
-      </section>
-      <section class="home-sidebar-section home-sidebar-section--utility">
-        <span class="home-sidebar-heading">운영 도구</span>
-        ${utilityModules.map(renderHomeSidebarCard).join("")}
-      </section>
     </div>
   `;
+  finishListRender();
+}
+
+function renderModuleSidebarContext() {
+  refs.songCount.textContent = "";
+  refs.songList.innerHTML = "";
   finishListRender();
 }
 
@@ -9765,8 +9756,8 @@ function renderScriptureList() {
   const filtered = getFilteredBibleBooks();
   const hasSearch = Boolean(normalizeSearchValue(state.search));
   refs.songCount.textContent = hasSearch
-    ? `${filtered.length} of ${books.length} books`
-    : `${filtered.length} ${filtered.length === 1 ? "book" : "books"}`;
+    ? `${formatCount(books.length)}권 중 ${formatCount(filtered.length)}권`
+    : `전체 ${formatCount(filtered.length)}권`;
 
   if (state.scriptureError) {
     refs.songList.innerHTML = isConnectionUnavailableMessage(state.scriptureError)
@@ -9777,10 +9768,10 @@ function renderScriptureList() {
 
   if (!filtered.length) {
     refs.songList.innerHTML = renderListEmptyState(
-      "No books",
+      "성경 권 없음",
       hasSearch && !reference
-        ? "Press Enter to search Bible text."
-        : "Try a book name or reference like 창 1:1 or Gen 1:1.",
+        ? "Enter를 누르면 본문 검색으로 전환합니다."
+        : "성경 이름이나 장절을 검색해 보세요.",
     );
     return;
   }
@@ -9906,7 +9897,7 @@ function renderDetail() {
     return;
   }
 
-  if (isGlobalSearchActive() && (state.module === "home" || state.module === "calendar" || state.module === "references" || state.module === "backgrounds")) {
+  if (isGlobalSearchActive() && (state.module === "home" || state.module === "calendar" || state.module === "backgrounds")) {
     renderHomeSearchDetail();
     return;
   }
@@ -10437,7 +10428,7 @@ function renderScriptureDetail() {
   }
 
   if (!scripture) {
-    const titleMetaLine = selectedBook?.canonicalEnglishTitle || `${getBibleBooks().length} books`;
+    const titleMetaLine = selectedBook?.canonicalEnglishTitle || `전체 ${formatCount(getBibleBooks().length)}권`;
     const supportMetaItems = scriptureBookSupportMetaItems(selectedBook);
     refs.detailPane.innerHTML = `
       <div class="editor-shell scripture-editor scripture-taxonomy-editor">
@@ -14939,7 +14930,7 @@ function renderPresenterSidebar(query, services, selectedService) {
   return `
     <div class="service-sidebar service-sidebar--presenter">
       ${searchSection}
-      ${selectedService ? renderServiceCurrentSidebar(selectedService) : ""}
+      ${selectedService ? renderServiceCurrentSidebar(selectedService) : renderRecentServiceShortcuts()}
     </div>`;
 }
 

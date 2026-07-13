@@ -38,11 +38,11 @@
   --presenter-scripture-line-height: 1.1;
   --presenter-scripture-fit-width: 64cqw;
   --presenter-scripture-fit-ratio: .74;
-  --presenter-scripture-bar-size: clamp(34px, 3.25cqw, 60px);
-  --presenter-scripture-clean-size: clamp(42px, 5cqw, 86px);
-  --presenter-scripture-reading-ref-size: clamp(30px, 3.05cqw, 52px);
-  --presenter-scripture-reading-version-size: clamp(22px, 2.05cqw, 36px);
-  --presenter-scripture-reading-text-size: clamp(50px, 5.3cqw, 90px);
+  --presenter-scripture-bar-size: 48px;
+  --presenter-scripture-clean-size: 72px;
+  --presenter-scripture-reading-ref-size: 36px;
+  --presenter-scripture-reading-version-size: 28px;
+  --presenter-scripture-reading-text-size: 72px;
   display: grid;
   width: min(100vw, calc(100vh * 16 / 9));
   height: min(100vh, calc(100vw * 9 / 16));
@@ -53,7 +53,7 @@
   overflow: hidden;
   background: var(--presenter-output-bg);
   color: var(--presenter-output-fg);
-  font-family: var(--font-sans);
+  font-family: var(--font-presenter);
   user-select: none;
 }
 .svc-slide-mini-canvas.presenter-output-root {
@@ -159,16 +159,16 @@
   -webkit-text-stroke: 0;
   text-shadow: 0 2px 18px rgba(0, 0, 0, .34);
 }
-.presenter-output-empty { color: #fff; font-size: clamp(28px, 4cqw, 54px); font-weight: 900; -webkit-text-stroke: 0; text-shadow: none; }
+.presenter-output-empty { color: #fff; font-size: 48px; font-weight: 900; -webkit-text-stroke: 0; text-shadow: none; }
 .presenter-slide { display: flex; width: 100%; height: 100%; max-width: 100%; max-height: 100%; flex-direction: column; justify-content: flex-end; overflow: hidden; padding: 7cqh 7cqw 10cqh; }
 .presenter-slide--component,
 .presenter-slide--ready,
 .presenter-slide--title,
 .presenter-slide--liturgical-body,
 .presenter-slide--title-content { justify-content: center; align-items: center; text-align: center; }
-.presenter-slide-meta { margin-bottom: 2cqh; color: var(--presenter-output-fg); font-size: clamp(24px, 2.8cqw, 48px); font-weight: 900; -webkit-text-stroke: 0; }
-.presenter-slide-text { display: flex; max-width: 100%; max-height: 100%; flex-direction: column; gap: .12em; color: var(--presenter-output-fg); font-size: clamp(42px, 5.8cqw, 86px); font-weight: 500; line-height: 1.16; letter-spacing: 0; -webkit-text-stroke: 0; overflow-wrap: normal; text-shadow: none; word-break: keep-all; }
-.presenter-slide-text span { max-width: 100%; white-space: nowrap; font-size: min(1em, calc(94cqw / (var(--line-chars, 18) * .72))); }
+.presenter-slide-meta { margin-bottom: 2cqh; color: var(--presenter-output-fg); font-size: 36px; font-weight: 900; -webkit-text-stroke: 0; }
+.presenter-slide-text { display: flex; max-width: 100%; max-height: 100%; flex-direction: column; gap: .12em; color: var(--presenter-output-fg); font-size: 72px; font-weight: 500; line-height: 1.16; letter-spacing: 0; -webkit-text-stroke: 0; overflow-wrap: normal; text-shadow: none; word-break: keep-all; }
+.presenter-slide-text span { max-width: 100%; white-space: nowrap; font-size: inherit; }
 .presenter-text-highlight {
   color: var(--presenter-text-highlight-color, currentColor);
   font-size: inherit;
@@ -176,7 +176,7 @@
   white-space: inherit;
 }
 .presenter-output-root.no-chromakey .presenter-slide--lyrics[data-element-type="praise"] .presenter-slide-text {
-  font-size: clamp(40px, 6cqw, 88px);
+  font-size: 72px;
   font-weight: 800;
 }
 .presenter-slide-text .presenter-lyric-line--numbered {
@@ -192,23 +192,23 @@
   transform: translateY(-.375em);
 }
 .presenter-slide--component .presenter-slide-text,
-.presenter-slide--ready .presenter-slide-text { align-items: center; font-size: clamp(50px, 6.2cqw, 96px); font-weight: 800; text-align: center; }
+.presenter-slide--ready .presenter-slide-text { align-items: center; font-size: 96px; font-weight: 800; text-align: center; }
 .presenter-slide--title .presenter-slide-text {
   align-items: center;
-  font-size: clamp(58px, 7.2cqw, 122px);
+  font-size: 120px;
   font-weight: 900;
   text-align: center;
 }
 .presenter-slide--liturgical-body .presenter-slide-text {
   align-items: center;
   gap: .18em;
-  font-size: clamp(24px, 2.85cqw, 42px);
+  font-size: 36px;
   font-weight: 700;
   line-height: 1.34;
   text-align: center;
 }
 .presenter-slide--liturgical-body .presenter-slide-text span {
-  font-size: min(1em, calc(88cqw / (var(--line-chars, 18) * .68)));
+  font-size: inherit;
 }
 .presenter-slide--liturgical-body {
   align-items: stretch;
@@ -233,7 +233,7 @@
   align-items: flex-start;
   justify-content: center;
   gap: 1.8cqh;
-  font-size: clamp(23px, 2.25cqw, 40px);
+  font-size: 36px;
   font-weight: 800;
   line-height: 1.18;
   word-break: keep-all;
@@ -241,7 +241,7 @@
 .presenter-liturgical-body-lines span {
   max-width: 100%;
   white-space: nowrap;
-  font-size: min(1em, calc(64cqw / (var(--line-chars, 24) * .82)));
+  font-size: inherit;
 }
 .presenter-liturgical-body-heading {
   display: flex;
@@ -256,7 +256,7 @@
   display: block;
   max-width: 100%;
   white-space: nowrap;
-  font-size: min(clamp(68px, 7.6cqw, 122px), calc(27cqw / (var(--line-chars, 4) * .7)));
+  font-size: 96px;
   font-weight: 900;
   line-height: .95;
 }
@@ -265,17 +265,17 @@
   gap: 2.2cqh;
 }
 .presenter-slide--liturgical-body .presenter-title-content-title {
-  font-size: min(clamp(24px, 2.6cqw, 46px), calc(82cqw / (var(--line-chars, 12) * .72)));
+  font-size: 48px;
   font-weight: 800;
 }
 .presenter-slide--liturgical-body .presenter-title-content-body {
   gap: .12em;
-  font-size: clamp(24px, 2.85cqw, 42px);
+  font-size: 36px;
   font-weight: 700;
   line-height: 1.34;
 }
 .presenter-slide--liturgical-body .presenter-title-content-body span {
-  font-size: min(1em, calc(88cqw / (var(--line-chars, 18) * .68)));
+  font-size: inherit;
 }
 .presenter-title-content {
   display: flex;
@@ -295,7 +295,7 @@
   display: block;
   max-width: 100%;
   color: var(--presenter-output-fg);
-  font-size: min(clamp(48px, 5.4cqw, 96px), calc(76cqw / (var(--line-chars, 12) * .76)));
+  font-size: 96px;
   font-weight: 900;
   line-height: 1.08;
   white-space: nowrap;
@@ -307,14 +307,14 @@
   align-items: center;
   gap: .12em;
   color: color-mix(in srgb, var(--presenter-output-fg) 92%, transparent);
-  font-size: clamp(28px, 2.9cqw, 50px);
+  font-size: 36px;
   font-weight: 800;
   line-height: 1.08;
 }
 .presenter-title-content-body span {
   max-width: 100%;
   white-space: nowrap;
-  font-size: min(1em, calc(72cqw / (var(--line-chars, 18) * .78)));
+  font-size: inherit;
 }
 .presenter-slide--lyrics,
 .presenter-slide--song-title,
@@ -362,7 +362,7 @@
   gap: .14em;
   background: transparent;
   color: #fff;
-  font-size: clamp(34px, 3.25cqw, 60px);
+  font-size: 48px;
   font-weight: 800;
   line-height: 1.12;
   padding: 2.25cqh 5.8cqw;
@@ -384,7 +384,7 @@
 .presenter-slide--scripture .presenter-slide-text span {
   display: block;
   width: 100%;
-  font-size: min(1em, calc(var(--presenter-scripture-fit-width) / (var(--line-chars, 24) * var(--presenter-scripture-fit-ratio))));
+  font-size: 48px;
 }
 .presenter-slide--song-title .presenter-section-song-title {
   display: grid;
@@ -405,13 +405,13 @@
   white-space: nowrap;
 }
 .presenter-section-song-title-heading {
-  font-size: min(.95em, calc(25cqw / (var(--line-chars, 8) * .72)));
+  font-size: 36px;
   font-weight: 800;
 }
 .presenter-section-song-title-name {
   justify-self: end;
   max-width: 100%;
-  font-size: min(.88em, calc(60cqw / (var(--line-chars, 14) * .68)));
+  font-size: 48px;
   font-weight: 800;
   text-align: right;
 }
@@ -430,11 +430,11 @@
   overflow: visible;
   text-overflow: clip;
   white-space: nowrap;
-  font-size: min(1em, calc(36cqw / (var(--line-chars, 8) * .74)));
+  font-size: 48px;
   font-weight: 800;
 }
 .presenter-title-assignee--solo .presenter-title-assignee-title {
-  font-size: min(1em, calc(76cqw / (var(--line-chars, 8) * .74)));
+  font-size: 72px;
 }
 .presenter-title-assignee-person {
   min-width: 0;
@@ -442,12 +442,12 @@
   text-align: right;
   text-overflow: clip;
   white-space: nowrap;
-  font-size: min(.9em, calc(42cqw / (var(--line-chars, 8) * .74)));
+  font-size: 48px;
   font-weight: 800;
 }
 :is(.svc-slide-mini-output, .presenter-output-root):not(.no-chromakey) .presenter-slide--lyrics[data-element-type="praise"] .presenter-slide-text {
   gap: .06em;
-  font-size: clamp(34px, 3.25cqw, 60px);
+  font-size: 48px;
   font-weight: 800;
   line-height: 1.08;
   padding-block: 1.35cqh;
@@ -476,7 +476,7 @@
   max-width: 96cqw;
   background: transparent;
   color: var(--presenter-output-fg);
-  font-size: clamp(42px, 5cqw, 86px);
+  font-size: 72px;
   font-weight: 700;
   line-height: 1.18;
   padding: 0;
@@ -492,10 +492,15 @@
 }
 .presenter-output-root.no-chromakey .presenter-slide--lyrics .presenter-slide-text span,
 .presenter-output-root.no-chromakey .presenter-slide--song-title .presenter-slide-text span {
-  font-size: min(1em, calc(64cqw / (var(--line-chars, 18) * .78)));
+  font-size: inherit;
 }
 .presenter-output-root.no-chromakey .presenter-slide--scripture .presenter-slide-text span {
-  font-size: min(1em, calc(var(--presenter-scripture-fit-width) / (var(--line-chars, 18) * var(--presenter-scripture-fit-ratio))));
+  font-size: 48px;
+}
+
+.svc-slide-mini-canvas .presenter-slide--scripture .presenter-slide-text span,
+.svc-slide-mini-canvas.presenter-output-root.no-chromakey .presenter-slide--scripture .presenter-slide-text span {
+  font-size: 36px;
 }
 .presenter-output-root.no-chromakey .presenter-slide--scripture-reading {
   justify-content: flex-start;
@@ -535,12 +540,12 @@
   white-space: nowrap;
 }
 .presenter-scripture-reading-ref {
-  font-size: min(var(--presenter-scripture-reading-ref-size), calc(var(--presenter-scripture-fit-width) / (var(--line-chars, 8) * .66)));
+  font-size: var(--presenter-scripture-reading-ref-size);
   font-weight: 560;
 }
 .presenter-scripture-reading-version {
   justify-self: end;
-  font-size: min(var(--presenter-scripture-reading-version-size), calc(24cqw / (var(--line-chars, 4) * .72)));
+  font-size: var(--presenter-scripture-reading-version-size);
   font-weight: 560;
   opacity: .82;
   text-align: right;
@@ -564,7 +569,7 @@
   min-width: 0;
   max-width: 100%;
   overflow: hidden;
-  font-size: min(var(--presenter-scripture-reading-text-size), calc(78cqw / (var(--line-chars, 18) * .62)));
+  font-size: var(--presenter-scripture-reading-text-size);
   font-weight: var(--presenter-scripture-weight);
   line-height: var(--presenter-scripture-line-height);
   text-overflow: ellipsis;
@@ -585,7 +590,7 @@
   color: color-mix(in srgb, #553300 72%, transparent);
 }
 .presenter-output-root[data-output-theme="children"] .presenter-slide--song-title .presenter-slide-text {
-  font-size: clamp(46px, 5.6cqw, 98px);
+  font-size: 96px;
 }
 .presenter-slide--video,
 .presenter-slide--image { justify-content: center; align-items: center; padding: 0; background: transparent; }
@@ -605,18 +610,18 @@
 }
 .presenter-slide-file {
   display: grid;
-  gap: clamp(12px, 1.5cqw, 22px);
+  gap: 22px;
   text-align: center;
 }
 .presenter-slide-file small {
   color: color-mix(in srgb, var(--presenter-output-fg, #fff) 68%, transparent);
-  font-size: clamp(20px, 1.7cqw, 32px);
+  font-size: 24px;
   font-weight: 800;
   letter-spacing: .12em;
   text-transform: uppercase;
 }
 .presenter-slide-file strong {
   color: var(--presenter-output-fg, #fff);
-  font-size: clamp(42px, 4.6cqw, 84px);
+  font-size: 72px;
   font-weight: 800;
 }

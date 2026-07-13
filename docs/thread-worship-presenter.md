@@ -164,7 +164,7 @@ same content type may need separate chromakey and fullscreen slide templates.
 - Chroma range is narrow in the real broadcast setup.
 - Non-chromakey services use black output unless the service explicitly provides a presenter background source.
 - Explicit presenter background sources are honored as-is; do not infer or rotate backgrounds from service type, date, or season.
-- Paperlogy may be used for department outputs, but never apply it to the whole app by accident.
+- All Presenter previews and output themes use the self-hosted Freesentation family; do not introduce department-specific font overrides.
 
 ## Verification
 
