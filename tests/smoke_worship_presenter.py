@@ -122,6 +122,32 @@ def main() -> int:
                 else:
                     fail("presenter-slides", f"dom={slide_count} state={service}")
 
+                section_edit_buttons = page.locator("[data-presenter-section-edit]")
+                section_editor_rows = []
+                for section_index in range(section_edit_buttons.count()):
+                    button = page.locator("[data-presenter-section-edit]").nth(section_index)
+                    label = button.get_attribute("aria-label") or ""
+                    button.click()
+                    page.wait_for_timeout(60)
+                    dialog = page.locator("[data-presenter-section-editor]")
+                    opened = dialog.count() > 0
+                    title = dialog.locator("h3").inner_text().strip() if opened else ""
+                    section_editor_rows.append({"label": label, "opened": opened, "title": title})
+                    if opened:
+                        dialog.locator("[data-presenter-section-editor-close]").click()
+                        page.wait_for_timeout(60)
+                section_editor_state = {
+                    "count": len(section_editor_rows),
+                    "opened": section_editor_rows,
+                    "allOpened": bool(section_editor_rows) and all(
+                        item["opened"] and item["title"] for item in section_editor_rows
+                    ),
+                }
+                if section_editor_state["allOpened"]:
+                    pass_("presenter-section-edit-buttons", json.dumps(section_editor_state, ensure_ascii=False))
+                else:
+                    fail("presenter-section-edit-buttons", json.dumps(section_editor_state, ensure_ascii=False))
+
                 thumb_metrics = page.evaluate(
                     """
                     (() => [...document.querySelectorAll('.svc-slide-thumb-frame')]
@@ -1682,7 +1708,7 @@ def main() -> int:
                     and all(slide["chromakey"] is True for slide in title_and_liturgical_state["scaffold"])
                     and all(slide["outputContext"] == "chromakey" for slide in title_and_liturgical_state["scaffold"])
                     and title_and_liturgical_state["chromakeyCenterTextSlides"] == []
-                    and title_and_liturgical_state["scaffoldOutputContexts"] == {"chromakey": 26, "clean": 1}
+                    and title_and_liturgical_state["scaffoldOutputContexts"] == {"chromakey": 24, "clean": 1}
                     and [slide["text"] for slide in title_and_liturgical_state["scaffold"] if slide["type"] == "lyrics"] == [
                         "나는 전능하신 아버지 하나님, 천지의 창조주를 믿습니다.\n나는 그의 유일하신 아들, 우리 주 예수 그리스도를 믿습니다.",
                         "그는 성령으로 잉태되어 동정녀 마리아에게서 나시고,\n본디오 빌라도에게 고난을 받아 십자가에 못 박혀 죽으시고,",
@@ -2903,7 +2929,7 @@ def main() -> int:
                       ]);
                       const readingItem = {
                         id: '__smoke_scripture_reading_body__',
-                        label: '성경 본문',
+                        label: '성경봉독',
                         raw_title: '',
                         memo: serializeServiceItemMemo({
                           elementType: 'scripture_body',
@@ -2945,6 +2971,7 @@ def main() -> int:
                       const readingVersion = mount.querySelector('.presenter-scripture-reading-version');
                       const readingNo = mount.querySelector('.presenter-scripture-reading-no');
                       const readingText = mount.querySelector('.presenter-scripture-reading-text');
+                      const readingFin = mount.querySelector('.presenter-scripture-reading-fin');
                       const sermonText = slides[1]?.querySelector('.presenter-slide-text');
                       const readingHeadRect = readingHead?.getBoundingClientRect();
                       const readingRefRect = readingRef?.getBoundingClientRect();
@@ -2958,6 +2985,7 @@ def main() -> int:
                         readingElementTitle: readingSlide.elementTitle || '',
                         readingReferenceBook: readingSlide.referenceBook || '',
                         readingReferenceRange: readingSlide.referenceRange || '',
+                        readingFinal: readingSlide.scriptureReadingFinal || false,
                         readingTranslationLabel: readingSlide.translationLabel || '',
                         readingOutputContext: presenterSlideOutputContext(readingSlide, true),
                         readingNoChromakey: outputs[0]?.classList.contains('no-chromakey') || false,
@@ -2969,6 +2997,7 @@ def main() -> int:
                         readingBodyBelowHeader: Boolean(readingHeadRect && readingTextRect && readingTextRect.top > readingHeadRect.bottom),
                         readingNumber: readingNo?.textContent?.trim() || '',
                         readingText: readingText?.textContent?.trim() || '',
+                        readingFin: readingFin?.textContent?.trim() || '',
                         readingFontFamily: readingTextStyle?.fontFamily || '',
                         readingFontWeight: readingTextStyle?.fontWeight || '',
                         readingLineHeight: readingTextStyle?.lineHeight || '',
@@ -2996,11 +3025,13 @@ def main() -> int:
                     and scripture_context_state["readingNoChromakey"]
                     and scripture_context_state["readingHasClass"]
                     and not scripture_context_state["readingHasLowerBarText"]
-                    and scripture_context_state["readingReference"] == "출애굽기 23:14–19"
+                    and scripture_context_state["readingReference"] == "출애굽기 23"
                     and scripture_context_state["readingReferenceBook"] == "출애굽기"
                     and scripture_context_state["readingReferenceRange"] == "23:14–19"
+                    and scripture_context_state["readingFinal"]
                     and scripture_context_state["readingTranslationLabel"] == "개역개정"
                     and scripture_context_state["readingVersion"] == "개역개정"
+                    and scripture_context_state["readingFin"] == "Fin."
                     and scripture_context_state["readingHeaderSplit"]
                     and scripture_context_state["readingBodyBelowHeader"]
                     and scripture_context_state["readingNumber"] == "14"

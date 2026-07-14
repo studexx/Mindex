@@ -763,7 +763,10 @@ function presenterPreparationSlide(service, item, index) {
     const base = {
       ...presenterReadySlide(service),
       id: `${item?.id || index}:ready-media`,
-      sectionId: item?.id || `${service?.id || "service"}:ready`,
+      sectionId: item?._worshipSectionId || item?.id || `${service?.id || "service"}:ready`,
+      sectionKey: item?._worshipSectionKey || "ready",
+      sectionLabel: item?._worshipSectionTitle || item?.label || "준비",
+      elementLabel: item?.label || "준비",
       elementId: item?.id || `${service?.id || "service"}:ready`,
       sectionIndex: index + 1,
       sectionTitle: title,
@@ -796,7 +799,10 @@ function presenterPreparationSlide(service, item, index) {
   return {
     ...presenterReadySlide(service),
     id: `${item?.id || index}:ready`,
-    sectionId: item?.id || `${service?.id || "service"}:ready`,
+    sectionId: item?._worshipSectionId || item?.id || `${service?.id || "service"}:ready`,
+    sectionKey: item?._worshipSectionKey || "ready",
+    sectionLabel: item?._worshipSectionTitle || item?.label || "준비",
+    elementLabel: item?.label || "준비",
     elementId: item?.id || `${service?.id || "service"}:ready`,
     sectionIndex: index + 1,
     presenterRole,
@@ -1197,26 +1203,31 @@ function buildPresenterScriptureTextSlides(item, section, index) {
   if (!payload.verses.length) return [];
   const context = presenterScriptureBodyContext(item, section);
   const reference = payload.reference || section.sectionTitle || "본문";
-  return payload.verses.map((verse, verseIndex) => ({
-    id: `${item.id || index}:scripture:${verse.number || verseIndex + 1}`,
-    ...section,
-    elementTitle: reference,
-    sectionName: presenterNameParts(section.sectionLabel, reference).join(" / ") || reference,
-    elementType: PRESENTER_ELEMENT_TYPES.SCRIPTURE_TEXT,
-    layout: PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT,
-    type: "scripture",
-    scriptureContext: context,
-    label: item.label || "본문",
-    title: reference,
-    marker: payload.reference || "",
-    referenceBook: payload.referenceBook || "",
-    referenceRange: payload.referenceRange || "",
-    translationLabel: payload.translationLabel || "",
-    text: verse.number ? [verse.number, verse.text].filter(Boolean).join("   ") : verse.text,
-    ...(context === "reading" ? { outputContext: "clean" } : {}),
-    ...(context === "sermon" ? { outputContext: "chromakey" } : {}),
-    sort: index + verseIndex / 100,
-  }));
+  const lastVerseIndex = payload.verses.length - 1;
+  return payload.verses.map((verse, verseIndex) => {
+    const readingFinal = context === "reading" && verseIndex === lastVerseIndex;
+    return {
+      id: `${item.id || index}:scripture:${verse.number || verseIndex + 1}`,
+      ...section,
+      elementTitle: reference,
+      sectionName: presenterNameParts(section.sectionLabel, reference).join(" / ") || reference,
+      elementType: PRESENTER_ELEMENT_TYPES.SCRIPTURE_TEXT,
+      layout: PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT,
+      type: "scripture",
+      scriptureContext: context,
+      label: item.label || "본문",
+      title: reference,
+      marker: payload.reference || "",
+      referenceBook: payload.referenceBook || "",
+      referenceRange: payload.referenceRange || "",
+      translationLabel: payload.translationLabel || "",
+      text: verse.number ? [verse.number, verse.text].filter(Boolean).join("   ") : verse.text,
+      scriptureReadingFinal: readingFinal,
+      ...(context === "reading" ? { outputContext: "clean" } : {}),
+      ...(context === "sermon" ? { outputContext: "chromakey" } : {}),
+      sort: index + verseIndex / 100,
+    };
+  });
 }
 
 function presenterScriptureBodyContext(item = {}, section = {}) {
@@ -1237,7 +1248,15 @@ function serviceScriptureTextPayload(item, memo = parseServiceItemMemo(item?.mem
 
 function isScriptureBodyServiceItem(item) {
   const label = String(item?.label || "").replace(/\s+/g, "");
-  return label === "본문" || label === "성경본문" || label === "설교본문";
+  const sectionKey = String(item?._worshipSectionKey || item?.sectionKey || item?.section_key || "").trim();
+  const memo = typeof parseServiceItemMemo === "function" ? parseServiceItemMemo(item?.memo) : {};
+  const elementType = typeof normalizeWorshipElementType === "function"
+    ? normalizeWorshipElementType(memo.elementType || item?.elementType || item?.element_type || "")
+    : String(memo.elementType || item?.elementType || item?.element_type || "").trim().toLowerCase();
+  return label === "본문"
+    || label === "성경본문"
+    || label === "설교본문"
+    || (sectionKey === "scripture_reading" && (label === "성경봉독" || elementType === "scripture_body"));
 }
 
 function parsePresenterScriptureTextPayload(value) {
@@ -2179,16 +2198,16 @@ function applyPresenterActionToPayload(payload, action, options = {}) {
   }
   if (action === "next" && next.slides.length) {
     next.safetyBlank = false;
-    next.index = Math.min(next.index + 1, next.slides.length - 1);
+    next.index = presenterNextNavigableIndex(next.slides, next.index, 1);
   } else if (action === "prev" && next.slides.length) {
     next.safetyBlank = false;
-    next.index = Math.max(next.index - 1, 0);
+    next.index = presenterNextNavigableIndex(next.slides, next.index, -1);
   } else if (action === "first" && next.slides.length) {
     next.safetyBlank = false;
-    next.index = 0;
+    next.index = presenterFirstNavigableIndex(next.slides);
   } else if (action === "last" && next.slides.length) {
     next.safetyBlank = false;
-    next.index = next.slides.length - 1;
+    next.index = presenterLastNavigableIndex(next.slides);
   } else if (action === "jump" && next.slides.length) {
     if (requestedIndex === -1) {
       next.safetyBlank = true;
@@ -2199,6 +2218,29 @@ function applyPresenterActionToPayload(payload, action, options = {}) {
   }
   next.updatedAt = Date.now();
   return next;
+}
+
+function presenterSlideIsHidden(slide = {}) {
+  return Boolean(slide.hiddenInPresentation || slide.hidden_in_presentation || slide.hidden);
+}
+
+function presenterNextNavigableIndex(slides = [], currentIndex = 0, direction = 1) {
+  const step = direction < 0 ? -1 : 1;
+  let index = Number(currentIndex) + step;
+  while (index >= 0 && index < slides.length && presenterSlideIsHidden(slides[index])) index += step;
+  return index >= 0 && index < slides.length ? index : Number(currentIndex);
+}
+
+function presenterFirstNavigableIndex(slides = []) {
+  const index = slides.findIndex((slide) => !presenterSlideIsHidden(slide));
+  return index >= 0 ? index : 0;
+}
+
+function presenterLastNavigableIndex(slides = []) {
+  for (let index = slides.length - 1; index >= 0; index -= 1) {
+    if (!presenterSlideIsHidden(slides[index])) return index;
+  }
+  return Math.max(slides.length - 1, 0);
 }
 
 function renderPresenterOutput(payload, options = {}) {
@@ -2815,10 +2857,8 @@ function renderPresenterSlidePreviewBody(slide) {
 
 function renderPresenterScriptureReadingSlide(slide) {
   const reference = String(slide?.title || slide?.marker || "").trim();
-  const referenceBook = String(slide?.referenceBook || "").trim();
-  const referenceRange = String(slide?.referenceRange || "").trim();
   const translationLabel = String(slide?.translationLabel || "").trim();
-  const headerReference = [referenceBook, referenceRange].filter(Boolean).join(" ") || reference;
+  const headerReference = presenterScriptureReadingHeaderReference(slide) || reference;
   const { number, text } = presenterScriptureVerseParts(slide?.text || "");
   const referenceChars = presenterLineCharEstimate(headerReference || "본문");
   const translationChars = presenterLineCharEstimate(translationLabel || "역본");
@@ -2833,7 +2873,16 @@ function renderPresenterScriptureReadingSlide(slide) {
         ${number ? `<span class="presenter-scripture-reading-no">${escapeHtml(number)}</span>` : ""}
         <span class="presenter-scripture-reading-text" style="--line-chars: ${escapeAttr(verseChars)}">${escapePresenterSlideLine(text || slide?.text || " ", slide)}</span>
       </div>
+      ${slide?.scriptureReadingFinal ? `<div class="presenter-scripture-reading-fin">Fin.</div>` : ""}
     </div>`;
+}
+
+function presenterScriptureReadingHeaderReference(slide = {}) {
+  const referenceBook = String(slide?.referenceBook || "").trim();
+  const referenceRange = String(slide?.referenceRange || "").trim();
+  const chapter = referenceRange.match(/^(\d+)/)?.[1] || "";
+  const compactReference = [referenceBook, chapter || referenceRange].filter(Boolean).join(" ").trim();
+  return compactReference || String(slide?.title || slide?.marker || "").trim();
 }
 
 function presenterScriptureVerseParts(value = "") {

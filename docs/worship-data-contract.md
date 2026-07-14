@@ -132,12 +132,11 @@ sunday-first
 ├─ 04. Confession Prayer / confession
 │  └─ title / 참회기도
 ├─ 05. Scripture Reading / scripture_reading
-│  ├─ scripture_reading / 성경봉독
-│  └─ scripture_body / 성경 본문
+│  └─ scripture_body / 성경봉독
 ├─ 06. Sermon / sermon
 │  ├─ title_person / 설교 제목
 │  ├─ scripture_body / 설교 본문
-│  └─ activity / 실시간 성구 송출
+│  └─ live_scripture / 실시간 성구 송출
 ├─ 07. Response / response_song
 │  └─ title / 결단기도
 ├─ 08. Offering / offering
@@ -163,6 +162,7 @@ sunday-second
 ├─ 05. Prayer / prayer
 │  └─ title_person / 기도
 ├─ 06. Scripture Reading / scripture_reading
+│  └─ scripture_body / 성경봉독
 ├─ 07. Special Song / special_song
 │  └─ praise / 특송
 ├─ 08. Sermon / sermon
@@ -192,14 +192,13 @@ sunday-main
 ├─ 05. Prayer / prayer
 │  └─ title_person / 기도
 ├─ 06. Scripture Reading / scripture_reading
-│  ├─ scripture_reading / 성경봉독
-│  └─ scripture_body / 성경 본문
+│  └─ scripture_body / 성경봉독
 ├─ 07. Special Song / special_song
 │  └─ praise / 특송
 ├─ 08. Sermon / sermon
 │  ├─ title_person / 설교 제목
 │  ├─ scripture_body / 설교 본문
-│  └─ activity / 실시간 성구 송출
+│  └─ live_scripture / 실시간 성구 송출
 ├─ 09. Response / response_song
 │  └─ title_person / 결단기도
 ├─ 10. Creed / creed
@@ -330,10 +329,10 @@ Element Type (템플릿/저장 타입)
 │  ├─ input: asset picker/url
 │  ├─ storage: asset.url
 │  └─ presenter: file slide
-├─ activity (실시간 활동)
-│  ├─ input: live activity config
+├─ live_scripture (실시간 성구)
+│  ├─ input: live scripture config
 │  ├─ storage: memo/config
-│  └─ presenter: activity slide or live scripture bridge
+│  └─ presenter: live scripture bridge
 └─ template (슬라이드 템플릿)
    ├─ input: reusable template asset/config
    ├─ storage: asset/config
@@ -464,7 +463,7 @@ Imports are a staging/review pipeline, not canonical data.
 
 ### `mindex_worship_import_sources`
 
-One source file or source batch: PPT, PDF, manual setlist, legacy service rows.
+One source file or source batch: PPT, PDF, manual worship order, legacy service rows.
 
 Store source identity, source path/hash, parse report, and raw payload.
 

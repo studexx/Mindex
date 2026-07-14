@@ -376,7 +376,7 @@ const TITLE_COLLATOR = new Intl.Collator("ko-KR", {
 });
 
 const HANGUL_INITIALS = ["ㄱ", "ㄲ", "ㄴ", "ㄷ", "ㄸ", "ㄹ", "ㅁ", "ㅂ", "ㅃ", "ㅅ", "ㅆ", "ㅇ", "ㅈ", "ㅉ", "ㅊ", "ㅋ", "ㅌ", "ㅍ", "ㅎ"];
-const CONTENT_MODULES = ["service", "presenter", "scripture", "praise", "calendar", "references", "backgrounds"];
+const CONTENT_MODULES = ["service", "presenter", "scripture", "praise", "calendar", "references"];
 const ROUTE_MODULES = ["home", ...CONTENT_MODULES];
 const SERVICE_FILTERS = ["all", "public", "ministry", "special"];
 const MINDEX_TAB_STATE_STORAGE_KEY = "mindex.pageTabs.v1";
@@ -397,7 +397,7 @@ const SERVICE_ELEMENT_LABELS = {
   title_content: "제목 / 내용",
   title_person: "제목 / 담당자",
   body: "본문",
-  activity: "Activity",
+  live_scripture: "실시간 성구",
   template: "슬라이드 템플릿",
   file: "파일",
 };
@@ -506,49 +506,6 @@ const { LINK_CONFIG_KEYS, LINK_ROUTE_KEYS } = MINDEX_CONSTANTS;
  * @property {string} group_name
  * @property {number} sort_order
  * @property {boolean} is_active
- */
-
-/**
- * @typedef {Object} ActivityEvent
- * @property {string} id
- * @property {string} title
- * @property {string=} date
- * @property {string=} status
- * @property {string=} location
- * @property {string=} memo
- */
-
-/**
- * @typedef {Object} ActivityGame
- * @property {string} id
- * @property {string} event_id
- * @property {string} title
- * @property {"puzzle_hunt"|"quiz"|"physical"} game_type
- * @property {number} sort_order
- * @property {string=} status
- * @property {string=} owner
- * @property {string=} location
- */
-
-/**
- * @typedef {Object} ActivityTeam
- * @property {string} id
- * @property {string} event_id
- * @property {string} name
- * @property {string} color
- * @property {number} score
- * @property {number} sort_order
- */
-
-/**
- * @typedef {Object} ActivityScoreEvent
- * @property {string} id
- * @property {string} event_id
- * @property {string=} game_id
- * @property {string} team_id
- * @property {number} points
- * @property {string=} reason
- * @property {string=} created_at
  */
 
 const state = {
@@ -1547,7 +1504,12 @@ async function goHome() {
   if (!(await confirmSaveBeforeLeaving())) return;
   const dirtyModules = getDirtyModules();
   resetHomeState();
-  state.pageTabIndex = Math.max(0, state.pageTabs.findIndex((tab) => isHomePageTab(tab)));
+  if (!state.pageTabs.length) normalizePageTabsState([], 0);
+  const activeTab = state.pageTabs[state.pageTabIndex];
+  if (activeTab) {
+    activeTab.snapshot = homePageTabSnapshot();
+    activeTab.label = "홈";
+  }
   persistPageTabsState();
   render();
   if (refs.songList) refs.songList.scrollTop = 0;
@@ -2629,13 +2591,12 @@ function groupWorshipElements(sections = [], elements = []) {
     const config = element.config && typeof element.config === "object" ? element.config : {};
     const sectionKey = String(section.section_key || "").trim();
     const elementLabel = sourceRef.label || section.title || element.title || "";
-    if (sectionKey === "new_family" || compactSearchValue(elementLabel) === "새가족환영") return grouped;
     if (!grouped[serviceId]) grouped[serviceId] = [];
     const configuredElementType = serviceMemoElementType({
       elementType: config.elementType || config.element_type || config.componentType || config.component_type,
       componentType: config.componentType || config.component_type,
     }) || normalizeWorshipElementType(element.element_type);
-    if (configuredElementType === "activity" && compactSearchValue(elementLabel) === "실시간성구송출") return grouped;
+    if (configuredElementType === "live_scripture" && compactSearchValue(elementLabel) === "실시간성구송출") return grouped;
     const elementType = sectionKey === "announcements" ? "title" : configuredElementType;
     const inputMode = normalizeServiceInputMode(
       element.input_mode
@@ -2687,6 +2648,7 @@ function groupWorshipElements(sections = [], elements = []) {
         asset,
         playback,
         presenterRole,
+        hiddenInPresentation: Boolean(config.hiddenInPresentation || config.hidden_in_presentation),
         templateSuppressed: Boolean(config.templateSuppressed || config.template_suppressed),
         reviewStatus: element.review_status,
         reviewFlags: sourceRef.review_flags || [],
@@ -2736,8 +2698,13 @@ function worshipElementDisplayTitle(element = {}, section = {}, sourceRef = {}, 
 function isScriptureBodyWorshipElement(element = {}, section = {}, sourceRef = {}) {
   const elementType = normalizeWorshipElementType(element.element_type);
   if (elementType === "scripture_body") return true;
+  if (elementType === "scripture_reading") return false;
+  const sectionKey = String(section?.section_key || section?._worshipSectionKey || "").trim();
   const label = String(sourceRef?.label || section?.title || element?.title || "").replace(/\s+/g, "");
-  return label === "본문" || label === "성경본문" || label === "설교본문";
+  return label === "본문"
+    || label === "성경본문"
+    || label === "설교본문"
+    || (sectionKey === "scripture_reading" && label === "성경봉독");
 }
 
 function serviceElementScriptureReference(element = {}, section = {}, sourceRef = {}, config = {}) {
@@ -4370,7 +4337,7 @@ function worshipDbElementTypeForSave(elementType = "") {
   if (type === "file" || type === "template") return "ppt";
   if (type === "scripture") return "scripture_reading";
   if (type === "live_praise") return "praise";
-  if (type === "activity") return "plain_text";
+  if (type === "live_scripture") return "plain_text";
   if (type === "audio") return "plain_text";
   return type;
 }
@@ -4445,6 +4412,8 @@ function serviceElementConfigForSave(existingConfig = {}, parsed = emptyServiceI
     delete config.presenter_role;
     delete config.role;
   }
+  if (parsed.hiddenInPresentation) config.hiddenInPresentation = true;
+  else delete config.hiddenInPresentation;
   if (!options.omitSlides && parsed.slides.length) config.slides = parsed.slides;
   return config;
 }
@@ -4971,12 +4940,6 @@ function handleDetailClick(event) {
       serviceItemAction.dataset.serviceItemLabel || "",
       serviceItemAction.dataset.serviceItemTitle || "",
     );
-    return;
-  }
-
-  const serviceSetlistApply = event.target.closest("[data-service-setlist-apply]");
-  if (serviceSetlistApply) {
-    void applyServiceSetlistComposer(serviceSetlistApply.dataset.serviceSetlistApply);
     return;
   }
 
@@ -6234,8 +6197,13 @@ const SERVICE_ELEMENT_TYPE_ALIASES = {
   "실시간 찬양": "live_praise",
   "실시간불러오기": "live_praise",
   "실시간 불러오기": "live_praise",
-  activity: "activity",
-  "활동": "activity",
+  live_scripture: "live_scripture",
+  activity: "live_scripture",
+  "활동": "live_scripture",
+  "실시간성구": "live_scripture",
+  "실시간 성구": "live_scripture",
+  "실시간성구송출": "live_scripture",
+  "실시간 성구 송출": "live_scripture",
 };
 const SERVICE_ASSET_KIND_ALIASES = {
   ppt: "file",
@@ -6295,7 +6263,7 @@ function serviceInputModeForElementType(elementType = "") {
   if (["praise", "live_praise", "score"].includes(type)) return "praise_db";
   if (["scripture_reading", "scripture_body"].includes(type)) return "scripture";
   if (["image", "video", "audio", "file", "pdf", "ppt", "template"].includes(type)) return "asset";
-  if (["activity", "editable"].includes(type)) return "config";
+  if (["live_scripture", "editable"].includes(type)) return "config";
   if (type === "blank") return "none";
   if (["title", "title_content", "title_person", "plain_text", "body"].includes(type)) return "text";
   return "text";
@@ -6351,7 +6319,7 @@ function applyServicePreparationDefaults(item, serviceId = state.selectedService
   asset.kind = elementType;
   const roleTitle = presenterPreparationRoleLabel(role);
   const rawTitle = String(item.raw_title || "").trim();
-  item.label = "준비";
+  item.label = servicePreparationElementLabel(role);
   if (!rawTitle || isReadyServiceTemplateLabel(rawTitle) || isPreparationRoleTitle(rawTitle)) item.raw_title = roleTitle;
   parsed.elementType = elementType;
   parsed.componentType = elementType;
@@ -6359,6 +6327,13 @@ function applyServicePreparationDefaults(item, serviceId = state.selectedService
   parsed.asset = asset;
   item.memo = serializeServiceItemMemo(parsed);
   return item;
+}
+
+function servicePreparationElementLabel(role = "") {
+  const normalized = normalizeServicePresenterRole(role);
+  if (normalized === "intro") return "인트로";
+  if (normalized === "still") return "첫 화면";
+  return "대기 영상";
 }
 
 function servicePreparationElementTypeForRole(role = "", serviceId = state.selectedServiceId) {
@@ -6581,6 +6556,7 @@ function emptyServiceItemMemo(rawNote = "") {
     asset: { kind: "", name: "", url: "" },
     playback: null,
     presenterRole: "",
+    hiddenInPresentation: false,
     templateSuppressed: false,
   };
 }
@@ -6615,6 +6591,7 @@ function parseServiceItemMemo(value) {
         asset,
         playback: normalizeServicePlaybackConfig(parsed.playback, elementType),
         presenterRole,
+        hiddenInPresentation: Boolean(parsed.hiddenInPresentation || parsed.hidden_in_presentation || parsed.hidden),
         templateSuppressed: Boolean(parsed.templateSuppressed || parsed.template_suppressed),
       };
     }
@@ -6708,10 +6685,11 @@ function serializeServiceItemMemo(value = {}) {
   const asset = normalizeServiceAsset(value.asset);
   const playback = normalizeServicePlaybackConfig(value.playback, elementType);
   const presenterRole = normalizeServicePresenterRole(value.presenterRole || value.presenter_role || value.role);
+  const hiddenInPresentation = Boolean(value.hiddenInPresentation || value.hidden_in_presentation || value.hidden);
   const templateSuppressed = Boolean(value.templateSuppressed || value.template_suppressed);
   const defaultAssetKind = serviceAssetKindForElementType(elementType);
   if (!asset.kind && defaultAssetKind && hasServiceAsset(asset)) asset.kind = defaultAssetKind;
-  if (!slides.length && !hasServiceIntroSlide(introSlide) && !formHint && !formPreset && !formPresetRules.length && !templateKey && !templateVariant && !elementType && !outputMode && !inputMode && !textHighlights.length && !hasServiceAsset(asset) && !hasServicePlaybackConfig(playback) && !presenterRole && !templateSuppressed) return note;
+  if (!slides.length && !hasServiceIntroSlide(introSlide) && !formHint && !formPreset && !formPresetRules.length && !templateKey && !templateVariant && !elementType && !outputMode && !inputMode && !textHighlights.length && !hasServiceAsset(asset) && !hasServicePlaybackConfig(playback) && !presenterRole && !hiddenInPresentation && !templateSuppressed) return note;
   const payload = { note };
   if (scriptureReference) payload.scriptureReference = scriptureReference;
   if (hasServiceIntroSlide(introSlide)) payload.introSlide = introSlide;
@@ -6725,6 +6703,7 @@ function serializeServiceItemMemo(value = {}) {
   if (inputMode) payload.inputMode = inputMode;
   if (textHighlights.length) payload.textHighlights = textHighlights;
   if (presenterRole) payload.presenterRole = presenterRole;
+  if (hiddenInPresentation) payload.hiddenInPresentation = true;
   if (templateSuppressed) payload.templateSuppressed = true;
   if (hasServiceAsset(asset)) payload.asset = asset;
   if (hasServicePlaybackConfig(playback)) payload.playback = playback;
@@ -7367,63 +7346,6 @@ function updatePresenterSectionField(field) {
   updateSaveState();
 }
 
-async function applyServiceSetlistComposer(serviceId = state.selectedServiceId) {
-  if (!serviceId) return;
-  const root = [...(refs.detailPane?.querySelectorAll("[data-service-setlist]") || [])]
-    .find((node) => node.dataset.serviceSetlist === serviceId);
-  if (!root) return;
-
-  const label = root.querySelector("[data-service-setlist-label]")?.value?.trim() || "찬양";
-  const assignee = root.querySelector("[data-service-setlist-assignee]")?.value?.trim() || "";
-  const lines = root.querySelector("[data-service-setlist-lines]")?.value || "";
-  const titles = parseServiceSetlistLines(lines);
-  if (!titles.length) {
-    showToast("콘티에 곡명을 입력해 주세요.", "error");
-    return;
-  }
-
-  const service = state.services.find((svc) => svc.id === serviceId);
-  const items = normalizeServiceItems(getServiceItems(serviceId));
-  if (!state.songs.length && state.client) {
-    await loadSongs();
-  }
-  let matchedCount = 0;
-  const nextItems = titles.map((title, offset) => {
-    const item = normalizeServiceItem({
-      service_id: serviceId,
-      sort_order: items.length + offset + 1,
-      label,
-      assignee,
-      raw_title: title,
-    }, items.length + offset);
-    applyServiceSongSelectionWithService(item, service);
-    if (item.song_id) matchedCount += 1;
-    return item;
-  });
-
-  state.serviceItems[serviceId] = normalizeServiceItemsInCurrentOrder([...items, ...nextItems]);
-  state.dirty.service = true;
-  refreshPresenterForService(serviceId);
-  renderCurrentServiceModuleDetail();
-  updateSaveState();
-  showToast(`콘티 ${titles.length}곡 추가 · ${matchedCount}곡 DB 연결`);
-}
-
-function parseServiceSetlistLines(value) {
-  return String(value || "")
-    .split(/\r?\n/)
-    .flatMap((line) => line.split(/\s+\+\s+|\s*\+\s*/))
-    .map(cleanServiceSetlistTitle)
-    .filter(Boolean);
-}
-
-function cleanServiceSetlistTitle(value) {
-  return String(value || "")
-    .replace(/^\s*(?:\d+[\).]|[-*•])\s*/, "")
-    .replace(/^\s*(?:찬양|찬송|특송|결단찬양|봉헌찬양|파송찬양)\s*[/：:]\s*/u, "")
-    .trim();
-}
-
 function applyServiceSongSelectionWithService(item, service = null) {
   if (!item || !isSongServiceLabel(item.label)) {
     if (item) {
@@ -7548,7 +7470,9 @@ function buildWorshipServiceScaffold(serviceId, typeId, options = {}) {
       config: ready ? { presenterRole: "ready" } : {},
     });
     elementSteps.forEach((elementStep, elementIndex) => {
-      const elementLabel = String(elementStep.label || elementStep.name || label).trim() || label;
+      const elementLabel = ready
+        ? servicePreparationElementLabel(elementStep.presenterRole || elementStep.presenter_role || "ready")
+        : String(elementStep.label || elementStep.name || label).trim() || label;
       const elementType = ready ? servicePreparationElementTypeForType(typeId) : worshipTemplateElementType(elementStep, elementLabel);
       const defaultStrength = String(elementStep.defaultStrength || elementStep.default_strength || "").trim();
       const formPreset = normalizeServiceFormPreset(
@@ -7568,7 +7492,7 @@ function buildWorshipServiceScaffold(serviceId, typeId, options = {}) {
         section_id: sectionId,
         sort_order: elementIndex + 1,
         element_type: elementType,
-        title: ready ? "준비" : (defaultSong ? "" : String(elementStep.default_text || elementStep.title || "").trim()),
+        title: ready ? servicePreparationElementLabel(elementStep.presenterRole || elementStep.presenter_role || "ready") : (defaultSong ? "" : String(elementStep.default_text || elementStep.title || "").trim()),
         person: cleanServiceAssignee(elementStep.person || elementStep.assignee || ""),
         body: "",
         scripture_reference: "",
@@ -7585,6 +7509,7 @@ function buildWorshipServiceScaffold(serviceId, typeId, options = {}) {
           ...(introSlide ? { introSlide } : {}),
           ...(textHighlights.length ? { textHighlights } : {}),
           ...(asset.url ? { asset: { ...asset, kind: asset.kind || elementType } } : {}),
+          ...(elementStep.hiddenInPresentation || elementStep.hidden_in_presentation ? { hiddenInPresentation: true } : {}),
           ...(ready ? { presenterRole: "ready" } : {}),
         },
       });
@@ -7621,7 +7546,7 @@ function worshipTemplateDefaultSong(step = {}, elementType = "") {
 
 function isReadyServiceTemplateLabel(label) {
   const compact = compactSearchValue(label);
-  return compact === "준비" || compact === "예배준비" || compact === "예배준비영상";
+  return compact === "준비" || compact === "예배준비" || compact === "예배준비영상" || compact === "대기영상";
 }
 
 function isClosingVisualServiceTemplateLabel(label) {
@@ -7703,14 +7628,14 @@ function worshipTemplateElementType(step = {}, label = "") {
 function normalizeWorshipElementType(value) {
   const raw = String(value || "").trim().toLowerCase();
   const canonical = raw.replace(/-/g, "_");
-  if (["title", "title_content", "title_person", "plain_text", "body", "scripture_reading", "scripture_body", "live_praise", "activity", "editable", "ppt"].includes(canonical)) return canonical;
+  if (["title", "title_content", "title_person", "plain_text", "body", "scripture_reading", "scripture_body", "live_praise", "live_scripture", "editable", "ppt"].includes(canonical)) return canonical;
   const type = normalizeServiceElementType(value);
   if (type === "template") return "plain_text";
   if (type === "title" || type === "title_content") return type;
   if (type === "score") return "score";
   if (type === "file") return "ppt";
   if (type === "scripture") return "scripture_reading";
-  return ["blank", "title", "title_content", "plain_text", "title_person", "body", "praise", "live_praise", "activity", "scripture_reading", "scripture_body", "image", "video", "editable", "ppt", "pdf", "score"].includes(type)
+  return ["blank", "title", "title_content", "plain_text", "title_person", "body", "praise", "live_praise", "live_scripture", "scripture_reading", "scripture_body", "image", "video", "editable", "ppt", "pdf", "score"].includes(type)
     ? type
     : "";
 }
@@ -8000,7 +7925,6 @@ function currentPageTabTitle() {
   }
   if (state.module === "calendar") return "교회력";
   if (state.module === "references") return "링크";
-  if (state.module === "backgrounds") return "배경";
   return "홈";
 }
 
@@ -8044,21 +7968,13 @@ function homePageTab() {
     id: HOME_PAGE_TAB_ID,
     label: "홈",
     snapshot: homePageTabSnapshot(),
-    pinned: true,
   };
-}
-
-function isHomePageTab(tab = {}) {
-  return tab.id === HOME_PAGE_TAB_ID || sanitizePageTabSnapshot(tab.snapshot || {}).module === "home";
 }
 
 function normalizePageTabsState(tabs = [], activeIndex = 0) {
   const sanitized = tabs.map(sanitizePageTab).filter(Boolean);
-  const activeTab = sanitized[Math.max(0, Math.min(Number(activeIndex) || 0, sanitized.length - 1))] || null;
-  const regularTabs = sanitized.filter((tab) => !isHomePageTab(tab));
-  state.pageTabs = [homePageTab(), ...regularTabs];
-  const activeId = activeTab && !isHomePageTab(activeTab) ? activeTab.id : HOME_PAGE_TAB_ID;
-  state.pageTabIndex = Math.max(0, state.pageTabs.findIndex((tab) => tab.id === activeId));
+  state.pageTabs = sanitized.length ? sanitized : [homePageTab()];
+  state.pageTabIndex = Math.max(0, Math.min(Number(activeIndex) || 0, state.pageTabs.length - 1));
 }
 
 function pageTabTitleForSnapshot(snapshot = {}) {
@@ -8084,7 +8000,6 @@ function pageTabTitleForSnapshot(snapshot = {}) {
   }
   if (moduleName === "calendar") return "교회력";
   if (moduleName === "references") return "링크";
-  if (moduleName === "backgrounds") return "배경";
   return "홈";
 }
 
@@ -8117,19 +8032,6 @@ function syncActivePageTabState() {
   if (!state.pageTabs.length) normalizePageTabsState([], 0);
   const tab = state.pageTabs[state.pageTabIndex];
   if (!tab) return;
-  if (isHomePageTab(tab)) {
-    if (state.module !== "home") {
-      const workTab = newPageTab(currentBrowserHistorySnapshot());
-      state.pageTabs.splice(1, 0, workTab);
-      state.pageTabIndex = 1;
-      persistPageTabsState();
-      return;
-    }
-    tab.snapshot = homePageTabSnapshot();
-    tab.label = "홈";
-    persistPageTabsState();
-    return;
-  }
   tab.snapshot = sanitizePageTabSnapshot(currentBrowserHistorySnapshot());
   tab.label = currentPageTabTitle();
   persistPageTabsState();
@@ -8144,12 +8046,11 @@ function renderPageTabs() {
   const addButton = refs.pageTabAddBtn;
   refs.pageTabs.innerHTML = state.pageTabs.map((tab, index) => {
     const active = index === state.pageTabIndex;
-    const pinned = isHomePageTab(tab);
-    const close = !pinned && state.pageTabs.length > 1
+    const close = state.pageTabs.length > 1
       ? `<button class="page-tab-close" type="button" data-page-tab-close="${escapeAttr(String(index))}" aria-label="Close ${escapeAttr(tab.label)}"><i data-lucide="x"></i></button>`
       : "";
     return `
-      <button class="page-tab${pinned ? " page-tab--home" : ""}${active ? " active" : ""}" type="button" role="tab" data-page-tab-index="${escapeAttr(String(index))}" aria-selected="${active ? "true" : "false"}" ${active ? 'aria-current="page"' : ""}>
+      <button class="page-tab${active ? " active" : ""}" type="button" role="tab" data-page-tab-index="${escapeAttr(String(index))}" aria-selected="${active ? "true" : "false"}" ${active ? 'aria-current="page"' : ""}>
         <span>${escapeHtml(tab.label)}</span>
         ${close}
       </button>
@@ -8180,7 +8081,6 @@ async function openNewPageTab() {
 
 async function closePageTab(index) {
   if (state.pageTabs.length <= 1 || !Number.isInteger(index)) return;
-  if (isHomePageTab(state.pageTabs[index])) return;
   const closingActive = index === state.pageTabIndex;
   state.pageTabs.splice(index, 1);
   if (index < state.pageTabIndex) state.pageTabIndex -= 1;
@@ -8232,6 +8132,7 @@ async function handleNavigationRailClick(button) {
 
 function renderWorshipModeTabs(serviceId, activeMode = state.module === "presenter" ? "presenter" : "service") {
   if (!serviceId) return "";
+  if (activeMode === "presenter") return "";
   const tabs = [
     {
       id: "service",
@@ -8286,7 +8187,7 @@ function syncSidebarCollapsedState() {
   refs.sidebarToggleBtn?.setAttribute("aria-label", collapsed ? "사이드바 열기" : "사이드바 닫기");
   refs.sidebarToggleBtn?.setAttribute("title", collapsed ? "사이드바 열기" : "사이드바 닫기");
   if (refs.sidebarToggleBtn) {
-    refs.sidebarToggleBtn.innerHTML = `<i data-lucide="${collapsed ? "panel-left-open" : "panel-left-close"}"></i>`;
+    refs.sidebarToggleBtn.innerHTML = `<i data-lucide="panel-left"></i>`;
     refreshIcons();
   }
   if (refs.sidebarToggleBtn) refs.sidebarToggleBtn.disabled = false;
@@ -8840,13 +8741,13 @@ function renderSongList() {
     return;
   }
 
-  if (state.connectionError && !["calendar", "references", "backgrounds"].includes(state.module)) {
+  if (state.connectionError && !["calendar", "references"].includes(state.module)) {
     refs.songCount.textContent = "";
     refs.songList.innerHTML = renderConnectionList(state.connectionError);
     return;
   }
 
-  if (["calendar", "references", "backgrounds"].includes(state.module)) {
+  if (["calendar", "references"].includes(state.module)) {
     renderModuleSidebarContext();
     return;
   }
@@ -9194,7 +9095,7 @@ function renderHomeDetail() {
   const commandModules = ["service", "presenter", "scripture", "praise"]
     .map((id) => modules.find((module) => module.id === id))
     .filter(Boolean);
-  const resourceModules = ["scripture", "praise", "calendar", "backgrounds", "references"]
+  const resourceModules = ["scripture", "praise", "calendar", "references"]
     .map((id) => modules.find((module) => module.id === id))
     .filter(Boolean);
   const nextService = getServiceDashboardServices()[0] || null;
@@ -9542,7 +9443,6 @@ function homeModuleCards() {
   const calendarRows = getCalendarDisplayRows();
   const referencesSummary = referenceSummaryText();
   const serviceCountText = formatServiceCountLabel(state.services.length);
-  const worshipBackgroundCount = registeredWorshipBackgroundCount();
   return [
     {
       id: "service",
@@ -9624,7 +9524,7 @@ function homeModuleCards() {
       id: "references",
       title: "링크",
       eyebrow: "",
-      icon: "external-link",
+      icon: "link-2",
       sidebarMeta: referencesSummary || "링크",
       detail: "공유 링크",
       compactMeta: state.referenceLinksLoaded
@@ -9632,20 +9532,6 @@ function homeModuleCards() {
         : { value: "링크", label: "" },
       meta: cleanList([
         referencesSummary,
-      ]),
-    },
-    {
-      id: "backgrounds",
-      title: "배경",
-      eyebrow: "",
-      icon: "images",
-      sidebarMeta: worshipBackgroundCount ? `${formatCount(worshipBackgroundCount)}개 등록` : "예배 자료",
-      detail: "예배 배경",
-      compactMeta: worshipBackgroundCount
-        ? { value: formatCount(worshipBackgroundCount), label: "등록" }
-        : { value: "PNG", label: "" },
-      meta: cleanList([
-        `${worshipBackgroundTargets().length} targets`,
       ]),
     },
   ];
@@ -9833,7 +9719,6 @@ function getListScrollKey() {
   if (state.module === "presenter") return `presenter:${search}`;
   if (state.module === "calendar") return `calendar:${search}`;
   if (state.module === "references") return `references:${search}`;
-  if (state.module === "backgrounds") return `backgrounds:${search}`;
   return `praise:${state.praiseFilter}:${search}`;
 }
 
@@ -9897,18 +9782,13 @@ function renderDetail() {
     return;
   }
 
-  if (isGlobalSearchActive() && (state.module === "home" || state.module === "calendar" || state.module === "backgrounds")) {
+  if (isGlobalSearchActive() && (state.module === "home" || state.module === "calendar")) {
     renderHomeSearchDetail();
     return;
   }
 
   if (state.module === "home") {
     renderHomeDetail();
-    return;
-  }
-
-  if (state.module === "backgrounds") {
-    renderWorshipBackgroundsDetail();
     return;
   }
 
@@ -13398,8 +13278,7 @@ function publicWorshipScriptureReadingStep() {
     flex: false,
     sectionKey: "scripture_reading",
     elements: [
-      { label: "성경봉독", name: "성경봉독", elementType: "scripture_reading" },
-      { label: "성경 본문", name: "성경 본문", elementType: "scripture_body" },
+      { label: "성경봉독", name: "성경봉독", elementType: "scripture_body" },
     ],
   };
 }
@@ -13447,7 +13326,38 @@ function publicWorshipResponseStep() {
 }
 
 function publicWorshipAnnouncementsStep() {
-  return { label: "교회소식", name: "교회소식", required: true, flex: false, sectionKey: "announcements", elementType: "title" };
+  return {
+    label: "광고",
+    name: "광고",
+    required: true,
+    flex: false,
+    sectionKey: "announcements",
+    elements: [{ label: "교회소식", name: "교회소식", elementType: "title" }],
+  };
+}
+
+function publicSundayThirdAnnouncementsStep() {
+  return {
+    ...publicWorshipAnnouncementsStep(),
+    elements: [
+      { label: "교회소식", name: "교회소식", elementType: "title" },
+      { label: "새가족환영", name: "새가족환영", elementType: "title", hiddenInPresentation: true },
+    ],
+  };
+}
+
+function publicSundayThirdConfessionStep() {
+  return {
+    label: "참회기도",
+    name: "참회기도",
+    required: false,
+    flex: true,
+    sectionKey: "confession",
+    elements: [
+      { label: "참회기도", name: "참회기도", elementType: "title" },
+      { label: "사죄의 선언", name: "사죄의 선언", elementType: "title", hiddenInPresentation: true },
+    ],
+  };
 }
 
 function publicWorshipDoxologyStep(options = {}) {
@@ -13619,7 +13529,7 @@ function publicSundayThirdTemplate() {
       required: true,
       extraElements: [publicSundayThirdEntrancePraiseElement()],
     }),
-    { label: "참회기도", name: "참회기도", required: false, flex: true, sectionKey: "confession", elementType: "title", default_text: "참회기도" },
+    publicSundayThirdConfessionStep(),
     { label: "찬송", name: "찬송", required: false, flex: true, sectionKey: "hymn_praise", elementType: "praise", ...scoreOutputMode() },
     { label: "대표기도", name: "대표기도", required: true, flex: false, sectionKey: "prayer", elements: [
       { label: "기도", name: "기도", elementType: "title_person" },
@@ -13634,7 +13544,7 @@ function publicSundayThirdTemplate() {
       { label: "사도신경", name: "사도신경", elementType: "body", default_text: PUBLIC_APOSTLES_CREED_TEXT },
     ] },
     publicWorshipOfferingStep({ score: true, praiseLabel: "봉헌찬송" }),
-    { label: "교회소식", name: "교회소식", required: true, flex: false, sectionKey: "announcements", elementType: "title" },
+    publicSundayThirdAnnouncementsStep(),
     publicWorshipCommunityConfessionStep(),
     publicWorshipSendingStep({ doxology: false, extraElements: [publicSundayThirdSendingPraiseElement()] }),
     publicSundayThirdClosingStep(),
@@ -13755,8 +13665,8 @@ const SERVICE_ORDER_TEMPLATE_FALLBACKS = {
   "sunday-second": publicSundaySecondTemplate({ score: true, specialScore: false }),
   "sunday-main": publicSundayThirdTemplate(),
   "sunday-afternoon": publicSundayAfternoonTemplate(),
-  wednesday: ["찬양", "대표기도", "교회소식", "성경봉독", "설교", responseSectionTemplate(), publicWorshipSendingStep({ doxology: false }), publicWorshipClosingStep()],
-  friday: ["찬양", "대표기도", "특송", "교회소식", "성경봉독", "설교", responseSectionTemplate(), "기도회", "찬양", "통성기도", "자율기도", publicWorshipClosingStep()],
+  wednesday: ["찬양", "대표기도", publicWorshipAnnouncementsStep(), "성경봉독", "설교", responseSectionTemplate(), publicWorshipSendingStep({ doxology: false }), publicWorshipClosingStep()],
+  friday: ["찬양", "대표기도", "특송", publicWorshipAnnouncementsStep(), "성경봉독", "설교", responseSectionTemplate(), "기도회", "찬양", "통성기도", "자율기도", publicWorshipClosingStep()],
   monthly: publicMonthlyTemplate(),
   "holy-week-dawn": ["찬양", "기도", "성경봉독", "설교", "기도"],
   omer: ["찬양", "기도", "특송", "결단"],
@@ -13838,7 +13748,9 @@ function projectWorshipServiceItemsFromTemplate(service, items = []) {
     return normalizeServiceItemsForTemplateHierarchy(service, items);
   }
 
-  const existing = normalizeServiceItemsForTemplateHierarchy(service, items, { preserveSourceIndex: true });
+  const existing = collapseLegacyScriptureReadingItems(
+    normalizeServiceItemsForTemplateHierarchy(service, items, { preserveSourceIndex: true }),
+  );
   const suppressedTemplateKeys = new Set(existing
     .filter(isTemplateSuppressedServiceItem)
     .map((item) => serviceItemTemplateProjectionKey(item, { includeLabel: true })));
@@ -13874,6 +13786,55 @@ function projectWorshipServiceItemsFromTemplate(service, items = []) {
 function isTemplateSuppressedServiceItem(item = {}) {
   const config = parseServiceItemMemo(item.memo);
   return Boolean(config.templateSuppressed);
+}
+
+function collapseLegacyScriptureReadingItems(items = []) {
+  const groups = new Map();
+  items.forEach((item, index) => {
+    const sectionKey = String(item._worshipSectionId || item._worshipSectionKey || "").trim();
+    if (!sectionKey || templateProjectionSectionKey(item) !== "scripture_reading") return;
+    if (!groups.has(sectionKey)) groups.set(sectionKey, { bodies: [], reading: null, readingIndex: -1 });
+    const group = groups.get(sectionKey);
+    if (isScriptureBodyServiceItem(item)) {
+      group.bodies.push({ item, index });
+    } else if (normalizeWorshipElementType(serviceMemoElementType(parseServiceItemMemo(item.memo))) === "scripture_reading") {
+      group.reading = item;
+      group.readingIndex = index;
+    }
+  });
+
+  const replacements = new Map();
+  const removed = new Set();
+  groups.forEach((group) => {
+    const body = group.bodies[0];
+    if (!body || (group.bodies.length < 2 && !group.reading)) return;
+    const sourceItems = [
+      ...group.bodies,
+      ...(group.reading ? [{ item: group.reading, index: group.readingIndex }] : []),
+    ];
+    const firstIndex = Math.min(...sourceItems.map((source) => source.index));
+    const assignee = sourceItems
+      .map((source) => cleanServiceAssignee(source.item.assignee))
+      .find(Boolean) || "";
+    replacements.set(firstIndex, {
+      ...body.item,
+      label: "성경봉독",
+      assignee,
+      raw_title: sourceItems
+        .map((source) => String(source.item.raw_title || "").trim())
+        .find(Boolean) || "",
+      _worshipElementOrder: Math.min(
+        ...sourceItems.map((source) => Number(source.item._worshipElementOrder) || Number.MAX_SAFE_INTEGER),
+      ),
+    });
+    sourceItems.forEach((source) => removed.add(source.index));
+  });
+
+  return items.flatMap((item, index) => {
+    if (replacements.has(index)) return [replacements.get(index)];
+    if (removed.has(index)) return [];
+    return [item];
+  });
 }
 
 function findTemplateProjectionMatchIndex(templateItem = {}, existingItems = [], unmatched = new Set(), templateSectionCounts = new Map()) {
@@ -14154,8 +14115,17 @@ function canonicalServiceSectionTitles(classified = []) {
 
 function canonicalizeServiceItemForTemplateHierarchy(item = {}, meta = null, sectionIdByGroup = new Map(), sectionTitleByGroup = new Map()) {
   if (!meta) return item;
+  const existingLabel = String(item.label || "").trim();
+  const metaLabel = String(meta.label || "").trim();
+  const shouldUseAnnouncementDefaultLabel = meta.key === "announcements"
+    && !item._worshipElementTemplateModified
+    && (!existingLabel
+      || compactSearchValue(existingLabel) === compactSearchValue(meta.title || "")
+      || compactSearchValue(existingLabel) === "광고");
+  const canonicalElementLabel = shouldUseAnnouncementDefaultLabel ? (metaLabel || "교회소식") : item.label;
   return {
     ...item,
+    label: canonicalElementLabel || item.label,
     _worshipSectionId: sectionIdByGroup.get(meta.groupKey) || item._worshipSectionId || "",
     _worshipSectionKey: meta.key,
     _worshipSectionTitle: sectionTitleByGroup.get(meta.groupKey) || meta.title,
@@ -15154,6 +15124,8 @@ function serviceOutlineStartLabel(slideIndex) {
 }
 
 function serviceSidebarSectionTitle(group, fallbackItem = null) {
+  const sectionKey = String(group?.sectionKey || fallbackItem?._worshipSectionKey || "").trim();
+  if (sectionKey === "announcements") return "광고";
   return String(group?.sectionTitle || fallbackItem?.label || "").trim() || serviceSidebarItemTitle(fallbackItem) || "섹션";
 }
 
@@ -15180,6 +15152,7 @@ function serviceSidebarChildItemTitle(item) {
 function serviceSidebarItemTitle(item) {
   const label = String(item?.label || "").trim();
   const title = serviceItemDisplayText(item);
+  if (item?._worshipSectionKey === "announcements" && (!title || compactSearchValue(label) === compactSearchValue(title) || compactSearchValue(label) === "교회소식" || compactSearchValue(label) === "광고")) return "광고";
   if (label && title && compactSearchValue(label) !== compactSearchValue(title)) return `${label} · ${title}`;
   return title || label || "항목";
 }
@@ -15701,7 +15674,6 @@ function renderServiceAuthoringDetail(service) {
         <div class="svc-authoring-tools">
           ${renderServiceAuthoringPanel("기본", "예배 정보", renderServiceMetaEditor(service))}
           ${renderServiceAuthoringPanel("구조", "기본 섹션 추가", renderServiceOrderTemplate(typeObj))}
-          ${renderServiceAuthoringPanel("찬양", "찬양 입력", renderServiceSetlistComposer(service))}
         </div>
         <section class="svc-prep-editor-section" aria-label="예배 순서 편집">
           <div class="svc-editor-section-title">
@@ -15994,7 +15966,6 @@ function renderServicePrepEditorDialog(service) {
           <div class="svc-authoring-tools">
             ${renderServiceAuthoringPanel("Service", "예배 정보", renderServiceMetaEditor(service))}
             ${renderServiceAuthoringPanel("Section", "기본 섹션 추가", renderServiceOrderTemplate(typeObj))}
-            ${renderServiceAuthoringPanel("요소", "찬양 입력", renderServiceSetlistComposer(service))}
           </div>
           <section class="svc-prep-editor-section" aria-label="예배 순서 편집">
             ${renderServiceEditorHeader("")}
@@ -16275,34 +16246,6 @@ function renderServiceOrderTemplate(typeObj) {
       </summary>
       <div class="svc-template-flow">
         ${template.map((step, index) => renderServiceTemplateStep(step, index, typeObj?.id)).join("")}
-      </div>
-    </details>`;
-}
-
-function renderServiceSetlistComposer(service) {
-  if (!service) return "";
-  const usesPraiseLeader = serviceUsesPraiseLeader(service.type_id);
-  const assigneeLabel = usesPraiseLeader ? "인도자" : "담당";
-  const assigneePlaceholder = usesPraiseLeader ? "이름/직분" : "담당자";
-  return `
-    <details class="svc-setlist-composer" data-service-setlist="${escapeAttr(service.id)}">
-      <summary>
-        <span>찬양 불러오기</span>
-      </summary>
-      <div class="svc-setlist-grid">
-        <label>
-          <span>섹션</span>
-          <input type="text" data-service-setlist-label value="찬양" placeholder="찬양" />
-        </label>
-        <label>
-          <span>${escapeHtml(assigneeLabel)}</span>
-          <input type="text" data-service-setlist-assignee placeholder="${escapeAttr(assigneePlaceholder)}" />
-        </label>
-        <label class="svc-setlist-lines">
-          <span>콘티</span>
-          <textarea data-service-setlist-lines rows="4" placeholder="주만 의지해&#10;마음 속에 근심 있는 사람&#10;갈 길을 밝히 보이시니"></textarea>
-        </label>
-        <button class="svc-setlist-apply" type="button" data-service-setlist-apply="${escapeAttr(service.id)}">반영</button>
       </div>
     </details>`;
 }
@@ -16771,6 +16714,7 @@ function renderServiceItemMemoSummary({ parsed, preparation, elementType, autoAd
 
 function renderServiceElementTypeOptions(selectedType = "") {
   const selected = normalizeServiceElementType(selectedType) || normalizeWorshipElementType(selectedType);
+  const visibleSelected = selected === "scripture_reading" ? "scripture_body" : selected;
   const options = [
     ["", "자동"],
     ["blank", "빈 화면"],
@@ -16781,18 +16725,17 @@ function renderServiceElementTypeOptions(selectedType = "") {
     ["score", "악보"],
     ["praise", "찬양"],
     ["scripture", "말씀"],
-    ["scripture_reading", "성경봉독"],
-    ["scripture_body", "성경 본문"],
+    ["scripture_body", "성경봉독"],
     ["title_person", "제목 / 담당자"],
     ["title_content", "제목 / 내용"],
     ["plain_text", "일반 텍스트"],
     ["body", "본문"],
-    ["activity", "Activity"],
+    ["live_scripture", "실시간 성구"],
     ["template", "슬라이드 템플릿"],
     ["file", "파일"],
   ];
   return options
-    .map(([value, label]) => `<option value="${escapeAttr(value)}"${value === selected ? " selected" : ""}>${escapeHtml(label)}</option>`)
+    .map(([value, label]) => `<option value="${escapeAttr(value)}"${value === visibleSelected ? " selected" : ""}>${escapeHtml(label)}</option>`)
     .join("");
 }
 
@@ -17237,7 +17180,7 @@ function inferServiceItemAssignee(item) {
   if (!label) return "";
   if (/특송/.test(label)) return "담당기관";
   if (/말씀|설교/.test(label)) return "담임목사";
-  if (/성경봉독|교회소식|예배기도|축복기도|축도/.test(label)) return "인도자";
+  if (/성경봉독|교회소식|광고|예배기도|축복기도|축도/.test(label)) return "인도자";
   if (/^기도$/.test(label) && looksLikePersonOrGroup(note)) return "담당자";
   return "";
 }
@@ -18381,13 +18324,14 @@ function presenterLabelDuplicatesSlideText(label, slide) {
 
 function renderPresenterSlideThumb(slide, slideIndex, activeIndex, serviceId, formLabel = "") {
   const active = slideIndex === activeIndex;
+  const hidden = Boolean(slide?.hiddenInPresentation || slide?.hidden_in_presentation || slide?.hidden);
   const elementKey = presenterSlideElementGroupKey(slide) || `slide:${slideIndex}`;
   const selected = !presenterControllerIsLive(serviceId)
     && state.presenterBoardSelection.serviceId === serviceId
     && state.presenterBoardSelection.elementKey === elementKey
     && (state.presenterBoardSelection.indexes || []).map(Number).includes(slideIndex);
   const visibleFormLabel = presenterLabelDuplicatesSlideText(formLabel, slide) ? "" : formLabel;
-  const ariaPrefix = `${slideIndex + 1}번 슬라이드 위치 보기, 더블클릭하여 송출`;
+  const ariaPrefix = `${slideIndex + 1}번 슬라이드 위치 보기${hidden ? " · 숨김 슬라이드" : ""}, 더블클릭하여 송출`;
   const slideNumber = slideIndex + 1;
   const formBadge = visibleFormLabel ? `
       <button class="svc-slide-form-badge" type="button"
@@ -18398,9 +18342,10 @@ function renderPresenterSlideThumb(slide, slideIndex, activeIndex, serviceId, fo
         ${escapeHtml(visibleFormLabel)}
       </button>` : "";
   return `
-    <span class="svc-slide-thumb-wrap${active ? " active" : ""}${selected ? " selected" : ""}${visibleFormLabel ? " has-form-label" : ""}">
+    <span class="svc-slide-thumb-wrap${active ? " active" : ""}${selected ? " selected" : ""}${hidden ? " hidden" : ""}${visibleFormLabel ? " has-form-label" : ""}">
       <span class="svc-slide-thumb-meta">
         <span class="svc-slide-thumb-no" aria-hidden="true">${slideNumber}</span>
+        ${hidden ? `<span class="svc-slide-hidden-badge">숨김</span>` : ""}
         ${formBadge}
       </span>
       <button class="svc-slide-thumb${active ? " active" : ""}${selected ? " selected" : ""}" type="button"
@@ -18586,10 +18531,10 @@ function runPresenterAction(action, serviceId = state.selectedServiceId, options
     movePresenterSlide(-1);
   } else if (action === "first") {
     state.presenter.safetyBlank = false;
-    state.presenter.index = 0;
+    state.presenter.index = firstPresenterNavigableIndex(state.presenter.slides);
   } else if (action === "last") {
     state.presenter.safetyBlank = false;
-    state.presenter.index = Math.max(state.presenter.slides.length - 1, 0);
+    state.presenter.index = lastPresenterNavigableIndex(state.presenter.slides);
   } else if (action === "jump") {
     const requestedIndex = Number(options.index);
     if (requestedIndex === -1) {
@@ -19029,7 +18974,22 @@ function refreshPresenterForServiceType(typeId, options = {}) {
 function movePresenterSlide(delta) {
   const count = state.presenter.slides.length;
   if (!count) return;
-  state.presenter.index = Math.min(Math.max(state.presenter.index + delta, 0), count - 1);
+  const step = delta < 0 ? -1 : 1;
+  let index = state.presenter.index + step;
+  while (index >= 0 && index < count && state.presenter.slides[index]?.hiddenInPresentation) index += step;
+  if (index >= 0 && index < count) state.presenter.index = index;
+}
+
+function firstPresenterNavigableIndex(slides = []) {
+  const index = slides.findIndex((slide) => !slide?.hiddenInPresentation);
+  return index >= 0 ? index : 0;
+}
+
+function lastPresenterNavigableIndex(slides = []) {
+  for (let index = slides.length - 1; index >= 0; index -= 1) {
+    if (!slides[index]?.hiddenInPresentation) return index;
+  }
+  return Math.max(slides.length - 1, 0);
 }
 
 function clampPresenterIndex(index, count) {
@@ -19056,7 +19016,11 @@ function buildServicePresenterSlides(serviceId) {
 
   let slides = getServiceOutputItems(serviceId)
     .sort((a, b) => a.sort_order - b.sort_order)
-    .flatMap((item, index) => buildPresenterSlidesForServiceItem(item, service, index))
+    .flatMap((item, index) => {
+      const slides = buildPresenterSlidesForServiceItem(item, service, index);
+      const hidden = parseServiceItemMemo(item?.memo).hiddenInPresentation;
+      return hidden ? slides.map((slide) => ({ ...slide, hiddenInPresentation: true })) : slides;
+    })
     .filter(Boolean);
   slides = normalizePresenterSlidesForServiceOutput(slides, service);
   if (!slides[0] || !isPresenterPreparationSlide(slides[0])) slides = [presenterReadySlide(service), ...slides];
@@ -19435,7 +19399,7 @@ function resolvePresenterServiceItemContentState(item = {}, memo = emptyServiceI
     return serviceScriptureTextPayload(item, memo).verses.length ? filled("scripture_body") : missing("scripture_body_empty");
   }
   if (elementType === "blank") return filled("blank");
-  if (elementType === "activity" && compactSearchValue(item?.label || "").includes("실시간성구송출")) return filled("live_scripture_activity");
+  if (elementType === "live_scripture" && compactSearchValue(item?.label || "").includes("실시간성구송출")) return filled("live_scripture");
   if (presenterMemoElementIsTitleSlide(elementType)) {
     const title = presenterTitleAssigneeTitle(item, item?.label || "", "", elementType);
     const person = presenterTitleAssigneePerson(item, item?.label || "", "", title, service);

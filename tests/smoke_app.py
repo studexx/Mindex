@@ -800,10 +800,10 @@ def main() -> int:
                     and home_design_state["hasMain"]
                     and home_design_state["hasCommandPanel"]
                     and home_design_state["actionTiles"] == 4
-                    and home_design_state["resourceRows"] == 5
+                    and home_design_state["resourceRows"] == 4
                     and home_design_state["main"]["height"] >= 180
-                    and home_design_state["resourceLabels"] == ["말씀", "찬양", "교회력", "배경", "링크"]
-                    and home_design_state["chevrons"] == 5
+                    and home_design_state["resourceLabels"] == ["말씀", "찬양", "교회력", "링크"]
+                    and home_design_state["chevrons"] == 4
                     and "1 services" not in home_design_state["text"]
                     and home_design_state["overflow"] <= 2
                 ):
@@ -873,7 +873,7 @@ def main() -> int:
                     })()
                     """
                 )
-                expected_topbar_order = ["예배", "말씀", "찬양", "교회력", "링크", "배경"]
+                expected_topbar_order = ["예배", "말씀", "찬양", "교회력", "링크"]
                 if (
                     topbar_state["order"] == expected_topbar_order
                     and topbar_state["active"] == "scripture"
@@ -1274,6 +1274,7 @@ def main() -> int:
                               elements: scaffold.elements.length,
                               firstSection: scaffold.sections[0]?.title || '',
                               firstElementType: scaffold.elements[0]?.element_type || '',
+                              firstElementLabel: scaffold.elements[0]?.source_ref?.label || '',
                               sectionKeys: sections.map((section) => section.key),
                               praiseElements: sections.find((section) => section.key === 'praise')?.elements || [],
                               corporatePrayerElements: sections.find((section) => section.key === 'corporate_prayer')?.elements || [],
@@ -1664,9 +1665,10 @@ def main() -> int:
                         template_terms["levels"] == ["Service", "Section", "Element", "Slide"]
                         and template_terms["monthlyFirst"] == {"label": "준비", "elementType": "video"}
                         and template_terms["monthlyScaffold"]["sections"] == 12
-                        and template_terms["monthlyScaffold"]["elements"] == 26
+                        and template_terms["monthlyScaffold"]["elements"] == 25
                         and template_terms["monthlyScaffold"]["firstSection"] == "준비"
                         and template_terms["monthlyScaffold"]["firstElementType"] == "video"
+                        and template_terms["monthlyScaffold"]["firstElementLabel"] == "대기 영상"
                         and "corporate_prayer" in template_terms["monthlyScaffold"]["sectionKeys"]
                         and "sending" in template_terms["monthlyScaffold"]["sectionKeys"]
                         and "closing_visual" in template_terms["monthlyScaffold"]["sectionKeys"]
@@ -1789,7 +1791,7 @@ def main() -> int:
                             "성경봉독",
                             "설교",
                             "결단",
-                            "교회소식",
+                            "광고",
                             "파송",
                             "폐회",
                         ]
@@ -1803,8 +1805,7 @@ def main() -> int:
                             {"type": "title_person", "label": "기도", "outputMode": ""}
                         ]
                         and template_terms["sundayPublicScaffold"]["afternoon"]["scriptureElements"] == [
-                            {"type": "scripture_reading", "label": "성경봉독", "outputMode": ""},
-                            {"type": "scripture_body", "label": "성경 본문", "outputMode": ""},
+                            {"type": "scripture_body", "label": "성경봉독", "outputMode": ""},
                         ]
                         and template_terms["sundayPublicScaffold"]["afternoon"]["sermonElements"] == [
                             {"type": "title_person", "label": "설교 제목", "person": "김남영 목사", "outputMode": ""},
@@ -2236,10 +2237,26 @@ def main() -> int:
                             )[0]?.sectionTitle || '';
                           })(),
                           readyShortcutRows: document.querySelectorAll('.service-outline-row--ready').length,
+                          announcementTitleContract: (() => {
+                            const group = {
+                              sectionKey: 'announcements',
+                              sectionTitle: '광고'
+                            };
+                            const items = [
+                              { label: '교회소식', raw_title: '교회소식', _worshipSectionKey: 'announcements' },
+                              { label: '새가족환영', raw_title: '새가족환영', _worshipSectionKey: 'announcements' },
+                            ];
+                            return {
+                              section: serviceSidebarSectionTitle(group, items[0]),
+                              children: items.map((item) => serviceSidebarChildItemTitle(item))
+                            };
+                          })(),
                           editorFields: [...document.querySelectorAll('.service-sidebar-editor label > span')]
                             .map((node) => node.textContent.trim()),
                           hasLegacyDrawer: Boolean(document.querySelector('.svc-edit-drawer')),
                           status: document.querySelector('.svc-presenter-status')?.textContent.trim() || '',
+                          modeTabLabels: [...document.querySelectorAll('.svc-header .svc-mode-tab span')]
+                            .map((node) => node.textContent.trim()),
                           jumpLabel: document.querySelector('[data-presenter-jump-button]')?.getAttribute('aria-label') || '',
                           controlLabels: [...document.querySelectorAll('.svc-presenter-mini-label')]
                             .map((node) => node.textContent.trim()),
@@ -2285,11 +2302,16 @@ def main() -> int:
                         and presenter_terms["mainPraiseSubgroupLabels"] == ["환영", "찬양 1"]
                         and presenter_terms["doxologyScoreSectionTitle"] == "송영"
                         and presenter_terms["readyShortcutRows"] <= 1
+                        and presenter_terms["announcementTitleContract"] == {
+                            "section": "광고",
+                            "children": ["교회소식", "새가족환영"],
+                        }
                         and presenter_terms["editorFields"] == []
                         and not presenter_terms["hasLegacyDrawer"]
                         and presenter_terms["actionLabels"] == []
                         and presenter_terms["elementTypes"] == []
                         and presenter_terms["status"] == "미리보기"
+                        and presenter_terms["modeTabLabels"] == []
                         and presenter_terms["jumpLabel"] == "슬라이드로 이동"
                         and presenter_terms["controlLabels"][:3] == ["상태", "슬라이드", "음량"]
                         and presenter_terms["actionButtonTexts"] == []
@@ -2306,7 +2328,7 @@ def main() -> int:
                         and "위치 보기, 더블클릭하여 송출" in presenter_terms["firstThumbLabel"]
                         and "위치 보기, 더블클릭하여 송출" in presenter_terms["firstOutlineLabel"]
                         and presenter_terms["selectedSectionRows"] == 0
-                        and presenter_terms["sidebarWidth"] >= 250
+                        and presenter_terms["sidebarWidth"] >= 228
                         and not presenter_terms["visibleBadTerms"]
                         and not presenter_terms["visiblePresentationTerms"]
                         and not presenter_terms["legacyArtifactLabels"]
@@ -2517,7 +2539,6 @@ def main() -> int:
                             title: document.querySelector('.service-readonly-view .svc-service-title')?.textContent.trim() || '',
                             hasMeta: Boolean(document.querySelector('.service-readonly-view .svc-meta-editor')),
                             hasTemplate: Boolean(document.querySelector('.service-readonly-view .svc-template-guide')),
-                            hasSetlist: Boolean(document.querySelector('.service-readonly-view .svc-setlist-composer')),
                             hasEditorHeader: Boolean(document.querySelector('.service-readonly-view .svc-editor-header')),
                             hasPresenterControls: Boolean(document.querySelector('#servicePresenterControls')),
                             readonlyGroups: document.querySelectorAll('.service-readonly-group').length,
@@ -2535,7 +2556,6 @@ def main() -> int:
                         and authoring_state["title"]
                         and not authoring_state["hasMeta"]
                         and not authoring_state["hasTemplate"]
-                        and not authoring_state["hasSetlist"]
                         and not authoring_state["hasEditorHeader"]
                         and not authoring_state["hasPresenterControls"]
                         and authoring_state["readonlyGroups"] >= 1

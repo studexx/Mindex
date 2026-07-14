@@ -98,7 +98,7 @@ Templates and types are different concepts.
   free creation. When adding a service, section, element, or slide, include a
   `템플릿 없음` / no-template path.
 - Editing an instance must not silently mutate the template. If an element,
-  slide, praise setlist, imported file, or body content diverges from its
+  slide, imported file, or body content diverges from its
   template, display it like `템플릿명 (수정됨)` until the user explicitly saves a
   new template or updates the existing template.
 
@@ -216,7 +216,7 @@ Manual checks when changing live presenter behavior:
   It no longer reconstructs PPT text boxes with PIL, which avoids broken label
   weight, transparency, and layout drift in score slides.
 - Worship authoring and Presenter control are now separate topbar modules.
-  `Worship` owns service/template composition, metadata, setlist import, and
+  `Worship` owns service/template composition and metadata, and
   item editing. `Presenter` owns recent-service launch, slide outline, live
   controls, shortcuts, and output-window state.
 - Shared service data still loads through the same adapter, but render paths now
@@ -249,7 +249,7 @@ Manual checks when changing live presenter behavior:
   header scale stay consistent.
 - Worship authoring now surfaces the `Service > Section > Element > Slide`
   hierarchy at the top of the editor and separates service metadata, section
-  templates, and praise/setlist input into distinct authoring panels.
+  templates and praise item editing into distinct authoring panels.
 - Presenter title/assignee slides treat `인도자`, `담당자`, and similar
   generic placeholders as non-output data. If a worship-led element such as
   `봉헌기도` needs a person, Presenter uses the service `worship_leader` value

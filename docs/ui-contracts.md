@@ -32,16 +32,15 @@ Read `HANDOFF.md` first. This file is the short UI contract for Codex threads so
 Primary app modules:
 
 1. `service` - Worship and presenter work.
-2. `activities` - Activity/game foundation.
-3. `praise` - Song database.
-4. `scripture` - Bible/search/copy tools.
-5. `calendar` - Home utility.
-6. `references` - Home utility.
+2. `praise` - Song database.
+3. `scripture` - Bible/search/copy tools.
+4. `calendar` - Home utility.
+5. `references` - Home utility.
 
 Home hierarchy:
 
 - Worship is the primary operational area.
-- Activities, Praise, and Scripture are major resources.
+- Praise and Scripture are major resources.
 - Calendar and References are home utilities.
 
 Inactive module tabs should stay visually quiet. Active tabs may show a clearer label and accent.
@@ -55,7 +54,7 @@ Inactive module tabs should stay visually quiet. Active tabs may show a clearer 
 
 ## Empty States
 
-- Home, Activities, Praise, and Scripture empty states should use the shared UI verse system when available.
+- Home, Praise, and Scripture empty states should use the shared UI verse system when available.
 - Do not hardcode live content into empty states.
 - Setup errors may name the required SQL file, but should not become a visually separate design system.
 

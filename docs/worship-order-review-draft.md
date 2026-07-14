@@ -31,16 +31,15 @@ service-level order differences for 1st and 2nd service.
 | 4 | 찬양 | 찬양 1-3 | praise/score | hymn number/title | song/version/form |
 | 5 | 참회기도 | 참회기도 | title |  | fixed title |
 | 6 | 대표기도 | 기도 | title_person | prayer leader | 2nd service normally includes; 1st omits |
-| 7 | 성경봉독 | 성경봉독 | scripture_reading | scripture reference | first title slide |
-| 8 | 성경봉독 | 성경 본문 | scripture_body | scripture reference | verse slides |
-| 9 | 특송 | 특송 | praise | performer/title | 2nd service only unless special case |
-| 10 | 설교 | 설교 | title_person | sermon title, preacher |  |
-| 11 | 설교 | 본문 | scripture_body | sermon scripture | optional verse slides |
-| 12 | 설교 | 실시간 성구 송출 | activity |  | runtime presenter control |
-| 13 | 결단 | 결단기도 | title |  | response song is special case |
-| 14 | 봉헌 | 봉헌찬송 | praise/score | hymn number/title | offering prayer leader usually worship leader unless special case |
-| 15 | 봉헌 | 봉헌기도 | title_person | dedication prayer leader |  |
-| 16 | 교회소식 | 교회소식 | title | announcements |  |
+| 7 | 성경봉독 | 성경봉독 | scripture_body | scripture reference | verse slides |
+| 8 | 특송 | 특송 | praise | performer/title | 2nd service only unless special case |
+| 9 | 설교 | 설교 | title_person | sermon title, preacher |  |
+| 10 | 설교 | 본문 | scripture_body | sermon scripture | optional verse slides |
+| 11 | 설교 | 실시간 성구 송출 | live_scripture |  | runtime presenter control |
+| 12 | 결단 | 결단기도 | title |  | response song is special case |
+| 13 | 봉헌 | 봉헌찬송 | praise/score | hymn number/title | offering prayer leader usually worship leader unless special case |
+| 14 | 봉헌 | 봉헌기도 | title_person | dedication prayer leader |  |
+| 16 | 광고 | 교회소식 | title | announcements |  |
 | 17 | 송영 | 송영 | praise/score |  | 2026 1st/2nd default: hymn 5 |
 | 18 | 축도 | 축도 | title_person | leader | use when worship leader is pastor |
 | 19 | 주기도문 | 주기도문 | body | leader | 1st fallback when worship leader is not pastor |
@@ -67,14 +66,14 @@ and response/sending flow are different.
 | 3 | 참회기도 | 참회기도 | body |  | fixed or editable body |
 | 4 | 찬양 | 찬양 | praise |  | hymn/song |
 | 5 | 대표기도 | 대표기도 | title_person | prayer leader |  |
-| 6 | 성경봉독 | 성경봉독 | scripture_reading | scripture reference | scripture link |
+| 6 | 성경봉독 | 성경봉독 | scripture_body | scripture reference | scripture link |
 | 7 | 특송 | 특송 | title_person or praise | performer/title | song link when known |
 | 8 | 설교 | 설교 | title_person | sermon title, preacher |  |
 | 9 | 결단 | 결단기도 | title_person |  | optional |
 | 10 | 신앙고백 | 사도신경 | body |  | fixed body |
 | 11 | 봉헌 | 봉헌찬양 | praise |  | song/version/form |
 | 12 | 봉헌 | 봉헌기도 | title_person | dedication prayer leader |  |
-| 13 | 교회소식 | 교회소식 | plain_text | announcements |  |
+| 13 | 광고 | 교회소식 | plain_text | announcements |  |
 | 14 | 새가족환영 | 새가족환영 | plain_text |  | optional |
 | 15 | 공동체고백 | 공동체고백 | body |  | fixed or editable body |
 | 16 | 찬양 | 찬양 | praise |  | sending song |
@@ -122,10 +121,10 @@ as disciple dedication worship.
 | 3 | 묵도 | 묵도 | body |  | fixed or editable body |
 | 4 | 찬양 | 찬양 | praise |  | hymn/song |
 | 5 | 대표기도 | 대표기도 | title_person | prayer leader |  |
-| 6 | 성경봉독 | 성경봉독 | scripture_reading | scripture reference | scripture link |
+| 6 | 성경봉독 | 성경봉독 | scripture_body | scripture reference | scripture link |
 | 7 | 설교 | 설교 | title_person | sermon title, preacher |  |
 | 8 | 결단 | 결단기도 | title_person |  | optional |
-| 9 | 교회소식 | 교회소식 | plain_text | announcements |  |
+| 9 | 광고 | 교회소식 | plain_text | announcements |  |
 | 10 | 송영 | 송영 | praise |  | song/version/form |
 | 11 | 축도 | 축도 | title_person | benediction pastor |  |
 | 12 | 마무리 | 마무리 | image |  | public closing visual |

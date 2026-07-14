@@ -167,7 +167,7 @@
 .presenter-slide--liturgical-body,
 .presenter-slide--title-content { justify-content: center; align-items: center; text-align: center; }
 .presenter-slide-meta { margin-bottom: 2cqh; color: var(--presenter-output-fg); font-size: 36px; font-weight: 900; -webkit-text-stroke: 0; }
-.presenter-slide-text { display: flex; max-width: 100%; max-height: 100%; flex-direction: column; gap: .12em; color: var(--presenter-output-fg); font-size: 72px; font-weight: 500; line-height: 1.16; letter-spacing: 0; -webkit-text-stroke: 0; overflow-wrap: normal; text-shadow: none; word-break: keep-all; }
+.presenter-slide-text { display: flex; max-width: 100%; max-height: 100%; flex-direction: column; gap: .12em; color: var(--presenter-output-fg); font-size: 72px; font-weight: 700; line-height: 1.16; letter-spacing: 0; -webkit-text-stroke: 0; overflow-wrap: normal; text-shadow: none; word-break: keep-all; }
 .presenter-slide-text span { max-width: 100%; white-space: nowrap; font-size: inherit; }
 .presenter-text-highlight {
   color: var(--presenter-text-highlight-color, currentColor);
@@ -196,7 +196,7 @@
 .presenter-slide--title .presenter-slide-text {
   align-items: center;
   font-size: 120px;
-  font-weight: 900;
+  font-weight: 800;
   text-align: center;
 }
 .presenter-slide--liturgical-body .presenter-slide-text {
@@ -234,13 +234,14 @@
   justify-content: center;
   gap: 1.8cqh;
   font-size: 36px;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.18;
   word-break: keep-all;
 }
 .presenter-liturgical-body-lines span {
   max-width: 100%;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
   font-size: inherit;
 }
 .presenter-liturgical-body-heading {
@@ -257,7 +258,7 @@
   max-width: 100%;
   white-space: nowrap;
   font-size: 96px;
-  font-weight: 900;
+  font-weight: 800;
   line-height: .95;
 }
 .presenter-slide--liturgical-body .presenter-title-content {
@@ -266,12 +267,12 @@
 }
 .presenter-slide--liturgical-body .presenter-title-content-title {
   font-size: 48px;
-  font-weight: 800;
+  font-weight: 700;
 }
 .presenter-slide--liturgical-body .presenter-title-content-body {
   gap: .12em;
   font-size: 36px;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1.34;
 }
 .presenter-slide--liturgical-body .presenter-title-content-body span {
@@ -296,7 +297,7 @@
   max-width: 100%;
   color: var(--presenter-output-fg);
   font-size: 96px;
-  font-weight: 900;
+  font-weight: 800;
   line-height: 1.08;
   white-space: nowrap;
 }
@@ -308,12 +309,13 @@
   gap: .12em;
   color: color-mix(in srgb, var(--presenter-output-fg) 92%, transparent);
   font-size: 36px;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.08;
 }
 .presenter-title-content-body span {
   max-width: 100%;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
   font-size: inherit;
 }
 .presenter-slide--lyrics,
@@ -363,7 +365,7 @@
   background: transparent;
   color: #fff;
   font-size: 48px;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.12;
   padding: 2.25cqh 5.8cqw;
   -webkit-text-stroke: 0;
@@ -431,7 +433,7 @@
   text-overflow: clip;
   white-space: nowrap;
   font-size: 48px;
-  font-weight: 800;
+  font-weight: 700;
 }
 .presenter-title-assignee--solo .presenter-title-assignee-title {
   font-size: 72px;
@@ -443,7 +445,7 @@
   text-overflow: clip;
   white-space: nowrap;
   font-size: 48px;
-  font-weight: 800;
+  font-weight: 700;
 }
 :is(.svc-slide-mini-output, .presenter-output-root):not(.no-chromakey) .presenter-slide--lyrics[data-element-type="praise"] .presenter-slide-text {
   gap: .06em;
@@ -515,6 +517,7 @@
   min-width: 0;
   flex-direction: column;
   align-items: flex-start;
+  position: relative;
   color: var(--presenter-output-fg);
   font-family: var(--presenter-scripture-font);
   font-weight: var(--presenter-scripture-weight);
@@ -554,7 +557,7 @@
   display: flex;
   width: 100%;
   min-width: 0;
-  align-items: baseline;
+  align-items: flex-start;
   gap: 3.8cqw;
   margin-top: 10cqh;
 }
@@ -567,13 +570,24 @@
 .presenter-scripture-reading-text {
   display: block;
   min-width: 0;
+  flex: 1 1 auto;
   max-width: 100%;
-  overflow: hidden;
+  overflow: visible;
   font-size: var(--presenter-scripture-reading-text-size);
   font-weight: var(--presenter-scripture-weight);
   line-height: var(--presenter-scripture-line-height);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  white-space: normal;
+}
+.presenter-scripture-reading-fin {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  font-size: var(--presenter-scripture-reading-version-size);
+  font-weight: 560;
+  line-height: 1;
+  opacity: .82;
 }
 .presenter-output-root[data-output-theme="children"] .presenter-slide--lyrics .presenter-slide-text,
 .presenter-output-root[data-output-theme="children"] .presenter-slide--song-title .presenter-slide-text,
