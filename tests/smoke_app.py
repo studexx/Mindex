@@ -788,6 +788,8 @@ def main() -> int:
                         resourceRows: resourceRows.length,
                         main: rect(main),
                         resourceLabels: resourceRows.map((row) => row.querySelector('strong')?.textContent.trim() || ''),
+                        primaryActions: [...document.querySelectorAll('.home-primary-actions button')]
+                          .map((node) => node.textContent.trim()),
                         chevrons: document.querySelectorAll('.home-resource-go').length,
                         text: document.querySelector('.home-screen')?.innerText || '',
                         overflow: Math.max(document.documentElement.scrollWidth - window.innerWidth, document.body.scrollWidth - window.innerWidth)
@@ -803,6 +805,7 @@ def main() -> int:
                     and home_design_state["resourceRows"] == 4
                     and home_design_state["main"]["height"] >= 180
                     and home_design_state["resourceLabels"] == ["말씀", "찬양", "교회력", "링크"]
+                    and "구성" not in home_design_state["primaryActions"]
                     and home_design_state["chevrons"] == 4
                     and "1 services" not in home_design_state["text"]
                     and home_design_state["overflow"] <= 2
@@ -1702,6 +1705,11 @@ def main() -> int:
                         and template_terms["monthlyScaffold"]["closingVisualSection"]["title"] == "폐회"
                         and template_terms["monthlyScaffold"]["closingVisualSection"]["elements"] == [
                             {
+                                "type": "title_person",
+                                "label": "축도",
+                                "assetUrl": "",
+                            },
+                            {
                                 "type": "image",
                                 "label": "마무리",
                                 "assetUrl": "assets/worship-templates/public-closing.png",
@@ -1941,13 +1949,7 @@ def main() -> int:
 	                                "label": "주기도문",
 	                                "key": "sending",
 	                                "title": "파송",
-	                                "sectionId": "33333333-3333-4333-8333-333333333333",
-	                            },
-	                            {
-	                                "label": "축도",
-	                                "key": "sending",
-	                                "title": "파송",
-	                                "sectionId": "33333333-3333-4333-8333-333333333333",
+	                                "sectionId": "44444444-4444-4444-8444-444444444444",
 	                            },
                             {
                                 "label": "마무리",
@@ -1961,10 +1963,16 @@ def main() -> int:
                                 "title": "폐회",
                                 "sectionId": "22222222-2222-4222-8222-222222222222",
                             },
+                            {
+                                "label": "축도",
+                                "key": "closing_visual",
+                                "title": "폐회",
+                                "sectionId": "22222222-2222-4222-8222-222222222222",
+                            },
                         ]
                         and template_terms["legacyHierarchyCleanup"]["persistedSections"] == [
                             {
-                                "id": "33333333-3333-4333-8333-333333333333",
+                                "id": "44444444-4444-4444-8444-444444444444",
                                 "key": "sending",
                                 "title": "파송",
                             },
@@ -2251,6 +2259,31 @@ def main() -> int:
                               children: items.map((item) => serviceSidebarChildItemTitle(item))
                             };
                           })(),
+                          sectionDisplayTitleAudit: [
+                            ['sending', '주기도문'],
+                            ['sending', '축도'],
+                            ['sending', '파송찬송'],
+                            ['closing_visual', '마무리'],
+                            ['closing_visual', '폐회찬송'],
+                            ['creed', '사도신경'],
+                            ['offering', '봉헌찬양'],
+                            ['response_song', '결단찬양'],
+                            ['announcements', '새가족환영'],
+                            ['sermon', '설교 본문'],
+                            ['scripture_reading', '겔 8:14'],
+                            ['custom_section', '특별 순서'],
+                          ].map(([sectionKey, title]) => ({
+                            sectionKey,
+                            title,
+                            sidebar: serviceSidebarSectionTitle(
+                              { sectionKey, sectionTitle: title },
+                              { label: title, _worshipSectionKey: sectionKey },
+                            ),
+                            board: createPresenterSlideGroup(
+                              { sectionKey, sectionTitle: title, sectionId: `${sectionKey}:${title}` },
+                              0,
+                            ).title,
+                          })),
                           editorFields: [...document.querySelectorAll('.service-sidebar-editor label > span')]
                             .map((node) => node.textContent.trim()),
                           hasLegacyDrawer: Boolean(document.querySelector('.svc-edit-drawer')),
@@ -2306,6 +2339,20 @@ def main() -> int:
                             "section": "광고",
                             "children": ["교회소식", "새가족환영"],
                         }
+                        and presenter_terms["sectionDisplayTitleAudit"] == [
+                            {"sectionKey": "sending", "title": "주기도문", "sidebar": "파송", "board": "파송"},
+                            {"sectionKey": "sending", "title": "축도", "sidebar": "파송", "board": "파송"},
+                            {"sectionKey": "sending", "title": "파송찬송", "sidebar": "파송", "board": "파송"},
+                            {"sectionKey": "closing_visual", "title": "마무리", "sidebar": "폐회", "board": "폐회"},
+                            {"sectionKey": "closing_visual", "title": "폐회찬송", "sidebar": "폐회", "board": "폐회"},
+                            {"sectionKey": "creed", "title": "사도신경", "sidebar": "신앙고백", "board": "신앙고백"},
+                            {"sectionKey": "offering", "title": "봉헌찬양", "sidebar": "봉헌", "board": "봉헌"},
+                            {"sectionKey": "response_song", "title": "결단찬양", "sidebar": "결단", "board": "결단"},
+                            {"sectionKey": "announcements", "title": "새가족환영", "sidebar": "광고", "board": "광고"},
+                            {"sectionKey": "sermon", "title": "설교 본문", "sidebar": "설교", "board": "설교"},
+                            {"sectionKey": "scripture_reading", "title": "겔 8:14", "sidebar": "성경봉독", "board": "성경봉독"},
+                            {"sectionKey": "custom_section", "title": "특별 순서", "sidebar": "특별 순서", "board": "특별 순서"},
+                        ]
                         and presenter_terms["editorFields"] == []
                         and not presenter_terms["hasLegacyDrawer"]
                         and presenter_terms["actionLabels"] == []
@@ -2541,6 +2588,10 @@ def main() -> int:
                             hasTemplate: Boolean(document.querySelector('.service-readonly-view .svc-template-guide')),
                             hasEditorHeader: Boolean(document.querySelector('.service-readonly-view .svc-editor-header')),
                             hasPresenterControls: Boolean(document.querySelector('#servicePresenterControls')),
+                            hasModeTabs: Boolean(document.querySelector('.service-readonly-view .svc-mode-tabs')),
+                            modeTabLabels: [...document.querySelectorAll('.service-readonly-view .svc-mode-tab span')]
+                              .map((node) => node.textContent.trim()),
+                            hasConfigEntry: Boolean(document.querySelector('.service-readonly-view [data-open-worship-editor]')),
                             readonlyGroups: document.querySelectorAll('.service-readonly-group').length,
                             presenterLabel: document.querySelector('.service-readonly-view [data-open-presenter-service] span')?.textContent.trim() || '',
                             openState: state.servicePrepEditorOpenId || '',
@@ -2558,6 +2609,9 @@ def main() -> int:
                         and not authoring_state["hasTemplate"]
                         and not authoring_state["hasEditorHeader"]
                         and not authoring_state["hasPresenterControls"]
+                        and not authoring_state["hasModeTabs"]
+                        and authoring_state["modeTabLabels"] == []
+                        and not authoring_state["hasConfigEntry"]
                         and authoring_state["readonlyGroups"] >= 1
                         and authoring_state["presenterLabel"] == "송출"
                         and not authoring_state["openState"]

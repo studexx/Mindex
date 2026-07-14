@@ -1505,7 +1505,7 @@ def main() -> int:
                       const lordsPrayerScaffold = buildWorshipServiceScaffold(lordsPrayerService.id, lordsPrayerService.type_id);
                       state.serviceItems[lordsPrayerService.id] = groupWorshipElements(lordsPrayerScaffold.sections, lordsPrayerScaffold.elements)[lordsPrayerService.id] || [];
                       const lordsPrayerItem = (state.serviceItems[lordsPrayerService.id] || [])
-                        .find((item) => item._worshipSectionKey === 'sending' && item.label === '주기도문') || {};
+                        .find((item) => item.label === '주기도문') || {};
 	                      const lordsPrayerSlides = normalizePresenterSlidesForServiceOutput(buildPresenterSlidesForServiceItem(
 	                        lordsPrayerItem,
 	                        { id: '__smoke_lords_prayer_chromakey_service__', type_id: 'sunday-main', date: '2026-07-05' },
@@ -1708,7 +1708,7 @@ def main() -> int:
                     and all(slide["chromakey"] is True for slide in title_and_liturgical_state["scaffold"])
                     and all(slide["outputContext"] == "chromakey" for slide in title_and_liturgical_state["scaffold"])
                     and title_and_liturgical_state["chromakeyCenterTextSlides"] == []
-                    and title_and_liturgical_state["scaffoldOutputContexts"] == {"chromakey": 24, "clean": 1}
+                    and title_and_liturgical_state["scaffoldOutputContexts"] == {"chromakey": 23, "clean": 1}
                     and [slide["text"] for slide in title_and_liturgical_state["scaffold"] if slide["type"] == "lyrics"] == [
                         "나는 전능하신 아버지 하나님, 천지의 창조주를 믿습니다.\n나는 그의 유일하신 아들, 우리 주 예수 그리스도를 믿습니다.",
                         "그는 성령으로 잉태되어 동정녀 마리아에게서 나시고,\n본디오 빌라도에게 고난을 받아 십자가에 못 박혀 죽으시고,",

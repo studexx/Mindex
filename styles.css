@@ -3039,16 +3039,6 @@ body[data-module="service"] .song-list,
 body[data-module="presenter"] .song-list {
   padding-top: 0;
 }
-body[data-module="presenter"] {
-  --sidebar-reference-w: clamp(240px, 22vw, 280px);
-  --sidebar-content-w: calc(var(--sidebar-reference-w) - var(--sidebar-shared-edge-reduction));
-  --rail-w: calc(var(--nav-rail-w) + var(--sidebar-content-w));
-}
-@media (max-width: 620px) {
-  body[data-module="presenter"] {
-    --sidebar-reference-w: var(--sidebar-reference-w-compact);
-  }
-}
 body[data-module="service"] .detail-pane,
 body[data-module="presenter"] .detail-pane {
   overflow-x: hidden;
@@ -3876,6 +3866,36 @@ body[data-module="presenter"] .detail-pane {
 }
 .svc-mode-tab.active span {
   color: var(--accent);
+}
+.svc-output-action {
+  display: inline-flex;
+  height: 32px;
+  min-width: 74px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 0;
+  border-radius: var(--r);
+  background: color-mix(in srgb, var(--accent-soft) 34%, transparent);
+  color: var(--accent);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  padding: 0 12px;
+  white-space: nowrap;
+}
+.svc-output-action:hover,
+.svc-output-action:focus-visible {
+  background: color-mix(in srgb, var(--accent-soft) 54%, transparent);
+  color: var(--ink);
+  outline: none;
+}
+.svc-output-action svg {
+  width: 16px;
+  height: 16px;
+  stroke-width: 1.5;
 }
 .service-readonly-order {
   display: grid;
@@ -5152,10 +5172,10 @@ body[data-module="presenter"] .detail-pane {
     flex: 1 1 100%;
   }
   body[data-module="service"]:has(.service-readonly-view) .service-readonly-view .svc-header-actions,
-  body[data-module="service"]:has(.service-readonly-view) .service-readonly-view .svc-mode-tabs {
+  body[data-module="service"]:has(.service-readonly-view) .service-readonly-view .svc-output-action {
     width: 100%;
   }
-  body[data-module="service"]:has(.service-readonly-view) .service-readonly-view .svc-mode-tab {
+  body[data-module="service"]:has(.service-readonly-view) .service-readonly-view .svc-output-action {
     min-width: 0;
     flex: 1 1 0;
   }

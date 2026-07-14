@@ -8133,34 +8133,11 @@ async function handleNavigationRailClick(button) {
 function renderWorshipModeTabs(serviceId, activeMode = state.module === "presenter" ? "presenter" : "service") {
   if (!serviceId) return "";
   if (activeMode === "presenter") return "";
-  const tabs = [
-    {
-      id: "service",
-      label: "구성",
-      icon: "layout-template",
-      attr: `data-open-worship-editor="${escapeAttr(serviceId)}"`,
-      aria: "예배 구성 열기",
-    },
-    {
-      id: "presenter",
-      label: "송출",
-      icon: "screen-share",
-      attr: `data-open-presenter-service="${escapeAttr(serviceId)}"`,
-      aria: "프레젠터 열기",
-    },
-  ];
   return `
-    <div class="svc-mode-tabs" role="tablist" aria-label="예배 작업 모드">
-      ${tabs.map((tab) => `
-        <button class="svc-mode-tab${activeMode === tab.id ? " active" : ""}" type="button" role="tab"
-          ${tab.attr}
-          aria-selected="${activeMode === tab.id ? "true" : "false"}"
-          aria-label="${escapeAttr(tab.aria)}">
-          <i data-lucide="${escapeAttr(tab.icon)}"></i>
-          <span>${escapeHtml(tab.label)}</span>
-        </button>
-      `).join("")}
-    </div>`;
+    <button class="svc-output-action" type="button" data-open-presenter-service="${escapeAttr(serviceId)}" aria-label="프레젠터 열기">
+      <i data-lucide="screen-share"></i>
+      <span>송출</span>
+    </button>`;
 }
 
 function canCreatePraiseSong() {
@@ -9462,7 +9439,6 @@ function homeModuleCards() {
         nextService ? serviceItemPreview(nextService.id) : "",
       ]),
       actions: [
-        { id: "service", label: "구성" },
         { id: "presenter", label: "송출" },
       ],
     },
@@ -13012,6 +12988,13 @@ const PUBLIC_WORSHIP_TEMPLATE_VERSIONS = {
       build: () => publicMonthlyTemplate(),
     },
   ],
+  wednesday: [
+    {
+      version: "2026-07",
+      effectiveFrom: "2026-07-01",
+      build: (options = {}) => publicWednesdayTemplate(options),
+    },
+  ],
 };
 
 function responseSectionTemplate() {
@@ -13660,12 +13643,27 @@ function publicMonthlyTemplate() {
   ];
 }
 
+function publicWednesdayTemplate(options = {}) {
+  const pastorLeader = serviceHasPastorWorshipLeader(options.service);
+  return [
+    publicWorshipReadyStep(),
+    publicWorshipPraiseStep({ count: 4, required: true }),
+    publicWorshipPrayerStep(),
+    publicWorshipAnnouncementsStep(),
+    publicWorshipScriptureReadingStep(),
+    publicWorshipSermonStep(),
+    responseSectionTemplate(),
+    publicWorshipSendingStep({ doxology: false, benediction: pastorLeader, lordsPrayer: !pastorLeader }),
+    publicWorshipClosingStep(),
+  ];
+}
+
 const SERVICE_ORDER_TEMPLATE_FALLBACKS = {
   "sunday-first": publicSundayFirstTemplate({ score: true }),
   "sunday-second": publicSundaySecondTemplate({ score: true, specialScore: false }),
   "sunday-main": publicSundayThirdTemplate(),
   "sunday-afternoon": publicSundayAfternoonTemplate(),
-  wednesday: ["찬양", "대표기도", publicWorshipAnnouncementsStep(), "성경봉독", "설교", responseSectionTemplate(), publicWorshipSendingStep({ doxology: false }), publicWorshipClosingStep()],
+  wednesday: publicWednesdayTemplate(),
   friday: ["찬양", "대표기도", "특송", publicWorshipAnnouncementsStep(), "성경봉독", "설교", responseSectionTemplate(), "기도회", "찬양", "통성기도", "자율기도", publicWorshipClosingStep()],
   monthly: publicMonthlyTemplate(),
   "holy-week-dawn": ["찬양", "기도", "성경봉독", "설교", "기도"],
@@ -15125,8 +15123,8 @@ function serviceOutlineStartLabel(slideIndex) {
 
 function serviceSidebarSectionTitle(group, fallbackItem = null) {
   const sectionKey = String(group?.sectionKey || fallbackItem?._worshipSectionKey || "").trim();
-  if (sectionKey === "announcements") return "광고";
-  return String(group?.sectionTitle || fallbackItem?.label || "").trim() || serviceSidebarItemTitle(fallbackItem) || "섹션";
+  const rawTitle = String(group?.sectionTitle || fallbackItem?.label || "").trim() || serviceSidebarItemTitle(fallbackItem) || "섹션";
+  return serviceSectionDisplayTitle(sectionKey, rawTitle);
 }
 
 function isServiceSidebarSectionMarkerItem(item, group = {}) {
@@ -17999,8 +17997,10 @@ function presenterBoardSectionGroupId(slide = {}, slideIndex = 0) {
 
 function createPresenterSlideGroup(slide, slideIndex, options = {}) {
   const mainPraise = options.kind === "main-praise";
-  const canonicalSectionTitle = presenterBoardSectionTitleForSlide(slide);
-  const sourceSectionTitle = slide.sectionHeading || canonicalSectionTitle || slide.sectionTitle || slide.sectionLabel || "";
+  const explicitSectionTitle = slide.sectionHeading || slide.sectionTitle || slide.sectionLabel || "";
+  const sourceSectionTitle = serviceSectionDisplayTitle(slide.sectionKey, explicitSectionTitle)
+    || presenterBoardSectionTitleForSlide(slide)
+    || explicitSectionTitle;
   const label = mainPraise ? "찬양" : sourceSectionTitle;
   const title = mainPraise ? "찬양" : sourceSectionTitle;
   const meta = mainPraise && options.praiseMeta ? options.praiseMeta : "";
@@ -18020,6 +18020,10 @@ function createPresenterSlideGroup(slide, slideIndex, options = {}) {
 
 function presenterBoardSectionTitleForSlide(slide = {}) {
   const sectionKey = String(slide.sectionKey || "").trim();
+  return serviceCanonicalSectionTitle(sectionKey);
+}
+
+function serviceCanonicalSectionTitle(sectionKey = "") {
   const canonicalByKey = {
     ready: "준비",
     creed: "신앙고백",
@@ -18032,7 +18036,7 @@ function presenterBoardSectionTitleForSlide(slide = {}) {
     sermon: "설교",
     response_song: "결단",
     offering: "봉헌",
-    announcements: "교회소식",
+    announcements: "광고",
     community_confession: "공동체고백",
     sending: "파송",
     doxology: "송영",
@@ -18040,7 +18044,13 @@ function presenterBoardSectionTitleForSlide(slide = {}) {
     closing_hymn: "폐회",
     closing_visual: "폐회",
   };
-  return canonicalByKey[sectionKey] || "";
+  return canonicalByKey[String(sectionKey || "").trim()] || "";
+}
+
+function serviceSectionDisplayTitle(sectionKey = "", title = "") {
+  const rawTitle = String(title || "").trim();
+  const canonical = serviceCanonicalSectionTitle(sectionKey);
+  return canonical || rawTitle;
 }
 
 function addPresenterSlideToSubgroup(group, entry) {
