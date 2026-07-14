@@ -1708,7 +1708,7 @@ def main() -> int:
                     and all(slide["chromakey"] is True for slide in title_and_liturgical_state["scaffold"])
                     and all(slide["outputContext"] == "chromakey" for slide in title_and_liturgical_state["scaffold"])
                     and title_and_liturgical_state["chromakeyCenterTextSlides"] == []
-                    and title_and_liturgical_state["scaffoldOutputContexts"] == {"chromakey": 23, "clean": 1}
+                    and title_and_liturgical_state["scaffoldOutputContexts"] == {"chromakey": 24, "clean": 1}
                     and [slide["text"] for slide in title_and_liturgical_state["scaffold"] if slide["type"] == "lyrics"] == [
                         "나는 전능하신 아버지 하나님, 천지의 창조주를 믿습니다.\n나는 그의 유일하신 아들, 우리 주 예수 그리스도를 믿습니다.",
                         "그는 성령으로 잉태되어 동정녀 마리아에게서 나시고,\n본디오 빌라도에게 고난을 받아 십자가에 못 박혀 죽으시고,",
@@ -2207,6 +2207,26 @@ def main() -> int:
                           contentState: slide.contentState || '',
                           warnings: slide.warnings || [],
                         }));
+                      const thirdTitlePersonSpecialSlides = buildPresenterSlidesForServiceItem({
+                        id: '__smoke_third_title_person_special_item__',
+                        label: '특송',
+                        raw_title: '청년부 특송',
+                        song_id: '',
+                        assignee: '청년부',
+                        _worshipSectionId: '__smoke_third_special_section__',
+                        _worshipSectionKey: 'special_song',
+                        _worshipSectionTitle: '특송',
+                        memo: serializeServiceItemMemo({ elementType: 'title_person' })
+                      }, { ...service, type_id: 'sunday-main' }, 8.7)
+                        .map((slide) => ({
+                          type: slide.type,
+                          elementType: slide.elementType || '',
+                          layout: slide.layout || '',
+                          title: slide.title || '',
+                          assignee: slide.assignee || '',
+                          text: slide.text || '',
+                          sectionKey: slide.sectionKey || '',
+                        }));
                       const emptyTemplateInputSlides = buildPresenterSlidesForServiceItem({
                         id: '__smoke_empty_template_input_item__',
                         label: '대표기도',
@@ -2413,6 +2433,7 @@ def main() -> int:
                         specialSectionTitleSlides,
                         thirdManualSpecialTitleSlides,
                         thirdEmptySpecialMissingSlides,
+                        thirdTitlePersonSpecialSlides,
                         emptyTemplateInputSlides,
                         defaultTemplateInputSlides,
                         persistenceStateRows,
@@ -2579,6 +2600,15 @@ def main() -> int:
                         "inputMode": "praise_db",
                         "contentState": "missing",
                         "warnings": ["입력 필요"],
+                    }]
+                    and form_preset_state["thirdTitlePersonSpecialSlides"] == [{
+                        "type": "title-assignee",
+                        "elementType": "title_assignee",
+                        "layout": "lower_bar_text",
+                        "title": "특송",
+                        "assignee": "청년부 특송\n청년부",
+                        "text": "특송\n청년부 특송\n청년부",
+                        "sectionKey": "special_song",
                     }]
                     and form_preset_state["emptyTemplateInputSlides"] == [{
                         "type": "title-assignee",

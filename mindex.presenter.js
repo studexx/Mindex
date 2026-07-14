@@ -43,10 +43,14 @@ function presenterIntroSlideFromMemo(item = {}, section = {}, index = 0, memo = 
 function presenterSlidesWithSpecialSongTitle(item = {}, section = {}, slides = [], index = 0) {
   if (!shouldIncludeSpecialSongSectionTitleSlide(item, section, slides)) return slides;
   const titleSlideIndex = slides.findIndex((slide) => slide?.type === "song-title");
+  const existingSpecialTitleIndex = slides.findIndex((slide) =>
+    slide?.type === "title-assignee"
+    && normalizeTitle(slide.title) === normalizeTitle("특송"));
+  const existingSpecialTitle = existingSpecialTitleIndex >= 0 ? slides[existingSpecialTitleIndex] : null;
+  if (existingSpecialTitle?.missingContent) return slides;
   const titleSlide = titleSlideIndex >= 0 ? slides[titleSlideIndex] : null;
-  const remainingSlides = titleSlideIndex >= 0
-    ? slides.filter((_, slideIndex) => slideIndex !== titleSlideIndex)
-    : slides;
+  const remainingSlides = slides.filter((_, slideIndex) =>
+    slideIndex !== titleSlideIndex && slideIndex !== existingSpecialTitleIndex);
   return [presenterSpecialSongSectionTitleSlide(item, section, index, titleSlide), ...remainingSlides];
 }
 
@@ -54,7 +58,7 @@ function shouldIncludeSpecialSongSectionTitleSlide(item = {}, section = {}, slid
   if (!slides.length) return false;
   const sectionKey = String(section.sectionKey || item?._worshipSectionKey || "").trim();
   if (!isPresenterSpecialSongItem(item, section)) return false;
-  return !slides.some((slide) => slide.type === "title-assignee" && normalizeTitle(slide.title) === normalizeTitle("특송"));
+  return true;
 }
 
 function isPresenterSpecialSongItem(item = {}, section = {}) {

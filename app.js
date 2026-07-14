@@ -2510,7 +2510,16 @@ async function loadWorshipPresenterSlides() {
       .order("section_order", { ascending: true })
       .order("element_order", { ascending: true })
       .order("slide_order", { ascending: true }));
-  state.worshipPresenterSlides = groupWorshipPresenterSlides(presenterRows);
+  const hiddenElementIds = new Set(
+    state.worshipElements
+      .filter((element) => {
+        const config = element?.config && typeof element.config === "object" ? element.config : {};
+        return Boolean(config.hiddenInPresentation || config.hidden_in_presentation || config.hidden);
+      })
+      .map((element) => element.id)
+      .filter(Boolean),
+  );
+  state.worshipPresenterSlides = groupWorshipPresenterSlides(presenterRows, hiddenElementIds);
   state.worshipPresenterSlidesLoaded = true;
 }
 
@@ -2734,17 +2743,19 @@ function firstBibleReferenceLine(value) {
     .find(Boolean) || "";
 }
 
-function groupWorshipPresenterSlides(rows = []) {
+function groupWorshipPresenterSlides(rows = [], hiddenElementIds = new Set()) {
   return rows.reduce((grouped, row, index) => {
     const serviceId = row.service_id;
     if (!serviceId) return grouped;
     if (!grouped[serviceId]) grouped[serviceId] = [];
-    grouped[serviceId].push(normalizeWorshipPresenterSlide(row, index));
+    grouped[serviceId].push(normalizeWorshipPresenterSlide(row, index, {
+      hiddenInPresentation: hiddenElementIds.has(row.element_id),
+    }));
     return grouped;
   }, {});
 }
 
-function normalizeWorshipPresenterSlide(row = {}, index = 0) {
+function normalizeWorshipPresenterSlide(row = {}, index = 0, options = {}) {
   const elementType = worshipPresenterElementType(row.element_type, row.slide_type);
   const layout = worshipPresenterLayout(row.slide_type, elementType);
   const scriptureReading = isPresenterScriptureReadingSource({
@@ -2786,6 +2797,12 @@ function normalizeWorshipPresenterSlide(row = {}, index = 0) {
     formKey: `${row.element_id || "element"}:${marker || row.slide_order || index}`,
     bodyText: row.slide_body || "",
     text: elementType === PRESENTER_ELEMENT_TYPES.TITLE_ASSIGNEE ? cleanList([title, assignee]).join("\n") : text,
+    hiddenInPresentation: Boolean(
+      options.hiddenInPresentation
+      || row.hiddenInPresentation
+      || row.hidden_in_presentation
+      || row.hidden,
+    ),
     sort: (Number(row.section_order) || 0) * 10000 + (Number(row.element_order) || 0) * 100 + (Number(row.slide_order) || 0),
     media: row.media || {},
     asset: row.media || {},
@@ -19466,27 +19483,29 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
   const confessionPrayer = isConfessionPrayerServiceItem(item);
   const section = presenterSectionForServiceItem(item, index, displayText, song, version);
   const withIntro = (slides) => presenterSlidesWithIntroSlide(item, section, index, memo, slides);
+  const withSpecialTitle = (slides) => presenterSlidesWithSpecialSongTitle(item, section, slides, index);
+  const withIntroAndSpecialTitle = (slides) => withIntro(withSpecialTitle(slides));
   const contentState = resolvePresenterServiceItemContentState(item, memo, song, service);
   if (!confessionPrayer && !contentState.hasOutputContent) {
-    return withIntro([presenterMissingContentSlide(item, section, index, contentState)]);
+    return withIntroAndSpecialTitle([presenterMissingContentSlide(item, section, index, contentState)]);
   }
   if (confessionPrayer) return [presenterConfessionPrayerSlide(item, section, index)];
-  if (memoElementType === "title") return [presenterTitleOnlySlide(item, section, index, displayText || label || "제목")];
+  if (memoElementType === "title") return withIntroAndSpecialTitle([presenterTitleOnlySlide(item, section, index, displayText || label || "제목")]);
   if (memoElementType === "title_content") {
     const titleContentSlide = presenterElementSlideFromMemo(item, section, index, memo, displayText, service);
-    if (Array.isArray(titleContentSlide)) return titleContentSlide;
-    if (titleContentSlide) return [titleContentSlide];
+    if (Array.isArray(titleContentSlide)) return withIntroAndSpecialTitle(titleContentSlide);
+    if (titleContentSlide) return withIntroAndSpecialTitle([titleContentSlide]);
   }
   const liturgicalSlides = buildPresenterLiturgicalBodySlides(item, section, index, service, memo, displayText);
-  if (liturgicalSlides.length) return withIntro(liturgicalSlides);
+  if (liturgicalSlides.length) return withIntroAndSpecialTitle(liturgicalSlides);
   const elementSlide = presenterElementSlideFromMemo(item, section, index, memo, displayText, service);
-  if (Array.isArray(elementSlide)) return withIntro(elementSlide);
-  if (elementSlide) return withIntro([elementSlide]);
+  if (Array.isArray(elementSlide)) return withIntroAndSpecialTitle(elementSlide);
+  if (elementSlide) return withIntroAndSpecialTitle([elementSlide]);
   const videoSrc = presenterVideoSourceFromServiceItem(item, displayText);
 
   if (videoSrc) {
     const videoTitle = label || "Video";
-    return withIntro([{
+    return withIntroAndSpecialTitle([{
       id: `${item.id || index}:video`,
       ...section,
       sectionLabel: label || "Video",
@@ -19510,10 +19529,10 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
   if (serviceItemRequiresSongSelection(item, service) && (!song || serviceItemSongSelectionInvalid(item, service))) return [];
 
   const customSlides = buildPresenterCustomSlides(item, section, index);
-  if (customSlides.length) return withIntro(customSlides);
+  if (customSlides.length) return withIntroAndSpecialTitle(customSlides);
 
   const scriptureTextSlides = buildPresenterScriptureTextSlides(item, section, index);
-  if (scriptureTextSlides.length) return withIntro(scriptureTextSlides);
+  if (scriptureTextSlides.length) return withIntroAndSpecialTitle(scriptureTextSlides);
   if (isScriptureBodyServiceItem(item)) return [];
 
   if (outputMode === "score" && (song || isSongServiceLabel(label))) {

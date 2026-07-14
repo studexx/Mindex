@@ -1705,11 +1705,6 @@ def main() -> int:
                         and template_terms["monthlyScaffold"]["closingVisualSection"]["title"] == "폐회"
                         and template_terms["monthlyScaffold"]["closingVisualSection"]["elements"] == [
                             {
-                                "type": "title_person",
-                                "label": "축도",
-                                "assetUrl": "",
-                            },
-                            {
                                 "type": "image",
                                 "label": "마무리",
                                 "assetUrl": "assets/worship-templates/public-closing.png",
@@ -1949,8 +1944,14 @@ def main() -> int:
 	                                "label": "주기도문",
 	                                "key": "sending",
 	                                "title": "파송",
-	                                "sectionId": "44444444-4444-4444-8444-444444444444",
+	                                "sectionId": "33333333-3333-4333-8333-333333333333",
 	                            },
+                            {
+                                "label": "축도",
+                                "key": "sending",
+                                "title": "파송",
+                                "sectionId": "33333333-3333-4333-8333-333333333333",
+                            },
                             {
                                 "label": "마무리",
                                 "key": "closing_visual",
@@ -1963,16 +1964,10 @@ def main() -> int:
                                 "title": "폐회",
                                 "sectionId": "22222222-2222-4222-8222-222222222222",
                             },
-                            {
-                                "label": "축도",
-                                "key": "closing_visual",
-                                "title": "폐회",
-                                "sectionId": "22222222-2222-4222-8222-222222222222",
-                            },
                         ]
                         and template_terms["legacyHierarchyCleanup"]["persistedSections"] == [
                             {
-                                "id": "44444444-4444-4444-8444-444444444444",
+                                "id": "33333333-3333-4333-8333-333333333333",
                                 "key": "sending",
                                 "title": "파송",
                             },
