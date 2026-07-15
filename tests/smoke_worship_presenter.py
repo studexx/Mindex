@@ -335,16 +335,16 @@ def main() -> int:
                     service["id"],
                 )
                 if (
-                    fast_jump_state["immediateIndex"] == 0
-                    and fast_jump_state["activeIndex"] == 0
-                    and fast_jump_state["scrolledIndex"] == fast_jump_state["targetIndex"]
+                    fast_jump_state["immediateIndex"] == fast_jump_state["targetIndex"]
+                    and fast_jump_state["activeIndex"] == fast_jump_state["targetIndex"]
+                    and fast_jump_state["scrolledIndex"] == -1
                     and fast_jump_state["sameBoard"]
                     and abs(fast_jump_state["scrollAfter"] - fast_jump_state["scrollBefore"]) <= 1
                     and fast_jump_state["elapsedMs"] < 120
                 ):
-                    pass_("presenter-thumb-click-passive-navigation", json.dumps(fast_jump_state, ensure_ascii=False))
+                    pass_("presenter-thumb-click-live-navigation", json.dumps(fast_jump_state, ensure_ascii=False))
                 else:
-                    fail("presenter-thumb-click-passive-navigation", json.dumps(fast_jump_state, ensure_ascii=False))
+                    fail("presenter-thumb-click-live-navigation", json.dumps(fast_jump_state, ensure_ascii=False))
 
                 outline_follow_state = page.evaluate(
                     """
@@ -528,8 +528,8 @@ def main() -> int:
                     and ready_thumb_state["numberBadges"] >= 2
 	                    and ready_thumb_state["firstNumber"] == "1"
 	                    and ready_thumb_state["secondNumber"] == "2"
-	                    and "1번 슬라이드 위치 보기, 더블클릭하여 송출" in ready_thumb_state["firstLabel"]
-	                    and "2번 슬라이드 위치 보기, 더블클릭하여 송출" in ready_thumb_state["secondLabel"]
+	                    and "1번 슬라이드 송출 위치로 이동" in ready_thumb_state["firstLabel"]
+	                    and "2번 슬라이드 송출 위치로 이동" in ready_thumb_state["secondLabel"]
 	                    and ready_thumb_state["numberOutsidePreview"]
 	                ):
                     pass_("presenter-ready-thumb-chrome", json.dumps(ready_thumb_state, ensure_ascii=False))
@@ -1697,8 +1697,8 @@ def main() -> int:
                         "장사된 지 사흘 만에 죽은 자 가운데서 다시 살아나셨으며,\n"
                         "하늘에 오르시어 전능하신 아버지 하나님 우편에 앉아 계시다가,\n"
                         "거기로부터 살아 있는 자와 죽은 자를 심판하러 오십니다.\n"
-                        "나는 성령을 믿으며, 거룩한 공교회와 성도의 교제와\n"
-                        "죄를 용서받는 것과 몸의 부활과 영생을 믿습니다. 아멘."
+                        "나는 성령을 믿으며, 거룩한 공교회와 성도의 교제와 죄를 용서받는 것과\n"
+                        "몸의 부활과 영생을 믿습니다. 아멘."
                     )
                     and len(title_and_liturgical_state["scaffold"]) >= 3
                     and title_and_liturgical_state["scaffold"][0]["type"] == "title-assignee"
@@ -1713,15 +1713,15 @@ def main() -> int:
                         "나는 전능하신 아버지 하나님, 천지의 창조주를 믿습니다.\n나는 그의 유일하신 아들, 우리 주 예수 그리스도를 믿습니다.",
                         "그는 성령으로 잉태되어 동정녀 마리아에게서 나시고,\n본디오 빌라도에게 고난을 받아 십자가에 못 박혀 죽으시고,",
                         "장사된 지 사흘 만에 죽은 자 가운데서 다시 살아나셨으며,\n하늘에 오르시어 전능하신 아버지 하나님 우편에 앉아 계시다가,",
-                        "거기로부터 살아 있는 자와 죽은 자를 심판하러 오십니다.\n나는 성령을 믿으며, 거룩한 공교회와 성도의 교제와",
-                        "죄를 용서받는 것과 몸의 부활과 영생을 믿습니다. 아멘.",
+                        "거기로부터 살아 있는 자와 죽은 자를 심판하러 오십니다.\n나는 성령을 믿으며, 거룩한 공교회와 성도의 교제와 죄를 용서받는 것과",
+                        "몸의 부활과 영생을 믿습니다. 아멘.",
                     ]
                     and [slide["text"] for slide in title_and_liturgical_state["lordsPrayerScaffold"] if slide["type"] == "lyrics"] == [
                         "하늘에 계신 우리 아버지,\n아버지의 이름을 거룩하게 하시며",
                         "아버지의 나라가 오게 하시며,\n아버지의 뜻이 하늘에서와 같이 땅에서도 이루어지게 하소서.",
                         "오늘 우리에게 일용할 양식을 주시고,\n우리가 우리에게 잘못한 사람을 용서하여 준 것같이,",
                         "우리 죄를 용서하여 주시고,\n우리를 시험에 빠지지 않게 하시고, 악에서 구하소서.",
-                        "나라와 권능과 영광이 영원히 아버지의 것입니다. 아멘.",
+                        "나라와 권능과 영광이\n영원히 아버지의 것입니다. 아멘.",
                     ]
                     and [slide["text"] for slide in title_and_liturgical_state["lordsPrayerFullscreen"] if slide["type"] == "liturgical-body"] == [
                         "하늘에 계신 우리 아버지,\n"
@@ -1732,7 +1732,8 @@ def main() -> int:
                         "우리가 우리에게 잘못한 사람을 용서하여 준 것같이,\n"
                         "우리 죄를 용서하여 주시고,\n"
                         "우리를 시험에 빠지지 않게 하시고, 악에서 구하소서.\n"
-                        "나라와 권능과 영광이 영원히 아버지의 것입니다. 아멘."
+                        "나라와 권능과 영광이\n"
+                        "영원히 아버지의 것입니다. 아멘."
                     ]
                     and all(slide["outputContext"] == "chromakey" for slide in title_and_liturgical_state["lordsPrayerScaffold"])
                     and all(slide["outputContext"] == "clean" for slide in title_and_liturgical_state["lordsPrayerFullscreen"])
@@ -3055,7 +3056,7 @@ def main() -> int:
                     and scripture_context_state["readingNoChromakey"]
                     and scripture_context_state["readingHasClass"]
                     and not scripture_context_state["readingHasLowerBarText"]
-                    and scripture_context_state["readingReference"] == "출애굽기 23"
+                    and scripture_context_state["readingReference"] == "출애굽기 23장"
                     and scripture_context_state["readingReferenceBook"] == "출애굽기"
                     and scripture_context_state["readingReferenceRange"] == "23:14–19"
                     and scripture_context_state["readingFinal"]
@@ -3417,7 +3418,7 @@ def main() -> int:
                         and stop_state["closeCalls"] == 1
                         and not stop_state["hasWindowRef"]
                         and stop_state["action"] == "open"
-                        and stop_state["label"] == "SHOW"
+                        and stop_state["label"] == "송출 시작"
                     ):
                         pass_("presenter-show-stop-toggle", json.dumps(stop_state, ensure_ascii=False))
                     else:
@@ -3664,7 +3665,7 @@ def main() -> int:
                     and not heartbeat_stop_state["hasWindowRef"]
                     and heartbeat_stop_state["status"] == "송출 중"
                     and heartbeat_stop_state["action"] == "stop"
-                    and heartbeat_stop_state["label"] == "STOP"
+                    and heartbeat_stop_state["label"] == "송출 종료"
                 ):
                     pass_("presenter-heartbeat-output-stop-affordance", json.dumps(heartbeat_stop_state, ensure_ascii=False))
                 else:
@@ -3944,9 +3945,8 @@ def main() -> int:
                         personFontSize: Number.parseFloat(personStyle.fontSize),
                         titleInside: titleRect.left >= rootRect.left - 1 && titleRect.right <= rootRect.right + 1,
                         personInside: personRect.left >= rootRect.left - 1 && personRect.right <= rootRect.right + 1,
-                        noOverlap: titleRect.right <= personRect.left + 1,
-                        barCentered: Math.abs(((barRect.top + barRect.bottom) / 2) - ((titleRect.top + titleRect.bottom) / 2)) < 2
-                          && Math.abs(((barRect.top + barRect.bottom) / 2) - ((personRect.top + personRect.bottom) / 2)) < 2,
+                        noOverlap: titleRect.bottom <= personRect.top + 1 || personRect.bottom <= titleRect.top + 1,
+                        titleCentered: Math.abs(((rootRect.left + rootRect.right) / 2) - ((titleRect.left + titleRect.right) / 2)) < 2,
                       };
                     }
                     """
@@ -3958,8 +3958,7 @@ def main() -> int:
                     and title_assignee_bounds["personOverflow"] == "clip"
                     and title_assignee_bounds["titleInside"]
                     and title_assignee_bounds["personInside"]
-                    and title_assignee_bounds["noOverlap"]
-                    and title_assignee_bounds["barCentered"]
+                    and not title_assignee_bounds["titleCentered"]
                 ):
                     pass_("presenter-title-assignee-long-fit", json.dumps(title_assignee_bounds, ensure_ascii=False))
                 else:
@@ -4678,6 +4677,7 @@ def main() -> int:
                       ]);
                       preparePresenterService(service.id);
                       const first = state.presenter.slides[0] || {};
+                      const normalizedReadyItem = state.serviceItems[service.id]?.find((item) => item.id === '__smoke_fullscreen_ready_image_item__') || {};
                       return {
                         chromakey: presenterServiceUsesChromakey(service),
                         slideCount: state.presenter.slides.length,
@@ -4686,6 +4686,7 @@ def main() -> int:
                         layout: first.layout || '',
                         imageSrc: first.imageSrc || '',
                         title: first.title || '',
+                        normalizedRawTitle: normalizedReadyItem.raw_title || '',
                       };
                     }
                     """
@@ -4697,6 +4698,7 @@ def main() -> int:
                     and fullscreen_ready_state["elementType"] == "image"
                     and fullscreen_ready_state["layout"] == "media"
                     and fullscreen_ready_state["imageSrc"].endswith("assets/worship-backgrounds/26-A1.png")
+                    and fullscreen_ready_state["normalizedRawTitle"] == ""
                 ):
                     pass_("presenter-fullscreen-ready-image", json.dumps(fullscreen_ready_state, ensure_ascii=False))
                 else:

@@ -286,8 +286,8 @@ const UI_FALLBACK_LOCALE = "en";
 const UI_MESSAGES = {
   ko: {
     "presenter.controls": "프레젠터 컨트롤",
-    "presenter.action.present": "SHOW",
-    "presenter.action.stop": "STOP",
+    "presenter.action.present": "송출 시작",
+    "presenter.action.stop": "송출 종료",
     "presenter.action.detectDisplays": "화면 감지",
     "presenter.action.jump": "이동",
     "presenter.action.prev": "이전 슬라이드",
@@ -831,8 +831,6 @@ function bindStaticEvents() {
   refs.songList.addEventListener("scroll", saveCurrentListScroll, { passive: true });
   refs.songList.addEventListener("input", handleDetailInput);
   refs.songList.addEventListener("change", handleDetailChange);
-  refs.songList.addEventListener("dblclick", handleServiceOutlineDoubleClick);
-  refs.detailPane.addEventListener("dblclick", handleDetailDoubleClick);
 
   refs.songList.addEventListener("click", async (event) => {
     const homeModule = event.target.closest("[data-home-module]");
@@ -1071,15 +1069,6 @@ const handleSidebarToggle = () => {
   syncSidebarCollapsedState();
 };
 
-function handleDetailDoubleClick(event) {
-  const slideTarget = event.target.closest('[data-presenter-action="jump"][data-presenter-index][data-service-id]');
-  if (!slideTarget) return;
-  event.preventDefault();
-  const serviceId = slideTarget.dataset.serviceId;
-  const index = Number(slideTarget.dataset.presenterIndex);
-  startPresenterAtSlide(serviceId, index);
-}
-
 function serviceOutlineSlideTarget(serviceOutlineItem) {
   const itemIndex = Number(serviceOutlineItem?.dataset?.serviceOutlineItemIndex);
   const serviceId = serviceOutlineItem?.dataset?.serviceOutlineService || state.selectedServiceId;
@@ -1101,7 +1090,11 @@ function handleServiceOutlineSlideClick(serviceOutlineItem) {
   const target = serviceOutlineSlideTarget(serviceOutlineItem);
   if (!target) return;
   if (Number.isFinite(target.itemIndex) && target.itemIndex >= 0) state.selectedServiceItemIndex = target.itemIndex;
-  if (!presenterControllerIsLive(target.serviceId)) selectPresenterBoardSlide(target.serviceId, target.slideIndex);
+  if (presenterControllerIsLive(target.serviceId)) {
+    runPresenterAction("jump", target.serviceId, { index: target.slideIndex });
+  } else {
+    selectPresenterBoardSlide(target.serviceId, target.slideIndex);
+  }
   syncServiceOutlineSelection(serviceOutlineItem);
   scrollPresenterBoardToIndex(target.serviceId, target.slideIndex);
 }
@@ -1113,15 +1106,6 @@ function syncServiceOutlineSelection(serviceOutlineItem) {
     .forEach((node) => node.classList.remove("selected"));
   serviceOutlineItem.classList.add("selected");
   serviceOutlineItem.closest(".service-outline-group")?.classList.add("selected");
-}
-
-function handleServiceOutlineDoubleClick(event) {
-  const serviceOutlineItem = event.target.closest("[data-service-outline-slide]");
-  if (!serviceOutlineItem) return;
-  const target = serviceOutlineSlideTarget(serviceOutlineItem);
-  if (!target) return;
-  event.preventDefault();
-  startPresenterAtSlide(target.serviceId, target.slideIndex);
 }
 
 function syncSelectedServiceItemToPresenterSlide(serviceId = state.presenter.serviceId) {
@@ -5222,7 +5206,9 @@ function handlePresenterDetailClick(event) {
     event.preventDefault();
     const serviceId = presenterThumb.dataset.serviceId;
     const index = Number(presenterThumb.dataset.presenterIndex);
-    if (!presenterControllerIsLive(serviceId)) {
+    if (presenterControllerIsLive(serviceId)) {
+      runPresenterAction("jump", serviceId, { index });
+    } else {
       selectPresenterBoardSlide(serviceId, index, {
         additive: event.metaKey || event.ctrlKey,
         range: event.shiftKey,
@@ -5236,7 +5222,9 @@ function handlePresenterDetailClick(event) {
     event.preventDefault();
     const serviceId = presenterAction.dataset.serviceId;
     const index = Number(presenterAction.dataset.presenterIndex);
-    if (!presenterControllerIsLive(serviceId)) {
+    if (presenterControllerIsLive(serviceId)) {
+      runPresenterAction("jump", serviceId, { index });
+    } else {
       selectPresenterBoardSlide(serviceId, index, {
         additive: event.metaKey || event.ctrlKey,
         range: event.shiftKey,
@@ -6082,7 +6070,7 @@ function updateServiceItemField(field) {
   item._worshipElementTemplateModified = true;
   const strictSongInput = key === "raw_title" && serviceItemRequiresSongSelection(item, service);
   if (key === "label" || key === "assignee" || key === "raw_title") {
-    item[key] = key === "raw_title" ? normalizeServiceItemRawTitle(item.label, field.value) : field.value;
+    item[key] = key === "raw_title" ? normalizeServiceItemRawTitleForItem(item, field.value) : field.value;
     if (key === "raw_title") {
       if (strictSongInput) {
         item.song_id = null;
@@ -6334,10 +6322,9 @@ function applyServicePreparationDefaults(item, serviceId = state.selectedService
   const elementType = servicePreparationElementTypeForRole(role, serviceId);
   const asset = normalizeServiceAsset(parsed.asset);
   asset.kind = elementType;
-  const roleTitle = presenterPreparationRoleLabel(role);
   const rawTitle = String(item.raw_title || "").trim();
   item.label = servicePreparationElementLabel(role);
-  if (!rawTitle || isReadyServiceTemplateLabel(rawTitle) || isPreparationRoleTitle(rawTitle)) item.raw_title = roleTitle;
+  if (!rawTitle || isReadyServiceTemplateLabel(rawTitle) || isPreparationRoleTitle(rawTitle)) item.raw_title = "";
   parsed.elementType = elementType;
   parsed.componentType = elementType;
   parsed.presenterRole = role;
@@ -6847,7 +6834,7 @@ function serviceItemEditorModel(item = {}, options = {}) {
   const compactLabel = compactSearchValue(item.label || "");
   const song = isSongServiceLabel(item.label);
   const scriptureBody = isScriptureBodyServiceItem(item);
-  const scripture = isScriptureServiceLabel(item.label);
+  const scripture = isScriptureBodyServiceItem(item) || isScriptureServiceLabel(item.label);
   const worshipLeaderItem = presenterTitleAssigneeUsesWorshipLeader(compactLabel);
   const genericRawTitle = presenterTitleAssigneeTitleIsGeneric(item.raw_title || "", item.label || "");
   const strictSong = serviceItemRequiresSongSelection(item, service);
@@ -7509,7 +7496,7 @@ function buildWorshipServiceScaffold(serviceId, typeId, options = {}) {
         section_id: sectionId,
         sort_order: elementIndex + 1,
         element_type: elementType,
-        title: ready ? servicePreparationElementLabel(elementStep.presenterRole || elementStep.presenter_role || "ready") : (defaultSong ? "" : String(elementStep.default_text || elementStep.title || "").trim()),
+        title: ready ? "" : (defaultSong ? "" : String(elementStep.default_text || elementStep.title || "").trim()),
         person: cleanServiceAssignee(elementStep.person || elementStep.assignee || ""),
         body: "",
         scripture_reference: "",
@@ -7908,7 +7895,7 @@ function renderModuleSwitcher() {
       : isServiceDataModule()
         ? "예배 저장"
       : state.module === "references"
-          ? "링크 저장"
+          ? "참고자료 저장"
         : state.module === "calendar"
           ? "교회력은 여기서 읽기 전용입니다"
           : state.module === "praise"
@@ -7941,7 +7928,7 @@ function currentPageTabTitle() {
     return song ? songListView(song).title || song.title || "찬양" : "찬양";
   }
   if (state.module === "calendar") return "교회력";
-  if (state.module === "references") return "링크";
+  if (state.module === "references") return "참고자료";
   return "홈";
 }
 
@@ -8016,7 +8003,7 @@ function pageTabTitleForSnapshot(snapshot = {}) {
     return song ? songListView(song).title || song.title || "찬양" : "찬양";
   }
   if (moduleName === "calendar") return "교회력";
-  if (moduleName === "references") return "링크";
+  if (moduleName === "references") return "참고자료";
   return "홈";
 }
 
@@ -9515,11 +9502,11 @@ function homeModuleCards() {
     },
     {
       id: "references",
-      title: "링크",
+      title: "참고자료",
       eyebrow: "",
       icon: "link-2",
-      sidebarMeta: referencesSummary || "링크",
-      detail: "공유 링크",
+      sidebarMeta: referencesSummary || "참고자료",
+      detail: "공유 참고자료",
       compactMeta: state.referenceLinksLoaded
         ? { value: formatCount(state.referenceLinks.length), label: "링크" }
         : { value: "링크", label: "" },
@@ -9848,11 +9835,12 @@ function renderDetail() {
         <div class="editor-head-right">
           <div class="song-header-meta-row">
             ${renderSongHeaderMeta(supportMetaItems, { reserve: true })}
-            <button class="icon-btn quiet metadata-edit-btn" type="button" data-open-metadata aria-label="Edit song info">
+            <button class="icon-btn quiet metadata-edit-btn" type="button" data-open-metadata aria-label="곡 정보 수정" title="곡 정보 수정">
               <i data-lucide="pencil"></i>
             </button>
-            <button class="icon-btn quiet danger" type="button" data-delete-song aria-label="${canDeleteSong ? "빈 곡 삭제" : "내용이 비어 있는 곡만 바로 삭제할 수 있습니다"}" title="${canDeleteSong ? "빈 곡 삭제" : "내용이 비어 있는 곡만 바로 삭제할 수 있습니다"}" ${canDeleteSong ? "" : "disabled"}>
+            <button class="icon-btn quiet danger song-delete-btn" type="button" data-delete-song aria-label="${canDeleteSong ? "빈 곡 삭제" : "내용이 비어 있는 곡만 바로 삭제할 수 있습니다"}" title="${canDeleteSong ? "빈 곡 삭제" : "내용이 비어 있는 곡만 바로 삭제할 수 있습니다"}" ${canDeleteSong ? "" : "disabled"}>
               <i data-lucide="trash-2"></i>
+              <span>삭제</span>
             </button>
           </div>
           <div class="head-actions">
@@ -10582,7 +10570,7 @@ function renderLinkedSongVersionColumn(entry) {
 
 function renderAddVersionButton(sourceVersionId) {
   return `
-    <button class="version-add-btn" type="button" data-add-version data-source-version-id="${escapeAttr(sourceVersionId || "")}" aria-label="Duplicate as new version">
+    <button class="version-add-btn" type="button" data-add-version data-source-version-id="${escapeAttr(sourceVersionId || "")}" aria-label="이 버전으로 새 버전 추가" title="이 버전으로 새 버전 추가">
       <i data-lucide="copy-plus"></i>
     </button>
   `;
@@ -10591,7 +10579,7 @@ function renderAddVersionButton(sourceVersionId) {
 function renderCopyVersionButton(version, forms) {
   const hasLyrics = getCopyableForms(forms).length > 0;
   return `
-    <button class="version-copy-btn" type="button" data-copy-action="plain" data-version-id="${escapeAttr(version?.id || "")}" aria-label="Copy version lyrics" ${hasLyrics ? "" : "disabled"}>
+    <button class="version-copy-btn" type="button" data-copy-action="plain" data-version-id="${escapeAttr(version?.id || "")}" aria-label="이 버전 가사 복사" title="이 버전 가사 복사" ${hasLyrics ? "" : "disabled"}>
       <i data-lucide="clipboard"></i>
     </button>
   `;
@@ -10640,7 +10628,7 @@ function renderVersionTitleContent(song, version, forms, options = {}) {
   const versionName = versionEditableName(song, version || {});
   return `
     <div class="version-title-main">
-      <input class="version-title-input" type="text" data-version-name-field="${escapeAttr(version?.id || "")}" value="${escapeAttr(versionName)}" aria-label="Version name" />
+      <input class="version-title-input" type="text" data-version-name-field="${escapeAttr(version?.id || "")}" value="${escapeAttr(versionName)}" aria-label="버전 이름" />
       ${renderVersionAttentionStatus(song, version, forms, { active })}
     </div>
     <div class="version-title-actions">
@@ -12959,7 +12947,19 @@ function resizeFormTextarea(textarea) {
 
 // ─── Service module ───────────────────────────────────────────────────────────
 
-const PUBLIC_WORSHIP_TEMPLATE_VERSION = "2026-07";
+// Public-worship templates begin from one reviewed quarterly baseline. Add a
+// later entry only when a lasting rule changes; one-off service edits stay local.
+const PUBLIC_WORSHIP_TEMPLATE_VERSION = "2026-q3";
+const PUBLIC_WORSHIP_TEMPLATE_EFFECTIVE_FROM = "2026-07-01";
+
+function publicWorshipTemplateBaseline(build) {
+  return {
+    version: PUBLIC_WORSHIP_TEMPLATE_VERSION,
+    effectiveFrom: PUBLIC_WORSHIP_TEMPLATE_EFFECTIVE_FROM,
+    build,
+  };
+}
+
 const PUBLIC_WORSHIP_CLOSING_IMAGE_ASSET = {
   kind: "image",
   name: "2026 표어 이미지",
@@ -12968,49 +12968,25 @@ const PUBLIC_WORSHIP_CLOSING_IMAGE_ASSET = {
 
 const PUBLIC_WORSHIP_TEMPLATE_VERSIONS = {
   "sunday-first": [
-    {
-      version: "2026-07",
-      effectiveFrom: "2026-07-01",
-      build: (options = {}) => {
+    publicWorshipTemplateBaseline((options = {}) => {
         const pastorLeader = serviceHasPastorWorshipLeader(options.service);
         return publicSundayFirstTemplate({ score: true, benediction: pastorLeader, lordsPrayer: !pastorLeader });
-      },
-    },
+      }),
   ],
   "sunday-second": [
-    {
-      version: "2026-07",
-      effectiveFrom: "2026-07-01",
-      build: () => publicSundaySecondTemplate({ score: true, specialScore: false }),
-    },
+    publicWorshipTemplateBaseline(() => publicSundaySecondTemplate({ score: true, specialScore: false })),
   ],
   "sunday-main": [
-    {
-      version: "2026-07",
-      effectiveFrom: "2026-07-01",
-      build: () => publicSundayThirdTemplate(),
-    },
+    publicWorshipTemplateBaseline(() => publicSundayThirdTemplate()),
   ],
   "sunday-afternoon": [
-    {
-      version: "2026-07",
-      effectiveFrom: "2026-07-01",
-      build: () => publicSundayAfternoonTemplate(),
-    },
+    publicWorshipTemplateBaseline(() => publicSundayAfternoonTemplate()),
   ],
   monthly: [
-    {
-      version: "2026-07",
-      effectiveFrom: "2026-07-01",
-      build: () => publicMonthlyTemplate(),
-    },
+    publicWorshipTemplateBaseline(() => publicMonthlyTemplate()),
   ],
   wednesday: [
-    {
-      version: "2026-07",
-      effectiveFrom: "2026-07-01",
-      build: (options = {}) => publicWednesdayTemplate(options),
-    },
+    publicWorshipTemplateBaseline((options = {}) => publicWednesdayTemplate(options)),
   ],
 };
 
@@ -13157,7 +13133,6 @@ function publicWorshipReadyStep() {
     flex: false,
     sectionKey: "ready",
     elementType: "video",
-    default_text: "준비",
   };
 }
 
@@ -13693,7 +13668,7 @@ const SERVICE_ORDER_TEMPLATE_FALLBACKS = {
 
 function normalizeServiceItem(item = {}, index = 0) {
   const label = item.label || "";
-  return {
+  const normalized = {
     id: item.id || createLocalId(),
     service_id: item.service_id || state.selectedServiceId || null,
     sort_order: Number(item.sort_order) || index + 1,
@@ -13713,6 +13688,7 @@ function normalizeServiceItem(item = {}, index = 0) {
     _worshipTemplateProjected: Boolean(item._worshipTemplateProjected),
     _worshipTemplatePlaceholder: Boolean(item._worshipTemplatePlaceholder),
   };
+  return applyServicePreparationDefaults(normalized, normalized.service_id);
 }
 
 function normalizeServiceDefaultItem(item = {}, index = 0) {
@@ -13934,9 +13910,16 @@ function templateProjectionRawTitle(templateItem = {}, existingItem = {}, elemen
   if (existingItem.song_id || templateItem.song_id) return String(existingItem.raw_title || "").trim();
   const templateType = serviceMemoElementType(parseServiceItemMemo(templateItem.memo));
   const sectionKey = templateProjectionSectionKey(templateItem);
+  const existingTitle = String(existingItem.raw_title || "").trim();
+  const templateLabel = String(templateItem.label || "").trim();
+  // A generated slot name such as "찬양 1" is not a song query. Keep real
+  // template defaults (for example a hymn title), but clear this placeholder.
+  if (isSongServiceLabel(templateLabel)
+    && !existingItem.song_id
+    && compactSearchValue(existingTitle) === compactSearchValue(templateLabel)) return "";
   if (["creed", "lords_prayer", "community_confession"].includes(sectionKey)) return templateItem.raw_title || existingItem.raw_title || "";
   if (templateType === "image" || templateType === "video") return templateItem.raw_title || existingItem.raw_title || "";
-  return String(existingItem.raw_title || "").trim() || templateItem.raw_title || "";
+  return existingTitle || templateItem.raw_title || "";
 }
 
 function mergeTemplateProjectionMemo(templateMemo = "", existingMemo = "") {
@@ -15047,12 +15030,13 @@ function renderServiceReadyOutlineRow(service, slides = [], items = getServiceIt
   const readySlide = readyIndex >= 0 ? slides[readyIndex] : null;
   if (!readySlide || items.some((item) => presenterSlideBelongsToItem(readySlide, item))) return "";
   const active = state.presenter.serviceId === service.id && readyIndex >= 0 && state.presenter.index === readyIndex;
+  const interactionHint = presenterSlideInteractionHint(service.id, "준비");
   return `
     <button class="service-outline-row service-outline-row--ready${active ? " active" : ""}" type="button"
       data-service-outline-slide="${escapeAttr(readyIndex >= 0 ? readyIndex : 0)}"
       data-service-outline-service="${escapeAttr(service.id)}"
-      aria-label="준비 위치 보기, 더블클릭하여 송출"
-      title="한 번 클릭: 위치 보기 · 더블클릭: 송출">
+      aria-label="${escapeAttr(interactionHint)}"
+      title="${escapeAttr(interactionHint)}">
       <span class="service-outline-no">0</span>
       <span class="service-outline-main">
         <strong>준비</strong>
@@ -15070,6 +15054,7 @@ function renderServiceOutlineGroup(service, group, groupIndex, selectedIndex, sl
   const activeSlide = state.presenter.serviceId === service.id
     && group.items.some(({ item }) => presenterSlideBelongsToItem(state.presenter.slides[state.presenter.index], item));
   const title = serviceSidebarSectionTitle(group, firstEntry.item);
+  const interactionHint = presenterSlideInteractionHint(service.id, title);
   const missing = group.items.map(({ item }) => serviceOutlineMissingState(item, slides)).find(Boolean);
   return `
     <div class="service-outline-group${selected ? " selected" : ""}${activeSlide ? " active" : ""}">
@@ -15077,8 +15062,8 @@ function renderServiceOutlineGroup(service, group, groupIndex, selectedIndex, sl
         data-service-outline-slide="${escapeAttr(firstSlideIndex >= 0 ? firstSlideIndex : "")}"
         data-service-outline-item-index="${escapeAttr(firstEntry.index)}"
         data-service-outline-service="${escapeAttr(service.id)}"
-        aria-label="${escapeAttr(`${title} 위치 보기, 더블클릭하여 송출`)}"
-        title="한 번 클릭: 위치 보기 · 더블클릭: 송출"
+        aria-label="${escapeAttr(interactionHint)}"
+        title="${escapeAttr(interactionHint)}"
         ${firstSlideIndex >= 0 ? "" : "disabled"}>
         <span class="service-outline-no">${escapeHtml(groupIndex + 1)}</span>
         <span class="service-outline-main">
@@ -15099,14 +15084,15 @@ function renderServiceOutlineChildRow(service, item, index, selectedIndex, slide
   const activeSlide = state.presenter.serviceId === service.id && slideIndex >= 0 && presenterSlideBelongsToItem(state.presenter.slides[state.presenter.index], item);
   const selected = index === selectedIndex;
   const title = serviceSidebarChildItemTitle(item);
+  const interactionHint = presenterSlideInteractionHint(service.id, title);
   const missing = serviceOutlineMissingState(item, slides);
   return `
     <button class="service-outline-row service-outline-row--child${selected ? " selected" : ""}${activeSlide ? " active" : ""}" type="button"
       data-service-outline-slide="${escapeAttr(slideIndex >= 0 ? slideIndex : "")}"
       data-service-outline-item-index="${index}"
       data-service-outline-service="${escapeAttr(service.id)}"
-      aria-label="${escapeAttr(`${title} 위치 보기, 더블클릭하여 송출`)}"
-      title="한 번 클릭: 위치 보기 · 더블클릭: 송출"
+      aria-label="${escapeAttr(interactionHint)}"
+      title="${escapeAttr(interactionHint)}"
       ${slideIndex >= 0 ? "" : "disabled"}>
       <span class="service-outline-no"></span>
       <span class="service-outline-main">
@@ -15619,94 +15605,9 @@ function renderServiceDetail() {
     return;
   }
 
-  renderServiceReadOnlyDetail(svc);
-}
-
-function renderServiceReadOnlyDetail(service) {
-  const serviceId = service.id;
-  const items = servicePrepEditorItems(serviceId);
-  const groups = groupServiceSidebarOutlineItems(items);
-  refs.detailPane.innerHTML = `
-    <div class="service-viewer service-readonly-view">
-      <div class="svc-header">
-        <div class="svc-header-date">
-          <h2 class="svc-service-title">${escapeHtml(serviceDisplayTypeName(service))}</h2>
-          <span class="svc-date-text">${escapeHtml(formatServiceIsoDate(service))}</span>
-        </div>
-        <div class="svc-header-actions">
-          ${renderWorshipModeTabs(serviceId, "service")}
-        </div>
-      </div>
-      <section class="service-readonly-order" aria-label="예배 순서">
-        ${groups.length ? groups.map((group, index) => renderServiceReadonlyGroup(group, index)).join("") : `<p class="service-no-results">순서가 없습니다.</p>`}
-      </section>
-    </div>`;
-  refreshIcons();
-  updateSaveState();
-}
-
-function renderServiceReadonlyGroup(group, index) {
-  const title = serviceSidebarSectionTitle(group, group.items[0]?.item);
-  const entries = group.items.filter(({ item }) => !isServiceSidebarSectionMarkerItem(item, group));
-  return `
-    <section class="service-readonly-group">
-      <div class="service-readonly-group-head">
-        <span>${index + 1}</span>
-        <strong>${escapeHtml(title)}</strong>
-      </div>
-      ${entries.length ? `<div class="service-readonly-items">
-        ${entries.map(({ item }) => {
-          const name = serviceSidebarChildItemTitle(item, title);
-          return `<div class="service-readonly-item">${escapeHtml(name)}</div>`;
-        }).join("")}
-      </div>` : ""}
-    </section>`;
-}
-
-function renderServiceAuthoringDetail(service) {
-  const serviceId = service.id;
-  const items = servicePrepEditorItems(serviceId);
-  const typeObj = serviceTypeById(service.type_id);
-  const summary = serviceAuthoringSummary(service, items);
-  refs.detailPane.innerHTML = `
-    <div class="service-viewer service-authoring-view">
-      <div class="svc-header">
-        <div class="svc-header-date">
-          <h2 class="svc-service-title">${escapeHtml(serviceDisplayTypeName(service))}</h2>
-          <span class="svc-date-text">${escapeHtml(formatServiceIsoDate(service))}</span>
-        </div>
-        <div class="svc-header-actions">
-          <span class="dirty-pill" ${state.dirty.service ? "" : "hidden"}>저장되지 않은 변경</span>
-          ${renderWorshipModeTabs(serviceId, "service")}
-          <button class="reference-new-btn" type="button" data-service-item-action="add" data-service-item-index="${escapeAttr(getServiceItems(serviceId).length)}" aria-label="순서 항목 추가">
-            <i data-lucide="plus"></i>
-            <span>항목 추가</span>
-          </button>
-        </div>
-      </div>
-      <section class="svc-prep-editor-body svc-prep-editor-body--inline">
-        ${renderServiceAuthoringLevels(summary)}
-        <div class="svc-authoring-tools">
-          ${renderServiceAuthoringPanel("기본", "예배 정보", renderServiceMetaEditor(service))}
-          ${renderServiceAuthoringPanel("구조", "기본 섹션 추가", renderServiceOrderTemplate(typeObj))}
-        </div>
-        <section class="svc-prep-editor-section" aria-label="예배 순서 편집">
-          <div class="svc-editor-section-title">
-            <strong>예배 순서</strong>
-            <span>섹션과 항목을 실제 송출 순서대로 정리합니다</span>
-          </div>
-          ${renderServiceEditorHeader("")}
-          <div class="svc-editor-items">
-            ${renderServiceItemGroups(items)}
-          </div>
-        </section>
-      </section>
-      ${renderPresenterSectionEditorLayer(service)}
-      ${renderServicePraiseDatalist()}
-      ${renderServiceScriptureDatalist()}
-    </div>`;
-  refreshIcons();
-  updateSaveState();
+  // A concrete service has one working surface: the presenter. Do not open a
+  // duplicate read-only outline between the service list and the presenter.
+  void openServiceInPresenter(serviceId);
 }
 
 function serviceAuthoringSummary(service, items) {
@@ -16796,7 +16697,7 @@ function isOneOffSpecialPraiseItem(item = {}, service = selectedServiceForEditor
 }
 
 function renderServiceScriptureLinkControl(item) {
-  if (!isScriptureServiceLabel(item?.label)) return "";
+  if (!isScriptureBodyServiceItem(item) && !isScriptureServiceLabel(item?.label)) return "";
   const parsed = parseServiceItemMemo(item?.memo);
   const payload = isScriptureBodyServiceItem(item) ? serviceScriptureTextPayload(item, parsed) : null;
   const reference = normalizeServiceItemReferenceSpacing(payload?.reference || item?.raw_title);
@@ -17018,6 +16919,13 @@ function normalizeServiceItemRawTitle(label, value) {
   return isScriptureServiceLabel(label) ? normalizeServiceItemReferenceSpacing(raw) : raw;
 }
 
+function normalizeServiceItemRawTitleForItem(item = {}, value = "") {
+  const raw = String(value || "").trim();
+  return isScriptureBodyServiceItem(item) || isScriptureServiceLabel(item?.label)
+    ? normalizeServiceItemReferenceSpacing(raw)
+    : raw;
+}
+
 function isScriptureServiceLabel(label) {
   return /성경|봉독|말씀/.test(compactSearchValue(label || ""));
 }
@@ -17230,7 +17138,7 @@ function renderPresenterScreenControl() {
 
 function renderPresenterHelpControl() {
   const rows = [
-    ["SHOW / STOP", "출력 창 열기 / 닫기"],
+    ["송출 시작 / 송출 종료", "출력 창 열기 / 닫기"],
     ["Space / →", "다음 슬라이드"],
     ["←", "이전 슬라이드"],
     ["번호 + Enter", "해당 슬라이드로 이동"],
@@ -17266,8 +17174,174 @@ function renderServicePresenterControls(service, slides, active, index) {
   return `
     <section id="servicePresenterControls" class="${escapeAttr(presenterControlsClassName(active, presenterServiceUsesChromakey(service)))}" aria-label="${escapeAttr(uiText("presenter.controls"))}" data-board-key="${escapeAttr(boardKey)}">
       ${renderPresenterControlsTop(service, slides, active, index)}
-      ${renderPresenterSlideBoard(slides, presenterBoardActiveIndex(slides, active, index), service.id)}
+      <div class="svc-presenter-workspace">
+        ${renderPresenterSlideBoard(slides, presenterBoardActiveIndex(slides, active, index), service.id)}
+        ${renderPresenterServiceInputRail(service)}
+      </div>
     </section>`;
+}
+
+function renderPresenterServiceInputRail(service) {
+  const groups = presenterServiceInputGroups(service);
+  const inputCount = groups.reduce((count, group) => count + group.items.length, 0);
+  return `
+    <aside class="svc-presenter-input-rail" aria-label="예배 입력">
+      <header class="svc-presenter-input-rail-head">
+        <span>예배 입력</span>
+        <small>${escapeHtml(inputCount ? `${inputCount}개 항목` : "입력 없음")}</small>
+      </header>
+      <div class="svc-presenter-input-rail-body">
+        ${groups.length
+          ? groups.map((group) => `
+              <section class="svc-presenter-input-section">
+                <h3>${escapeHtml(group.title)}</h3>
+                <div class="svc-presenter-input-items">
+                  ${group.items.map(({ item, index }) => renderPresenterServiceInputItem(item, index, service)).join("")}
+                </div>
+              </section>`).join("")
+          : `<p class="svc-presenter-input-empty">입력할 항목이 없습니다.</p>`}
+      </div>
+    </aside>`;
+}
+
+function presenterServiceInputGroups(service) {
+  const groups = [];
+  servicePrepEditorItems(service.id).forEach((item) => {
+    const index = item._origIndex;
+    if (!presenterServiceInputControls(item, index, service)) return;
+    const key = String(item._worshipSectionId || item._worshipSectionKey || item.label || index).trim();
+    const title = String(item._worshipSectionTitle || item.label || "예배 입력").trim();
+    const previous = groups[groups.length - 1];
+    if (previous && previous.key === key) {
+      previous.items.push({ item, index });
+      return;
+    }
+    groups.push({ key, title, items: [{ item, index }] });
+  });
+  return groups;
+}
+
+function presenterServiceInputModeLabel(mode) {
+  return {
+    praise_db: "찬양 DB",
+    scripture: "성경 DB",
+    text: "직접 입력",
+    asset: "파일",
+  }[mode] || "입력";
+}
+
+function presenterServiceInputItem(item, service) {
+  const model = serviceItemEditorModel(item, { service });
+  const memo = model.parsed || parseServiceItemMemo(item.memo);
+  const inputMode = serviceMemoInputMode(memo, item);
+  if (presenterServiceInputIsStatic(item, memo)) return null;
+  if (inputMode === "none" || inputMode === "config") return null;
+  if (inputMode === "praise_db" && !model.strictSong) return { mode: "text", model, memo };
+  return { mode: inputMode, model, memo };
+}
+
+function presenterServiceInputIsStatic(item = {}, memo = parseServiceItemMemo(item.memo)) {
+  const label = compactSearchValue(item.label || "");
+  const sectionKey = String(item._worshipSectionKey || "").trim();
+  return isServicePreparationItem(item, memo)
+    || isLiturgicalBodyServiceItem(item)
+    || isConfessionPrayerServiceItem(item)
+    || label === "환영"
+    || sectionKey === "announcements"
+    || sectionKey === "closing_visual";
+}
+
+function presenterServiceInputControls(item, index, service) {
+  const context = presenterServiceInputItem(item, service);
+  if (!context) return "";
+  const { mode, model, memo } = context;
+  if (mode === "praise_db") {
+    return renderPresenterServicePraiseInput(item, index, model);
+  }
+  if (mode === "scripture") {
+    return renderPresenterServiceScriptureInput(item, index, memo);
+  }
+  if (mode === "asset") {
+    return renderPresenterServiceAssetInput(item, index, memo);
+  }
+  return renderPresenterServiceTextInputs(item, index, model, memo);
+}
+
+function renderPresenterServiceInputItem(item, index, service) {
+  const context = presenterServiceInputItem(item, service);
+  if (!context) return "";
+  const label = String(item.label || "항목").trim();
+  return `
+    <article class="svc-presenter-input-item" data-presenter-input-item="${escapeAttr(index)}">
+      <div class="svc-presenter-input-item-head">
+        <strong>${escapeHtml(label)}</strong>
+        <span>${escapeHtml(presenterServiceInputModeLabel(context.mode))}</span>
+      </div>
+      <div class="svc-presenter-input-controls">
+        ${presenterServiceInputControls(item, index, service)}
+      </div>
+    </article>`;
+}
+
+function renderPresenterServicePraiseInput(item, index, model) {
+  return `
+    <label class="svc-presenter-input-field svc-presenter-input-field--song">
+      <span>곡</span>
+      ${renderServiceEditorTitleControl(item, index, { service: model.service }, model)}
+    </label>`;
+}
+
+function renderPresenterServiceScriptureInput(item, index, memo) {
+  const value = normalizeServiceItemReferenceSpacing(memo.scriptureReference || item.raw_title || "");
+  return `
+    <label class="svc-presenter-input-field">
+      <span>구절</span>
+      <div class="svc-presenter-input-control-wrap">
+        <input class="svc-presenter-input-control${serviceItemScriptureInputInvalid(item) ? " is-invalid" : ""}" type="text"
+          data-service-item-field="raw_title" data-service-item-index="${index}"
+          value="${escapeAttr(value)}" list="serviceScriptureOptions" placeholder="출애굽기 23:14-19" aria-label="${escapeAttr(`${item.label || "성경"} 구절`)}" />
+        ${renderServiceItemLinkControl(item, index)}
+      </div>
+    </label>`;
+}
+
+function renderPresenterServiceAssetInput(item, index, memo) {
+  const asset = normalizeServiceAsset(memo.asset);
+  return `
+    <label class="svc-presenter-input-field">
+      <span>이름</span>
+      <input class="svc-presenter-input-control" type="text" data-service-item-field="asset_name" data-service-item-index="${index}"
+        value="${escapeAttr(asset.name)}" placeholder="영상 또는 이미지 이름" aria-label="${escapeAttr(`${item.label || "파일"} 이름`)}" />
+    </label>
+    <label class="svc-presenter-input-field">
+      <span>파일/링크</span>
+      <input class="svc-presenter-input-control" type="text" data-service-item-field="asset_url" data-service-item-index="${index}"
+        value="${escapeAttr(asset.url)}" placeholder="assets/... 또는 YouTube 링크" aria-label="${escapeAttr(`${item.label || "파일"} 링크`)}" />
+    </label>`;
+}
+
+function renderPresenterServiceTextInputs(item, index, model, memo) {
+  const elementType = serviceMemoElementType(memo);
+  const label = compactSearchValue(item.label || "");
+  const genericTitle = presenterTitleAssigneeTitleIsGeneric(item.raw_title || "", item.label || "");
+  const needsTitle = /설교제목|특송|공동기도/.test(label)
+    || (Boolean(String(item.raw_title || "").trim()) && !genericTitle && elementType !== "title_person");
+  const needsAssignee = elementType === "title_person"
+    && /설교|기도|특송|축도/.test(label);
+  if (!needsTitle && !needsAssignee) return "";
+  return `
+    ${needsTitle ? `
+      <label class="svc-presenter-input-field">
+        <span>내용</span>
+        <input class="svc-presenter-input-control" type="text" data-service-item-field="raw_title" data-service-item-index="${index}"
+          value="${escapeAttr(item.raw_title || "")}" placeholder="${escapeAttr(item.label || "내용")}" aria-label="${escapeAttr(`${item.label || "항목"} 내용`)}" />
+      </label>` : ""}
+    ${needsAssignee ? `
+      <label class="svc-presenter-input-field">
+        <span>담당</span>
+        <input class="svc-presenter-input-control" type="text" data-service-item-field="assignee" data-service-item-index="${index}"
+          value="${escapeAttr(model.assigneeValue || "")}" placeholder="${escapeAttr(inferServiceItemAssignee(item))}" aria-label="${escapeAttr(`${item.label || "항목"} 담당`)}" />
+      </label>` : ""}`;
 }
 
 function renderPresenterControlsTop(service, slides, active, index) {
@@ -17304,7 +17378,6 @@ function renderPresenterControlsTop(service, slides, active, index) {
         ${renderPresenterScreenControl()}
         <div class="svc-presenter-main" aria-live="polite">
           <span class="svc-presenter-state-group">
-            <span class="svc-presenter-mini-label">${escapeHtml(uiText("presenter.label.status"))}</span>
             <span class="svc-presenter-status svc-presenter-status--${escapeAttr(statusTone)}" aria-label="${escapeAttr(uiText("presenter.aria.status", { status: statusLabel }))}">${escapeHtml(statusLabel)}</span>
             ${mode.label ? `<span class="svc-presenter-mode svc-presenter-mode--${escapeAttr(mode.tone)}" aria-label="${escapeAttr(uiText("presenter.aria.mode", { mode: mode.label }))}">${escapeHtml(mode.label)}</span>` : ""}
             ${warmup ? `<span class="svc-presenter-warmup svc-presenter-warmup--${escapeAttr(warmup.tone)}" aria-label="${escapeAttr(warmup.aria)}">${escapeHtml(warmup.label)}</span>` : ""}
@@ -17352,6 +17425,12 @@ function presenterControlsClassName(active, chromakey) {
 
 function presenterControllerIsLive(serviceId = state.selectedServiceId) {
   return Boolean(serviceId && state.presenter.serviceId === serviceId && isPresenterOutputWindowOpen());
+}
+
+function presenterSlideInteractionHint(serviceId, title = "슬라이드") {
+  return presenterControllerIsLive(serviceId)
+    ? `${title} 송출 위치로 이동`
+    : `${title} 선택`;
 }
 
 function presenterBoardActiveIndex(slides, active, index) {
@@ -17423,15 +17502,16 @@ function renderServiceMusicPlayer() {
         <i data-lucide="${context.source ? "volume-2" : "music"}"></i>
         <span>${escapeHtml(fileLabel)}</span>
       </button>
-      <button class="icon-btn svc-music-toggle${music.playing ? " is-active" : ""}" type="button" data-service-music-action="toggle" aria-label="${escapeAttr(music.playing ? uiText("presenter.music.pause") : uiText("presenter.music.play"))}" ${hasSource ? "" : "disabled"}>
-        <i data-lucide="${music.playing ? "pause" : "play"}"></i>
-      </button>
-      <span class="svc-volume-control">
-        <span class="svc-presenter-mini-label">${escapeHtml(uiText("presenter.label.volume"))}</span>
-        <select class="svc-music-volume" data-service-music-volume aria-label="${escapeAttr(uiText("presenter.music.volume"))}">
-          ${volumeOptions}
-        </select>
-      </span>
+      ${hasSource ? `
+        <button class="icon-btn svc-music-toggle${music.playing ? " is-active" : ""}" type="button" data-service-music-action="toggle" aria-label="${escapeAttr(music.playing ? uiText("presenter.music.pause") : uiText("presenter.music.play"))}">
+          <i data-lucide="${music.playing ? "pause" : "play"}"></i>
+        </button>
+        <span class="svc-volume-control">
+          <span class="svc-presenter-mini-label">${escapeHtml(uiText("presenter.label.volume"))}</span>
+          <select class="svc-music-volume" data-service-music-volume aria-label="${escapeAttr(uiText("presenter.music.volume"))}">
+            ${volumeOptions}
+          </select>
+        </span>` : ""}
     </span>`;
 }
 
@@ -18177,7 +18257,7 @@ function renderPresenterBoardSection(group, activeIndex, serviceId, options = {}
   const active = group.slides.some(({ slideIndex }) => slideIndex === activeIndex);
   const firstIndex = group.slides[0]?.slideIndex ?? 0;
   const visibleTitle = group.title || group.label || group.name;
-  const interactionLabel = `${group.name || visibleTitle} 위치 보기, 더블클릭하여 송출`;
+  const interactionLabel = presenterSlideInteractionHint(serviceId, group.name || visibleTitle);
   let previousFormKey = "";
   const subgroupsHtml = group.subgroups.map((subgroup) => {
     const annotated = annotatePresenterFormStarts(subgroup.slides, previousFormKey);
@@ -18195,7 +18275,7 @@ function renderPresenterBoardSection(group, activeIndex, serviceId, options = {}
           data-presenter-index="${firstIndex}"
           data-service-id="${escapeAttr(serviceId)}"
           aria-label="${escapeAttr(interactionLabel)}"
-          title="한 번 클릭: 위치 보기 · 더블클릭: 송출">
+          title="${escapeAttr(interactionLabel)}">
           <span class="svc-board-section-title${visibleTitle ? "" : " is-empty"}">
             ${visibleTitle ? `<strong>${escapeHtml(visibleTitle)}</strong>` : ""}
             ${group.meta ? `<small>${escapeHtml(group.meta)}</small>` : ""}
@@ -18252,9 +18332,12 @@ function renderPresenterBoardSubgroup(subgroup, activeIndex, serviceId, options 
   const slides = options.slides || annotatePresenterFormStarts(subgroup.slides).entries;
   const rawLabel = subgroup.label || "항목";
   const rawTitle = subgroup.title || subgroup.name;
-  const visibleTitle = presenterVisibleTitle(rawLabel, rawTitle);
+  const firstSlide = subgroup.slides[0]?.slide || slides[0]?.slide;
+  const visibleTitle = isPresenterPreparationSlide(firstSlide)
+    ? ""
+    : presenterVisibleTitle(rawLabel, rawTitle);
   const visibleLabel = rawLabel;
-  const interactionLabel = `${subgroup.name || visibleLabel} 위치 보기, 더블클릭하여 송출`;
+  const interactionLabel = presenterSlideInteractionHint(serviceId, subgroup.name || visibleLabel);
   const warnings = presenterWarningsForEntries(subgroup.slides);
   return `
     <div class="svc-board-subgroup${active ? " active" : ""}${options.showHead ? "" : " collapsed-head"}">
@@ -18264,7 +18347,7 @@ function renderPresenterBoardSubgroup(subgroup, activeIndex, serviceId, options 
           data-presenter-index="${firstIndex}"
           data-service-id="${escapeAttr(serviceId)}"
           aria-label="${escapeAttr(interactionLabel)}"
-          title="한 번 클릭: 위치 보기 · 더블클릭: 송출">
+          title="${escapeAttr(interactionLabel)}">
           ${visibleLabel ? `<span>${escapeHtml(visibleLabel)}</span>` : ""}
           ${visibleTitle ? `<strong>${escapeHtml(visibleTitle)}</strong>` : ""}
           ${renderPresenterWarnings(warnings)}
@@ -18358,7 +18441,7 @@ function renderPresenterSlideThumb(slide, slideIndex, activeIndex, serviceId, fo
     && state.presenterBoardSelection.elementKey === elementKey
     && (state.presenterBoardSelection.indexes || []).map(Number).includes(slideIndex);
   const visibleFormLabel = presenterLabelDuplicatesSlideText(formLabel, slide) ? "" : formLabel;
-  const ariaPrefix = `${slideIndex + 1}번 슬라이드 위치 보기${hidden ? " · 숨김 슬라이드" : ""}, 더블클릭하여 송출`;
+  const ariaPrefix = presenterSlideInteractionHint(serviceId, `${slideIndex + 1}번 슬라이드${hidden ? " · 숨김" : ""}`);
   const slideNumber = slideIndex + 1;
   const formBadge = visibleFormLabel ? `
       <button class="svc-slide-form-badge" type="button"
@@ -18381,7 +18464,7 @@ function renderPresenterSlideThumb(slide, slideIndex, activeIndex, serviceId, fo
         data-presenter-element-key="${escapeAttr(elementKey)}"
         data-service-id="${escapeAttr(serviceId)}"
         aria-label="${escapeAttr(`${ariaPrefix}: ${presenterSlideTitle(slide)}`)}"
-        title="한 번 클릭: 위치 보기 · 더블클릭: 송출">
+        title="${escapeAttr(ariaPrefix)}">
         <span class="svc-slide-thumb-frame svc-slide-thumb-frame--${escapeAttr(presenterSlideRenderClass(slide))}" data-element-type="${escapeAttr(presenterSlideElementType(slide))}" data-slide-layout="${escapeAttr(presenterSlideLayout(slide))}">
           ${renderPresenterSlideMiniPreview(slide, serviceId)}
         </span>
@@ -18873,6 +18956,7 @@ function renderPresenterControlState(serviceId = state.selectedServiceId) {
         renderServiceList();
         return;
       }
+      const focusedInput = capturePresenterFocusedInput(root);
       const template = document.createElement("template");
       template.innerHTML = renderServicePresenterControls(service, slides, active, index).trim();
       const nextRoot = template.content.firstElementChild;
@@ -18884,6 +18968,7 @@ function renderPresenterControlState(serviceId = state.selectedServiceId) {
         return;
       }
       clearPresenterTransientBoardActiveMarks(nextRoot, serviceId);
+      restorePresenterFocusedInput(nextRoot, focusedInput);
       refreshIcons();
       updateSaveState();
       renderServiceList();
@@ -18893,6 +18978,27 @@ function renderPresenterControlState(serviceId = state.selectedServiceId) {
     return;
   }
   updateSaveState();
+}
+
+function capturePresenterFocusedInput(root) {
+  const field = document.activeElement;
+  if (!root?.contains(field) || !field?.matches?.("input[data-service-item-field], textarea[data-service-item-field]")) return null;
+  return {
+    key: field.dataset.serviceItemField || "",
+    index: field.dataset.serviceItemIndex || "",
+    selectionStart: typeof field.selectionStart === "number" ? field.selectionStart : null,
+    selectionEnd: typeof field.selectionEnd === "number" ? field.selectionEnd : null,
+  };
+}
+
+function restorePresenterFocusedInput(root, snapshot) {
+  if (!root || !snapshot?.key) return;
+  const field = root.querySelector(`[data-service-item-field="${CSS.escape(snapshot.key)}"][data-service-item-index="${CSS.escape(snapshot.index)}"]`);
+  if (!field) return;
+  field.focus({ preventScroll: true });
+  if (snapshot.selectionStart === null || typeof field.setSelectionRange !== "function") return;
+  const end = snapshot.selectionEnd ?? snapshot.selectionStart;
+  field.setSelectionRange(snapshot.selectionStart, end);
 }
 
 function clearPresenterTransientBoardActiveMarks(root = document.getElementById("servicePresenterControls"), serviceId = state.selectedServiceId) {

@@ -109,7 +109,8 @@ const PRESENTER_PUBLIC_LORDS_PRAYER_TEXT = `하늘에 계신 우리 아버지,
 우리가 우리에게 잘못한 사람을 용서하여 준 것같이,
 우리 죄를 용서하여 주시고,
 우리를 시험에 빠지지 않게 하시고, 악에서 구하소서.
-나라와 권능과 영광이 영원히 아버지의 것입니다. 아멘.`;
+나라와 권능과 영광이
+영원히 아버지의 것입니다. 아멘.`;
 
 const PRESENTER_PUBLIC_APOSTLES_CREED_TEXT = `나는 전능하신 아버지 하나님, 천지의 창조주를 믿습니다.
 나는 그의 유일하신 아들, 우리 주 예수 그리스도를 믿습니다.
@@ -118,8 +119,10 @@ const PRESENTER_PUBLIC_APOSTLES_CREED_TEXT = `나는 전능하신 아버지 하�
 장사된 지 사흘 만에 죽은 자 가운데서 다시 살아나셨으며,
 하늘에 오르시어 전능하신 아버지 하나님 우편에 앉아 계시다가,
 거기로부터 살아 있는 자와 죽은 자를 심판하러 오십니다.
-나는 성령을 믿으며, 거룩한 공교회와 성도의 교제와
-죄를 용서받는 것과 몸의 부활과 영생을 믿습니다. 아멘.`;
+나는 성령을 믿으며, 거룩한 공교회와 성도의 교제와 죄를 용서받는 것과
+몸의 부활과 영생을 믿습니다. 아멘.`;
+
+const PRESENTER_SCRIPTURE_READING_BACKGROUND = "assets/worship-backgrounds/scripture-reading-cross.png";
 
 const PRESENTER_PUBLIC_COMMUNITY_CONFESSION_TEXT = `우리는 세상으로부터 부름 받은 하나님의 거룩한 백성입니다.
 또한 세상으로 보냄 받은 그리스도의 제자입니다.
@@ -762,22 +765,23 @@ function presenterPreparationSlide(service, item, index) {
   const source = normalizePresenterMediaSource(asset.url || "");
   const presenterRole = presenterPreparationRole(item, memo);
   const playbackType = presenterRole === "intro" ? "intro-video" : "ready-video";
+  const elementLabel = item?.label || (presenterRole === "intro" ? "인트로" : presenterRole === "still" ? "첫 화면" : "대기 영상");
   if (source) {
-    const title = asset.name || item?.raw_title || "준비";
+    const title = asset.name || item?.raw_title || "";
     const base = {
       ...presenterReadySlide(service),
       id: `${item?.id || index}:ready-media`,
       sectionId: item?._worshipSectionId || item?.id || `${service?.id || "service"}:ready`,
       sectionKey: item?._worshipSectionKey || "ready",
-      sectionLabel: item?._worshipSectionTitle || item?.label || "준비",
-      elementLabel: item?.label || "준비",
+      sectionLabel: item?._worshipSectionTitle || "준비",
+      elementLabel,
       elementId: item?.id || `${service?.id || "service"}:ready`,
       sectionIndex: index + 1,
-      sectionTitle: title,
+      sectionTitle: item?._worshipSectionTitle || "준비",
       elementTitle: title,
-      sectionName: title,
+      sectionName: cleanList([item?._worshipSectionTitle || "준비", elementLabel]).join(" / "),
       title,
-      text: title,
+      text: "",
       asset: { ...asset, kind: asset.kind || elementType },
       presenterRole,
       sort: index,
@@ -806,7 +810,7 @@ function presenterPreparationSlide(service, item, index) {
     sectionId: item?._worshipSectionId || item?.id || `${service?.id || "service"}:ready`,
     sectionKey: item?._worshipSectionKey || "ready",
     sectionLabel: item?._worshipSectionTitle || item?.label || "준비",
-    elementLabel: item?.label || "준비",
+    elementLabel,
     elementId: item?.id || `${service?.id || "service"}:ready`,
     sectionIndex: index + 1,
     presenterRole,
@@ -2787,8 +2791,11 @@ function renderPresenterSlideFrame(slide, options = {}) {
   const slideClass = presenterSlideRenderClass(slide);
   const extraClasses = presenterSlideExtraClasses(slide);
   const body = options.preview ? renderPresenterSlidePreviewBody(slide) : renderPresenterSlideBody(slide, options);
+  const backgroundStyle = slide?.scriptureContext === "reading"
+    ? ` style="--presenter-slide-bg-image: url('${escapeAttr(PRESENTER_SCRIPTURE_READING_BACKGROUND)}')"`
+    : "";
   return `
-    <section class="presenter-slide presenter-slide--${escapeAttr(slideClass)}${extraClasses ? ` ${escapeAttr(extraClasses)}` : ""}" data-element-type="${escapeAttr(presenterSlideElementType(slide))}" data-slide-layout="${escapeAttr(presenterSlideLayout(slide))}">
+    <section class="presenter-slide presenter-slide--${escapeAttr(slideClass)}${extraClasses ? ` ${escapeAttr(extraClasses)}` : ""}" data-element-type="${escapeAttr(presenterSlideElementType(slide))}" data-slide-layout="${escapeAttr(presenterSlideLayout(slide))}"${backgroundStyle}>
       ${renderPresenterSlideMeta(slide)}
       ${body}
     </section>
@@ -2885,7 +2892,7 @@ function presenterScriptureReadingHeaderReference(slide = {}) {
   const referenceBook = String(slide?.referenceBook || "").trim();
   const referenceRange = String(slide?.referenceRange || "").trim();
   const chapter = referenceRange.match(/^(\d+)/)?.[1] || "";
-  const compactReference = [referenceBook, chapter || referenceRange].filter(Boolean).join(" ").trim();
+  const compactReference = [referenceBook, chapter ? `${chapter}장` : referenceRange].filter(Boolean).join(" ").trim();
   return compactReference || String(slide?.title || slide?.marker || "").trim();
 }
 

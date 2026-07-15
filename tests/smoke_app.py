@@ -804,7 +804,7 @@ def main() -> int:
                     and home_design_state["actionTiles"] == 4
                     and home_design_state["resourceRows"] == 4
                     and home_design_state["main"]["height"] >= 180
-                    and home_design_state["resourceLabels"] == ["말씀", "찬양", "교회력", "링크"]
+                    and home_design_state["resourceLabels"] == ["말씀", "찬양", "교회력", "참고자료"]
                     and "구성" not in home_design_state["primaryActions"]
                     and home_design_state["chevrons"] == 4
                     and "1 services" not in home_design_state["text"]
@@ -876,7 +876,7 @@ def main() -> int:
                     })()
                     """
                 )
-                expected_topbar_order = ["예배", "말씀", "찬양", "교회력", "링크"]
+                expected_topbar_order = ["예배", "말씀", "찬양", "교회력", "참고자료"]
                 if (
                     topbar_state["order"] == expected_topbar_order
                     and topbar_state["active"] == "scripture"
@@ -1239,6 +1239,12 @@ def main() -> int:
                         """
                         (() => ({
                           mode: 'worship',
+                          templateVersionBaseline: {
+                            version: PUBLIC_WORSHIP_TEMPLATE_VERSION,
+                            effectiveFrom: PUBLIC_WORSHIP_TEMPLATE_EFFECTIVE_FROM,
+                            versions: ['sunday-first', 'sunday-second', 'sunday-main', 'sunday-afternoon', 'monthly', 'wednesday']
+                              .map((typeId) => resolvePublicWorshipTemplateVersion(typeId, { service: { type_id: typeId, date: '2026-07-05' } })?.version || ''),
+                          },
                           levels: [...document.querySelectorAll('.svc-template-level-card strong')]
                             .map((node) => node.textContent.trim()),
                           monthlyFirst: (() => {
@@ -1278,6 +1284,7 @@ def main() -> int:
                               firstSection: scaffold.sections[0]?.title || '',
                               firstElementType: scaffold.elements[0]?.element_type || '',
                               firstElementLabel: scaffold.elements[0]?.source_ref?.label || '',
+                              firstElementTitle: scaffold.elements[0]?.title || '',
                               sectionKeys: sections.map((section) => section.key),
                               praiseElements: sections.find((section) => section.key === 'praise')?.elements || [],
                               corporatePrayerElements: sections.find((section) => section.key === 'corporate_prayer')?.elements || [],
@@ -1672,6 +1679,7 @@ def main() -> int:
                         and template_terms["monthlyScaffold"]["firstSection"] == "준비"
                         and template_terms["monthlyScaffold"]["firstElementType"] == "video"
                         and template_terms["monthlyScaffold"]["firstElementLabel"] == "대기 영상"
+                        and template_terms["monthlyScaffold"]["firstElementTitle"] == ""
                         and "corporate_prayer" in template_terms["monthlyScaffold"]["sectionKeys"]
                         and "sending" in template_terms["monthlyScaffold"]["sectionKeys"]
                         and "closing_visual" in template_terms["monthlyScaffold"]["sectionKeys"]
@@ -1938,6 +1946,11 @@ def main() -> int:
 	                            "sourceFound": True,
 	                            "suppressed": True,
 	                            "projected": False,
+	                        }
+	                        and template_terms["templateVersionBaseline"] == {
+	                            "version": "2026-q3",
+	                            "effectiveFrom": "2026-07-01",
+	                            "versions": ["2026-q3", "2026-q3", "2026-q3", "2026-q3", "2026-q3", "2026-q3"],
 	                        }
 	                        and template_terms["legacyHierarchyCleanup"]["normalized"] == [
 	                            {
@@ -2355,7 +2368,7 @@ def main() -> int:
                         and presenter_terms["status"] == "미리보기"
                         and presenter_terms["modeTabLabels"] == []
                         and presenter_terms["jumpLabel"] == "슬라이드로 이동"
-                        and presenter_terms["controlLabels"][:3] == ["상태", "슬라이드", "음량"]
+                        and presenter_terms["controlLabels"] == ["슬라이드"]
                         and presenter_terms["actionButtonTexts"] == []
                         and presenter_terms["actionGroups"] == 2
                         and presenter_terms["helpLabel"] == "도움말"
@@ -2367,8 +2380,8 @@ def main() -> int:
                         and "0 + Enter" in presenter_terms["helpText"]
                         and "범위 밖 번호 현재 화면 유지" in presenter_terms["helpText"]
                         and "0 또는 없는 번호" not in presenter_terms["helpText"]
-                        and "위치 보기, 더블클릭하여 송출" in presenter_terms["firstThumbLabel"]
-                        and "위치 보기, 더블클릭하여 송출" in presenter_terms["firstOutlineLabel"]
+                        and "1번 슬라이드 선택" in presenter_terms["firstThumbLabel"]
+                        and "준비 선택" in presenter_terms["firstOutlineLabel"]
                         and presenter_terms["selectedSectionRows"] == 0
                         and presenter_terms["sidebarWidth"] >= 228
                         and not presenter_terms["visibleBadTerms"]
@@ -2569,29 +2582,20 @@ def main() -> int:
                         """,
                         service_for_slides["id"],
                     )
-                    page.wait_for_selector(".service-readonly-view .service-readonly-order", timeout=5000)
+                    page.wait_for_selector("#servicePresenterControls", timeout=5000)
                     authoring_state = page.evaluate(
                         """
                         (() => {
-                          const root = document.querySelector('.service-readonly-view');
+                          const root = document.querySelector('.presenter-viewer');
                           const rect = root?.getBoundingClientRect();
-                          const body = root?.querySelector('.service-readonly-order')?.getBoundingClientRect();
                           return {
                             mounted: Boolean(root),
-                            title: document.querySelector('.service-readonly-view .svc-service-title')?.textContent.trim() || '',
-                            hasMeta: Boolean(document.querySelector('.service-readonly-view .svc-meta-editor')),
-                            hasTemplate: Boolean(document.querySelector('.service-readonly-view .svc-template-guide')),
-                            hasEditorHeader: Boolean(document.querySelector('.service-readonly-view .svc-editor-header')),
+                            title: document.querySelector('.presenter-viewer .svc-service-title')?.textContent.trim() || '',
+                            hasReadonly: Boolean(document.querySelector('.service-readonly-view')),
                             hasPresenterControls: Boolean(document.querySelector('#servicePresenterControls')),
-                            hasModeTabs: Boolean(document.querySelector('.service-readonly-view .svc-mode-tabs')),
-                            modeTabLabels: [...document.querySelectorAll('.service-readonly-view .svc-mode-tab span')]
-                              .map((node) => node.textContent.trim()),
-                            hasConfigEntry: Boolean(document.querySelector('.service-readonly-view [data-open-worship-editor]')),
-                            readonlyGroups: document.querySelectorAll('.service-readonly-group').length,
-                            presenterLabel: document.querySelector('.service-readonly-view [data-open-presenter-service] span')?.textContent.trim() || '',
+                            module: state.module,
                             openState: state.servicePrepEditorOpenId || '',
                             width: Math.round(rect?.width || 0),
-                            bodyHeight: Math.round(body?.height || 0),
                             overflow: Math.max(document.documentElement.scrollWidth - window.innerWidth, document.body.scrollWidth - window.innerWidth)
                           };
                         })()
@@ -2600,50 +2604,72 @@ def main() -> int:
                     if (
                         authoring_state["mounted"]
                         and authoring_state["title"]
-                        and not authoring_state["hasMeta"]
-                        and not authoring_state["hasTemplate"]
-                        and not authoring_state["hasEditorHeader"]
-                        and not authoring_state["hasPresenterControls"]
-                        and not authoring_state["hasModeTabs"]
-                        and authoring_state["modeTabLabels"] == []
-                        and not authoring_state["hasConfigEntry"]
-                        and authoring_state["readonlyGroups"] >= 1
-                        and authoring_state["presenterLabel"] == "송출"
+                        and not authoring_state["hasReadonly"]
+                        and authoring_state["hasPresenterControls"]
+                        and authoring_state["module"] == "presenter"
                         and not authoring_state["openState"]
                         and authoring_state["width"] >= 900
-                        and authoring_state["bodyHeight"] >= 120
                         and authoring_state["overflow"] <= 2
                     ):
-                        pass_("worship-readonly-detail", json.dumps(authoring_state, ensure_ascii=False))
+                        pass_("service-opens-presenter", json.dumps(authoring_state, ensure_ascii=False))
                     else:
-                        fail("worship-readonly-detail", json.dumps(authoring_state, ensure_ascii=False))
+                        fail("service-opens-presenter", json.dumps(authoring_state, ensure_ascii=False))
+
+                    presenter_input_rail = page.evaluate(
+                        """
+                        (() => {
+                          const rail = document.querySelector('.svc-presenter-input-rail');
+                          const board = document.querySelector('.svc-presenter-workspace > .svc-slide-board');
+                          const controls = [...(rail?.querySelectorAll('[data-service-item-field]') || [])];
+                          const itemModes = [...(rail?.querySelectorAll('.svc-presenter-input-item') || [])].map((item) => ({
+                            label: item.querySelector('strong')?.textContent?.trim() || '',
+                            mode: item.querySelector('.svc-presenter-input-item-head span')?.textContent?.trim() || ''
+                          }));
+                          const railRect = rail?.getBoundingClientRect();
+                          const boardRect = board?.getBoundingClientRect();
+                          return {
+                            exists: Boolean(rail),
+                            fieldCount: controls.length,
+                            itemModes,
+                            railLeft: Math.round(railRect?.left || 0),
+                            boardRight: Math.round(boardRect?.right || 0),
+                            overflow: Math.max(document.documentElement.scrollWidth - window.innerWidth, document.body.scrollWidth - window.innerWidth)
+                          };
+                        })()
+                        """
+                    )
+                    presenter_input_modes = {item["mode"] for item in presenter_input_rail["itemModes"]}
+                    presenter_input_labels = {item["label"] for item in presenter_input_rail["itemModes"]}
+                    if (
+                        presenter_input_rail["exists"]
+                        and presenter_input_rail["fieldCount"] >= 6
+                        and {"찬양 DB", "성경 DB", "직접 입력"}.issubset(presenter_input_modes)
+                        and {"성경봉독", "설교 제목", "설교 본문"}.issubset(presenter_input_labels)
+                        and presenter_input_rail["railLeft"] >= presenter_input_rail["boardRight"] - 2
+                        and presenter_input_rail["overflow"] <= 2
+                    ):
+                        pass_("presenter-service-input-rail", json.dumps(presenter_input_rail, ensure_ascii=False))
+                    else:
+                        fail("presenter-service-input-rail", json.dumps(presenter_input_rail, ensure_ascii=False))
 
                     page.set_viewport_size({"width": 520, "height": 760})
-                    page.evaluate("renderServiceDetail()")
-                    page.wait_for_selector(".service-readonly-view .service-readonly-order", timeout=5000)
+                    page.evaluate("renderPresenterDetail()")
+                    page.wait_for_selector("#servicePresenterControls", timeout=5000)
                     authoring_narrow = page.evaluate(
                         """
                         (() => {
-                          const editor = document.querySelector('.service-readonly-view')?.getBoundingClientRect();
+                          const editor = document.querySelector('.presenter-viewer')?.getBoundingClientRect();
                           const editorLeft = editor?.left || 0;
                           const editorRight = editor?.right || window.innerWidth;
-                          const nodes = [...document.querySelectorAll('.service-readonly-view *')]
-                            .map((node) => {
-                              const rect = node.getBoundingClientRect();
-                              return {
-                                width: rect.width,
-                                left: rect.left,
-                                right: rect.right,
-                                height: rect.height
-                              };
-                            })
-                            .filter((item) => item.width > 0 && item.height > 0);
                           return {
                             viewport: window.innerWidth,
                             editorWidth: Math.round(editor?.width || 0),
                             overflow: Math.max(document.documentElement.scrollWidth - window.innerWidth, document.body.scrollWidth - window.innerWidth),
-                            leakingNodes: nodes.filter((item) => item.left < editorLeft - 2 || item.right > editorRight + 2).length,
-                            firstItemHeight: Math.round(document.querySelector('.service-readonly-view .service-readonly-group')?.getBoundingClientRect().height || 0)
+                            editorScrollOverflow: Math.max(0, Math.round((editor?.scrollWidth || 0) - (editor?.clientWidth || 0))),
+                            hasReadonly: Boolean(document.querySelector('.service-readonly-view')),
+                            hasControls: Boolean(document.querySelector('#servicePresenterControls')),
+                            inputRailBelowBoard: (document.querySelector('.svc-presenter-input-rail')?.getBoundingClientRect().top || 0)
+                              >= (document.querySelector('.svc-presenter-workspace > .svc-slide-board')?.getBoundingClientRect().top || 0)
                           };
                         })()
                         """
@@ -2653,12 +2679,14 @@ def main() -> int:
                         authoring_narrow["viewport"] == 520
                         and 160 <= authoring_narrow["editorWidth"] <= authoring_narrow["viewport"]
                         and authoring_narrow["overflow"] <= 2
-                        and authoring_narrow["leakingNodes"] == 0
-                        and authoring_narrow["firstItemHeight"] >= 24
+                        and authoring_narrow["editorScrollOverflow"] <= 2
+                        and authoring_narrow["hasControls"]
+                        and authoring_narrow["inputRailBelowBoard"]
+                        and not authoring_narrow["hasReadonly"]
                     ):
-                        pass_("worship-readonly-narrow", json.dumps(authoring_narrow, ensure_ascii=False))
+                        pass_("presenter-narrow", json.dumps(authoring_narrow, ensure_ascii=False))
                     else:
-                        fail("worship-readonly-narrow", json.dumps(authoring_narrow, ensure_ascii=False))
+                        fail("presenter-narrow", json.dumps(authoring_narrow, ensure_ascii=False))
 
                     page.evaluate(
                         """
@@ -2876,25 +2904,26 @@ def main() -> int:
                         page.locator(
                             f'.svc-slide-thumb[data-service-id="{service_for_slides["id"]}"][data-presenter-index="{dbl_target}"]'
                         ).dblclick()
-                        page.wait_for_function("(target) => state.presenter.index === target", arg=dbl_target, timeout=5000)
-                        page.wait_for_function("() => window.__mindexPresenterOpenCalls === 1", timeout=5000)
+                        page.wait_for_timeout(120)
                         dbl_state = page.evaluate(
                             """
                             (() => ({
                               serviceId: state.presenter.serviceId,
                               index: state.presenter.index,
-                              openCalls: window.__mindexPresenterOpenCalls || 0
+                              openCalls: window.__mindexPresenterOpenCalls || 0,
+                              selected: document.querySelectorAll('.svc-slide-thumb.selected').length,
                             }))()
                             """
                         )
                         if (
                             dbl_state["serviceId"] == service_for_slides["id"]
-                            and dbl_state["index"] == dbl_target
-                            and dbl_state["openCalls"] == 1
+                            and dbl_state["index"] == jump_target - 1
+                            and dbl_state["openCalls"] == 0
+                            and dbl_state["selected"] >= 1
                         ):
-                            pass_("presenter-doubleclick-start", json.dumps(dbl_state, ensure_ascii=False))
+                            pass_("presenter-doubleclick-remains-sorter", json.dumps(dbl_state, ensure_ascii=False))
                         else:
-                            fail("presenter-doubleclick-start", json.dumps(dbl_state, ensure_ascii=False))
+                            fail("presenter-doubleclick-remains-sorter", json.dumps(dbl_state, ensure_ascii=False))
 
                         hierarchy_state = page.evaluate(
                             """
@@ -2932,7 +2961,7 @@ def main() -> int:
                               outputIndex: JSON.parse(localStorage.getItem('mindex.presenter.state') || '{}').index,
                             })
                             """,
-                            dbl_target,
+                            dbl_state["index"],
                         )
                         outline_target = page.locator(
                             f'.service-outline-row[data-service-outline-slide="{passive_target}"]:not([disabled])'
@@ -2947,26 +2976,24 @@ def main() -> int:
                                   selectedRows: document.querySelectorAll('.service-outline-row.selected').length,
                                 })
                                 """,
-                                dbl_target,
+                                dbl_state["index"],
                             )
-                            outline_target.dblclick()
-                            page.wait_for_function("(target) => state.presenter.index === target", arg=passive_target, timeout=5000)
                         else:
                             passive_sidebar_state = {"index": -1, "outputIndex": -1, "selectedRows": 0}
                         if (
-                            passive_board_state["index"] == dbl_target
-                            and passive_board_state["outputIndex"] == dbl_target
-                            and passive_sidebar_state["index"] == dbl_target
-                            and passive_sidebar_state["outputIndex"] == dbl_target
+                            passive_board_state["index"] == dbl_state["index"]
+                            and passive_board_state["outputIndex"] == dbl_state["index"]
+                            and passive_sidebar_state["index"] == dbl_state["index"]
+                            and passive_sidebar_state["outputIndex"] == dbl_state["index"]
                             and passive_sidebar_state["selectedRows"] >= 1
                         ):
-                            pass_("presenter-single-click-passive-doubleclick-live", json.dumps({
+                            pass_("presenter-sorter-clicks-do-not-start-output", json.dumps({
                                 "board": passive_board_state,
                                 "sidebar": passive_sidebar_state,
-                                "doubleClickIndex": passive_target,
+                                "selectedIndex": passive_target,
                             }, ensure_ascii=False))
                         else:
-                            fail("presenter-single-click-passive-doubleclick-live", json.dumps({
+                            fail("presenter-sorter-clicks-do-not-start-output", json.dumps({
                                 "board": passive_board_state,
                                 "sidebar": passive_sidebar_state,
                             }, ensure_ascii=False))
@@ -3094,6 +3121,11 @@ def main() -> int:
                         deleteButtons: document.querySelectorAll('[data-delete-song]').length,
                         deleteInMetaRow: Boolean(document.querySelector('.song-header-meta-row [data-delete-song]')),
                         deleteInHeadActions: Boolean(document.querySelector('.head-actions [data-delete-song]')),
+                        deleteButtonText: document.querySelector('[data-delete-song]')?.textContent.trim() || '',
+                        deleteButtonWidth: Math.round(document.querySelector('[data-delete-song]')?.getBoundingClientRect().width || 0),
+                        createButtonText: document.querySelector('[data-create-song]')?.textContent.trim() || '',
+                        addVersionAria: document.querySelector('.version-add-btn[data-add-version]')?.getAttribute('aria-label') || '',
+                        copyVersionAria: document.querySelector('.version-copy-btn[data-copy-action="plain"]')?.getAttribute('aria-label') || '',
                         versionNameInputs: document.querySelectorAll('[data-version-name-field]').length,
                         versionTitleHasInput: titleHtml.includes('data-version-name-field="__smoke_link_primary_v1__"'),
                         editedVersionName: editedVersion.name,
@@ -3128,6 +3160,11 @@ def main() -> int:
                     and praise_actions["deleteButtons"] >= 1
                     and praise_actions["deleteInMetaRow"]
                     and not praise_actions["deleteInHeadActions"]
+                    and praise_actions["deleteButtonText"] == "삭제"
+                    and praise_actions["deleteButtonWidth"] >= 50
+                    and praise_actions["createButtonText"] == "곡 추가"
+                    and praise_actions["addVersionAria"] == "이 버전으로 새 버전 추가"
+                    and praise_actions["copyVersionAria"] == "이 버전 가사 복사"
                     and praise_actions["versionNameInputs"] >= 1
                     and praise_actions["versionTitleHasInput"]
                     and praise_actions["editedVersionName"] == "수정 버전"

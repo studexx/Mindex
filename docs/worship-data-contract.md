@@ -446,6 +446,18 @@ Every creation path must allow no template.
 If an instance diverges from a template, set `template_modified = true`. Do not
 silently update the template.
 
+### Versioning
+
+Public worship starts with the shared `2026-q3` baseline, effective from
+`2026-07-01`. The service type remains part of the template identity; the
+version label marks the reviewed rule set shared by those type-specific
+templates.
+
+Do not create a new template version merely because a month changes. Create a
+later version only for a lasting rule change, such as a revised recurring song
+form or section structure, and give it its actual effective date. A one-off
+service change remains an instance override and must not become a version.
+
 The Worship tab currently treats template rows as an empty drafting surface.
 Templates should be created from reviewed service decisions with the user. The
 previous inactive draft templates derived from the PPT import were purged with
