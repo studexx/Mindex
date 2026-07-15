@@ -1080,9 +1080,9 @@ def main() -> int:
                     }
                     and fallback_state["mainPraiseElementTitleMeta"] == {
                         "groupTitle": "찬양",
-                        "subgroupTitle": "가서 제자 삼으라 (갈릴리 마을 그 숲속에서 · Go Make Disciples)",
-                        "outputTitle": "가서 제자 삼으라 (갈릴리 마을 그 숲속에서 · Go Make Disciples)",
-                        "outputText": "♪ 가서 제자 삼으라 (갈릴리 마을 그 숲속에서 · Go Make Disciples)",
+                        "subgroupTitle": "가서 제자 삼으라",
+                        "outputTitle": "가서 제자 삼으라",
+                        "outputText": "♪ 가서 제자 삼으라",
                     }
                     and fallback_state["praiseTeamIntro"] == {
                         "type": "title-assignee",

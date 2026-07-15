@@ -1340,7 +1340,7 @@ function presenterSongTitleSlide(item, section, song, version, displayText, inde
 
 function presenterSongTitleDisplayTitle(song = null, version = null, fallbackText = "", sectionHeading = "") {
   void sectionHeading;
-  const title = presenterPraiseElementTitle(song, version, fallbackText);
+  const title = presenterPraiseTitle(song, fallbackText);
   const hymnNo = presenterSongTitleHymnNo(song, version, fallbackText);
   if (!hymnNo) return title;
   const titleParts = splitHymnNo(title);

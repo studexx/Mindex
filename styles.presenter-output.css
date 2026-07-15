@@ -37,13 +37,13 @@
   --presenter-output-bar-edge: #000A32;
   --presenter-output-stroke: #000;
   --presenter-scripture-font: var(--font-presenter);
-  --presenter-size-display: 96px;
-  --presenter-size-section: 72px;
-  --presenter-size-body: 48px;
-  --presenter-size-meta: 36px;
-  --presenter-size-caption: 28px;
-  --presenter-size-thumbnail: 36px;
-  --presenter-size-file-caption: 24px;
+  --presenter-size-display: 144px;
+  --presenter-size-section: 108px;
+  --presenter-size-body: 72px;
+  --presenter-size-meta: 54px;
+  --presenter-size-caption: 42px;
+  --presenter-size-thumbnail: 54px;
+  --presenter-size-file-caption: 36px;
   --presenter-weight-display: 800;
   --presenter-weight-body: 700;
   --presenter-weight-meta: 600;
@@ -55,7 +55,7 @@
   --presenter-scripture-clean-size: var(--presenter-size-body);
   --presenter-scripture-reading-ref-size: var(--presenter-size-section);
   --presenter-scripture-reading-version-size: var(--presenter-size-caption);
-  --presenter-scripture-reading-text-size: var(--presenter-size-body);
+  --presenter-scripture-reading-text-size: 80px;
   display: grid;
   width: var(--presenter-stage-width);
   height: var(--presenter-stage-height);
@@ -366,15 +366,6 @@
   left: 0;
   height: var(--presenter-output-bar-height);
   background: var(--presenter-output-bar);
-  content: "";
-}
-.presenter-output-root:not(.no-chromakey) :is(.presenter-slide--lyrics, .presenter-slide--song-title, .presenter-slide--scripture, .presenter-slide--title-assignee)::after {
-  position: absolute;
-  right: 0;
-  bottom: var(--presenter-output-bar-height);
-  left: 0;
-  height: 2px;
-  background: #fff;
   content: "";
 }
 .presenter-slide--lyrics > .presenter-slide-text,
