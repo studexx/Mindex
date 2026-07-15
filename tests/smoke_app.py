@@ -2804,6 +2804,96 @@ def main() -> int:
                     else:
                         fail("presenter-preparation-paste", json.dumps(presenter_preparation_paste, ensure_ascii=False))
 
+                    presenter_preparation_sermon_slot = page.evaluate(
+                        """
+                        (() => {
+                          const original = {
+                            module: state.module,
+                            services: state.services,
+                            serviceItems: state.serviceItems,
+                            selectedServiceId: state.selectedServiceId,
+                            selectedServiceTypeId: state.selectedServiceTypeId,
+                            drafts: state.presenterPreparationDrafts,
+                            dirty: state.dirty.service,
+                            presenter: {
+                              serviceId: state.presenter.serviceId,
+                              slides: state.presenter.slides,
+                              index: state.presenter.index,
+                              safetyBlank: state.presenter.safetyBlank,
+                              jumpDraft: state.presenter.jumpDraft,
+                              liveScripture: state.presenter.liveScripture,
+                              livePraise: state.presenter.livePraise,
+                            },
+                            presenterBoardSelection: state.presenterBoardSelection,
+                            presenterSectionEditor: state.presenterSectionEditor,
+                          };
+                          const service = { id: '__smoke_preparation_sermon_slot__', type_id: 'wednesday', date: '2026-07-15', tags: [] };
+                          const sermonTitle = normalizeServiceItem({
+                            id: '__smoke_sermon_title_only__',
+                            service_id: service.id,
+                            sort_order: 1,
+                            label: '설교 제목',
+                            memo: serializeServiceItemMemo({ elementType: 'title_person', inputMode: 'text' }),
+                            _worshipSectionId: '__smoke_section_sermon__',
+                            _worshipSectionKey: 'sermon',
+                            _worshipSectionTitle: '설교',
+                            _worshipSectionOrder: 6,
+                            _worshipElementOrder: 1,
+                          });
+                          try {
+                            state.module = 'home';
+                            state.services = [service];
+                            state.selectedServiceId = service.id;
+                            state.selectedServiceTypeId = service.type_id;
+                            state.serviceItems = { [service.id]: [sermonTitle] };
+                            state.presenterPreparationDrafts = {
+                              [service.id]: '설교 제목: 믿음을 잃어버릴 수도 있어요?',
+                            };
+                            applyPresenterPreparationInput(service.id);
+                            const sermonItems = (state.serviceItems[service.id] || [])
+                              .filter((item) => item._worshipSectionKey === 'sermon')
+                              .map((item) => ({
+                                label: item.label,
+                                type: serviceMemoElementType(parseServiceItemMemo(item.memo)),
+                                title: item.raw_title || '',
+                                placeholder: Boolean(item._worshipTemplatePlaceholder),
+                              }));
+                            return {
+                              sermonItems,
+                              labels: sermonItems.map((item) => item.label),
+                            };
+                          } finally {
+                            state.module = original.module;
+                            state.services = original.services;
+                            state.serviceItems = original.serviceItems;
+                            state.selectedServiceId = original.selectedServiceId;
+                            state.selectedServiceTypeId = original.selectedServiceTypeId;
+                            state.presenterPreparationDrafts = original.drafts;
+                            state.dirty.service = original.dirty;
+                            state.presenter.serviceId = original.presenter.serviceId;
+                            state.presenter.slides = original.presenter.slides;
+                            state.presenter.index = original.presenter.index;
+                            state.presenter.safetyBlank = original.presenter.safetyBlank;
+                            state.presenter.jumpDraft = original.presenter.jumpDraft;
+                            state.presenter.liveScripture = original.presenter.liveScripture;
+                            state.presenter.livePraise = original.presenter.livePraise;
+                            state.presenterBoardSelection = original.presenterBoardSelection;
+                            state.presenterSectionEditor = original.presenterSectionEditor;
+                            renderPresenterDetail();
+                          }
+                        })()
+                        """
+                    )
+                    if (
+                        presenter_preparation_sermon_slot["labels"][:2] == ["설교 제목", "설교 본문"]
+                        and presenter_preparation_sermon_slot["sermonItems"][0]["title"] == "믿음을 잃어버릴 수도 있어요?"
+                        and presenter_preparation_sermon_slot["sermonItems"][1]["type"] == "scripture_body"
+                        and presenter_preparation_sermon_slot["sermonItems"][1]["placeholder"]
+                    ):
+                        pass_("presenter-preparation-sermon-slot", json.dumps(presenter_preparation_sermon_slot, ensure_ascii=False))
+                    else:
+                        fail("presenter-preparation-sermon-slot", json.dumps(presenter_preparation_sermon_slot, ensure_ascii=False))
+
                     page.set_viewport_size({"width": 520, "height": 760})
                     page.evaluate("renderPresenterDetail()")
                     page.wait_for_selector("#servicePresenterControls", timeout=5000)

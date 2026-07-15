@@ -970,6 +970,7 @@ function bindStaticEvents() {
   });
 
   refs.detailPane.addEventListener("click", handleDetailClick);
+  refs.detailPane.addEventListener("dblclick", handlePresenterBoardDoubleClick);
   refs.detailPane.addEventListener("keydown", handleDetailKeydown);
   refs.detailPane.addEventListener("input", handleDetailInput);
   refs.detailPane.addEventListener("change", handleDetailChange);
@@ -1162,6 +1163,15 @@ function handlePresenterBoardPointerDown(event) {
     elementKey,
     additive: event.metaKey || event.ctrlKey,
   };
+  return true;
+}
+
+function handlePresenterBoardDoubleClick(event) {
+  if (state.module !== "presenter" || event.button !== 0) return false;
+  const thumb = event.target.closest(".svc-slide-thumb[data-presenter-index][data-service-id]");
+  if (!thumb || event.target.closest("[data-presenter-section-edit], [data-presenter-section-editor]")) return false;
+  event.preventDefault();
+  event.stopPropagation();
   return true;
 }
 
@@ -17676,7 +17686,10 @@ function applyPresenterPreparationInput(serviceId = state.selectedServiceId) {
     return;
   }
 
-  state.serviceItems[serviceId] = normalizeServiceItemsInCurrentOrder(items);
+  state.serviceItems[serviceId] = projectWorshipServiceItemsFromTemplate(
+    service,
+    normalizeServiceItemsInCurrentOrder(items),
+  );
   state.dirty.service = true;
   delete state.presenterPreparationDrafts[serviceId];
   for (const itemId of scriptureItemIds) {
