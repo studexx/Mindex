@@ -37,13 +37,14 @@
   --presenter-output-bar-edge: #000A32;
   --presenter-output-stroke: #000;
   --presenter-scripture-font: var(--font-presenter);
-  --presenter-size-display: 144px;
-  --presenter-size-section: 108px;
-  --presenter-size-body: 72px;
-  --presenter-size-meta: 54px;
-  --presenter-size-caption: 42px;
-  --presenter-size-thumbnail: 54px;
-  --presenter-size-file-caption: 36px;
+  --presenter-size-display: 160px;
+  --presenter-size-section: 120px;
+  --presenter-size-body: 80px;
+  --presenter-size-lyrics: 88px;
+  --presenter-size-meta: 60px;
+  --presenter-size-caption: 48px;
+  --presenter-size-thumbnail: 60px;
+  --presenter-size-file-caption: 42px;
   --presenter-weight-display: 800;
   --presenter-weight-body: 700;
   --presenter-weight-meta: 600;
@@ -55,7 +56,7 @@
   --presenter-scripture-clean-size: var(--presenter-size-body);
   --presenter-scripture-reading-ref-size: var(--presenter-size-section);
   --presenter-scripture-reading-version-size: var(--presenter-size-caption);
-  --presenter-scripture-reading-text-size: 80px;
+  --presenter-scripture-reading-text-size: 88px;
   display: grid;
   width: var(--presenter-stage-width);
   height: var(--presenter-stage-height);
@@ -468,7 +469,7 @@
 }
 :is(.svc-slide-mini-output, .presenter-output-root):not(.no-chromakey) .presenter-slide--lyrics[data-element-type="praise"] > .presenter-slide-text {
   gap: .06em;
-  font-size: var(--presenter-size-body);
+  font-size: var(--presenter-size-lyrics);
   font-weight: var(--presenter-weight-body);
   line-height: 1.08;
   padding-block: 1.35cqh;
@@ -510,6 +511,9 @@
   font-size: var(--presenter-scripture-clean-size);
   font-weight: var(--presenter-scripture-weight);
   line-height: var(--presenter-scripture-line-height);
+}
+.presenter-output-root.no-chromakey .presenter-slide--lyrics[data-element-type="praise"] .presenter-slide-text {
+  font-size: var(--presenter-size-lyrics);
 }
 .presenter-output-root.no-chromakey .presenter-slide--lyrics .presenter-slide-text span,
 .presenter-output-root.no-chromakey .presenter-slide--song-title .presenter-slide-text span {
