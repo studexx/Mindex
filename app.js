@@ -13745,7 +13745,11 @@ function publicMonthlyTemplate() {
 }
 
 function publicWednesdayTemplate(options = {}) {
-  const pastorLeader = serviceHasPastorWorshipLeader(options.service);
+  const hasExistingBenediction = (Array.isArray(options.items) ? options.items : []).some((item) => {
+    const sectionKey = String(item?._worshipSectionKey || item?.sectionKey || item?.section_key || "").trim();
+    return sectionKey === "benediction" || compactSearchValue(item?.label || "") === "축도";
+  });
+  const pastorLeader = hasExistingBenediction || serviceHasPastorSermonLeader(options.service, options.items);
   return [
     publicWorshipReadyStep(),
     publicWorshipPraiseStep({ count: 4, required: true }),
@@ -14144,6 +14148,17 @@ function normalizeSundayFirstSendingItems(service = null, items = [], referenceI
     const labelKey = compactSearchValue(item?.label || item?.raw_title || "");
     const isBenediction = sectionKey === "benediction" || labelKey === "축도";
     const isLordsPrayer = sectionKey === "lords_prayer" || labelKey === "주기도문";
+    const parsed = parseServiceItemMemo(item?.memo);
+    const rawTitle = String(item?.raw_title || "").trim();
+    const hasNonGenericTitle = rawTitle && compactSearchValue(rawTitle) !== labelKey;
+    const hasExplicitContent = Boolean(
+      item?._worshipElementTemplateModified
+      || hasNonGenericTitle
+      || cleanServiceAssignee(item?.assignee)
+      || parsed.note
+      || parsed.slides?.length
+    );
+    if ((isBenediction || isLordsPrayer) && hasExplicitContent) return true;
     if (pastorLeader) return !isLordsPrayer;
     return !isBenediction;
   });
