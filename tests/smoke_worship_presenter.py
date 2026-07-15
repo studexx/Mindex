@@ -2958,6 +2958,10 @@ def main() -> int:
                       cacheServiceScriptureVerses(parseBibleReference('출 23:14–19'), [
                         { book_code: 'EXO', chapter: 23, verse: 14, text: '너는 매년 세 번 내게 절기를 지킬지니라' },
                       ]);
+                      cacheServiceScriptureVerses(parseBibleReference('출 24:1–2'), [
+                        { book_code: 'EXO', chapter: 24, verse: 1, text: '또 모세에게 이르시되' },
+                        { book_code: 'EXO', chapter: 24, verse: 2, text: '너 모세만 여호와께 가까이 나아오고' },
+                      ]);
                       const readingItem = {
                         id: '__smoke_scripture_reading_body__',
                         label: '성경봉독',
@@ -2980,6 +2984,17 @@ def main() -> int:
                         _worshipSectionKey: 'sermon',
                         _worshipSectionTitle: '설교',
                       };
+                      const citationItem = {
+                        id: '__smoke_scripture_citation_body__',
+                        label: '인용 구절',
+                        raw_title: '',
+                        memo: serializeServiceItemMemo({
+                          elementType: 'scripture_body',
+                          scriptureReference: '출 24:1–2',
+                        }),
+                        _worshipSectionKey: 'sermon',
+                        _worshipSectionTitle: '설교',
+                      };
                       const readingSlide = normalizePresenterSlidesForServiceOutput(
                         buildPresenterSlidesForServiceItem(readingItem, service, 0),
                         service
@@ -2988,6 +3003,10 @@ def main() -> int:
                         buildPresenterSlidesForServiceItem(sermonItem, service, 1),
                         service
                       )[0] || {};
+                      const citationSlides = normalizePresenterSlidesForServiceOutput(
+                        buildPresenterSlidesForServiceItem(citationItem, service, 2),
+                        service
+                      );
                       const mount = document.createElement('div');
                       mount.style.cssText = 'position:fixed;left:16px;top:16px;width:368px;height:207px;z-index:99999;pointer-events:none';
                       mount.innerHTML = [
@@ -3042,6 +3061,7 @@ def main() -> int:
                         sermonFontFamily: sermonTextStyle?.fontFamily || '',
                         sermonFontWeight: sermonTextStyle?.fontWeight || '',
                         sermonLineHeight: sermonTextStyle?.lineHeight || '',
+                        citationTexts: citationSlides.map((slide) => slide.text || ''),
                       };
                       mount.remove();
                       state.services = state.services.filter((item) => item.id !== service.id);
@@ -3076,6 +3096,10 @@ def main() -> int:
                     and not scripture_context_state["sermonNoChromakey"]
                     and scripture_context_state["sermonHasClass"]
                     and scripture_context_state["sermonHasLowerBarText"]
+                    and scripture_context_state["citationTexts"] == [
+                        "출애굽기 24:1   또 모세에게 이르시되",
+                        "출애굽기 24:2   너 모세만 여호와께 가까이 나아오고",
+                    ]
                 ):
                     pass_("presenter-scripture-context-layouts", json.dumps(scripture_context_state, ensure_ascii=False))
                 else:

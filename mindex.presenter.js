@@ -1212,9 +1212,13 @@ function buildPresenterScriptureTextSlides(item, section, index) {
   const context = presenterScriptureBodyContext(item, section);
   const reference = payload.reference || section.sectionTitle || "본문";
   const lastVerseIndex = payload.verses.length - 1;
+  const citation = isPresenterCitationScriptureItem(item);
   return payload.verses.map((verse, verseIndex) => {
     const readingFinal = context === "reading" && verseIndex === lastVerseIndex;
     const verseReference = verse.reference || reference;
+    const verseText = citation
+      ? presenterCitationScriptureText(verse, payload)
+      : (verse.number ? [verse.number, verse.text].filter(Boolean).join("   ") : verse.text);
     return {
       id: `${item.id || index}:scripture:${verseReference}:${verse.number || verseIndex + 1}`,
       ...section,
@@ -1230,13 +1234,26 @@ function buildPresenterScriptureTextSlides(item, section, index) {
       referenceBook: verse.referenceBook || payload.referenceBook || "",
       referenceRange: verse.referenceRange || payload.referenceRange || "",
       translationLabel: payload.translationLabel || "",
-      text: verse.number ? [verse.number, verse.text].filter(Boolean).join("   ") : verse.text,
+      text: verseText,
       scriptureReadingFinal: readingFinal,
       ...(context === "reading" ? { outputContext: "clean" } : {}),
       ...(context === "sermon" ? { outputContext: "chromakey" } : {}),
       sort: index + verseIndex / 100,
     };
   });
+}
+
+function isPresenterCitationScriptureItem(item = {}) {
+  return compactSearchValue(item?.label || "") === "인용구절";
+}
+
+function presenterCitationScriptureText(verse = {}, payload = {}) {
+  const referenceBook = String(verse.referenceBook || payload.referenceBook || "").trim();
+  const referenceRange = String(verse.referenceRange || payload.referenceRange || "").trim();
+  const number = String(verse.number || verse.verse || "").trim();
+  const chapter = referenceRange.match(/^(\d+)/)?.[1] || "";
+  const verseReference = [referenceBook, chapter && number ? `${chapter}:${number}` : referenceRange].filter(Boolean).join(" ");
+  return [verseReference, verse.text].filter(Boolean).join("   ");
 }
 
 function presenterScriptureBodyContext(item = {}, section = {}) {
