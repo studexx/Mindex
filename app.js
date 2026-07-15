@@ -596,6 +596,7 @@ const state = {
     drag: null,
     clipboard: null,
   },
+  presenterPreparationDrafts: {},
   presenterSectionEditor: null,
   serviceFilter: "all",
   serviceError: "",
@@ -5169,6 +5170,12 @@ function handleDetailClick(event) {
 }
 
 function handlePresenterDetailClick(event) {
+  const preparationApply = event.target.closest("[data-presenter-preparation-apply]");
+  if (preparationApply) {
+    applyPresenterPreparationInput(preparationApply.dataset.serviceId || state.selectedServiceId);
+    return true;
+  }
+
   const sectionEditButton = event.target.closest("[data-presenter-section-edit]");
   if (sectionEditButton) {
     openPresenterSectionEditor(sectionEditButton.dataset.serviceId || state.selectedServiceId, {
@@ -5249,6 +5256,13 @@ function handlePresenterDetailClick(event) {
 }
 
 function handleDetailKeydown(event) {
+  const preparationInput = event.target.closest("[data-presenter-preparation-input]");
+  if (preparationInput && event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+    event.preventDefault();
+    applyPresenterPreparationInput(preparationInput.dataset.serviceId || state.selectedServiceId);
+    return;
+  }
+
   const presenterJumpInput = event.target.closest("[data-presenter-jump-input]");
   if (presenterJumpInput) {
     if (event.key === "Enter") {
@@ -5398,6 +5412,13 @@ function handleDetailInput(event) {
   const liveScriptureInput = event.target.closest("[data-live-scripture-input]");
   if (liveScriptureInput) {
     updateLiveScriptureDraft(liveScriptureInput.value);
+    return;
+  }
+
+  const preparationInput = event.target.closest("[data-presenter-preparation-input]");
+  if (preparationInput) {
+    const serviceId = preparationInput.dataset.serviceId || state.selectedServiceId;
+    if (serviceId) state.presenterPreparationDrafts[serviceId] = preparationInput.value;
     return;
   }
 
@@ -10354,7 +10375,7 @@ function renderScriptureDetail() {
         <div class="scripture-foot">
           <span>${scriptureBlockCount(scripture)}개 단락</span>
         </div>
-        ${renderScriptureTextarea("메모", "memo", scripture.memo || "", "scripture-memo")}
+        ${renderScriptureTextarea("설명", "memo", scripture.memo || "", "scripture-memo")}
       </section>
       ${state.metadataPopupOpen ? renderScriptureMetadataDialog(scripture) : ""}
     </div>
@@ -16543,7 +16564,7 @@ function renderServiceItemMemoEditor(item, index, options = {}) {
           </select>
         </label>
         <label>
-          <span>메모</span>
+          <span>설명</span>
           <input
             type="text"
             data-service-item-field="memo_note"
@@ -16611,9 +16632,9 @@ function renderServiceItemMemoSummary({ parsed, preparation, elementType, autoAd
   cleanList([
     elementType ? worshipElementTypeLabel(elementType) : "",
     role ? presenterPreparationRoleLabel(role) : "",
-    parsed?.note ? "메모" : "",
+    parsed?.note ? "설명" : "",
     autoAdvanceAt ? "자동 전환" : "",
-    parsed?.slides?.length ? `${parsed.slides.length} slides` : "",
+    parsed?.slides?.length ? `슬라이드 ${parsed.slides.length}장` : "",
     parsed?.formHint || parsed?.formPreset || parsed?.formPresetRules?.length ? "송폼" : "",
     hasServiceAsset(asset) ? (asset.name || (asset.url ? "파일" : "")) : "",
     preparation && !role ? "준비" : "",
@@ -17184,12 +17205,20 @@ function renderServicePresenterControls(service, slides, active, index) {
 function renderPresenterServiceInputRail(service) {
   const groups = presenterServiceInputGroups(service);
   const inputCount = groups.reduce((count, group) => count + group.items.length, 0);
+  const draft = state.presenterPreparationDrafts[service.id] || "";
   return `
     <aside class="svc-presenter-input-rail" aria-label="예배 입력">
       <header class="svc-presenter-input-rail-head">
         <span>예배 입력</span>
         <small>${escapeHtml(inputCount ? `${inputCount}개 항목` : "입력 없음")}</small>
       </header>
+      <section class="svc-presenter-preparation-input">
+        <textarea class="svc-presenter-preparation-text" data-presenter-preparation-input data-service-id="${escapeAttr(service.id)}" rows="7" placeholder="찬양 1: 곡 제목&#10;대표기도: 담당자&#10;성경봉독: 히 10:38-39" aria-label="예배 준비 입력">${escapeHtml(draft)}</textarea>
+        <button class="svc-presenter-preparation-apply" type="button" data-presenter-preparation-apply data-service-id="${escapeAttr(service.id)}">
+          <i data-lucide="wand-sparkles"></i>
+          <span>반영</span>
+        </button>
+      </section>
       <div class="svc-presenter-input-rail-body">
         ${groups.length
           ? groups.map((group) => `
@@ -17202,6 +17231,259 @@ function renderPresenterServiceInputRail(service) {
           : `<p class="svc-presenter-input-empty">입력할 항목이 없습니다.</p>`}
       </div>
     </aside>`;
+}
+
+function parsePresenterPreparationInput(value = "") {
+  const entries = [];
+  const errors = [];
+  const seenKeys = new Set();
+  String(value || "").split(/\r?\n/).forEach((line, index) => {
+    const text = String(line || "").trim();
+    if (!text) return;
+    const match = text.match(/^([^:：]+?)\s*[:：]\s*(.+)$/);
+    if (!match) {
+      errors.push(`${index + 1}번째 줄 형식을 확인해 주세요.`);
+      return;
+    }
+    const label = String(match[1] || "").trim();
+    const content = String(match[2] || "").trim();
+    const key = compactSearchValue(label);
+    if (!label || !content) {
+      errors.push(`${index + 1}번째 줄에 항목과 내용을 모두 입력해 주세요.`);
+      return;
+    }
+    if (seenKeys.has(key)) {
+      errors.push(`${label} 항목이 두 번 입력되었습니다.`);
+      return;
+    }
+    seenKeys.add(key);
+    entries.push({ label, key, content, line: index + 1 });
+  });
+  return { entries, errors };
+}
+
+function presenterPreparationTargetLabel(key = "") {
+  return {
+    대표기도: "기도",
+    설교제목: "설교 제목",
+    설교본문: "설교 본문",
+  }[compactSearchValue(key)] || String(key || "").trim();
+}
+
+function findPresenterPreparationProjectedItem(service, label) {
+  const labelKey = compactSearchValue(label);
+  const items = servicePrepEditorItems(service.id);
+  const exact = items.find((item) => compactSearchValue(item.label || "") === labelKey);
+  if (exact) return exact;
+  if (labelKey === "기도") {
+    return items.find((item) =>
+      String(item._worshipSectionKey || "") === "prayer"
+      && compactSearchValue(item.label || "") === "기도");
+  }
+  return null;
+}
+
+function materializePresenterPreparationItem(service, items, projectedItem) {
+  const existingIndex = items.findIndex((item) => item.id === projectedItem.id);
+  if (existingIndex >= 0) return existingIndex;
+  const { _serviceItemIndex, _origIndex, ...projected } = projectedItem;
+  items.push(normalizeServiceItem({
+    ...projected,
+    id: createLocalId(),
+    service_id: service.id,
+    sort_order: items.length + 1,
+    _worshipTemplateProjected: false,
+    _worshipTemplatePlaceholder: false,
+    _worshipElementTemplateModified: true,
+  }, items.length));
+  return items.length - 1;
+}
+
+function presenterPreparationSongLabels(song = {}) {
+  const title = String(song.title || "").trim();
+  const subtitle = String(song.subtitle || "").trim();
+  const hymnNo = String(song.hymn_no || "").trim();
+  return [
+    title,
+    songServiceOptionLabel(song),
+    [title, subtitle].filter(Boolean).join(" "),
+    [hymnNo, title].filter(Boolean).join(" "),
+    String(song.original_title || "").trim(),
+  ].filter(Boolean);
+}
+
+function resolvePresenterPreparationSong(value, item, service) {
+  const query = compactSearchValue(value);
+  if (!query) return null;
+  const exact = state.songs.filter((song) => presenterPreparationSongLabels(song)
+    .some((label) => compactSearchValue(label) === query));
+  if (exact.length === 1) return exact[0];
+  const titleExact = state.songs.filter((song) => compactSearchValue(stripHymnNumber(song.title || "")) === query);
+  if (titleExact.length === 1) return titleExact[0];
+  const results = serviceSongPickerResults(value, item, service, 2);
+  return results.length === 1 ? results[0] : null;
+}
+
+function isPresenterPreparationCitationItem(item = {}) {
+  return String(item._worshipSectionKey || "") === "sermon"
+    && /^인용구절\d*$/.test(compactSearchValue(item.label || ""));
+}
+
+function presenterPreparationCitationItems(service, items, references) {
+  const sermonBody = items.find((item) => compactSearchValue(item.label || "") === "설교본문")
+    || (() => {
+      const projected = findPresenterPreparationProjectedItem(service, "설교 본문");
+      if (!projected) return null;
+      return items[materializePresenterPreparationItem(service, items, projected)] || null;
+    })();
+  if (!sermonBody) return { error: "인용 구절을 넣을 설교 본문 항목을 찾지 못했습니다.", items };
+
+  const existing = items.filter(isPresenterPreparationCitationItem);
+  const anchorIndex = items.findIndex((item) => item.id === sermonBody.id);
+  const next = items.filter((item) => !isPresenterPreparationCitationItem(item));
+  const insertionIndex = next.findIndex((item) => item.id === sermonBody.id) + 1;
+  const baseOrder = Number(sermonBody._worshipElementOrder) || 2;
+  const citations = references.map((reference, index) => {
+    const current = existing[index] || {};
+    const parsed = parseServiceItemMemo(current.memo || sermonBody.memo);
+    parsed.elementType = "scripture_body";
+    parsed.componentType = "scripture_body";
+    parsed.inputMode = "scripture";
+    parsed.scriptureReference = reference;
+    parsed.slides = [];
+    return normalizeServiceItem({
+      ...current,
+      id: current.id || createLocalId(),
+      service_id: service.id,
+      label: index ? `인용 구절 ${index + 1}` : "인용 구절",
+      raw_title: reference,
+      song_id: null,
+      version_id: null,
+      memo: serializeServiceItemMemo(parsed),
+      _worshipSectionId: sermonBody._worshipSectionId || "",
+      _worshipSectionKey: sermonBody._worshipSectionKey || "sermon",
+      _worshipSectionTitle: sermonBody._worshipSectionTitle || "설교",
+      _worshipSectionOrder: Number(sermonBody._worshipSectionOrder) || 0,
+      _worshipElementOrder: baseOrder + ((index + 1) / 100),
+      _worshipElementTemplateModified: true,
+      _worshipTemplateProjected: false,
+      _worshipTemplatePlaceholder: false,
+    }, insertionIndex + index);
+  });
+  next.splice(Math.max(0, insertionIndex), 0, ...citations);
+  return { items: next, citationIds: citations.map((item) => item.id), anchorIndex };
+}
+
+function applyPresenterPreparationInput(serviceId = state.selectedServiceId) {
+  const service = state.services.find((candidate) => candidate.id === serviceId);
+  const draft = String(state.presenterPreparationDrafts[serviceId] || "").trim();
+  if (!service || !draft) return;
+
+  const { entries, errors } = parsePresenterPreparationInput(draft);
+  if (errors.length) {
+    showToast(errors[0], "error");
+    return;
+  }
+
+  let items = getServiceItems(serviceId).map((item) => ({ ...item }));
+  const scriptureItemIds = new Set();
+  const versionWarnings = [];
+  let citationReferences = null;
+
+  for (const entry of entries) {
+    if (entry.key === "인용구절") {
+      const references = entry.content.split(/[;；]/).map((reference) => normalizeServiceItemReferenceSpacing(reference)).filter(Boolean);
+      if (!references.length || references.some((reference) => !parseBibleReference(reference))) {
+        errors.push("인용 구절의 성경 주소를 확인해 주세요.");
+      } else {
+        citationReferences = references;
+      }
+      continue;
+    }
+
+    const targetLabel = presenterPreparationTargetLabel(entry.label);
+    const projected = findPresenterPreparationProjectedItem(service, targetLabel);
+    if (!projected) {
+      errors.push(`${entry.label} 항목을 이 예배에서 찾지 못했습니다.`);
+      continue;
+    }
+    const targetIndex = materializePresenterPreparationItem(service, items, projected);
+    const item = items[targetIndex];
+    const memo = parseServiceItemMemo(item.memo);
+    const mode = serviceMemoInputMode(memo, item);
+
+    if (mode === "praise_db" || serviceItemRequiresSongSelection(item, service)) {
+      const song = resolvePresenterPreparationSong(entry.content, item, service);
+      if (!song) {
+        errors.push(`${entry.label} 곡을 찬양 DB에서 하나로 찾지 못했습니다.`);
+        continue;
+      }
+      if (serviceItemRequiresNewHymnalScoreSong(item) && !isNewHymnalScoreSong(song)) {
+        errors.push(`${entry.label}은 새찬송가 곡만 선택할 수 있습니다.`);
+        continue;
+      }
+      item.song_id = song.id;
+      item.version_id = null;
+      item.raw_title = "";
+      item._worshipElementTemplateModified = true;
+      const versions = serviceSelectableSongVersions(song, item, service);
+      if (versions.length === 1) item.version_id = versions[0].id;
+      if (versions.length > 1) versionWarnings.push(entry.label);
+      continue;
+    }
+
+    if (mode === "scripture" || isScriptureBodyServiceItem(item)) {
+      const reference = normalizeServiceItemReferenceSpacing(entry.content);
+      if (!parseBibleReference(reference)) {
+        errors.push(`${entry.label}의 성경 주소를 확인해 주세요.`);
+        continue;
+      }
+      item.raw_title = reference;
+      item._worshipElementTemplateModified = true;
+      item.memo = serializeServiceItemMemo({
+        ...memo,
+        elementType: "scripture_body",
+        inputMode: "scripture",
+        scriptureReference: reference,
+        slides: [],
+      });
+      scriptureItemIds.add(item.id);
+      continue;
+    }
+
+    if (entry.key === "대표기도") {
+      item.assignee = entry.content;
+    } else {
+      item.raw_title = normalizeServiceItemRawTitleForItem(item, entry.content);
+    }
+    item._worshipElementTemplateModified = true;
+  }
+
+  if (citationReferences) {
+    const citations = presenterPreparationCitationItems(service, items, citationReferences);
+    if (citations.error) errors.push(citations.error);
+    else {
+      items = citations.items;
+      citations.citationIds.forEach((id) => scriptureItemIds.add(id));
+    }
+  }
+
+  if (errors.length) {
+    showToast(errors[0], "error");
+    return;
+  }
+
+  state.serviceItems[serviceId] = normalizeServiceItemsInCurrentOrder(items);
+  state.dirty.service = true;
+  delete state.presenterPreparationDrafts[serviceId];
+  for (const itemId of scriptureItemIds) {
+    const index = state.serviceItems[serviceId].findIndex((item) => item.id === itemId);
+    if (index >= 0) scheduleServiceScriptureBodyResolve(serviceId, index);
+  }
+  refreshPresenterForService(serviceId);
+  updateSaveState();
+  const suffix = versionWarnings.length ? ` · ${versionWarnings.join(", ")} 버전 선택 필요` : "";
+  showToast(`예배 입력 ${entries.length}개 항목을 반영했습니다${suffix}.`, "info");
 }
 
 function presenterServiceInputGroups(service) {
@@ -17971,7 +18253,7 @@ function copyPresenterSelectedCustomSlides() {
 function cutPresenterSelectedCustomSlides() {
   const context = presenterSelectedCustomSlideContext();
   if (!context) {
-    showToast("generated slides는 직접 잘라낼 수 없습니다. element 원본을 수정해 주세요.", "info");
+    showToast("자동 생성된 슬라이드는 직접 자를 수 없습니다. 엘리멘트 원본을 수정해 주세요.", "info");
     return false;
   }
   copyPresenterSelectedCustomSlides();

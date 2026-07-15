@@ -2652,6 +2652,124 @@ def main() -> int:
                     else:
                         fail("presenter-service-input-rail", json.dumps(presenter_input_rail, ensure_ascii=False))
 
+                    presenter_preparation_real_song_match = page.evaluate(
+                        """
+                        (() => {
+                          const service = state.services.find((entry) => entry.type_id === 'wednesday') || state.services[0];
+                          const item = normalizeServiceItem({
+                            service_id: service?.id || '',
+                            label: '찬양 1',
+                            memo: serializeServiceItemMemo({ elementType: 'praise', inputMode: 'praise_db' }),
+                          });
+                          return ['평화 하나님의 평강이', '이 세상은 내 집 아니네', '슬픈 마음 있는 사람', '충만', '나는 믿네']
+                            .map((query) => {
+                              const song = resolvePresenterPreparationSong(query, item, service);
+                              return { query, id: song?.id || '', title: songServiceOptionLabel(song) || song?.title || '', versions: song?.versions?.length || 0 };
+                            });
+                        })()
+                        """
+                    )
+                    if all(match["id"] for match in presenter_preparation_real_song_match):
+                        pass_("presenter-preparation-real-song-match", json.dumps(presenter_preparation_real_song_match, ensure_ascii=False))
+                    else:
+                        fail("presenter-preparation-real-song-match", json.dumps(presenter_preparation_real_song_match, ensure_ascii=False))
+
+                    presenter_preparation_paste = page.evaluate(
+                        """
+                        (() => {
+                          const original = {
+                            module: state.module,
+                            songs: state.songs,
+                            services: state.services,
+                            serviceItems: state.serviceItems,
+                            selectedServiceId: state.selectedServiceId,
+                            selectedServiceTypeId: state.selectedServiceTypeId,
+                            drafts: state.presenterPreparationDrafts,
+                            dirty: state.dirty.service,
+                          };
+                          const service = { id: '__smoke_preparation_input__', type_id: 'wednesday', date: '2026-07-15', tags: [] };
+                          const item = (label, elementType, sectionKey, order) => normalizeServiceItem({
+                            id: `__smoke_${label}__`,
+                            service_id: service.id,
+                            label,
+                            memo: serializeServiceItemMemo({ elementType, inputMode: serviceInputModeForElementType(elementType) }),
+                            _worshipSectionId: `__smoke_section_${sectionKey}__`,
+                            _worshipSectionKey: sectionKey,
+                            _worshipSectionTitle: sectionKey === 'sermon' ? '설교' : sectionKey === 'prayer' ? '대표기도' : sectionKey === 'scripture_reading' ? '성경봉독' : sectionKey === 'response_song' ? '결단' : '찬양',
+                            _worshipSectionOrder: order,
+                            _worshipElementOrder: 1,
+                          });
+                          try {
+                            state.module = 'home';
+                            state.songs = [
+                              { id: '__batch_praise_1__', title: '평화', subtitle: '하나님의 평강이', versions: [{ id: '__batch_praise_1_v__', name: '기본' }] },
+                              { id: '__batch_praise_2__', title: '이 세상은 내 집 아니네', versions: [{ id: '__batch_praise_2_v__', name: '기본' }] },
+                              { id: '__batch_praise_3__', title: '슬픈 마음 있는 사람', versions: [{ id: '__batch_praise_3_v__', name: '기본' }] },
+                              { id: '__batch_praise_4__', title: '충만', versions: [{ id: '__batch_praise_4_v__', name: '기본' }] },
+                              { id: '__batch_response__', title: '나는 믿네', versions: [{ id: '__batch_response_v__', name: '기본' }] },
+                            ];
+                            state.services = [service];
+                            state.selectedServiceId = service.id;
+                            state.selectedServiceTypeId = service.type_id;
+                            state.serviceItems = {
+                              [service.id]: [
+                                item('찬양 1', 'praise', 'praise', 2),
+                                item('찬양 2', 'praise', 'praise', 2),
+                                item('찬양 3', 'praise', 'praise', 2),
+                                item('찬양 4', 'praise', 'praise', 2),
+                                item('기도', 'title_person', 'prayer', 3),
+                                item('성경봉독', 'scripture_body', 'scripture_reading', 5),
+                                item('설교 제목', 'title_person', 'sermon', 6),
+                                item('설교 본문', 'scripture_body', 'sermon', 6),
+                                item('결단찬양', 'praise', 'response_song', 7),
+                              ],
+                            };
+                            state.presenterPreparationDrafts = {
+                              [service.id]: `찬양 1: 평화 하나님의 평강이\n찬양 2: 이 세상은 내 집 아니네\n찬양 3: 슬픈 마음 있는 사람\n찬양 4: 충만\n\n대표기도: 정선분 권사\n성경봉독: 히 10:38–39\n설교 제목: 믿음을 잃어버릴 수도 있어요?\n인용 구절: 렘 3:22; 마 3:11; 눅 24:49; 행 2:4; 고후 10:4; 롬 8:35-37; 살전 4:3; 벧전 1:14–15; 히 4:12; 엡 5:26; 요일 1:7; 행 15:8–9; 눅 11:13; 롬 8:30; 마 5:48; 롬 13:10\n결단찬양: 나는 믿네`,
+                            };
+                            applyPresenterPreparationInput(service.id);
+                            const items = state.serviceItems[service.id];
+                            const byLabel = (label) => items.find((entry) => entry.label === label) || {};
+                            const citations = items.filter(isPresenterPreparationCitationItem);
+                            return {
+                              songIds: ['찬양 1', '찬양 2', '찬양 3', '찬양 4', '결단찬양'].map((label) => byLabel(label).song_id || ''),
+                              prayer: byLabel('기도').assignee || '',
+                              reading: byLabel('성경봉독').raw_title || '',
+                              sermonTitle: byLabel('설교 제목').raw_title || '',
+                              citations: citations.map((entry) => entry.raw_title || ''),
+                              draftCleared: !state.presenterPreparationDrafts[service.id],
+                            };
+                          } finally {
+                            state.module = original.module;
+                            state.songs = original.songs;
+                            state.services = original.services;
+                            state.serviceItems = original.serviceItems;
+                            state.selectedServiceId = original.selectedServiceId;
+                            state.selectedServiceTypeId = original.selectedServiceTypeId;
+                            state.presenterPreparationDrafts = original.drafts;
+                            state.dirty.service = original.dirty;
+                            renderPresenterDetail();
+                          }
+                        })()
+                        """
+                    )
+                    if (
+                        presenter_preparation_paste["songIds"] == [
+                            "__batch_praise_1__", "__batch_praise_2__", "__batch_praise_3__", "__batch_praise_4__", "__batch_response__"
+                        ]
+                        and presenter_preparation_paste["prayer"] == "정선분 권사"
+                        and presenter_preparation_paste["reading"] == "히 10:38–39"
+                        and presenter_preparation_paste["sermonTitle"] == "믿음을 잃어버릴 수도 있어요?"
+                        and presenter_preparation_paste["citations"] == [
+                            "렘 3:22", "마 3:11", "눅 24:49", "행 2:4", "고후 10:4", "롬 8:35–37", "살전 4:3", "벧전 1:14–15",
+                            "히 4:12", "엡 5:26", "요일 1:7", "행 15:8–9", "눅 11:13", "롬 8:30", "마 5:48", "롬 13:10"
+                        ]
+                        and presenter_preparation_paste["draftCleared"]
+                    ):
+                        pass_("presenter-preparation-paste", json.dumps(presenter_preparation_paste, ensure_ascii=False))
+                    else:
+                        fail("presenter-preparation-paste", json.dumps(presenter_preparation_paste, ensure_ascii=False))
+
                     page.set_viewport_size({"width": 520, "height": 760})
                     page.evaluate("renderPresenterDetail()")
                     page.wait_for_selector("#servicePresenterControls", timeout=5000)

@@ -999,7 +999,7 @@ function presenterElementSlideFromMemoCore(item, section, index, memo, displayTe
     };
   }
   if (elementType === "activity") {
-    const cleanTitle = title || "Activity";
+    const cleanTitle = title || "실시간 성구";
     return {
       id: `${item.id || index}:activity`,
       ...section,
@@ -1261,7 +1261,8 @@ function isScriptureBodyServiceItem(item) {
   const elementType = typeof normalizeWorshipElementType === "function"
     ? normalizeWorshipElementType(memo.elementType || item?.elementType || item?.element_type || "")
     : String(memo.elementType || item?.elementType || item?.element_type || "").trim().toLowerCase();
-  return label === "본문"
+  return elementType === "scripture_body"
+    || label === "본문"
     || label === "성경본문"
     || label === "설교본문"
     || (sectionKey === "scripture_reading" && (label === "성경봉독" || elementType === "scripture_body"));
