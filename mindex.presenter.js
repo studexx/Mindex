@@ -54,6 +54,37 @@ function presenterSlidesWithSpecialSongTitle(item = {}, section = {}, slides = [
   return [presenterSpecialSongSectionTitleSlide(item, section, index, titleSlide), ...remainingSlides];
 }
 
+function presenterSlidesWithScriptureReadingTitle(item = {}, section = {}, slides = [], index = 0) {
+  const list = Array.isArray(slides) ? slides.filter(Boolean) : [];
+  if (!list.length || presenterScriptureBodyContext(item, section) !== "reading") return list;
+  const existingTitle = list.some((slide) =>
+    slide?.type === "title-assignee"
+    && compactSearchValue(slide.title || slide.label || "") === "성경봉독");
+  if (existingTitle) return list;
+  const reference = String(list[0]?.title || list[0]?.marker || item.raw_title || "").trim();
+  return [presenterScriptureReadingTitleSlide(item, section, index, reference), ...list];
+}
+
+function presenterScriptureReadingTitleSlide(item = {}, section = {}, index = 0, reference = "") {
+  const title = "성경봉독";
+  const assignee = String(reference || "").trim();
+  return {
+    id: `${item.id || index}:scripture-reading-title`,
+    ...section,
+    elementLabel: title,
+    elementTitle: title,
+    elementType: PRESENTER_ELEMENT_TYPES.TITLE_ASSIGNEE,
+    layout: PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT,
+    type: "title-assignee",
+    label: title,
+    title,
+    assignee,
+    marker: "",
+    text: cleanList([title, assignee]).join("\n"),
+    sort: index - 0.002,
+  };
+}
+
 function shouldIncludeSpecialSongSectionTitleSlide(item = {}, section = {}, slides = []) {
   if (!slides.length) return false;
   const sectionKey = String(section.sectionKey || item?._worshipSectionKey || "").trim();

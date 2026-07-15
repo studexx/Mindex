@@ -2995,10 +2995,12 @@ def main() -> int:
                         _worshipSectionKey: 'sermon',
                         _worshipSectionTitle: '설교',
                       };
-                      const readingSlide = normalizePresenterSlidesForServiceOutput(
+                      const readingSlides = normalizePresenterSlidesForServiceOutput(
                         buildPresenterSlidesForServiceItem(readingItem, service, 0),
                         service
-                      )[0] || {};
+                      );
+                      const readingTitleSlide = readingSlides[0] || {};
+                      const readingSlide = readingSlides[1] || {};
                       const sermonSlide = normalizePresenterSlidesForServiceOutput(
                         buildPresenterSlidesForServiceItem(sermonItem, service, 1),
                         service
@@ -3031,6 +3033,10 @@ def main() -> int:
                       const readingNoStyle = readingNo ? getComputedStyle(readingNo) : null;
                       const sermonTextStyle = sermonText ? getComputedStyle(sermonText) : null;
                       const result = {
+                        readingTypes: readingSlides.map((slide) => slide.type),
+                        readingTitleText: readingTitleSlide.text || '',
+                        readingTitle: readingTitleSlide.title || '',
+                        readingTitleAssignee: readingTitleSlide.assignee || '',
                         readingContext: readingSlide.scriptureContext || '',
                         readingElementTitle: readingSlide.elementTitle || '',
                         readingReferenceBook: readingSlide.referenceBook || '',
@@ -3071,6 +3077,11 @@ def main() -> int:
                     """
                 )
                 if (
+                    scripture_context_state["readingTypes"][:2] == ["title-assignee", "scripture"]
+                    and scripture_context_state["readingTitle"] == "성경봉독"
+                    and scripture_context_state["readingTitleAssignee"] == "출애굽기 23:14–19"
+                    and scripture_context_state["readingTitleText"] == "성경봉독\n출애굽기 23:14–19"
+                    and
                     scripture_context_state["readingContext"] == "reading"
                     and scripture_context_state["readingElementTitle"] == "출애굽기 23:14–19"
                     and scripture_context_state["readingOutputContext"] == "clean"

@@ -20111,7 +20111,9 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
   if (customSlides.length) return withIntroAndSpecialTitle(customSlides);
 
   const scriptureTextSlides = buildPresenterScriptureTextSlides(item, section, index);
-  if (scriptureTextSlides.length) return withIntroAndSpecialTitle(scriptureTextSlides);
+  if (scriptureTextSlides.length) {
+    return withIntroAndSpecialTitle(presenterSlidesWithScriptureReadingTitle(item, section, scriptureTextSlides, index));
+  }
   if (isScriptureBodyServiceItem(item)) return [];
 
   if (outputMode === "score" && (song || isSongServiceLabel(label))) {
