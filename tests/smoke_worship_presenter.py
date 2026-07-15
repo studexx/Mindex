@@ -4991,6 +4991,105 @@ def main() -> int:
                     pass_("presenter-clean-blank-keeps-background", json.dumps(clean_blank_background_state, ensure_ascii=False))
                 else:
                     fail("presenter-clean-blank-keeps-background", json.dumps(clean_blank_background_state, ensure_ascii=False))
+
+                scripture_blank_background_payload = page.evaluate(
+                    """
+                    () => {
+                      const service = {
+                        id: '__smoke_scripture_blank_background_service__',
+                        type_id: 'youth',
+                        date: '2026-07-05',
+                        title: 'Scripture Blank Background Smoke',
+                        leader: '테스트',
+                        tags: [],
+                        _worshipSourceRef: { presenter_background: '26-B2.png' },
+                      };
+                      if (!state.serviceTypes.some((item) => item.id === service.type_id)) {
+                        state.serviceTypes.push({
+                          id: service.type_id,
+                          name: '청소년부 예배',
+                          sort_order: 5,
+                          _worship: true,
+                          _worshipOutputContext: 'clean',
+                          _worshipChromakey: false,
+                        });
+                      }
+                      if (!state.bibleTranslations.some((translation) => translation.id === '__smoke_ko__')) {
+                        state.bibleTranslations.push({
+                          id: '__smoke_ko__',
+                          translationKey: 'RKB',
+                          name: '개역개정',
+                          language: 'ko',
+                          abbreviation: '개역개정',
+                        });
+                      }
+                      state.selectedBibleTranslationId = '__smoke_ko__';
+                      cacheServiceScriptureVerses(parseBibleReference('출 23:14'), [
+                        { book_code: 'EXO', chapter: 23, verse: 14, text: '너는 매년 세 번 내게 절기를 지킬지니라' },
+                      ]);
+                      state.services = [
+                        service,
+                        ...state.services.filter((item) => item.id !== service.id),
+                      ];
+                      state.serviceItems[service.id] = normalizeServiceItems([
+                        {
+                          id: '__smoke_scripture_blank_background_item__',
+                          service_id: service.id,
+                          sort_order: 1,
+                          label: '성경봉독',
+                          raw_title: '',
+                          memo: JSON.stringify({
+                            elementType: 'scripture_body',
+                            scriptureReference: '출 23:14',
+                          }),
+                          _worshipSectionKey: 'scripture_reading',
+                          _worshipSectionTitle: '성경봉독',
+                        },
+                      ]);
+                      preparePresenterService(service.id);
+                      return presenterStatePayload(service.id);
+                    }
+                    """
+                )
+                scripture_blank_background_state = output_page.evaluate(
+                    """
+                    (payload) => {
+                      const blankIndex = payload.slides.findIndex((slide) =>
+                        slide?.layout === 'blank'
+                        && slide?.autoTrailingBlank
+                        && slide?.sectionKey === 'scripture_reading'
+                      );
+                      const blankSlide = payload.slides[blankIndex] || {};
+                      renderPresenterOutput({ ...payload, index: blankIndex, safetyBlank: false }, {});
+                      const root = document.getElementById('presenterOutputRoot');
+                      const slide = root?.querySelector('.presenter-slide');
+                      return {
+                        blankIndex,
+                        suppressBackgroundImage: Boolean(blankSlide.suppressBackgroundImage),
+                        hasBackground: root?.classList.contains('has-background') || false,
+                        isBlank: root?.classList.contains('is-blank') || false,
+                        noChromakey: root?.classList.contains('no-chromakey') || false,
+                        inlineBackground: root?.style.getPropertyValue('--presenter-bg-image') || '',
+                        slideClass: slide?.className || '',
+                        text: slide?.innerText.trim() || '',
+                      };
+                    }
+                    """,
+                    scripture_blank_background_payload,
+                )
+                if (
+                    scripture_blank_background_state["blankIndex"] >= 0
+                    and scripture_blank_background_state["suppressBackgroundImage"]
+                    and not scripture_blank_background_state["hasBackground"]
+                    and scripture_blank_background_state["isBlank"]
+                    and scripture_blank_background_state["noChromakey"]
+                    and scripture_blank_background_state["inlineBackground"] == ""
+                    and "presenter-slide--blank" in scripture_blank_background_state["slideClass"]
+                    and scripture_blank_background_state["text"] == ""
+                ):
+                    pass_("presenter-scripture-blank-suppresses-background", json.dumps(scripture_blank_background_state, ensure_ascii=False))
+                else:
+                    fail("presenter-scripture-blank-suppresses-background", json.dumps(scripture_blank_background_state, ensure_ascii=False))
                 page.evaluate(
                     """
                     (serviceId) => {

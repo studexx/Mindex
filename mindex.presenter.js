@@ -2266,7 +2266,8 @@ function renderPresenterOutput(payload, options = {}) {
   const slideChromakey = presenterSlideUsesChromakey(slide, payload?.chromakey !== false);
   const cleanOutput = !slideChromakey;
   const blankSlide = presenterSlideLayout(slide) === PRESENTER_SLIDE_LAYOUTS.BLANK;
-  const showBackground = Boolean(backgroundImages.length && cleanOutput && !payload?.safetyBlank);
+  const suppressBackground = Boolean(slide?.suppressBackgroundImage || slide?.noBackgroundImage);
+  const showBackground = Boolean(backgroundImages.length && cleanOutput && !payload?.safetyBlank && !suppressBackground);
   const blankOutput = Boolean(blankSlide && !showBackground);
   const activeImageSource = presenterSlideImageSource(slide);
   preloadPresenterOutputImages(payload, slide);
