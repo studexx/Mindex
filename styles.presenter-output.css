@@ -194,7 +194,7 @@
   white-space: inherit;
 }
 .presenter-output-root.no-chromakey .presenter-slide--lyrics[data-element-type="praise"] .presenter-slide-text {
-  font-size: var(--presenter-size-body);
+  font-size: var(--presenter-size-lyrics);
   font-weight: var(--presenter-weight-body);
 }
 .presenter-slide-text .presenter-lyric-line--numbered {
@@ -515,9 +515,14 @@
 .presenter-output-root.no-chromakey .presenter-slide--lyrics[data-element-type="praise"] .presenter-slide-text {
   font-size: var(--presenter-size-lyrics);
 }
-.presenter-output-root.no-chromakey .presenter-slide--lyrics .presenter-slide-text span,
-.presenter-output-root.no-chromakey .presenter-slide--song-title .presenter-slide-text span {
+.presenter-output-root.no-chromakey .presenter-slide--lyrics .presenter-slide-text span {
   font-size: inherit;
+}
+.presenter-output-root.no-chromakey .presenter-section-song-title-heading {
+  font-size: var(--presenter-size-meta);
+}
+.presenter-output-root.no-chromakey .presenter-section-song-title-name {
+  font-size: var(--presenter-size-section);
 }
 .presenter-output-root.no-chromakey .presenter-slide--scripture .presenter-slide-text span {
   font-size: var(--presenter-size-body);
