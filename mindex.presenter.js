@@ -2894,8 +2894,9 @@ function renderPresenterScriptureReadingSlide(slide) {
 function presenterScriptureReadingHeaderReference(slide = {}) {
   const referenceBook = String(slide?.referenceBook || "").trim();
   const referenceRange = String(slide?.referenceRange || "").trim();
-  const fullReference = [referenceBook, referenceRange].filter(Boolean).join(" ").trim();
-  return fullReference || String(slide?.title || slide?.marker || "").trim();
+  const chapter = referenceRange.match(/^(\d+)/)?.[1] || "";
+  const chapterReference = [referenceBook, chapter ? `${chapter}장` : referenceRange].filter(Boolean).join(" ").trim();
+  return chapterReference || String(slide?.title || slide?.marker || "").trim();
 }
 
 function presenterScriptureVerseParts(value = "") {

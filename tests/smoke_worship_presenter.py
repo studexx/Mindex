@@ -3056,7 +3056,7 @@ def main() -> int:
                     and scripture_context_state["readingNoChromakey"]
                     and scripture_context_state["readingHasClass"]
                     and not scripture_context_state["readingHasLowerBarText"]
-                    and scripture_context_state["readingReference"] == "출애굽기 23:14–19"
+                    and scripture_context_state["readingReference"] == "출애굽기 23장"
                     and scripture_context_state["readingReferenceBook"] == "출애굽기"
                     and scripture_context_state["readingReferenceRange"] == "23:14–19"
                     and scripture_context_state["readingFinal"]
