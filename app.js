@@ -13750,6 +13750,7 @@ function publicWednesdayTemplate(options = {}) {
     return sectionKey === "benediction" || compactSearchValue(item?.label || "") === "축도";
   });
   const pastorLeader = hasExistingBenediction || serviceHasPastorSermonLeader(options.service, options.items);
+  const benedictionPerson = serviceSermonLeaderLabel(options.service, options.items);
   return [
     publicWorshipReadyStep(),
     publicWorshipPraiseStep({ count: 4, required: true }),
@@ -13758,7 +13759,12 @@ function publicWednesdayTemplate(options = {}) {
     publicWorshipScriptureReadingStep(),
     publicWorshipSermonStep(),
     responseSectionTemplate(),
-    publicWorshipSendingStep({ doxology: false, benediction: pastorLeader, lordsPrayer: !pastorLeader }),
+    publicWorshipSendingStep({
+      doxology: false,
+      benediction: pastorLeader,
+      benedictionPerson,
+      lordsPrayer: !pastorLeader,
+    }),
     publicWorshipClosingStep(),
   ];
 }
@@ -14117,7 +14123,10 @@ function normalizeServiceItemsForTemplateHierarchy(service, items = [], options 
   }
 
   const normalizedItems = normalizeSundayFirstSendingItems(service, items, options.referenceItems);
-  const hierarchy = serviceTemplateHierarchyIndex(appTypeId);
+  const hierarchy = serviceTemplateHierarchyIndex(appTypeId, {
+    service,
+    items: normalizedItems,
+  });
   if (!hierarchy.sections.length) return normalizedItems;
   const annotated = normalizedItems.map((item, index) => ({
     ...item,
@@ -14164,8 +14173,8 @@ function normalizeSundayFirstSendingItems(service = null, items = [], referenceI
   });
 }
 
-function serviceTemplateHierarchyIndex(typeId) {
-  const sections = serviceOrderTemplate(typeId).map((step, index) => {
+function serviceTemplateHierarchyIndex(typeId, options = {}) {
+  const sections = serviceOrderTemplate(typeId, options).map((step, index) => {
     const normalized = normalizeServiceTemplateStep(step, index, typeId);
     const label = String(normalized.label || normalized.name || "").trim();
     const sectionKey = worshipTemplateSectionKey(label, index, normalized);
@@ -14571,6 +14580,16 @@ function serviceHasPastorSermonLeader(service = null, items = []) {
   const sermonMinister = cleanServiceAssignee(sermonTitle?.assignee || sermonTitle?.person || "");
   if (sermonMinister) return compactSearchValue(sermonMinister).includes("목사");
   return compactSearchValue(serviceWorshipLeaderLabel(service)).includes("목사");
+}
+
+function serviceSermonLeaderLabel(service = null, items = []) {
+  const sermonTitle = (Array.isArray(items) ? items : []).find((item) => {
+    const sectionKey = String(item?._worshipSectionKey || item?.sectionKey || item?.section_key || "").trim();
+    const label = compactSearchValue(item?.label || "");
+    return sectionKey === "sermon" && (label === "설교제목" || label === "설교");
+  });
+  return cleanServiceAssignee(sermonTitle?.assignee || sermonTitle?.person || "")
+    || serviceWorshipLeaderLabel(service);
 }
 
 function serviceHasPastorWorshipLeader(service = null) {
