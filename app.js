@@ -13848,8 +13848,10 @@ function projectWorshipServiceItemsFromTemplate(service, items = []) {
     return normalizeServiceItemsForTemplateHierarchy(service, items);
   }
 
-  const existing = collapseLegacyScriptureReadingItems(
-    normalizeServiceItemsForTemplateHierarchy(service, items, { preserveSourceIndex: true }),
+  const existing = collapseLegacyPresenterCitationItems(
+    collapseLegacyScriptureReadingItems(
+      normalizeServiceItemsForTemplateHierarchy(service, items, { preserveSourceIndex: true }),
+    ),
   );
   const suppressedTemplateKeys = new Set(existing
     .filter(isTemplateSuppressedServiceItem)
@@ -13929,6 +13931,46 @@ function collapseLegacyScriptureReadingItems(items = []) {
       ),
     });
     sourceItems.forEach((source) => removed.add(source.index));
+  });
+
+  return items.flatMap((item, index) => {
+    if (replacements.has(index)) return [replacements.get(index)];
+    if (removed.has(index)) return [];
+    return [item];
+  });
+}
+
+function collapseLegacyPresenterCitationItems(items = []) {
+  const groups = new Map();
+  items.forEach((item, index) => {
+    if (!/^인용구절\d*$/.test(compactSearchValue(item.label || ""))) return;
+    const sectionKey = String(item._worshipSectionId || item._worshipSectionKey || "").trim();
+    if (!sectionKey) return;
+    const group = groups.get(sectionKey) || [];
+    group.push({ item, index });
+    groups.set(sectionKey, group);
+  });
+
+  const replacements = new Map();
+  const removed = new Set();
+  groups.forEach((group) => {
+    const references = uniqueList(group.flatMap(({ item }) => serviceItemScriptureReferences(item)));
+    const first = group[0];
+    if (!first) return;
+    const parsed = parseServiceItemMemo(first.item.memo);
+    parsed.elementType = "scripture_body";
+    parsed.componentType = "scripture_body";
+    parsed.inputMode = "scripture";
+    parsed.scriptureReference = references[0] || "";
+    parsed.scriptureReferences = references;
+    parsed.slides = [];
+    replacements.set(first.index, {
+      ...first.item,
+      label: "인용 구절",
+      raw_title: references.join("; "),
+      memo: serializeServiceItemMemo(parsed),
+    });
+    group.slice(1).forEach(({ index }) => removed.add(index));
   });
 
   return items.flatMap((item, index) => {
