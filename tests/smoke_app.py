@@ -2395,6 +2395,39 @@ def main() -> int:
                     else:
                         fail("presenter-terminology", json.dumps(presenter_terms, ensure_ascii=False))
 
+                    presenter_font_contract = page.evaluate(
+                        """
+                        (() => {
+                          const root = document.querySelector('.presenter-output-root') || document.documentElement;
+                          const styles = getComputedStyle(root);
+                          const value = (name) => styles.getPropertyValue(name).trim();
+                          return {
+                            display: value('--presenter-size-display'),
+                            section: value('--presenter-size-section'),
+                            body: value('--presenter-size-body'),
+                            lyrics: value('--presenter-size-lyrics'),
+                            meta: value('--presenter-size-meta'),
+                            scriptureBar: value('--presenter-scripture-bar-size'),
+                            scriptureClean: value('--presenter-scripture-clean-size'),
+                            scriptureReadingText: value('--presenter-scripture-reading-text-size'),
+                          };
+                        })()
+                        """
+                    )
+                    if presenter_font_contract == {
+                        "display": "72px",
+                        "section": "72px",
+                        "body": "64px",
+                        "lyrics": "64px",
+                        "meta": "64px",
+                        "scriptureBar": "64px",
+                        "scriptureClean": "64px",
+                        "scriptureReadingText": "64px",
+                    }:
+                        pass_("presenter-font-contract", json.dumps(presenter_font_contract, ensure_ascii=False))
+                    else:
+                        fail("presenter-font-contract", json.dumps(presenter_font_contract, ensure_ascii=False))
+
                     sorter_state = page.evaluate(
                         """
                         (serviceId) => {

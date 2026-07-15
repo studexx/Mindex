@@ -37,11 +37,11 @@
   --presenter-output-bar-edge: #000A32;
   --presenter-output-stroke: #000;
   --presenter-scripture-font: var(--font-presenter);
-  --presenter-size-display: 80px;
-  --presenter-size-section: 80px;
+  --presenter-size-display: 72px;
+  --presenter-size-section: 72px;
   --presenter-size-body: 64px;
   --presenter-size-lyrics: 64px;
-  --presenter-size-meta: 54px;
+  --presenter-size-meta: 64px;
   --presenter-size-caption: 42px;
   --presenter-size-thumbnail: 54px;
   --presenter-size-file-caption: 36px;
@@ -52,7 +52,7 @@
   --presenter-scripture-line-height: 1.1;
   --presenter-scripture-fit-width: 64cqw;
   --presenter-scripture-fit-ratio: .74;
-  --presenter-scripture-bar-size: var(--presenter-size-section);
+  --presenter-scripture-bar-size: var(--presenter-size-body);
   --presenter-scripture-clean-size: var(--presenter-size-body);
   --presenter-scripture-reading-ref-size: var(--presenter-size-section);
   --presenter-scripture-reading-version-size: var(--presenter-size-caption);
