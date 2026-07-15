@@ -2796,6 +2796,8 @@ def main() -> int:
                         and presenter_preparation_paste["citationRawTitle"] == "렘 3:22; 마 3:11; 눅 24:49; 행 2:4; 고후 10:4; 롬 8:35–37; 살전 4:3; 벧전 1:14–15; 히 4:12; 엡 5:26; 요일 1:7; 행 15:8–9; 눅 11:13; 롬 8:30; 마 5:48; 롬 13:10"
                         and presenter_preparation_paste["citationSlideCount"] == 20
                         and len(presenter_preparation_paste["citationSlideReferences"]) == 16
+                        and presenter_preparation_paste["citationSlideReferences"][:4] == ["렘 3:22", "마 3:11", "눅 24:49", "행 2:4"]
+                        and "예레미야 3:22" not in presenter_preparation_paste["citationSlideReferences"]
                         and presenter_preparation_paste["citationMemoRoundTrip"] == presenter_preparation_paste["citationReferences"]
                         and presenter_preparation_paste["citationConfigReferences"] == presenter_preparation_paste["citationReferences"]
                         and presenter_preparation_paste["draftCleared"]

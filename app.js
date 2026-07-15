@@ -7130,9 +7130,9 @@ function serviceScriptureTextPayloadFromBible(item = {}, memo = parseServiceItem
 
 function serviceScriptureReferenceParts(reference, fallback = "") {
   if (!reference?.book || !reference?.chapter) return { referenceBook: "", referenceRange: fallback };
-  const book = reference.book.koreanName
+  const book = KOREAN_BIBLE_BOOK_ABBREVIATIONS[reference.book.code]
     || reference.book.shortName
-    || KOREAN_BIBLE_BOOK_ABBREVIATIONS[reference.book.code]
+    || reference.book.koreanName
     || reference.book.code
     || "";
   const range = reference.verse
