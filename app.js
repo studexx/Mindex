@@ -18761,7 +18761,8 @@ function renderPresenterSlideMiniPreview(slide, serviceId = state.presenter.serv
   const backgroundImages = presenterBackgroundSourcesForService(service);
   const theme = presenterOutputTheme(service?.type_id);
   const blank = presenterSlideLayout(slide) === PRESENTER_SLIDE_LAYOUTS.BLANK;
-  const showBackground = Boolean(backgroundImages.length && !slideChromakey);
+  const suppressBackground = Boolean(slide?.suppressBackgroundImage || slide?.noBackgroundImage);
+  const showBackground = Boolean(backgroundImages.length && !slideChromakey && !suppressBackground);
   const blackBlank = blank && !showBackground;
   const bgStyle = showBackground ? ` style="--presenter-bg-image: ${escapeAttr(presenterBackgroundCssValue(backgroundImages))}"` : "";
   const outputClasses = [
@@ -19615,6 +19616,8 @@ function presenterSlideElementGroupKey(slide) {
 function presenterElementTrailingBlankSlide(slide, index, service = null) {
   const idBase = slide.id || slide.elementId || slide.sectionId || `slide:${index}`;
   const serviceChromakey = presenterServiceUsesChromakey(service);
+  const sectionKey = String(slide.sectionKey || slide.section_key || "").trim();
+  const suppressBackgroundImage = sectionKey === "scripture_reading";
   return {
     ...slide,
     id: `${idBase}:after-blank`,
@@ -19638,6 +19641,7 @@ function presenterElementTrailingBlankSlide(slide, index, service = null) {
     sourceType: "",
     componentType: "",
     scoreBackground: false,
+    suppressBackgroundImage,
     outputContext: presenterSlideOutputContext(slide, serviceChromakey),
     autoTrailingBlank: true,
     sort: (Number(slide.sort) || index) + 0.009,
