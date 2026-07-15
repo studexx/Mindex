@@ -3036,6 +3036,7 @@ def main() -> int:
                         readingReferenceBook: readingSlide.referenceBook || '',
                         readingReferenceRange: readingSlide.referenceRange || '',
                         readingFinal: readingSlide.scriptureReadingFinal || false,
+                        readingSuppressBackground: Boolean(readingSlide.suppressBackgroundImage),
                         readingTranslationLabel: readingSlide.translationLabel || '',
                         readingOutputContext: presenterSlideOutputContext(readingSlide, true),
                         readingNoChromakey: outputs[0]?.classList.contains('no-chromakey') || false,
@@ -3080,6 +3081,7 @@ def main() -> int:
                     and scripture_context_state["readingReferenceBook"] == "출애굽기"
                     and scripture_context_state["readingReferenceRange"] == "23:14–19"
                     and scripture_context_state["readingFinal"]
+                    and scripture_context_state["readingSuppressBackground"]
                     and scripture_context_state["readingTranslationLabel"] == "개역개정"
                     and scripture_context_state["readingVersion"] == "개역개정"
                     and scripture_context_state["readingFin"] == "Fin."

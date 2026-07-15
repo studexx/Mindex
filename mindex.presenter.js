@@ -1236,6 +1236,7 @@ function buildPresenterScriptureTextSlides(item, section, index) {
       translationLabel: payload.translationLabel || "",
       text: verseText,
       scriptureReadingFinal: readingFinal,
+      suppressBackgroundImage: readingFinal,
       ...(context === "reading" ? { outputContext: "clean" } : {}),
       ...(context === "sermon" ? { outputContext: "chromakey" } : {}),
       sort: index + verseIndex / 100,
