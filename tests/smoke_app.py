@@ -1639,12 +1639,13 @@ def main() -> int:
                           })(),
                           sundayFirstSendingPrune: (() => {
                             const sectionId = '66666666-6666-4666-8666-666666666666';
-                            const item = (id, label, key, order) => normalizeServiceItem({
+                            const item = (id, label, key, order, assignee = '') => normalizeServiceItem({
                               id,
                               service_id: '__smoke_sunday_first_sending__',
                               sort_order: order,
                               label,
                               raw_title: label,
+                              assignee,
                               _worshipSectionId: sectionId,
                               _worshipSectionKey: key,
                               _worshipSectionTitle: label,
@@ -1655,16 +1656,17 @@ def main() -> int:
                             const items = [
                               item('77777777-7777-4777-8777-777777777777', '축도', 'benediction', 1),
                               item('88888888-8888-4888-8888-888888888888', '주기도문', 'lords_prayer', 2),
+                              item('99999999-9999-4999-8999-999999999999', '설교 제목', 'sermon', 3, '김남영 목사'),
                             ];
-                            const layLeader = normalizeServiceItemsForTemplateHierarchy(
+                            const pastorPreacher = normalizeServiceItemsForTemplateHierarchy(
                               { id: '__smoke_sunday_first_lay__', type_id: 'sunday-first', worshipLeader: '인도자' },
                               items,
                             ).map((row) => row.label);
-                            const pastorLeader = normalizeServiceItemsForTemplateHierarchy(
+                            const layPreacher = normalizeServiceItemsForTemplateHierarchy(
                               { id: '__smoke_sunday_first_pastor_existing__', type_id: 'sunday-first', worshipLeader: '김남영 목사' },
-                              items,
+                              items.map((row) => row.label === '설교 제목' ? { ...row, assignee: '이준철 전도사' } : row),
                             ).map((row) => row.label);
-                            return { layLeader, pastorLeader };
+                            return { pastorPreacher, layPreacher };
                           })(),
                           cards: document.querySelectorAll('.svc-template-draft-card, .svc-template-inventory-card').length,
                           overflow: Math.max(document.documentElement.scrollWidth - window.innerWidth, document.body.scrollWidth - window.innerWidth)
@@ -1991,8 +1993,8 @@ def main() -> int:
                             },
                         ]
                         and template_terms["sundayFirstSendingPrune"] == {
-                            "layLeader": ["주기도문"],
-                            "pastorLeader": ["축도"],
+                            "pastorPreacher": ["설교 제목", "축도"],
+                            "layPreacher": ["설교 제목", "주기도문"],
                         }
                         and len(template_terms["monthlyScaffold"]["corporatePrayerElements"]) == 5
                         and len(template_terms["monthlyScaffold"]["offeringElements"]) == 2
@@ -2731,12 +2733,38 @@ def main() -> int:
                             const items = state.serviceItems[service.id];
                             const byLabel = (label) => items.find((entry) => entry.label === label) || {};
                             const citations = items.filter(isPresenterPreparationCitationItem);
+                            const citation = citations[0] || {};
+                            const citationReferences = parseServiceItemMemo(citation.memo).scriptureReferences || [];
+                            const translation = selectedPresenterBibleTranslation();
+                            citationReferences.forEach((referenceText) => {
+                              const reference = parseBibleReference(referenceText);
+                              if (!reference || !translation?.id) return;
+                              const start = reference.verse || 1;
+                              const end = reference.verseEnd || reference.verse || start;
+                              cacheServiceScriptureVerses(reference, Array.from({ length: end - start + 1 }, (_, offset) => ({
+                                book_code: reference.book.code,
+                                chapter: reference.chapter,
+                                verse: start + offset,
+                                text: `${referenceText} ${start + offset}`,
+                              })));
+                            });
+                            const citationSlides = buildPresenterScriptureTextSlides(citation, {
+                              sectionKey: 'sermon', sectionLabel: '설교', sectionTitle: '설교',
+                            }, 0);
+                            const citationMemoRoundTrip = parseServiceItemMemo(serializeServiceItemMemo(parseServiceItemMemo(citation.memo)));
+                            const citationConfig = serviceElementConfigForSave({}, citationMemoRoundTrip, { item: citation, service });
                             return {
                               songIds: ['찬양 1', '찬양 2', '찬양 3', '찬양 4', '결단찬양'].map((label) => byLabel(label).song_id || ''),
                               prayer: byLabel('기도').assignee || '',
                               reading: byLabel('성경봉독').raw_title || '',
                               sermonTitle: byLabel('설교 제목').raw_title || '',
-                              citations: citations.map((entry) => entry.raw_title || ''),
+                              citationCount: citations.length,
+                              citationReferences,
+                              citationRawTitle: citation.raw_title || '',
+                              citationSlideCount: citationSlides.length,
+                              citationSlideReferences: [...new Set(citationSlides.map((slide) => slide.title))],
+                              citationMemoRoundTrip: citationMemoRoundTrip.scriptureReferences || [],
+                              citationConfigReferences: citationConfig.scriptureReferences || [],
                               draftCleared: !state.presenterPreparationDrafts[service.id],
                             };
                           } finally {
@@ -2760,10 +2788,16 @@ def main() -> int:
                         and presenter_preparation_paste["prayer"] == "정선분 권사"
                         and presenter_preparation_paste["reading"] == "히 10:38–39"
                         and presenter_preparation_paste["sermonTitle"] == "믿음을 잃어버릴 수도 있어요?"
-                        and presenter_preparation_paste["citations"] == [
+                        and presenter_preparation_paste["citationCount"] == 1
+                        and presenter_preparation_paste["citationReferences"] == [
                             "렘 3:22", "마 3:11", "눅 24:49", "행 2:4", "고후 10:4", "롬 8:35–37", "살전 4:3", "벧전 1:14–15",
                             "히 4:12", "엡 5:26", "요일 1:7", "행 15:8–9", "눅 11:13", "롬 8:30", "마 5:48", "롬 13:10"
                         ]
+                        and presenter_preparation_paste["citationRawTitle"] == "렘 3:22; 마 3:11; 눅 24:49; 행 2:4; 고후 10:4; 롬 8:35–37; 살전 4:3; 벧전 1:14–15; 히 4:12; 엡 5:26; 요일 1:7; 행 15:8–9; 눅 11:13; 롬 8:30; 마 5:48; 롬 13:10"
+                        and presenter_preparation_paste["citationSlideCount"] == 20
+                        and len(presenter_preparation_paste["citationSlideReferences"]) == 16
+                        and presenter_preparation_paste["citationMemoRoundTrip"] == presenter_preparation_paste["citationReferences"]
+                        and presenter_preparation_paste["citationConfigReferences"] == presenter_preparation_paste["citationReferences"]
                         and presenter_preparation_paste["draftCleared"]
                     ):
                         pass_("presenter-preparation-paste", json.dumps(presenter_preparation_paste, ensure_ascii=False))
@@ -3444,6 +3478,132 @@ def main() -> int:
                     pass_("praise-canonical-normalized-title-reuse", json.dumps(canonical_state, ensure_ascii=False))
                 else:
                     fail("praise-canonical-normalized-title-reuse", json.dumps(canonical_state, ensure_ascii=False))
+                form_reorder_save = page.evaluate(
+                    """
+                    async () => {
+                      const originalClient = state.client;
+                      const originalPraiseTypesSupported = state.songVersionPraiseTypesSupported;
+                      const versionId = '11111111-2222-4333-8444-555555555555';
+                      const firstUnitId = 'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa';
+                      const secondUnitId = 'bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb';
+                      const operations = [];
+                      try {
+                        state.songVersionPraiseTypesSupported = true;
+                        state.selectedVersionId = versionId;
+                        state.forms = [];
+                        state.client = {
+                          from(table) {
+                            let pendingUpdate = false;
+                            const query = {
+                              select() { return this; },
+                              eq(column, value) {
+                                operations.push({ op: 'eq', table, column, value });
+                                if (pendingUpdate) {
+                                  pendingUpdate = false;
+                                  return Promise.resolve({ data: null, error: null });
+                                }
+                                return this;
+                              },
+                              in(column, values) {
+                                operations.push({ op: 'in', table, column, values });
+                                if (table === 'mindex_version_units') {
+                                  return Promise.resolve({
+                                    data: [
+                                      { id: firstUnitId, version_id: versionId, unit_order: 1, curated_order: 1 },
+                                      { id: secondUnitId, version_id: versionId, unit_order: 2, curated_order: 2 },
+                                    ],
+                                    error: null,
+                                  });
+                                }
+                                return Promise.resolve({ data: [], error: null });
+                              },
+                              maybeSingle() {
+                                return Promise.resolve({
+                                  data: { id: '99999999-9999-4999-8999-999999999999', title: '순서 테스트', normalized_title: '순서테스트' },
+                                  error: null,
+                                });
+                              },
+                              update(payload) {
+                                operations.push({ op: 'update', table, payload });
+                                pendingUpdate = true;
+                                return this;
+                              },
+                              upsert(payload) {
+                                operations.push({ op: 'upsert', table, payload });
+                                if (table === 'mindex_version_units') {
+                                  const unitUpsertIndex = operations.length - 1;
+                                  const reservedBeforeUpsert = operations
+                                    .slice(0, unitUpsertIndex)
+                                    .filter((entry) => entry.op === 'update' && entry.table === 'mindex_version_units')
+                                    .length;
+                                  if (reservedBeforeUpsert < 2) {
+                                    return Promise.resolve({
+                                      data: null,
+                                      error: { message: 'duplicate key value violates unique unit order' },
+                                    });
+                                  }
+                                }
+                                return Promise.resolve({ data: payload, error: null });
+                              },
+                              delete() {
+                                operations.push({ op: 'delete', table });
+                                return this;
+                              },
+                            };
+                            return query;
+                          },
+                        };
+                        const song = {
+                          id: '99999999-9999-4999-8999-999999999999',
+                          title: '순서 테스트',
+                          versions: [{
+                            id: versionId,
+                            name: 'Default',
+                            is_primary: true,
+                            praise_types: ['ccm'],
+                            forms: [
+                              { id: secondUnitId, part_type: 'Chorus', lyrics: '후렴', sort_order: 1 },
+                              { id: firstUnitId, part_type: 'Verse', lyrics: '절', sort_order: 2 },
+                            ],
+                          }],
+                        };
+                        await saveSongVersions(song);
+                        const unitUpdates = operations
+                          .filter((entry) => entry.op === 'update' && entry.table === 'mindex_version_units')
+                          .map((entry) => entry.payload);
+                        const unitUpsert = operations.find((entry) => entry.op === 'upsert' && entry.table === 'mindex_version_units');
+                        return {
+                          unitUpdates,
+                          upsertOrders: (unitUpsert?.payload || []).map((row) => ({
+                            id: row.id,
+                            unit_order: row.unit_order,
+                            curated_order: row.curated_order,
+                            label: row.curated_unit_label,
+                          })),
+                          updateBeforeUpsert: operations.findIndex((entry) => entry.op === 'update' && entry.table === 'mindex_version_units')
+                            < operations.findIndex((entry) => entry.op === 'upsert' && entry.table === 'mindex_version_units'),
+                        };
+                      } finally {
+                        state.client = originalClient;
+                        state.songVersionPraiseTypesSupported = originalPraiseTypesSupported;
+                      }
+                    }
+                    """
+                )
+                if (
+                    len(form_reorder_save["unitUpdates"]) == 2
+                    and form_reorder_save["updateBeforeUpsert"]
+                    and all(item["unit_order"] >= 10000 and item["curated_order"] >= 10000 for item in form_reorder_save["unitUpdates"])
+                    and [item["id"] for item in form_reorder_save["upsertOrders"]] == [
+                        "bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb",
+                        "aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa",
+                    ]
+                    and [item["unit_order"] for item in form_reorder_save["upsertOrders"]] == [1, 2]
+                    and [item["curated_order"] for item in form_reorder_save["upsertOrders"]] == [1, 2]
+                ):
+                    pass_("praise-form-reorder-save-reserves-orders", json.dumps(form_reorder_save, ensure_ascii=False))
+                else:
+                    fail("praise-form-reorder-save-reserves-orders", json.dumps(form_reorder_save, ensure_ascii=False))
 
                 page.click('[data-home-module="scripture"]')
                 wait_for_scripture_data(page)

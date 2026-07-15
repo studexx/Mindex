@@ -25,6 +25,9 @@
 }
 .presenter-output-body * { box-sizing: border-box; }
 .presenter-output-root {
+  --presenter-stage-width: 1920px;
+  --presenter-stage-height: 1080px;
+  --presenter-stage-scale: min(calc(100vw / 1920px), calc(100vh / 1080px));
   --presenter-chromakey: #00ff00;
   --presenter-output-bg: #00ff00;
   --presenter-output-fg: #fff;
@@ -54,26 +57,30 @@
   --presenter-scripture-reading-version-size: var(--presenter-size-caption);
   --presenter-scripture-reading-text-size: var(--presenter-size-body);
   display: grid;
-  width: min(100vw, calc(100vh * 16 / 9));
-  height: min(100vh, calc(100vw * 9 / 16));
+  width: var(--presenter-stage-width);
+  height: var(--presenter-stage-height);
+  max-width: none;
+  max-height: none;
   aspect-ratio: 16 / 9;
   container-type: size;
   place-items: center;
-  position: relative;
+  position: fixed;
+  top: 50%;
+  left: 50%;
   overflow: hidden;
   background: var(--presenter-output-bg);
   color: var(--presenter-output-fg);
   font-family: var(--font-presenter);
+  transform: translate(-50%, -50%) scale(var(--presenter-stage-scale));
+  transform-origin: center center;
   user-select: none;
 }
 .svc-slide-mini-canvas.presenter-output-root {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 1280px;
-  height: 720px;
-  max-width: none;
-  max-height: none;
+  --presenter-stage-scale: min(calc(100cqw / 1920px), calc(100cqh / 1080px));
+  transform: translate(-50%, -50%) scale(var(--presenter-stage-scale));
 }
 .presenter-output-layer {
   grid-area: 1 / 1;
@@ -398,14 +405,16 @@
   font-size: var(--presenter-scripture-bar-size);
   font-weight: var(--presenter-scripture-weight);
   line-height: var(--presenter-scripture-line-height);
-  padding-right: 4.8cqw;
-  padding-left: 6.4cqw;
+  padding-right: 2.8cqw;
+  padding-left: 2.8cqw;
   text-align: left;
 }
 .presenter-slide--scripture .presenter-slide-text span {
   display: block;
   width: 100%;
   font-size: var(--presenter-size-section);
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 .presenter-slide--song-title .presenter-section-song-title {
   display: grid;
@@ -526,7 +535,7 @@
 .presenter-output-root.no-chromakey .presenter-slide--scripture-reading {
   justify-content: flex-start;
   align-items: stretch;
-  padding: 10cqh 5.6cqw;
+  padding: 10cqh 3.2cqw;
   text-align: left;
 }
 .presenter-slide--scripture-reading {

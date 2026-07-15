@@ -2610,6 +2610,7 @@ function groupWorshipElements(sections = [], elements = []) {
     const formPreset = normalizeServiceFormPreset(config.formPreset || config.form_preset, formHint);
     const formPresetRules = normalizeServiceFormPresetRules(config.formPresetRules || config.form_preset_rules);
     const scriptureReference = serviceElementScriptureReference(element, section, sourceRef, config);
+    const scriptureReferences = serviceElementScriptureReferences(element, section, sourceRef, config);
     const textHighlights = normalizeServiceTextHighlights(
       config.textHighlights || config.text_highlights || config.highlights
       || sourceRef.textHighlights || sourceRef.text_highlights || sourceRef.highlights,
@@ -2636,6 +2637,7 @@ function groupWorshipElements(sections = [], elements = []) {
         formPreset,
         formPresetRules,
         scriptureReference,
+        scriptureReferences,
         textHighlights,
         introSlide,
         slides: manualSlides,
@@ -2719,6 +2721,15 @@ function serviceElementScriptureReference(element = {}, section = {}, sourceRef 
     if (parsed) return formatServiceBibleReference(parsed, referenceText);
   }
   return "";
+}
+
+function serviceElementScriptureReferences(element = {}, section = {}, sourceRef = {}, config = {}) {
+  const configured = config.scriptureReferences || config.scripture_references
+    || sourceRef.scriptureReferences || sourceRef.scripture_references;
+  const references = normalizeServiceScriptureReferenceList(configured);
+  if (references.length) return references;
+  const reference = serviceElementScriptureReference(element, section, sourceRef, config);
+  return reference ? [reference] : [];
 }
 
 function firstBibleReferenceLine(value) {
@@ -4267,15 +4278,18 @@ function buildWorshipPersistenceRows(service, items, existingSectionById = {}, e
     const asset = normalizeServiceAsset(parsed.asset || existingElement?.asset);
     const sourceRef = serviceElementSourceRefForSave(existingSourceRef, item, parsed, Boolean(manualBody));
     const contentState = serviceElementContentStateForSave(item, parsed, service);
+    const scriptureReferences = scriptureBody
+      ? serviceItemScriptureReferences(item, parsed)
+      : [];
     const scriptureReference = scriptureBody
-      ? normalizeServiceItemReferenceSpacing(parsed.scriptureReference || item.raw_title || existingElement?.scripture_reference || "")
+      ? (scriptureReferences[0] || normalizeServiceItemReferenceSpacing(parsed.scriptureReference || item.raw_title || existingElement?.scripture_reference || ""))
       : (existingElement?.scripture_reference || "");
     const elementRow = {
       id: elementId,
       section_id: sectionId,
       sort_order: sectionElementCounts.get(sectionId),
       element_type: worshipDbElementTypeForSave(elementType) || "plain_text",
-      title: scriptureBody ? scriptureReference : (manualBody ? String(item.raw_title || "").trim() : serviceElementTitleForSave(item, elementType)),
+      title: scriptureBody ? scriptureReferences.join("; ") || scriptureReference : (manualBody ? String(item.raw_title || "").trim() : serviceElementTitleForSave(item, elementType)),
       person: cleanServiceAssignee(item.assignee),
       body: manualBody || "",
       song_id: item.song_id || null,
@@ -4390,6 +4404,11 @@ function serviceElementConfigForSave(existingConfig = {}, parsed = emptyServiceI
     elementType: contentState.elementType,
     required: Boolean(contentState.required),
   };
+  if (parsed.scriptureReferences?.length) config.scriptureReferences = [...parsed.scriptureReferences];
+  else {
+    delete config.scriptureReferences;
+    delete config.scripture_references;
+  }
   delete config.content_state;
   if (parsed.textHighlights?.length) config.textHighlights = parsed.textHighlights;
   else {
@@ -4589,6 +4608,7 @@ async function saveSongVersions(song) {
   }
 
   const existingUnits = await fetchExistingVersionUnits(versionIds);
+  await reserveExistingVersionUnitOrders(existingUnits);
   if (unitRows.length) {
     const { error: unitError } = await state.client
       .from("mindex_version_units")
@@ -4708,10 +4728,38 @@ async function fetchExistingVersionUnits(versionIds) {
   if (!versionIds.length) return [];
   const { data, error } = await state.client
     .from("mindex_version_units")
-    .select("id")
+    .select("id,version_id,unit_order,curated_order")
     .in("version_id", versionIds);
   if (error) throw error;
   return data || [];
+}
+
+async function reserveExistingVersionUnitOrders(existingUnits = []) {
+  const units = (existingUnits || []).filter((unit) => isUuid(unit?.id));
+  if (!units.length || !state.client) return;
+
+  const byVersion = new Map();
+  units.forEach((unit) => {
+    const versionId = unit.version_id || "";
+    const list = byVersion.get(versionId) || [];
+    list.push(unit);
+    byVersion.set(versionId, list);
+  });
+
+  for (const list of byVersion.values()) {
+    const offset = Math.max(10000, list.length + 1000);
+    for (let index = 0; index < list.length; index += 1) {
+      const reservedOrder = offset + index + 1;
+      const { error } = await state.client
+        .from("mindex_version_units")
+        .update({
+          unit_order: reservedOrder,
+          curated_order: reservedOrder,
+        })
+        .eq("id", list[index].id);
+      if (error) throw error;
+    }
+  }
 }
 
 function assignStableVersionOrders(versions, existingCanonicalRows = [], sourceSongId = "") {
@@ -6098,6 +6146,15 @@ function updateServiceItemField(field) {
         item.version_id = null;
       }
       const parsed = clearGeneratedServiceScriptureSlides(item);
+      if (isScriptureBodyServiceItem(item)) {
+        const references = serviceItemSupportsScriptureReferenceList(item)
+          ? normalizeServiceScriptureReferenceList(field.value)
+          : [];
+        parsed.scriptureReferences = references;
+        parsed.scriptureReference = references[0] || normalizeServiceItemReferenceSpacing(item.raw_title || "");
+        parsed.slides = [];
+        if (references.length) item.raw_title = references.join("; ");
+      }
       if (serviceItemUsesFlexibleOfferingSlot(item)) parsed.outputMode = "";
       item.memo = serializeServiceItemMemo(parsed);
       if (!strictSongInput) applyServiceSongSelection(item);
@@ -6567,6 +6624,7 @@ function emptyServiceItemMemo(rawNote = "") {
     note: String(rawNote || "").trim(),
     slides: [],
     scriptureReference: "",
+    scriptureReferences: [],
     introSlide: null,
     formHint: "",
     formPreset: null,
@@ -6602,6 +6660,7 @@ function parseServiceItemMemo(value) {
           ? parsed.slides.map((slide) => String(slide || "").trim()).filter(Boolean)
           : [],
         scriptureReference: String(parsed.scriptureReference || parsed.scripture_reference || "").trim(),
+        scriptureReferences: normalizeServiceScriptureReferenceList(parsed.scriptureReferences || parsed.scripture_references),
         introSlide,
         formHint: String(parsed.formHint || parsed.form_hint || parsed.forms || "").trim(),
         formPreset: normalizeServiceFormPreset(parsed.formPreset || parsed.form_preset, parsed.formHint || parsed.form_hint),
@@ -6697,6 +6756,7 @@ function serializeServiceItemMemo(value = {}) {
     ? value.slides.map((slide) => String(slide || "").trim()).filter(Boolean)
     : [];
   const scriptureReference = String(value.scriptureReference || value.scripture_reference || "").trim();
+  const scriptureReferences = normalizeServiceScriptureReferenceList(value.scriptureReferences || value.scripture_references);
   const formHint = String(value.formHint || value.form_hint || "").trim();
   const formPreset = normalizeServiceFormPreset(value.formPreset || value.form_preset, formHint);
   const formPresetRules = normalizeServiceFormPresetRules(value.formPresetRules || value.form_preset_rules);
@@ -6714,9 +6774,10 @@ function serializeServiceItemMemo(value = {}) {
   const templateSuppressed = Boolean(value.templateSuppressed || value.template_suppressed);
   const defaultAssetKind = serviceAssetKindForElementType(elementType);
   if (!asset.kind && defaultAssetKind && hasServiceAsset(asset)) asset.kind = defaultAssetKind;
-  if (!slides.length && !hasServiceIntroSlide(introSlide) && !formHint && !formPreset && !formPresetRules.length && !templateKey && !templateVariant && !elementType && !outputMode && !inputMode && !textHighlights.length && !hasServiceAsset(asset) && !hasServicePlaybackConfig(playback) && !presenterRole && !hiddenInPresentation && !templateSuppressed) return note;
+  if (!slides.length && !scriptureReference && !scriptureReferences.length && !hasServiceIntroSlide(introSlide) && !formHint && !formPreset && !formPresetRules.length && !templateKey && !templateVariant && !elementType && !outputMode && !inputMode && !textHighlights.length && !hasServiceAsset(asset) && !hasServicePlaybackConfig(playback) && !presenterRole && !hiddenInPresentation && !templateSuppressed) return note;
   const payload = { note };
   if (scriptureReference) payload.scriptureReference = scriptureReference;
+  if (scriptureReferences.length) payload.scriptureReferences = scriptureReferences;
   if (hasServiceIntroSlide(introSlide)) payload.introSlide = introSlide;
   if (formHint) payload.formHint = formHint;
   if (formPreset) payload.formPreset = formPreset;
@@ -6905,12 +6966,22 @@ function serviceItemEditorModel(item = {}, options = {}) {
 function serviceItemScriptureInputInvalid(item = {}) {
   if (!isScriptureBodyServiceItem(item)) return false;
   const memo = parseServiceItemMemo(item.memo);
+  if (serviceItemSupportsScriptureReferenceList(item)) {
+    const raw = String(item.raw_title || "").trim();
+    return Boolean(raw) && !normalizeServiceScriptureReferenceList(raw).length;
+  }
   const raw = String(memo.scriptureReference || item.raw_title || "").trim();
   if (!raw) return false;
   return !parseBibleReference(raw);
 }
 
 function clearGeneratedServiceScriptureSlides(item = {}, parsed = parseServiceItemMemo(item.memo)) {
+  if (serviceItemSupportsScriptureReferenceList(item)) {
+    parsed.scriptureReferences = [];
+    parsed.scriptureReference = "";
+    parsed.slides = [];
+    return parsed;
+  }
   if (!parsed.scriptureReference) return parsed;
   if (normalizeServiceItemReferenceSpacing(parsed.scriptureReference) === normalizeServiceItemReferenceSpacing(item.raw_title)) return parsed;
   parsed.scriptureReference = "";
@@ -6925,33 +6996,38 @@ function scheduleServiceScriptureBodyResolve(serviceId = state.selectedServiceId
   const items = getServiceItems(serviceId);
   const item = items[index];
   if (!item || !isScriptureBodyServiceItem(item)) return;
-  const reference = parseBibleReference(item.raw_title);
-  if (!reference || !state.client) return;
+  const references = serviceItemScriptureReferences(item);
+  if (!references.length || !state.client) return;
   const key = `${serviceId}:${index}`;
   if (serviceScriptureResolveTimers.has(key)) window.clearTimeout(serviceScriptureResolveTimers.get(key));
   serviceScriptureResolveTimers.set(key, window.setTimeout(() => {
     serviceScriptureResolveTimers.delete(key);
-    void resolveServiceScriptureBodyReference(serviceId, index, item.raw_title);
+    void resolveServiceScriptureBodyReference(serviceId, index);
   }, 420));
 }
 
-async function resolveServiceScriptureBodyReference(serviceId, index, rawReference) {
+async function resolveServiceScriptureBodyReference(serviceId, index) {
   const items = getServiceItems(serviceId);
   const item = items[index];
   if (!item || !isScriptureBodyServiceItem(item)) return;
-  const reference = parseBibleReference(rawReference);
-  if (!reference) return;
-  const normalizedReference = formatLiveScriptureReference(reference);
-  if (normalizeServiceItemReferenceSpacing(item.raw_title) !== normalizeServiceItemReferenceSpacing(rawReference)) return;
+  const references = serviceItemScriptureReferences(item);
+  if (!references.length) return;
+  const referenceSignature = references.join(";");
   try {
-    const verses = await fetchServiceScriptureVerses(reference);
-    if (!verses.length) return;
+    const resolved = await Promise.all(references.map(async (referenceText) => {
+      const reference = parseBibleReference(referenceText);
+      if (!reference) return null;
+      const verses = await fetchServiceScriptureVerses(reference);
+      return verses.length ? formatLiveScriptureReference(reference) : null;
+    }));
+    if (!resolved.some(Boolean)) return;
+    if (serviceItemScriptureReferences(item).join(";") !== referenceSignature) return;
     const parsed = parseServiceItemMemo(item.memo);
-    parsed.scriptureReference = normalizedReference;
+    parsed.scriptureReferences = references;
+    parsed.scriptureReference = references[0] || "";
     parsed.slides = [];
-    item.raw_title = normalizedReference;
+    item.raw_title = references.join("; ");
     item.memo = serializeServiceItemMemo(parsed);
-    cacheServiceScriptureVerses(reference, verses);
     state.serviceItems[serviceId] = normalizeServiceItemsInCurrentOrder(items);
     state.dirty.service = true;
     refreshPresenterForService(serviceId);
@@ -6996,7 +7072,7 @@ async function preloadWorshipScriptureReferences(sections = [], elements = []) {
     if (!selectedPresenterBibleTranslation()?.id) return;
     const sectionById = Object.fromEntries(sections.map((section) => [section.id, section]));
     const references = uniqueList(elements
-      .map((element) => serviceElementScriptureReference(
+      .flatMap((element) => serviceElementScriptureReferences(
         element,
         sectionById[element.section_id] || {},
         element.source_ref && typeof element.source_ref === "object" ? element.source_ref : {},
@@ -7014,19 +7090,31 @@ async function preloadWorshipScriptureReferences(sections = [], elements = []) {
 }
 
 function serviceScriptureTextPayloadFromBible(item = {}, memo = parseServiceItemMemo(item?.memo)) {
-  const referenceText = normalizeServiceItemReferenceSpacing(memo.scriptureReference || item.raw_title || "");
-  const reference = parseBibleReference(referenceText);
-  if (!reference) return { reference: referenceText, verses: [] };
-  const normalizedReference = formatServiceBibleReference(reference, referenceText);
-  const referenceParts = serviceScriptureReferenceParts(reference, normalizedReference);
+  const references = serviceItemScriptureReferences(item, memo);
+  if (!references.length) return { reference: "", verses: [] };
+  const resolved = references.map((referenceText) => {
+    const reference = parseBibleReference(referenceText);
+    if (!reference) return null;
+    const normalizedReference = formatServiceBibleReference(reference, referenceText);
+    const parts = serviceScriptureReferenceParts(reference, normalizedReference);
+    const fullReference = [parts.referenceBook, parts.referenceRange].filter(Boolean).join(" ") || normalizedReference;
+    return { reference, normalizedReference: fullReference, ...parts };
+  }).filter(Boolean);
+  if (!resolved.length) return { reference: references.join("; "), verses: [] };
+  const primary = resolved[0];
   return {
-    reference: normalizedReference,
-    ...referenceParts,
+    reference: primary.normalizedReference,
+    referenceBook: primary.referenceBook,
+    referenceRange: primary.referenceRange,
     translationLabel: serviceBibleTranslationDisplayLabel(selectedPresenterBibleTranslation()),
-    verses: getCachedServiceScriptureVerses(reference).map((verse) => ({
-      number: String(verse.verse || "").trim(),
-      text: String(verse.text || "").trim(),
-    })).filter((verse) => verse.text),
+    verses: resolved.flatMap(({ reference, normalizedReference, referenceBook, referenceRange }) =>
+      getCachedServiceScriptureVerses(reference).map((verse) => ({
+        number: String(verse.verse || "").trim(),
+        text: String(verse.text || "").trim(),
+        reference: normalizedReference,
+        referenceBook,
+        referenceRange,
+      })).filter((verse) => verse.text)),
   };
 }
 
@@ -7473,7 +7561,7 @@ function serviceTemplateVersionName(typeId, service = null) {
 
 function buildWorshipServiceScaffold(serviceId, typeId, options = {}) {
   const service = options.service || state.services.find((item) => item.id === serviceId) || null;
-  const steps = serviceOrderTemplate(typeId, { service }).map((step, index) => normalizeServiceTemplateStep(step, index, typeId));
+  const steps = serviceOrderTemplate(typeId, { service, items: options.items || [] }).map((step, index) => normalizeServiceTemplateStep(step, index, typeId));
   const templateVersion = serviceTemplateVersionName(typeId, service);
   const sections = [];
   const elements = [];
@@ -12990,7 +13078,7 @@ const PUBLIC_WORSHIP_CLOSING_IMAGE_ASSET = {
 const PUBLIC_WORSHIP_TEMPLATE_VERSIONS = {
   "sunday-first": [
     publicWorshipTemplateBaseline((options = {}) => {
-        const pastorLeader = serviceHasPastorWorshipLeader(options.service);
+        const pastorLeader = serviceHasPastorSermonLeader(options.service, options.items);
         return publicSundayFirstTemplate({ score: true, benediction: pastorLeader, lordsPrayer: !pastorLeader });
       }),
   ],
@@ -13767,10 +13855,11 @@ function projectWorshipServiceItemsFromTemplate(service, items = []) {
     .filter(isTemplateSuppressedServiceItem)
     .map((item) => serviceItemTemplateProjectionKey(item, { includeLabel: true })));
   const visibleExisting = existing.filter((item) => !isTemplateSuppressedServiceItem(item));
-  const scaffold = buildWorshipServiceScaffold(service?.id || "__service__", appTypeId, { service });
+  const scaffold = buildWorshipServiceScaffold(service?.id || "__service__", appTypeId, { service, items: existing });
   const scaffoldItems = normalizeServiceItemsForTemplateHierarchy(
     service,
     groupWorshipElements(scaffold.sections, scaffold.elements)[service?.id || "__service__"] || [],
+    { referenceItems: existing },
   ).filter((item) => !suppressedTemplateKeys.has(serviceItemTemplateProjectionKey(item, { includeLabel: true })));
   const templateSectionCounts = countTemplateProjectionSections(scaffoldItems);
 
@@ -13981,7 +14070,7 @@ function normalizeServiceItemsForTemplateHierarchy(service, items = [], options 
     }));
   }
 
-  const normalizedItems = normalizeSundayFirstSendingItems(service, items);
+  const normalizedItems = normalizeSundayFirstSendingItems(service, items, options.referenceItems);
   const hierarchy = serviceTemplateHierarchyIndex(appTypeId);
   if (!hierarchy.sections.length) return normalizedItems;
   const annotated = normalizedItems.map((item, index) => ({
@@ -14005,9 +14094,9 @@ function normalizeServiceItemsForTemplateHierarchy(service, items = [], options 
     }));
 }
 
-function normalizeSundayFirstSendingItems(service = null, items = []) {
+function normalizeSundayFirstSendingItems(service = null, items = [], referenceItems = null) {
   if (worshipAppServiceTypeId(service?.type_id) !== "sunday-first") return items;
-  const pastorLeader = serviceHasPastorWorshipLeader(service);
+  const pastorLeader = serviceHasPastorSermonLeader(service, referenceItems || items);
   return items.filter((item) => {
     const sectionKey = String(item?._worshipSectionKey || item?.sectionKey || item?.section_key || "").trim();
     const labelKey = compactSearchValue(item?.label || item?.raw_title || "");
@@ -14414,6 +14503,21 @@ function templateStepPatchKey(step = {}, index = 0) {
 
 function arrayItems(value) {
   return Array.isArray(value) ? value.filter(Boolean) : [];
+}
+
+function serviceHasPastorSermonLeader(service = null, items = []) {
+  const sermonTitle = (Array.isArray(items) ? items : []).find((item) => {
+    const sectionKey = String(item?._worshipSectionKey || item?.sectionKey || item?.section_key || "").trim();
+    const label = compactSearchValue(item?.label || "");
+    return sectionKey === "sermon" && (label === "설교제목" || label === "설교");
+  });
+  const sermonMinister = cleanServiceAssignee(sermonTitle?.assignee || sermonTitle?.person || "");
+  if (sermonMinister) return compactSearchValue(sermonMinister).includes("목사");
+  return compactSearchValue(serviceWorshipLeaderLabel(service)).includes("목사");
+}
+
+function serviceHasPastorWorshipLeader(service = null) {
+  return compactSearchValue(serviceWorshipLeaderLabel(service)).includes("목사");
 }
 
 function serviceHasPastorWorshipLeader(service = null) {
@@ -16935,6 +17039,27 @@ function normalizeServiceItemReferenceSpacing(value) {
     .replace(/\s+/g, " ");
 }
 
+function normalizeServiceScriptureReferenceList(value) {
+  const source = Array.isArray(value) ? value : String(value || "").split(/[;；]/);
+  return uniqueList(source
+    .map((reference) => normalizeServiceItemReferenceSpacing(reference))
+    .filter((reference) => parseBibleReference(reference)));
+}
+
+function serviceItemSupportsScriptureReferenceList(item = {}) {
+  return compactSearchValue(item.label || "") === "인용구절";
+}
+
+function serviceItemScriptureReferences(item = {}, memo = parseServiceItemMemo(item.memo)) {
+  const configured = normalizeServiceScriptureReferenceList(memo.scriptureReferences);
+  if (configured.length) return configured;
+  if (serviceItemSupportsScriptureReferenceList(item)) {
+    return normalizeServiceScriptureReferenceList(item.raw_title || memo.scriptureReference);
+  }
+  const reference = normalizeServiceItemReferenceSpacing(memo.scriptureReference || item.raw_title || "");
+  return parseBibleReference(reference) ? [reference] : [];
+}
+
 function normalizeServiceItemRawTitle(label, value) {
   const raw = String(value || "").trim();
   return isScriptureServiceLabel(label) ? normalizeServiceItemReferenceSpacing(raw) : raw;
@@ -16942,6 +17067,10 @@ function normalizeServiceItemRawTitle(label, value) {
 
 function normalizeServiceItemRawTitleForItem(item = {}, value = "") {
   const raw = String(value || "").trim();
+  if (serviceItemSupportsScriptureReferenceList(item)) {
+    const references = normalizeServiceScriptureReferenceList(raw);
+    return references.length ? references.join("; ") : raw;
+  }
   return isScriptureBodyServiceItem(item) || isScriptureServiceLabel(item?.label)
     ? normalizeServiceItemReferenceSpacing(raw)
     : raw;
@@ -17339,39 +17468,37 @@ function presenterPreparationCitationItems(service, items, references) {
   if (!sermonBody) return { error: "인용 구절을 넣을 설교 본문 항목을 찾지 못했습니다.", items };
 
   const existing = items.filter(isPresenterPreparationCitationItem);
-  const anchorIndex = items.findIndex((item) => item.id === sermonBody.id);
   const next = items.filter((item) => !isPresenterPreparationCitationItem(item));
   const insertionIndex = next.findIndex((item) => item.id === sermonBody.id) + 1;
   const baseOrder = Number(sermonBody._worshipElementOrder) || 2;
-  const citations = references.map((reference, index) => {
-    const current = existing[index] || {};
-    const parsed = parseServiceItemMemo(current.memo || sermonBody.memo);
-    parsed.elementType = "scripture_body";
-    parsed.componentType = "scripture_body";
-    parsed.inputMode = "scripture";
-    parsed.scriptureReference = reference;
-    parsed.slides = [];
-    return normalizeServiceItem({
-      ...current,
-      id: current.id || createLocalId(),
-      service_id: service.id,
-      label: index ? `인용 구절 ${index + 1}` : "인용 구절",
-      raw_title: reference,
-      song_id: null,
-      version_id: null,
-      memo: serializeServiceItemMemo(parsed),
-      _worshipSectionId: sermonBody._worshipSectionId || "",
-      _worshipSectionKey: sermonBody._worshipSectionKey || "sermon",
-      _worshipSectionTitle: sermonBody._worshipSectionTitle || "설교",
-      _worshipSectionOrder: Number(sermonBody._worshipSectionOrder) || 0,
-      _worshipElementOrder: baseOrder + ((index + 1) / 100),
-      _worshipElementTemplateModified: true,
-      _worshipTemplateProjected: false,
-      _worshipTemplatePlaceholder: false,
-    }, insertionIndex + index);
-  });
-  next.splice(Math.max(0, insertionIndex), 0, ...citations);
-  return { items: next, citationIds: citations.map((item) => item.id), anchorIndex };
+  const current = existing[0] || {};
+  const parsed = parseServiceItemMemo(current.memo || sermonBody.memo);
+  parsed.elementType = "scripture_body";
+  parsed.componentType = "scripture_body";
+  parsed.inputMode = "scripture";
+  parsed.scriptureReference = references[0] || "";
+  parsed.scriptureReferences = [...references];
+  parsed.slides = [];
+  const citation = normalizeServiceItem({
+    ...current,
+    id: current.id || createLocalId(),
+    service_id: service.id,
+    label: "인용 구절",
+    raw_title: references.join("; "),
+    song_id: null,
+    version_id: null,
+    memo: serializeServiceItemMemo(parsed),
+    _worshipSectionId: sermonBody._worshipSectionId || "",
+    _worshipSectionKey: sermonBody._worshipSectionKey || "sermon",
+    _worshipSectionTitle: sermonBody._worshipSectionTitle || "설교",
+    _worshipSectionOrder: Number(sermonBody._worshipSectionOrder) || 0,
+    _worshipElementOrder: baseOrder + 0.01,
+    _worshipElementTemplateModified: true,
+    _worshipTemplateProjected: false,
+    _worshipTemplatePlaceholder: false,
+  }, insertionIndex);
+  next.splice(Math.max(0, insertionIndex), 0, citation);
+  return { items: next, citationIds: [citation.id] };
 }
 
 function applyPresenterPreparationInput(serviceId = state.selectedServiceId) {
@@ -17574,14 +17701,17 @@ function renderPresenterServicePraiseInput(item, index, model) {
 }
 
 function renderPresenterServiceScriptureInput(item, index, memo) {
-  const value = normalizeServiceItemReferenceSpacing(memo.scriptureReference || item.raw_title || "");
+  const references = serviceItemScriptureReferences(item, memo);
+  const value = references.length
+    ? references.join("; ")
+    : normalizeServiceItemReferenceSpacing(memo.scriptureReference || item.raw_title || "");
   return `
     <label class="svc-presenter-input-field">
       <span>구절</span>
       <div class="svc-presenter-input-control-wrap">
         <input class="svc-presenter-input-control${serviceItemScriptureInputInvalid(item) ? " is-invalid" : ""}" type="text"
           data-service-item-field="raw_title" data-service-item-index="${index}"
-          value="${escapeAttr(value)}" list="serviceScriptureOptions" placeholder="출애굽기 23:14-19" aria-label="${escapeAttr(`${item.label || "성경"} 구절`)}" />
+          value="${escapeAttr(value)}" list="serviceScriptureOptions" placeholder="${serviceItemSupportsScriptureReferenceList(item) ? "렘 3:22; 마 3:11" : "출애굽기 23:14-19"}" aria-label="${escapeAttr(`${item.label || "성경"} 구절`)}" />
         ${renderServiceItemLinkControl(item, index)}
       </div>
     </label>`;

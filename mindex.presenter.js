@@ -1214,20 +1214,21 @@ function buildPresenterScriptureTextSlides(item, section, index) {
   const lastVerseIndex = payload.verses.length - 1;
   return payload.verses.map((verse, verseIndex) => {
     const readingFinal = context === "reading" && verseIndex === lastVerseIndex;
+    const verseReference = verse.reference || reference;
     return {
-      id: `${item.id || index}:scripture:${verse.number || verseIndex + 1}`,
+      id: `${item.id || index}:scripture:${verseReference}:${verse.number || verseIndex + 1}`,
       ...section,
-      elementTitle: reference,
-      sectionName: presenterNameParts(section.sectionLabel, reference).join(" / ") || reference,
+      elementTitle: verseReference,
+      sectionName: presenterNameParts(section.sectionLabel, verseReference).join(" / ") || verseReference,
       elementType: PRESENTER_ELEMENT_TYPES.SCRIPTURE_TEXT,
       layout: PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT,
       type: "scripture",
       scriptureContext: context,
       label: item.label || "본문",
-      title: reference,
-      marker: payload.reference || "",
-      referenceBook: payload.referenceBook || "",
-      referenceRange: payload.referenceRange || "",
+      title: verseReference,
+      marker: verseReference,
+      referenceBook: verse.referenceBook || payload.referenceBook || "",
+      referenceRange: verse.referenceRange || payload.referenceRange || "",
       translationLabel: payload.translationLabel || "",
       text: verse.number ? [verse.number, verse.text].filter(Boolean).join("   ") : verse.text,
       scriptureReadingFinal: readingFinal,
@@ -2893,9 +2894,8 @@ function renderPresenterScriptureReadingSlide(slide) {
 function presenterScriptureReadingHeaderReference(slide = {}) {
   const referenceBook = String(slide?.referenceBook || "").trim();
   const referenceRange = String(slide?.referenceRange || "").trim();
-  const chapter = referenceRange.match(/^(\d+)/)?.[1] || "";
-  const compactReference = [referenceBook, chapter ? `${chapter}장` : referenceRange].filter(Boolean).join(" ").trim();
-  return compactReference || String(slide?.title || slide?.marker || "").trim();
+  const fullReference = [referenceBook, referenceRange].filter(Boolean).join(" ").trim();
+  return fullReference || String(slide?.title || slide?.marker || "").trim();
 }
 
 function presenterScriptureVerseParts(value = "") {

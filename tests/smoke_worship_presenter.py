@@ -3051,12 +3051,12 @@ def main() -> int:
                 )
                 if (
                     scripture_context_state["readingContext"] == "reading"
-                    and scripture_context_state["readingElementTitle"] == "출 23:14–19"
+                    and scripture_context_state["readingElementTitle"] == "출애굽기 23:14–19"
                     and scripture_context_state["readingOutputContext"] == "clean"
                     and scripture_context_state["readingNoChromakey"]
                     and scripture_context_state["readingHasClass"]
                     and not scripture_context_state["readingHasLowerBarText"]
-                    and scripture_context_state["readingReference"] == "출애굽기 23장"
+                    and scripture_context_state["readingReference"] == "출애굽기 23:14–19"
                     and scripture_context_state["readingReferenceBook"] == "출애굽기"
                     and scripture_context_state["readingReferenceRange"] == "23:14–19"
                     and scripture_context_state["readingFinal"]
@@ -3071,7 +3071,7 @@ def main() -> int:
                     and scripture_context_state["readingFontWeight"] == scripture_context_state["sermonFontWeight"]
                     and scripture_context_state["readingNumberFontWeight"] == scripture_context_state["readingFontWeight"]
                     and scripture_context_state["sermonContext"] == "sermon"
-                    and scripture_context_state["sermonElementTitle"] == "출 23:14–19"
+                    and scripture_context_state["sermonElementTitle"] == "출애굽기 23:14–19"
                     and scripture_context_state["sermonOutputContext"] == "chromakey"
                     and not scripture_context_state["sermonNoChromakey"]
                     and scripture_context_state["sermonHasClass"]
@@ -3580,6 +3580,61 @@ def main() -> int:
                     arg=service["id"],
                     timeout=5000,
                 )
+                fixed_stage_state = []
+                for viewport in ({"width": 1920, "height": 1080}, {"width": 2560, "height": 1440}):
+                    output_page.set_viewport_size(viewport)
+                    output_page.wait_for_timeout(80)
+                    fixed_stage_state.append(output_page.evaluate(
+                        """
+                        (viewport) => {
+                          renderPresenterOutput({
+                            serviceId: '__smoke_fixed_stage__',
+                            serviceType: 'friday',
+                            chromakey: true,
+                            outputTheme: 'chromakey',
+                            backgroundImage: '',
+                            slides: [{
+                              id: '__smoke_fixed_stage_slide__',
+                              type: 'lyrics',
+                              elementType: PRESENTER_ELEMENT_TYPES.PRAISE,
+                              layout: PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT,
+                              text: '내가 보는 화면 그대로\\n예배에서도 보이게',
+                            }],
+                            index: 0,
+                            safetyBlank: false,
+                          });
+                          const root = document.getElementById('presenterOutputRoot');
+                          const text = root.querySelector('.presenter-slide-text');
+                          const rootRect = root.getBoundingClientRect();
+                          const textRect = text.getBoundingClientRect();
+                          const style = getComputedStyle(text);
+                          return {
+                            viewport,
+                            offsetWidth: root.offsetWidth,
+                            offsetHeight: root.offsetHeight,
+                            visualWidth: Math.round(rootRect.width),
+                            visualHeight: Math.round(rootRect.height),
+                            fontSize: style.fontSize,
+                            lineHeight: style.lineHeight,
+                            textVisualHeight: Math.round(textRect.height),
+                          };
+                        }
+                        """,
+                        viewport,
+                    ))
+                if (
+                    [item["offsetWidth"] for item in fixed_stage_state] == [1920, 1920]
+                    and [item["offsetHeight"] for item in fixed_stage_state] == [1080, 1080]
+                    and [item["visualWidth"] for item in fixed_stage_state] == [1920, 2560]
+                    and [item["visualHeight"] for item in fixed_stage_state] == [1080, 1440]
+                    and len({item["fontSize"] for item in fixed_stage_state}) == 1
+                    and len({item["lineHeight"] for item in fixed_stage_state}) == 1
+                ):
+                    pass_("presenter-output-fixed-stage-font-size", json.dumps(fixed_stage_state, ensure_ascii=False))
+                else:
+                    fail("presenter-output-fixed-stage-font-size", json.dumps(fixed_stage_state, ensure_ascii=False))
+                output_page.set_viewport_size({"width": 1280, "height": 800})
+                output_page.wait_for_timeout(80)
                 page.wait_for_function(
                     "() => document.querySelector('.svc-presenter-status')?.textContent.trim() === '송출 중'",
                     timeout=5000,
@@ -4089,8 +4144,8 @@ def main() -> int:
                     and live_scripture_state["lineDisplay"] == "block"
                     and live_scripture_state["lineFits"]
                     and live_scripture_state["lineInsideTextBox"]
-                    and 60 <= live_scripture_state["lineLeftInset"] <= 180
-                    and live_scripture_state["lineRightInset"] >= 40
+                    and 32 <= live_scripture_state["lineLeftInset"] <= 90
+                    and 24 <= live_scripture_state["lineRightInset"] <= 60
                 ):
                     pass_("presenter-live-scripture-lower-bar", json.dumps(live_scripture_state, ensure_ascii=False))
                 else:
