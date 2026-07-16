@@ -369,12 +369,21 @@ function presenterImageSourcesFromAssetUrl(value) {
 function presenterFormPlanForServiceItem(version = {}, item, song = null) {
   version = version || {};
   const forms = normalizeForms(version.forms || []).filter((form) => normalizeLyricsForCopy(form.lyrics));
+  const isHymn = versionEffectivePraiseTypes(song, version).includes("hymn");
+  const itemPreset = serviceItemFormPreset(item);
   const matchedRule = matchedServiceItemFormPresetRule(item, song, version);
-  const preset = serviceItemFormPreset(item)
-    || matchedRule?.formPreset
-    || presenterSongDefaultFormPreset(song, version)
-    || presenterDefaultHymnFormPreset(forms, song, version)
-    || null;
+  const songDefaultPreset = presenterSongDefaultFormPreset(song, version);
+  const preset = isHymn
+    ? itemPreset
+      || matchedRule?.formPreset
+      || songDefaultPreset
+      || presenterDefaultVerseChorusFormPreset(forms, song, version)
+      || null
+    : presenterExplicitNonHymnFormPreset(itemPreset)
+      || matchedRule?.formPreset
+      || presenterExplicitNonHymnFormPreset(songDefaultPreset)
+      || presenterDefaultVerseChorusFormPreset(forms, song, version)
+      || null;
   const effectivePreset = presenterFormPresetWithAvailableCoda(preset, matchedRule, forms, song, version);
   if (!effectivePreset?.forms?.length) return { forms, warnings: [] };
   const resolved = resolvePresenterFormPresetSequence(forms, effectivePreset.forms);
@@ -383,6 +392,11 @@ function presenterFormPlanForServiceItem(version = {}, item, song = null) {
     forms: resolved.items.length ? resolved.items : forms,
     warnings,
   };
+}
+
+function presenterExplicitNonHymnFormPreset(preset = null) {
+  if (!preset?.forms?.length) return null;
+  return String(preset.strength || "").trim().toLowerCase() === "suggested" ? null : preset;
 }
 
 function presenterFormPresetWithAvailableCoda(preset = null, rule = null, forms = [], song = null, version = null) {
@@ -409,8 +423,9 @@ function presenterSongDefaultFormPreset(song = null, version = null) {
   return versionMeta.presenter_form || songMeta.presenter_form || null;
 }
 
-function presenterDefaultHymnFormPreset(forms = [], song = null, version = null) {
-  if (!versionEffectivePraiseTypes(song, version).includes("hymn")) return null;
+function presenterDefaultVerseChorusFormPreset(forms = [], song = null, version = null) {
+  const praiseTypes = versionEffectivePraiseTypes(song, version);
+  if (!praiseTypes.includes("hymn") && !praiseTypes.includes("ccm")) return null;
   const normalizedForms = normalizeForms(forms || []);
   const verses = normalizedForms.filter((form) => normalizePresenterFormPresetLabel(presenterFormDisplayLabel(form)).type === "verse");
   const chorus = normalizedForms.find((form) => normalizePresenterFormPresetLabel(presenterFormDisplayLabel(form)).type === "chorus");
@@ -898,6 +913,15 @@ function presenterElementSlideFromMemoCore(item, section, index, memo, displayTe
   if (presenterMemoElementIsTitleSlide(elementType)) {
     const titleText = presenterTitleAssigneeTitle(item, safeLabel, displayText, elementType);
     const assigneeText = presenterTitleAssigneePerson(item, safeLabel, displayText, titleText, service);
+    const compactLabel = compactSearchValue(safeLabel);
+    const orderTitle = String(section.sectionHeading || section.sectionTitle || section.sectionLabel || "").trim();
+    const contentTitle = ["설교제목", "특송"].includes(compactLabel)
+      ? String(displayText || "").trim()
+      : "";
+    const threePartAssignee = ["설교제목", "특송"].includes(compactLabel)
+      ? cleanPresenterAssignee(item.assignee)
+      : assigneeText;
+    const hasThreeParts = Boolean(orderTitle && contentTitle && threePartAssignee);
     const scriptureReading = isPresenterScriptureReadingSource({ elementType, label: safeLabel, sectionKey: section.sectionKey });
     if (!titleText && !assigneeText) return null;
     return {
@@ -911,9 +935,13 @@ function presenterElementSlideFromMemoCore(item, section, index, memo, displayTe
       type: "title-assignee",
       label: safeLabel,
       title: titleText,
-      assignee: assigneeText,
+      assignee: hasThreeParts ? threePartAssignee : assigneeText,
+      orderTitle: hasThreeParts ? orderTitle : "",
+      contentTitle: hasThreeParts ? contentTitle : "",
       marker: "",
-      text: cleanList([titleText, assigneeText]).join("\n"),
+      text: hasThreeParts
+        ? cleanList([orderTitle, contentTitle, threePartAssignee]).join("\n")
+        : cleanList([titleText, assigneeText]).join("\n"),
       sort: index,
     };
   }
@@ -1125,7 +1153,8 @@ function presenterTitleAssigneePerson(item = {}, label = "", displayText = "", t
   const compact = compactSearchValue(label);
   const text = cleanPresenterAssignee(displayText);
   if (compact === "성경봉독") {
-    return text && compactSearchValue(text) !== compactSearchValue(titleText) ? text : "";
+    const referenceText = presenterFullKoreanBibleReference(text);
+    return referenceText && compactSearchValue(referenceText) !== compactSearchValue(titleText) ? referenceText : "";
   }
   const assignee = cleanPresenterAssignee(item.assignee);
   if (compact === "설교제목") return cleanList([presenterSermonContentTitle(text), assignee]).join("\n");
@@ -1137,6 +1166,19 @@ function presenterTitleAssigneePerson(item = {}, label = "", displayText = "", t
   if (["대표기도", "기도", "성경봉독", "특송", "봉헌기도", "축도"].includes(compact)) return text;
   if (fallback) return fallback;
   return "";
+}
+
+function presenterFullKoreanBibleReference(value = "") {
+  const text = String(value || "").trim();
+  if (!text || typeof parseBibleReference !== "function") return text;
+  const reference = parseBibleReference(text);
+  if (!reference?.book || !reference?.chapter) return text;
+  const bookName = String(reference.book.koreanName || reference.book.shortName || reference.book.code || "").trim();
+  if (!bookName) return text;
+  const range = reference.verse
+    ? `${reference.chapter}:${reference.verse}${reference.verseEnd ? `–${reference.verseEnd}` : ""}`
+    : `${reference.chapter}`;
+  return [bookName, range].filter(Boolean).join(" ").trim() || text;
 }
 
 function presenterTitleAssigneeUsesWorshipLeader(compactLabel = "") {
@@ -1246,7 +1288,12 @@ function buildPresenterScriptureTextSlides(item, section, index) {
   const citation = isPresenterCitationScriptureItem(item);
   return payload.verses.map((verse, verseIndex) => {
     const readingFinal = context === "reading" && verseIndex === lastVerseIndex;
-    const verseReference = verse.reference || reference;
+    const referenceBook = context === "reading"
+      ? (verse.referenceBookFull || payload.referenceBookFull || verse.referenceBook || payload.referenceBook || "")
+      : (verse.referenceBook || payload.referenceBook || "");
+    const verseReference = context === "reading"
+      ? [referenceBook, verse.referenceRange || payload.referenceRange || ""].filter(Boolean).join(" ")
+      : (verse.reference || reference);
     const verseText = citation
       ? presenterCitationScriptureText(verse, payload)
       : (verse.number ? [verse.number, verse.text].filter(Boolean).join("   ") : verse.text);
@@ -1262,12 +1309,11 @@ function buildPresenterScriptureTextSlides(item, section, index) {
       label: item.label || "본문",
       title: verseReference,
       marker: verseReference,
-      referenceBook: verse.referenceBook || payload.referenceBook || "",
+      referenceBook,
       referenceRange: verse.referenceRange || payload.referenceRange || "",
       translationLabel: payload.translationLabel || "",
       text: verseText,
       scriptureReadingFinal: readingFinal,
-      suppressBackgroundImage: readingFinal,
       ...(context === "reading" ? { outputContext: "clean" } : {}),
       ...(context === "sermon" ? { outputContext: "chromakey" } : {}),
       sort: index + verseIndex / 100,
@@ -1723,9 +1769,7 @@ function isSongServiceLabel(label) {
 
 function presenterStatePayload(serviceId = state.presenter.serviceId) {
   const service = state.services.find((svc) => svc.id === serviceId);
-  const slides = state.presenter.serviceId === serviceId
-    ? state.presenter.slides
-    : buildServicePresenterSlides(serviceId);
+  const slides = presenterSlidesForService(serviceId);
   const backgroundImages = presenterBackgroundSourcesForService(service);
   return {
     serviceId,
@@ -1787,12 +1831,18 @@ function handlePresenterStorageSignal(event) {
   try {
     const message = JSON.parse(event.newValue);
     if (message.type === "presenter-output-disconnect") markPresenterOutputDisconnected(message.clientId);
+    if (message.type === "presenter-control" && message.action === "stop") stopPresenterOutput(state.presenter.serviceId);
   } catch {
     // Ignore malformed cross-window presenter signals.
   }
 }
 
 function markPresenterOutputConnected(clientId = "", warmup = null) {
+  if (state.presenter.outputStopAt) {
+    if (clientId && clientId === state.presenter.outputStoppingClientId) return;
+    state.presenter.outputStopAt = 0;
+    state.presenter.outputStoppingClientId = "";
+  }
   const wasConnected = state.presenter.outputConnectedAt
     && Date.now() - state.presenter.outputConnectedAt <= PRESENTER_OUTPUT_HEARTBEAT_TTL_MS;
   state.presenter.outputConnectedAt = Date.now();
@@ -1920,7 +1970,7 @@ async function positionPresenterOutputWindow(outputWindow) {
 function handlePresenterShortcut(event) {
   const presenterServiceId = state.presenter.serviceId;
   if (state.module !== "presenter" || !presenterServiceId) return false;
-  if (shouldKeepHorizontalNavigationInFocusedControl(event.target)) return false;
+  if (shouldKeepPresenterShortcutInFocusedControl(event)) return false;
   if (event.metaKey || event.ctrlKey || event.altKey) return false;
   const activeServiceSelected = state.selectedServiceId === presenterServiceId;
 
@@ -1986,13 +2036,31 @@ function handlePresenterShortcut(event) {
   return false;
 }
 
+function shouldKeepPresenterShortcutInFocusedControl(event) {
+  const target = event?.target instanceof Element ? event.target : null;
+  if (!target) return false;
+  if (target.closest("[data-presenter-jump-input]")) {
+    return !["ArrowRight", "ArrowDown", "PageDown", " ", "ArrowLeft", "ArrowUp", "PageUp"].includes(event.key);
+  }
+  return shouldKeepHorizontalNavigationInFocusedControl(target);
+}
+
 function isPresenterOutputRoute() {
   const params = new URLSearchParams(window.location.search);
   return params.get("output") === "presenter" || params.get("mindex-output") === "presenter";
 }
 
+function presenterOutputDocumentTitle(payload = {}) {
+  const title = String(payload?.serviceTitle || "").split("·")[0].trim();
+  return title || "MINDEX";
+}
+
+function syncPresenterOutputDocumentTitle(payload = {}) {
+  document.title = presenterOutputDocumentTitle(payload);
+}
+
 function initPresenterOutputCore() {
-  document.title = "MINDEX Output";
+  document.title = "MINDEX";
   document.documentElement.classList.add("presenter-output-document");
   document.body.className = "presenter-output-body";
   document.body.innerHTML = `
@@ -2003,13 +2071,16 @@ function initPresenterOutputCore() {
   let channel = null;
   let jumpDraft = "";
   let exitArmedAt = 0;
+  let outputStopping = false;
   const outputClientId = `presenter-output:${Date.now()}:${Math.random().toString(36).slice(2)}`;
   let heartbeatTimer = null;
   const applyPayload = (payload) => {
     currentPayload = normalizePresenterPayload(payload);
+    syncPresenterOutputDocumentTitle(currentPayload);
     renderPresenterOutput(currentPayload, { onAutoAdvance: requestPresenterOutputNext });
   };
   const postHeartbeat = () => {
+    if (outputStopping) return;
     channel?.postMessage({
       type: "presenter-heartbeat",
       clientId: outputClientId,
@@ -2034,13 +2105,26 @@ function initPresenterOutputCore() {
     }
   };
   const requestPresenterOutputStop = () => {
-    channel?.postMessage({ type: "presenter-control", action: "stop", clientId: outputClientId });
+    if (outputStopping) return;
+    outputStopping = true;
+    if (heartbeatTimer) {
+      window.clearInterval(heartbeatTimer);
+      heartbeatTimer = null;
+    }
+    const payload = {
+      type: "presenter-control",
+      action: "stop",
+      clientId: outputClientId,
+      updatedAt: Date.now(),
+    };
+    channel?.postMessage(payload);
+    safeStorageSet("local", PRESENTER_SIGNAL_KEY, JSON.stringify(payload));
     currentPayload = normalizePresenterPayload(presenterStoppedPayload());
     renderPresenterOutput(currentPayload, { onAutoAdvance: requestPresenterOutputNext });
     window.setTimeout(() => {
       closeOutputChannel();
       if (canCloseOutputWindow()) window.close();
-    }, 40);
+    }, 120);
   };
   const requestPresenterOutputNext = () => {
     postHeartbeat();
@@ -2311,14 +2395,7 @@ function renderPresenterOutput(payload, options = {}) {
   const slide = payload?.safetyBlank
     ? presenterSafetyBlankSlide()
     : liveSlide || slides[clampPresenterIndex(payload?.index, slides.length)];
-  const backgroundImages = presenterPayloadBackgroundImages(payload);
-  const backgroundImage = backgroundImages[0] || "";
-  const slideChromakey = presenterSlideUsesChromakey(slide, payload?.chromakey !== false);
-  const cleanOutput = !slideChromakey;
-  const blankSlide = presenterSlideLayout(slide) === PRESENTER_SLIDE_LAYOUTS.BLANK;
-  const suppressBackground = Boolean(slide?.suppressBackgroundImage || slide?.noBackgroundImage);
-  const showBackground = Boolean(backgroundImages.length && cleanOutput && !payload?.safetyBlank && !suppressBackground);
-  const blankOutput = Boolean(blankSlide && !showBackground);
+  const frameState = presenterOutputFrameStateForSlide(slide, payload);
   const activeImageSource = presenterSlideImageSource(slide);
   preloadPresenterOutputImages(payload, slide);
   if (activeImageSource && !presenterOutputImageIsReady(activeImageSource)) {
@@ -2332,17 +2409,43 @@ function renderPresenterOutput(payload, options = {}) {
 
   const token = ++presenterOutputRenderState.token;
   root.removeAttribute("aria-busy");
-  const frameState = {
+  commitPresenterOutputFrame(root, payload, slide, frameState, token, options);
+}
+
+function presenterOutputFrameStateForSlide(slide, payload = {}) {
+  const backgroundImages = presenterPayloadBackgroundImages(payload);
+  const slideChromakey = presenterSlideUsesChromakey(slide, payload?.chromakey !== false);
+  const cleanOutput = !slideChromakey;
+  const blankSlide = presenterSlideLayout(slide) === PRESENTER_SLIDE_LAYOUTS.BLANK;
+  const suppressBackground = Boolean(slide?.suppressBackgroundImage || slide?.noBackgroundImage);
+  const showBackground = Boolean(backgroundImages.length && cleanOutput && !payload?.safetyBlank && !suppressBackground);
+  return {
     cleanOutput,
     showBackground,
-    blankOutput,
-    backgroundImage,
+    blankOutput: Boolean(blankSlide && !showBackground),
+    backgroundImage: backgroundImages[0] || "",
     backgroundImages,
     serviceType: payload?.serviceType || "",
     outputTheme: payload?.outputTheme || presenterOutputTheme(payload?.serviceType),
     noChromakey: !slideChromakey,
   };
-  commitPresenterOutputFrame(root, payload, slide, frameState, token, options);
+}
+
+function presenterOutputFrameClassNames(frameState = {}) {
+  return [
+    frameState.noChromakey ? "no-chromakey" : "",
+    frameState.showBackground ? "has-background" : "",
+    frameState.blankOutput ? "is-blank" : "",
+  ].filter(Boolean).join(" ");
+}
+
+function presenterOutputFrameBackgroundStyle(frameState = {}) {
+  if (!frameState.showBackground) return "";
+  const sources = frameState.backgroundImages?.length
+    ? frameState.backgroundImages
+    : [frameState.backgroundImage].filter(Boolean);
+  if (!sources.length) return "";
+  return ` style="--presenter-bg-image: ${escapeAttr(presenterBackgroundCssValue(sources))}"`;
 }
 
 function commitPresenterOutputFrame(root, payload, slide, frameState, token, options = {}) {
@@ -2843,7 +2946,7 @@ function renderPresenterSlideFrame(slide, options = {}) {
   const slideClass = presenterSlideRenderClass(slide);
   const extraClasses = presenterSlideExtraClasses(slide);
   const body = options.preview ? renderPresenterSlidePreviewBody(slide) : renderPresenterSlideBody(slide, options);
-  const backgroundStyle = slide?.scriptureContext === "reading"
+  const backgroundStyle = slide?.scriptureContext === "reading" && !slide?.suppressBackgroundImage && !slide?.noBackgroundImage
     ? ` style="--presenter-slide-bg-image: url('${escapeAttr(PRESENTER_SCRIPTURE_READING_BACKGROUND)}')"`
     : "";
   return `
@@ -2941,11 +3044,17 @@ function renderPresenterScriptureReadingSlide(slide) {
 }
 
 function presenterScriptureReadingHeaderReference(slide = {}) {
-  const referenceBook = String(slide?.referenceBook || "").trim();
+  const referenceBook = presenterScriptureReadingBookName(slide?.referenceBook);
   const referenceRange = String(slide?.referenceRange || "").trim();
   const chapter = referenceRange.match(/^(\d+)/)?.[1] || "";
   const chapterReference = [referenceBook, chapter ? `${chapter}장` : referenceRange].filter(Boolean).join(" ").trim();
   return chapterReference || String(slide?.title || slide?.marker || "").trim();
+}
+
+function presenterScriptureReadingBookName(value = "") {
+  const referenceBook = String(value || "").trim();
+  if (!referenceBook || typeof findBibleBookByReferenceName !== "function") return referenceBook;
+  return String(findBibleBookByReferenceName(referenceBook)?.koreanName || referenceBook).trim();
 }
 
 function presenterScriptureVerseParts(value = "") {
@@ -2974,17 +3083,18 @@ function renderPresenterVideoSlide(slide, options = {}) {
       ? "ready-video"
       : "video";
   const playback = presenterPlaybackConfig(slide.playback, playbackType);
+  const previewStage = Boolean(options.previewStage);
   const attrs = [
     "class=\"presenter-video\"",
     `src="${escapeAttr(source)}"`,
     presenterRole ? `data-presenter-role="${escapeAttr(presenterRole)}"` : "",
     playback.autoplay ? "autoplay" : "",
-    playback.muted ? "muted" : "",
+    (previewStage || playback.muted) ? "muted" : "",
     playback.loop ? "loop" : "",
     playback.controls ? "controls" : "",
     options.noChromakey ? "" : `poster="${PRESENTER_CHROMAKEY_VIDEO_POSTER}"`,
     "playsinline",
-    "preload=\"auto\"",
+    `preload=\"${previewStage ? "metadata" : "auto"}\"`,
   ].filter(Boolean).join(" ");
   return `
     <video ${attrs}></video>
@@ -3000,8 +3110,21 @@ function renderPresenterImageSlide(slide) {
 function renderPresenterTitleAssigneeSlide(slide) {
   const title = String(slide.title || slide.text || slide.label || "").trim();
   const assignee = String(slide.assignee || slide.subtitle || "").trim();
+  const orderTitle = String(slide.orderTitle || "").trim();
+  const contentTitle = String(slide.contentTitle || "").trim();
   const titleChars = presenterLineCharEstimate(title);
   const assigneeChars = presenterLineCharEstimate(assignee);
+  const orderChars = presenterLineCharEstimate(orderTitle);
+  const contentChars = presenterLineCharEstimate(contentTitle);
+  if (orderTitle && contentTitle && assignee) {
+    return `
+      <div class="presenter-slide-text presenter-title-assignee presenter-title-assignee--three-part">
+        <span class="presenter-title-assignee-order" style="--line-chars: ${escapeAttr(orderChars)}">${escapeHtml(orderTitle)}</span>
+        <span class="presenter-title-assignee-content" style="--line-chars: ${escapeAttr(contentChars)}">${escapeHtml(contentTitle)}</span>
+        <span class="presenter-title-assignee-person" style="--line-chars: ${escapeAttr(assigneeChars)}">${escapeHtml(assignee)}</span>
+      </div>
+    `;
+  }
   const soloClass = assignee ? "" : " presenter-title-assignee--solo";
   return `
     <div class="presenter-slide-text presenter-title-assignee${soloClass}">

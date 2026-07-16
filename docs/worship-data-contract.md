@@ -339,6 +339,70 @@ Element Type (템플릿/저장 타입)
    └─ presenter: freeform/file-like slide until specialized
 ```
 
+## Presenter Slide Model Contract
+
+Presenter output must receive normalized slide models, not raw worship items.
+The renderer should only care about this contract:
+
+```text
+Presenter Slide
+├─ identity
+│  ├─ id
+│  ├─ elementId / sectionId
+│  └─ sectionKey / sectionLabel / elementLabel
+├─ render contract
+│  ├─ elementType
+│  ├─ layout
+│  ├─ outputContext: chromakey | clean
+│  └─ type: legacy render class only
+├─ content payload
+│  ├─ title / assignee / bodyText / text
+│  ├─ marker / formKey
+│  ├─ imageSrc / videoSrc / audioSrc / asset
+│  └─ scriptureContext / reference metadata
+└─ operational state
+   ├─ missingContent / inputMode
+   ├─ hiddenInPresentation
+   ├─ suppressBackgroundImage
+   └─ autoTrailingBlank / skipTrailingBlank
+```
+
+Allowed `layout -> elementType` pairs are intentionally narrow:
+
+```text
+blank
+└─ blank
+
+center_text
+├─ title
+├─ plain_text
+├─ title_content
+├─ title_assignee
+├─ body_text
+├─ scripture_reading / scripture_text
+├─ praise
+└─ freeform
+
+lower_bar_text
+├─ title_assignee
+├─ praise
+├─ scripture_reading / scripture_text
+├─ plain_text / body_text
+└─ freeform
+
+media
+├─ image
+└─ video
+
+file
+├─ audio
+├─ file
+└─ freeform
+```
+
+When a new element type or layout is added, update the app contract and the
+Presenter smoke test before relying on it in a worship template.
+
 ```text
 Content State By Element (콘텐츠 상태)
 ├─ has default value

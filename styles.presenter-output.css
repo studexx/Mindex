@@ -27,7 +27,8 @@
 .presenter-output-root {
   --presenter-stage-width: 1920px;
   --presenter-stage-height: 1080px;
-  --presenter-stage-scale: min(calc(100vw / 1920px), calc(100vh / 1080px));
+  --presenter-stage-scale: min(1, calc(100vw / 1920px), calc(100vh / 1080px));
+  --presenter-stage-unit: 1px;
   --presenter-chromakey: #00ff00;
   --presenter-output-bg: #00ff00;
   --presenter-output-fg: #fff;
@@ -37,14 +38,14 @@
   --presenter-output-bar-edge: #000A32;
   --presenter-output-stroke: #000;
   --presenter-scripture-font: var(--font-presenter);
-  --presenter-size-display: 72px;
-  --presenter-size-section: 72px;
-  --presenter-size-body: 64px;
-  --presenter-size-lyrics: 64px;
-  --presenter-size-meta: 64px;
-  --presenter-size-caption: 42px;
-  --presenter-size-thumbnail: 54px;
-  --presenter-size-file-caption: 36px;
+  --presenter-size-display: calc(84 * var(--presenter-stage-unit));
+  --presenter-size-section: calc(72 * var(--presenter-stage-unit));
+  --presenter-size-body: calc(64 * var(--presenter-stage-unit));
+  --presenter-size-lyrics: calc(64 * var(--presenter-stage-unit));
+  --presenter-size-meta: calc(52 * var(--presenter-stage-unit));
+  --presenter-size-caption: calc(40 * var(--presenter-stage-unit));
+  --presenter-size-thumbnail: calc(44 * var(--presenter-stage-unit));
+  --presenter-size-file-caption: calc(40 * var(--presenter-stage-unit));
   --presenter-weight-display: 800;
   --presenter-weight-body: 700;
   --presenter-weight-meta: 600;
@@ -56,7 +57,7 @@
   --presenter-scripture-clean-size: var(--presenter-size-body);
   --presenter-scripture-reading-ref-size: var(--presenter-size-section);
   --presenter-scripture-reading-version-size: var(--presenter-size-caption);
-  --presenter-scripture-reading-text-size: 64px;
+  --presenter-scripture-reading-text-size: var(--presenter-size-body);
   display: grid;
   width: var(--presenter-stage-width);
   height: var(--presenter-stage-height);
@@ -158,10 +159,6 @@
   background-position: center center;
   background-repeat: no-repeat;
   background-size: 100% auto;
-}
-.presenter-output-root.no-chromakey:not(.has-background) {
-  --presenter-output-bg: #000;
-  background: #000;
 }
 .presenter-output-body.presenter-output-body--clean.is-blank,
 .presenter-output-root.no-chromakey.is-blank {
@@ -443,6 +440,28 @@
   gap: 4.2cqw;
   align-content: center;
   text-align: left;
+}
+.presenter-slide--title-assignee .presenter-title-assignee--three-part {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 2.8cqw;
+  text-align: initial;
+}
+.presenter-title-assignee-order,
+.presenter-title-assignee-content,
+.presenter-title-assignee-person {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.presenter-title-assignee-order {
+  text-align: left;
+}
+.presenter-title-assignee-content {
+  text-align: center;
+}
+.presenter-title-assignee-person {
+  text-align: right;
 }
 .presenter-slide--title-assignee .presenter-title-assignee--solo {
   grid-template-columns: 1fr;

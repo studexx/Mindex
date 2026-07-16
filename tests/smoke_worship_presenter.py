@@ -184,10 +184,34 @@ def main() -> int:
                     }))()
                     """
                 )
-                if initial_status["status"] == "미리보기" and initial_status["mode"] == "":
-                    pass_("presenter-status-preview", json.dumps(initial_status, ensure_ascii=False))
+                if initial_status["status"] == "준비" and initial_status["mode"] == "":
+                    pass_("presenter-status-ready", json.dumps(initial_status, ensure_ascii=False))
                 else:
-                    fail("presenter-status-preview", json.dumps(initial_status, ensure_ascii=False))
+                    fail("presenter-status-ready", json.dumps(initial_status, ensure_ascii=False))
+
+                ccm_form_order_state = page.evaluate(
+                    """
+                    (() => {
+                      const forms = [
+                        { id: 'v1', part_type: 'Verse', part_number: 1, lyrics: '첫 절' },
+                        { id: 'c', part_type: 'Chorus', lyrics: '후렴' },
+                        { id: 'v2', part_type: 'Verse', part_number: 2, lyrics: '둘째 절' },
+                      ];
+                      const song = { metadata: { presenter_form: { forms: ['V1', 'C', 'V2', 'C'] } } };
+                      const suggestedItem = { memo: JSON.stringify({ formPreset: { forms: ['V1', 'C'], strength: 'suggested' } }) };
+                      const forcedItem = { memo: JSON.stringify({ formPreset: { forms: ['V1', 'C', 'V1'], strength: 'default' } }) };
+                      return {
+                        metadataOrder: presenterFormPlanForServiceItem({ forms }, suggestedItem, song).forms.map((form) => form.id),
+                        inferredOrder: presenterFormPlanForServiceItem({ forms }, { memo: '' }, {}).forms.map((form) => form.id),
+                        forcedOrder: presenterFormPlanForServiceItem({ forms }, forcedItem, song).forms.map((form) => form.id),
+                      };
+                    })()
+                    """
+                )
+                if ccm_form_order_state == {"metadataOrder": ["v1", "c", "v2", "c"], "inferredOrder": ["v1", "c", "v2", "c"], "forcedOrder": ["v1", "c", "v1"]}:
+                    pass_("presenter-ccm-repeats-chorus", json.dumps(ccm_form_order_state, ensure_ascii=False))
+                else:
+                    fail("presenter-ccm-repeats-chorus", json.dumps(ccm_form_order_state, ensure_ascii=False))
 
                 sticky_title_state: dict[str, Any] = page.evaluate(
                     """
@@ -296,7 +320,8 @@ def main() -> int:
                     """
 	                    async (serviceId) => {
 	                      preparePresenterService(serviceId);
-	                      state.presenter.outputConnectedAt = Date.now();
+	                      state.presenter.outputWindow = null;
+	                      state.presenter.outputConnectedAt = 0;
 	                      renderPresenterControlState(serviceId);
                       const detail = refs.detailPane || document.getElementById('detailPane');
                       const targetIndex = Math.min(18, Math.max(state.presenter.slides.length - 1, 0));
@@ -335,16 +360,16 @@ def main() -> int:
                     service["id"],
                 )
                 if (
-                    fast_jump_state["immediateIndex"] == fast_jump_state["targetIndex"]
-                    and fast_jump_state["activeIndex"] == fast_jump_state["targetIndex"]
-                    and fast_jump_state["scrolledIndex"] == -1
+                    fast_jump_state["immediateIndex"] == 0
+                    and fast_jump_state["activeIndex"] == -1
+                    and fast_jump_state["scrolledIndex"] in (-1, fast_jump_state["targetIndex"])
                     and fast_jump_state["sameBoard"]
                     and abs(fast_jump_state["scrollAfter"] - fast_jump_state["scrollBefore"]) <= 1
                     and fast_jump_state["elapsedMs"] < 120
                 ):
-                    pass_("presenter-thumb-click-live-navigation", json.dumps(fast_jump_state, ensure_ascii=False))
+                    pass_("presenter-thumb-click-only-selects", json.dumps(fast_jump_state, ensure_ascii=False))
                 else:
-                    fail("presenter-thumb-click-live-navigation", json.dumps(fast_jump_state, ensure_ascii=False))
+                    fail("presenter-thumb-click-only-selects", json.dumps(fast_jump_state, ensure_ascii=False))
 
                 outline_follow_state = page.evaluate(
                     """
@@ -1124,6 +1149,81 @@ def main() -> int:
                 else:
                     fail("presenter-section-element-model", json.dumps(fallback_state, ensure_ascii=False))
 
+                slide_model_contract_state = page.evaluate(
+                    """
+                    (serviceId) => {
+                      const slides = buildServicePresenterSlides(serviceId);
+                      const issues = presenterSlidesModelIssues(slides);
+                      const validCombinations = {
+                        lowerBarPraise: presenterSlideModelIssues({
+                          id: '__smoke_contract_praise__',
+                          elementType: PRESENTER_ELEMENT_TYPES.PRAISE,
+                          layout: PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT,
+                          type: 'lyrics',
+                          title: '찬양',
+                          text: '가사',
+                        }),
+                        cleanImage: presenterSlideModelIssues({
+                          id: '__smoke_contract_image__',
+                          elementType: PRESENTER_ELEMENT_TYPES.IMAGE,
+                          layout: PRESENTER_SLIDE_LAYOUTS.MEDIA,
+                          type: 'image',
+                          title: '이미지',
+                        }),
+                        blank: presenterSlideModelIssues({
+                          id: '__smoke_contract_blank__',
+                          elementType: PRESENTER_ELEMENT_TYPES.BLANK,
+                          layout: PRESENTER_SLIDE_LAYOUTS.BLANK,
+                          type: 'blank',
+                          title: '빈 화면',
+                          text: '',
+                        }),
+                      };
+                      const invalidCombinations = {
+                        mediaPraise: presenterSlideModelIssues({
+                          id: '__smoke_contract_bad_media__',
+                          elementType: PRESENTER_ELEMENT_TYPES.PRAISE,
+                          layout: PRESENTER_SLIDE_LAYOUTS.MEDIA,
+                          type: 'lyrics',
+                          title: '찬양',
+                        }),
+                        blankPayload: presenterSlideModelIssues({
+                          id: '__smoke_contract_bad_blank__',
+                          elementType: PRESENTER_ELEMENT_TYPES.BLANK,
+                          layout: PRESENTER_SLIDE_LAYOUTS.BLANK,
+                          type: 'blank',
+                          title: '빈 화면',
+                          text: '보이면 안 됨',
+                        }),
+                        missingNoInputMode: presenterSlideModelIssues({
+                          id: '__smoke_contract_bad_missing__',
+                          elementType: PRESENTER_ELEMENT_TYPES.TITLE_ASSIGNEE,
+                          layout: PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT,
+                          type: 'title-assignee',
+                          title: '입력 필요',
+                          missingContent: true,
+                        }),
+                      };
+                      return {
+                        slideCount: slides.length,
+                        issues,
+                        validCombinations,
+                        invalidCombinations,
+                      };
+                    }
+                    """,
+                    service["id"],
+                )
+                if (
+                    slide_model_contract_state["slideCount"] > 0
+                    and slide_model_contract_state["issues"] == []
+                    and all(not value for value in slide_model_contract_state["validCombinations"].values())
+                    and all(value for value in slide_model_contract_state["invalidCombinations"].values())
+                ):
+                    pass_("presenter-slide-model-contract", json.dumps(slide_model_contract_state, ensure_ascii=False))
+                else:
+                    fail("presenter-slide-model-contract", json.dumps(slide_model_contract_state, ensure_ascii=False))
+
                 title_assignee_state = page.evaluate(
                     """
                     () => {
@@ -1234,8 +1334,8 @@ def main() -> int:
                             "type": "title-assignee",
                             "renderClass": "title-assignee",
                             "title": "성경봉독",
-                            "assignee": "대하 15:8–15",
-                            "text": "성경봉독\n대하 15:8–15",
+                            "assignee": "역대하 15:8–15",
+                            "text": "성경봉독\n역대하 15:8–15",
                             "html": title_assignee_state["slides"][1]["html"],
                         },
                         {
@@ -1285,8 +1385,8 @@ def main() -> int:
                             "type": "title-content",
                             "renderClass": "title-content",
                             "title": "성경봉독",
-                            "bodyText": "대하 15:8–15",
-                            "text": "성경봉독\n대하 15:8–15",
+                            "bodyText": "역대하 15:8–15",
+                            "text": "성경봉독\n역대하 15:8–15",
                             "outputContext": "clean",
                             "html": title_assignee_state["cleanSlides"][1]["html"],
                         },
@@ -3047,8 +3147,13 @@ def main() -> int:
                         readingOutputContext: presenterSlideOutputContext(readingSlide, true),
                         readingNoChromakey: outputs[0]?.classList.contains('no-chromakey') || false,
                         readingHasClass: slides[0]?.classList.contains('presenter-slide--scripture-reading') || false,
+                        readingSlideBackground: slides[0]?.style.getPropertyValue('--presenter-slide-bg-image') || '',
                         readingHasLowerBarText: Boolean(slides[0]?.querySelector('.presenter-slide-text')),
                         readingReference: readingRef?.textContent?.trim() || '',
+                        hebrewsChapterReference: presenterScriptureReadingHeaderReference({
+                          referenceBook: '히브리서',
+                          referenceRange: '10:38–39',
+                        }),
                         readingVersion: readingVersion?.textContent?.trim() || '',
                         readingHeaderSplit: Boolean(readingHead && readingRef && readingVersion && readingRefRect && readingVersionRect && readingRefRect.left < readingVersionRect.left),
                         readingBodyBelowHeader: Boolean(readingHeadRect && readingTextRect && readingTextRect.top > readingHeadRect.bottom),
@@ -3087,12 +3192,14 @@ def main() -> int:
                     and scripture_context_state["readingOutputContext"] == "clean"
                     and scripture_context_state["readingNoChromakey"]
                     and scripture_context_state["readingHasClass"]
+                    and scripture_context_state["readingSlideBackground"] != ""
                     and not scripture_context_state["readingHasLowerBarText"]
                     and scripture_context_state["readingReference"] == "출애굽기 23장"
+                    and scripture_context_state["hebrewsChapterReference"] == "히브리서 10장"
                     and scripture_context_state["readingReferenceBook"] == "출애굽기"
                     and scripture_context_state["readingReferenceRange"] == "23:14–19"
                     and scripture_context_state["readingFinal"]
-                    and scripture_context_state["readingSuppressBackground"]
+                    and not scripture_context_state["readingSuppressBackground"]
                     and scripture_context_state["readingTranslationLabel"] == "개역개정"
                     and scripture_context_state["readingVersion"] == "개역개정"
                     and scripture_context_state["readingFin"] == "Fin."
@@ -3104,14 +3211,14 @@ def main() -> int:
                     and scripture_context_state["readingFontWeight"] == scripture_context_state["sermonFontWeight"]
                     and scripture_context_state["readingNumberFontWeight"] == scripture_context_state["readingFontWeight"]
                     and scripture_context_state["sermonContext"] == "sermon"
-                    and scripture_context_state["sermonElementTitle"] == "출애굽기 23:14–19"
+                    and scripture_context_state["sermonElementTitle"] == "출 23:14–19"
                     and scripture_context_state["sermonOutputContext"] == "chromakey"
                     and not scripture_context_state["sermonNoChromakey"]
                     and scripture_context_state["sermonHasClass"]
                     and scripture_context_state["sermonHasLowerBarText"]
                     and scripture_context_state["citationTexts"] == [
-                        "출애굽기 24:1   또 모세에게 이르시되",
-                        "출애굽기 24:2   너 모세만 여호와께 가까이 나아오고",
+                        "출 24:1   또 모세에게 이르시되",
+                        "출 24:2   너 모세만 여호와께 가까이 나아오고",
                     ]
                 ):
                     pass_("presenter-scripture-context-layouts", json.dumps(scripture_context_state, ensure_ascii=False))
@@ -3206,16 +3313,22 @@ def main() -> int:
                     """
                     (serviceId) => ({
                       index: state.presenter.index,
+                      maxIndex: Math.max(0, state.presenter.slides.length - 1),
                       draft: state.presenter.jumpDraft,
+                      inputValue: document.querySelector(`[data-presenter-jump-input][data-service-id="${serviceId}"]`)?.value || '',
                       focused: document.activeElement?.matches(`[data-presenter-jump-input][data-service-id="${serviceId}"]`) || false,
                     })
                     """,
                     service["id"],
                 )
-                if jump_scope_state["index"] == jump_scope_index_before and jump_scope_state["draft"] == "":
-                    pass_("presenter-keyboard-jump-input-arrows-ignored", json.dumps(jump_scope_state, ensure_ascii=False))
+                if (
+                    jump_scope_state["index"] == min(jump_scope_index_before + 1, jump_scope_state["maxIndex"])
+                    and jump_scope_state["draft"] == ""
+                    and jump_scope_state["inputValue"] == str(jump_scope_state["index"] + 1)
+                ):
+                    pass_("presenter-keyboard-jump-input-arrows-advance", json.dumps(jump_scope_state, ensure_ascii=False))
                 else:
-                    fail("presenter-keyboard-jump-input-arrows-ignored", json.dumps(jump_scope_state, ensure_ascii=False))
+                    fail("presenter-keyboard-jump-input-arrows-advance", json.dumps(jump_scope_state, ensure_ascii=False))
 
                 page.evaluate(
                     """
@@ -3490,8 +3603,6 @@ def main() -> int:
                     page.locator(
                         f'.svc-slide-thumb[data-service-id="{service["id"]}"][data-presenter-index="{dbl_target}"]'
                     ).dblclick()
-                    page.wait_for_function("(target) => state.presenter.index === target", arg=dbl_target, timeout=5000)
-                    page.wait_for_function("() => window.__mindexPresenterOpenCalls === 0", timeout=5000)
                     dbl_state = page.evaluate(
                         """
                         (() => ({
@@ -3508,9 +3619,24 @@ def main() -> int:
                         and dbl_state["openCalls"] == 0
                         and dbl_state["hasWindowRef"]
                     ):
-                        pass_("presenter-doubleclick-start", json.dumps(dbl_state, ensure_ascii=False))
+                        pass_("presenter-doubleclick-live-jumps", json.dumps(dbl_state, ensure_ascii=False))
                     else:
-                        fail("presenter-doubleclick-start", json.dumps(dbl_state, ensure_ascii=False))
+                        fail("presenter-doubleclick-live-jumps", json.dumps(dbl_state, ensure_ascii=False))
+                    page.evaluate(
+                        """
+                        (serviceId) => {
+                          state.presenter.outputWindow = null;
+                          state.presenter.outputConnectedAt = 0;
+                          state.presenter.outputClientId = "";
+                          stopPresenterOutputWindowMonitor();
+                          preparePresenterService(serviceId);
+                          state.presenter.index = 0;
+                          renderPresenterControlState(serviceId);
+                          publishPresenterState({ force: true });
+                        }
+                        """,
+                        service["id"],
+                    )
 
                 overflow_state: dict[str, Any] = page.evaluate(
                     """
@@ -3618,7 +3744,7 @@ def main() -> int:
                     timeout=5000,
                 )
                 fixed_stage_state = []
-                for viewport in ({"width": 1920, "height": 1080}, {"width": 2560, "height": 1440}):
+                for viewport in ({"width": 1920, "height": 1080}, {"width": 2560, "height": 1440}, {"width": 1280, "height": 800}):
                     output_page.set_viewport_size(viewport)
                     output_page.wait_for_timeout(80)
                     fixed_stage_state.append(output_page.evaluate(
@@ -3660,17 +3786,17 @@ def main() -> int:
                         viewport,
                     ))
                 if (
-                    [item["offsetWidth"] for item in fixed_stage_state] == [1920, 1920]
-                    and [item["offsetHeight"] for item in fixed_stage_state] == [1080, 1080]
-                    and [item["visualWidth"] for item in fixed_stage_state] == [1920, 2560]
-                    and [item["visualHeight"] for item in fixed_stage_state] == [1080, 1440]
+	                    [item["offsetWidth"] for item in fixed_stage_state] == [1920, 1920, 1920]
+	                    and [item["offsetHeight"] for item in fixed_stage_state] == [1080, 1080, 1080]
+	                    and [item["visualWidth"] for item in fixed_stage_state] == [1920, 1920, 1280]
+	                    and [item["visualHeight"] for item in fixed_stage_state] == [1080, 1080, 720]
                     and len({item["fontSize"] for item in fixed_stage_state}) == 1
                     and len({item["lineHeight"] for item in fixed_stage_state}) == 1
                 ):
-                    pass_("presenter-output-fixed-stage-font-size", json.dumps(fixed_stage_state, ensure_ascii=False))
+                    pass_("presenter-output-design-stage-contain-font-size", json.dumps(fixed_stage_state, ensure_ascii=False))
                 else:
-                    fail("presenter-output-fixed-stage-font-size", json.dumps(fixed_stage_state, ensure_ascii=False))
-                output_page.set_viewport_size({"width": 1280, "height": 800})
+                    fail("presenter-output-design-stage-contain-font-size", json.dumps(fixed_stage_state, ensure_ascii=False))
+                output_page.set_viewport_size({"width": 1920, "height": 1080})
                 output_page.wait_for_timeout(80)
                 page.wait_for_function(
                     "() => document.querySelector('.svc-presenter-status')?.textContent.trim() === '송출 중'",
@@ -3802,6 +3928,7 @@ def main() -> int:
                         elementType: slide?.dataset.elementType || '',
                         layout: slide?.dataset.slideLayout || '',
                         backgroundColor: styles?.backgroundColor || '',
+                        documentTitle: document.title,
                         text,
                         viewport: { width: window.innerWidth, height: window.innerHeight },
                         frame: rect ? {
@@ -3827,7 +3954,11 @@ def main() -> int:
                     and output_state["slideClass"]
                     and output_state["elementType"]
                     and output_state["layout"]
+                    and "송출" not in output_state["documentTitle"]
+                    and output_state["documentTitle"]
                     and (output_state["slideClass"] != "presenter-slide--song-title" or output_state["text"].startswith("♪ "))
+                    and output_state["frame"]["width"] == 1920
+                    and output_state["frame"]["height"] == 1080
                     and abs(output_state["frame"]["ratio"] - (16 / 9)) <= 0.01
                     and abs(output_state["lowerBarRatio"] - (7 / 40)) <= 0.01
                     and output_state["overflow"] <= 2
@@ -3839,14 +3970,26 @@ def main() -> int:
                 preview_state = page.evaluate(
                     """
                     (() => {
-                      const thumb = document.querySelector('.svc-slide-thumb.active .svc-slide-mini-output .presenter-slide')
-                        || document.querySelector(`.svc-slide-thumb[data-presenter-index="${state.presenter.index}"] .svc-slide-mini-output .presenter-slide`);
+                      const thumb = document.querySelector('.svc-slide-thumb.active .svc-slide-mini-output')
+                        || document.querySelector(`.svc-slide-thumb[data-presenter-index="${state.presenter.index}"] .svc-slide-mini-output`);
+                      const slide = thumb?.querySelector('.presenter-slide');
+                      const canvas = thumb?.querySelector('.svc-slide-mini-canvas.presenter-output-root');
+                      const boardColumnChildren = [...document.querySelectorAll('.svc-presenter-board-column > *')]
+                        .map((node) => [...node.classList].join(' '));
+                      const slideText = canvas?.querySelector('.presenter-slide-text');
+                      const textStyle = slideText ? getComputedStyle(slideText) : null;
                       const text = thumb?.innerText.trim() || '';
                       return {
-                        hasSharedFrame: Boolean(thumb),
-                        slideClass: thumb ? [...thumb.classList].find((name) => name.startsWith('presenter-slide--') && name !== 'presenter-slide') : '',
-                        elementType: thumb?.dataset.elementType || '',
-                        layout: thumb?.dataset.slideLayout || '',
+                        hasSharedFrame: Boolean(slide && canvas),
+                        boardColumnChildren,
+                        slideClass: slide ? [...slide.classList].find((name) => name.startsWith('presenter-slide--') && name !== 'presenter-slide') : '',
+                        elementType: slide?.dataset.elementType || '',
+                        layout: slide?.dataset.slideLayout || '',
+                        designFrame: canvas ? {
+                          width: canvas.offsetWidth,
+                          height: canvas.offsetHeight,
+                        } : null,
+                        fontSize: textStyle?.fontSize || '',
                         text,
                       };
                     })()
@@ -3854,9 +3997,13 @@ def main() -> int:
                 )
                 if (
                     preview_state["hasSharedFrame"]
+                    and preview_state["boardColumnChildren"] == ["svc-slide-board svc-slide-board--chromakey"]
                     and preview_state["slideClass"] == output_state["slideClass"]
                     and preview_state["elementType"] == output_state["elementType"]
                     and preview_state["layout"] == output_state["layout"]
+                    and preview_state.get("designFrame", {}).get("width") == 1920
+                    and preview_state.get("designFrame", {}).get("height") == 1080
+                    and preview_state["fontSize"].endswith("px")
                     and (output_state["text"] in preview_state["text"] or preview_state["text"] in output_state["text"])
                 ):
                     pass_("presenter-controller-preview-shared-frame", json.dumps(preview_state, ensure_ascii=False))
@@ -3864,17 +4011,17 @@ def main() -> int:
                     fail("presenter-controller-preview-shared-frame", json.dumps({"output": output_state, "preview": preview_state}, ensure_ascii=False))
 
                 output_viewport_shot = output_page.screenshot()
-                letterbox_pixels = {
+                fixed_viewport_pixels = {
                     "top": rgb_at(output_viewport_shot, 0.5, 0.01),
                     "bottom": rgb_at(output_viewport_shot, 0.5, 0.99),
                 }
                 if (
-                    is_empty_output_background(letterbox_pixels["top"])
-                    and is_empty_output_background(letterbox_pixels["bottom"])
+                    is_chromakey_green(fixed_viewport_pixels["top"])
+                    and is_dark_bar(fixed_viewport_pixels["bottom"])
                 ):
-                    pass_("presenter-output-letterbox-empty", json.dumps(letterbox_pixels, ensure_ascii=False))
+                    pass_("presenter-output-fixed-viewport-fill", json.dumps(fixed_viewport_pixels, ensure_ascii=False))
                 else:
-                    fail("presenter-output-letterbox-empty", json.dumps(letterbox_pixels, ensure_ascii=False))
+                    fail("presenter-output-fixed-viewport-fill", json.dumps(fixed_viewport_pixels, ensure_ascii=False))
 
                 current_presenter_index = page.evaluate("state.presenter.index")
                 page.wait_for_function(
@@ -5151,37 +5298,84 @@ def main() -> int:
                         && slide?.autoTrailingBlank
                         && slide?.sectionKey === 'scripture_reading'
                       );
-                      const blankSlide = payload.slides[blankIndex] || {};
-                      renderPresenterOutput({ ...payload, index: blankIndex, safetyBlank: false }, {});
+                      const finalIndex = payload.slides.findIndex((slide) =>
+                        slide?.type === 'scripture'
+                        && slide?.sectionKey === 'scripture_reading'
+                        && slide?.scriptureReadingFinal
+                      );
+                      renderPresenterOutput({ ...payload, index: finalIndex, safetyBlank: false }, {});
                       const root = document.getElementById('presenterOutputRoot');
                       const slide = root?.querySelector('.presenter-slide');
                       return {
                         blankIndex,
-                        suppressBackgroundImage: Boolean(blankSlide.suppressBackgroundImage),
+                        finalIndex,
                         hasBackground: root?.classList.contains('has-background') || false,
-                        isBlank: root?.classList.contains('is-blank') || false,
                         noChromakey: root?.classList.contains('no-chromakey') || false,
                         inlineBackground: root?.style.getPropertyValue('--presenter-bg-image') || '',
                         slideClass: slide?.className || '',
-                        text: slide?.innerText.trim() || '',
+                        renderedReference: slide?.querySelector('.presenter-scripture-reading-ref')?.textContent?.trim() || '',
+                        fin: slide?.querySelector('.presenter-scripture-reading-fin')?.textContent?.trim() || '',
                       };
                     }
                     """,
                     scripture_blank_background_payload,
                 )
                 if (
-                    scripture_blank_background_state["blankIndex"] >= 0
-                    and scripture_blank_background_state["suppressBackgroundImage"]
-                    and not scripture_blank_background_state["hasBackground"]
-                    and scripture_blank_background_state["isBlank"]
+                    scripture_blank_background_state["blankIndex"] == -1
+                    and scripture_blank_background_state["finalIndex"] >= 0
+                    and scripture_blank_background_state["hasBackground"]
                     and scripture_blank_background_state["noChromakey"]
-                    and scripture_blank_background_state["inlineBackground"] == ""
-                    and "presenter-slide--blank" in scripture_blank_background_state["slideClass"]
-                    and scripture_blank_background_state["text"] == ""
+                    and scripture_blank_background_state["inlineBackground"] != ""
+                    and "presenter-slide--scripture-reading" in scripture_blank_background_state["slideClass"]
+                    and scripture_blank_background_state["renderedReference"] == "출애굽기 23장"
+                    and scripture_blank_background_state["fin"] == "Fin."
                 ):
-                    pass_("presenter-scripture-blank-suppresses-background", json.dumps(scripture_blank_background_state, ensure_ascii=False))
+                    pass_("presenter-scripture-reading-has-no-trailing-blank", json.dumps(scripture_blank_background_state, ensure_ascii=False))
                 else:
-                    fail("presenter-scripture-blank-suppresses-background", json.dumps(scripture_blank_background_state, ensure_ascii=False))
+                    fail("presenter-scripture-reading-has-no-trailing-blank", json.dumps(scripture_blank_background_state, ensure_ascii=False))
+
+                scripture_final_background_state = output_page.evaluate(
+                    """
+                    (payload) => {
+                      const finalIndex = payload.slides.findIndex((slide) =>
+                        slide?.type === 'scripture'
+                        && slide?.sectionKey === 'scripture_reading'
+                        && slide?.scriptureReadingFinal
+                      );
+                      const finalSlide = payload.slides[finalIndex] || {};
+                      renderPresenterOutput({ ...payload, index: finalIndex, safetyBlank: false }, {});
+                      const root = document.getElementById('presenterOutputRoot');
+                      const slide = root?.querySelector('.presenter-slide');
+                      return {
+                        finalIndex,
+                        title: finalSlide.title || '',
+                        referenceBook: finalSlide.referenceBook || '',
+                        referenceRange: finalSlide.referenceRange || '',
+                        suppressBackgroundImage: Boolean(finalSlide.suppressBackgroundImage),
+                        hasBackground: root?.classList.contains('has-background') || false,
+                        noChromakey: root?.classList.contains('no-chromakey') || false,
+                        inlineBackground: root?.style.getPropertyValue('--presenter-bg-image') || '',
+                        slideBackground: slide?.style.getPropertyValue('--presenter-slide-bg-image') || '',
+                        renderedReference: slide?.querySelector('.presenter-scripture-reading-ref')?.textContent?.trim() || '',
+                        fin: slide?.querySelector('.presenter-scripture-reading-fin')?.textContent?.trim() || '',
+                      };
+                    }
+                    """,
+                    scripture_blank_background_payload,
+                )
+                if (
+                    scripture_final_background_state["finalIndex"] >= 0
+                    and not scripture_final_background_state["suppressBackgroundImage"]
+                    and scripture_final_background_state["hasBackground"]
+                    and scripture_final_background_state["noChromakey"]
+                    and scripture_final_background_state["inlineBackground"] != ""
+                    and scripture_final_background_state["slideBackground"] != ""
+                    and scripture_final_background_state["renderedReference"] == "출애굽기 23장"
+                    and scripture_final_background_state["fin"] == "Fin."
+                ):
+                    pass_("presenter-scripture-final-has-background", json.dumps(scripture_final_background_state, ensure_ascii=False))
+                else:
+                    fail("presenter-scripture-final-has-background", json.dumps(scripture_final_background_state, ensure_ascii=False))
                 page.evaluate(
                     """
                     (serviceId) => {
@@ -5370,6 +5564,7 @@ def main() -> int:
                 if "favicon" not in item.lower()
                 and "source map" not in item.lower()
                 and "the server responded with a status of 400" not in item.lower()
+                and "scripts may close only the windows that were opened by them" not in item.lower()
             ]
             if relevant_console:
                 fail("console-errors", "\n".join(relevant_console[:8]))
