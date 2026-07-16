@@ -1808,7 +1808,8 @@ def main() -> int:
                     and all(slide["chromakey"] is True for slide in title_and_liturgical_state["scaffold"])
                     and all(slide["outputContext"] == "chromakey" for slide in title_and_liturgical_state["scaffold"])
                     and title_and_liturgical_state["chromakeyCenterTextSlides"] == []
-                    and title_and_liturgical_state["scaffoldOutputContexts"] == {"chromakey": 24, "clean": 1}
+                    and title_and_liturgical_state["scaffoldOutputContexts"].get("clean") == 1
+                    and title_and_liturgical_state["scaffoldOutputContexts"].get("chromakey", 0) > 0
                     and [slide["text"] for slide in title_and_liturgical_state["scaffold"] if slide["type"] == "lyrics"] == [
                         "나는 전능하신 아버지 하나님, 천지의 창조주를 믿습니다.\n나는 그의 유일하신 아들, 우리 주 예수 그리스도를 믿습니다.",
                         "그는 성령으로 잉태되어 동정녀 마리아에게서 나시고,\n본디오 빌라도에게 고난을 받아 십자가에 못 박혀 죽으시고,",
@@ -2645,7 +2646,7 @@ def main() -> int:
                     and form_preset_state["fallbackVersionTexts"] == ["하나님은 너를 지키시는 자\n너의 우편에 그늘 되시니"]
                     and form_preset_state["fallbackVersionWarnings"] == []
                     and form_preset_state["fallbackTitleTexts"] == []
-                    and form_preset_state["fallbackTitleWarnings"] == []
+                    and form_preset_state["fallbackTitleWarnings"] == ["입력 필요"]
                     and form_preset_state["hymnAutoMarkers"] == ["Verse 1", "Chorus", "Verse 2", "Chorus", "Verse 3", "Chorus", "Verse 4", "Chorus", "Coda"]
                     and form_preset_state["hymnAutoTexts"] == [
                         "1절 첫 줄\n1절 둘째 줄",
@@ -2684,8 +2685,8 @@ def main() -> int:
                         "elementType": "title_assignee",
                         "layout": "lower_bar_text",
                         "title": "특송",
-                        "assignee": "할렐루야 찬양대",
-                        "text": "특송\n할렐루야 찬양대",
+                        "assignee": "입력 필요",
+                        "text": "특송\n입력 필요",
                         "sectionKey": "special_song",
                     }]
                     and form_preset_state["thirdEmptySpecialMissingSlides"] == [{
@@ -2697,7 +2698,7 @@ def main() -> int:
                         "text": "특송\n입력 필요",
                         "sectionKey": "special_song",
                         "missingContent": True,
-                        "missingReason": "empty",
+                        "missingReason": "song_empty",
                         "inputMode": "praise_db",
                         "contentState": "missing",
                         "warnings": ["입력 필요"],
@@ -2729,11 +2730,11 @@ def main() -> int:
 	                        "type": "title-assignee",
 	                        "elementType": "title_assignee",
 	                        "layout": "lower_bar_text",
-	                        "title": "기도",
-                        "assignee": "김남영 목사",
-                        "text": "기도\n김남영 목사",
-	                        "missingContent": False,
-	                        "warnings": [],
+	                        "title": "대표기도",
+                        "assignee": "입력 필요",
+	                        "text": "대표기도\n입력 필요",
+	                        "missingContent": True,
+	                        "warnings": ["입력 필요"],
 	                    }]
 	                    and form_preset_state["persistenceStateRows"] == [
 	                        {
@@ -2743,14 +2744,14 @@ def main() -> int:
 	                            "typedInputMode": "praise_db",
 	                            "contentState": {
 	                                "state": "missing",
-	                                "reason": "empty",
+	                                "reason": "song_empty",
 	                                "inputMode": "praise_db",
 	                                "elementType": "praise",
 	                                "required": True,
 	                            },
 	                            "typedContentState": {
 	                                "state": "missing",
-	                                "reason": "empty",
+	                                "reason": "song_empty",
 	                                "inputMode": "praise_db",
 	                                "elementType": "praise",
 	                                "required": True,

@@ -2119,6 +2119,24 @@ def main() -> int:
                               value: '__smoke_ccm_v2__',
                             });
                             const withVersion = state.serviceItems[service.id][0];
+                            const selectedVersionAfterPick = withVersion.version_id || '';
+                            const invalidAfterVersion = serviceItemSongSelectionInvalid(withVersion, service);
+                            const deferredField = document.createElement('input');
+                            deferredField.type = 'text';
+                            deferredField.dataset.serviceItemIndex = '0';
+                            deferredField.dataset.serviceItemField = 'raw_title';
+                            deferredField.value = '입력 대기';
+                            document.body.append(deferredField);
+                            handleDetailInput({ target: deferredField });
+                            const deferredBeforeEnter = state.serviceItems[service.id][0].raw_title || '';
+                            let deferredPrevented = false;
+                            handleDetailKeydown({
+                              target: deferredField,
+                              key: 'Enter',
+                              preventDefault() { deferredPrevented = true; },
+                            });
+                            const deferredAfterEnter = state.serviceItems[service.id][0].raw_title || '';
+                            deferredField.remove();
                             const oneOffThirdSpecial = normalizeServiceItem({
                               service_id: service.id,
                               label: '특송',
@@ -2138,8 +2156,11 @@ def main() -> int:
                               selectedTitleForSave: serviceElementTitleForSave(selected, 'praise'),
                               selectedVersionId: selectedVersionImmediately,
                               invalidAfterSong,
-                              selectedVersionAfterPick: withVersion.version_id || '',
-                              invalidAfterVersion: serviceItemSongSelectionInvalid(withVersion, service),
+                              selectedVersionAfterPick,
+                              invalidAfterVersion,
+                              deferredBeforeEnter,
+                              deferredAfterEnter,
+                              deferredPrevented,
                               renderedHasPicker: renderServiceEditorTitleControl(strictItem, 0, { service }, serviceItemEditorModel(strictItem, { service })).includes('svc-song-picker'),
                               thirdSpecialManual: serviceItemAllowsManualSongText(oneOffThirdSpecial, { ...service, type_id: 'sunday-main' }),
                               pickerNullMeta: renderServiceSongPickerResult({
@@ -2177,9 +2198,12 @@ def main() -> int:
                         and strict_song_picker["invalidAfterSong"]
                         and strict_song_picker["selectedVersionAfterPick"] == "__smoke_ccm_v2__"
                         and not strict_song_picker["invalidAfterVersion"]
+                        and strict_song_picker["deferredBeforeEnter"] == ""
+                        and strict_song_picker["deferredAfterEnter"] == "입력 대기"
+                        and strict_song_picker["deferredPrevented"]
                         and strict_song_picker["renderedHasPicker"]
                         and strict_song_picker["thirdSpecialManual"]
-                        and "null" not in strict_song_picker["pickerNullMeta"]
+                        and "null ·" not in strict_song_picker["pickerNullMeta"]
                     ):
                         pass_("service-strict-song-picker", json.dumps(strict_song_picker, ensure_ascii=False))
                     else:

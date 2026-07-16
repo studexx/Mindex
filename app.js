@@ -5425,6 +5425,12 @@ function handleDetailKeydown(event) {
     saveAll();
     return;
   }
+  const serviceTextField = event.target.closest("input[data-service-item-field]");
+  if (serviceTextField && event.key === "Enter") {
+    event.preventDefault();
+    updateServiceItemField(serviceTextField);
+    return;
+  }
   if (event.key !== "Enter" && event.key !== " ") return;
   if (event.target.closest("button, input, textarea, select, a")) return;
 
@@ -5561,6 +5567,7 @@ function handleDetailInput(event) {
 
   const serviceField = event.target.closest("[data-service-item-field]");
   if (serviceField) {
+    if (isDeferredServiceTextInput(serviceField)) return;
     updateServiceItemField(serviceField);
     return;
   }
@@ -5663,6 +5670,7 @@ function handleDetailChange(event) {
 
   const serviceField = event.target.closest("[data-service-item-field]");
   if (serviceField) {
+    if (isDeferredServiceTextInput(serviceField)) return;
     updateServiceItemField(serviceField);
     return;
   }
@@ -6195,6 +6203,10 @@ function updateNewServiceFormField(field) {
     }
     state.newServiceForm[key] = field.value;
   }
+}
+
+function isDeferredServiceTextInput(field) {
+  return Boolean(field?.matches?.('input[type="text"][data-service-item-field], input:not([type])[data-service-item-field]'));
 }
 
 function updateServiceItemField(field) {
@@ -20403,6 +20415,9 @@ function resolvePresenterServiceItemContentState(item = {}, memo = emptyServiceI
   }
   if (elementType === "blank") return filled("blank");
   if (elementType === "live_scripture" && compactSearchValue(item?.label || "").includes("실시간성구송출")) return filled("live_scripture");
+  if (inputMode === "asset") {
+    return hasServiceAsset(asset) ? filled("asset") : missing("asset_empty");
+  }
   if (inputMode === "praise_db" || serviceItemRequiresSongSelection(item, service)) {
     if (song && !serviceItemSongSelectionInvalid(item, service)) return filled("song");
     if (item?.song_id && !serviceItemSongSelectionInvalid(item, service)) return filled("song");
@@ -20413,9 +20428,6 @@ function resolvePresenterServiceItemContentState(item = {}, memo = emptyServiceI
     return serviceItemScriptureReferences(item, memo).length || serviceScriptureTextPayload(item, memo).verses.length
       ? filled("scripture_reference")
       : missing(rawText ? "scripture_reference_invalid" : "scripture_empty");
-  }
-  if (inputMode === "asset") {
-    return hasServiceAsset(asset) ? filled("asset") : missing("asset_empty");
   }
   if (song || item?.song_id) return filled("song");
   if (rawText) return filled("raw_title");
