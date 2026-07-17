@@ -10192,14 +10192,16 @@ function renderPraiseEmptyDetail() {
       `;
   return `
     <div class="empty-detail">
-      <div class="empty-detail-inner">
-        ${content}
-        ${canCreatePraiseSong() ? `
+      ${canCreatePraiseSong() ? `
+        <div class="empty-detail-actions">
           <button class="reference-new-btn praise-empty-create-btn" type="button" data-create-song>
             <i data-lucide="plus"></i>
             <span>곡 추가</span>
           </button>
-        ` : ""}
+        </div>
+      ` : ""}
+      <div class="empty-detail-inner">
+        ${content}
       </div>
     </div>
   `;
