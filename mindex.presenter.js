@@ -1101,6 +1101,7 @@ function presenterElementSlideFromMemoCore(item, section, index, memo, displayTe
       : compactLabel === "특송"
         ? String(displayText || "").trim()
       : "";
+    const slideTitle = sermonTitle ? contentTitle : titleText;
     const threePartAssignee = sermonTitle || compactLabel === "특송"
       ? cleanPresenterAssignee(item.assignee)
       : assigneeText;
@@ -1112,19 +1113,19 @@ function presenterElementSlideFromMemoCore(item, section, index, memo, displayTe
       ...section,
       sectionAssignee: scriptureReading ? "" : section.sectionAssignee,
       elementLabel: safeLabel || section.elementLabel || serviceElementTypeLabel(elementType),
-      elementTitle: titleText,
+      elementTitle: slideTitle,
       elementType: PRESENTER_ELEMENT_TYPES.TITLE_ASSIGNEE,
       layout: PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT,
       type: "title-assignee",
       label: safeLabel,
-      title: titleText,
+      title: slideTitle,
       assignee: hasThreeParts ? threePartAssignee : assigneeText,
       orderTitle: hasThreeParts ? orderTitle : "",
       contentTitle: hasThreeParts ? contentTitle : "",
       marker: "",
       text: hasThreeParts
         ? cleanList([orderTitle, contentTitle, threePartAssignee]).join("\n")
-        : cleanList([titleText, assigneeText]).join("\n"),
+        : cleanList([slideTitle, assigneeText]).join("\n"),
       sort: index,
     };
   }
