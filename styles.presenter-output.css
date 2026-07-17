@@ -686,7 +686,7 @@
 .presenter-slide--blank { padding: 0; }
 /* Fullscreen blank frames retain a simple centered cross. */
 .presenter-output-root.no-chromakey .presenter-slide--blank {
-  --presenter-blank-cross-stroke: calc(9 * var(--presenter-stage-unit));
+  --presenter-blank-cross-stroke: calc(6 * var(--presenter-stage-unit));
   position: relative;
 }
 .presenter-output-root.no-chromakey .presenter-slide--blank::before,
@@ -701,13 +701,13 @@
   top: 50%;
   left: 50%;
   width: var(--presenter-blank-cross-stroke);
-  height: calc(520 * var(--presenter-stage-unit));
+  height: calc(454 * var(--presenter-stage-unit));
   transform: translate(-50%, -50%);
 }
 .presenter-output-root.no-chromakey .presenter-slide--blank::after {
-  top: calc(50% - (81 * var(--presenter-stage-unit)));
+  top: calc(50% - (87 * var(--presenter-stage-unit)));
   left: 50%;
-  width: calc(320 * var(--presenter-stage-unit));
+  width: calc(280 * var(--presenter-stage-unit));
   height: var(--presenter-blank-cross-stroke);
   transform: translate(-50%, -50%);
 }
