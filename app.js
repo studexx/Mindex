@@ -14114,7 +14114,10 @@ const SERVICE_ORDER_TEMPLATE_FALLBACKS = {
     "성경봉독",
     "설교",
     responseSectionTemplate(),
-    { label: "찬양", name: "찬양", required: false, flex: true, sectionKey: "prayer_meeting_praise", elementType: "praise" },
+    { label: "기도 찬양", name: "기도 찬양", required: false, flex: true, sectionKey: "prayer_meeting_praise", elements: [
+      { label: "기도 찬양 1", name: "기도 찬양 1", elementType: "praise" },
+      { label: "기도 찬양 2", name: "기도 찬양 2", elementType: "praise" },
+    ] },
     "자율기도",
   ],
   monthly: publicMonthlyTemplate(),
