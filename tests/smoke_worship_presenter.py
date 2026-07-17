@@ -208,7 +208,7 @@ def main() -> int:
                     })()
                     """
                 )
-                if ccm_form_order_state == {"metadataOrder": ["v1", "c", "v2", "c"], "inferredOrder": ["v1", "c", "v2", "c"], "forcedOrder": ["v1", "c", "v1"]}:
+                if ccm_form_order_state == {"metadataOrder": ["v1", "c", "v2", "c"], "inferredOrder": ["v1", "c", "v2", "c"], "forcedOrder": ["v1", "c", "v1", "v2"]}:
                     pass_("presenter-ccm-repeats-chorus", json.dumps(ccm_form_order_state, ensure_ascii=False))
                 else:
                     fail("presenter-ccm-repeats-chorus", json.dumps(ccm_form_order_state, ensure_ascii=False))
@@ -3132,6 +3132,8 @@ def main() -> int:
                       const readingTextRect = readingText?.getBoundingClientRect();
                       const readingTextStyle = readingText ? getComputedStyle(readingText) : null;
                       const readingNoStyle = readingNo ? getComputedStyle(readingNo) : null;
+                      const readingFinStyle = readingFin ? getComputedStyle(readingFin) : null;
+                      const readingSlideStyle = slides[0] ? getComputedStyle(slides[0]) : null;
                       const sermonTextStyle = sermonText ? getComputedStyle(sermonText) : null;
                       const result = {
                         readingTypes: readingSlides.map((slide) => slide.type),
@@ -3161,6 +3163,8 @@ def main() -> int:
                         readingNumber: readingNo?.textContent?.trim() || '',
                         readingText: readingText?.textContent?.trim() || '',
                         readingFin: readingFin?.textContent?.trim() || '',
+                        readingFinFontStyle: readingFinStyle?.fontStyle || '',
+                        readingSidePadding: parseFloat(readingSlideStyle?.paddingLeft || '0'),
                         readingFontFamily: readingTextStyle?.fontFamily || '',
                         readingFontWeight: readingTextStyle?.fontWeight || '',
                         readingLineHeight: readingTextStyle?.lineHeight || '',
@@ -3204,6 +3208,8 @@ def main() -> int:
                     and scripture_context_state["readingTranslationLabel"] == "개역개정"
                     and scripture_context_state["readingVersion"] == "개역개정"
                     and scripture_context_state["readingFin"] == "Fin."
+                    and scripture_context_state["readingFinFontStyle"] == "italic"
+                    and scripture_context_state["readingSidePadding"] >= 100
                     and scripture_context_state["readingHeaderSplit"]
                     and scripture_context_state["readingBodyBelowHeader"]
                     and scripture_context_state["readingNumber"] == "14"

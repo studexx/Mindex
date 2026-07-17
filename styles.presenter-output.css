@@ -54,11 +54,11 @@
   --presenter-scripture-line-height: 1.1;
   --presenter-scripture-fit-width: 64cqw;
   --presenter-scripture-fit-ratio: .74;
-  --presenter-scripture-bar-size: var(--presenter-size-body);
-  --presenter-scripture-clean-size: var(--presenter-size-body);
+  --presenter-scripture-bar-size: calc(72 * var(--presenter-stage-unit));
+  --presenter-scripture-clean-size: calc(72 * var(--presenter-stage-unit));
   --presenter-scripture-reading-ref-size: var(--presenter-size-section);
   --presenter-scripture-reading-version-size: var(--presenter-size-caption);
-  --presenter-scripture-reading-text-size: var(--presenter-size-body);
+  --presenter-scripture-reading-text-size: calc(72 * var(--presenter-stage-unit));
   display: grid;
   width: var(--presenter-stage-width);
   height: var(--presenter-stage-height);
@@ -82,18 +82,18 @@
   /* Fullscreen output is read from a distance; chromakey keeps its lower-bar scale. */
   --presenter-size-display: calc(168 * var(--presenter-stage-unit));
   --presenter-size-section: calc(144 * var(--presenter-stage-unit));
-  --presenter-size-body: calc(128 * var(--presenter-stage-unit));
+  --presenter-size-body: calc(96 * var(--presenter-stage-unit));
   --presenter-size-lyrics: calc(128 * var(--presenter-stage-unit));
   --presenter-size-meta: calc(104 * var(--presenter-stage-unit));
   --presenter-size-caption: calc(80 * var(--presenter-stage-unit));
   --presenter-size-thumbnail: calc(88 * var(--presenter-stage-unit));
   --presenter-size-file-caption: calc(80 * var(--presenter-stage-unit));
   /* Scripture reading is shared service content, not a fullscreen display variant. */
-  --presenter-scripture-bar-size: calc(64 * var(--presenter-stage-unit));
-  --presenter-scripture-clean-size: calc(64 * var(--presenter-stage-unit));
+  --presenter-scripture-bar-size: calc(72 * var(--presenter-stage-unit));
+  --presenter-scripture-clean-size: calc(72 * var(--presenter-stage-unit));
   --presenter-scripture-reading-ref-size: calc(72 * var(--presenter-stage-unit));
   --presenter-scripture-reading-version-size: calc(40 * var(--presenter-stage-unit));
-  --presenter-scripture-reading-text-size: calc(64 * var(--presenter-stage-unit));
+  --presenter-scripture-reading-text-size: calc(72 * var(--presenter-stage-unit));
 }
 .svc-slide-mini-canvas.presenter-output-root {
   position: absolute;
@@ -452,16 +452,6 @@
   font-weight: var(--presenter-weight-body);
   text-align: right;
 }
-.presenter-slide--song-title .presenter-section-song-title--stacked {
-  grid-template-columns: minmax(0, 1fr);
-  gap: .08em;
-  justify-items: center;
-  text-align: center;
-}
-.presenter-section-song-title--stacked .presenter-section-song-title-name {
-  justify-self: center;
-  text-align: center;
-}
 .presenter-slide--title-assignee .presenter-slide-text {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 44cqw);
@@ -582,7 +572,7 @@
 .presenter-output-root.no-chromakey .presenter-slide--scripture-reading {
   justify-content: flex-start;
   align-items: stretch;
-  padding: 10cqh 3.2cqw;
+  padding: 10cqh 5.5cqw;
   text-align: left;
 }
 .presenter-slide--scripture-reading {
@@ -666,6 +656,7 @@
   right: 0;
   bottom: 0;
   font-size: var(--presenter-scripture-reading-version-size);
+  font-style: italic;
   font-weight: var(--presenter-weight-meta);
   line-height: 1;
   opacity: .82;
@@ -693,6 +684,33 @@
 .presenter-slide--image > .presenter-slide-meta { display: none; }
 .presenter-slide--file { justify-content: center; align-items: center; }
 .presenter-slide--blank { padding: 0; }
+/* Chroma-key blank frames retain a simple centered cross for the sanctuary output. */
+.presenter-output-root:not(.no-chromakey) .presenter-slide--blank {
+  --presenter-blank-cross-stroke: calc(10 * var(--presenter-stage-unit));
+  position: relative;
+}
+.presenter-output-root:not(.no-chromakey) .presenter-slide--blank::before,
+.presenter-output-root:not(.no-chromakey) .presenter-slide--blank::after {
+  position: absolute;
+  display: block;
+  content: "";
+  background: #fff;
+  pointer-events: none;
+}
+.presenter-output-root:not(.no-chromakey) .presenter-slide--blank::before {
+  top: 50%;
+  left: 50%;
+  width: var(--presenter-blank-cross-stroke);
+  height: calc(584 * var(--presenter-stage-unit));
+  transform: translate(-50%, -50%);
+}
+.presenter-output-root:not(.no-chromakey) .presenter-slide--blank::after {
+  top: calc(50% - (111 * var(--presenter-stage-unit)));
+  left: 50%;
+  width: calc(360 * var(--presenter-stage-unit));
+  height: var(--presenter-blank-cross-stroke);
+  transform: translate(-50%, -50%);
+}
 .presenter-video { display: block; width: 100%; height: 100%; object-fit: cover; background: #000; }
 .presenter-output-root:not(.no-chromakey) .presenter-video,
 .presenter-output-root:not(.no-chromakey) .presenter-image { background: var(--presenter-chromakey); }

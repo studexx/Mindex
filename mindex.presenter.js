@@ -390,9 +390,33 @@ function presenterFormPlanForServiceItem(version = {}, item, song = null) {
   const resolved = resolvePresenterFormPresetSequence(forms, effectivePreset.forms);
   const warnings = resolved.missing.map((label) => `${label} 없음`);
   return {
-    forms: resolved.items.length ? resolved.items : forms,
+    forms: resolved.items.length
+      ? presenterFormsWithNoSourceOmissions(resolved.items, forms)
+      : forms,
     warnings,
   };
+}
+
+function presenterFormsWithNoSourceOmissions(plannedForms = [], sourceForms = []) {
+  const source = normalizeForms(sourceForms || []).filter((form) => normalizeLyricsForCopy(form.lyrics));
+  const identity = (form) => String(form?._localId || form?.id || "").trim();
+  const sourceIndexes = new Map(source.map((form, index) => [identity(form), index]).filter(([id]) => id));
+  if (!sourceIndexes.size) return plannedForms;
+
+  const merged = [...plannedForms];
+  const present = new Set(merged.map(identity).filter(Boolean));
+  source.forEach((form) => {
+    const id = identity(form);
+    if (!id || present.has(id)) return;
+    const sourceIndex = sourceIndexes.get(id);
+    const insertAt = merged.findIndex((candidate) => {
+      const candidateIndex = sourceIndexes.get(identity(candidate));
+      return Number.isFinite(candidateIndex) && candidateIndex > sourceIndex;
+    });
+    merged.splice(insertAt < 0 ? merged.length : insertAt, 0, form);
+    present.add(id);
+  });
+  return merged;
 }
 
 function presenterExplicitNonHymnFormPreset(preset = null) {
@@ -408,7 +432,7 @@ function presenterFormPresetWithAvailableForms(preset = null, forms = []) {
     .filter(({ target }) => target.key && target.type !== "lyrics");
   if (!source.length) return preset;
 
-  const base = presenterRepeatableVerseChorusPresetForms(preset.forms, source) || cleanList(preset.forms);
+  const base = presenterRepeatableVerseChorusPresetForms(preset, source) || cleanList(preset.forms);
   const merged = [];
   let sourceIndex = 0;
   base.forEach((label) => {
@@ -443,7 +467,8 @@ function presenterFormPresetWithAvailableForms(preset = null, forms = []) {
   const formsWithPreChorus = hasPreChorus
     ? presenterInsertPreChorusBeforeChoruses(merged)
     : merged;
-  if (formsWithPreChorus.length === base.length && formsWithPreChorus.every((label, index) => label === base[index])) return preset;
+  const original = cleanList(preset.forms);
+  if (formsWithPreChorus.length === original.length && formsWithPreChorus.every((label, index) => label === original[index])) return preset;
   return {
     ...preset,
     forms: formsWithPreChorus,
@@ -451,9 +476,11 @@ function presenterFormPresetWithAvailableForms(preset = null, forms = []) {
   };
 }
 
-function presenterRepeatableVerseChorusPresetForms(presetForms = [], source = []) {
-  const preset = cleanList(presetForms);
-  const targets = preset.map((label) => normalizePresenterFormPresetLabel(label));
+function presenterRepeatableVerseChorusPresetForms(preset = null, source = []) {
+  const strength = String(preset?.strength || "").trim().toLowerCase();
+  if (["default", "forced", "manual"].includes(strength)) return null;
+  const presetForms = cleanList(preset?.forms);
+  const targets = presetForms.map((label) => normalizePresenterFormPresetLabel(label));
   const core = targets.filter((target) => target.type !== "pre-chorus");
   const alternating = core.length >= 2
     && core.every((target, index) => target.type === (index % 2 === 0 ? "verse" : "chorus"));
@@ -1536,18 +1563,21 @@ function presenterSongTitleSlide(item, section, song, version, displayText, inde
   const sectionHeading = presenterSongTitleSectionHeading(item, section);
   const displayTitle = presenterSongTitleDisplayTitle(song, version, displayText, sectionHeading);
   const titleText = formatPresenterSongTitleText(displayTitle);
+  const responseSong = String(section.sectionKey || item?._worshipSectionKey || "").trim() === "response_song";
+  const responseTitle = String(item?.label || "결단찬양").trim();
   return {
     id: `${item.id || index}:song-title`,
     ...section,
-    elementType: PRESENTER_ELEMENT_TYPES.PRAISE,
-    layout: PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT,
-    type: "song-title",
+    elementType: responseSong ? PRESENTER_ELEMENT_TYPES.TITLE_CONTENT : PRESENTER_ELEMENT_TYPES.PRAISE,
+    layout: responseSong ? PRESENTER_SLIDE_LAYOUTS.CENTER_TEXT : PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT,
+    type: responseSong ? "title-content" : "song-title",
     label: item.label || "",
-    title: displayTitle,
+    title: responseSong ? responseTitle : displayTitle,
     subtitle: versionDisplayName(song, version),
     marker,
     sectionHeading,
-    text: titleText,
+    bodyText: responseSong ? titleText : "",
+    text: responseSong ? cleanList([responseTitle, titleText]).join("\n") : titleText,
     sort: index - 0.001,
   };
 }
@@ -3265,11 +3295,8 @@ function renderPresenterSectionSongTitleSlide(slide) {
   const title = String(slide.text || formatPresenterSongTitleText(slide.title || "")).trim();
   const headingChars = presenterLineCharEstimate(heading);
   const titleChars = presenterLineCharEstimate(title);
-  const stackedClass = String(slide.sectionKey || "").trim() === "response_song"
-    ? " presenter-section-song-title--stacked"
-    : "";
   return `
-    <div class="presenter-slide-text presenter-section-song-title${stackedClass}">
+    <div class="presenter-slide-text presenter-section-song-title">
       <span class="presenter-section-song-title-heading" style="--line-chars: ${escapeAttr(headingChars)}">${escapeHtml(heading)}</span>
       <span class="presenter-section-song-title-name" style="--line-chars: ${escapeAttr(titleChars)}">${escapeHtml(title)}</span>
     </div>
