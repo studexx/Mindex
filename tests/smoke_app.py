@@ -2070,9 +2070,14 @@ def main() -> int:
                             "monthlyDefaultLeader": "",
                         }
                         and template_terms["fridayScaffold"]["sections"][-1] == "자율기도"
-                        and template_terms["fridayScaffold"]["sections"][-3:] == ["결단", "찬양", "자율기도"]
+                        and template_terms["fridayScaffold"]["sections"][-3:] == ["결단", "기도 찬양", "자율기도"]
                         and any(
                             item["label"] == "찬양"
+                            and item["sectionKey"] == "pre_scripture_praise"
+                            for item in template_terms["fridayScaffold"]["rawTitles"]
+                        )
+                        and any(
+                            item["label"] == "기도 찬양 1"
                             and item["sectionKey"] == "prayer_meeting_praise"
                             for item in template_terms["fridayScaffold"]["rawTitles"]
                         )

@@ -6823,6 +6823,7 @@ function normalizeServiceFormPreset(value, fallbackHint = "", fallbackStrength =
   if (forms.length) preset.forms = forms;
   if (hint) preset.hint = hint;
   if (strength) preset.strength = strength;
+  if (source?.omitUnlisted || source?.omit_unlisted) preset.omitUnlisted = true;
   return Object.keys(preset).length ? preset : null;
 }
 
@@ -6848,8 +6849,9 @@ function normalizeServiceFormPresetRules(value) {
       );
       const when = parseObjectPayload(parsedRule.when || parsedRule.condition || parsedRule.conditions) || {};
       const appendCodaWhenAvailable = Boolean(parsedRule.appendCodaWhenAvailable || parsedRule.append_coda_when_available);
+      const omitUnlisted = Boolean(parsedRule.omitUnlisted || parsedRule.omit_unlisted);
       return preset
-        ? { when, formPreset: normalizeServiceFormPresetRulePreset(preset, when), ...(appendCodaWhenAvailable ? { appendCodaWhenAvailable } : {}) }
+        ? { when, formPreset: normalizeServiceFormPresetRulePreset(preset, when), ...(appendCodaWhenAvailable ? { appendCodaWhenAvailable } : {}), ...(omitUnlisted ? { omitUnlisted } : {}) }
         : null;
     })
     .filter(Boolean);
@@ -13443,11 +13445,12 @@ function responseSectionTemplate() {
 
 const PUBLIC_SPECIAL_HYMN_FORM_PRESET_RULE = {
   when: { songType: "hymn" },
-  appendCodaWhenAvailable: true,
+  omitUnlisted: true,
   formPreset: {
     forms: [...PUBLIC_SPECIAL_HYMN_FORM_PRESET_FORMS],
     hint: PUBLIC_SPECIAL_HYMN_FORM_PRESET_HINT,
     strength: "default",
+    omitUnlisted: true,
   },
 };
 
@@ -14108,6 +14111,7 @@ const SERVICE_ORDER_TEMPLATE_FALLBACKS = {
     "대표기도",
     "특송",
     publicWorshipAnnouncementsStep(),
+    { label: "찬양", name: "찬양", required: false, flex: true, sectionKey: "pre_scripture_praise", elementType: "praise" },
     "성경봉독",
     "설교",
     responseSectionTemplate(),
@@ -19180,6 +19184,7 @@ function serviceCanonicalSectionTitle(sectionKey = "") {
     special_song: "특송",
     sermon: "설교",
     response_song: "결단",
+    pre_scripture_praise: "찬양",
     prayer_meeting_praise: "기도 찬양",
     offering: "봉헌",
     announcements: "광고",
@@ -19245,8 +19250,9 @@ function presenterBoardSubgroupContentTitle(slide = {}, label = "") {
   if (slide?._praiseIntroSlide) return "";
   const linkedTitle = presenterBoardLinkedSongTitle(slide);
   if (linkedTitle) return linkedTitle;
-  if (compactSearchValue(label) === "설교제목") {
-    return presenterSermonContentTitle(String(slide.assignee || "").split("\n")[0]);
+  const sectionKey = String(slide.sectionKey || "").trim();
+  if (sectionKey === "sermon" || ["설교", "설교제목"].includes(compactSearchValue(label))) {
+    return slide.contentTitle || presenterSermonContentTitle(String(slide.assignee || "").split("\n")[0]);
   }
   const title = slide.elementTitle || slide.title || presenterSlideMainText(slide);
   if (presenterTitleAssigneeTitleIsGeneric(title, label)) return "";

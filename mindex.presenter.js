@@ -391,7 +391,9 @@ function presenterFormPlanForServiceItem(version = {}, item, song = null) {
   const warnings = resolved.missing.map((label) => `${label} 없음`);
   return {
     forms: resolved.items.length
-      ? presenterFormsWithNoSourceOmissions(resolved.items, forms)
+      ? effectivePreset.omitUnlisted
+        ? resolved.items
+        : presenterFormsWithNoSourceOmissions(resolved.items, forms)
       : forms,
     warnings,
   };
@@ -437,6 +439,24 @@ function presenterFormPresetWithAvailableForms(preset = null, forms = []) {
   let sourceIndex = 0;
   base.forEach((label) => {
     const target = normalizePresenterFormPresetLabel(label);
+    if (target.lastVerse) {
+      const lastVerse = source
+        .map((candidate, index) => ({ ...candidate, index }))
+        .filter(({ target: candidate }) => candidate.type === "verse")
+        .reduce((best, candidate) => {
+          if (!best) return candidate;
+          const bestNumber = Number(best.target.number) || 0;
+          const candidateNumber = Number(candidate.target.number) || 0;
+          if (candidateNumber > bestNumber) return candidate;
+          if (candidateNumber === bestNumber && candidate.index > best.index) return candidate;
+          return best;
+        }, null);
+      if (lastVerse) {
+        sourceIndex = Math.max(sourceIndex, lastVerse.index + 1);
+        merged.push(presenterFormDisplayLabel(lastVerse.form));
+        return;
+      }
+    }
     const matchIndex = source.findIndex(({ target: candidate }, index) => index >= sourceIndex && presenterFormTargetsMatch(target, candidate));
     if (matchIndex >= sourceIndex) {
       source.slice(sourceIndex, matchIndex).forEach(({ form, target: candidate }) => {
@@ -448,6 +468,16 @@ function presenterFormPresetWithAvailableForms(preset = null, forms = []) {
     }
     merged.push(label);
   });
+
+  if (preset.omitUnlisted) {
+    const original = cleanList(preset.forms);
+    if (merged.length === original.length && merged.every((label, index) => label === original[index])) return preset;
+    return {
+      ...preset,
+      forms: merged,
+      hint: merged.join("-"),
+    };
+  }
 
   // Preserve endings and bridges omitted by a generic sequence such as VCVC.
   let includeFollowingChorus = false;
@@ -655,7 +685,17 @@ function findPresenterFormForPresetLabel(forms = [], label = "") {
   if (!target.key) return null;
   if (target.blank) return presenterBlankFormPresetItem(label, target);
   if (target.lastVerse) {
-    return [...forms].reverse().find((form) => normalizePresenterFormPresetLabel(presenterFormDisplayLabel(form)).type === "verse") || null;
+    const verses = forms
+      .map((form, index) => ({ form, index, target: normalizePresenterFormPresetLabel(presenterFormDisplayLabel(form)) }))
+      .filter(({ target }) => target.type === "verse");
+    if (!verses.length) return null;
+    return verses.reduce((best, candidate) => {
+      const bestNumber = Number(best.target.number) || 0;
+      const candidateNumber = Number(candidate.target.number) || 0;
+      if (candidateNumber > bestNumber) return candidate;
+      if (candidateNumber === bestNumber && candidate.index > best.index) return candidate;
+      return best;
+    }).form;
   }
   for (const form of forms) {
     const candidate = normalizePresenterFormPresetLabel(presenterFormDisplayLabel(form));
@@ -1055,10 +1095,13 @@ function presenterElementSlideFromMemoCore(item, section, index, memo, displayTe
     const assigneeText = presenterTitleAssigneePerson(item, safeLabel, displayText, titleText, service);
     const compactLabel = compactSearchValue(safeLabel);
     const orderTitle = String(section.sectionHeading || section.sectionTitle || section.sectionLabel || "").trim();
-    const contentTitle = ["설교제목", "특송"].includes(compactLabel)
-      ? String(displayText || "").trim()
+    const sermonTitle = section.sectionKey === "sermon" || ["설교", "설교제목"].includes(compactLabel);
+    const contentTitle = sermonTitle
+      ? presenterSermonContentTitle(displayText)
+      : compactLabel === "특송"
+        ? String(displayText || "").trim()
       : "";
-    const threePartAssignee = ["설교제목", "특송"].includes(compactLabel)
+    const threePartAssignee = sermonTitle || compactLabel === "특송"
       ? cleanPresenterAssignee(item.assignee)
       : assigneeText;
     const hasThreeParts = Boolean(orderTitle && contentTitle && threePartAssignee);
