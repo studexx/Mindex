@@ -10,6 +10,10 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="MINDEX" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="preload" href="./vendor/fonts/pretendard/PretendardVariable.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="./vendor/fonts/freesentation/Freesentation-6SemiBold.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="./vendor/fonts/freesentation/Freesentation-7Bold.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="./vendor/fonts/freesentation/Freesentation-8ExtraBold.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="./styles.css?v=mindex-presenter-tab-title-001" />
     <link rel="stylesheet" href="./styles.presenter-output.css?v=mindex-presenter-type-scale-002" />
     <link rel="stylesheet" href="./styles.calendar.css?v=mindex-calendar-ui-010" />
@@ -21,6 +25,9 @@
           <i data-lucide="panel-left"></i>
         </button>
         <nav class="nav-rail" aria-label="Mindex 페이지">
+          <button class="nav-rail-tab" type="button" data-home-module="home" aria-label="홈" title="홈">
+            <i data-lucide="house"></i>
+          </button>
           <button class="nav-rail-tab" type="button" data-home-module="service" aria-label="예배" title="예배">
             <i data-lucide="layout-template"></i>
           </button>
@@ -98,7 +105,7 @@
       };
     </script>
     <script src="./mindex.constants.js?v=mindex-sidebar-state-001"></script>
-  <script src="./mindex.presenter.js?v=mindex-presenter-type-scale-002"></script>
-  <script src="./app.js?v=mindex-presenter-type-scale-002"></script>
+  <script src="./mindex.presenter.js?v=mindex-friday-ready-image-002"></script>
+  <script src="./app.js?v=mindex-friday-ready-image-002"></script>
   </body>
 </html>

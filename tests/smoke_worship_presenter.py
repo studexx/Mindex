@@ -4944,6 +4944,100 @@ def main() -> int:
                 else:
                     fail("presenter-fullscreen-ready-image", json.dumps(fullscreen_ready_state, ensure_ascii=False))
 
+                friday_ready_default_state = page.evaluate(
+                    """
+                    () => {
+                      const service = {
+                        id: '__smoke_friday_ready_default_image_service__',
+                        type_id: 'friday',
+                        date: '2026-07-10',
+                        title: 'Friday Ready Default Image',
+                        leader: '테스트',
+                        tags: [],
+                      };
+                      if (!state.serviceTypes.some((item) => item.id === service.type_id)) {
+                        state.serviceTypes.push({ id: service.type_id, name: '금요기도회', sort_order: 2 });
+                      }
+                      state.services = [
+                        service,
+                        ...state.services.filter((item) => item.id !== service.id),
+                      ];
+                      state.serviceItems[service.id] = normalizeServiceItems([
+                        {
+                          id: '__smoke_friday_ready_default_image_item__',
+                          service_id: service.id,
+                          sort_order: 1,
+                          label: '준비',
+                          raw_title: '준비',
+                          memo: '',
+                        },
+                      ]);
+                      preparePresenterService(service.id);
+                      const first = state.presenter.slides[0] || {};
+                      return {
+                        chromakey: presenterServiceUsesChromakey(service),
+                        type: first.type || '',
+                        elementType: first.elementType || '',
+                        layout: first.layout || '',
+                        imageSrc: first.imageSrc || '',
+                        title: first.title || '',
+                        elementLabel: first.elementLabel || '',
+                        videoSrc: first.videoSrc || '',
+                      };
+                    }
+                    """
+                )
+                if (
+                    friday_ready_default_state["chromakey"] is False
+                    and friday_ready_default_state["type"] == "image"
+                    and friday_ready_default_state["elementType"] == "image"
+                    and friday_ready_default_state["layout"] == "media"
+                    and friday_ready_default_state["imageSrc"].endswith("assets/presenter/friday-prayer-ready.png")
+                    and friday_ready_default_state["videoSrc"] == ""
+                    and friday_ready_default_state["elementLabel"] == "금요기도회 준비"
+                    and "영상" not in friday_ready_default_state["elementLabel"]
+                ):
+                    pass_("presenter-friday-ready-default-image", json.dumps(friday_ready_default_state, ensure_ascii=False))
+                else:
+                    fail("presenter-friday-ready-default-image", json.dumps(friday_ready_default_state, ensure_ascii=False))
+
+                friday_ready_background_guard = page.evaluate(
+                    """
+                    () => {
+                      const directService = {
+                        id: '__smoke_friday_ready_background_guard_direct__',
+                        type_id: 'friday',
+                        date: '2026-07-10',
+                        presenter_background: 'assets/presenter/friday-prayer-ready.png',
+                      };
+                      const legacyService = {
+                        id: '__smoke_friday_ready_background_guard_legacy__',
+                        type_id: 'friday',
+                        date: '2026-07-10',
+                        presenter_background: 'assets/worship-backgrounds/friday-prayer-ready.png',
+                      };
+                      const normalService = {
+                        id: '__smoke_friday_ready_background_guard_normal__',
+                        type_id: 'friday',
+                        date: '2026-07-10',
+                      };
+                      return {
+                        direct: presenterBackgroundSourcesForService(directService),
+                        legacy: presenterBackgroundSourcesForService(legacyService),
+                        normal: presenterBackgroundSourcesForService(normalService),
+                      };
+                    }
+                    """
+                )
+                if (
+                    friday_ready_background_guard["direct"] == []
+                    and friday_ready_background_guard["legacy"] == []
+                    and all("friday-prayer-ready" not in source for source in friday_ready_background_guard["normal"])
+                ):
+                    pass_("presenter-friday-ready-background-guard", json.dumps(friday_ready_background_guard, ensure_ascii=False))
+                else:
+                    fail("presenter-friday-ready-background-guard", json.dumps(friday_ready_background_guard, ensure_ascii=False))
+
                 default_background_state = page.evaluate(
                     """
                     () => {

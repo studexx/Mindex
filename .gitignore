@@ -26,6 +26,7 @@ scripts/*
 !scripts/youtube_live_source.py
 !scripts/youtube_live_schedule.py
 output/
+dist/
 backups/
 assets/youtube/
 \[external references\]/

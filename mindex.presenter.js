@@ -154,6 +154,7 @@ const PRESENTER_PUBLIC_APOSTLES_CREED_TEXT = `나는 전능하신 아버지 하�
 몸의 부활과 영생을 믿습니다. 아멘.`;
 
 const PRESENTER_SCRIPTURE_READING_BACKGROUND = "assets/worship-backgrounds/scripture-reading-cross.png";
+const PRESENTER_FRIDAY_PRAYER_READY_IMAGE = "assets/presenter/friday-prayer-ready.png";
 
 const PRESENTER_PUBLIC_COMMUNITY_CONFESSION_TEXT = `우리는 세상으로부터 부름 받은 하나님의 거룩한 백성입니다.
 또한 세상으로 보냄 받은 그리스도의 제자입니다.
@@ -384,7 +385,7 @@ function presenterFormPlanForServiceItem(version = {}, item, song = null) {
       || presenterExplicitNonHymnFormPreset(songDefaultPreset)
       || presenterDefaultVerseChorusFormPreset(forms, song, version)
       || null;
-  const effectivePreset = presenterFormPresetWithAvailableCoda(preset, matchedRule, forms, song, version);
+  const effectivePreset = presenterFormPresetWithAvailableForms(preset, forms);
   if (!effectivePreset?.forms?.length) return { forms, warnings: [] };
   const resolved = resolvePresenterFormPresetSequence(forms, effectivePreset.forms);
   const warnings = resolved.missing.map((label) => `${label} 없음`);
@@ -399,22 +400,98 @@ function presenterExplicitNonHymnFormPreset(preset = null) {
   return String(preset.strength || "").trim().toLowerCase() === "suggested" ? null : preset;
 }
 
-function presenterFormPresetWithAvailableCoda(preset = null, rule = null, forms = [], song = null, version = null) {
-  if (!preset?.forms?.length || !rule?.appendCodaWhenAvailable) return preset;
-  if (!versionEffectivePraiseTypes(song, version).includes("hymn")) return preset;
-  const normalizedPresetForms = preset.forms.map((form) => normalizePresenterFormPresetLabel(form));
-  if (normalizedPresetForms.some((form) => form.type === "coda" || form.type === "amen")) return preset;
-  const hasCoda = normalizeForms(forms || []).some((form) => {
-    const target = normalizePresenterFormPresetLabel(presenterFormDisplayLabel(form));
-    return target.type === "coda" || target.type === "amen";
+function presenterFormPresetWithAvailableForms(preset = null, forms = []) {
+  if (!preset?.forms?.length) return preset;
+  const source = normalizeForms(forms || [])
+    .filter((form) => normalizeLyricsForCopy(form.lyrics))
+    .map((form) => ({ form, target: normalizePresenterFormPresetLabel(presenterFormDisplayLabel(form)) }))
+    .filter(({ target }) => target.key && target.type !== "lyrics");
+  if (!source.length) return preset;
+
+  const base = presenterRepeatableVerseChorusPresetForms(preset.forms, source) || cleanList(preset.forms);
+  const merged = [];
+  let sourceIndex = 0;
+  base.forEach((label) => {
+    const target = normalizePresenterFormPresetLabel(label);
+    const matchIndex = source.findIndex(({ target: candidate }, index) => index >= sourceIndex && presenterFormTargetsMatch(target, candidate));
+    if (matchIndex >= sourceIndex) {
+      source.slice(sourceIndex, matchIndex).forEach(({ form, target: candidate }) => {
+        if (presenterSupplementalFormType(candidate)) merged.push(presenterFormDisplayLabel(form));
+      });
+      sourceIndex = matchIndex + 1;
+      merged.push(presenterFormDisplayLabel(source[matchIndex].form));
+      return;
+    }
+    merged.push(label);
   });
-  if (!hasCoda) return preset;
-  const formsWithCoda = [...preset.forms, "Coda"];
+
+  // Preserve endings and bridges omitted by a generic sequence such as VCVC.
+  let includeFollowingChorus = false;
+  source.slice(sourceIndex).forEach(({ form, target }) => {
+    if (presenterSupplementalFormType(target)) {
+      merged.push(presenterFormDisplayLabel(form));
+      includeFollowingChorus = target.type === "bridge" || target.type === "pre-chorus";
+      return;
+    }
+    if (includeFollowingChorus && target.type === "chorus") {
+      merged.push(presenterFormDisplayLabel(form));
+      includeFollowingChorus = false;
+    }
+  });
+
+  const hasPreChorus = source.some(({ target }) => target.type === "pre-chorus");
+  const formsWithPreChorus = hasPreChorus
+    ? presenterInsertPreChorusBeforeChoruses(merged)
+    : merged;
+  if (formsWithPreChorus.length === base.length && formsWithPreChorus.every((label, index) => label === base[index])) return preset;
   return {
     ...preset,
-    forms: formsWithCoda,
-    hint: `${preset.hint || preset.forms.join("-")}-Coda`,
+    forms: formsWithPreChorus,
+    hint: formsWithPreChorus.join("-"),
   };
+}
+
+function presenterRepeatableVerseChorusPresetForms(presetForms = [], source = []) {
+  const preset = cleanList(presetForms);
+  const targets = preset.map((label) => normalizePresenterFormPresetLabel(label));
+  const core = targets.filter((target) => target.type !== "pre-chorus");
+  const alternating = core.length >= 2
+    && core.every((target, index) => target.type === (index % 2 === 0 ? "verse" : "chorus"));
+  if (!alternating) return null;
+
+  const verses = source.filter(({ target }) => target.type === "verse");
+  const choruses = source.filter(({ target }) => target.type === "chorus");
+  if (!verses.length || !choruses.length) return null;
+
+  const preChoruses = source.filter(({ target }) => target.type === "pre-chorus");
+  const presetChorusCount = targets.filter((target) => target.type === "chorus").length;
+  const cycles = Math.max(verses.length, choruses.length, presetChorusCount);
+  const expanded = [];
+  for (let index = 0; index < cycles; index += 1) {
+    expanded.push(presenterFormDisplayLabel(verses[index % verses.length].form));
+    if (preChoruses.length) expanded.push(presenterFormDisplayLabel(preChoruses[index % preChoruses.length].form));
+    expanded.push(presenterFormDisplayLabel(choruses[index % choruses.length].form));
+  }
+  return expanded;
+}
+
+function presenterFormTargetsMatch(target = {}, candidate = {}) {
+  if (target.key === candidate.key) return true;
+  if (target.type === "coda" && candidate.type === "amen") return true;
+  return Boolean(target.type && target.type === candidate.type && (!target.number || target.number === candidate.number));
+}
+
+function presenterSupplementalFormType(target = {}) {
+  return !["", "verse", "chorus", "lyrics"].includes(String(target.type || ""));
+}
+
+function presenterInsertPreChorusBeforeChoruses(forms = []) {
+  return cleanList(forms).flatMap((label, index, list) => {
+    const target = normalizePresenterFormPresetLabel(label);
+    const previous = normalizePresenterFormPresetLabel(list[index - 1] || "");
+    if (target.type === "chorus" && previous.type !== "pre-chorus") return ["PC", label];
+    return [label];
+  });
 }
 
 function presenterSongDefaultFormPreset(song = null, version = null) {
@@ -581,8 +658,11 @@ function normalizePresenterFormPresetLabel(value = "") {
     const number = shorthand[2] ? Number(shorthand[2]) : 0;
     return { key: number ? `verse:${number}` : "verse", type: "verse", number };
   }
-  const chorus = /^(c|chorus|후렴|코러스)$/i.test(compact);
-  if (chorus) return { key: "chorus", type: "chorus", number: 0 };
+  const chorus = raw.match(/^(c|chorus|후렴|코러스)\s*(\d*)$/i);
+  if (chorus) {
+    const number = chorus[2] ? Number(chorus[2]) : 0;
+    return { key: number ? `chorus:${number}` : "chorus", type: "chorus", number };
+  }
   const bridge = /^(b|bridge|브릿지)$/i.test(compact);
   if (bridge) return { key: "bridge", type: "bridge", number: 0 };
   const preChorus = /^(pc|prechorus|pre-chorus|프리코러스)$/i.test(compact);
@@ -806,12 +886,15 @@ function buildPresenterLiturgicalBodySlides(item, section, index, service, memo,
 
 function presenterPreparationSlide(service, item, index) {
   const memo = parseServiceItemMemo(item?.memo);
-  const asset = normalizeServiceAsset(memo.asset);
+  const configuredAsset = normalizeServiceAsset(memo.asset);
+  const asset = configuredAsset.url
+    ? configuredAsset
+    : presenterDefaultPreparationAsset(service, item, memo);
   const elementType = servicePreparationElementTypeForType(service?.type_id);
   const source = normalizePresenterMediaSource(asset.url || "");
   const presenterRole = presenterPreparationRole(item, memo);
   const playbackType = presenterRole === "intro" ? "intro-video" : "ready-video";
-  const elementLabel = item?.label || (presenterRole === "intro" ? "인트로" : presenterRole === "still" ? "첫 화면" : "대기 영상");
+  const elementLabel = presenterPreparationElementLabel(item, asset, presenterRole);
   if (source) {
     const title = asset.name || item?.raw_title || "";
     const base = {
@@ -862,6 +945,36 @@ function presenterPreparationSlide(service, item, index) {
     presenterRole,
     sort: index,
   };
+}
+
+function presenterDefaultPreparationAsset(service, item = {}, memo = {}) {
+  if (!presenterUsesFridayPrayerReadyImage(service, item, memo)) return { kind: "", name: "", url: "" };
+  return {
+    kind: "image",
+    name: "금요기도회 준비",
+    url: PRESENTER_FRIDAY_PRAYER_READY_IMAGE,
+  };
+}
+
+function presenterPreparationElementLabel(item = {}, asset = {}, presenterRole = "") {
+  const assetName = String(asset?.name || "").trim();
+  if (asset?.url === PRESENTER_FRIDAY_PRAYER_READY_IMAGE) return assetName || "금요기도회 준비";
+  const label = String(item?.label || "").trim();
+  const compactLabel = compactSearchValue(label);
+  if ((asset?.kind === "image" || presenterMediaSourceIsImage(asset?.url)) && compactLabel === "대기영상") {
+    return assetName || "준비 이미지";
+  }
+  return label || (presenterRole === "intro" ? "인트로" : presenterRole === "still" ? "첫 화면" : "대기");
+}
+
+function presenterUsesFridayPrayerReadyImage(service, item = {}, memo = {}) {
+  const rawType = String(service?.type_id || "").trim();
+  const typeId = typeof worshipAppServiceTypeId === "function"
+    ? worshipAppServiceTypeId(rawType)
+    : rawType;
+  if (typeId !== "friday") return false;
+  const role = presenterPreparationRole(item, memo);
+  return role === "ready" || role === "waiting_loop" || role === "still";
 }
 
 function presenterPreparationRole(item = {}, memo = parseServiceItemMemo(item?.memo)) {
@@ -1237,14 +1350,15 @@ function buildPresenterCustomSlides(item, section, index) {
   const slides = parseServiceItemMemo(item?.memo).slides;
   if (!slides.length) return [];
   const label = item.label || "";
+  const songLikeItem = isSongServiceLabel(label) || isPresenterSpecialSongItem(item, section);
   return slides.map((block, blockIndex) => {
     const parsed = parsePresenterCustomSlideBlock(block);
     return {
       id: `${item.id || index}:custom:${blockIndex}`,
       ...section,
-      elementType: isSongServiceLabel(label) ? PRESENTER_ELEMENT_TYPES.PRAISE : PRESENTER_ELEMENT_TYPES.FREEFORM,
-      layout: isSongServiceLabel(label) ? PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT : PRESENTER_SLIDE_LAYOUTS.CENTER_TEXT,
-      type: isSongServiceLabel(label) ? "lyrics" : "component",
+      elementType: songLikeItem ? PRESENTER_ELEMENT_TYPES.PRAISE : PRESENTER_ELEMENT_TYPES.FREEFORM,
+      layout: songLikeItem ? PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT : PRESENTER_SLIDE_LAYOUTS.CENTER_TEXT,
+      type: songLikeItem ? "lyrics" : "component",
       label,
       title: section.sectionTitle || item.raw_title || label || "Slide",
       marker: parsed.marker,
@@ -1409,7 +1523,12 @@ function parsePresenterInlineScriptureText(line) {
 function shouldIncludeSongTitleSlide(item, label) {
   const displayText = serviceItemDisplayText(item);
   if (!displayText) return false;
-  return Boolean(item?.song_id || isSongServiceLabel(label) || isMainPraiseServiceItem(item, { allowUnlabeled: true }));
+  return Boolean(
+    item?.song_id
+    || isSongServiceLabel(label)
+    || isPresenterSpecialSongItem(item)
+    || isMainPraiseServiceItem(item, { allowUnlabeled: true }),
+  );
 }
 
 function presenterSongTitleSlide(item, section, song, version, displayText, index) {
@@ -1707,8 +1826,7 @@ function getServiceItemVersion(song, item, service) {
 function presenterSongForServiceItem(item = {}, displayText = serviceItemDisplayText(item), label = item?.label || "", service = null) {
   const linkedSong = item.song_id ? state.songs.find((candidate) => candidate.id === item.song_id) : null;
   if (linkedSong) return linkedSong;
-  if (!isSongServiceLabel(label)) return null;
-  if (service && typeof serviceItemRequiresSongSelection === "function" && serviceItemRequiresSongSelection(item, service)) return null;
+  if (!isSongServiceLabel(label) && !isPresenterSpecialSongItem(item)) return null;
   return findServicePraiseSong(displayText);
 }
 
@@ -2005,7 +2123,7 @@ function handlePresenterShortcut(event) {
     return true;
   }
 
-  if (event.key === "ArrowRight" || event.key === "ArrowDown" || event.key === "PageDown" || event.key === " ") {
+  if (event.key === "Enter" || event.key === "ArrowRight" || event.key === "ArrowDown" || event.key === "PageDown" || event.key === " ") {
     event.preventDefault();
     state.presenter.exitArmedAt = 0;
     runPresenterAction("next", presenterServiceId);
@@ -2072,12 +2190,22 @@ function initPresenterOutputCore() {
   let jumpDraft = "";
   let exitArmedAt = 0;
   let outputStopping = false;
+  let receivedInitialPresenterState = false;
+  let storedStateFallbackTimer = null;
   const outputClientId = `presenter-output:${Date.now()}:${Math.random().toString(36).slice(2)}`;
   let heartbeatTimer = null;
   const applyPayload = (payload) => {
     currentPayload = normalizePresenterPayload(payload);
     syncPresenterOutputDocumentTitle(currentPayload);
     renderPresenterOutput(currentPayload, { onAutoAdvance: requestPresenterOutputNext });
+  };
+  const applyInitialPresenterState = (payload) => {
+    receivedInitialPresenterState = true;
+    if (storedStateFallbackTimer) {
+      window.clearTimeout(storedStateFallbackTimer);
+      storedStateFallbackTimer = null;
+    }
+    applyPayload(payload);
   };
   const postHeartbeat = () => {
     if (outputStopping) return;
@@ -2092,6 +2220,10 @@ function initPresenterOutputCore() {
     if (heartbeatTimer) {
       window.clearInterval(heartbeatTimer);
       heartbeatTimer = null;
+    }
+    if (storedStateFallbackTimer) {
+      window.clearTimeout(storedStateFallbackTimer);
+      storedStateFallbackTimer = null;
     }
     channel?.close?.();
     channel = null;
@@ -2159,7 +2291,7 @@ function initPresenterOutputCore() {
     channel = new BroadcastChannel(PRESENTER_CHANNEL);
     channel.onmessage = (event) => {
       if (event.data?.type === "presenter-state") {
-        applyPayload(event.data.payload);
+        applyInitialPresenterState(event.data.payload);
         return;
       }
       if (event.data?.type === "presenter-output-close") {
@@ -2176,6 +2308,14 @@ function initPresenterOutputCore() {
       postHeartbeat();
     }, 50);
     heartbeatTimer = window.setInterval(postHeartbeat, PRESENTER_OUTPUT_HEARTBEAT_INTERVAL_MS);
+    // Wait for the current controller state before rendering. Reusing the
+    // previous local payload here could briefly expose its chromakey frame.
+    storedStateFallbackTimer = window.setTimeout(() => {
+      if (!receivedInitialPresenterState) renderStoredState();
+      storedStateFallbackTimer = null;
+    }, PRESENTER_OUTPUT_INITIAL_STATE_FALLBACK_MS);
+  } else {
+    renderStoredState();
   }
   window.addEventListener("pagehide", () => {
     postDisconnect();
@@ -2189,19 +2329,6 @@ function initPresenterOutputCore() {
     if (event.key.toLowerCase() === "f") {
       event.preventDefault();
       document.documentElement.requestFullscreen?.().catch?.(() => {});
-      return;
-    }
-    if (
-      !document.fullscreenElement
-      && !jumpDraft
-      && !event.metaKey
-      && !event.ctrlKey
-      && !event.altKey
-      && (event.key === "Enter" || event.key === " ")
-    ) {
-      event.preventDefault();
-      requestLocalPresenterFullscreen();
-      postHeartbeat();
       return;
     }
     if (!event.metaKey && !event.ctrlKey && !event.altKey && /^\d$/.test(event.key)) {
@@ -2266,7 +2393,6 @@ function initPresenterOutputCore() {
     if (shouldAutoFullscreenPresenterOutput() && !document.fullscreenElement) exitArmedAt = Date.now();
   });
 
-  renderStoredState();
 }
 
 function shouldAutoFullscreenPresenterOutput() {
@@ -2288,7 +2414,7 @@ function requestLocalPresenterFullscreen(options = {}) {
 
 function presenterOutputKeyAction(event) {
   if (event.metaKey || event.ctrlKey || event.altKey) return "";
-  if (event.key === "ArrowRight" || event.key === "ArrowDown" || event.key === "PageDown" || event.key === " ") return "next";
+  if (event.key === "Enter" || event.key === "ArrowRight" || event.key === "ArrowDown" || event.key === "PageDown" || event.key === " ") return "next";
   if (event.key === "ArrowLeft" || event.key === "ArrowUp" || event.key === "PageUp") return "prev";
   if (event.key === "Home") return "first";
   if (event.key === "End") return "last";
@@ -3139,8 +3265,11 @@ function renderPresenterSectionSongTitleSlide(slide) {
   const title = String(slide.text || formatPresenterSongTitleText(slide.title || "")).trim();
   const headingChars = presenterLineCharEstimate(heading);
   const titleChars = presenterLineCharEstimate(title);
+  const stackedClass = String(slide.sectionKey || "").trim() === "response_song"
+    ? " presenter-section-song-title--stacked"
+    : "";
   return `
-    <div class="presenter-slide-text presenter-section-song-title">
+    <div class="presenter-slide-text presenter-section-song-title${stackedClass}">
       <span class="presenter-section-song-title-heading" style="--line-chars: ${escapeAttr(headingChars)}">${escapeHtml(heading)}</span>
       <span class="presenter-section-song-title-name" style="--line-chars: ${escapeAttr(titleChars)}">${escapeHtml(title)}</span>
     </div>

@@ -57,6 +57,33 @@ Then open:
 http://localhost:4173
 ```
 
+## Desktop App
+
+The desktop app uses Electron as a thin shell around the same static Mindex UI.
+It keeps Supabase as the primary data source and uses native windows for
+presenter output.
+
+Install JavaScript dependencies once:
+
+```sh
+pnpm install
+```
+
+Run the Electron app:
+
+```sh
+pnpm run electron:dev
+```
+
+Create a packaged build:
+
+```sh
+pnpm run electron:dist
+```
+
+Auto-update support is scaffolded with `electron-updater`. Choose a release
+provider before shipping updates to non-technical users.
+
 ## Supabase
 
 Run `supabase-schema.sql` in the Supabase SQL editor first.

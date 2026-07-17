@@ -168,6 +168,16 @@ body[data-theme="dark"] .cal-view {
 }
 .cal-cell:empty::before { content: "—"; color: var(--cal-faint); pointer-events: none; }
 .cal-cell:focus { background: color-mix(in srgb, var(--panel-2) 70%, var(--bg)); color: var(--ink); }
+.cal-cell.is-saving {
+  opacity: .72;
+}
+.cal-cell.is-saved {
+  background: color-mix(in srgb, var(--accent) 10%, var(--cal-row-bg));
+}
+.cal-cell.is-save-error {
+  background: color-mix(in srgb, var(--danger) 12%, var(--cal-row-bg));
+  color: var(--danger);
+}
 .cal-occasion-schedule {
   padding: 7px 8px;
   color: var(--cal-text);

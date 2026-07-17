@@ -596,6 +596,7 @@ const state = {
     clipboard: null,
   },
   presenterPreparationDrafts: {},
+  presenterPreparationApplyingServiceIds: new Set(),
   presenterSectionEditor: null,
   serviceFilter: "all",
   serviceError: "",
@@ -696,6 +697,7 @@ async function init() {
   applyLinkState(linkParams);
   readPageTabsState();
   bindStaticEvents();
+  bindElectronDesktopEvents();
   bindPresenterChannel();
   connectClient();
   render();
@@ -707,6 +709,40 @@ async function init() {
   } else if (state.connectionError) {
     showToast(state.connectionError, "error");
   }
+}
+
+function bindElectronDesktopEvents() {
+  const desktop = window.mindexElectron;
+  if (!desktop?.isDesktop) return;
+  desktop.onUpdateAvailable?.((info) => {
+    const version = info?.version ? ` ${info.version}` : "";
+    showToast(`새 버전${version}이 있습니다.`);
+    window.setTimeout(() => {
+      if (window.confirm("Mindex 새 버전을 내려받을까요?")) {
+        desktop.downloadUpdate?.().catch((error) => {
+          showToast(error?.message || "업데이트 다운로드를 시작하지 못했습니다.", "error");
+        });
+      }
+    }, 300);
+  });
+  desktop.onUpdateProgress?.((progress) => {
+    const percent = Number(progress?.percent);
+    if (Number.isFinite(percent) && percent >= 99) showToast("업데이트 다운로드를 마무리하고 있습니다.");
+  });
+  desktop.onUpdateDownloaded?.(() => {
+    showToast("업데이트 준비가 끝났습니다.");
+    window.setTimeout(() => {
+      if (window.confirm("지금 재시작해서 업데이트할까요?")) {
+        desktop.installUpdate?.().catch((error) => {
+          showToast(error?.message || "업데이트를 설치하지 못했습니다.", "error");
+        });
+      }
+    }, 300);
+  });
+  desktop.onUpdateError?.((error) => {
+    showToast(error?.message || "업데이트 확인에 실패했습니다.", "error");
+  });
+  desktop.checkForUpdates?.().catch(() => {});
 }
 
 function loadInitialData() {
@@ -4162,14 +4198,20 @@ async function saveScripture() {
   }
 }
 
-async function saveService() {
+async function saveService(serviceId = state.selectedServiceId) {
   if (!requireClient() || state.saving) return;
+
+  const service = state.services.find((svc) => svc.id === serviceId);
+  const inputProblem = service ? serviceInputSaveProblem(service) : null;
+  if (inputProblem) {
+    showToast(inputProblem, "error");
+    return;
+  }
 
   state.saving = true;
   updateSaveState();
   try {
     await saveDirtyServiceTypes();
-    const service = state.services.find((svc) => svc.id === state.selectedServiceId);
     if (service && !service._isExpected) {
       await saveWorshipServiceInstance(service);
     }
@@ -4487,7 +4529,7 @@ function serviceItemManualBodyForSave(item = {}, parsed = parseServiceItemMemo(i
 function serviceElementTypeForSave(item = {}, parsed = parseServiceItemMemo(item.memo), existingElement = null) {
   const explicit = serviceMemoElementType(parsed);
   if (explicit) return explicit;
-  if (!item.song_id && isSongServiceLabel(item.label) && parsed.slides.length) return "praise";
+  if (!item.song_id && (isSongServiceLabel(item.label) || isSpecialSongServiceItem(item)) && parsed.slides.length) return "praise";
   return normalizeWorshipElementType(existingElement?.element_type) || worshipTemplateElementType({}, item.label);
 }
 
@@ -4504,7 +4546,7 @@ function worshipDbElementTypeForSave(elementType = "") {
 
 function serviceElementTitleForSave(item = {}, elementType = "") {
   const rawTitle = String(item.raw_title || "").trim();
-  if (item.song_id && isSongServiceLabel(item.label)) return "";
+  if (item.song_id && (isSongServiceLabel(item.label) || isSpecialSongServiceItem(item))) return "";
   if (["video", "image", "score", "audio", "file"].includes(normalizeServiceElementType(elementType))) {
     const parsed = parseServiceItemMemo(item.memo);
     return parsed.asset?.name || rawTitle;
@@ -5958,7 +6000,7 @@ function syncBibleVerseSelectionClasses() {
 }
 
 function isPresenterAdvanceShortcutKey(key = "") {
-  return ["ArrowRight", "ArrowDown", "PageDown", " ", "ArrowLeft", "ArrowUp", "PageUp"].includes(key);
+  return ["Enter", "ArrowRight", "ArrowDown", "PageDown", " ", "ArrowLeft", "ArrowUp", "PageUp"].includes(key);
 }
 
 function copySelectedBibleVersesFromShortcut(event) {
@@ -6329,8 +6371,16 @@ function isDeferredServiceTextInput(field) {
 function saveCommittedServiceItem(index, serviceId = state.selectedServiceId) {
   const item = getServiceItems(serviceId)[Number(index)];
   const service = state.services.find((candidate) => candidate.id === serviceId);
-  if (!item || !service || serviceItemSongSelectionInvalid(item, service)) return;
-  void saveAll();
+  if (!item || !service || serviceItemSongSelectionInvalid(item, service) || serviceItemScriptureInputInvalid(item)) return;
+  void resolveAndSaveCommittedServiceItem(serviceId, Number(index));
+}
+
+async function resolveAndSaveCommittedServiceItem(serviceId, index) {
+  await resolveServiceScriptureBeforeSave(serviceId, index);
+  const item = getServiceItems(serviceId)[index];
+  const service = state.services.find((candidate) => candidate.id === serviceId);
+  if (!item || !service || serviceItemSongSelectionInvalid(item, service) || serviceItemScriptureInputInvalid(item)) return;
+  await saveService(serviceId);
 }
 
 function updateServiceItemField(field) {
@@ -7024,6 +7074,14 @@ function serviceItemUsesFlexibleOfferingSlot(item = {}) {
   return label === "봉헌찬송" && title.includes("봉헌특송");
 }
 
+function isSpecialSongServiceItem(item = {}) {
+  const sectionKey = String(item._worshipSectionKey || item.sectionKey || item.section_key || "").trim();
+  if (sectionKey === "special_song") return true;
+  const sectionTitle = compactSearchValue(item._worshipSectionTitle || item.sectionTitle || item.section_title || "");
+  if (sectionTitle === "특송") return true;
+  return compactSearchValue(item.label || "") === "특송";
+}
+
 function applyServiceSongSelection(item) {
   applyServiceSongSelectionWithService(item, state.services.find((service) => service.id === state.selectedServiceId));
 }
@@ -7044,14 +7102,16 @@ function serviceItemAllowsManualSongText(item = {}, service = selectedServiceFor
 }
 
 function serviceItemRequiresSongSelection(item = {}, service = selectedServiceForEditor()) {
-  return Boolean(isSongServiceLabel(item.label) && !serviceItemAllowsManualSongText(item, service));
+  const songLikeItem = isSongServiceLabel(item.label) || isSpecialSongServiceItem(item);
+  return Boolean(songLikeItem && !serviceItemAllowsManualSongText(item, service));
 }
 
-function serviceItemSongSelectionInvalid(item = {}, service = selectedServiceForEditor()) {
+function serviceItemSongSelectionInvalid(item = {}, service = selectedServiceForEditor(), resolvedSong = null) {
   if (!serviceItemRequiresSongSelection(item, service)) return false;
-  const song = serviceItemLinkedSong(item);
+  const song = resolvedSong || serviceItemLinkedSong(item);
   if (!song) return Boolean(String(item.raw_title || "").trim());
   if (serviceItemRequiresNewHymnalScoreSong(item) && !isNewHymnalScoreSong(song)) return true;
+  if (resolvedSong && !item.song_id) return false;
   return serviceItemVersionSelectionInvalid(item, service);
 }
 
@@ -7063,6 +7123,18 @@ function serviceItemVersionSelectionInvalid(item = {}, service = selectedService
   if (versions.length <= 1) return false;
   const selectedId = item.version_id || item.song_version_id || "";
   return !versions.some((version) => version.id === selectedId);
+}
+
+function serviceInputSaveProblem(service = selectedServiceForEditor()) {
+  if (!service) return "예배를 찾을 수 없습니다.";
+  const item = getServiceItems(service.id).find((candidate) => {
+    return serviceItemSongSelectionInvalid(candidate, service) || serviceItemScriptureInputInvalid(candidate);
+  });
+  if (!item) return "";
+  const label = String(item.label || "이 항목").trim();
+  if (serviceItemVersionSelectionInvalid(item, service)) return `${label}의 찬양 버전을 선택해 주세요.`;
+  if (serviceItemSongSelectionInvalid(item, service)) return `${label}에서 찬양 DB 곡을 선택해 주세요.`;
+  return `${label}의 성경 주소를 확인해 주세요.`;
 }
 
 function serviceItemLinkedSong(item = {}) {
@@ -7077,7 +7149,7 @@ function serviceItemLinkedVersion(item = {}, song = serviceItemLinkedSong(item))
 }
 
 function serviceItemRequiresNewHymnalScoreSong(item = {}) {
-  if (!isSongServiceLabel(item?.label)) return false;
+  if (!isSongServiceLabel(item?.label) && !isSpecialSongServiceItem(item)) return false;
   return serviceItemOutputMode(item, parseServiceItemMemo(item?.memo)) === "score";
 }
 
@@ -7116,7 +7188,7 @@ function serviceItemEditorModel(item = {}, options = {}) {
   const parsed = parseServiceItemMemo(item.memo);
   const preparation = isServicePreparationItem(item, parsed);
   const compactLabel = compactSearchValue(item.label || "");
-  const song = isSongServiceLabel(item.label);
+  const song = isSongServiceLabel(item.label) || isSpecialSongServiceItem(item);
   const scriptureBody = isScriptureBodyServiceItem(item);
   const scripture = isScriptureBodyServiceItem(item) || isScriptureServiceLabel(item.label);
   const worshipLeaderItem = presenterTitleAssigneeUsesWorshipLeader(compactLabel);
@@ -7193,6 +7265,13 @@ function clearGeneratedServiceScriptureSlides(item = {}, parsed = parseServiceIt
 
 const serviceScriptureResolveTimers = new Map();
 
+function clearScheduledServiceScriptureResolve(serviceId, index) {
+  const key = `${serviceId}:${index}`;
+  const timer = serviceScriptureResolveTimers.get(key);
+  if (timer) window.clearTimeout(timer);
+  serviceScriptureResolveTimers.delete(key);
+}
+
 function scheduleServiceScriptureBodyResolve(serviceId = state.selectedServiceId, index = -1) {
   if (!serviceId || !Number.isFinite(index)) return;
   const items = getServiceItems(serviceId);
@@ -7201,11 +7280,18 @@ function scheduleServiceScriptureBodyResolve(serviceId = state.selectedServiceId
   const references = serviceItemScriptureReferences(item);
   if (!references.length || !state.client) return;
   const key = `${serviceId}:${index}`;
-  if (serviceScriptureResolveTimers.has(key)) window.clearTimeout(serviceScriptureResolveTimers.get(key));
+  clearScheduledServiceScriptureResolve(serviceId, index);
   serviceScriptureResolveTimers.set(key, window.setTimeout(() => {
     serviceScriptureResolveTimers.delete(key);
     void resolveServiceScriptureBodyReference(serviceId, index);
   }, 420));
+}
+
+async function resolveServiceScriptureBeforeSave(serviceId = state.selectedServiceId, index = -1) {
+  const item = getServiceItems(serviceId)[index];
+  if (!item || !isScriptureBodyServiceItem(item)) return;
+  clearScheduledServiceScriptureResolve(serviceId, index);
+  await resolveServiceScriptureBodyReference(serviceId, index);
 }
 
 async function resolveServiceScriptureBodyReference(serviceId, index) {
@@ -7670,7 +7756,7 @@ function updatePresenterSectionField(field) {
 }
 
 function applyServiceSongSelectionWithService(item, service = null) {
-  if (!item || !isSongServiceLabel(item.label)) {
+  if (!item || (!isSongServiceLabel(item.label) && !isSpecialSongServiceItem(item))) {
     if (item) {
       item.song_id = null;
       item.version_id = null;
@@ -8582,6 +8668,10 @@ const CLEAN_OUTPUT_SERVICE_TYPES = new Set([
   "young_adult",
 ]);
 const WORSHIP_BACKGROUND_BASE = "assets/worship-backgrounds";
+const PRESENTER_READY_ASSET_BASE = "assets/presenter";
+const PRESENTER_READY_BACKGROUND_BLOCKLIST = new Set([
+  "friday-prayer-ready.png",
+]);
 const WORSHIP_BACKGROUND_REGISTRY_STORAGE_KEY = "mindex.worshipBackgroundRegistry";
 const WORSHIP_BACKGROUND_ASSET_EXTENSIONS = ["png"];
 const WORSHIP_BACKGROUND_REGISTRY_GROUPS = ["A", "B", "C"];
@@ -8672,6 +8762,7 @@ function presenterBackgroundSourcesForService(service) {
     const defaultFileName = presenterDefaultBackgroundFileNameForService(service);
     return defaultFileName ? worshipBackgroundSourcesForFileName(defaultFileName) : [];
   }
+  if (presenterBackgroundValueIsReadyAsset(value)) return [];
   if (/^(?:data:|https?:|blob:)/i.test(value)) return [resolveWorshipBackgroundSource(value)];
   if (value.includes("/")) return [resolveWorshipBackgroundSource(value)];
   if (/\.(?:jpe?g|png)$/i.test(value)) {
@@ -8689,6 +8780,14 @@ function presenterDefaultBackgroundFileNameForService(service) {
   const group = SERVICE_DEFAULT_BACKGROUND_GROUPS[serviceType];
   const serviceDate = service?.date || new Date();
   return group ? worshipBackgroundFileName(group, presenterBackgroundSlotForDate(serviceDate), serviceDate) : "";
+}
+
+function presenterBackgroundValueIsReadyAsset(value) {
+  const text = String(value || "").trim();
+  if (!text) return false;
+  const fileName = worshipBackgroundFileNameFromPath(text);
+  return text.includes(`${PRESENTER_READY_ASSET_BASE}/`)
+    || PRESENTER_READY_BACKGROUND_BLOCKLIST.has(fileName);
 }
 
 function presenterSeasonBackgroundFileNameForService(service) {
@@ -15347,6 +15446,7 @@ function renderPresenterSidebarPreparationInput(service) {
   const groups = presenterServiceInputGroups(service);
   const inputCount = groups.reduce((count, group) => count + group.items.length, 0);
   const draft = state.presenterPreparationDrafts[service.id] || "";
+  const applying = state.presenterPreparationApplyingServiceIds.has(service.id);
   return `
     <section class="service-sidebar-section service-sidebar-section--preparation-input" aria-label="예배 입력 붙여넣기">
       <div class="service-sidebar-head">
@@ -15355,9 +15455,9 @@ function renderPresenterSidebarPreparationInput(service) {
       </div>
       <div class="svc-presenter-preparation-input svc-presenter-preparation-input--sidebar">
         <textarea class="svc-presenter-preparation-text svc-presenter-preparation-text--sidebar" data-presenter-preparation-input data-service-id="${escapeAttr(service.id)}" rows="5" placeholder="찬양 1: 곡 제목&#10;대표기도: 담당자&#10;성경봉독: 히 10:38-39&#10;설교 제목: 제목" aria-label="예배 입력 붙여넣기">${escapeHtml(draft)}</textarea>
-        <button class="svc-presenter-preparation-apply svc-presenter-preparation-apply--sidebar" type="button" data-presenter-preparation-apply data-service-id="${escapeAttr(service.id)}">
+        <button class="svc-presenter-preparation-apply svc-presenter-preparation-apply--sidebar" type="button" data-presenter-preparation-apply data-service-id="${escapeAttr(service.id)}" ${applying ? "disabled" : ""}>
           <i data-lucide="wand-sparkles"></i>
-          <span>반영</span>
+          <span>${applying ? "반영 중" : "반영"}</span>
         </button>
       </div>
     </section>`;
@@ -15792,7 +15892,7 @@ function renderServiceSidebarItemEditor(service, items, selectedIndex) {
           <input type="text" data-service-item-field="raw_title" data-service-item-index="${selectedIndex}"
             value="${escapeAttr(item.raw_title || "")}"
             placeholder="${isScriptureServiceLabel(item.label) ? "성경 구절" : "내용"}"
-            ${isSongServiceLabel(item.label) ? `list="servicePraiseOptions"` : ""}
+            ${isSongServiceLabel(item.label) || isSpecialSongServiceItem(item) ? `list="servicePraiseOptions"` : ""}
             ${isScriptureServiceLabel(item.label) ? `list="serviceScriptureOptions"` : ""} />
         </label>
         <label>
@@ -17257,7 +17357,7 @@ function renderPresenterRoleOptions(selectedRole = "") {
 
 
 function renderServicePraiseLinkControl(item, index) {
-  if (!isSongServiceLabel(item?.label)) return "";
+  if (!isSongServiceLabel(item?.label) && !isSpecialSongServiceItem(item)) return "";
   if (item?.song_id) {
     return `<button class="svc-item-link svc-item-link--linked" type="button" data-open-song="${escapeAttr(item.song_id)}" aria-label="찬양 DB에서 열기">찬양 DB</button>`;
   }
@@ -17278,8 +17378,7 @@ function renderServiceItemLinkControl(item, index) {
 }
 
 function isOneOffSpecialPraiseItem(item = {}, service = selectedServiceForEditor()) {
-  const compact = compactSearchValue(item.label || "");
-  return compact === "특송" && !item.song_id && serviceItemAllowsManualSongText(item, service);
+  return isSpecialSongServiceItem(item) && !item.song_id && serviceItemAllowsManualSongText(item, service);
 }
 
 function renderServiceScriptureLinkControl(item) {
@@ -17878,10 +17977,15 @@ function findPresenterPreparationProjectedItem(service, label) {
     });
     if (ordinal > 0 && matches[ordinal - 1]) return matches[ordinal - 1];
   }
-  if (labelKey === "기도") {
+  if (labelKey === "기도" || labelKey === "대표기도") {
     return items.find((item) =>
       String(item._worshipSectionKey || "") === "prayer"
-      && compactSearchValue(item.label || "") === "기도");
+      && ["기도", "대표기도"].includes(compactSearchValue(item.label || "")));
+  }
+  if (labelKey === "설교제목") {
+    return items.find((item) =>
+      String(item._worshipSectionKey || "") === "sermon"
+      && ["설교", "설교제목"].includes(compactSearchValue(item.label || "")));
   }
   return null;
 }
@@ -17979,120 +18083,141 @@ async function applyPresenterPreparationInput(serviceId = state.selectedServiceI
   const service = state.services.find((candidate) => candidate.id === serviceId);
   const draft = String(state.presenterPreparationDrafts[serviceId] || "").trim();
   if (!service || !draft) return;
+  if (state.presenterPreparationApplyingServiceIds.has(serviceId)) return;
 
-  const { entries, errors } = parsePresenterPreparationInput(draft);
-  if (errors.length) {
-    showToast(errors[0], "error");
-    return;
-  }
+  state.presenterPreparationApplyingServiceIds.add(serviceId);
+  renderServiceList();
 
-  let items = getServiceItems(serviceId).map((item) => ({ ...item }));
-  const scriptureItemIds = new Set();
-  const versionWarnings = [];
-  let citationReferences = null;
+  try {
 
-  for (const entry of entries) {
-    if (entry.key === "인용구절") {
-      const references = entry.content.split(/[;；]/).map((reference) => normalizeServiceItemReferenceSpacing(reference)).filter(Boolean);
-      if (!references.length || references.some((reference) => !parseBibleReference(reference))) {
-        errors.push("인용 구절의 성경 주소를 확인해 주세요.");
+    const { entries, errors } = parsePresenterPreparationInput(draft);
+    if (errors.length) {
+      showToast(errors[0], "error");
+      return;
+    }
+
+    let items = getServiceItems(serviceId).map((item) => ({ ...item }));
+    const scriptureItemIds = new Set();
+    const versionWarnings = [];
+    let citationReferences = null;
+
+    for (const entry of entries) {
+      if (entry.key === "인용구절") {
+        const references = entry.content.split(/[;；]/).map((reference) => normalizeServiceItemReferenceSpacing(reference)).filter(Boolean);
+        if (!references.length || references.some((reference) => !parseBibleReference(reference))) {
+          errors.push("인용 구절의 성경 주소를 확인해 주세요.");
+        } else {
+          citationReferences = references;
+        }
+        continue;
+      }
+
+      const targetLabel = presenterPreparationTargetLabel(entry.label);
+      const contentParts = entry.content.split(/\s+\/\s+/);
+      const content = String(contentParts.shift() || "").trim();
+      const assignee = contentParts.join(" / ").trim();
+      const projected = findPresenterPreparationProjectedItem(service, targetLabel);
+      if (!projected) {
+        errors.push(`${entry.label} 항목을 이 예배에서 찾지 못했습니다.`);
+        continue;
+      }
+      const targetIndex = materializePresenterPreparationItem(service, items, projected);
+      const item = items[targetIndex];
+      const memo = parseServiceItemMemo(item.memo);
+      const mode = serviceMemoInputMode(memo, item);
+
+      if (mode === "praise_db" || serviceItemRequiresSongSelection(item, service) || isSpecialSongServiceItem(item)) {
+        const song = resolvePresenterPreparationSong(content, item, service);
+        if (!song) {
+          errors.push(`${entry.label} 곡을 찬양 DB에서 하나로 찾지 못했습니다.`);
+          continue;
+        }
+        if (serviceItemRequiresNewHymnalScoreSong(item) && !isNewHymnalScoreSong(song)) {
+          errors.push(`${entry.label}은 새찬송가 곡만 선택할 수 있습니다.`);
+          continue;
+        }
+        item.song_id = song.id;
+        item.version_id = null;
+        item.raw_title = "";
+        if (assignee) item.assignee = assignee;
+        item._worshipElementTemplateModified = true;
+        const versions = serviceSelectableSongVersions(song, item, service);
+        if (versions.length === 1) item.version_id = versions[0].id;
+        if (versions.length > 1) versionWarnings.push(entry.label);
+        continue;
+      }
+
+      if (mode === "scripture" || isScriptureBodyServiceItem(item)) {
+        const reference = normalizeServiceItemReferenceSpacing(content);
+        if (!parseBibleReference(reference)) {
+          errors.push(`${entry.label}의 성경 주소를 확인해 주세요.`);
+          continue;
+        }
+        item.raw_title = reference;
+        item._worshipElementTemplateModified = true;
+        item.memo = serializeServiceItemMemo({
+          ...memo,
+          elementType: "scripture_body",
+          inputMode: "scripture",
+          scriptureReference: reference,
+          slides: [],
+        });
+        scriptureItemIds.add(item.id);
+        continue;
+      }
+
+      if (entry.key === "대표기도") {
+        item.assignee = assignee || content;
+      } else if (assignee) {
+        item.raw_title = normalizeServiceItemRawTitleForItem(item, content);
+        item.assignee = assignee;
       } else {
-        citationReferences = references;
+        item.raw_title = normalizeServiceItemRawTitleForItem(item, content);
       }
-      continue;
-    }
-
-    const targetLabel = presenterPreparationTargetLabel(entry.label);
-    const contentParts = entry.content.split(/\s+\/\s+/);
-    const content = String(contentParts.shift() || "").trim();
-    const assignee = contentParts.join(" / ").trim();
-    const projected = findPresenterPreparationProjectedItem(service, targetLabel);
-    if (!projected) {
-      errors.push(`${entry.label} 항목을 이 예배에서 찾지 못했습니다.`);
-      continue;
-    }
-    const targetIndex = materializePresenterPreparationItem(service, items, projected);
-    const item = items[targetIndex];
-    const memo = parseServiceItemMemo(item.memo);
-    const mode = serviceMemoInputMode(memo, item);
-
-    if (mode === "praise_db" || serviceItemRequiresSongSelection(item, service)) {
-      const song = resolvePresenterPreparationSong(content, item, service);
-      if (!song) {
-        errors.push(`${entry.label} 곡을 찬양 DB에서 하나로 찾지 못했습니다.`);
-        continue;
-      }
-      if (serviceItemRequiresNewHymnalScoreSong(item) && !isNewHymnalScoreSong(song)) {
-        errors.push(`${entry.label}은 새찬송가 곡만 선택할 수 있습니다.`);
-        continue;
-      }
-      item.song_id = song.id;
-      item.version_id = null;
-      item.raw_title = "";
-      if (assignee) item.assignee = assignee;
       item._worshipElementTemplateModified = true;
-      const versions = serviceSelectableSongVersions(song, item, service);
-      if (versions.length === 1) item.version_id = versions[0].id;
-      if (versions.length > 1) versionWarnings.push(entry.label);
-      continue;
     }
 
-    if (mode === "scripture" || isScriptureBodyServiceItem(item)) {
-      const reference = normalizeServiceItemReferenceSpacing(content);
-      if (!parseBibleReference(reference)) {
-        errors.push(`${entry.label}의 성경 주소를 확인해 주세요.`);
-        continue;
+    if (citationReferences) {
+      const citations = presenterPreparationCitationItems(service, items, citationReferences);
+      if (citations.error) errors.push(citations.error);
+      else {
+        items = citations.items;
+        citations.citationIds.forEach((id) => scriptureItemIds.add(id));
       }
-      item.raw_title = reference;
-      item._worshipElementTemplateModified = true;
-      item.memo = serializeServiceItemMemo({
-        ...memo,
-        elementType: "scripture_body",
-        inputMode: "scripture",
-        scriptureReference: reference,
-        slides: [],
-      });
-      scriptureItemIds.add(item.id);
-      continue;
     }
 
-    if (entry.key === "대표기도" || assignee) {
-      item.assignee = assignee || content;
-    } else {
-      item.raw_title = normalizeServiceItemRawTitleForItem(item, content);
+    if (errors.length) {
+      showToast(errors[0], "error");
+      return;
     }
-    item._worshipElementTemplateModified = true;
-  }
 
-  if (citationReferences) {
-    const citations = presenterPreparationCitationItems(service, items, citationReferences);
-    if (citations.error) errors.push(citations.error);
-    else {
-      items = citations.items;
-      citations.citationIds.forEach((id) => scriptureItemIds.add(id));
+    state.serviceItems[serviceId] = projectWorshipServiceItemsFromTemplate(
+      service,
+      normalizeServiceItemsInCurrentOrder(items),
+    );
+    state.dirty.service = true;
+    delete state.presenterPreparationDrafts[serviceId];
+    refreshPresenterForService(serviceId);
+    updateSaveState();
+
+    const scriptureIndexes = [...scriptureItemIds]
+      .map((itemId) => state.serviceItems[serviceId].findIndex((item) => item.id === itemId))
+      .filter((index) => index >= 0);
+    await Promise.all(scriptureIndexes.map((index) => resolveServiceScriptureBeforeSave(serviceId, index)));
+
+    if (versionWarnings.length) {
+      renderCurrentServiceModuleDetail();
+      renderServiceList();
+      showToast(`${versionWarnings.join(", ")}의 찬양 버전을 선택한 뒤 저장해 주세요.`, "info");
+      return;
     }
-  }
 
-  if (errors.length) {
-    showToast(errors[0], "error");
-    return;
+    showToast(`예배 입력 ${entries.length}개 항목을 반영했습니다.`, "info");
+    await saveService(serviceId);
+  } finally {
+    state.presenterPreparationApplyingServiceIds.delete(serviceId);
+    renderServiceList();
   }
-
-  state.serviceItems[serviceId] = projectWorshipServiceItemsFromTemplate(
-    service,
-    normalizeServiceItemsInCurrentOrder(items),
-  );
-  state.dirty.service = true;
-  delete state.presenterPreparationDrafts[serviceId];
-  for (const itemId of scriptureItemIds) {
-    const index = state.serviceItems[serviceId].findIndex((item) => item.id === itemId);
-    if (index >= 0) scheduleServiceScriptureBodyResolve(serviceId, index);
-  }
-  refreshPresenterForService(serviceId);
-  updateSaveState();
-  const suffix = versionWarnings.length ? ` · ${versionWarnings.join(", ")} 버전 선택 필요` : "";
-  showToast(`예배 입력 ${entries.length}개 항목을 반영했습니다${suffix}.`, "info");
-  await saveService();
 }
 
 function presenterServiceInputGroups(service) {
@@ -19191,12 +19316,6 @@ function renderPresenterBoardSection(group, activeIndex, serviceId, options = {}
             ${visibleTitle ? `<strong>${escapeHtml(visibleTitle)}</strong>` : ""}
             ${group.meta ? `<small>${escapeHtml(group.meta)}</small>` : ""}
           </span>
-        </button>
-        <button class="icon-btn svc-board-section-edit" type="button"
-          data-presenter-section-edit="${escapeAttr(presenterBoardSectionEditKey(group))}"
-          data-service-id="${escapeAttr(serviceId)}"
-          aria-label="${escapeAttr(`${visibleTitle || "섹션"} 수정`)}">
-          <i data-lucide="pencil"></i>
         </button>
       </div>
       <div class="svc-board-subgroups">
@@ -20547,6 +20666,8 @@ function presenterFixedTitleText(item = {}) {
 function resolvePresenterServiceItemContentState(item = {}, memo = emptyServiceItemMemo(), song = null, service = null) {
   const elementType = serviceMemoElementType(memo);
   const inputMode = serviceMemoInputMode(memo, item);
+  const requiresSongSelection = serviceItemRequiresSongSelection(item, service);
+  const effectiveInputMode = requiresSongSelection ? "praise_db" : inputMode;
   const rawText = String(item?.raw_title || item?.title || "").trim();
   const assignee = cleanServiceAssignee(item?.assignee);
   const asset = normalizeServiceAsset(memo?.asset);
@@ -20556,7 +20677,7 @@ function resolvePresenterServiceItemContentState(item = {}, memo = emptyServiceI
     hasOutputContent,
     reason,
     elementType,
-    inputMode,
+    inputMode: effectiveInputMode,
     required: stateName === "missing",
   });
   const filled = (reason) => result("filled", true, reason);
@@ -20576,10 +20697,10 @@ function resolvePresenterServiceItemContentState(item = {}, memo = emptyServiceI
   if (inputMode === "asset") {
     return hasServiceAsset(asset) ? filled("asset") : missing("asset_empty");
   }
-  if (inputMode === "praise_db" || serviceItemRequiresSongSelection(item, service)) {
-    if (song && !serviceItemSongSelectionInvalid(item, service)) return filled("song");
-    if (item?.song_id && !serviceItemSongSelectionInvalid(item, service)) return filled("song");
-    if (!serviceItemRequiresSongSelection(item, service) && (rawText || hasCustomSlideText)) return filled("manual_praise");
+  if (inputMode === "praise_db" || requiresSongSelection) {
+    if (song && !serviceItemSongSelectionInvalid(item, service, song)) return filled("song");
+    if (item?.song_id && !serviceItemSongSelectionInvalid(item, service, song)) return filled("song");
+    if (!requiresSongSelection && (rawText || hasCustomSlideText)) return filled("manual_praise");
     return missing(rawText ? "song_selection_required" : "song_empty");
   }
   if (inputMode === "scripture") {
@@ -20693,7 +20814,7 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
     }]);
   }
 
-  if (serviceItemRequiresSongSelection(item, service) && (!song || serviceItemSongSelectionInvalid(item, service))) return [];
+  if (serviceItemRequiresSongSelection(item, service) && (!song || serviceItemSongSelectionInvalid(item, service, song))) return [];
 
   const customSlides = buildPresenterCustomSlides(item, section, index);
   if (customSlides.length) return withIntroAndSpecialTitle(customSlides);
@@ -20704,7 +20825,8 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
   }
   if (isScriptureBodyServiceItem(item)) return [];
 
-  if (outputMode === "score" && (song || isSongServiceLabel(label))) {
+  const songLikeItem = isSongServiceLabel(label) || isSpecialSongServiceItem(item);
+  if (outputMode === "score" && (song || songLikeItem)) {
     const scoreSlides = presenterScoreSlidesForServiceItem(item, section, index, song, version, displayText, memo, forms, formWarnings);
     const slides = shouldSuppressMainPraiseScoreSongTitle(item, service)
       ? scoreSlides
@@ -20764,15 +20886,15 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
   }
 
   const { no, title } = splitHymnNo(displayText);
-  if (!isSongServiceLabel(label)) return [];
-  if (serviceItemRequiresSongSelection(item, service) && (!song || serviceItemSongSelectionInvalid(item, service))) return [];
+  if (!songLikeItem) return [];
+  if (serviceItemRequiresSongSelection(item, service) && (!song || serviceItemSongSelectionInvalid(item, service, song))) return [];
   const sectionHeading = presenterSongTitleSectionHeading(item, section);
   return withIntro(presenterSlidesWithSpecialSongTitle(item, section, [{
     id: `${item.id || index}:title`,
     ...section,
-    elementType: isSongServiceLabel(label) ? PRESENTER_ELEMENT_TYPES.PRAISE : PRESENTER_ELEMENT_TYPES.PLAIN_TEXT,
-    layout: isSongServiceLabel(label) ? PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT : PRESENTER_SLIDE_LAYOUTS.CENTER_TEXT,
-    type: isSongServiceLabel(label) ? "song-title" : "component",
+    elementType: songLikeItem ? PRESENTER_ELEMENT_TYPES.PRAISE : PRESENTER_ELEMENT_TYPES.PLAIN_TEXT,
+    layout: songLikeItem ? PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT : PRESENTER_SLIDE_LAYOUTS.CENTER_TEXT,
+    type: songLikeItem ? "song-title" : "component",
     label,
     title,
     marker: no || "",

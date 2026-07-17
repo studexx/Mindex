@@ -1,0 +1,67 @@
+{
+  "name": "mindex",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Mindex desktop shell",
+  "author": "Mindex",
+  "packageManager": "pnpm@11.9.0",
+  "main": "electron/main.js",
+  "scripts": {
+    "dev:web": "python3 serve.py",
+    "electron:dev": "electron .",
+    "electron:pack": "electron-builder --dir",
+    "electron:dist": "electron-builder"
+  },
+  "build": {
+    "appId": "kr.mindex.app",
+    "productName": "Mindex",
+    "asar": false,
+    "files": [
+      "index.html",
+      "app.js",
+      "mindex.constants.js",
+      "mindex.presenter.js",
+      "styles*.css",
+      "manifest.webmanifest",
+      "assets/**/*",
+      "vendor/**/*",
+      "electron/**/*",
+      "package.json",
+      "!dist/**/*",
+      "!backups/**/*",
+      "!tmp/**/*",
+      "!tests/**/*",
+      "!docs/**/*",
+      "!scripts/**/*",
+      "!data/**/*",
+      "!node_modules/electron/**/*",
+      "!node_modules/electron-builder/**/*"
+    ],
+    "mac": {
+      "target": [
+        "dmg"
+      ]
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": false
+    }
+  },
+  "devDependencies": {
+    "electron": "^31.7.7",
+    "electron-builder": "^24.13.3"
+  },
+  "dependencies": {
+    "electron-updater": "^6.3.9",
+    "fs-extra": "^11.3.6",
+    "graceful-fs": "^4.2.11",
+    "jsonfile": "^6.2.1",
+    "universalify": "^2.0.1"
+  }
+}

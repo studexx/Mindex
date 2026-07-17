@@ -965,7 +965,7 @@ def main() -> int:
                     })()
                     """
                 )
-                expected_topbar_order = ["예배", "말씀", "찬양", "교회력", "참고자료"]
+                expected_topbar_order = ["홈", "예배", "말씀", "찬양", "교회력", "참고자료"]
                 if (
                     topbar_state["order"] == expected_topbar_order
                     and topbar_state["active"] == "scripture"
@@ -991,6 +991,22 @@ def main() -> int:
                 else:
                     fail("navigation-rail-does-not-toggle", json.dumps(nav_repeat_state, ensure_ascii=False))
 
+                page.click('.nav-rail [data-home-module="home"]')
+                page.wait_for_function("() => document.body.dataset.module === 'home'", timeout=5000)
+                home_rail_state = page.evaluate(
+                    """() => ({
+                      module: document.body.dataset.module,
+                      collapsed: document.body.classList.contains('sidebar-collapsed'),
+                      active: document.querySelector('.nav-rail .nav-rail-tab.active')?.dataset.homeModule || ''
+                    })"""
+                )
+                if home_rail_state == {"module": "home", "collapsed": False, "active": "home"}:
+                    pass_("navigation-rail-home", json.dumps(home_rail_state, ensure_ascii=False))
+                else:
+                    fail("navigation-rail-home", json.dumps(home_rail_state, ensure_ascii=False))
+
+                page.click('.nav-rail [data-home-module="scripture"]')
+                page.wait_for_function("() => document.body.dataset.module === 'scripture'", timeout=5000)
                 page.click("#brandNameHome")
                 page.wait_for_function("() => document.body.dataset.module === 'home'", timeout=5000)
                 wordmark_state = page.evaluate(
@@ -2565,13 +2581,11 @@ def main() -> int:
                     presenter_font_contract = page.evaluate(
                         """
                         (() => {
-                          const root = document.querySelector('.presenter-output-root') || document.documentElement;
-                          const styles = getComputedStyle(root);
-                          const value = (name) => styles.getPropertyValue(name).trim();
-                          const host = document.createElement('div');
-                          host.className = 'presenter-output-root';
-                          host.style.cssText = 'position:absolute;left:-10000px;top:0;';
-                          host.innerHTML = `
+                          const createHost = (className) => {
+                            const host = document.createElement('div');
+                            host.className = className;
+                            host.style.cssText = 'position:absolute;left:-10000px;top:0;';
+                            host.innerHTML = `
                             <span id="fontDisplay" style="font-size: var(--presenter-size-display)"></span>
                             <span id="fontSection" style="font-size: var(--presenter-size-section)"></span>
                             <span id="fontBody" style="font-size: var(--presenter-size-body)"></span>
@@ -2581,36 +2595,58 @@ def main() -> int:
                             <span id="fontScriptureClean" style="font-size: var(--presenter-scripture-clean-size)"></span>
                             <span id="fontScriptureReadingText" style="font-size: var(--presenter-scripture-reading-text-size)"></span>
                           `;
-                          document.body.appendChild(host);
-                          const font = (id) => getComputedStyle(host.querySelector(`#${id}`)).fontSize;
-                          const result = {
-                            unit: value('--presenter-stage-unit'),
-                            tokenDisplay: value('--presenter-size-display'),
-                            tokenBody: value('--presenter-size-body'),
-                            display: font('fontDisplay'),
-                            section: font('fontSection'),
-                            body: font('fontBody'),
-                            lyrics: font('fontLyrics'),
-                            meta: font('fontMeta'),
-                            scriptureBar: font('fontScriptureBar'),
-                            scriptureClean: font('fontScriptureClean'),
-                            scriptureReadingText: font('fontScriptureReadingText'),
+                            document.body.appendChild(host);
+                            return host;
                           };
-                          host.remove();
+                          const readContract = (host) => {
+                            const hostStyles = getComputedStyle(host);
+                            const font = (id) => getComputedStyle(host.querySelector(`#${id}`)).fontSize;
+                            return {
+                              unit: hostStyles.getPropertyValue('--presenter-stage-unit').trim(),
+                              barHeight: hostStyles.getPropertyValue('--presenter-output-bar-height').trim(),
+                              tokenDisplay: hostStyles.getPropertyValue('--presenter-size-display').trim(),
+                              tokenBody: hostStyles.getPropertyValue('--presenter-size-body').trim(),
+                              display: font('fontDisplay'),
+                              section: font('fontSection'),
+                              body: font('fontBody'),
+                              lyrics: font('fontLyrics'),
+                              meta: font('fontMeta'),
+                              scriptureBar: font('fontScriptureBar'),
+                              scriptureClean: font('fontScriptureClean'),
+                              scriptureReadingText: font('fontScriptureReadingText'),
+                            };
+                          };
+                          const chromakeyHost = createHost('presenter-output-root');
+                          const cleanHost = createHost('presenter-output-root no-chromakey');
+                          const result = {
+                            chromakey: readContract(chromakeyHost),
+                            clean: readContract(cleanHost),
+                          };
+                          chromakeyHost.remove();
+                          cleanHost.remove();
                           return result;
                         })()
                         """
                     )
                     if (
-                        presenter_font_contract["unit"] == "1px"
-                        and presenter_font_contract["display"] == "84px"
-                        and presenter_font_contract["section"] == "72px"
-                        and presenter_font_contract["body"] == "64px"
-                        and presenter_font_contract["lyrics"] == "64px"
-                        and presenter_font_contract["meta"] == "52px"
-                        and presenter_font_contract["scriptureBar"] == "64px"
-                        and presenter_font_contract["scriptureClean"] == "64px"
-                        and presenter_font_contract["scriptureReadingText"] == "64px"
+                        presenter_font_contract["chromakey"]["unit"] == "1px"
+                        and presenter_font_contract["chromakey"]["barHeight"] == "17.5%"
+                        and presenter_font_contract["chromakey"]["display"] == "84px"
+                        and presenter_font_contract["chromakey"]["section"] == "72px"
+                        and presenter_font_contract["chromakey"]["body"] == "64px"
+                        and presenter_font_contract["chromakey"]["lyrics"] == "64px"
+                        and presenter_font_contract["chromakey"]["meta"] == "52px"
+                        and presenter_font_contract["chromakey"]["scriptureBar"] == "64px"
+                        and presenter_font_contract["chromakey"]["scriptureClean"] == "64px"
+                        and presenter_font_contract["chromakey"]["scriptureReadingText"] == "64px"
+                        and presenter_font_contract["clean"]["display"] == "168px"
+                        and presenter_font_contract["clean"]["section"] == "144px"
+                        and presenter_font_contract["clean"]["body"] == "128px"
+                        and presenter_font_contract["clean"]["lyrics"] == "128px"
+                        and presenter_font_contract["clean"]["meta"] == "104px"
+                        and presenter_font_contract["clean"]["scriptureBar"] == "64px"
+                        and presenter_font_contract["clean"]["scriptureClean"] == "64px"
+                        and presenter_font_contract["clean"]["scriptureReadingText"] == "64px"
                     ):
                         pass_("presenter-font-contract", json.dumps(presenter_font_contract, ensure_ascii=False))
                     else:
