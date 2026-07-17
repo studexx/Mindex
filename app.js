@@ -8952,10 +8952,10 @@ function renderListFilter() {
   }
 
   refs.listFilter.hidden = false;
-  refs.listFilter.setAttribute("aria-label", state.module === "scripture" ? "Scripture filter" : "Praise filter");
+  refs.listFilter.setAttribute("aria-label", state.module === "scripture" ? "말씀 필터" : "찬양 필터");
   const filters = state.module === "scripture"
-    ? [["all", "All"], ["old", "OT"], ["new", "NT"]]
-    : [["all", "All"], ["hymns", "Hymns"], ["ccm", "CCM"], ["children", "Kids"]];
+    ? [["all", "전체"], ["old", "구약"], ["new", "신약"]]
+    : [["all", "전체"], ["hymns", "찬송가"], ["ccm", "CCM"], ["children", "어린이"]];
   const activeFilter = state.module === "scripture" ? state.scriptureFilter : state.praiseFilter;
   refs.listFilterButtons.forEach((button, index) => {
     if (index < filters.length) {
