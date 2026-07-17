@@ -559,7 +559,7 @@
   font-size: var(--presenter-size-meta);
 }
 .presenter-output-root.no-chromakey .presenter-section-song-title-name {
-  font-size: var(--presenter-size-body);
+  font-size: var(--presenter-size-meta);
 }
 .presenter-output-root.no-chromakey .presenter-slide--scripture .presenter-slide-text span {
   font-size: var(--presenter-scripture-clean-size);
