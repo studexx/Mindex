@@ -834,6 +834,7 @@ function bindStaticEvents() {
   refs.songList.addEventListener("scroll", saveCurrentListScroll, { passive: true });
   refs.songList.addEventListener("keydown", handleDetailKeydown);
   refs.songList.addEventListener("input", handleDetailInput);
+  refs.songList.addEventListener("paste", handlePresenterPreparationPaste);
   refs.songList.addEventListener("change", (event) => {
     const sidebarInputSelect = event.target.closest("[data-presenter-sidebar-input-select]");
     if (sidebarInputSelect) {
@@ -1006,6 +1007,7 @@ function bindStaticEvents() {
   refs.detailPane.addEventListener("input", handleDetailInput);
   refs.detailPane.addEventListener("change", handleDetailChange);
   refs.detailPane.addEventListener("submit", handleDetailSubmit);
+  refs.detailPane.addEventListener("paste", handlePresenterPreparationPaste);
   refs.detailPane.addEventListener("contextmenu", handleDetailContextMenu);
   refs.detailPane.addEventListener("pointerdown", handleDetailPointerDown);
   refs.detailPane.addEventListener("pointerover", handleDetailPointerOver);
@@ -5707,6 +5709,18 @@ function handleDetailInput(event) {
     return;
   }
 
+}
+
+function handlePresenterPreparationPaste(event) {
+  const input = event.target.closest("[data-presenter-preparation-input]");
+  if (!input) return;
+  const text = (event.clipboardData || window.clipboardData)?.getData("text/plain");
+  if (!text) return;
+  event.preventDefault();
+  const start = Number.isInteger(input.selectionStart) ? input.selectionStart : input.value.length;
+  const end = Number.isInteger(input.selectionEnd) ? input.selectionEnd : start;
+  input.setRangeText(text, start, end, "end");
+  input.dispatchEvent(new Event("input", { bubbles: true }));
 }
 
 function handleDetailSubmit(event) {
@@ -17836,6 +17850,7 @@ function parsePresenterPreparationInput(value = "") {
 function presenterPreparationTargetLabel(key = "") {
   return {
     대표기도: "기도",
+    설교: "설교 제목",
     설교제목: "설교 제목",
     설교본문: "설교 본문",
   }[compactSearchValue(key)] || String(key || "").trim();
@@ -17971,6 +17986,9 @@ function applyPresenterPreparationInput(serviceId = state.selectedServiceId) {
     }
 
     const targetLabel = presenterPreparationTargetLabel(entry.label);
+    const contentParts = entry.content.split(/\s+\/\s+/);
+    const content = String(contentParts.shift() || "").trim();
+    const assignee = contentParts.join(" / ").trim();
     const projected = findPresenterPreparationProjectedItem(service, targetLabel);
     if (!projected) {
       errors.push(`${entry.label} 항목을 이 예배에서 찾지 못했습니다.`);
@@ -17982,7 +18000,7 @@ function applyPresenterPreparationInput(serviceId = state.selectedServiceId) {
     const mode = serviceMemoInputMode(memo, item);
 
     if (mode === "praise_db" || serviceItemRequiresSongSelection(item, service)) {
-      const song = resolvePresenterPreparationSong(entry.content, item, service);
+      const song = resolvePresenterPreparationSong(content, item, service);
       if (!song) {
         errors.push(`${entry.label} 곡을 찬양 DB에서 하나로 찾지 못했습니다.`);
         continue;
@@ -17994,6 +18012,7 @@ function applyPresenterPreparationInput(serviceId = state.selectedServiceId) {
       item.song_id = song.id;
       item.version_id = null;
       item.raw_title = "";
+      if (assignee) item.assignee = assignee;
       item._worshipElementTemplateModified = true;
       const versions = serviceSelectableSongVersions(song, item, service);
       if (versions.length === 1) item.version_id = versions[0].id;
@@ -18002,7 +18021,7 @@ function applyPresenterPreparationInput(serviceId = state.selectedServiceId) {
     }
 
     if (mode === "scripture" || isScriptureBodyServiceItem(item)) {
-      const reference = normalizeServiceItemReferenceSpacing(entry.content);
+      const reference = normalizeServiceItemReferenceSpacing(content);
       if (!parseBibleReference(reference)) {
         errors.push(`${entry.label}의 성경 주소를 확인해 주세요.`);
         continue;
@@ -18020,10 +18039,10 @@ function applyPresenterPreparationInput(serviceId = state.selectedServiceId) {
       continue;
     }
 
-    if (entry.key === "대표기도") {
-      item.assignee = entry.content;
+    if (entry.key === "대표기도" || assignee) {
+      item.assignee = assignee || content;
     } else {
-      item.raw_title = normalizeServiceItemRawTitleForItem(item, entry.content);
+      item.raw_title = normalizeServiceItemRawTitleForItem(item, content);
     }
     item._worshipElementTemplateModified = true;
   }
