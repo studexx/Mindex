@@ -1964,12 +1964,12 @@ def main() -> int:
                             "monthlyDefaultLeader": "",
                         }
                         and template_terms["fridayScaffold"]["sections"][-1] == "자율기도"
-                        and "통성기도" in template_terms["fridayScaffold"]["sections"]
+                        and "통성기도" not in template_terms["fridayScaffold"]["sections"]
                         and "기도회" not in template_terms["fridayScaffold"]["sections"]
                         and "폐회" not in template_terms["fridayScaffold"]["sections"]
                         and "마무리" not in template_terms["fridayScaffold"]["labels"]
                         and next(item["rawTitle"] for item in template_terms["fridayScaffold"]["rawTitles"] if item["label"] == "교회소식") == "교회소식"
-                        and next(item["rawTitle"] for item in template_terms["fridayScaffold"]["rawTitles"] if item["label"] == "통성기도") == "통성기도"
+                        and not any(item["label"] == "통성기도" for item in template_terms["fridayScaffold"]["rawTitles"])
                         and template_terms["serviceInstanceOverride"] == {
                             "label": "봉헌찬송",
                             "sectionKey": "offering",

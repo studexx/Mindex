@@ -830,13 +830,7 @@ function bindStaticEvents() {
     syncBrowserHistory();
   });
   refs.songList.addEventListener("scroll", saveCurrentListScroll, { passive: true });
-  refs.songList.addEventListener("keydown", (event) => {
-    const preparationInput = event.target.closest("[data-presenter-preparation-input]");
-    if (preparationInput && event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
-      event.preventDefault();
-      applyPresenterPreparationInput(preparationInput.dataset.serviceId || state.selectedServiceId);
-    }
-  });
+  refs.songList.addEventListener("keydown", handleDetailKeydown);
   refs.songList.addEventListener("input", handleDetailInput);
   refs.songList.addEventListener("change", (event) => {
     const sidebarInputSelect = event.target.closest("[data-presenter-sidebar-input-select]");
@@ -13519,18 +13513,6 @@ function publicWorshipAnnouncementsStep() {
   };
 }
 
-function publicFridayCorporatePrayerStep() {
-  return {
-    label: "통성기도",
-    name: "통성기도",
-    required: false,
-    flex: false,
-    sectionKey: "prayer_meeting",
-    elementType: "title",
-    default_text: "통성기도",
-  };
-}
-
 function publicSundayThirdAnnouncementsStep() {
   return {
     ...publicWorshipAnnouncementsStep(),
@@ -13886,7 +13868,7 @@ const SERVICE_ORDER_TEMPLATE_FALLBACKS = {
   "sunday-main": publicSundayThirdTemplate(),
   "sunday-afternoon": publicSundayAfternoonTemplate(),
   wednesday: publicWednesdayTemplate(),
-  friday: ["찬양", "대표기도", "특송", publicWorshipAnnouncementsStep(), "성경봉독", "설교", responseSectionTemplate(), publicFridayCorporatePrayerStep(), "찬양", "자율기도"],
+  friday: ["찬양", "대표기도", "특송", publicWorshipAnnouncementsStep(), "성경봉독", "설교", responseSectionTemplate(), "찬양", "자율기도"],
   monthly: publicMonthlyTemplate(),
   "holy-week-dawn": ["찬양", "기도", "성경봉독", "설교", "기도"],
   omer: ["찬양", "기도", "특송", "결단"],
