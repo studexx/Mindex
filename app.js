@@ -4507,7 +4507,7 @@ async function saveSongMeta(song) {
   const aggregatePraiseTypes = aggregateSongPraiseTypes(song);
   let useVersionTables = state.songVersionTablesSupported === true;
 
-  if (useVersionTables) {
+  if (useVersionTables && state.dirty.forms) {
     try {
       await saveSongVersions(song);
     } catch (error) {
@@ -4589,8 +4589,10 @@ async function saveSongVersions(song) {
   }
 
   song.versions = versions;
-  const existingVersions = await fetchExistingSongVersions(song.id);
-  const existingCanonicalVersions = await fetchExistingCanonicalSongVersions(canonicalSongId);
+  const [existingVersions, existingCanonicalVersions] = await Promise.all([
+    fetchExistingSongVersions(song.id),
+    fetchExistingCanonicalSongVersions(canonicalSongId),
+  ]);
   const versionOrders = assignStableVersionOrders(versions, existingCanonicalVersions, song.id);
   const versionRows = versions.map((version, index) => ({
     id: version.id,
@@ -4797,9 +4799,9 @@ async function reserveExistingVersionUnitOrders(existingUnits = []) {
     byVersion.set(versionId, list);
   });
 
-  for (const list of byVersion.values()) {
+  await Promise.all([...byVersion.values()].map(async (list) => {
     const offset = Math.max(10000, list.length + 1000);
-    for (let index = 0; index < list.length; index += 1) {
+    await Promise.all(list.map(async (unit, index) => {
       const reservedOrder = offset + index + 1;
       const { error } = await state.client
         .from("mindex_version_units")
@@ -4807,10 +4809,10 @@ async function reserveExistingVersionUnitOrders(existingUnits = []) {
           unit_order: reservedOrder,
           curated_order: reservedOrder,
         })
-        .eq("id", list[index].id);
+        .eq("id", unit.id);
       if (error) throw error;
-    }
-  }
+    }));
+  }));
 }
 
 function assignStableVersionOrders(versions, existingCanonicalRows = [], sourceSongId = "") {
@@ -5950,6 +5952,7 @@ function updateVersionNameField(field) {
   version.curated_version_name = cleanName;
   version.raw_section_name = cleanName === "Default" ? null : cleanName;
   version.version_label = cleanName;
+  state.dirty.forms = true;
   state.dirty.song = true;
   updateSaveState();
 }
@@ -6042,6 +6045,7 @@ function toggleVersionPraiseType(type) {
   else types.push(type);
   version.praise_types = types;
   updateSongPraiseTypesFromVersions(song);
+  state.dirty.forms = true;
   state.dirty.song = true;
   updateSaveState();
   renderDetail();
