@@ -5423,6 +5423,7 @@ function handleDetailKeydown(event) {
   if (serviceTextField && event.key === "Enter") {
     event.preventDefault();
     updateServiceItemField(serviceTextField);
+    saveCommittedServiceItem(serviceTextField.dataset.serviceItemIndex);
     return;
   }
   if (event.key !== "Enter" && event.key !== " ") return;
@@ -5563,6 +5564,7 @@ function handleDetailInput(event) {
   if (serviceField) {
     if (isDeferredServiceTextInput(serviceField)) return;
     updateServiceItemField(serviceField);
+    if (serviceField.matches("select")) saveCommittedServiceItem(serviceField.dataset.serviceItemIndex);
     return;
   }
 
@@ -5666,6 +5668,7 @@ function handleDetailChange(event) {
   if (serviceField) {
     if (isDeferredServiceTextInput(serviceField)) return;
     updateServiceItemField(serviceField);
+    if (serviceField.matches("select")) saveCommittedServiceItem(serviceField.dataset.serviceItemIndex);
     return;
   }
 
@@ -6201,6 +6204,13 @@ function updateNewServiceFormField(field) {
 
 function isDeferredServiceTextInput(field) {
   return Boolean(field?.matches?.('input[type="text"][data-service-item-field], input:not([type])[data-service-item-field]'));
+}
+
+function saveCommittedServiceItem(index, serviceId = state.selectedServiceId) {
+  const item = getServiceItems(serviceId)[Number(index)];
+  const service = state.services.find((candidate) => candidate.id === serviceId);
+  if (!item || !service || serviceItemSongSelectionInvalid(item, service)) return;
+  void saveAll();
 }
 
 function updateServiceItemField(field) {
@@ -7342,6 +7352,7 @@ function selectServiceSongForItem(index, songId) {
   refreshPresenterForService(serviceId);
   renderCurrentServiceModuleDetail();
   updateSaveState();
+  saveCommittedServiceItem(index, serviceId);
 }
 
 function clearServiceSongForItem(index) {
@@ -10395,7 +10406,7 @@ function renderSongMetadataDialog(song) {
           ${renderMetadataInput("번역", "translator", metadata.translator || "", "compact")}
           ${renderMetadataInput("앨범", "album", metadata.album || "", "compact meta-album")}
           ${renderMetadataInput("트랙", "track", metadata.track || "", "compact meta-track")}
-          ${renderMetadataInput("송출 형식", "presenter_form", serviceFormPresetSummary(metadata.presenter_form) || "", "compact")}
+          ${renderMetadataInput("송폼", "presenter_form", serviceFormPresetSummary(metadata.presenter_form) || "", "compact")}
           ${renderInput("성구", "scripture", cleanList(song.scripture).join(LIST_INPUT_SEPARATOR), "compact meta-ref")}
         </div>
       </section>

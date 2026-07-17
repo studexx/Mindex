@@ -2093,7 +2093,16 @@ body[data-module="calendar"] .detail-pane { overflow: hidden; }
   flex: 1 1 0;
   max-width: 100%;
   justify-content: flex-end;
+  flex-wrap: nowrap;
+  overflow: hidden;
   text-align: right;
+}
+.song-description-meta--head > span {
+  min-width: 0;
+  overflow: hidden;
+  flex: 0 1 auto;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .song-description-meta.empty {
   visibility: hidden;
