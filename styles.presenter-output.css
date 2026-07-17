@@ -83,7 +83,7 @@
   --presenter-size-display: calc(168 * var(--presenter-stage-unit));
   --presenter-size-section: calc(144 * var(--presenter-stage-unit));
   --presenter-size-body: calc(96 * var(--presenter-stage-unit));
-  --presenter-size-lyrics: calc(128 * var(--presenter-stage-unit));
+  --presenter-size-lyrics: calc(96 * var(--presenter-stage-unit));
   --presenter-size-meta: calc(104 * var(--presenter-stage-unit));
   --presenter-size-caption: calc(80 * var(--presenter-stage-unit));
   --presenter-size-thumbnail: calc(88 * var(--presenter-stage-unit));
@@ -559,7 +559,7 @@
   font-size: var(--presenter-size-meta);
 }
 .presenter-output-root.no-chromakey .presenter-section-song-title-name {
-  font-size: var(--presenter-size-section);
+  font-size: var(--presenter-size-body);
 }
 .presenter-output-root.no-chromakey .presenter-slide--scripture .presenter-slide-text span {
   font-size: var(--presenter-scripture-clean-size);
