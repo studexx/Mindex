@@ -646,6 +646,7 @@ def main() -> int:
                   state.module = 'references';
                   state.referenceError = '';
                   state.referenceLinksLoaded = true;
+                  state.referenceGroupSupported = true;
                   state.referenceLinks = [
                     { id: 'a1', title: 'Alpha Link', url: 'https://alpha.example', group_name: 'Alpha', sort_order: 10, is_active: true },
                     { id: 'b1', title: 'Beta One', url: 'https://beta-one.example', group_name: 'Beta', sort_order: 20, is_active: true },
@@ -676,6 +677,94 @@ def main() -> int:
                 pass_("reference-group-reorder", json.dumps(reference_order, ensure_ascii=False))
             else:
                 fail("reference-group-reorder", json.dumps(reference_order, ensure_ascii=False))
+            reference_guards = reference_page.evaluate(
+                """
+                async () => {
+                  const originalClient = state.client;
+                  const originalToast = window.showToast;
+                  window.showToast = () => {};
+
+                  state.module = 'calendar';
+                  state.calendarData = [{ id: 'cal1', date: '2026-01-04', note: '이전 기념' }];
+                  state.client = {
+                    from: () => ({
+                      update: () => ({
+                        eq: async () => ({ error: new Error('save failed') })
+                      })
+                    })
+                  };
+                  const cell = document.createElement('td');
+                  cell.className = 'cal-cell';
+                  cell.dataset.initialValue = '이전 기념';
+                  cell.textContent = '새 기념';
+                  const calendarSaved = await saveCalendarCell('cal1', 'note', '새 기념', { cell, previousValue: '이전 기념' });
+
+                  state.module = 'references';
+                  state.referenceLinksLoaded = true;
+                  state.referenceGroupSupported = false;
+                  state.referenceError = '';
+                  state.referenceLinks = [
+                    { id: 'safe', title: 'Safe', url: 'example.com/path', group_name: '', sort_order: 10, is_active: true },
+                    { id: 'bad', title: 'Bad', url: 'javascript:alert(1)', group_name: 'Hidden', sort_order: 20, is_active: true }
+                  ];
+                  renderReferencesDetail();
+                  const rendered = {
+                    newGroupButtons: document.querySelectorAll('[data-reference-action="new-group"]').length,
+                    groupFields: document.querySelectorAll('[data-reference-field="group_name"]').length,
+                    disabledLinks: document.querySelectorAll('.reference-card-link.disabled').length,
+                    safeUrl: normalizeReferenceUrl('example.com/path'),
+                    unsafeUrl: normalizeReferenceUrl('javascript:alert(1)')
+                  };
+
+                  let savedPayload = null;
+                  let orderCount = 0;
+                  state.referenceLinks = [{ id: 'save-safe', title: 'Docs', url: 'docs.example.com', group_name: 'Ignored', sort_order: 10, is_active: true }];
+                  state.client = {
+                    from: () => ({
+                      upsert: (payload) => {
+                        savedPayload = payload;
+                        const query = {
+                          select: () => query,
+                          order: () => {
+                            orderCount += 1;
+                            return orderCount >= 2 ? { data: payload, error: null } : query;
+                          }
+                        };
+                        return query;
+                      }
+                    })
+                  };
+                  await saveReferenceLinks();
+
+                  state.client = originalClient;
+                  window.showToast = originalToast;
+                  return {
+                    calendarSaved,
+                    calendarText: cell.textContent,
+                    calendarRow: state.calendarData[0].note,
+                    calendarErrorClass: cell.classList.contains('is-save-error'),
+                    rendered,
+                    savedPayload
+                  };
+                }
+                """
+            )
+            if (
+                reference_guards["calendarSaved"] is False
+                and reference_guards["calendarText"] == "이전 기념"
+                and reference_guards["calendarRow"] == "이전 기념"
+                and reference_guards["calendarErrorClass"]
+                and reference_guards["rendered"]["newGroupButtons"] == 0
+                and reference_guards["rendered"]["groupFields"] == 0
+                and reference_guards["rendered"]["disabledLinks"] == 1
+                and reference_guards["rendered"]["safeUrl"] == "https://example.com/path"
+                and reference_guards["rendered"]["unsafeUrl"] == ""
+                and reference_guards["savedPayload"][0]["url"] == "https://docs.example.com/"
+                and "group_name" not in reference_guards["savedPayload"][0]
+            ):
+                pass_("calendar-reference-guards", json.dumps(reference_guards, ensure_ascii=False))
+            else:
+                fail("calendar-reference-guards", json.dumps(reference_guards, ensure_ascii=False))
             reference_page.close()
 
             if not has_config:
@@ -2202,7 +2291,7 @@ def main() -> int:
                         and strict_song_picker["deferredAfterEnter"] == "입력 대기"
                         and strict_song_picker["deferredPrevented"]
                         and strict_song_picker["renderedHasPicker"]
-                        and strict_song_picker["thirdSpecialManual"]
+                        and not strict_song_picker["thirdSpecialManual"]
                         and "null ·" not in strict_song_picker["pickerNullMeta"]
                     ):
                         pass_("service-strict-song-picker", json.dumps(strict_song_picker, ensure_ascii=False))

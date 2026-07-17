@@ -2674,8 +2674,8 @@ def main() -> int:
                         "elementType": "title_assignee",
                         "layout": "lower_bar_text",
                         "title": "특송",
-                        "assignee": "999 특송 테스트\n할렐루야 찬양대",
-                        "text": "특송\n999 특송 테스트\n할렐루야 찬양대",
+                        "assignee": "입력 필요",
+                        "text": "특송\n입력 필요",
                         "sectionKey": "special_song",
                         "body": form_preset_state["specialSectionTitleSlides"][0]["body"],
                     }]
@@ -2708,8 +2708,8 @@ def main() -> int:
                         "elementType": "title_assignee",
                         "layout": "lower_bar_text",
                         "title": "특송",
-                        "assignee": "청년부 특송\n청년부",
-                        "text": "특송\n청년부 특송\n청년부",
+                        "assignee": "입력 필요",
+                        "text": "특송\n입력 필요",
                         "sectionKey": "special_song",
                     }]
                     and form_preset_state["emptyTemplateInputSlides"] == [{

@@ -233,6 +233,7 @@ const PRESENTER_SIGNAL_KEY = "mindex.presenter.signal";
 const PRESENTER_JUMP_MAX_DIGITS = 3;
 const PRESENTER_OUTPUT_HEARTBEAT_INTERVAL_MS = 1000;
 const PRESENTER_OUTPUT_HEARTBEAT_TTL_MS = 3000;
+const PRESENTER_OUTPUT_INITIAL_STATE_FALLBACK_MS = 450;
 const PRESENTER_FULLSCREEN_RETRY_DELAYS_MS = [0, 80, 240, 600];
 const PRESENTER_OUTPUT_ESCAPE_EXIT_MS = 1600;
 const PRESENTER_OUTPUT_IMAGE_PRELOAD_RADIUS = 8;
@@ -649,6 +650,7 @@ const state = {
   calendarScrollTargetMonth: null,
   calendarAutoScrolledMonth: null,
   calendarDetailTab: "departments",
+  calendarCellSaves: new Map(),
   listScroll: {},
   forms: [],
   search: "",
@@ -872,7 +874,7 @@ function bindStaticEvents() {
     const referenceItem = event.target.closest("[data-reference-id]");
     if (referenceItem) {
       const link = getReferenceLinks().find((item) => item.id === referenceItem.dataset.referenceId);
-      if (link?.url) window.open(link.url, "_blank", "noopener,noreferrer");
+      openReferenceLink(link);
       return;
     }
 
@@ -1021,7 +1023,7 @@ function bindStaticEvents() {
     const newVal = cell.textContent.replace(/\n/g, " ").trim();
     const oldVal = String(cell.dataset.initialValue || "").replace(/\n/g, " ").trim();
     cell.textContent = newVal;
-    if (newVal !== oldVal) saveCalendarCell(id, field, newVal);
+    if (newVal !== oldVal) saveCalendarCell(id, field, newVal, { cell, previousValue: oldVal });
   });
   refs.detailPane.addEventListener("keydown", (e) => {
     const cell = e.target.closest(".cal-cell");
@@ -2995,6 +2997,7 @@ async function loadCalendarData({ silent = false } = {}) {
     state.calendarLoaded = true;
     state.calendarError = "";
   } catch (e) {
+    state.calendarLoaded = false;
     state.calendarError = e.message || "Could not load calendar.";
     if (!silent) showToast(e.message || "Could not load calendar.", "error");
   } finally {
@@ -3006,16 +3009,77 @@ async function loadCalendarData({ silent = false } = {}) {
   }
 }
 
-async function saveCalendarCell(id, field, value) {
-  if (!state.client) return false;
-  const { error } = await state.client
-    .from("mindex_sunday_calendar")
-    .update({ [field]: value })
-    .eq("id", id);
-  if (error) { showToast(error.message || "저장하지 못했습니다.", "error"); return false; }
-  const row = state.calendarData.find((r) => r.id === id);
-  if (row) row[field] = value;
-  return true;
+async function saveCalendarCell(id, field, value, options = {}) {
+  const cell = options.cell || null;
+  const previousValue = String(options.previousValue || "");
+  const row = state.calendarData.find((item) => String(item.id) === String(id));
+  const allowedFields = new Set([
+    "note",
+    "church_schedule",
+    ...CALENDAR_DEPARTMENT_FIELDS.map(([fieldName]) => fieldName),
+    ...CALENDAR_LECTIONARY_FIELDS.map(([fieldName]) => fieldName),
+  ]);
+  if (!state.client || !row || row._generatedFeast || !allowedFields.has(field)) {
+    if (cell) {
+      cell.textContent = previousValue;
+      cell.dataset.initialValue = previousValue;
+    }
+    return false;
+  }
+
+  const key = calendarCellSaveKey(id, field);
+  const token = createLocalId();
+  state.calendarCellSaves.set(key, token);
+  setCalendarCellSaveState(cell, "saving");
+  try {
+    const { error } = await state.client
+      .from("mindex_sunday_calendar")
+      .update({ [field]: value })
+      .eq("id", id);
+    if (error) throw error;
+    row[field] = value;
+    if (state.calendarCellSaves.get(key) === token) {
+      state.calendarCellSaves.delete(key);
+      setCalendarCellSaveState(cell, "saved");
+      if (cell) cell.dataset.initialValue = value;
+    }
+    return true;
+  } catch (error) {
+    if (state.calendarCellSaves.get(key) === token) {
+      state.calendarCellSaves.delete(key);
+      if (cell) {
+        cell.textContent = previousValue;
+        cell.dataset.initialValue = previousValue;
+      }
+      setCalendarCellSaveState(cell, "error");
+    }
+    showToast(error.message || "저장하지 못했습니다.", "error");
+    return false;
+  }
+}
+
+function calendarCellSaveKey(id, field) {
+  return `${id || ""}:${field || ""}`;
+}
+
+function setCalendarCellSaveState(cell, status) {
+  if (!cell) return;
+  cell.classList.remove("is-saving", "is-saved", "is-save-error");
+  cell.removeAttribute("aria-busy");
+  if (status === "saving") {
+    cell.classList.add("is-saving");
+    cell.setAttribute("aria-busy", "true");
+    return;
+  }
+  if (status === "saved") {
+    cell.classList.add("is-saved");
+    window.setTimeout(() => cell.classList.remove("is-saved"), 700);
+    return;
+  }
+  if (status === "error") {
+    cell.classList.add("is-save-error");
+    window.setTimeout(() => cell.classList.remove("is-save-error"), 1600);
+  }
 }
 
 function renderCalendarView() {
@@ -3833,7 +3897,7 @@ async function saveReferenceLinks() {
   if (!requireClient() || state.saving) return;
 
   const links = state.referenceLinks.map(normalizeReferenceLink).sort(sortReferenceLinks);
-  const invalid = links.find((link) => !link.title.trim() || !link.url.trim() || link.url.trim() === "https://");
+  const invalid = links.find((link) => !link.title.trim() || !referenceUrlIsValid(link.url));
   if (invalid) {
     showToast("링크 제목과 URL을 입력해 주세요.", "error");
     return;
@@ -3845,7 +3909,7 @@ async function saveReferenceLinks() {
     const payload = links.map((link, index) => ({
       id: link.id,
       title: link.title.trim(),
-      url: link.url.trim(),
+      url: normalizeReferenceUrl(link.url),
       sort_order: Number(link.sort_order) || (index + 1) * 10,
       is_active: link.is_active !== false,
     }));
@@ -3885,6 +3949,33 @@ function updateReferenceLinkField(field) {
   if (key === "is_active") link[key] = field.checked;
   state.dirty.references = true;
   updateSaveState();
+}
+
+function normalizeReferenceUrl(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  const candidate = /^[a-z][a-z0-9+.-]*:/i.test(raw) ? raw : `https://${raw}`;
+  try {
+    const parsed = new URL(candidate);
+    if (!["http:", "https:"].includes(parsed.protocol)) return "";
+    return parsed.toString();
+  } catch {
+    return "";
+  }
+}
+
+function referenceUrlIsValid(value) {
+  return Boolean(normalizeReferenceUrl(value));
+}
+
+function openReferenceLink(link) {
+  const url = normalizeReferenceUrl(link?.url);
+  if (!url) {
+    showToast("열 수 없는 링크입니다.", "error");
+    return false;
+  }
+  window.open(url, "_blank", "noopener,noreferrer");
+  return true;
 }
 
 function updateReferenceGroupName(field) {
@@ -5090,7 +5181,11 @@ function handleDetailClick(event) {
     const action = referenceAction.dataset.referenceAction;
     const id = referenceAction.dataset.referenceId;
     if (action === "new") createReferenceLink();
-    if (action === "new-group") createReferenceLink({ title: "새 링크", groupName: nextReferenceGroupName() });
+    if (action === "new-group") {
+      createReferenceLink(state.referenceGroupSupported
+        ? { title: "새 링크", groupName: nextReferenceGroupName() }
+        : { title: "새 링크" });
+    }
     if (action === "delete") deleteReferenceLink(id);
     if (action === "move-up") moveReferenceLink(id, -1);
     if (action === "move-down") moveReferenceLink(id, 1);
@@ -5115,7 +5210,7 @@ function handleDetailClick(event) {
     }
     if (action === "open") {
       const link = state.referenceLinks.find((item) => item.id === id);
-      if (link?.url) window.open(link.url, "_blank", "noopener,noreferrer");
+      openReferenceLink(link);
     }
     return;
   }
@@ -6918,14 +7013,11 @@ function selectedServiceForEditor() {
 
 function serviceItemAllowsManualSongText(item = {}, service = selectedServiceForEditor()) {
   const label = compactSearchValue(item.label || "");
-  const sectionKey = String(item._worshipSectionKey || "").trim();
   const titleText = compactSearchValue([
     service?.title,
     service?.type_id,
     ...(Array.isArray(service?.tags) ? service.tags : []),
   ].filter(Boolean).join(" "));
-  if (label === "특송" && worshipAppServiceTypeId(service?.type_id) === "sunday-main") return true;
-  if (sectionKey === "special_song" && worshipAppServiceTypeId(service?.type_id) === "sunday-main") return true;
   if (titleText.includes("온세대") && isMainPraiseServiceItem(item, { allowUnlabeled: true })) return true;
   return false;
 }
@@ -9288,7 +9380,7 @@ function renderHomeDetail() {
 
   const modules = homeModuleCards();
   const service = modules.find((module) => module.id === "service");
-  const commandModules = ["service", "presenter", "scripture", "praise"]
+  const commandModules = ["scripture", "praise", "calendar", "references"]
     .map((id) => modules.find((module) => module.id === id))
     .filter(Boolean);
   const resourceModules = ["scripture", "praise", "calendar", "references"]
@@ -9310,6 +9402,10 @@ function renderHomeDetail() {
             ${nextServicePrep ? `<small class="${nextServicePrep.missingCount ? "needs-input" : "ready"}">${escapeHtml(nextServicePrep.status)}</small>` : ""}
           </div>
           <div class="home-command-row">
+            <button type="button" data-home-module="service">
+              <i data-lucide="panels-top-left"></i>
+              <span>구성</span>
+            </button>
             ${service.actions?.map((action) => `
               <button type="button" data-home-module="${escapeAttr(action.id)}">
                 <i data-lucide="${escapeAttr(action.id === "presenter" ? "screen-share" : "list-checks")}"></i>
@@ -10137,10 +10233,10 @@ function renderReferencesDetail() {
         </div>
         <div class="head-actions">
           <span class="dirty-pill" ${state.dirty.references ? "" : "hidden"}>저장되지 않은 변경</span>
-          <button class="reference-new-btn secondary" type="button" data-reference-action="new-group" aria-label="새 그룹">
+          ${state.referenceGroupSupported ? `<button class="reference-new-btn secondary" type="button" data-reference-action="new-group" aria-label="새 그룹">
             <i data-lucide="folder-plus"></i>
             <span>새 그룹</span>
-          </button>
+          </button>` : ""}
           <button class="reference-new-btn" type="button" data-reference-action="new" aria-label="새 링크">
             <i data-lucide="plus"></i>
             <span>새 링크</span>
@@ -10207,7 +10303,7 @@ function renderReferenceGroups(links) {
               />
             ` : `<h3>${escapeHtml(group.title)}</h3>`}
             <span>${escapeHtml(formatCount(group.links.length))}</span>
-            <div class="reference-group-actions" aria-label="링크 그룹 이동">
+            ${state.referenceGroupSupported ? `<div class="reference-group-actions" aria-label="링크 그룹 이동">
               <button class="icon-btn quiet" type="button"
                 data-reference-action="move-group-up"
                 data-reference-group-key="${escapeAttr(group.key)}"
@@ -10229,7 +10325,7 @@ function renderReferenceGroups(links) {
               aria-label="${state.editingReferenceGroupKey === group.key ? "그룹 편집 완료" : "그룹 이름 변경"}">
               <i data-lucide="${state.editingReferenceGroupKey === group.key ? "check" : "pencil"}"></i>
               <span>${state.editingReferenceGroupKey === group.key ? "완료" : "이름 변경"}</span>
-            </button>
+            </button>` : ""}
           </div>
           <div class="reference-link-grid">
             ${group.links.map((link) => renderReferenceCard(link, group.links)).join("")}
@@ -10252,10 +10348,10 @@ function renderReferenceEditorRow(link, index = 0, total = 1) {
           <span>URL</span>
           <input data-reference-id="${escapeAttr(link.id)}" data-reference-field="url" value="${escapeAttr(link.url)}" placeholder="https://..." inputmode="url" />
         </label>
-        <label>
+        ${state.referenceGroupSupported ? `<label>
           <span>그룹</span>
           <input data-reference-id="${escapeAttr(link.id)}" data-reference-field="group_name" value="${escapeAttr(link.group_name)}" placeholder="그룹" />
-        </label>
+        </label>` : ""}
       </div>
       <div class="reference-editor-actions">
         <div class="reference-editor-action-group">
@@ -10291,9 +10387,10 @@ function renderReferenceEditorRow(link, index = 0, total = 1) {
 function renderReferenceCard(link, allLinks = getReferenceEditorLinks()) {
   const index = allLinks.findIndex((item) => item.id === link.id);
   if (state.editingReferenceId === link.id) return renderReferenceEditorRow(link, index, allLinks.length);
+  const safeUrl = normalizeReferenceUrl(link.url);
   return `
     <article class="reference-card">
-      <a class="reference-card-link" href="${escapeAttr(link.url)}" target="_blank" rel="noopener noreferrer">
+      <a class="reference-card-link${safeUrl ? "" : " disabled"}" href="${escapeAttr(safeUrl || "#")}" target="_blank" rel="noopener noreferrer" ${safeUrl ? "" : "aria-disabled=\"true\" tabindex=\"-1\""}>
         <span>
           <strong>${escapeHtml(link.title)}</strong>
           <em>${escapeHtml(shortUrl(link.url))}</em>
@@ -17982,7 +18079,7 @@ function presenterServiceInputModeLabel(mode) {
 function presenterServiceInputItem(item, service) {
   const model = serviceItemEditorModel(item, { service });
   const memo = model.parsed || parseServiceItemMemo(item.memo);
-  const inputMode = serviceMemoInputMode(memo, item);
+  const inputMode = model.strictSong ? "praise_db" : serviceMemoInputMode(memo, item);
   if (presenterServiceInputIsStatic(item, memo)) return null;
   if (inputMode === "none" || inputMode === "config") return null;
   if (inputMode === "praise_db" && !model.strictSong) return { mode: "text", model, memo };
