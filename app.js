@@ -17861,6 +17861,16 @@ function findPresenterPreparationProjectedItem(service, label) {
   const items = servicePrepEditorItems(service.id);
   const exact = items.find((item) => compactSearchValue(item.label || "") === labelKey);
   if (exact) return exact;
+  const numbered = labelKey.match(/^(.*?)(\d+)$/);
+  if (numbered) {
+    const baseKey = numbered[1];
+    const ordinal = Number(numbered[2]);
+    const matches = items.filter((item) => {
+      const itemKey = compactSearchValue(item.label || "");
+      return itemKey === baseKey || itemKey.replace(/\d+$/, "") === baseKey;
+    });
+    if (ordinal > 0 && matches[ordinal - 1]) return matches[ordinal - 1];
+  }
   if (labelKey === "기도") {
     return items.find((item) =>
       String(item._worshipSectionKey || "") === "prayer"
@@ -17958,7 +17968,7 @@ function presenterPreparationCitationItems(service, items, references) {
   return { items: next, citationIds: [citation.id] };
 }
 
-function applyPresenterPreparationInput(serviceId = state.selectedServiceId) {
+async function applyPresenterPreparationInput(serviceId = state.selectedServiceId) {
   const service = state.services.find((candidate) => candidate.id === serviceId);
   const draft = String(state.presenterPreparationDrafts[serviceId] || "").trim();
   if (!service || !draft) return;
@@ -18075,6 +18085,7 @@ function applyPresenterPreparationInput(serviceId = state.selectedServiceId) {
   updateSaveState();
   const suffix = versionWarnings.length ? ` · ${versionWarnings.join(", ")} 버전 선택 필요` : "";
   showToast(`예배 입력 ${entries.length}개 항목을 반영했습니다${suffix}.`, "info");
+  await saveService();
 }
 
 function presenterServiceInputGroups(service) {
