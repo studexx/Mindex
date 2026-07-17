@@ -7763,18 +7763,15 @@ function applyServiceSongSelectionWithService(item, service = null) {
     }
     return;
   }
-  if (serviceItemRequiresSongSelection(item, service)) {
-    item.song_id = null;
-    item.version_id = null;
-    return;
-  }
-  const song = findServicePraiseSong(item.raw_title);
+  const song = resolvePresenterPreparationSong(item.raw_title, item, service || selectedServiceForEditor())
+    || findServicePraiseSong(item.raw_title);
   if (!song) {
     item.song_id = null;
     item.version_id = null;
     return;
   }
   item.song_id = song.id;
+  item.raw_title = "";
   const versions = serviceSelectableSongVersions(song, item, service || state.services.find((svc) => svc.id === state.selectedServiceId));
   item.version_id = versions.length === 1 ? versions[0].id : null;
 }
@@ -14990,7 +14987,9 @@ function withServiceTemplateImplicitRules(step = {}, typeId = "") {
 
 function serviceTemplateImplicitFormPresetRules(step = {}, typeId = "", label = "") {
   const rules = normalizeServiceFormPresetRules(step.formPresetRules || step.form_preset_rules);
-  if (serviceTypeGroupKey(typeId) === "public" && compactSearchValue(label || step.label || step.name) === "특송" && !rules.length) {
+  const sectionKey = String(step.sectionKey || step.section_key || "").trim();
+  const isSpecialSong = sectionKey === "special_song" || compactSearchValue(label || step.label || step.name) === "특송";
+  if (isSpecialSong && !rules.length) {
     rules.push(PUBLIC_SPECIAL_HYMN_FORM_PRESET_RULE);
   }
   return rules;
@@ -19181,7 +19180,7 @@ function serviceCanonicalSectionTitle(sectionKey = "") {
     special_song: "특송",
     sermon: "설교",
     response_song: "결단",
-    prayer_meeting_praise: "찬양",
+    prayer_meeting_praise: "기도 찬양",
     offering: "봉헌",
     announcements: "광고",
     community_confession: "공동체고백",
