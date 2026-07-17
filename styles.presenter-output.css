@@ -684,27 +684,27 @@
 .presenter-slide--image > .presenter-slide-meta { display: none; }
 .presenter-slide--file { justify-content: center; align-items: center; }
 .presenter-slide--blank { padding: 0; }
-/* Chroma-key blank frames retain a simple centered cross for the sanctuary output. */
-.presenter-output-root:not(.no-chromakey) .presenter-slide--blank {
+/* Fullscreen blank frames retain a simple centered cross. */
+.presenter-output-root.no-chromakey .presenter-slide--blank {
   --presenter-blank-cross-stroke: calc(10 * var(--presenter-stage-unit));
   position: relative;
 }
-.presenter-output-root:not(.no-chromakey) .presenter-slide--blank::before,
-.presenter-output-root:not(.no-chromakey) .presenter-slide--blank::after {
+.presenter-output-root.no-chromakey .presenter-slide--blank::before,
+.presenter-output-root.no-chromakey .presenter-slide--blank::after {
   position: absolute;
   display: block;
   content: "";
   background: #fff;
   pointer-events: none;
 }
-.presenter-output-root:not(.no-chromakey) .presenter-slide--blank::before {
+.presenter-output-root.no-chromakey .presenter-slide--blank::before {
   top: 50%;
   left: 50%;
   width: var(--presenter-blank-cross-stroke);
   height: calc(584 * var(--presenter-stage-unit));
   transform: translate(-50%, -50%);
 }
-.presenter-output-root:not(.no-chromakey) .presenter-slide--blank::after {
+.presenter-output-root.no-chromakey .presenter-slide--blank::after {
   top: calc(50% - (111 * var(--presenter-stage-unit)));
   left: 50%;
   width: calc(360 * var(--presenter-stage-unit));
