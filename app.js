@@ -5455,9 +5455,14 @@ function handlePresenterDetailClick(event) {
 
 function handleDetailKeydown(event) {
   const preparationInput = event.target.closest("[data-presenter-preparation-input]");
-  if (preparationInput && event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
-    event.preventDefault();
-    applyPresenterPreparationInput(preparationInput.dataset.serviceId || state.selectedServiceId);
+  if (preparationInput) {
+    if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+      event.preventDefault();
+      event.stopPropagation();
+      void applyPresenterPreparationInput(preparationInput.dataset.serviceId || state.selectedServiceId);
+      return;
+    }
+    event.stopPropagation();
     return;
   }
 
@@ -5632,6 +5637,7 @@ function handleDetailInput(event) {
   if (preparationInput) {
     const serviceId = preparationInput.dataset.serviceId || state.selectedServiceId;
     if (serviceId) state.presenterPreparationDrafts[serviceId] = preparationInput.value;
+    event.stopPropagation();
     return;
   }
 
@@ -5717,6 +5723,7 @@ function handlePresenterPreparationPaste(event) {
   const text = (event.clipboardData || window.clipboardData)?.getData("text/plain");
   if (!text) return;
   event.preventDefault();
+  event.stopPropagation();
   const start = Number.isInteger(input.selectionStart) ? input.selectionStart : input.value.length;
   const end = Number.isInteger(input.selectionEnd) ? input.selectionEnd : start;
   input.setRangeText(text, start, end, "end");
