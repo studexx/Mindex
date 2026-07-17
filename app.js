@@ -8152,7 +8152,7 @@ function calendarYearLabel(rows = state.calendarData) {
 
 function churchYearSeriesValue(rows = state.calendarData) {
   const year = churchYearForCalendarDate(rows.find((row) => isCalendarDisplayDate(row?.date))?.date) || new Date().getFullYear();
-  return `${["C", "A", "B"][year % 3]}해`;
+  return `Year ${["C", "A", "B"][year % 3]}`;
 }
 
 function churchYearForCalendarDate(value) {
@@ -8438,6 +8438,10 @@ function renderNavigationSidebarState() {
 
 async function handleNavigationRailClick(button) {
   const moduleName = button.dataset.homeModule;
+  if (moduleName === "home") {
+    await goHome();
+    return;
+  }
   await switchModule(moduleName);
 }
 
@@ -19630,6 +19634,7 @@ function stopPresenterOutput(serviceId = state.presenter.serviceId) {
   const activeServiceId = serviceId || state.presenter.serviceId;
   const outputWindow = state.presenter.outputWindow;
   state.presenter.channel?.postMessage({ type: "presenter-output-close" });
+  window.mindexElectron?.closePresenterOutput?.().catch?.(() => {});
   state.presenter.jumpDraft = "";
   state.presenter.exitArmedAt = 0;
   state.presenter.safetyBlank = false;
@@ -19725,6 +19730,18 @@ async function openPresenterOutput(serviceId = state.selectedServiceId) {
   if (!state.presenter.screens.length) void requestPresenterScreens();
 
   const url = presenterOutputUrl({ fullscreen: true });
+  if (window.mindexElectron?.openPresenterOutput) {
+    try {
+      await window.mindexElectron.openPresenterOutput({ url, targetRect });
+      startPresenterOutputWindowMonitor(serviceId);
+      window.setTimeout(() => publishPresenterState(), 250);
+      renderPresenterControlState(serviceId);
+      return;
+    } catch (error) {
+      console.warn("Electron presenter window failed; falling back to browser popup.", error);
+    }
+  }
+
   const features = presenterOutputWindowFeatures(targetRect);
   const outputWindow = window.open(url, "mindexPresenterOutput", features);
   if (!outputWindow) {
