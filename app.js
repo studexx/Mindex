@@ -16935,7 +16935,7 @@ function renderServiceEditorTitleControl(item, origIndex, attrs = {}, model = se
         type="text"
         ${fieldAttr}="raw_title"
         ${indexAttr}="${origIndex}"
-        value="${escapeAttr(model.titleValue || item.raw_title || "")}"
+        value="${escapeAttr(model.titleValue || (model.strictSong ? "" : item.raw_title || ""))}"
         placeholder="${escapeAttr(model.titlePlaceholder)}"
         ${listAttr}
         ${strictAttr}
@@ -17497,6 +17497,7 @@ function serviceItemScriptureReferences(item = {}, memo = parseServiceItemMemo(i
 
 function normalizeServiceItemRawTitle(label, value) {
   const raw = String(value || "").trim();
+  if (isSongServiceLabel(label) && compactSearchValue(raw) === compactSearchValue(label)) return "";
   return isScriptureServiceLabel(label) ? normalizeServiceItemReferenceSpacing(raw) : raw;
 }
 
@@ -17506,6 +17507,7 @@ function normalizeServiceItemRawTitleForItem(item = {}, value = "") {
     const references = normalizeServiceScriptureReferenceList(raw);
     return references.length ? references.join("; ") : raw;
   }
+  if (isSongServiceLabel(item?.label) && compactSearchValue(raw) === compactSearchValue(item?.label)) return "";
   return isScriptureBodyServiceItem(item) || isScriptureServiceLabel(item?.label)
     ? normalizeServiceItemReferenceSpacing(raw)
     : raw;
