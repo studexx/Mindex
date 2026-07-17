@@ -5422,7 +5422,7 @@ def main() -> int:
                     scripture_blank_background_payload,
                 )
                 if (
-                    scripture_blank_background_state["blankIndex"] == -1
+                    scripture_blank_background_state["blankIndex"] == scripture_blank_background_state["finalIndex"] + 1
                     and scripture_blank_background_state["finalIndex"] >= 0
                     and scripture_blank_background_state["hasBackground"]
                     and scripture_blank_background_state["noChromakey"]
@@ -5431,9 +5431,9 @@ def main() -> int:
                     and scripture_blank_background_state["renderedReference"] == "출애굽기 23장"
                     and scripture_blank_background_state["fin"] == "Fin."
                 ):
-                    pass_("presenter-scripture-reading-has-no-trailing-blank", json.dumps(scripture_blank_background_state, ensure_ascii=False))
+                    pass_("presenter-scripture-reading-has-trailing-blank", json.dumps(scripture_blank_background_state, ensure_ascii=False))
                 else:
-                    fail("presenter-scripture-reading-has-no-trailing-blank", json.dumps(scripture_blank_background_state, ensure_ascii=False))
+                    fail("presenter-scripture-reading-has-trailing-blank", json.dumps(scripture_blank_background_state, ensure_ascii=False))
 
                 scripture_final_background_state = output_page.evaluate(
                     """
