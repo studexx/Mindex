@@ -746,7 +746,7 @@ function bindElectronDesktopEvents() {
 }
 
 function loadInitialData() {
-  if (state.module === "praise" || state.selectedSongId) {
+  if (state.module === "praise" || state.module === "presenter" || state.selectedSongId) {
     loadSongs();
   } else {
     scheduleBackgroundSongLoad();
@@ -1664,7 +1664,7 @@ async function applyBrowserHistorySnapshot(snapshot) {
       if (!state.scriptureBooks.length) await loadScriptureBooks({ silent: true });
       await loadScriptures({ silent: true });
     }
-    if (state.module === "praise" && !songCatalogLoaded && !state.connectionError) {
+    if ((state.module === "praise" || state.module === "presenter") && !songCatalogLoaded && !state.connectionError) {
       await loadSongs();
     }
     if (isServiceDataModule() && !state.serviceTypes.length && !state.serviceError) {
@@ -2039,7 +2039,7 @@ async function switchModule(moduleName, options = {}) {
     await loadForms(state.selectedVersionId);
   }
 
-  if (moduleName === "praise" && !songCatalogLoaded && !state.connectionError) {
+  if ((moduleName === "praise" || moduleName === "presenter") && !songCatalogLoaded && !state.connectionError) {
     await loadSongs();
   }
 
@@ -14106,7 +14106,17 @@ const SERVICE_ORDER_TEMPLATE_FALLBACKS = {
   "sunday-main": publicSundayThirdTemplate(),
   "sunday-afternoon": publicSundayAfternoonTemplate(),
   wednesday: publicWednesdayTemplate(),
-  friday: ["찬양", "대표기도", "특송", publicWorshipAnnouncementsStep(), "성경봉독", "설교", responseSectionTemplate(), "찬양", "자율기도"],
+  friday: [
+    "찬양",
+    "대표기도",
+    "특송",
+    publicWorshipAnnouncementsStep(),
+    "성경봉독",
+    "설교",
+    responseSectionTemplate(),
+    { label: "찬양", name: "찬양", required: false, flex: true, sectionKey: "prayer_meeting_praise", elementType: "praise" },
+    "자율기도",
+  ],
   monthly: publicMonthlyTemplate(),
   "holy-week-dawn": ["찬양", "기도", "성경봉독", "설교", "기도"],
   omer: ["찬양", "기도", "특송", "결단"],
@@ -19168,6 +19178,7 @@ function serviceCanonicalSectionTitle(sectionKey = "") {
     special_song: "특송",
     sermon: "설교",
     response_song: "결단",
+    prayer_meeting_praise: "찬양",
     offering: "봉헌",
     announcements: "광고",
     community_confession: "공동체고백",
@@ -20133,6 +20144,9 @@ function startPresenterAtSlide(serviceId, index) {
 
 function preparePresenterService(serviceId = state.selectedServiceId) {
   if (!serviceId) return;
+  if (!songCatalogLoaded && !songLoadPromise && canUseClientData()) {
+    void loadSongs().then(() => refreshPresenterForService(serviceId));
+  }
   const slides = buildServicePresenterSlides(serviceId);
   if (state.presenter.serviceId !== serviceId) {
     stopServiceMusicPlayback({ clearSource: true, mode: "manual", render: false });
@@ -20200,14 +20214,32 @@ function clampPresenterIndex(index, count) {
 }
 
 function presenterSlidesForService(serviceId) {
-  return state.presenter.serviceId === serviceId
-    ? state.presenter.slides
-    : buildServicePresenterSlides(serviceId);
+  const slides = buildServicePresenterSlides(serviceId);
+  if (state.presenter.serviceId === serviceId) {
+    state.presenter.slides = slides;
+    state.presenter.index = clampPresenterIndex(state.presenter.index, slides.length);
+  }
+  return slides;
 }
 
 function buildServicePresenterSlides(serviceId) {
   const service = state.services.find((svc) => svc.id === serviceId);
   if (!service) return [];
+
+  const outputItems = getServiceOutputItems(serviceId);
+  if (outputItems.length) {
+    let slides = outputItems
+      .sort((a, b) => a.sort_order - b.sort_order)
+      .flatMap((item, index) => {
+        const slides = buildPresenterSlidesForServiceItem(item, service, index);
+        const hidden = parseServiceItemMemo(item?.memo).hiddenInPresentation;
+        return hidden ? slides.map((slide) => ({ ...slide, hiddenInPresentation: true })) : slides;
+      })
+      .filter(Boolean);
+    slides = normalizePresenterSlidesForServiceOutput(slides, service);
+    if (!slides[0] || !isPresenterPreparationSlide(slides[0])) slides = [presenterReadySlide(service), ...slides];
+    return withPresenterElementTrailingBlanks(slides, service);
+  }
 
   const worshipSlides = state.worshipPresenterSlides[serviceId] || [];
   if (worshipSlides.length) {
@@ -20222,17 +20254,7 @@ function buildServicePresenterSlides(serviceId) {
     return withPresenterElementTrailingBlanks(serviceSlides, service);
   }
 
-  let slides = getServiceOutputItems(serviceId)
-    .sort((a, b) => a.sort_order - b.sort_order)
-    .flatMap((item, index) => {
-      const slides = buildPresenterSlidesForServiceItem(item, service, index);
-      const hidden = parseServiceItemMemo(item?.memo).hiddenInPresentation;
-      return hidden ? slides.map((slide) => ({ ...slide, hiddenInPresentation: true })) : slides;
-    })
-    .filter(Boolean);
-  slides = normalizePresenterSlidesForServiceOutput(slides, service);
-  if (!slides[0] || !isPresenterPreparationSlide(slides[0])) slides = [presenterReadySlide(service), ...slides];
-  return withPresenterElementTrailingBlanks(slides, service);
+  return withPresenterElementTrailingBlanks([presenterReadySlide(service)], service);
 }
 
 function normalizePresenterSlidesForServiceOutput(slides = [], service = null) {
@@ -20883,6 +20905,15 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
         ], index)
       : lyricsSlides;
     return withIntro(slides);
+  }
+
+  if (song && presenterHymnScoreAssetSlides(song, version, displayText).length) {
+    const scoreSlides = presenterScoreSlidesForServiceItem(item, section, index, song, version, displayText, memo, forms, formWarnings);
+    const slides = [
+      ...(shouldIncludeSongTitleSlide(item, label) ? [presenterSongTitleSlide(item, section, song, version, displayText, index)] : []),
+      ...scoreSlides,
+    ];
+    return withIntro(presenterSlidesWithSpecialSongTitle(item, section, slides, index));
   }
 
   const { no, title } = splitHymnNo(displayText);

@@ -1392,6 +1392,7 @@ def main() -> int:
                               }, []).map((item) => ({
                                 label: item.label || '',
                                 rawTitle: item.raw_title || '',
+                                sectionKey: item._worshipSectionKey || '',
                               })),
                             };
                           })(),
@@ -2069,6 +2070,12 @@ def main() -> int:
                             "monthlyDefaultLeader": "",
                         }
                         and template_terms["fridayScaffold"]["sections"][-1] == "자율기도"
+                        and template_terms["fridayScaffold"]["sections"][-3:] == ["결단", "찬양", "자율기도"]
+                        and any(
+                            item["label"] == "찬양"
+                            and item["sectionKey"] == "prayer_meeting_praise"
+                            for item in template_terms["fridayScaffold"]["rawTitles"]
+                        )
                         and "통성기도" not in template_terms["fridayScaffold"]["sections"]
                         and "기도회" not in template_terms["fridayScaffold"]["sections"]
                         and "폐회" not in template_terms["fridayScaffold"]["sections"]
@@ -2638,7 +2645,7 @@ def main() -> int:
                         and presenter_font_contract["chromakey"]["meta"] == "52px"
                         and presenter_font_contract["chromakey"]["scriptureBar"] == "72px"
                         and presenter_font_contract["chromakey"]["scriptureClean"] == "72px"
-                        and presenter_font_contract["chromakey"]["scriptureReadingText"] == "72px"
+                        and presenter_font_contract["chromakey"]["scriptureReadingText"] == "80px"
                         and presenter_font_contract["clean"]["display"] == "168px"
                         and presenter_font_contract["clean"]["section"] == "144px"
                         and presenter_font_contract["clean"]["body"] == "96px"
@@ -2646,7 +2653,7 @@ def main() -> int:
                         and presenter_font_contract["clean"]["meta"] == "104px"
                         and presenter_font_contract["clean"]["scriptureBar"] == "72px"
                         and presenter_font_contract["clean"]["scriptureClean"] == "72px"
-                        and presenter_font_contract["clean"]["scriptureReadingText"] == "72px"
+                        and presenter_font_contract["clean"]["scriptureReadingText"] == "80px"
                     ):
                         pass_("presenter-font-contract", json.dumps(presenter_font_contract, ensure_ascii=False))
                     else:

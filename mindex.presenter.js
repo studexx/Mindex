@@ -1857,7 +1857,21 @@ function presenterSongForServiceItem(item = {}, displayText = serviceItemDisplay
   const linkedSong = item.song_id ? state.songs.find((candidate) => candidate.id === item.song_id) : null;
   if (linkedSong) return linkedSong;
   if (!isSongServiceLabel(label) && !isPresenterSpecialSongItem(item)) return null;
-  return findServicePraiseSong(displayText);
+  return findServicePraiseSong(displayText) || presenterSyntheticHymnSongFromDisplayText(displayText);
+}
+
+function presenterSyntheticHymnSongFromDisplayText(displayText = "") {
+  const { no, title } = splitHymnNo(displayText);
+  const hymnNo = normalizedHymnScoreNumber(no);
+  if (!hymnNo) return null;
+  const cleanTitle = stripHymnNumber(title || displayText).trim() || `찬송가 ${hymnNo}`;
+  return {
+    id: `__synthetic_hymn_${hymnNo}__`,
+    title: cleanTitle,
+    hymn_no: hymnNo,
+    versions: [],
+    _syntheticHymn: true,
+  };
 }
 
 function getPresenterServiceItemVersion(song, item, service) {
@@ -2458,7 +2472,7 @@ function normalizePresenterPayload(payload) {
     serviceType: payload?.serviceType || "",
     serviceTitle: payload?.serviceTitle || "",
     serviceDate: payload?.serviceDate || payload?.service_date || "",
-    chromakey: payload ? payload.chromakey !== false : false,
+    chromakey: false,
     outputTheme: payload?.outputTheme || presenterOutputTheme(payload?.serviceType),
     backgroundImage: payload?.backgroundImage || "",
     backgroundImages: Array.isArray(payload?.backgroundImages)
@@ -2570,7 +2584,7 @@ function renderPresenterOutput(payload, options = {}) {
 
 function presenterOutputFrameStateForSlide(slide, payload = {}) {
   const backgroundImages = presenterPayloadBackgroundImages(payload);
-  const slideChromakey = presenterSlideUsesChromakey(slide, payload?.chromakey !== false);
+  const slideChromakey = false;
   const cleanOutput = !slideChromakey;
   const blankSlide = presenterSlideLayout(slide) === PRESENTER_SLIDE_LAYOUTS.BLANK;
   const suppressBackground = Boolean(slide?.suppressBackgroundImage || slide?.noBackgroundImage);
