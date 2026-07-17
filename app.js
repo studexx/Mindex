@@ -7107,7 +7107,7 @@ function serviceItemEditorModel(item = {}, options = {}) {
   const editableAssignee =
     !isDefault
     && !preparation
-    && !song
+    && (!song || compactLabel === "특송")
     && (
       worshipLeaderItem
       || ["대표기도", "기도", "성경봉독", "특송", "설교", "축도"].includes(compactLabel)
@@ -18162,7 +18162,13 @@ function renderPresenterServicePraiseInput(item, index, model) {
     <label class="svc-presenter-input-field svc-presenter-input-field--song">
       <span>곡</span>
       ${renderServiceEditorTitleControl(item, index, { service: model.service }, model)}
-    </label>`;
+    </label>
+    ${model.showAssignee ? `
+      <label class="svc-presenter-input-field">
+        <span>담당</span>
+        <input class="svc-presenter-input-control" type="text" data-service-item-field="assignee" data-service-item-index="${index}"
+          value="${escapeAttr(model.assigneeValue || "")}" placeholder="${escapeAttr(inferServiceItemAssignee(item))}" aria-label="${escapeAttr(`${item.label || "항목"} 담당`)}" />
+      </label>` : ""}`;
 }
 
 function renderPresenterServiceScriptureInput(item, index, memo) {
