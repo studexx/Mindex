@@ -6429,7 +6429,8 @@ function updateNewServiceFormField(field) {
 }
 
 function isDeferredServiceTextInput(field) {
-  return Boolean(field?.matches?.('input[type="text"][data-service-item-field], input:not([type])[data-service-item-field]'));
+  if (!field?.matches?.('input[type="text"][data-service-item-field], input:not([type])[data-service-item-field]')) return false;
+  return !field.hasAttribute("data-service-song-required");
 }
 
 function saveCommittedServiceItem(index, serviceId = state.selectedServiceId) {

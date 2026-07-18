@@ -2287,6 +2287,17 @@ def main() -> int:
                             });
                             const deferredAfterEnter = state.serviceItems[service.id][0].raw_title || '';
                             deferredField.remove();
+                            const strictSearchField = document.createElement('input');
+                            strictSearchField.type = 'text';
+                            strictSearchField.dataset.serviceItemIndex = '0';
+                            strictSearchField.dataset.serviceItemField = 'raw_title';
+                            strictSearchField.setAttribute('data-service-song-required', 'true');
+                            strictSearchField.value = '은혜 검색';
+                            document.body.append(strictSearchField);
+                            const strictSearchDeferred = isDeferredServiceTextInput(strictSearchField);
+                            handleDetailInput({ target: strictSearchField });
+                            const strictSearchAfterInput = state.serviceItems[service.id][0].raw_title || '';
+                            strictSearchField.remove();
                             const oneOffThirdSpecial = normalizeServiceItem({
                               service_id: service.id,
                               label: '특송',
@@ -2311,6 +2322,8 @@ def main() -> int:
                               deferredBeforeEnter,
                               deferredAfterEnter,
                               deferredPrevented,
+                              strictSearchDeferred,
+                              strictSearchAfterInput,
                               renderedHasPicker: renderServiceEditorTitleControl(strictItem, 0, { service }, serviceItemEditorModel(strictItem, { service })).includes('svc-song-picker'),
                               thirdSpecialManual: serviceItemAllowsManualSongText(oneOffThirdSpecial, { ...service, type_id: 'sunday-main' }),
                               pickerNullMeta: renderServiceSongPickerResult({
@@ -2351,6 +2364,8 @@ def main() -> int:
                         and strict_song_picker["deferredBeforeEnter"] == ""
                         and strict_song_picker["deferredAfterEnter"] == "입력 대기"
                         and strict_song_picker["deferredPrevented"]
+                        and not strict_song_picker["strictSearchDeferred"]
+                        and strict_song_picker["strictSearchAfterInput"] == "은혜 검색"
                         and strict_song_picker["renderedHasPicker"]
                         and not strict_song_picker["thirdSpecialManual"]
                         and "null ·" not in strict_song_picker["pickerNullMeta"]
