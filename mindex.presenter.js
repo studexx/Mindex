@@ -2552,7 +2552,7 @@ function normalizePresenterPayload(payload) {
     serviceType: payload?.serviceType || "",
     serviceTitle: payload?.serviceTitle || "",
     serviceDate: payload?.serviceDate || payload?.service_date || "",
-    chromakey: false,
+    chromakey: Boolean(payload?.chromakey),
     outputTheme: payload?.outputTheme || presenterOutputTheme(payload?.serviceType),
     backgroundImage: payload?.backgroundImage || "",
     backgroundImages: Array.isArray(payload?.backgroundImages)
