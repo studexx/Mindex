@@ -1606,6 +1606,23 @@ def main() -> int:
                       state.serviceItems[lordsPrayerService.id] = groupWorshipElements(lordsPrayerScaffold.sections, lordsPrayerScaffold.elements)[lordsPrayerService.id] || [];
                       const lordsPrayerItem = (state.serviceItems[lordsPrayerService.id] || [])
                         .find((item) => item.label === '주기도문') || {};
+                      const creedTemplatePlaceholder = {
+                        id: '__smoke_creed_template_placeholder__',
+                        label: '사도신경',
+                        raw_title: '',
+                        memo: serializeServiceItemMemo({
+                          elementType: 'body',
+                          introSlide: { title: '신앙고백', body: '사도신경' },
+                        }),
+                        _worshipSectionKey: 'creed',
+                        _worshipTemplateProjected: true,
+                        _worshipTemplatePlaceholder: true,
+                      };
+                      const creedTemplatePlaceholderState = resolvePresenterServiceItemContentState(
+                        creedTemplatePlaceholder,
+                        parseServiceItemMemo(creedTemplatePlaceholder.memo),
+                        lordsPrayerService
+                      );
 	                      const lordsPrayerSlides = normalizePresenterSlidesForServiceOutput(buildPresenterSlidesForServiceItem(
 	                        lordsPrayerItem,
 	                        { id: '__smoke_lords_prayer_chromakey_service__', type_id: 'sunday-main', date: '2026-07-05' },
@@ -1733,6 +1750,7 @@ def main() -> int:
 	                        scaffold: scaffoldSlides,
 	                        lordsPrayerScaffold: lordsPrayerSlides,
 	                        lordsPrayerFullscreen: lordsPrayerFullscreenSlides,
+	                        creedTemplatePlaceholderState,
 	                        communityScaffold: communitySlides,
 	                        communityFullscreen: communityFullscreenSlides,
 	                        scaffoldClosing: scaffoldClosingSlides,
@@ -1758,6 +1776,9 @@ def main() -> int:
                     and title_and_liturgical_state["confession"]["type"] == "title-assignee"
                     and title_and_liturgical_state["confession"]["renderClass"] == "title-assignee"
                     and title_and_liturgical_state["confession"]["title"] == "참회기도"
+	                    and title_and_liturgical_state["creedTemplatePlaceholderState"]["state"] == "filled"
+	                    and title_and_liturgical_state["creedTemplatePlaceholderState"]["hasOutputContent"] is True
+	                    and title_and_liturgical_state["creedTemplatePlaceholderState"]["reason"] == "liturgical_body"
                     and "presenter-title-assignee" in title_and_liturgical_state["confession"]["html"]
                     and 'presenter-slide--title"' not in title_and_liturgical_state["confession"]["html"]
                     and len(title_and_liturgical_state["chromakey"]) >= 3

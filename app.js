@@ -20795,10 +20795,10 @@ function resolvePresenterServiceItemContentState(item = {}, memo = emptyServiceI
   const filled = (reason) => result("filled", true, reason);
   const missing = (reason) => result("missing", false, reason);
   if (presenterFixedTitleText(item)) return filled("fixed_title");
-  if (item?._worshipTemplatePlaceholder) return missing("template_placeholder");
   if (isLiturgicalBodyServiceItem(item)) {
     return liturgicalBodyText(item, memo, rawText) ? filled("liturgical_body") : missing("liturgical_body_empty");
   }
+  if (item?._worshipTemplatePlaceholder) return missing("template_placeholder");
   if (isScriptureBodyServiceItem(item)) {
     return serviceItemScriptureReferences(item, memo).length || serviceScriptureTextPayload(item, memo).verses.length
       ? filled("scripture_body")
