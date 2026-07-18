@@ -69,6 +69,18 @@ Small visual polish that does not alter behavior does not need an entry.
 - Existing linked song versions are preserved; this default applies when a
   version is newly selected or resolved.
 
+### Score Praise Output
+
+- Hymn-score praise items such as `봉헌찬송` and `송영` keep the normal
+  `song-title` title slide. Do not create a separate score-only title layout.
+- Only the score image slides use the score fullscreen contract. A score image
+  slide must render as the primary `score` slide class before generic image
+  handling so fullscreen output does not inherit chromakey or lower-bar image
+  fallback behavior.
+- Score image slides remain clean fullscreen media with black background and no
+  visible presenter meta. Title slides remain the same praise title contract as
+  non-score praise.
+
 ## Source Of Truth
 
 - Runtime public-worship template rules: `app.js`.
