@@ -13960,8 +13960,8 @@ function publicWorshipSendingStep(options = {}) {
 
 function publicSundayThirdEntrancePraiseElement() {
   return {
-    label: "입례 찬양",
-    name: "입례 찬양",
+    label: "입례찬양",
+    name: "입례찬양",
     elementType: "praise",
     default_text: "내 한 가지 소원",
     formHint: "V-V-C-V-V-C",

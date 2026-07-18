@@ -2003,10 +2003,10 @@ def main() -> int:
                         and [
                             item["label"]
                             for item in template_terms["sundayPublicScaffold"]["third"]["praiseElements"]
-                        ] == ["환영", "찬양 1", "찬양 2", "찬양 3", "찬양 4", "입례 찬양"]
+                        ] == ["환영", "찬양 1", "찬양 2", "찬양 3", "찬양 4", "입례찬양"]
                         and template_terms["sundayPublicScaffold"]["third"]["praiseElements"][-1] == {
                             "type": "praise",
-                            "label": "입례 찬양",
+                            "label": "입례찬양",
                             "formHint": "V-V-C-V-V-C",
                             "forms": ["V", "V", "C", "V", "V", "C"],
                             "strength": "default",
@@ -2433,6 +2433,33 @@ def main() -> int:
                             });
                             return group.subgroups.map((subgroup) => subgroup.label);
                           })(),
+                          elementNameTitleContract: (() => {
+                            const welcomeItem = {
+                              label: '환영',
+                              raw_title: '환영\\n헤세드 찬양단',
+                              memo: serializeServiceItemMemo({ elementType: 'title_content' }),
+                            };
+                            const mainPraiseTitle = presenterBoardSubgroupContentTitle({
+                              sectionKey: 'praise',
+                              sectionLabel: '찬양',
+                              elementLabel: '환영',
+                              elementTitle: '환영',
+                              type: 'title-assignee',
+                              missingContent: true,
+                            }, '찬양 1');
+                            const entranceTitle = presenterBoardSubgroupContentTitle({
+                              sectionKey: 'praise',
+                              sectionLabel: '찬양',
+                              elementLabel: '입례찬양',
+                              elementTitle: '입례찬양',
+                              type: 'lyrics',
+                            }, '찬양 5');
+                            return {
+                              welcomeSidebar: serviceSidebarChildItemTitle(welcomeItem),
+                              mainPraiseTitle,
+                              entranceTitle,
+                            };
+                          })(),
                           doxologyScoreSectionTitle: (() => {
                             const section = presenterSectionForServiceItem({
                               id: 'smoke-doxology',
@@ -2539,6 +2566,11 @@ def main() -> int:
                         )
                         and presenter_terms["collapsedBoardSubgroups"] == 0
                         and presenter_terms["mainPraiseSubgroupLabels"] == ["환영", "찬양 1"]
+                        and presenter_terms["elementNameTitleContract"] == {
+                            "welcomeSidebar": "환영 · 헤세드 찬양단",
+                            "mainPraiseTitle": "",
+                            "entranceTitle": "",
+                        }
                         and presenter_terms["doxologyScoreSectionTitle"] == "송영"
                         and presenter_terms["readyShortcutRows"] <= 1
                         and presenter_terms["announcementTitleContract"] == {
