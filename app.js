@@ -890,6 +890,8 @@ function bindStaticEvents() {
       return;
     }
 
+    if (isPresenterPreparationInputEvent(event)) return;
+
     const sidebarSave = event.target.closest("[data-presenter-sidebar-save]");
     if (sidebarSave) {
       await saveAll();
@@ -5416,6 +5418,8 @@ function handlePresenterDetailClick(event) {
     return true;
   }
 
+  if (isPresenterPreparationInputEvent(event)) return true;
+
   const sectionEditButton = event.target.closest("[data-presenter-section-edit]");
   if (sectionEditButton) {
     openPresenterSectionEditor(sectionEditButton.dataset.serviceId || state.selectedServiceId, {
@@ -5493,6 +5497,10 @@ function handlePresenterDetailClick(event) {
     nextServiceDate: presenterAction.dataset.nextServiceDate,
   });
   return true;
+}
+
+function isPresenterPreparationInputEvent(event) {
+  return Boolean(event?.target?.closest?.("[data-presenter-preparation-input]"));
 }
 
 function handleDetailKeydown(event) {
