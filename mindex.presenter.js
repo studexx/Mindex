@@ -439,6 +439,10 @@ function presenterFormPresetWithAvailableForms(preset = null, forms = []) {
   let sourceIndex = 0;
   base.forEach((label) => {
     const target = normalizePresenterFormPresetLabel(label);
+    if (target.groupIndex) {
+      merged.push(label);
+      return;
+    }
     if (target.lastVerse) {
       const lastVerse = source
         .map((candidate, index) => ({ ...candidate, index }))
@@ -697,6 +701,14 @@ function findPresenterFormForPresetLabel(forms = [], label = "") {
       return best;
     }).form;
   }
+  if (target.groupIndex) {
+    const form = findPresenterFormForPresetTarget(forms, target);
+    return form ? presenterFormPresetGroupItem(label, target, form) : null;
+  }
+  return findPresenterFormForPresetTarget(forms, target);
+}
+
+function findPresenterFormForPresetTarget(forms = [], target = {}) {
   for (const form of forms) {
     const candidate = normalizePresenterFormPresetLabel(presenterFormDisplayLabel(form));
     if (target.key === candidate.key) return form;
@@ -706,6 +718,22 @@ function findPresenterFormForPresetLabel(forms = [], label = "") {
     if (target.type && target.type === candidate.type && (!target.number || target.number === candidate.number)) return form;
   }
   return null;
+}
+
+function presenterFormPresetGroupItem(label = "", target = {}, form = {}) {
+  const chunks = splitPresenterLyricChunks(form.lyrics);
+  const lyrics = chunks[(Number(target.groupIndex) || 1) - 1] || "";
+  if (!lyrics) return null;
+  const cleanLabel = String(label || "").trim();
+  const baseId = String(form._localId || form.id || target.key || compactSearchValue(cleanLabel) || "form");
+  return {
+    ...form,
+    _presenterVirtual: true,
+    _presenterSourceFormId: form._localId || form.id || "",
+    id: `${baseId}:group:${target.group || target.groupIndex}`,
+    lyrics,
+    label: cleanLabel || presenterFormDisplayLabel(form),
+  };
 }
 
 function presenterFormDisplayLabel(form = {}) {
@@ -720,10 +748,17 @@ function normalizePresenterFormPresetLabel(value = "") {
   if (lastVerse) return { key: "last-verse", type: "verse", number: 0, lastVerse: true };
   const hymnVerse = raw.match(/^(\d+)\s*절$/u);
   if (hymnVerse) return { key: `verse:${hymnVerse[1]}`, type: "verse", number: Number(hymnVerse[1]) };
-  const shorthand = raw.match(/^(v|verse)\s*(\d*)$/i);
+  const shorthand = raw.match(/^(v|verse)\s*(\d*)([a-z])?$/i);
   if (shorthand) {
     const number = shorthand[2] ? Number(shorthand[2]) : 0;
-    return { key: number ? `verse:${number}` : "verse", type: "verse", number };
+    const group = shorthand[3] ? shorthand[3].toUpperCase() : "";
+    const baseKey = number ? `verse:${number}` : "verse";
+    return {
+      key: group ? `${baseKey}:${group.toLowerCase()}` : baseKey,
+      type: "verse",
+      number,
+      ...(group ? { group, groupIndex: group.charCodeAt(0) - 64 } : {}),
+    };
   }
   const chorus = raw.match(/^(c|chorus|후렴|코러스)\s*(\d*)$/i);
   if (chorus) {

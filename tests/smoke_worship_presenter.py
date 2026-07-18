@@ -200,15 +200,28 @@ def main() -> int:
                       const song = { metadata: { presenter_form: { forms: ['V1', 'C', 'V2', 'C'] } } };
                       const suggestedItem = { memo: JSON.stringify({ formPreset: { forms: ['V1', 'C'], strength: 'suggested' } }) };
                       const forcedItem = { memo: JSON.stringify({ formPreset: { forms: ['V1', 'C', 'V1'], strength: 'default' } }) };
+                      const groupedItem = { memo: JSON.stringify({ formPreset: { forms: ['V1A', 'V1B'], strength: 'default' } }) };
+                      const groupedForms = [
+                        { id: 'gv1', part_type: 'Verse', part_number: 1, lyrics: '첫 묶음 1\\n첫 묶음 2\\n둘째 묶음 1\\n둘째 묶음 2' },
+                      ];
+                      const groupedPlan = presenterFormPlanForServiceItem({ forms: groupedForms }, groupedItem, song);
                       return {
                         metadataOrder: presenterFormPlanForServiceItem({ forms }, suggestedItem, song).forms.map((form) => form.id),
                         inferredOrder: presenterFormPlanForServiceItem({ forms }, { memo: '' }, {}).forms.map((form) => form.id),
                         forcedOrder: presenterFormPlanForServiceItem({ forms }, forcedItem, song).forms.map((form) => form.id),
+                        groupedLabels: groupedPlan.forms.map((form) => presenterFormDisplayLabel(form)),
+                        groupedLyrics: groupedPlan.forms.map((form) => form.lyrics),
                       };
                     })()
                     """
                 )
-                if ccm_form_order_state == {"metadataOrder": ["v1", "c", "v2", "c"], "inferredOrder": ["v1", "c", "v2", "c"], "forcedOrder": ["v1", "c", "v1", "v2"]}:
+                if ccm_form_order_state == {
+                    "metadataOrder": ["v1", "c", "v2", "c"],
+                    "inferredOrder": ["v1", "c", "v2", "c"],
+                    "forcedOrder": ["v1", "c", "v1", "v2"],
+                    "groupedLabels": ["V1A", "V1B"],
+                    "groupedLyrics": ["첫 묶음 1\n첫 묶음 2", "둘째 묶음 1\n둘째 묶음 2"],
+                }:
                     pass_("presenter-ccm-repeats-chorus", json.dumps(ccm_form_order_state, ensure_ascii=False))
                 else:
                     fail("presenter-ccm-repeats-chorus", json.dumps(ccm_form_order_state, ensure_ascii=False))
