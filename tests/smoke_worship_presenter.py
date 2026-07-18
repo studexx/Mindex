@@ -5564,7 +5564,7 @@ def main() -> int:
                       renderPresenterOutput({ ...payload, index: finalIndex, safetyBlank: false }, {});
                       const root = document.getElementById('presenterOutputRoot');
                       const slide = root?.querySelector('.presenter-slide');
-                      return {
+                      const finalState = {
                         blankIndex,
                         finalIndex,
                         hasBackground: root?.classList.contains('has-background') || false,
@@ -5573,6 +5573,17 @@ def main() -> int:
                         slideClass: slide?.className || '',
                         renderedReference: slide?.querySelector('.presenter-scripture-reading-ref')?.textContent?.trim() || '',
                         fin: slide?.querySelector('.presenter-scripture-reading-fin')?.textContent?.trim() || '',
+                      };
+                      renderPresenterOutput({ ...payload, index: blankIndex, safetyBlank: false }, {});
+                      const blankSlide = root?.querySelector('.presenter-slide');
+                      return {
+                        ...finalState,
+                        blankHasBackground: root?.classList.contains('has-background') || false,
+                        blankNoChromakey: root?.classList.contains('no-chromakey') || false,
+                        blankIsBlank: root?.classList.contains('is-blank') || false,
+                        blankInlineBackground: root?.style.getPropertyValue('--presenter-bg-image') || '',
+                        blankSlideClass: blankSlide?.className || '',
+                        blankText: blankSlide?.innerText.trim() || '',
                       };
                     }
                     """,
@@ -5587,10 +5598,16 @@ def main() -> int:
                     and "presenter-slide--scripture-reading" in scripture_blank_background_state["slideClass"]
                     and scripture_blank_background_state["renderedReference"] == "출애굽기 23장"
                     and scripture_blank_background_state["fin"] == "Fin."
+                    and not scripture_blank_background_state["blankHasBackground"]
+                    and scripture_blank_background_state["blankNoChromakey"]
+                    and scripture_blank_background_state["blankIsBlank"]
+                    and scripture_blank_background_state["blankInlineBackground"] == ""
+                    and "presenter-slide--blank" in scripture_blank_background_state["blankSlideClass"]
+                    and scripture_blank_background_state["blankText"] == ""
                 ):
-                    pass_("presenter-scripture-reading-has-trailing-blank", json.dumps(scripture_blank_background_state, ensure_ascii=False))
+                    pass_("presenter-scripture-reading-plain-trailing-blank", json.dumps(scripture_blank_background_state, ensure_ascii=False))
                 else:
-                    fail("presenter-scripture-reading-has-trailing-blank", json.dumps(scripture_blank_background_state, ensure_ascii=False))
+                    fail("presenter-scripture-reading-plain-trailing-blank", json.dumps(scripture_blank_background_state, ensure_ascii=False))
 
                 scripture_final_background_state = output_page.evaluate(
                     """

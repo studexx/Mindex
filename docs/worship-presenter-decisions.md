@@ -43,8 +43,10 @@ Small visual polish that does not alter behavior does not need an entry.
 - `인용 구절` is optional, separate from the sermon body, and may be entered
   before or during worship. An empty citation creates neither a missing warning
   nor an empty slide.
-- A scripture-reading final slide is followed by one clean blank that keeps the
-  service background. It must not fall back to a black blank frame.
+- A scripture-reading final slide keeps the scripture-reading background and is
+  followed by one plain trailing blank that suppresses the service background.
+  In chromakey output this is the chromakey blank; in fullscreen/clean output it
+  is the default blank frame.
 - Scripture-reading body text uses the installed `Eulyoo1945` / `을유1945`
   font when available on the church PC, with `font-weight: 800` for stronger
   projection readability. Only the verse body text changes; the reference,

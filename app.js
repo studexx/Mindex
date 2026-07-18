@@ -21035,6 +21035,7 @@ function presenterElementTrailingBlankSlide(slide, index, service = null) {
   const idBase = slide.id || slide.elementId || slide.sectionId || `slide:${index}`;
   const serviceChromakey = presenterServiceUsesChromakey(service);
   const scoreLike = slide?.sourceType === "score" || slide?.componentType === "score" || slide?.scoreBackground;
+  const scriptureReadingBlank = slide?.sectionKey === "scripture_reading";
   return {
     ...slide,
     id: `${idBase}:after-blank`,
@@ -21058,9 +21059,9 @@ function presenterElementTrailingBlankSlide(slide, index, service = null) {
     sourceType: "",
     componentType: "",
     scoreBackground: false,
-    // A reading's closing blank remains on the same clean background.
-    suppressBackgroundImage: false,
-    noBackgroundImage: false,
+    // A reading's closing blank should be the output mode's plain blank.
+    suppressBackgroundImage: scriptureReadingBlank,
+    noBackgroundImage: scriptureReadingBlank,
     outputContext: scoreLike && serviceChromakey ? "chromakey" : presenterSlideOutputContext(slide, serviceChromakey),
     autoTrailingBlank: true,
     sort: (Number(slide.sort) || index) + 0.009,
