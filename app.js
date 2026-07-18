@@ -7582,7 +7582,8 @@ async function createPraiseSongFromServiceItem(index) {
   if (existing) {
     item.song_id = existing.id;
     const versions = serviceSelectableSongVersions(existing, item, service);
-    item.version_id = versions.length === 1 ? versions[0].id : null;
+    item.version_id = preferredNewHymnalVersion(existing, versions)?.id
+      || (versions.length === 1 ? versions[0].id : null);
     state.serviceItems[serviceId] = normalizeServiceItemsInCurrentOrder(items);
     state.dirty.service = true;
     renderCurrentServiceModuleDetail();
@@ -7879,7 +7880,8 @@ function applyServiceSongSelectionWithService(item, service = null) {
   item.song_id = song.id;
   item.raw_title = "";
   const versions = serviceSelectableSongVersions(song, item, service || state.services.find((svc) => svc.id === state.selectedServiceId));
-  item.version_id = versions.length === 1 ? versions[0].id : null;
+  item.version_id = preferredNewHymnalVersion(song, versions)?.id
+    || (versions.length === 1 ? versions[0].id : null);
 }
 
 function runServiceDefaultItemAction(action, index) {
@@ -18718,8 +18720,10 @@ async function applyPresenterPreparationInput(serviceId = state.selectedServiceI
         if (assignee) item.assignee = assignee;
         item._worshipElementTemplateModified = true;
         const versions = serviceSelectableSongVersions(song, item, service);
-        if (versions.length === 1) item.version_id = versions[0].id;
-        if (versions.length > 1) versionWarnings.push(entry.label);
+        const preferredVersion = preferredNewHymnalVersion(song, versions);
+        if (preferredVersion) item.version_id = preferredVersion.id;
+        else if (versions.length === 1) item.version_id = versions[0].id;
+        else if (versions.length > 1) versionWarnings.push(entry.label);
         continue;
       }
 

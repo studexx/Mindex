@@ -122,6 +122,9 @@ Small visual polish that does not alter behavior does not need an entry.
   default only when it is the sole available hymn-book version.
 - Existing linked song versions are preserved; this default applies when a
   version is newly selected or resolved.
+- Worship preparation input and service-item auto-linking use the same
+  preferred 새찬송가 default, so resolved hymn-score praise does not remain
+  missing only because a version was not explicitly picked.
 
 ### Score Praise Output
 

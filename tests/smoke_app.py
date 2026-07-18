@@ -3339,9 +3339,9 @@ def main() -> int:
                               { id: '__batch_praise_3__', title: '슬픈 마음 있는 사람', versions: [{ id: '__batch_praise_3_v__', name: '기본' }] },
                               { id: '__batch_praise_4__', title: '충만', versions: [{ id: '__batch_praise_4_v__', name: '기본' }] },
                               { id: '__batch_response__', title: '나는 믿네', versions: [{ id: '__batch_response_v__', name: '기본' }] },
-                              { id: '__batch_hymn_9__', title: '하늘에 가득 찬 영광의', hymn_no: '9', versions: [{ id: '__batch_hymn_9_v__', name: '새찬송가' }] },
-                              { id: '__batch_hymn_288__', title: '예수를 나의 구주 삼고', hymn_no: '288', versions: [{ id: '__batch_hymn_288_v__', name: '새찬송가' }] },
-                              { id: '__batch_hymn_182__', title: '강물같이 흐르는 기쁨', hymn_no: '182', versions: [{ id: '__batch_hymn_182_v__', name: '새찬송가' }] },
+                              { id: '__batch_hymn_9__', title: '하늘에 가득 찬 영광의', hymn_no: '9', versions: [{ id: '__batch_hymn_9_v__', name: '새찬송가' }, { id: '__batch_hymn_9_unified__', name: '통일 9' }] },
+                              { id: '__batch_hymn_288__', title: '예수를 나의 구주 삼고', hymn_no: '288', versions: [{ id: '__batch_hymn_288_v__', name: '새찬송가' }, { id: '__batch_hymn_288_unified__', name: '통일 204' }] },
+                              { id: '__batch_hymn_182__', title: '강물같이 흐르는 기쁨', hymn_no: '182', versions: [{ id: '__batch_hymn_182_v__', name: '새찬송가' }, { id: '__batch_hymn_182_unified__', name: '통일 169' }] },
                               { id: '__batch_hymn_187__', title: '비둘기같이 온유한', hymn_no: '187', versions: [{ id: '__batch_hymn_187_v__', name: '새찬송가' }] },
                             ];
                             state.services = [service];
@@ -3366,6 +3366,23 @@ def main() -> int:
                             applyPresenterPreparationInput(service.id);
                             const items = state.serviceItems[service.id];
                             const byLabel = (label) => items.find((entry) => entry.label === label) || {};
+                            const hymnService = { id: '__smoke_preparation_hymn_versions__', type_id: 'sunday-second', date: '2026-07-19', tags: [] };
+                            state.services = [service, hymnService];
+                            state.serviceItems[hymnService.id] = ['찬양 1', '찬양 2', '찬양 3'].map((label, index) => normalizeServiceItem({
+                              id: `__smoke_hymn_${index + 1}__`,
+                              service_id: hymnService.id,
+                              label,
+                              memo: serializeServiceItemMemo({ elementType: 'praise', inputMode: 'praise_db', outputMode: 'score' }),
+                              _worshipSectionId: '__smoke_hymn_praise__',
+                              _worshipSectionKey: 'praise',
+                              _worshipSectionTitle: '찬양',
+                              _worshipSectionOrder: 2,
+                              _worshipElementOrder: index + 1,
+                            }, index));
+                            state.presenterPreparationDrafts[hymnService.id] = `찬양 1: 하늘에 가득 찬 영광의(9장)\n찬양 2: 예수를 나의 구주 삼고(288장)\n찬양 3: 강물같이 흐르는 기쁨(182장)`;
+                            applyPresenterPreparationInput(hymnService.id);
+                            const hymnItems = (state.serviceItems[hymnService.id] || [])
+                              .filter((entry) => ['찬양 1', '찬양 2', '찬양 3'].includes(entry.label || ''));
                             const citations = items.filter(isPresenterPreparationCitationItem);
                             const citation = citations[0] || {};
                             const citationReferences = parseServiceItemMemo(citation.memo).scriptureReferences || [];
@@ -3427,6 +3444,13 @@ def main() -> int:
                             const fullscreenCitationMemo = parseServiceItemMemo(fullscreenCitation.memo);
                             return {
                               songIds: ['찬양 1', '찬양 2', '찬양 3', '찬양 4', '결단찬양'].map((label) => byLabel(label).song_id || ''),
+                              versionIds: ['찬양 1', '찬양 2', '찬양 3'].map((label) => byLabel(label).version_id || byLabel(label).song_version_id || ''),
+                              hymnVersionIds: hymnItems.map((entry) => entry.version_id || entry.song_version_id || ''),
+                              hymnMissingReasons: hymnItems.map((entry) => {
+                                const memo = parseServiceItemMemo(entry.memo);
+                                const song = serviceItemLinkedSong(entry);
+                                return resolvePresenterServiceItemContentState(entry, memo, song, hymnService).reason;
+                              }),
                               prayer: byLabel('기도').assignee || '',
                               reading: byLabel('성경봉독').raw_title || '',
                               sermonTitle: byLabel('설교 제목').raw_title || '',
@@ -3474,6 +3498,13 @@ def main() -> int:
                         presenter_preparation_paste["songIds"] == [
                             "__batch_praise_1__", "__batch_praise_2__", "__batch_praise_3__", "__batch_praise_4__", "__batch_response__"
                         ]
+                        and presenter_preparation_paste["versionIds"] == [
+                            "__batch_praise_1_v__", "__batch_praise_2_v__", "__batch_praise_3_v__"
+                        ]
+                        and presenter_preparation_paste["hymnVersionIds"] == [
+                            "__batch_hymn_9_v__", "__batch_hymn_288_v__", "__batch_hymn_182_v__"
+                        ]
+                        and presenter_preparation_paste["hymnMissingReasons"] == ["song", "song", "song"]
                         and presenter_preparation_paste["prayer"] == "정선분 권사"
                         and presenter_preparation_paste["reading"] == "히 10:38–39"
                         and presenter_preparation_paste["sermonTitle"] == "믿음을 잃어버릴 수도 있어요?"
