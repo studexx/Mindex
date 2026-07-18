@@ -38,6 +38,8 @@ The following praise records are linked with concrete `song_id` and
 - `찬양 1`: hymn 9, `하늘에 가득 찬 영광의 하나님`
 - `찬양 2`: hymn 288, `예수를 나의 구주 삼고`
 - `찬양 3`: hymn 182, `강물같이 흐르는 기쁨`
+- `특송`: `당신을 향한 노래` with display title `아주 먼 옛날`
+  and manual song form `V-PC-C-PC-C`
 - `봉헌찬송`: hymn 187, `비둘기같이 온유한`
 - `송영`: hymn 5, `이 천지간 만물들아`
 
@@ -55,4 +57,6 @@ After the repair, Supabase returned:
 - `18` worship elements
 - `찬양 1`, `찬양 2`, and `찬양 3` all in `filled` state with linked song
   versions
+- `특송` in `filled` state with linked song version and `formPreset`
+  `{ forms: ["V", "PC", "C", "PC", "C"], strength: "manual" }`
 - `성경봉독` and `설교 본문` both pointing to `롬 8:12-17`
