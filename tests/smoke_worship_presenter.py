@@ -2955,6 +2955,8 @@ def main() -> int:
                     ]
                     and len(form_preset_state["sectionSongTitleSlides"]["offering"]) == 1
                     and len(form_preset_state["sectionSongTitleSlides"]["special"]) == 1
+                    and form_preset_state["sectionSongTitleSlides"]["special"][0]["sectionHeading"] == ""
+                    and "presenter-section-song-title" not in form_preset_state["sectionSongTitleSlides"]["special"][0]["body"]
                     and len(form_preset_state["sectionSongTitleSlides"]["doxology"]) == 1
                     and form_preset_state["scoreSlides"] == [{
                         "type": "file",

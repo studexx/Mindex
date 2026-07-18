@@ -131,7 +131,8 @@ Small visual polish that does not alter behavior does not need an entry.
 
 - `특송` praise items with an assignee output a separate `특송 / 담당자`
   title-assignee slide before the normal praise song-title slide. The song-title
-  slide remains visible and carries the song name.
+  slide remains visible, carries the song name, and uses the ordinary centered
+  praise title layout rather than the section-heading title layout.
 - Hymn-score praise items such as `봉헌찬송` and `송영` keep the normal
   `song-title` title slide. Do not create a separate score-only title layout.
 - Only the score image slides use the score fullscreen contract. A score image

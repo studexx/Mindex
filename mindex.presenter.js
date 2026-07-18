@@ -1705,7 +1705,6 @@ function presenterSongTitleUsesSectionHeading(item = {}, section = {}) {
   if (!sectionKey) return false;
   return [
     "hymn_praise",
-    "special_song",
     "response_song",
     "offering",
     "doxology",
