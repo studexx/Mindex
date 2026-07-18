@@ -873,6 +873,7 @@ def main() -> int:
                         hasWorkbench: Boolean(workbench),
                         hasMain: Boolean(main),
                         hasCommandPanel: Boolean(commandPanel),
+                        hasResourcePanel: Boolean(resourcePanel),
                         actionTiles: actionGrid?.children.length || 0,
                         resourceRows: resourceRows.length,
                         main: rect(main),
@@ -890,12 +891,14 @@ def main() -> int:
                     home_design_state["hasWorkbench"]
                     and home_design_state["hasMain"]
                     and home_design_state["hasCommandPanel"]
+                    and not home_design_state["hasResourcePanel"]
                     and home_design_state["actionTiles"] == 4
-                    and home_design_state["resourceRows"] == 4
+                    and home_design_state["resourceRows"] == 0
                     and home_design_state["main"]["height"] >= 180
-                    and home_design_state["resourceLabels"] == ["말씀", "찬양", "교회력", "참고자료"]
+                    and home_design_state["resourceLabels"] == []
                     and "구성" not in home_design_state["primaryActions"]
-                    and home_design_state["chevrons"] == 4
+                    and home_design_state["chevrons"] == 0
+                    and "데이터 상태" not in home_design_state["text"]
                     and "1 services" not in home_design_state["text"]
                     and home_design_state["overflow"] <= 2
                 ):
