@@ -12796,7 +12796,7 @@ function findBibleBookByCode(code) {
 function findBibleBookByReferenceName(name) {
   const value = normalizeReferenceBookName(name);
   if (!value) return null;
-  return getBibleBookLookups().byReferenceName.get(value) || null;
+  return getBibleBookLookups().byReferenceName.get(value) || fallbackBibleBookByReferenceName(value);
 }
 
 function getBibleBookReferenceNames(book) {
@@ -12820,6 +12820,32 @@ function normalizeReferenceBookName(value) {
     .replace(/^(second|ii)\s+/, "2")
     .replace(/^(third|iii)\s+/, "3")
     .replace(/\s+/g, "");
+}
+
+function fallbackBibleBookByReferenceName(normalizedName = "") {
+  const codes = Object.keys(KOREAN_BIBLE_BOOK_ABBREVIATIONS);
+  for (const [index, code] of codes.entries()) {
+    const names = [
+      code,
+      KOREAN_BIBLE_BOOK_ABBREVIATIONS[code],
+      ENGLISH_BIBLE_BOOK_ABBREVIATIONS[code],
+      ...(BIBLE_BOOK_ALIASES[code] || []),
+    ];
+    if (!names.some((name) => normalizeReferenceBookName(name) === normalizedName)) continue;
+    const koreanName = KOREAN_BIBLE_BOOK_ABBREVIATIONS[code] || code;
+    const englishName = ENGLISH_BIBLE_BOOK_ABBREVIATIONS[code] || code;
+    return {
+      code,
+      koreanName,
+      shortName: koreanName,
+      englishName,
+      canonicalEnglishTitle: englishName,
+      chapterCount: Number(BIBLE_CHAPTER_COUNTS?.[code]) || 0,
+      sortOrder: index + 1,
+      aliases: BIBLE_BOOK_ALIASES[code] || [],
+    };
+  }
+  return null;
 }
 
 function findBibleBookByName(name) {
@@ -17613,10 +17639,38 @@ function normalizeServiceItemReferenceSpacing(value) {
 }
 
 function normalizeServiceScriptureReferenceList(value) {
-  const source = Array.isArray(value) ? value : String(value || "").split(/[;；]/);
-  return uniqueList(source
-    .map((reference) => normalizeServiceItemReferenceSpacing(reference))
-    .filter((reference) => parseBibleReference(reference)));
+  const source = Array.isArray(value) ? value : String(value || "").split(/[\n;；]/);
+  return uniqueList(source.flatMap(expandServiceScriptureReferenceText));
+}
+
+function expandServiceScriptureReferenceText(value = "") {
+  const parts = String(value || "")
+    .split(/[，,]/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  const references = [];
+  let lastBookName = "";
+  let lastChapter = null;
+
+  for (const part of parts) {
+    const candidates = [part];
+    if (lastBookName) {
+      if (lastChapter && /^\d{1,3}(?:\s*[-–~]\s*\d{1,3})?$/.test(part)) {
+        candidates.push(`${lastBookName} ${lastChapter}:${part}`);
+      }
+      candidates.push(`${lastBookName} ${part}`);
+    }
+    const reference = candidates.map(parseBibleReference).find(Boolean);
+    if (!reference) continue;
+    references.push(formatServiceBibleReference(reference, part));
+    lastBookName = KOREAN_BIBLE_BOOK_ABBREVIATIONS[reference.book.code]
+      || reference.book.shortName
+      || reference.book.koreanName
+      || reference.book.code;
+    lastChapter = reference.chapter || lastChapter;
+  }
+
+  return references;
 }
 
 function serviceItemSupportsScriptureReferenceList(item = {}) {
@@ -17641,18 +17695,32 @@ function sharedSermonScriptureBodyItem(item = {}, service = null) {
     && compactSearchValue(candidate?.label || "") === "설교본문") || null;
 }
 
-function serviceItemScriptureReferences(item = {}, memo = parseServiceItemMemo(item.memo), service = null) {
-  const sharedSermonBody = sharedSermonScriptureBodyItem(item, service);
-  if (sharedSermonBody) {
-    return serviceItemScriptureReferences(sharedSermonBody, parseServiceItemMemo(sharedSermonBody.memo), service);
-  }
+function sharedReadingScriptureBodyItem(item = {}, service = null) {
+  if (String(item?._worshipSectionKey || "").trim() !== "sermon") return null;
+  if (compactSearchValue(item?.label || "") !== "설교본문") return null;
+  const serviceId = service?.id || item?.service_id || state.selectedServiceId;
+  const items = serviceId ? state.serviceItems[serviceId] || [] : [];
+  return items.find((candidate) =>
+    String(candidate?._worshipSectionKey || "").trim() === "scripture_reading"
+    && compactSearchValue(candidate?.label || "") === "성경봉독") || null;
+}
+
+function serviceItemDirectScriptureReferences(item = {}, memo = parseServiceItemMemo(item.memo)) {
   const configured = normalizeServiceScriptureReferenceList(memo.scriptureReferences);
   if (configured.length) return configured;
-  if (serviceItemSupportsScriptureReferenceList(item)) {
-    return normalizeServiceScriptureReferenceList(item.raw_title || memo.scriptureReference);
-  }
-  const reference = normalizeServiceItemReferenceSpacing(memo.scriptureReference || item.raw_title || "");
-  return parseBibleReference(reference) ? [reference] : [];
+  return normalizeServiceScriptureReferenceList(memo.scriptureReference || item.raw_title || "");
+}
+
+function serviceItemSharedScriptureSource(item = {}, memo = parseServiceItemMemo(item.memo), service = null) {
+  if (serviceItemDirectScriptureReferences(item, memo).length) return null;
+  return sharedSermonScriptureBodyItem(item, service) || sharedReadingScriptureBodyItem(item, service);
+}
+
+function serviceItemScriptureReferences(item = {}, memo = parseServiceItemMemo(item.memo), service = null) {
+  const direct = serviceItemDirectScriptureReferences(item, memo);
+  if (direct.length) return direct;
+  const sharedSource = serviceItemSharedScriptureSource(item, memo, service);
+  return sharedSource ? serviceItemDirectScriptureReferences(sharedSource, parseServiceItemMemo(sharedSource.memo)) : [];
 }
 
 function normalizeServiceItemRawTitle(label, value) {
@@ -18383,11 +18451,12 @@ function presenterServiceInputItem(item, service) {
 function presenterServiceInputIsStatic(item = {}, memo = parseServiceItemMemo(item.memo)) {
   const label = compactSearchValue(item.label || "");
   const sectionKey = String(item._worshipSectionKey || "").trim();
+  const usesSharedScripture = Boolean(serviceItemSharedScriptureSource(item, memo, state.services.find((service) => service.id === item?.service_id) || null));
   return isServicePreparationItem(item, memo)
     || Boolean(presenterFixedTitleText(item))
     || isLiturgicalBodyServiceItem(item)
     || isConfessionPrayerServiceItem(item)
-    || isSharedScriptureReadingServiceItem(item)
+    || usesSharedScripture
     || label === "환영"
     || sectionKey === "announcements"
     || sectionKey === "closing_visual";
@@ -20850,6 +20919,9 @@ function resolvePresenterServiceItemContentState(item = {}, memo = emptyServiceI
   if (isPublicClosingImageServiceItem(item, memo)) return filled("closing_visual_asset");
   if (isPublicFixedDoxologyServiceItem(item, memo, service)) return filled("fixed_doxology");
   if (isSharedScriptureReadingServiceItem(item)) {
+    if (serviceItemDirectScriptureReferences(item, memo).length || serviceScriptureTextPayload(item, memo).verses.length) {
+      return filled("scripture_body");
+    }
     return serviceItemScriptureReferences(item, memo, service).length
       ? filled("shared_sermon_scripture")
       : filled("shared_sermon_scripture_pending");
@@ -20925,12 +20997,12 @@ function presenterMissingContentSlide(item = {}, section = {}, index = 0, conten
 }
 
 function buildPresenterSlidesForServiceItem(item, service, index) {
-  const sharedSermonBody = sharedSermonScriptureBodyItem(item, service);
-  if (sharedSermonBody) {
+  const sharedScriptureSource = serviceItemSharedScriptureSource(item, parseServiceItemMemo(item?.memo), service);
+  if (sharedScriptureSource) {
     item = {
       ...item,
-      raw_title: sharedSermonBody.raw_title || "",
-      memo: sharedSermonBody.memo || "",
+      raw_title: sharedScriptureSource.raw_title || "",
+      memo: sharedScriptureSource.memo || "",
     };
   }
   const initialMemo = parseServiceItemMemo(item?.memo);
