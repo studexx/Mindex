@@ -17889,7 +17889,9 @@ function serviceItemHasDirectSundaySharedContent(item = {}, service = null) {
     return Boolean(serviceItemDirectScriptureReferences(item, memo).length || serviceScriptureTextPayload(item, memo).verses.length);
   }
   if (key === "sermon-title") {
-    return Boolean(String(item?.raw_title || "").trim() || cleanServiceAssignee(item?.assignee));
+    const rawTitle = String(item?.raw_title || "").trim();
+    const hasSpecificTitle = Boolean(rawTitle && !presenterTitleAssigneeTitleIsGeneric(rawTitle, item?.label || ""));
+    return hasSpecificTitle;
   }
   if (key.startsWith("main-praise:") || key === "offering-hymn") {
     return Boolean(item?.song_id || String(item?.raw_title || "").trim() || (memo.slides || []).some((slide) => String(slide || "").trim()));
@@ -17939,7 +17941,11 @@ function serviceItemWithSharedSundayContent(item = {}, service = null) {
     return next;
   }
   if (key === "sermon-title") {
-    next.raw_title = next.raw_title || sourceItem.raw_title || "";
+    const currentTitle = String(next.raw_title || "").trim();
+    const sourceTitle = String(sourceItem.raw_title || "").trim();
+    if (!currentTitle || presenterTitleAssigneeTitleIsGeneric(currentTitle, next.label || "")) {
+      next.raw_title = sourceTitle;
+    }
     next.assignee = next.assignee || sourceItem.assignee || "";
     return next;
   }
@@ -18001,10 +18007,21 @@ function serviceItemSharedScriptureSource(item = {}, memo = parseServiceItemMemo
 }
 
 function serviceItemScriptureReferences(item = {}, memo = parseServiceItemMemo(item.memo), service = null) {
+  const effectiveItem = serviceItemWithSharedSundayContent(item, service);
+  if (effectiveItem !== item) {
+    return serviceItemDirectScriptureReferences(effectiveItem, parseServiceItemMemo(effectiveItem.memo));
+  }
   const direct = serviceItemDirectScriptureReferences(item, memo);
   if (direct.length) return direct;
   const sharedSource = serviceItemSharedScriptureSource(item, memo, service);
-  return sharedSource ? serviceItemDirectScriptureReferences(sharedSource, parseServiceItemMemo(sharedSource.memo)) : [];
+  if (!sharedSource) return [];
+  const sharedMemo = parseServiceItemMemo(sharedSource.memo);
+  const sharedDirect = serviceItemDirectScriptureReferences(sharedSource, sharedMemo);
+  if (sharedDirect.length) return sharedDirect;
+  const effectiveSharedSource = serviceItemWithSharedSundayContent(sharedSource, service);
+  return effectiveSharedSource !== sharedSource
+    ? serviceItemDirectScriptureReferences(effectiveSharedSource, parseServiceItemMemo(effectiveSharedSource.memo))
+    : [];
 }
 
 function normalizeServiceItemRawTitle(label, value) {
@@ -21298,7 +21315,7 @@ function resolvePresenterServiceItemContentState(item = {}, memo = emptyServiceI
   }
   if (item?._worshipTemplatePlaceholder) return missing("template_placeholder");
   if (isScriptureBodyServiceItem(item)) {
-    return serviceItemScriptureReferences(item, memo).length || serviceScriptureTextPayload(item, memo).verses.length
+    return serviceItemScriptureReferences(item, memo, service).length || serviceScriptureTextPayload(item, memo).verses.length
       ? filled("scripture_body")
       : missing(rawText ? "scripture_reference_invalid" : "scripture_body_empty");
   }
@@ -21314,7 +21331,7 @@ function resolvePresenterServiceItemContentState(item = {}, memo = emptyServiceI
     return missing(rawText ? "song_selection_required" : "song_empty");
   }
   if (inputMode === "scripture") {
-    return serviceItemScriptureReferences(item, memo).length || serviceScriptureTextPayload(item, memo).verses.length
+    return serviceItemScriptureReferences(item, memo, service).length || serviceScriptureTextPayload(item, memo).verses.length
       ? filled("scripture_reference")
       : missing(rawText ? "scripture_reference_invalid" : "scripture_empty");
   }
@@ -21368,10 +21385,11 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
   if (isRedundantFullscreenSermonBodyServiceItem(item, service)) return [];
   const sharedScriptureSource = serviceItemSharedScriptureSource(item, parseServiceItemMemo(item?.memo), service);
   if (sharedScriptureSource) {
+    const effectiveSharedSource = serviceItemWithSharedSundayContent(sharedScriptureSource, service);
     item = {
       ...item,
-      raw_title: sharedScriptureSource.raw_title || "",
-      memo: sharedScriptureSource.memo || "",
+      raw_title: effectiveSharedSource.raw_title || sharedScriptureSource.raw_title || "",
+      memo: effectiveSharedSource.memo || sharedScriptureSource.memo || "",
     };
   }
   const initialMemo = parseServiceItemMemo(item?.memo);

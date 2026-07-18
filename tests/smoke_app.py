@@ -1865,6 +1865,84 @@ def main() -> int:
                               presenterPeople: presenterBenedictions.map((row) => row.assignee || ''),
                             };
                           })(),
+                          sharedSundayContentProjection: (() => {
+                            const previousServices = state.services.slice();
+                            const previousItems = state.serviceItems;
+                            const services = [
+                              { id: '__smoke_share_first__', type_id: 'sunday-first', date: '2026-07-19', title: '주일예배 [1부]' },
+                              { id: '__smoke_share_second__', type_id: 'sunday-second', date: '2026-07-19', title: '주일예배 [2부]' },
+                              { id: '__smoke_share_third__', type_id: 'sunday-main', date: '2026-07-19', title: '주일예배 [3부]' },
+                            ];
+                            state.services = [...previousServices, ...services];
+                            const makeItem = (serviceId, label, key, order, values = {}) => normalizeServiceItem({
+                              id: `${serviceId}:${key}:${label}`,
+                              service_id: serviceId,
+                              sort_order: order,
+                              label,
+                              raw_title: values.rawTitle || '',
+                              assignee: values.assignee || '',
+                              song_id: values.songId || null,
+                              version_id: values.versionId || null,
+                              _worshipSectionId: `${serviceId}:${key}`,
+                              _worshipSectionKey: key,
+                              _worshipSectionTitle: values.sectionTitle || label,
+                              _worshipSectionOrder: order,
+                              _worshipElementOrder: order,
+                              memo: serializeServiceItemMemo({
+                                elementType: values.elementType || (key === 'sermon' || key === 'scripture_reading' ? 'scripture_body' : 'praise'),
+                                inputMode: values.inputMode || (key === 'sermon' || key === 'scripture_reading' ? 'scripture' : 'praise_db'),
+                                ...(values.scriptureReference ? { scriptureReference: values.scriptureReference } : {}),
+                                ...(values.formPreset ? { formPreset: values.formPreset } : {}),
+                              }),
+                            });
+                            const praiseSong = state.songs.find((song) => song.title === '평화 하나님의 평강이') || state.songs[0];
+                            const praiseVersion = praiseSong?.versions?.[0] || null;
+                            const offeringSong = state.songs.find((song) => compactSearchValue(song.title).includes('공중나는새를보라')) || state.songs[1] || praiseSong;
+                            const offeringVersion = offeringSong?.versions?.[0] || null;
+                            state.serviceItems = {
+                              ...previousItems,
+                              __smoke_share_first__: [
+                                makeItem('__smoke_share_first__', '찬양 1', 'praise', 1, { songId: praiseSong?.id, versionId: praiseVersion?.id }),
+                                makeItem('__smoke_share_first__', '봉헌찬송', 'offering', 2, { songId: offeringSong?.id, versionId: offeringVersion?.id }),
+                              ],
+                              __smoke_share_second__: [
+                                makeItem('__smoke_share_second__', '찬양 1', 'praise', 1),
+                                makeItem('__smoke_share_second__', '성경봉독', 'scripture_reading', 2, { rawTitle: '히 10:38-39', scriptureReference: '히 10:38-39' }),
+                                makeItem('__smoke_share_second__', '설교 제목', 'sermon', 3, { elementType: 'title_person', inputMode: 'text', rawTitle: '믿음으로 사는 사람', assignee: '김남영 목사' }),
+                                makeItem('__smoke_share_second__', '봉헌찬송', 'offering', 4),
+                              ],
+                              __smoke_share_third__: [
+                                makeItem('__smoke_share_third__', '성경봉독', 'scripture_reading', 1),
+                                makeItem('__smoke_share_third__', '설교 제목', 'sermon', 2, { elementType: 'title_person', inputMode: 'text' }),
+                                makeItem('__smoke_share_third__', '설교 본문', 'sermon', 3),
+                                makeItem('__smoke_share_third__', '봉헌찬송', 'offering', 4),
+                              ],
+                            };
+                            const secondPraise = getServiceOutputItems('__smoke_share_second__').find((item) => item.label === '찬양 1');
+                            const secondOffering = getServiceOutputItems('__smoke_share_second__').find((item) => item.label === '봉헌찬송');
+                            const thirdReading = getServiceOutputItems('__smoke_share_third__').find((item) => item.label === '성경봉독');
+                            const thirdSermonTitle = getServiceOutputItems('__smoke_share_third__').find((item) => item.label === '설교 제목');
+                            const thirdSermonBody = getServiceOutputItems('__smoke_share_third__').find((item) => item.label === '설교 본문');
+                            const thirdOffering = getServiceOutputItems('__smoke_share_third__').find((item) => item.label === '봉헌찬송');
+                            const result = {
+                              secondPraiseText: serviceItemDisplayText(secondPraise),
+                              secondPraiseStatic: presenterServiceInputIsStatic(secondPraise),
+                              secondPraiseMissing: resolvePresenterServiceItemContentState(secondPraise, parseServiceItemMemo(secondPraise.memo), null, services[1]).state,
+                              secondOfferingText: serviceItemDisplayText(secondOffering),
+                              thirdReadingRefs: serviceItemScriptureReferences(thirdReading, parseServiceItemMemo(thirdReading.memo), services[2]),
+                              thirdReadingMissing: resolvePresenterServiceItemContentState(thirdReading, parseServiceItemMemo(thirdReading.memo), null, services[2]).state,
+                              thirdSermonTitleText: serviceItemDisplayText(thirdSermonTitle),
+                              thirdSermonTitleAssignee: serviceItemWithSharedSundayContent(thirdSermonTitle, services[2]).assignee || '',
+                              thirdSermonTitleStatic: presenterServiceInputIsStatic(thirdSermonTitle),
+                              thirdSermonBodyRefs: serviceItemScriptureReferences(thirdSermonBody, parseServiceItemMemo(thirdSermonBody.memo), services[2]),
+                              thirdOfferingText: serviceItemDisplayText(thirdOffering),
+                              thirdOfferingStatic: presenterServiceInputIsStatic(thirdOffering),
+                              thirdMissingSlides: buildServicePresenterSlides('__smoke_share_third__').filter((slide) => slide.missingContent).map((slide) => slide.label),
+                            };
+                            state.services = previousServices;
+                            state.serviceItems = previousItems;
+                            return result;
+                          })(),
                           fullscreenSermonBodyCompatibility: (() => {
                             const service = { id: '__smoke_fullscreen_sermon_body__', type_id: 'sunday-first', date: '2026-07-05' };
                             const previousServices = state.services.slice();
@@ -2258,6 +2336,19 @@ def main() -> int:
                             "presenterCount": 1,
                             "presenterPeople": ["김남영 목사"],
                         }
+                        and template_terms["sharedSundayContentProjection"]["secondPraiseStatic"] is True
+                        and template_terms["sharedSundayContentProjection"]["secondPraiseMissing"] == "filled"
+                        and template_terms["sharedSundayContentProjection"]["secondPraiseText"]
+                        and template_terms["sharedSundayContentProjection"]["secondOfferingText"]
+                        and template_terms["sharedSundayContentProjection"]["thirdReadingRefs"] == ["히 10:38–39"]
+                        and template_terms["sharedSundayContentProjection"]["thirdReadingMissing"] == "filled"
+                        and template_terms["sharedSundayContentProjection"]["thirdSermonTitleText"] == "믿음으로 사는 사람"
+                        and template_terms["sharedSundayContentProjection"]["thirdSermonTitleAssignee"] == "김남영 목사"
+                        and template_terms["sharedSundayContentProjection"]["thirdSermonTitleStatic"] is True
+                        and template_terms["sharedSundayContentProjection"]["thirdSermonBodyRefs"] == ["히 10:38–39"]
+                        and template_terms["sharedSundayContentProjection"]["thirdOfferingText"]
+                        and template_terms["sharedSundayContentProjection"]["thirdOfferingStatic"] is True
+                        and template_terms["sharedSundayContentProjection"]["thirdMissingSlides"] == []
                         and template_terms["fullscreenSermonBodyCompatibility"] == {
                             "staticInput": True,
                             "contentState": "filled",
