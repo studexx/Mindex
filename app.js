@@ -7168,6 +7168,7 @@ function serviceItemAllowsManualSongText(item = {}, service = selectedServiceFor
 }
 
 function serviceItemRequiresSongSelection(item = {}, service = selectedServiceForEditor()) {
+  if (isPublicFixedDoxologyServiceItem(item, parseServiceItemMemo(item.memo), service)) return false;
   const songLikeItem = isSongServiceLabel(item.label) || isSpecialSongServiceItem(item);
   return Boolean(songLikeItem && !serviceItemAllowsManualSongText(item, service));
 }
@@ -7244,6 +7245,8 @@ function serviceVersionIsNewHymnalScoreVersion(song = null, version = null) {
 function serviceItemEditableAssigneeValue(item = {}, service = selectedServiceForEditor()) {
   const direct = String(item.assignee || "").trim();
   if (direct) return direct;
+  const templateDefault = serviceItemDefaultAssignee(item, service);
+  if (templateDefault) return templateDefault;
   const compact = compactSearchValue(item.label || "");
   return presenterTitleAssigneeUsesWorshipLeader(compact) ? serviceWorshipLeaderLabel(service) : "";
 }
@@ -7898,6 +7901,35 @@ function startNewServiceForm(typeId = state.selectedServiceTypeId) {
   renderCurrentServiceModuleDetail();
 }
 
+const SERVICE_MINISTER_DEFAULTS = Object.freeze({
+  "sunday-first": { sermon: "김석범 목사", benediction: "김석범 목사" },
+  "sunday-second": { sermon: "김남영 목사", benediction: "김남영 목사" },
+  "sunday-main": { sermon: "김남영 목사", benediction: "김남영 목사" },
+  "sunday-afternoon": { sermon: "김남영 목사", benediction: "김남영 목사" },
+  wednesday: { sermon: "김남영 목사", benediction: "김남영 목사" },
+  friday: { sermon: "김남영 목사" },
+  monthly: { sermon: "김남영 목사", benediction: "김남영 목사" },
+});
+
+function serviceMinisterDefaults(typeId = "") {
+  return SERVICE_MINISTER_DEFAULTS[worshipAppServiceTypeId(typeId)] || {};
+}
+
+function defaultServiceSermonLeader(typeId = "") {
+  return serviceMinisterDefaults(typeId).sermon || "";
+}
+
+function defaultServiceBenedictionLeader(typeId = "") {
+  return serviceMinisterDefaults(typeId).benediction || "";
+}
+
+function serviceItemDefaultAssignee(item = {}, service = selectedServiceForEditor()) {
+  const label = compactSearchValue(item?.label || "");
+  if (label === "설교" || label === "설교제목") return defaultServiceSermonLeader(service?.type_id);
+  if (label === "축도") return defaultServiceBenedictionLeader(service?.type_id);
+  return "";
+}
+
 function defaultServicePraiseLeader(typeId) {
   return String(typeId || "") === "friday" ? "이재희 청년" : "";
 }
@@ -8033,7 +8065,7 @@ function isPublicClosingImageServiceItem(item = {}, memo = emptyServiceItemMemo(
 }
 
 function isPublicFixedDoxologyServiceItem(item = {}, memo = emptyServiceItemMemo(), service = null) {
-  if (serviceMemoElementType(memo) !== "praise" || compactSearchValue(item?.label || "") !== "송영") return false;
+  if (compactSearchValue(item?.label || "") !== "송영") return false;
   const itemService = service || state.services.find((candidate) => candidate.id === item?.service_id) || null;
   return Boolean(publicFixedDoxologySpec(itemService));
 }
@@ -13817,7 +13849,9 @@ function publicWorshipScriptureReadingStep() {
 }
 
 function publicWorshipSermonStep(options = {}) {
-  const defaultPerson = cleanServiceAssignee(options.defaultPerson || options.person || "");
+  const defaultPerson = cleanServiceAssignee(
+    options.defaultPerson || options.person || defaultServiceSermonLeader(options.typeId || options.type_id),
+  );
   return {
     label: "설교",
     name: "설교",
@@ -13831,7 +13865,10 @@ function publicWorshipSermonStep(options = {}) {
   };
 }
 
-function publicWorshipThirdSermonStep() {
+function publicWorshipThirdSermonStep(options = {}) {
+  const defaultPerson = cleanServiceAssignee(
+    options.defaultPerson || options.person || defaultServiceSermonLeader(options.typeId || options.type_id),
+  );
   return {
     label: "설교",
     name: "설교",
@@ -13839,7 +13876,7 @@ function publicWorshipThirdSermonStep() {
     flex: false,
     sectionKey: "sermon",
     elements: [
-      { label: "설교 제목", name: "설교 제목", elementType: "title_person" },
+      { label: "설교 제목", name: "설교 제목", elementType: "title_person", person: defaultPerson },
       { label: "설교 본문", name: "설교 본문", elementType: "scripture_body" },
     ],
   };
@@ -13922,7 +13959,12 @@ function publicWorshipBenedictionStep() {
 }
 
 function publicWorshipBenedictionElement(options = {}) {
-  const defaultPerson = cleanServiceAssignee(options.defaultPerson || options.person || options.benedictionPerson || "");
+  const defaultPerson = cleanServiceAssignee(
+    options.defaultPerson
+    || options.person
+    || options.benedictionPerson
+    || defaultServiceBenedictionLeader(options.typeId || options.type_id),
+  );
   return {
     label: "축도",
     name: "축도",
@@ -14020,6 +14062,7 @@ function publicSundayThirdSendingPraiseElement() {
 }
 
 function publicSundayFirstTemplate(options = {}) {
+  const typeId = "sunday-first";
   const score = Boolean(options.score);
   const benediction = Boolean(options.benediction);
   const lordsPrayer = options.lordsPrayer !== undefined ? Boolean(options.lordsPrayer) : !benediction;
@@ -14029,16 +14072,17 @@ function publicSundayFirstTemplate(options = {}) {
     publicWorshipPraiseStep({ score, count: 3 }),
     publicWorshipConfessionStep(),
     publicWorshipScriptureReadingStep(),
-    publicWorshipSermonStep(),
+    publicWorshipSermonStep({ typeId }),
     publicWorshipResponseStep(),
     publicWorshipOfferingStep({ score }),
     publicWorshipAnnouncementsStep(),
-    publicWorshipSendingStep({ score, benediction, lordsPrayer }),
+    publicWorshipSendingStep({ score, benediction, lordsPrayer, typeId }),
     publicWorshipClosingStep(),
   ];
 }
 
 function publicSundaySecondTemplate(options = {}) {
+  const typeId = "sunday-second";
   const score = Boolean(options.score);
   const specialScore = options.specialScore !== undefined ? Boolean(options.specialScore) : score;
   return [
@@ -14049,16 +14093,17 @@ function publicSundaySecondTemplate(options = {}) {
     publicWorshipPrayerStep(),
     publicWorshipScriptureReadingStep(),
     publicWorshipSpecialSongStep({ score: specialScore }),
-    publicWorshipSermonStep(),
+    publicWorshipSermonStep({ typeId }),
     publicWorshipResponseStep(),
     publicWorshipOfferingStep({ score }),
     publicWorshipAnnouncementsStep(),
-    publicWorshipSendingStep({ score }),
+    publicWorshipSendingStep({ score, typeId }),
     publicWorshipClosingStep(),
   ];
 }
 
 function publicSundayThirdTemplate() {
+  const typeId = "sunday-main";
   return [
     publicWorshipReadyStep(),
     publicWorshipPraiseStep({
@@ -14074,7 +14119,7 @@ function publicSundayThirdTemplate() {
     ] },
     publicWorshipScriptureReadingStep(),
     publicWorshipSpecialSongStep(),
-    publicWorshipThirdSermonStep(),
+    publicWorshipThirdSermonStep({ typeId }),
     { label: "결단", name: "결단", required: false, flex: true, sectionKey: "response_song", elements: [
       { label: "결단기도", name: "결단기도", elementType: "title_person" },
     ] },
@@ -14084,12 +14129,13 @@ function publicSundayThirdTemplate() {
     publicWorshipOfferingStep({ score: true, praiseLabel: "봉헌찬송" }),
     publicSundayThirdAnnouncementsStep(),
     publicWorshipCommunityConfessionStep(),
-    publicWorshipSendingStep({ doxology: false, extraElements: [publicSundayThirdSendingPraiseElement()] }),
+    publicWorshipSendingStep({ typeId, doxology: false, extraElements: [publicSundayThirdSendingPraiseElement()] }),
     publicSundayThirdClosingStep(),
   ];
 }
 
 function publicSundayAfternoonTemplate() {
+  const typeId = "sunday-afternoon";
   return [
     publicWorshipReadyStep(),
     { label: "찬양", name: "찬양", required: true, flex: true, repeatable: true, sectionKey: "praise", elementType: "praise" },
@@ -14097,14 +14143,14 @@ function publicSundayAfternoonTemplate() {
     { label: "찬송", name: "찬송", required: true, flex: false, sectionKey: "hymn_praise", elementType: "praise", ...scoreOutputMode() },
     publicWorshipPrayerStep(),
     publicWorshipScriptureReadingStep(),
-    publicWorshipSermonStep({ defaultPerson: "김남영 목사" }),
+    publicWorshipSermonStep({ typeId }),
     publicWorshipResponseStep(),
     publicWorshipAnnouncementsStep(),
     publicWorshipSendingStep({
       score: true,
       defaultText: "1 만복의 근원 하나님",
       defaultSong: { title: "만복의 근원 하나님", hymnNo: "1" },
-      benedictionPerson: "김남영 목사",
+      typeId,
     }),
     publicWorshipClosingStep(),
   ];
@@ -14155,15 +14201,15 @@ function publicMonthlyOfferingStep() {
         formPreset: { forms: ["V", "C"], strength: "suggested" },
         defaultStrength: "suggested",
       },
-      { label: "봉헌기도", name: "봉헌기도", elementType: "title_person", person: "김남영 목사" },
+      { label: "봉헌기도", name: "봉헌기도", elementType: "title_person", person: defaultServiceSermonLeader("monthly") },
     ],
   };
 }
 
 function publicMonthlySendingStep() {
   return publicWorshipSendingStep({
+    typeId: "monthly",
     doxology: false,
-    benedictionPerson: "김남영 목사",
     extraElements: [{
       label: "파송찬송",
       name: "파송찬송",
@@ -14183,7 +14229,7 @@ function publicMonthlyTemplate() {
     publicWorshipPrayerStep(),
     publicWorshipScriptureReadingStep(),
     publicWorshipSpecialSongStep(),
-    publicWorshipSermonStep({ defaultPerson: "김남영 목사" }),
+    publicWorshipSermonStep({ typeId: "monthly" }),
     {
       label: "결단",
       name: "결단",
@@ -14216,13 +14262,14 @@ function publicWednesdayTemplate(options = {}) {
     publicWorshipPrayerStep(),
     publicWorshipAnnouncementsStep(),
     publicWorshipScriptureReadingStep(),
-    publicWorshipSermonStep(),
+    publicWorshipSermonStep({ typeId: "wednesday" }),
     responseSectionTemplate(),
     publicWorshipSendingStep({
       doxology: false,
       benediction: pastorLeader,
       benedictionPerson,
       lordsPrayer: !pastorLeader,
+      typeId: "wednesday",
     }),
     publicWorshipClosingStep(),
   ];
@@ -15060,8 +15107,10 @@ function serviceHasPastorSermonLeader(service = null, items = []) {
     return sectionKey === "sermon" && (label === "설교제목" || label === "설교");
   });
   const sermonMinister = cleanServiceAssignee(sermonTitle?.assignee || sermonTitle?.person || "");
-  if (sermonMinister) return compactSearchValue(sermonMinister).includes("목사");
-  return compactSearchValue(serviceWorshipLeaderLabel(service)).includes("목사");
+  const resolvedMinister = sermonMinister
+    || serviceWorshipLeaderLabel(service)
+    || defaultServiceSermonLeader(service?.type_id);
+  return compactSearchValue(resolvedMinister).includes("목사");
 }
 
 function serviceSermonLeaderLabel(service = null, items = []) {
@@ -15071,7 +15120,8 @@ function serviceSermonLeaderLabel(service = null, items = []) {
     return sectionKey === "sermon" && (label === "설교제목" || label === "설교");
   });
   return cleanServiceAssignee(sermonTitle?.assignee || sermonTitle?.person || "")
-    || serviceWorshipLeaderLabel(service);
+    || serviceWorshipLeaderLabel(service)
+    || defaultServiceSermonLeader(service?.type_id);
 }
 
 function serviceHasPastorWorshipLeader(service = null) {
@@ -18498,8 +18548,10 @@ async function applyPresenterPreparationInput(serviceId = state.selectedServiceI
       return;
     }
 
-    showToast(`예배 입력 ${entries.length}개 항목을 반영했습니다.`, "info");
-    await saveService(serviceId);
+    renderCurrentServiceModuleDetail();
+    renderServiceList();
+    updateSaveState();
+    showToast(`예배 입력 ${entries.length}개 항목을 반영했습니다. 상단 저장을 눌러 확정해 주세요.`, "info");
   } finally {
     state.presenterPreparationApplyingServiceIds.delete(serviceId);
     renderServiceList();
@@ -18529,6 +18581,11 @@ function presenterServiceInputIsStatic(item = {}, memo = parseServiceItemMemo(it
   const usesSharedScripture = Boolean(serviceItemSharedScriptureSource(item, memo, state.services.find((service) => service.id === item?.service_id) || null));
   return isServicePreparationItem(item, memo)
     || Boolean(presenterFixedTitleText(item))
+    || isPublicFixedDoxologyServiceItem(
+      item,
+      memo,
+      state.services.find((candidate) => candidate.id === item?.service_id) || null,
+    )
     || isLiturgicalBodyServiceItem(item)
     || isConfessionPrayerServiceItem(item)
     || usesSharedScripture

@@ -1375,7 +1375,8 @@ function presenterTitleAssigneePerson(item = {}, label = "", displayText = "", t
     const referenceText = presenterFullKoreanBibleReference(text);
     return referenceText && compactSearchValue(referenceText) !== compactSearchValue(titleText) ? referenceText : "";
   }
-  const assignee = cleanPresenterAssignee(item.assignee);
+  const assignee = cleanPresenterAssignee(item.assignee)
+    || (typeof serviceItemDefaultAssignee === "function" ? serviceItemDefaultAssignee(item, service) : "");
   if (compact === "설교제목") return cleanList([presenterSermonContentTitle(text), assignee]).join("\n");
   if (assignee) return assignee;
   const fallback = presenterTitleAssigneeUsesWorshipLeader(compact)

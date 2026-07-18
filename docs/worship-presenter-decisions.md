@@ -49,16 +49,41 @@ Small visual polish that does not alter behavior does not need an entry.
   badge.
 - Fixed liturgical content, shared scripture reading, and fixed closing media
   are not preparation inputs.
+- `예배 입력`의 `반영`은 서비스 입력에만 적용하고 저장하지 않는다.
+  반영 뒤에는 상단 `저장` 버튼이 활성화되며, 사용자가 그 버튼으로
+  Supabase 저장을 명시적으로 확정한다.
 - `예배 입력`은 현장용 rough text를 받아야 한다. `찬송가 9, 288, 182`
   같은 한 줄 hymn list는 순서대로 `찬양 1`, `찬양 2`, `찬양 3`에
   매핑하고, `성경봉독 롬 8:12~17`, `설교 제목 한 가지 그것을`,
   `봉헌찬송 찬 187장`처럼 colon 없는 known-label line도 인식한다.
+
+### Public Worship Timing
+
+- Home selects public Worship by each service's actual KST meeting window, not
+  by service date alone. A currently running service is shown before the next
+  future service.
+- Regular windows are: 수요예배 `19:10-20:30`, 금요기도회 and 월삭예배
+  `20:00-22:00`, 주일예배 [1부] `07:00-08:00`, [2부] `08:50-10:00`,
+  [3부] `10:50-12:00`, and 주일오후예배 `13:20-14:30`.
+- Department and special services have no inferred time window. Until they
+  carry explicit timing metadata, Home falls back to their service date.
+
+### Default Ministers
+
+- Default sermon/benediction ministers are template defaults, not missing
+  preparation inputs. A per-service edit may override them.
+- 주일예배 [1부] defaults to 김석범 목사 for sermon and benediction.
+- 주일예배 [2부], [3부], 주일오후예배, 수요예배, and 월삭예배 default to
+  김남영 목사 for sermon and benediction when those elements exist.
+- 금요기도회 defaults to 김남영 목사 for sermon. It has no benediction element.
 
 ### Sunday Public Worship Templates
 
 - Sunday first and second service doxology is fixed to hymn 5,
   `이 천지간 만물들아`.
 - Sunday afternoon doxology is fixed to hymn 1, `만복의 근원 하나님`.
+- A fixed doxology is output content, not an input. It must not appear in the
+  input rail, block saving, or produce an `입력 필요` warning.
 - Sunday afternoon worship starts with four main-praise slots:
   `찬양 1` through `찬양 4`.
 - These are template rules, not copied weekly content. A service instance may
