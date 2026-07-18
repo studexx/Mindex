@@ -1934,7 +1934,9 @@ function getServiceItemVersion(song, item, service) {
 }
 
 function presenterSongForServiceItem(item = {}, displayText = serviceItemDisplayText(item), label = item?.label || "", service = null) {
-  const linkedSong = item.song_id ? state.songs.find((candidate) => candidate.id === item.song_id) : null;
+  const linkedSong = item.song_id
+    ? (typeof songById === "function" ? songById(item.song_id) : state.songs.find((candidate) => candidate.id === item.song_id) || null)
+    : null;
   if (linkedSong) return linkedSong;
   if (!isSongServiceLabel(label) && !isPresenterSpecialSongItem(item)) return null;
   return findServicePraiseSong(displayText) || presenterSyntheticHymnSongFromDisplayText(displayText);

@@ -521,6 +521,8 @@ const state = {
     subscription: null,
   },
   songs: [],
+  songLookupSource: null,
+  songById: new Map(),
   scriptureBooks: [],
   scriptures: [],
   bibleTranslations: [],
@@ -7225,7 +7227,17 @@ function serviceInputSaveProblem(service = selectedServiceForEditor()) {
 
 function serviceItemLinkedSong(item = {}) {
   const songId = item?.song_id || "";
-  return songId ? state.songs.find((song) => song.id === songId) || null : null;
+  return songById(songId);
+}
+
+function songById(songId = "") {
+  const id = String(songId || "").trim();
+  if (!id) return null;
+  if (state.songLookupSource !== state.songs) {
+    state.songById = new Map((state.songs || []).map((song) => [String(song.id || ""), song]));
+    state.songLookupSource = state.songs;
+  }
+  return state.songById.get(id) || null;
 }
 
 function serviceItemLinkedVersion(item = {}, song = serviceItemLinkedSong(item)) {
@@ -20795,6 +20807,10 @@ function clampPresenterIndex(index, count) {
 }
 
 function presenterSlidesForService(serviceId) {
+  if (state.presenter.serviceId === serviceId && Array.isArray(state.presenter.slides) && state.presenter.slides.length) {
+    state.presenter.index = clampPresenterIndex(state.presenter.index, state.presenter.slides.length);
+    return state.presenter.slides;
+  }
   const slides = buildServicePresenterSlides(serviceId);
   if (state.presenter.serviceId === serviceId) {
     state.presenter.slides = slides;
