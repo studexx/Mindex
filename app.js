@@ -18074,19 +18074,22 @@ function parsePresenterPreparationInput(value = "") {
       errors.push(`${index + 1}번째 줄 형식을 확인해 주세요.`);
       return;
     }
-    const { label, content } = parsedLine;
-    const key = compactSearchValue(label);
-    if (!label || !content) {
-      errors.push(`${index + 1}번째 줄에 항목과 내용을 모두 입력해 주세요.`);
-      return;
+    const lineEntries = expandPresenterPreparationParsedLine(parsedLine, implicitPraiseCount + 1);
+    for (const entry of lineEntries) {
+      const { label, content } = entry;
+      const key = compactSearchValue(label);
+      if (!label || !content) {
+        errors.push(`${index + 1}번째 줄에 항목과 내용을 모두 입력해 주세요.`);
+        return;
+      }
+      if (seenKeys.has(key)) {
+        errors.push(`${label} 항목이 두 번 입력되었습니다.`);
+        return;
+      }
+      seenKeys.add(key);
+      if (/^찬양\d+$/.test(key)) implicitPraiseCount += 1;
+      entries.push({ label, key, content, line: index + 1 });
     }
-    if (seenKeys.has(key)) {
-      errors.push(`${label} 항목이 두 번 입력되었습니다.`);
-      return;
-    }
-    seenKeys.add(key);
-    if (/^찬양\d+$/.test(key)) implicitPraiseCount += 1;
-    entries.push({ label, key, content, line: index + 1 });
   });
   return { entries, errors };
 }
@@ -18118,6 +18121,30 @@ function inferPresenterPreparationShorthandLine(text = "", praiseNumber = 1) {
   };
 }
 
+function expandPresenterPreparationParsedLine(parsedLine = {}, praiseNumber = 1) {
+  const label = String(parsedLine.label || "").trim();
+  const content = String(parsedLine.content || "").trim();
+  if (compactSearchValue(label) !== "찬송가") return [{ label, content }];
+  const hymnNumbers = presenterPreparationHymnNumbers(content);
+  if (!hymnNumbers.length) return [{ label: `찬양 ${Math.max(1, Number(praiseNumber) || 1)}`, content }];
+  return hymnNumbers.map((hymnNo, offset) => ({
+    label: `찬양 ${Math.max(1, Number(praiseNumber) || 1) + offset}`,
+    content: `찬 ${hymnNo}장`,
+  }));
+}
+
+function presenterPreparationHymnNumbers(value = "") {
+  const raw = String(value || "").trim();
+  if (!raw) return [];
+  const normalized = raw
+    .replace(/[，、]/g, ",")
+    .replace(/\s*(?:찬송가|찬|장)\s*/g, " ")
+    .trim();
+  return normalized
+    .split(/[,\s/]+/)
+    .map((part) => String(part || "").trim())
+    .filter((part) => /^\d{1,3}$/.test(part));
+}
 function parseKnownPresenterPreparationLine(text = "") {
   const raw = String(text || "").trim();
   if (!raw) return null;
@@ -18125,6 +18152,7 @@ function parseKnownPresenterPreparationLine(text = "") {
     /^(찬양)\s*(\d+)\s*(?:[:：.-]\s*)?(.+)$/,
     /^(기도\s*찬양)\s*(\d+)\s*(?:[:：.-]\s*)?(.+)$/,
     /^(공동기도)\s*(\d+)\s*(?:[:：.-]\s*)?(.+)$/,
+    /^(찬송가|찬송)\s*(?:[:：.-]\s*)?(.+)$/,
     /^((?:대표\s*)?기도|성경\s*봉독|성경\s*본문|설교\s*본문|설교\s*제목|인용\s*구절|특송|봉헌\s*찬송|봉헌\s*기도|결단\s*찬양|결단\s*기도|본문|설교)\s*(?:[:：.-]\s*)?(.+)$/,
   ];
   for (const pattern of patterns) {

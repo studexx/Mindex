@@ -49,6 +49,10 @@ Small visual polish that does not alter behavior does not need an entry.
   badge.
 - Fixed liturgical content, shared scripture reading, and fixed closing media
   are not preparation inputs.
+- `예배 입력`은 현장용 rough text를 받아야 한다. `찬송가 9, 288, 182`
+  같은 한 줄 hymn list는 순서대로 `찬양 1`, `찬양 2`, `찬양 3`에
+  매핑하고, `성경봉독 롬 8:12~17`, `설교 제목 한 가지 그것을`,
+  `봉헌찬송 찬 187장`처럼 colon 없는 known-label line도 인식한다.
 
 ### Sunday Public Worship Templates
 
