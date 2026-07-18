@@ -50,7 +50,7 @@ function presenterSlidesWithSpecialSongTitle(item = {}, section = {}, slides = [
   if (existingSpecialTitle?.missingContent) return slides;
   const titleSlide = titleSlideIndex >= 0 ? slides[titleSlideIndex] : null;
   const remainingSlides = slides.filter((_, slideIndex) =>
-    slideIndex !== titleSlideIndex && slideIndex !== existingSpecialTitleIndex);
+    slideIndex !== existingSpecialTitleIndex);
   return [presenterSpecialSongSectionTitleSlide(item, section, index, titleSlide), ...remainingSlides];
 }
 
@@ -100,9 +100,8 @@ function isPresenterSpecialSongItem(item = {}, section = {}) {
 
 function presenterSpecialSongSectionTitleSlide(item = {}, section = {}, index = 0, songTitleSlide = null) {
   const title = section.sectionLabel || "특송";
-  const songTitle = presenterSpecialSongDisplayTitle(item, songTitleSlide);
   const assignee = cleanServiceAssignee(item.assignee);
-  const subtitle = cleanList([songTitle, assignee]).join("\n");
+  const subtitle = assignee;
   const text = [title, subtitle].filter(Boolean).join("\n");
   return {
     id: `${item.id || index}:special-title`,

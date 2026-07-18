@@ -2255,6 +2255,21 @@ def main() -> int:
                           outputMode: 'score'
                         })
                       };
+                      const specialLinkedScoreItem = {
+                        id: '__smoke_special_linked_score_item__',
+                        label: '특송',
+                        raw_title: '특송 테스트',
+                        song_id: hymnSong.id,
+                        version_id: '__smoke_hymn_version__',
+                        _worshipSectionId: '__smoke_special_linked_section__',
+                        _worshipSectionKey: 'special_song',
+                        assignee: '할렐루야 찬양대',
+                        _worshipSectionTitle: '특송',
+                        memo: serializeServiceItemMemo({
+                          elementType: 'praise',
+                          outputMode: 'score'
+                        })
+                      };
                       const doxologyScoreItem = {
                         id: '__smoke_doxology_score_item__',
                         label: '송영',
@@ -2326,6 +2341,7 @@ def main() -> int:
                       const scoreRawTitleSlides = scoreRawTitleAllSlides.filter((slide) => slide.sourceType === 'score');
                       const offeringScoreSlides = buildPresenterSlidesForServiceItem(offeringScoreItem, service, 7);
                       const specialScoreSlides = buildPresenterSlidesForServiceItem(specialScoreItem, service, 8);
+                      const specialLinkedScoreSlides = buildPresenterSlidesForServiceItem(specialLinkedScoreItem, service, 8.1);
                       const doxologyScoreSlides = buildPresenterSlidesForServiceItem(doxologyScoreItem, service, 9);
                       const sundayFirstMainScoreSlides = buildPresenterSlidesForServiceItem({
                         ...scoreItem,
@@ -2372,6 +2388,15 @@ def main() -> int:
                         sectionKey: slide.sectionKey || '',
                         body: renderPresenterSlideBody(slide).trim(),
                       }));
+                      const specialLinkedIntroSlides = specialLinkedScoreSlides
+                        .filter((slide) => slide.type === 'title-assignee' || slide.type === 'song-title')
+                        .map((slide) => ({
+                          type: slide.type,
+                          title: slide.title || '',
+                          assignee: slide.assignee || '',
+                          text: slide.text || '',
+                          sectionKey: slide.sectionKey || '',
+                        }));
                       const thirdManualSpecialTitleSlides = buildPresenterSlidesForServiceItem({
                         id: '__smoke_third_manual_special_item__',
                         label: '특송',
@@ -2636,6 +2661,7 @@ def main() -> int:
                           sectionTitle: slide.sectionTitle,
                           label: slide.label
                         })),
+                        specialLinkedIntroSlides,
                         sundayFirstMainScoreTitleSlides: sundayFirstMainScoreSlides.filter((slide) => slide.type === 'song-title').map((slide) => ({
                           title: slide.title,
                           sectionTitle: slide.sectionTitle,
@@ -2776,15 +2802,35 @@ def main() -> int:
                     and form_preset_state["scoreManifestTitleSlides"]
                     and form_preset_state["scoreRawTitleTitleSlides"] == []
                     and len(form_preset_state["offeringScoreTitleSlides"]) == 1
-                    and form_preset_state["specialScoreTitleSlides"] == []
+                    and form_preset_state["specialScoreTitleSlides"] == [{
+                        "title": "999 특송 테스트",
+                        "sectionTitle": "특송",
+                        "label": "특송",
+                    }]
+                    and form_preset_state["specialLinkedIntroSlides"][:2] == [
+                        {
+                            "type": "title-assignee",
+                            "title": "특송",
+                            "assignee": "할렐루야 찬양대",
+                            "text": "특송\n할렐루야 찬양대",
+                            "sectionKey": "special_song",
+                        },
+                        {
+                            "type": "song-title",
+                            "title": "999 특송 테스트",
+                            "assignee": "",
+                            "text": "♪ 999 특송 테스트",
+                            "sectionKey": "special_song",
+                        },
+                    ]
                     and form_preset_state["sundayFirstMainScoreTitleSlides"] == []
                     and form_preset_state["specialSectionTitleSlides"] == [{
                         "type": "title-assignee",
                         "elementType": "title_assignee",
                         "layout": "lower_bar_text",
                         "title": "특송",
-                        "assignee": "입력 필요",
-                        "text": "특송\n입력 필요",
+                        "assignee": "할렐루야 찬양대",
+                        "text": "특송\n할렐루야 찬양대",
                         "sectionKey": "special_song",
                         "body": form_preset_state["specialSectionTitleSlides"][0]["body"],
                     }]
@@ -2906,9 +2952,9 @@ def main() -> int:
 	                                "required": False,
 	                            },
 	                        },
-	                    ]
-	                    and len(form_preset_state["sectionSongTitleSlides"]["offering"]) == 1
-                    and form_preset_state["sectionSongTitleSlides"]["special"] == []
+                    ]
+                    and len(form_preset_state["sectionSongTitleSlides"]["offering"]) == 1
+                    and len(form_preset_state["sectionSongTitleSlides"]["special"]) == 1
                     and len(form_preset_state["sectionSongTitleSlides"]["doxology"]) == 1
                     and form_preset_state["scoreSlides"] == [{
                         "type": "file",
