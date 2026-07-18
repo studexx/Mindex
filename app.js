@@ -15736,7 +15736,6 @@ function renderServiceOutlineGroup(service, group, groupIndex, selectedIndex, sl
     && group.items.some(({ item }) => presenterSlideBelongsToItem(state.presenter.slides[state.presenter.index], item));
   const title = serviceSidebarSectionTitle(group, firstEntry.item);
   const interactionHint = presenterSlideInteractionHint(service.id, title);
-  const missing = group.items.map(({ item }) => serviceOutlineMissingState(item, slides)).find(Boolean);
   return `
     <div class="service-outline-group${selected ? " selected" : ""}${activeSlide ? " active" : ""}">
       <button class="service-outline-row service-outline-row--section${activeSlide ? " active" : ""}" type="button"
@@ -15749,7 +15748,6 @@ function renderServiceOutlineGroup(service, group, groupIndex, selectedIndex, sl
         <span class="service-outline-no">${escapeHtml(groupIndex + 1)}</span>
         <span class="service-outline-main">
           <strong>${escapeHtml(title)}</strong>
-          ${renderServiceOutlineMissingBadge(missing)}
         </span>
         <span class="service-outline-start">${escapeHtml(serviceOutlineStartLabel(firstSlideIndex))}</span>
       </button>
