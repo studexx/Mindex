@@ -20839,7 +20839,8 @@ function presenterServiceItemHasOutputContent(item = {}, memo = emptyServiceItem
 
 function presenterMissingContentSlide(item = {}, section = {}, index = 0, contentState = null) {
   const label = String(item.label || section.elementLabel || section.sectionLabel || "항목").trim();
-  const title = String(section.sectionLabel || label || "항목").trim();
+  // A missing item must identify the actionable element, never its grouping section.
+  const title = label || "항목";
   const warning = "입력 필요";
   return {
     id: `${item.id || index}:missing-content`,
