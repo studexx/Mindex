@@ -30,7 +30,7 @@
   --presenter-stage-scale: min(1, calc(100vw / 1920px), calc(100vh / 1080px));
   --presenter-stage-unit: 1px;
   --presenter-chromakey: #00ff00;
-  --presenter-output-bg: #000;
+  --presenter-output-bg: var(--presenter-chromakey);
   --presenter-output-fg: #fff;
   --presenter-output-muted: rgba(255, 255, 255, .72);
   --presenter-output-bar-height: 17.5%;

@@ -2663,7 +2663,8 @@ function renderPresenterOutput(payload, options = {}) {
 
 function presenterOutputFrameStateForSlide(slide, payload = {}) {
   const backgroundImages = presenterPayloadBackgroundImages(payload);
-  const slideChromakey = false;
+  const fallbackChromakey = Boolean(payload?.chromakey);
+  const slideChromakey = presenterFrameSlideOutputContext(slide, fallbackChromakey) === "chromakey";
   const cleanOutput = !slideChromakey;
   const blankSlide = presenterSlideLayout(slide) === PRESENTER_SLIDE_LAYOUTS.BLANK;
   const suppressBackground = Boolean(slide?.suppressBackgroundImage || slide?.noBackgroundImage);
@@ -2678,6 +2679,41 @@ function presenterOutputFrameStateForSlide(slide, payload = {}) {
     outputTheme: payload?.outputTheme || presenterOutputTheme(payload?.serviceType),
     noChromakey: !slideChromakey,
   };
+}
+
+function presenterFrameSlideOutputContext(slide, fallbackChromakey = true) {
+  const explicit = presenterFrameNormalizeOutputContext(
+    slide?.outputContext
+    || slide?.output_context
+    || slide?.presenterOutputContext
+    || slide?.presenter_output_context
+    || "",
+  );
+  if (explicit) return explicit;
+  const layout = presenterSlideLayout(slide);
+  const elementType = presenterSlideElementType(slide);
+  if (layout === PRESENTER_SLIDE_LAYOUTS.BLANK) return fallbackChromakey ? "chromakey" : "clean";
+  const scoreLike = slide?.sourceType === "score" || slide?.componentType === "score" || slide?.scoreBackground;
+  if (scoreLike) return "clean";
+  if (
+    layout === PRESENTER_SLIDE_LAYOUTS.MEDIA
+    || layout === PRESENTER_SLIDE_LAYOUTS.FILE
+    || elementType === PRESENTER_ELEMENT_TYPES.IMAGE
+    || elementType === PRESENTER_ELEMENT_TYPES.VIDEO
+    || elementType === PRESENTER_ELEMENT_TYPES.FILE
+    || elementType === PRESENTER_ELEMENT_TYPES.AUDIO
+  ) {
+    return "clean";
+  }
+  return fallbackChromakey ? "chromakey" : "clean";
+}
+
+function presenterFrameNormalizeOutputContext(value = "") {
+  const key = compactSearchValue(value);
+  if (!key) return "";
+  if (["chromakey", "chroma", "key", "green", "greenkey", "크로마키"].includes(key)) return "chromakey";
+  if (["clean", "fullscreen", "full", "media", "image", "video", "score", "nochromakey", "no-chromakey", "풀스크린", "전체화면"].includes(key)) return "clean";
+  return "";
 }
 
 function presenterOutputFrameClassNames(frameState = {}) {
