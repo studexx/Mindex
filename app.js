@@ -7970,6 +7970,12 @@ function isClosingVisualServiceTemplateLabel(label) {
   return compact === "마무리" || compact === "마침" || compact === "폐회";
 }
 
+function isPublicClosingImageServiceItem(item = {}, memo = emptyServiceItemMemo()) {
+  if (serviceMemoElementType(memo) !== "image") return false;
+  const sectionKey = String(item?._worshipSectionKey || "").trim();
+  return sectionKey === "closing_visual" || isClosingVisualServiceTemplateLabel(item?.label || "");
+}
+
 function worshipTemplateElementAsset(step = {}, label = "") {
   const asset = normalizeServiceAsset(step.asset || step.media || step.file);
   if (asset.url) return asset;
@@ -20798,6 +20804,7 @@ function resolvePresenterServiceItemContentState(item = {}, memo = emptyServiceI
   if (isLiturgicalBodyServiceItem(item)) {
     return liturgicalBodyText(item, memo, rawText) ? filled("liturgical_body") : missing("liturgical_body_empty");
   }
+  if (isPublicClosingImageServiceItem(item, memo)) return filled("closing_visual_asset");
   if (item?._worshipTemplatePlaceholder) return missing("template_placeholder");
   if (isScriptureBodyServiceItem(item)) {
     return serviceItemScriptureReferences(item, memo).length || serviceScriptureTextPayload(item, memo).verses.length
@@ -20874,6 +20881,9 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
   const forms = formPlan.forms;
   const formWarnings = formPlan.warnings;
   const memo = parseServiceItemMemo(item?.memo);
+  if (isPublicClosingImageServiceItem(item, memo) && !hasServiceAsset(memo.asset)) {
+    memo.asset = { ...PUBLIC_WORSHIP_CLOSING_IMAGE_ASSET };
+  }
   const memoElementType = serviceMemoElementType(memo);
   const outputMode = serviceItemOutputMode(item, memo);
   if (isServicePreparationItem(item, memo)) {

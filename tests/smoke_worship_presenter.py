@@ -1623,6 +1623,26 @@ def main() -> int:
                         parseServiceItemMemo(creedTemplatePlaceholder.memo),
                         lordsPrayerService
                       );
+                      const closingTemplatePlaceholder = {
+                        id: '__smoke_closing_template_placeholder__',
+                        label: '마무리',
+                        raw_title: '',
+                        memo: serializeServiceItemMemo({ elementType: 'image' }),
+                        _worshipSectionKey: 'closing_visual',
+                        _worshipTemplateProjected: true,
+                        _worshipTemplatePlaceholder: true,
+                      };
+                      const closingTemplatePlaceholderState = resolvePresenterServiceItemContentState(
+                        closingTemplatePlaceholder,
+                        parseServiceItemMemo(closingTemplatePlaceholder.memo),
+                        null,
+                        lordsPrayerService
+                      );
+                      const closingTemplatePlaceholderSlides = buildPresenterSlidesForServiceItem(
+                        closingTemplatePlaceholder,
+                        lordsPrayerService,
+                        99
+                      );
 	                      const lordsPrayerSlides = normalizePresenterSlidesForServiceOutput(buildPresenterSlidesForServiceItem(
 	                        lordsPrayerItem,
 	                        { id: '__smoke_lords_prayer_chromakey_service__', type_id: 'sunday-main', date: '2026-07-05' },
@@ -1751,6 +1771,11 @@ def main() -> int:
 	                        lordsPrayerScaffold: lordsPrayerSlides,
 	                        lordsPrayerFullscreen: lordsPrayerFullscreenSlides,
 	                        creedTemplatePlaceholderState,
+	                        closingTemplatePlaceholderState,
+	                        closingTemplatePlaceholderSlides: closingTemplatePlaceholderSlides.map((slide) => ({
+	                          type: slide.type || '',
+	                          imageSrc: slide.imageSrc || '',
+	                        })),
 	                        communityScaffold: communitySlides,
 	                        communityFullscreen: communityFullscreenSlides,
 	                        scaffoldClosing: scaffoldClosingSlides,
@@ -1779,6 +1804,13 @@ def main() -> int:
 	                    and title_and_liturgical_state["creedTemplatePlaceholderState"]["state"] == "filled"
 	                    and title_and_liturgical_state["creedTemplatePlaceholderState"]["hasOutputContent"] is True
 	                    and title_and_liturgical_state["creedTemplatePlaceholderState"]["reason"] == "liturgical_body"
+	                    and title_and_liturgical_state["closingTemplatePlaceholderState"]["state"] == "filled"
+	                    and title_and_liturgical_state["closingTemplatePlaceholderState"]["hasOutputContent"] is True
+	                    and title_and_liturgical_state["closingTemplatePlaceholderState"]["reason"] == "closing_visual_asset"
+	                    and title_and_liturgical_state["closingTemplatePlaceholderSlides"] == [{
+	                        "type": "image",
+	                        "imageSrc": "assets/worship-templates/public-closing.png",
+	                    }]
                     and "presenter-title-assignee" in title_and_liturgical_state["confession"]["html"]
                     and 'presenter-slide--title"' not in title_and_liturgical_state["confession"]["html"]
                     and len(title_and_liturgical_state["chromakey"]) >= 3
