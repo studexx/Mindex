@@ -2026,7 +2026,7 @@ def main() -> int:
                             { id: 'h-v2', part_type: 'Verse', part_number: 2, lyrics: '2절 첫 줄\\n2절 둘째 줄', sort_order: 3 },
                             { id: 'h-v3', part_type: 'Verse', part_number: 3, lyrics: '3절 첫 줄\\n3절 둘째 줄', sort_order: 4 },
                             { id: 'h-v4', part_type: 'Verse', part_number: 4, lyrics: '마지막 절 첫 줄\\n마지막 절 둘째 줄', sort_order: 5 },
-                            { id: 'h-amen', part_type: 'Lyrics', part_number: null, label: 'Amen', lyrics: '아멘', sort_order: 6 }
+                            { id: 'h-coda', part_type: 'Coda', part_number: null, lyrics: '아멘', sort_order: 6 }
                           ]
                         }]
                       };

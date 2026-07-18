@@ -153,7 +153,7 @@ Public worship `특송` has a conditional hymn rule:
 
 - If the linked song is a hymn: `1절`, `후렴`, `2절`, `후렴`, blank interlude
   slide, `마지막 절`, `후렴`, and `Coda` only when the linked version provides
-  `Coda` or `Amen`.
+  `Coda`.
 - If the linked song is CCM: use a manual preset by performer/song when known.
 
 This rule belongs to the public-worship `특송` section/element template. It should not

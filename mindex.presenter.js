@@ -331,7 +331,7 @@ function normalizePresenterScoreFormLabel(value = "") {
   if (target.key === "chorus") return "Chorus";
   if (target.key === "bridge") return "Bridge";
   if (target.key === "pre-chorus") return "Pre-Chorus";
-  if (target.key === "coda" || target.key === "amen") return "Coda";
+  if (target.key === "coda") return "Coda";
   return "";
 }
 
@@ -477,10 +477,7 @@ function presenterFormPresetWithAvailableForms(preset = null, forms = []) {
         if (presenterSupplementalFormType(candidate)) merged.push(presenterFormDisplayLabel(form));
       });
       sourceIndex = matchIndex + 1;
-      const matched = source[matchIndex];
-      merged.push(target.type === "coda" && matched.target.type === "amen"
-        ? "Coda"
-        : presenterFormDisplayLabel(matched.form));
+      merged.push(presenterFormDisplayLabel(source[matchIndex].form));
       return;
     }
     merged.push(label);
@@ -551,7 +548,6 @@ function presenterRepeatableVerseChorusPresetForms(preset = null, source = []) {
 
 function presenterFormTargetsMatch(target = {}, candidate = {}) {
   if (target.key === candidate.key) return true;
-  if (target.type === "coda" && candidate.type === "amen") return true;
   return Boolean(target.type && target.type === candidate.type && (!target.number || target.number === candidate.number));
 }
 
@@ -589,7 +585,7 @@ function presenterDefaultVerseChorusFormPreset(forms = [], song = null, version 
   });
   const hymnCoda = normalizedForms.find((form) => {
     const target = normalizePresenterFormPresetLabel(presenterFormDisplayLabel(form));
-    return ["coda", "amen"].includes(target.type);
+    return target.type === "coda";
   });
   if (hymnCoda) presetForms.push("Coda");
   return normalizeServiceFormPreset(presetForms, presetForms.join("-"), "auto");
@@ -727,9 +723,6 @@ function findPresenterFormForPresetTarget(forms = [], target = {}) {
     const candidate = normalizePresenterFormPresetLabel(presenterFormDisplayLabel(form));
     if (target.type && target.type === candidate.type) sameType.push({ form, target: candidate });
     if (target.key === candidate.key) return form;
-    if (target.type === "coda" && candidate.type === "amen") {
-      return { ...form, part_type: "Coda", label: "Coda", _presenterAmenAsCoda: true };
-    }
     if (target.type && target.type === candidate.type && (!target.number || target.number === candidate.number)) return form;
   }
   if (target.groupIndex && target.type) {
@@ -774,7 +767,6 @@ function presenterGroupedLyricChunks(lyrics = "", target = {}) {
 }
 
 function presenterFormDisplayLabel(form = {}) {
-  if (form._presenterAmenAsCoda) return String(form.label || "").trim() || displayLabel(form);
   if (form._presenterVirtual && form._presenterSourceFormId) return String(form.label || "").trim() || displayLabel(form);
   if (form._presenterVirtual) return displayLabel(form);
   return String(form.label || "").trim() || displayLabel(form);
@@ -810,8 +802,6 @@ function normalizePresenterFormPresetLabel(value = "") {
   if (preChorus) return { key: "pre-chorus", type: "pre-chorus", number: 0 };
   const coda = /^(coda|코다|ending|엔딩)$/i.test(compact);
   if (coda) return { key: "coda", type: "coda", number: 0 };
-  const amen = /^(amen|아멘)$/i.test(compact);
-  if (amen) return { key: "amen", type: "amen", number: 0 };
   const lyrics = /^(lyrics|가사)$/i.test(compact);
   if (lyrics) return { key: "lyrics", type: "lyrics", number: 0 };
   const instrumental = /^(간주|interlude|instrumental)$/i.test(compact);
@@ -832,7 +822,6 @@ function normalizePresenterFormType(value = "") {
   if (/^bridge$/i.test(compact)) return "bridge";
   if (/^prechorus$/i.test(compact)) return "pre-chorus";
   if (/^coda$/i.test(compact)) return "coda";
-  if (/^amen$/i.test(compact)) return "amen";
   if (/^(interlude|instrumental)$/i.test(compact)) return "instrumental";
   return compact;
 }
@@ -846,7 +835,6 @@ function normalizePresenterMissingFormLabel(value = "") {
   if (target.key === "bridge") return "Bridge";
   if (target.key === "pre-chorus") return "Pre-Chorus";
   if (target.key === "coda") return "Coda";
-  if (target.key === "amen") return "Amen";
   return raw || "송폼";
 }
 
@@ -1521,7 +1509,7 @@ function parsePresenterCustomSlideBlock(block) {
   const first = lines[0];
   const bracketed = first.match(/^\[([^\]]+)\]$/)?.[1]?.trim();
   const markerCandidate = bracketed || first;
-  if (/^(Verse|Chorus|Pre-Chorus|Bridge|Coda|Amen|Lyrics)(?:\s+\d+)?$/i.test(markerCandidate)) {
+  if (/^(Verse|Chorus|Pre-Chorus|Bridge|Coda|Lyrics)(?:\s+\d+)?$/i.test(markerCandidate)) {
     return { marker: normalizePresenterCustomMarker(markerCandidate), text: lines.slice(1).join("\n") };
   }
   return { marker: "", text: lines.join("\n") };
@@ -1534,7 +1522,6 @@ function normalizePresenterCustomMarker(value) {
     .replace(/^chorus/i, "Chorus")
     .replace(/^bridge/i, "Bridge")
     .replace(/^coda/i, "Coda")
-    .replace(/^amen/i, "Amen")
     .replace(/^lyrics/i, "Lyrics");
 }
 

@@ -39,7 +39,7 @@ def label_from_text(value: str) -> str:
         return f"Verse {verse}" if 1 <= verse <= 6 else ""
     if re.match(r"^[\[\|\s]*(?:후|후렴|chorus)\s*[\.\):]?\s*", text, re.IGNORECASE):
         return "Chorus"
-    if re.match(r"^[\[\|\s]*(?:coda|코다|아멘|amen)\s*[\.\):]?\s*$", text, re.IGNORECASE):
+    if re.match(r"^[\[\|\s]*(?:coda|코다)\s*[\.\):]?\s*$", text, re.IGNORECASE):
         return "Coda"
     return ""
 
@@ -50,7 +50,7 @@ def compact_match_text(value: str) -> str:
 
 def footer_form_candidates(value: str) -> list[tuple[str, str]]:
     text = normalize_ocr_text(value)
-    matches = list(re.finditer(r"(?:^|\s)((?:\d{1,2}|후렴?|chorus|coda|코다|아멘|amen)\s*[\.\):]?\s*)", text, re.IGNORECASE))
+    matches = list(re.finditer(r"(?:^|\s)((?:\d{1,2}|후렴?|chorus|coda|코다)\s*[\.\):]?\s*)", text, re.IGNORECASE))
     candidates: list[tuple[str, str]] = []
     for index, match in enumerate(matches):
         start = match.start(1)
@@ -59,7 +59,7 @@ def footer_form_candidates(value: str) -> list[tuple[str, str]]:
         label = label_from_text(chunk)
         if not label:
             continue
-        phrase = re.sub(r"^(?:\d{1,2}|후렴?|chorus|coda|코다|아멘|amen)\s*[\.\):]?\s*", "", chunk, flags=re.IGNORECASE).strip()
+        phrase = re.sub(r"^(?:\d{1,2}|후렴?|chorus|coda|코다)\s*[\.\):]?\s*", "", chunk, flags=re.IGNORECASE).strip()
         compact = compact_match_text(phrase)
         if len(compact) >= 5:
             candidates.append((label, compact))

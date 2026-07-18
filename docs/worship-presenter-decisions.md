@@ -161,8 +161,8 @@ Small visual polish that does not alter behavior does not need an entry.
   deliberate consecutive repeats such as `C-C`.
 - Grouped labels such as `V1A` and `V1B` mean split `Verse 1` by lyric block.
   If there are no blank-line blocks, split evenly by lyric lines when possible.
-- When a `Coda` preset is matched to an `Amen` source form, the presenter marker
-  stays `Coda` while using the `Amen` lyrics.
+- `amen`/`아멘` is not a song-form type. Existing form rows have been migrated
+  to `Coda`; import, parser, backfill, and presenter paths must not create it.
 
 ## Source Of Truth
 

@@ -2957,12 +2957,18 @@ function inferWorshipSlideMarker(row = {}, elementType = "") {
   if (elementType !== PRESENTER_ELEMENT_TYPES.PRAISE) return "";
   const text = String(row.slide_body || "").trim();
   const bracket = text.match(/^\[([^\]]{1,24})\]/);
-  if (bracket) return bracket[1].trim();
-  const named = text.match(/^(verse|chorus|pre-chorus|prechorus|bridge|coda|ending|intro|outro|amen|후렴|브릿지|아멘)\s*(\d+)?/i);
-  if (named) return [named[1], named[2]].filter(Boolean).join(" ");
+  if (bracket) return normalizeImportedPraiseMarker(bracket[1].trim());
+  const named = text.match(/^(verse|chorus|pre-chorus|prechorus|bridge|coda|ending|intro|outro|후렴|브릿지)\s*(\d+)?/i);
+  if (named) return normalizeImportedPraiseMarker([named[1], named[2]].filter(Boolean).join(" "));
   const numbered = text.match(/^(\d{1,2})[\s.]/);
   if (numbered) return `Verse ${numbered[1]}`;
   return "";
+}
+
+function normalizeImportedPraiseMarker(value = "") {
+  const raw = String(value || "").trim();
+  if (/^(ending|엔딩)(?:\s+\d+)?$/i.test(raw)) return "Coda";
+  return raw;
 }
 
 function worshipPresenterElementType(elementType, slideType) {
@@ -11022,7 +11028,7 @@ function versionReviewReasons(song, version, forms = version?.forms || []) {
     if (form?.review_status === "reviewed") continue;
     if (form?.review_status === "needs_review") reasons.add("Marked");
     if (form?.review_status === "soft_review") reasons.add("Review");
-    if (form?.import_source === "amen-coda-audit") reasons.add("Amen split check");
+    if (form?.import_source === "coda-split-audit") reasons.add("Coda split check");
     else if (form?.import_source === "ccm-children-duplicate-lyrics") reasons.add("CCM/children duplicate lyrics");
     else if (form?.import_source) reasons.add("Lyrics check");
     if (allowStructuralReview && formLooksUnsplit(form)) reasons.add("Unsplit lyrics");
@@ -11702,7 +11708,7 @@ function renderReadonlyFormBlock(form, options = {}) {
 function normalizeForms(forms) {
   const next = forms.map((form, index) => ({
     ...withLocalId(form),
-    part_type: PART_TYPES.includes(form.part_type) ? form.part_type : "Verse",
+    part_type: normalizeFormPartType(form.part_type),
     lyrics: form.lyrics || "",
     review_status: form.review_status || null,
     import_source: form.import_source || null,
@@ -11723,6 +11729,11 @@ function normalizeForms(forms) {
   });
 }
 
+function normalizeFormPartType(value = "") {
+  const raw = String(value || "").trim();
+  return PART_TYPES.includes(raw) ? raw : "Verse";
+}
+
 function computePartNumberSuggestion(forms, type) {
   const count = forms.filter((form) => form.part_type === type).length;
   return count + 1;
@@ -11737,7 +11748,7 @@ function formLooksUnsplit(form) {
   if (form?.part_type === "Lyrics") return false;
   const lyrics = String(form?.lyrics || "").trim();
   if (!lyrics) return false;
-  if (/\[(?:Verse|Chorus|Pre-Chorus|Bridge|Coda|Amen|Lyrics)(?:\s+\d+)?\]/i.test(lyrics)) return true;
+  if (/\[(?:Verse|Chorus|Pre-Chorus|Bridge|Coda|Lyrics)(?:\s+\d+)?\]/i.test(lyrics)) return true;
   return lyrics.split(/\n\s*\n/g).filter((block) => block.trim()).length >= 3;
 }
 
@@ -12292,7 +12303,7 @@ function normalizeRelationalUnit(row, index) {
   return {
     id: row.id,
     song_id: row.version_id,
-    part_type: PART_TYPES.includes(partType) ? partType : "Lyrics",
+    part_type: normalizeRelationalUnitPartType(partType),
     part_number: row.part_number || null,
     label: row.curated_unit_label || row.unit_label || null,
     lyrics: row.text || row.lyrics || "",
@@ -12300,6 +12311,11 @@ function normalizeRelationalUnit(row, index) {
     review_status: row.review_status === "pending" ? null : row.review_status || null,
     import_source: row.import_source || null,
   };
+}
+
+function normalizeRelationalUnitPartType(value = "") {
+  const raw = String(value || "").trim();
+  return PART_TYPES.includes(raw) ? raw : "Lyrics";
 }
 
 function parseSongMemo(value) {

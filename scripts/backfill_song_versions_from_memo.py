@@ -19,7 +19,12 @@ ENV_PATHS = (
     ROOT / ".env.supabase",
 )
 PAGE_SIZE = 1000
-PART_TYPES = {"Verse", "Pre-Chorus", "Chorus", "Bridge", "Coda", "Lyrics", "Amen"}
+PART_TYPES = {"Verse", "Pre-Chorus", "Chorus", "Bridge", "Coda", "Lyrics"}
+
+
+def normalize_part_type(value: str) -> str:
+    text = clean_text(value)
+    return text if text in PART_TYPES else "Lyrics"
 
 
 def read_env_file(path: Path) -> dict[str, str]:
@@ -214,9 +219,7 @@ def build_rows(song: dict[str, Any], has_version_praise_types: bool) -> tuple[di
         version_rows.append(version_row)
 
         for unit_index, form in enumerate(form_rows, start=1):
-            part_type = clean_text(form.get("part_type")) or "Lyrics"
-            if part_type not in PART_TYPES:
-                part_type = "Lyrics"
+            part_type = normalize_part_type(form.get("part_type")) or "Lyrics"
             label = clean_text(form.get("label")) or (
                 part_type if not form.get("part_number") else f"{part_type} {form.get('part_number')}"
             )
