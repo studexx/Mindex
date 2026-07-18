@@ -17945,15 +17945,14 @@ function parsePresenterPreparationInput(value = "") {
   const errors = [];
   const seenKeys = new Set();
   String(value || "").split(/\r?\n/).forEach((line, index) => {
-    const text = String(line || "").trim();
+    const text = normalizePresenterPreparationLineText(line);
     if (!text) return;
-    const match = text.match(/^([^:：]+?)\s*[:：]\s*(.+)$/);
-    if (!match) {
+    const parsedLine = parsePresenterPreparationLine(text);
+    if (!parsedLine) {
       errors.push(`${index + 1}번째 줄 형식을 확인해 주세요.`);
       return;
     }
-    const label = String(match[1] || "").trim();
-    const content = String(match[2] || "").trim();
+    const { label, content } = parsedLine;
     const key = compactSearchValue(label);
     if (!label || !content) {
       errors.push(`${index + 1}번째 줄에 항목과 내용을 모두 입력해 주세요.`);
@@ -17969,12 +17968,88 @@ function parsePresenterPreparationInput(value = "") {
   return { entries, errors };
 }
 
+function normalizePresenterPreparationLineText(line = "") {
+  return String(line || "")
+    .replace(/^\s*(?:[-*•]|\d+[.)])\s*/, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function parsePresenterPreparationLine(text = "") {
+  const known = parseKnownPresenterPreparationLine(text);
+  if (known) return known;
+  const match = String(text || "").match(/^([^:：]+?)\s*[:：]\s*(.+)$/);
+  if (!match) return null;
+  return {
+    label: normalizePresenterPreparationInputLabel(match[1]),
+    content: String(match[2] || "").trim(),
+  };
+}
+
+function parseKnownPresenterPreparationLine(text = "") {
+  const raw = String(text || "").trim();
+  if (!raw) return null;
+  const patterns = [
+    /^(찬양)\s*(\d+)\s*(?:[:：.-]\s*)?(.+)$/,
+    /^(기도\s*찬양)\s*(\d+)\s*(?:[:：.-]\s*)?(.+)$/,
+    /^(공동기도)\s*(\d+)\s*(?:[:：.-]\s*)?(.+)$/,
+    /^((?:대표\s*)?기도|성경\s*봉독|성경\s*본문|설교\s*본문|설교\s*제목|인용\s*구절|특송|봉헌\s*찬송|봉헌\s*기도|결단\s*찬양|결단\s*기도|본문|설교)\s*(?:[:：.-]\s*)?(.+)$/,
+  ];
+  for (const pattern of patterns) {
+    const match = raw.match(pattern);
+    if (!match) continue;
+    if (match.length === 4) {
+      return {
+        label: normalizePresenterPreparationInputLabel(`${match[1]} ${match[2]}`),
+        content: String(match[3] || "").trim(),
+      };
+    }
+    return {
+      label: normalizePresenterPreparationInputLabel(match[1]),
+      content: String(match[2] || "").trim(),
+    };
+  }
+  return null;
+}
+
+function normalizePresenterPreparationInputLabel(label = "") {
+  const raw = String(label || "").replace(/\s+/g, " ").trim();
+  const key = compactSearchValue(raw);
+  const aliases = {
+    기도: "대표기도",
+    성경: "성경봉독",
+    성경본문: "설교 본문",
+    본문: "설교 본문",
+    설교본문: "설교 본문",
+    말씀본문: "설교 본문",
+    말씀: "설교 본문",
+    설교: "설교 제목",
+    설교제목: "설교 제목",
+    인용구절: "인용 구절",
+    봉헌: "봉헌찬송",
+    결단: "결단찬양",
+  };
+  if (aliases[key]) return aliases[key];
+  const numbered = key.match(/^(찬양|기도찬양|공동기도)(\d+)$/);
+  if (numbered) return `${numbered[1]} ${Number(numbered[2])}`;
+  return raw;
+}
+
 function presenterPreparationTargetLabel(key = "") {
   return {
     대표기도: "기도",
+    기도: "기도",
+    성경: "성경봉독",
+    성경본문: "설교 본문",
+    본문: "설교 본문",
     설교: "설교 제목",
     설교제목: "설교 제목",
     설교본문: "설교 본문",
+    말씀본문: "설교 본문",
+    말씀: "설교 본문",
+    인용구절: "인용 구절",
+    봉헌: "봉헌찬송",
+    결단: "결단찬양",
   }[compactSearchValue(key)] || String(key || "").trim();
 }
 
