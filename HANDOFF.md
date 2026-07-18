@@ -1,10 +1,20 @@
 # Mindex Handoff
 
-Last updated: 2026-07-05
+Last updated: 2026-07-18
 
 Mindex is a church ministry operations app. It is not only a song database and not only a presenter. It should support weekly worship preparation, lyrics/scripture management, worship presentation, calendar, and references while sharing one Supabase-backed data model and one coherent UI system. Activities/event screens are deferred to standalone utilities unless promoted later.
 
 This document is the canonical handoff for new Codex/Claude/GPT threads. Read this before editing. Keep changes conservative, verify them, and never undo unrelated local work.
+
+Important behavior changes must be documented in the relevant Markdown contract
+or decision log in the same change. If a later task disagrees with a documented
+rule, update the document with the reviewed replacement instead of silently
+reverting code to an older behavior.
+
+For Worship/Presenter work, also read
+`docs/worship-presenter-decisions.md`. Any durable behavior change must update
+that decision log in the same change so a later task does not silently restore
+an older rule.
 
 ## Repository And Runtime
 

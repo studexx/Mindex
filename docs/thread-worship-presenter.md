@@ -1,6 +1,14 @@
 # Worship / Presenter Thread Guide
 
-Read `HANDOFF.md` first. Use this file as the short guide when a thread is mostly about Worship, service elements, presenter controls, presenter output, or order/PPT matching.
+Read `HANDOFF.md` first, then `docs/worship-presenter-decisions.md`. Use this file as the short guide when a thread is mostly about Worship, service elements, presenter controls, presenter output, or order/PPT matching.
+
+## Decision Log Discipline
+
+`docs/worship-presenter-decisions.md` is the source for reviewed operational
+rules that must survive across tasks. Update it with the same change whenever
+you alter a template, required-input rule, default selection, output behavior,
+or an intentional exception. Do not add a fallback that contradicts a recorded
+decision.
 
 ## Scope
 
