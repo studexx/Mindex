@@ -42,6 +42,7 @@
   --presenter-size-section: calc(72 * var(--presenter-stage-unit));
   --presenter-size-body: calc(64 * var(--presenter-stage-unit));
   --presenter-size-lyrics: calc(64 * var(--presenter-stage-unit));
+  --presenter-size-song-title: var(--presenter-size-section);
   --presenter-size-meta: calc(52 * var(--presenter-stage-unit));
   --presenter-size-liturgical-body: var(--presenter-size-meta);
   --presenter-size-liturgical-heading: var(--presenter-size-section);
@@ -85,7 +86,8 @@
   --presenter-size-display: calc(168 * var(--presenter-stage-unit));
   --presenter-size-section: calc(144 * var(--presenter-stage-unit));
   --presenter-size-body: calc(96 * var(--presenter-stage-unit));
-  --presenter-size-lyrics: calc(96 * var(--presenter-stage-unit));
+  --presenter-size-lyrics: calc(104 * var(--presenter-stage-unit));
+  --presenter-size-song-title: calc(128 * var(--presenter-stage-unit));
   --presenter-size-meta: calc(104 * var(--presenter-stage-unit));
   --presenter-size-liturgical-body: calc(56 * var(--presenter-stage-unit));
   --presenter-size-liturgical-heading: calc(72 * var(--presenter-stage-unit));
@@ -557,7 +559,7 @@
   font-size: var(--presenter-size-lyrics);
 }
 .presenter-output-root.no-chromakey .presenter-slide--song-title .presenter-slide-text {
-  font-size: var(--presenter-size-meta);
+  font-size: var(--presenter-size-song-title);
 }
 .presenter-output-root.no-chromakey .presenter-slide--lyrics .presenter-slide-text span {
   font-size: inherit;
@@ -566,7 +568,7 @@
   font-size: var(--presenter-size-meta);
 }
 .presenter-output-root.no-chromakey .presenter-section-song-title-name {
-  font-size: var(--presenter-size-meta);
+  font-size: var(--presenter-size-song-title);
 }
 .presenter-output-root.no-chromakey .presenter-slide--scripture .presenter-slide-text span {
   font-size: var(--presenter-scripture-clean-size);
