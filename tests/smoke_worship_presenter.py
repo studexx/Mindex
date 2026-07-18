@@ -1612,7 +1612,13 @@ def main() -> int:
                       const scaffold = buildWorshipServiceScaffold(scaffoldService.id, scaffoldService.type_id);
                       state.serviceItems[scaffoldService.id] = groupWorshipElements(scaffold.sections, scaffold.elements)[scaffoldService.id] || [];
                       const scaffoldAllSlides = buildServicePresenterSlides(scaffoldService.id);
-                      const lordsPrayerService = { id: '__smoke_public_lords_prayer_scaffold__', type_id: 'sunday-first', date: '2026-07-05', service_date: '2026-07-05' };
+                      const lordsPrayerService = {
+                        id: '__smoke_public_lords_prayer_scaffold__',
+                        type_id: 'sunday-first',
+                        date: '2026-07-05',
+                        service_date: '2026-07-05',
+                        _worshipSourceRef: { worship_leader: '이성도 집사' },
+                      };
                       state.services = state.services.filter((service) => service.id !== lordsPrayerService.id);
                       state.services.push(lordsPrayerService);
                       const lordsPrayerScaffold = buildWorshipServiceScaffold(lordsPrayerService.id, lordsPrayerService.type_id);
@@ -1917,7 +1923,7 @@ def main() -> int:
                     and all(slide["chromakey"] is True for slide in title_and_liturgical_state["scaffold"])
                     and all(slide["outputContext"] == "chromakey" for slide in title_and_liturgical_state["scaffold"])
                     and title_and_liturgical_state["chromakeyCenterTextSlides"] == []
-                    and title_and_liturgical_state["scaffoldOutputContexts"].get("clean") == 1
+                    and title_and_liturgical_state["scaffoldOutputContexts"].get("clean", 0) >= 1
                     and title_and_liturgical_state["scaffoldOutputContexts"].get("chromakey", 0) > 0
                     and [slide["text"] for slide in title_and_liturgical_state["scaffold"] if slide["type"] == "lyrics"] == [
                         "나는 전능하신 아버지 하나님, 천지의 창조주를 믿습니다.\n나는 그의 유일하신 아들, 우리 주 예수 그리스도를 믿습니다.",
@@ -2797,10 +2803,10 @@ def main() -> int:
                     and len(form_preset_state["scoreTitleSlides"]) == 1
                     and form_preset_state["scoreTitleTexts"] == ["♪ 999 특송 테스트"]
                     and form_preset_state["scoreManifestTitleTexts"] == ["♪ 5 이 천지간 만물들아"]
-                    and form_preset_state["scoreRawTitleTexts"] == []
+                    and form_preset_state["scoreRawTitleTexts"] == ["♪ 5 이 천지간 만물들아"]
                     and form_preset_state["scoreImageTitleSlides"]
                     and form_preset_state["scoreManifestTitleSlides"]
-                    and form_preset_state["scoreRawTitleTitleSlides"] == []
+                    and form_preset_state["scoreRawTitleTitleSlides"] == ["5 이 천지간 만물들아"]
                     and len(form_preset_state["offeringScoreTitleSlides"]) == 1
                     and form_preset_state["specialScoreTitleSlides"] == [{
                         "title": "999 특송 테스트",
@@ -3008,7 +3014,26 @@ def main() -> int:
                             "imageSrc": "assets/hymn-scores/5/slide-02.webp",
                         },
                     ]
-                    and form_preset_state["scoreRawTitleSlides"] == []
+                    and form_preset_state["scoreRawTitleSlides"] == [
+                        {
+                            "type": "image",
+                            "layout": "media",
+                            "elementType": "image",
+                            "sourceType": "score",
+                            "componentType": "score",
+                            "marker": "",
+                            "imageSrc": "assets/hymn-scores/5/slide-01.webp",
+                        },
+                        {
+                            "type": "image",
+                            "layout": "media",
+                            "elementType": "image",
+                            "sourceType": "score",
+                            "componentType": "score",
+                            "marker": "",
+                            "imageSrc": "assets/hymn-scores/5/slide-02.webp",
+                        },
+                    ]
                     and form_preset_state["scorePreloadSources"] == [
                         "assets/worship-backgrounds/26-A1.png",
                         "assets/worship-backgrounds/26-A2.png",

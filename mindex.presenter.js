@@ -388,14 +388,25 @@ function presenterFormPlanForServiceItem(version = {}, item, song = null) {
   if (!effectivePreset?.forms?.length) return { forms, warnings: [] };
   const resolved = resolvePresenterFormPresetSequence(forms, effectivePreset.forms);
   const warnings = resolved.missing.map((label) => `${label} 없음`);
+  const omitUnlisted = presenterFormPresetShouldOmitUnlisted(effectivePreset);
   return {
     forms: resolved.items.length
-      ? effectivePreset.omitUnlisted
+      ? omitUnlisted
         ? resolved.items
         : presenterFormsWithNoSourceOmissions(resolved.items, forms)
       : forms,
     warnings,
   };
+}
+
+function presenterFormPresetShouldOmitUnlisted(preset = null) {
+  if (preset?.omitUnlisted) return true;
+  const forms = cleanList(preset?.forms);
+  const strength = String(preset?.strength || "").trim().toLowerCase();
+  const targets = forms.map((label) => normalizePresenterFormPresetLabel(label));
+  const grouped = targets.some((target) => target.groupIndex);
+  const consecutiveRepeat = targets.some((target, index) => index > 0 && target.key && target.key === targets[index - 1]?.key);
+  return grouped || consecutiveRepeat || ["forced", "manual", "song-default"].includes(strength);
 }
 
 function presenterFormsWithNoSourceOmissions(plannedForms = [], sourceForms = []) {
@@ -466,7 +477,10 @@ function presenterFormPresetWithAvailableForms(preset = null, forms = []) {
         if (presenterSupplementalFormType(candidate)) merged.push(presenterFormDisplayLabel(form));
       });
       sourceIndex = matchIndex + 1;
-      merged.push(presenterFormDisplayLabel(source[matchIndex].form));
+      const matched = source[matchIndex];
+      merged.push(target.type === "coda" && matched.target.type === "amen"
+        ? "Coda"
+        : presenterFormDisplayLabel(matched.form));
       return;
     }
     merged.push(label);
@@ -708,19 +722,25 @@ function findPresenterFormForPresetLabel(forms = [], label = "") {
 }
 
 function findPresenterFormForPresetTarget(forms = [], target = {}) {
+  const sameType = [];
   for (const form of forms) {
     const candidate = normalizePresenterFormPresetLabel(presenterFormDisplayLabel(form));
+    if (target.type && target.type === candidate.type) sameType.push({ form, target: candidate });
     if (target.key === candidate.key) return form;
     if (target.type === "coda" && candidate.type === "amen") {
       return { ...form, part_type: "Coda", label: "Coda", _presenterAmenAsCoda: true };
     }
     if (target.type && target.type === candidate.type && (!target.number || target.number === candidate.number)) return form;
   }
+  if (target.groupIndex && target.type) {
+    const unnumbered = sameType.filter(({ target: candidate }) => !candidate.number);
+    if (unnumbered.length === 1) return unnumbered[0].form;
+  }
   return null;
 }
 
 function presenterFormPresetGroupItem(label = "", target = {}, form = {}) {
-  const chunks = splitPresenterLyricChunks(form.lyrics);
+  const chunks = presenterGroupedLyricChunks(form.lyrics, target);
   const lyrics = chunks[(Number(target.groupIndex) || 1) - 1] || "";
   if (!lyrics) return null;
   const cleanLabel = String(label || "").trim();
@@ -735,7 +755,27 @@ function presenterFormPresetGroupItem(label = "", target = {}, form = {}) {
   };
 }
 
+function presenterGroupedLyricChunks(lyrics = "", target = {}) {
+  const blocks = splitPresenterLyricChunks(lyrics);
+  const groupCount = Number(target.groupIndex) || 0;
+  if (groupCount > 1 && blocks.length === 1) {
+    const lines = String(lyrics || "")
+      .split(/\r?\n/g)
+      .map((line) => line.trim())
+      .filter(Boolean);
+    if (lines.length >= groupCount && lines.length % groupCount === 0) {
+      const size = lines.length / groupCount;
+      return Array.from({ length: groupCount }, (_, index) =>
+        lines.slice(index * size, (index + 1) * size).join("\n")
+      );
+    }
+  }
+  return blocks;
+}
+
 function presenterFormDisplayLabel(form = {}) {
+  if (form._presenterAmenAsCoda) return String(form.label || "").trim() || displayLabel(form);
+  if (form._presenterVirtual && form._presenterSourceFormId) return String(form.label || "").trim() || displayLabel(form);
   if (form._presenterVirtual) return displayLabel(form);
   return String(form.label || "").trim() || displayLabel(form);
 }
@@ -1937,6 +1977,15 @@ function presenterSongForServiceItem(item = {}, displayText = serviceItemDisplay
     : null;
   if (linkedSong) return linkedSong;
   if (!isSongServiceLabel(label) && !isPresenterSpecialSongItem(item)) return null;
+  const memo = parseServiceItemMemo(item?.memo);
+  const outputMode = normalizeServiceOutputMode(
+    memo.outputMode
+    || item.outputMode
+    || item.output_mode
+    || item.renderMode
+    || item.render_mode,
+  );
+  if (serviceItemRequiresSongSelection(item, service) && outputMode !== "score") return null;
   return findServicePraiseSong(displayText) || presenterSyntheticHymnSongFromDisplayText(displayText);
 }
 
@@ -2493,6 +2542,11 @@ function initPresenterOutputCore() {
       }
       exitArmedAt = now;
       postHeartbeat();
+      return;
+    }
+    if (!event.metaKey && !event.ctrlKey && !event.altKey && (event.key === " " || event.key === "Enter")) {
+      event.preventDefault();
+      document.documentElement.requestFullscreen?.().catch?.(() => {});
       return;
     }
     const action = presenterOutputKeyAction(event);

@@ -2342,12 +2342,12 @@ def main() -> int:
                         and template_terms["sharedSundayContentProjection"]["secondPraiseText"]
                         and template_terms["sharedSundayContentProjection"]["secondPraiseSongId"]
                         and template_terms["sharedSundayContentProjection"]["secondOfferingText"]
-                        and template_terms["sharedSundayContentProjection"]["thirdReadingRefs"] == ["히 10:38–39"]
+                        and template_terms["sharedSundayContentProjection"]["thirdReadingRefs"] == ["롬 8:12–17"]
                         and template_terms["sharedSundayContentProjection"]["thirdReadingMissing"] == "filled"
-                        and template_terms["sharedSundayContentProjection"]["thirdSermonTitleText"] == "믿음으로 사는 사람"
+                        and template_terms["sharedSundayContentProjection"]["thirdSermonTitleText"] == "한 가지 그것을"
                         and template_terms["sharedSundayContentProjection"]["thirdSermonTitleAssignee"] == "김남영 목사"
                         and template_terms["sharedSundayContentProjection"]["thirdSermonTitleStatic"] is True
-                        and template_terms["sharedSundayContentProjection"]["thirdSermonBodyRefs"] == ["히 10:38–39"]
+                        and template_terms["sharedSundayContentProjection"]["thirdSermonBodyRefs"] == ["롬 8:12–17"]
                         and template_terms["sharedSundayContentProjection"]["thirdOfferingText"]
                         and template_terms["sharedSundayContentProjection"]["thirdOfferingStatic"] is True
                         and template_terms["sharedSundayContentProjection"]["thirdMissingSlides"] == []

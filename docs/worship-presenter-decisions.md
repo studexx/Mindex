@@ -137,16 +137,32 @@ Small visual polish that does not alter behavior does not need an entry.
   praise title layout rather than the section-heading title layout.
 - Hymn-score praise items such as `봉헌찬송` and `송영` keep the normal
   `song-title` title slide. Do not create a separate score-only title layout.
+- Score-mode praise may resolve a song from the raw title, so rough input like
+  `찬송 80` or `특송 505` can find hymn score slides even before the item has
+  a persisted `song_id`.
+- Non-score praise items that require DB selection must not silently resolve
+  lyrics by raw title alone. Leave them as `입력 필요` unless they have a
+  linked song or explicit manual slide text.
 - Only the score image slides use the score fullscreen contract. A score image
   slide must render as the primary `score` slide class before generic image
   handling so fullscreen output does not inherit chromakey or lower-bar image
   fallback behavior.
-- Score image slides remain clean fullscreen media with a white score canvas and
+- Score image slides remain clean fullscreen media with a black score canvas and
   no visible presenter meta. Title slides remain the same praise title contract
   as non-score praise.
 - In chromakey services, the automatic blank after a score image returns to the
   chromakey blank context. It must not appear as a black fullscreen blank behind
   or after the score.
+
+### Presenter Song Forms
+
+- Explicit song-form presets may intentionally omit unlisted forms when they
+  are grouped (`V1A`, `V1B`), manual/forced/song-default presets, or contain
+  deliberate consecutive repeats such as `C-C`.
+- Grouped labels such as `V1A` and `V1B` mean split `Verse 1` by lyric block.
+  If there are no blank-line blocks, split evenly by lyric lines when possible.
+- When a `Coda` preset is matched to an `Amen` source form, the presenter marker
+  stays `Coda` while using the `Amen` lyrics.
 
 ## Source Of Truth
 
