@@ -871,17 +871,7 @@ function bindStaticEvents() {
   refs.songList.addEventListener("keydown", handleDetailKeydown);
   refs.songList.addEventListener("input", handleDetailInput);
   refs.songList.addEventListener("paste", handlePresenterPreparationPaste);
-  refs.songList.addEventListener("change", (event) => {
-    const sidebarInputSelect = event.target.closest("[data-presenter-sidebar-input-select]");
-    if (sidebarInputSelect) {
-      const itemIndex = Number(sidebarInputSelect.value);
-      if (Number.isInteger(itemIndex) && itemIndex >= 0) {
-        selectPresenterSidebarInputItem(itemIndex);
-      }
-      return;
-    }
-    handleDetailChange(event);
-  });
+  refs.songList.addEventListener("change", handleDetailChange);
 
   refs.songList.addEventListener("click", async (event) => {
     const preparationApply = event.target.closest("[data-presenter-preparation-apply]");
@@ -891,18 +881,6 @@ function bindStaticEvents() {
     }
 
     if (isPresenterPreparationInputEvent(event)) return;
-
-    const sidebarSave = event.target.closest("[data-presenter-sidebar-save]");
-    if (sidebarSave) {
-      await saveAll();
-      return;
-    }
-
-    const sidebarInputJump = event.target.closest("[data-presenter-sidebar-input-jump]");
-    if (sidebarInputJump) {
-      selectPresenterSidebarInputItem(Number(sidebarInputJump.dataset.presenterSidebarInputJump));
-      return;
-    }
 
     const homeModule = event.target.closest("[data-home-module]");
     if (homeModule) {
@@ -2508,6 +2486,79 @@ async function fetchSupabasePaged(table, select = "*", buildQuery = (query) => q
   }
 }
 
+function autoUpcomingPublicServiceTargets(baseDate = new Date()) {
+  const today = parseLocalDate(baseDate);
+  if (Number.isNaN(today.getTime())) return [];
+  today.setHours(0, 0, 0, 0);
+  if (today.getDay() === 0 || today.getDay() === 6) return [];
+
+  const weekStart = new Date(today);
+  weekStart.setDate(today.getDate() - today.getDay());
+
+  const nextDateForWeekday = (weekday) => {
+    const date = new Date(weekStart);
+    const offset = weekday === 0 ? 7 : weekday;
+    date.setDate(weekStart.getDate() + offset);
+    if (date < today) date.setDate(date.getDate() + 7);
+    return toLocalDateStr(date);
+  };
+
+  const wednesday = nextDateForWeekday(3);
+  const friday = nextDateForWeekday(5);
+  const sunday = nextDateForWeekday(0);
+  return [
+    { typeId: "wednesday", date: wednesday },
+    { typeId: "friday", date: friday },
+    { typeId: "sunday-first", date: sunday },
+    { typeId: "sunday-second", date: sunday },
+    { typeId: "sunday-main", date: sunday },
+    { typeId: "sunday-afternoon", date: sunday },
+  ].filter((target) => AUTO_UPCOMING_PUBLIC_SERVICE_TYPES.includes(target.typeId) && target.date);
+}
+
+function worshipServiceExistsForTarget(target = {}) {
+  const targetTypeId = worshipAppServiceTypeId(target.typeId);
+  const targetDate = String(target.date || "").trim();
+  if (!targetTypeId || !targetDate) return true;
+  return state.services.some((service) =>
+    worshipAppServiceTypeId(service.type_id) === targetTypeId
+    && String(service.date || "").trim() === targetDate);
+}
+
+function autoWorshipServicePayload(target = {}) {
+  const typeId = worshipAppServiceTypeId(target.typeId);
+  return {
+    id: createUuid(),
+    service_type_id: canonicalWorshipServiceTypeId(typeId),
+    service_date: target.date,
+    title: "",
+    status: "draft",
+    worship_leader: defaultServiceWorshipLeader(typeId),
+    praise_leader: serviceUsesPraiseLeader(typeId) ? defaultServicePraiseLeader(typeId) : "",
+    tags: [],
+    source_kind: "mindex",
+    source_ref: {
+      created_from: "mindex_auto_schedule",
+      app_service_type_id: typeId,
+      auto_generated: true,
+    },
+    notes: "",
+  };
+}
+
+async function ensureUpcomingPublicWorshipServices(baseDate = new Date()) {
+  if (!state.client) return [];
+  const missingTargets = autoUpcomingPublicServiceTargets(baseDate).filter((target) => !worshipServiceExistsForTarget(target));
+  if (!missingTargets.length) return [];
+  const payloads = missingTargets.map(autoWorshipServicePayload);
+  const { data, error } = await state.client
+    .from("mindex_worship_services")
+    .insert(payloads)
+    .select("*");
+  if (error) throw error;
+  return (data || payloads).map(normalizeWorshipService);
+}
+
 const WORSHIP_SERVICE_TYPE_ALIASES = {
   sun_1st: "sunday-first",
   sun_2nd: "sunday-second",
@@ -2566,6 +2617,8 @@ async function loadWorshipData() {
   const resolvedTypes = types.length ? types : defaultWorshipServiceTypes();
   state.serviceTypes = resolvedTypes.map(normalizeWorshipServiceType);
   state.services = services.map(normalizeWorshipService);
+  const autoServices = await ensureUpcomingPublicWorshipServices();
+  if (autoServices.length) state.services = sortServicesByDate([...state.services, ...autoServices]);
   state.worshipSections = sections;
   state.worshipElements = elements;
   state.templateElementSuppressions.clear();
@@ -5518,12 +5571,6 @@ function handleDetailKeydown(event) {
 
   const presenterJumpInput = event.target.closest("[data-presenter-jump-input]");
   if (presenterJumpInput) {
-    if (isPresenterAdvanceShortcutKey(event.key)) {
-      event.preventDefault();
-      event.stopPropagation();
-      handlePresenterShortcut(event);
-      return;
-    }
     if (event.key === "Enter") {
       event.preventDefault();
       event.stopPropagation();
@@ -5536,6 +5583,8 @@ function handleDetailKeydown(event) {
       clearPresenterJumpDraft(presenterJumpInput.dataset.serviceId || state.presenter.serviceId);
       return;
     }
+    event.stopPropagation();
+    return;
   }
 
   const liveScriptureInput = event.target.closest("[data-live-scripture-input]");
@@ -5687,6 +5736,13 @@ function handleDetailInput(event) {
   if (preparationInput) {
     const serviceId = preparationInput.dataset.serviceId || state.selectedServiceId;
     if (serviceId) state.presenterPreparationDrafts[serviceId] = preparationInput.value;
+    event.stopPropagation();
+    return;
+  }
+
+  const presenterJumpInput = event.target.closest("[data-presenter-jump-input]");
+  if (presenterJumpInput) {
+    setPresenterJumpDraft(presenterJumpInput.value, presenterJumpInput.dataset.serviceId || state.presenter.serviceId);
     event.stopPropagation();
     return;
   }
@@ -7979,11 +8035,28 @@ function isPublicClosingImageServiceItem(item = {}, memo = emptyServiceItemMemo(
 function isPublicFixedDoxologyServiceItem(item = {}, memo = emptyServiceItemMemo(), service = null) {
   if (serviceMemoElementType(memo) !== "praise" || compactSearchValue(item?.label || "") !== "송영") return false;
   const itemService = service || state.services.find((candidate) => candidate.id === item?.service_id) || null;
-  return ["sunday-first", "sunday-second"].includes(worshipAppServiceTypeId(itemService?.type_id));
+  return Boolean(publicFixedDoxologySpec(itemService));
 }
 
-function publicFixedDoxologyDisplayText() {
-  return "5 이 천지간 만물들아";
+function publicFixedDoxologySpec(service = null) {
+  return {
+    "sunday-first": { hymnNo: "5", title: "이 천지간 만물들아" },
+    "sunday-second": { hymnNo: "5", title: "이 천지간 만물들아" },
+    "sunday-afternoon": { hymnNo: "1", title: "만복의 근원 하나님" },
+  }[worshipAppServiceTypeId(service?.type_id)] || null;
+}
+
+function publicFixedDoxologyDisplayText(service = null) {
+  const spec = publicFixedDoxologySpec(service) || { hymnNo: "5", title: "이 천지간 만물들아" };
+  return `${spec.hymnNo} ${spec.title}`;
+}
+
+function isPublicFixedDoxologyDisplayText(value = "") {
+  const compact = compactSearchValue(value);
+  return [
+    publicFixedDoxologyDisplayText({ type_id: "sunday-first" }),
+    publicFixedDoxologyDisplayText({ type_id: "sunday-afternoon" }),
+  ].some((title) => compact === compactSearchValue(title));
 }
 
 function worshipTemplateElementAsset(step = {}, label = "") {
@@ -9083,6 +9156,15 @@ const SERVICE_RECURRENCE = {
   monthly: { kind: "first-weekday", weekday: 5 },
 };
 
+const AUTO_UPCOMING_PUBLIC_SERVICE_TYPES = [
+  "wednesday",
+  "friday",
+  "sunday-first",
+  "sunday-second",
+  "sunday-main",
+  "sunday-afternoon",
+];
+
 function renderListFilter() {
   if (state.module !== "praise" && state.module !== "scripture") {
     refs.listFilter.hidden = true;
@@ -9530,10 +9612,7 @@ function renderHomeDetail() {
   const commandModules = ["scripture", "praise", "calendar", "references"]
     .map((id) => modules.find((module) => module.id === id))
     .filter(Boolean);
-  const resourceModules = ["scripture", "praise", "calendar", "references"]
-    .map((id) => modules.find((module) => module.id === id))
-    .filter(Boolean);
-  const nextService = getServiceDashboardServices()[0] || null;
+  const nextService = getHomeNextService();
   const nextServicePrep = nextService ? homeServicePrepSummary(nextService.id) : null;
   refs.detailPane.innerHTML = `
     <div class="home-screen">
@@ -9568,12 +9647,6 @@ function renderHomeDetail() {
           </div>
         </section>
       </div>
-      <section class="home-resource-panel" aria-label="데이터 상태">
-        <div class="home-section-label">데이터 상태</div>
-        <div class="home-resource-list">
-          ${resourceModules.map((module) => renderHomeResourceRow(module)).join("")}
-        </div>
-      </section>
     </div>
   `;
   refreshIcons();
@@ -9877,8 +9950,7 @@ function splitHomeVerseLines(text) {
 function homeModuleCards() {
   const bibleBookCount = getBibleBooks().length;
   const translationCount = state.bibleTranslations.length;
-  const services = getServiceDashboardServices();
-  const nextService = services[0];
+  const nextService = getHomeNextService();
   const calendarRows = getCalendarDisplayRows();
   const referencesSummary = referenceSummaryText();
   const serviceCountText = formatServiceCountLabel(state.services.length);
@@ -10015,21 +10087,6 @@ function renderHomeActionTile(module) {
       <i data-lucide="${escapeAttr(module.icon)}"></i>
       <span>${escapeHtml(title)}</span>
       <small>${escapeHtml(detail)}</small>
-    </button>
-  `;
-}
-
-function renderHomeResourceRow(module) {
-  const metric = module.compactMeta
-    ? homeMetricText(module.compactMeta)
-    : module.sidebarMeta || "";
-  return `
-    <button class="home-resource-row ${escapeAttr(module.id)}" type="button" data-home-module="${escapeAttr(module.id)}">
-      <i data-lucide="${escapeAttr(module.icon)}"></i>
-      <strong>${escapeHtml(module.title)}</strong>
-      <span>${escapeHtml(module.detail)}</span>
-      <small>${escapeHtml(metric)}</small>
-      <i class="home-resource-go" data-lucide="chevron-right"></i>
     </button>
   `;
 }
@@ -14006,7 +14063,12 @@ function publicSundayAfternoonTemplate() {
     publicWorshipSermonStep({ defaultPerson: "김남영 목사" }),
     publicWorshipResponseStep(),
     publicWorshipAnnouncementsStep(),
-    publicWorshipSendingStep({ score: true, defaultText: "찬 1장", benedictionPerson: "김남영 목사" }),
+    publicWorshipSendingStep({
+      score: true,
+      defaultText: "1 만복의 근원 하나님",
+      defaultSong: { title: "만복의 근원 하나님", hymnNo: "1" },
+      benedictionPerson: "김남영 목사",
+    }),
     publicWorshipClosingStep(),
   ];
 }
@@ -14460,8 +14522,8 @@ function templateProjectionRawTitle(templateItem = {}, existingItem = {}, elemen
   if (["creed", "lords_prayer", "community_confession"].includes(sectionKey)) return templateItem.raw_title || existingItem.raw_title || "";
   if (compactSearchValue(templateItem.label || "") === "송영"
     && templateType === "praise"
-    && compactSearchValue(templateItem.raw_title || "") === compactSearchValue(publicFixedDoxologyDisplayText())) {
-    return templateItem.raw_title || publicFixedDoxologyDisplayText();
+    && isPublicFixedDoxologyDisplayText(templateItem.raw_title)) {
+    return templateItem.raw_title;
   }
   if (templateType === "image" || templateType === "video") return templateItem.raw_title || existingItem.raw_title || "";
   return existingTitle || templateItem.raw_title || "";
@@ -15373,6 +15435,16 @@ function getServiceDashboardServices() {
   return sortServicesByDate([...upcoming, ...getExpectedServicesInRange(start, end)]);
 }
 
+function getHomeNextService(baseDate = new Date()) {
+  const today = toLocalDateStr(baseDate);
+  if (!today) return null;
+  const upcoming = state.services.filter((service) => {
+    const finalDate = String(service.date_end || service.date || "").trim();
+    return finalDate >= today;
+  });
+  return sortServicesByDate(upcoming)[0] || null;
+}
+
 function currentServiceWeekRange(base = new Date()) {
   const start = new Date(base);
   start.setHours(0, 0, 0, 0);
@@ -15493,8 +15565,7 @@ function renderPresenterSidebar(query, services, selectedService) {
 
 function renderPresenterSidebarPreparationInput(service) {
   if (!service?.id) return "";
-  const groups = presenterServiceInputGroups(service);
-  const inputCount = groups.reduce((count, group) => count + group.items.length, 0);
+  const inputCount = presenterServiceEditableInputCount(service);
   const draft = state.presenterPreparationDrafts[service.id] || "";
   const applying = state.presenterPreparationApplyingServiceIds.has(service.id);
   return `
@@ -15504,7 +15575,7 @@ function renderPresenterSidebarPreparationInput(service) {
         <small>${escapeHtml(inputCount ? `${inputCount}개 항목` : "입력 없음")}</small>
       </div>
       <div class="svc-presenter-preparation-input svc-presenter-preparation-input--sidebar">
-        <textarea class="svc-presenter-preparation-text svc-presenter-preparation-text--sidebar" data-presenter-preparation-input data-service-id="${escapeAttr(service.id)}" rows="5" placeholder="찬양 1: 곡 제목&#10;대표기도: 담당자&#10;성경봉독: 히 10:38-39&#10;설교 제목: 제목" aria-label="예배 입력 붙여넣기">${escapeHtml(draft)}</textarea>
+        <textarea class="svc-presenter-preparation-text svc-presenter-preparation-text--sidebar" data-presenter-preparation-input data-service-id="${escapeAttr(service.id)}" rows="5" placeholder="곡명(9장)&#10;성경봉독: 히 10:38-39&#10;설교 제목: 제목&#10;봉헌찬송: 찬 187장" aria-label="예배 입력 붙여넣기">${escapeHtml(draft)}</textarea>
         <button class="svc-presenter-preparation-apply svc-presenter-preparation-apply--sidebar" type="button" data-presenter-preparation-apply data-service-id="${escapeAttr(service.id)}" ${applying ? "disabled" : ""}>
           <i data-lucide="wand-sparkles"></i>
           <span>${applying ? "반영 중" : "반영"}</span>
@@ -15594,7 +15665,6 @@ function renderServiceCurrentSidebar(service) {
   const readyRow = renderServiceReadyOutlineRow(service, slides, items);
   return `
     <section class="service-sidebar-section service-sidebar-section--current">
-      ${renderPresenterSidebarInputContext(service, editorItems, selectedIndex)}
       <div class="service-sidebar-head">
         <span>순서</span>
         <small>시작</small>
@@ -15607,127 +15677,6 @@ function renderServiceCurrentSidebar(service) {
       </div>
     </section>
   `;
-}
-
-function renderPresenterSidebarInputContext(service, items, selectedIndex) {
-  const inputItems = items
-    .map((item, position) => ({
-      item,
-      index: Number.isInteger(item._origIndex) ? item._origIndex : position,
-    }))
-    .filter(({ item }) => presenterServiceInputHasEditableField(item, service))
-    .map((entry) => {
-      const memo = parseServiceItemMemo(entry.item.memo);
-      return {
-        ...entry,
-        contentState: resolvePresenterServiceItemContentState(
-          entry.item,
-          memo,
-          serviceItemLinkedSong(entry.item),
-          service,
-        ),
-      };
-    });
-  if (!inputItems.length) return "";
-  const missingItems = inputItems.filter(({ contentState }) => !contentState.hasOutputContent);
-  const selectedInput = inputItems.find(({ index }) => index === selectedIndex);
-  const active = selectedInput || missingItems[0] || inputItems[0];
-  const input = renderPresenterServiceInputItem(active.item, active.index, service);
-  const missingCount = missingItems.length;
-  const saveLabel = state.saving ? "저장 중" : state.dirty.service ? "저장 필요" : "저장됨";
-  const inputGroups = groupPresenterSidebarInputItems(inputItems);
-  return `
-    <section class="service-sidebar-input-context" aria-label="예배 입력">
-      <div class="service-sidebar-head">
-        <span>입력</span>
-        <span class="service-sidebar-input-head-actions">
-          <small>${escapeHtml(missingCount ? `입력 필요 ${missingCount}개` : saveLabel)}</small>
-          <button class="service-sidebar-input-save" type="button" data-presenter-sidebar-save
-            ${state.dirty.service && !state.saving ? "" : "disabled"}>저장</button>
-        </span>
-      </div>
-      ${renderPresenterSidebarInputQuickList(inputItems, active.index)}
-      <label class="service-sidebar-input-select">
-        <span>순서</span>
-        <select data-presenter-sidebar-input-select aria-label="입력할 순서">
-          ${inputGroups.map((group) => `
-            <optgroup label="${escapeAttr(group.title)}">
-              ${group.items.map(({ item, index, contentState }) => {
-                const suffix = contentState.hasOutputContent ? "" : " · 입력 필요";
-                return `<option value="${index}"${index === active.index ? " selected" : ""}>${escapeHtml(`${serviceSidebarChildItemTitle(item)}${suffix}`)}</option>`;
-              }).join("")}
-            </optgroup>`).join("")}
-        </select>
-      </label>
-      ${input}
-    </section>`;
-}
-
-function selectPresenterSidebarInputItem(itemIndex) {
-  const index = Number(itemIndex);
-  if (!Number.isInteger(index) || index < 0) return;
-  state.selectedServiceItemIndex = index;
-  renderServiceList();
-  scrollPresenterOutlineToItem(state.selectedServiceId, index);
-  requestAnimationFrame(() => {
-    const selector = `[data-service-item-index="${CSS.escape(String(index))}"]`;
-    const field = document.querySelector(`.service-sidebar-input-context ${selector}`);
-    if (field && typeof field.focus === "function") field.focus({ preventScroll: true });
-  });
-}
-
-function renderPresenterSidebarInputQuickList(inputItems = [], activeIndex = -1) {
-  if (!inputItems.length) return "";
-  const missingItems = inputItems.filter(({ contentState }) => !contentState.hasOutputContent);
-  const filledItems = inputItems.filter(({ contentState }) => contentState.hasOutputContent);
-  const visibleItems = missingItems.length ? missingItems : filledItems;
-  const statusText = missingItems.length
-    ? `입력 필요 ${missingItems.length}개`
-    : `준비 완료 ${filledItems.length}개`;
-  return `
-    <div class="service-sidebar-input-quick" aria-label="필요 입력 항목">
-      <div class="service-sidebar-input-quick-head">
-        <span>${escapeHtml(statusText)}</span>
-        <small>${escapeHtml(missingItems.length ? "필수 항목 먼저" : "모두 채움")}</small>
-      </div>
-      <div class="service-sidebar-input-quick-list">
-        ${visibleItems.map((entry) => renderPresenterSidebarInputQuickButton(entry, activeIndex)).join("")}
-      </div>
-    </div>`;
-}
-
-function renderPresenterSidebarInputQuickButton(entry, activeIndex = -1) {
-  const { item, index, contentState } = entry;
-  const missing = !contentState.hasOutputContent;
-  const active = index === activeIndex;
-  const mode = contentState.inputMode || serviceMemoInputMode(parseServiceItemMemo(item.memo), item);
-  const modeLabel = presenterServiceInputModeLabel(mode);
-  const title = serviceSidebarChildItemTitle(item);
-  return `
-    <button class="service-sidebar-input-chip${missing ? " needs-input" : " is-filled"}${active ? " active" : ""}"
-      type="button"
-      data-presenter-sidebar-input-jump="${escapeAttr(String(index))}"
-      aria-label="${escapeAttr(`${title} ${missing ? "입력 필요" : "입력 완료"}`)}">
-      <span>${escapeHtml(title)}</span>
-      <small>${escapeHtml(missing ? modeLabel : "완료")}</small>
-    </button>`;
-}
-
-function groupPresenterSidebarInputItems(items = []) {
-  const groups = [];
-  const byKey = new Map();
-  items.forEach((entry) => {
-    const key = String(entry.item?._worshipSectionId || entry.item?._worshipSectionKey || entry.item?.label || entry.index);
-    const title = String(entry.item?._worshipSectionTitle || entry.item?.label || "입력").trim();
-    let group = byKey.get(key);
-    if (!group) {
-      group = { key, title, items: [] };
-      byKey.set(key, group);
-      groups.push(group);
-    }
-    group.items.push(entry);
-  });
-  return groups;
 }
 
 function groupServiceSidebarOutlineItems(items = []) {
@@ -17612,7 +17561,22 @@ function homeServicePrepSummary(serviceId) {
 function serviceItemDisplayText(item) {
   const linkedSong = serviceItemLinkedSong(item);
   if (linkedSong) return songServiceOptionLabel(linkedSong) || cleanSongTitleForSave(linkedSong) || linkedSong.title || "";
-  return normalizeServiceItemReferenceSpacing(String(item?.raw_title || item?.label || "").trim());
+  const rawTitle = String(item?.raw_title || "").trim();
+  if (rawTitle) {
+    const contentTitle = serviceItemContentTitleWithoutElementName(item, rawTitle);
+    return normalizeServiceItemReferenceSpacing(contentTitle ?? rawTitle);
+  }
+  return normalizeServiceItemReferenceSpacing(String(item?.label || "").trim());
+}
+
+function serviceItemContentTitleWithoutElementName(item = {}, rawTitle = "") {
+  const memo = parseServiceItemMemo(item.memo);
+  if (serviceMemoElementType(memo) !== "title_content") return null;
+  const labelKey = compactSearchValue(item.label || "");
+  if (!labelKey) return null;
+  const lines = String(rawTitle || "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  if (!lines.length || compactSearchValue(lines[0]) !== labelKey) return null;
+  return lines.slice(1).join("\n");
 }
 
 function isMainPraisePreviewItem(item) {
@@ -17661,7 +17625,29 @@ function serviceItemSupportsScriptureReferenceList(item = {}) {
   return compactSearchValue(item.label || "") === "인용구절";
 }
 
-function serviceItemScriptureReferences(item = {}, memo = parseServiceItemMemo(item.memo)) {
+function isSharedScriptureReadingServiceItem(item = {}) {
+  return String(item?._worshipSectionKey || "").trim() === "scripture_reading"
+    && compactSearchValue(item?.label || "") === "성경봉독";
+}
+
+function isOptionalCitationScriptureServiceItem(item = {}) {
+  return /^인용구절\d*$/.test(compactSearchValue(item?.label || ""));
+}
+
+function sharedSermonScriptureBodyItem(item = {}, service = null) {
+  if (!isSharedScriptureReadingServiceItem(item)) return null;
+  const serviceId = service?.id || item?.service_id || state.selectedServiceId;
+  const items = serviceId ? state.serviceItems[serviceId] || [] : [];
+  return items.find((candidate) =>
+    String(candidate?._worshipSectionKey || "").trim() === "sermon"
+    && compactSearchValue(candidate?.label || "") === "설교본문") || null;
+}
+
+function serviceItemScriptureReferences(item = {}, memo = parseServiceItemMemo(item.memo), service = null) {
+  const sharedSermonBody = sharedSermonScriptureBodyItem(item, service);
+  if (sharedSermonBody) {
+    return serviceItemScriptureReferences(sharedSermonBody, parseServiceItemMemo(sharedSermonBody.memo), service);
+  }
   const configured = normalizeServiceScriptureReferenceList(memo.scriptureReferences);
   if (configured.length) return configured;
   if (serviceItemSupportsScriptureReferenceList(item)) {
@@ -17944,33 +17930,20 @@ function renderServicePresenterControls(service, slides, active, index) {
 }
 
 function renderPresenterServiceInputRail(service) {
-  const groups = presenterServiceInputGroups(service);
-  const inputCount = groups.reduce((count, group) => count + group.items.length, 0);
   const draft = state.presenterPreparationDrafts[service.id] || "";
   return `
     <aside class="svc-presenter-input-rail" aria-label="예배 입력">
       <header class="svc-presenter-input-rail-head">
         <span>예배 입력</span>
-        <small>${escapeHtml(inputCount ? `${inputCount}개 항목` : "입력 없음")}</small>
+        <small>빠른 반영</small>
       </header>
       <section class="svc-presenter-preparation-input">
-        <textarea class="svc-presenter-preparation-text" data-presenter-preparation-input data-service-id="${escapeAttr(service.id)}" rows="7" placeholder="찬양 1: 곡 제목&#10;대표기도: 담당자&#10;성경봉독: 히 10:38-39" aria-label="예배 준비 입력">${escapeHtml(draft)}</textarea>
+        <textarea class="svc-presenter-preparation-text" data-presenter-preparation-input data-service-id="${escapeAttr(service.id)}" rows="7" placeholder="곡명(9장)&#10;성경봉독: 히 10:38-39&#10;설교 제목: 제목&#10;봉헌찬송: 찬 187장" aria-label="예배 준비 입력">${escapeHtml(draft)}</textarea>
         <button class="svc-presenter-preparation-apply" type="button" data-presenter-preparation-apply data-service-id="${escapeAttr(service.id)}">
           <i data-lucide="wand-sparkles"></i>
           <span>반영</span>
         </button>
       </section>
-      <div class="svc-presenter-input-rail-body">
-        ${groups.length
-          ? groups.map((group) => `
-              <section class="svc-presenter-input-section">
-                <h3>${escapeHtml(group.title)}</h3>
-                <div class="svc-presenter-input-items">
-                  ${group.items.map(({ item, index }) => renderPresenterServiceInputItem(item, index, service)).join("")}
-                </div>
-              </section>`).join("")
-          : `<p class="svc-presenter-input-empty">입력할 항목이 없습니다.</p>`}
-      </div>
     </aside>`;
 }
 
@@ -17978,10 +17951,12 @@ function parsePresenterPreparationInput(value = "") {
   const entries = [];
   const errors = [];
   const seenKeys = new Set();
+  let implicitPraiseCount = 0;
   String(value || "").split(/\r?\n/).forEach((line, index) => {
     const text = normalizePresenterPreparationLineText(line);
     if (!text) return;
-    const parsedLine = parsePresenterPreparationLine(text);
+    const parsedLine = parsePresenterPreparationLine(text)
+      || inferPresenterPreparationShorthandLine(text, implicitPraiseCount + 1);
     if (!parsedLine) {
       errors.push(`${index + 1}번째 줄 형식을 확인해 주세요.`);
       return;
@@ -17997,6 +17972,7 @@ function parsePresenterPreparationInput(value = "") {
       return;
     }
     seenKeys.add(key);
+    if (/^찬양\d+$/.test(key)) implicitPraiseCount += 1;
     entries.push({ label, key, content, line: index + 1 });
   });
   return { entries, errors };
@@ -18017,6 +17993,15 @@ function parsePresenterPreparationLine(text = "") {
   return {
     label: normalizePresenterPreparationInputLabel(match[1]),
     content: String(match[2] || "").trim(),
+  };
+}
+
+function inferPresenterPreparationShorthandLine(text = "", praiseNumber = 1) {
+  const content = String(text || "").trim();
+  if (!content) return null;
+  return {
+    label: `찬양 ${Math.max(1, Number(praiseNumber) || 1)}`,
+    content,
   };
 }
 
@@ -18074,6 +18059,7 @@ function presenterPreparationTargetLabel(key = "") {
     대표기도: "기도",
     기도: "기도",
     성경: "성경봉독",
+    성경봉독: "성경봉독",
     성경본문: "설교 본문",
     본문: "설교 본문",
     설교: "설교 제목",
@@ -18144,9 +18130,43 @@ function presenterPreparationSongLabels(song = {}) {
   ].filter(Boolean);
 }
 
+function parsePresenterPreparationHymnHint(value = "") {
+  const raw = String(value || "").replace(/\s+/g, " ").trim();
+  if (!raw) return { title: "", hymnNo: "" };
+  const paren = raw.match(/^(.+?)\s*[(（]\s*(?:새\s*)?(?:찬송가|찬)?\s*(\d+)\s*장?\s*[)）]\s*$/);
+  if (paren) return { title: String(paren[1] || "").trim(), hymnNo: String(paren[2] || "").trim() };
+  const leading = raw.match(/^(?:새\s*)?(?:찬송가|찬)\s*(\d+)\s*장?\s+(.+)$/);
+  if (leading) return { title: String(leading[2] || "").trim(), hymnNo: String(leading[1] || "").trim() };
+  const trailing = raw.match(/^(.+?)\s+(?:새\s*)?(?:찬송가|찬)\s*(\d+)\s*장?\s*$/);
+  if (trailing) return { title: String(trailing[1] || "").trim(), hymnNo: String(trailing[2] || "").trim() };
+  const only = raw.match(/^(?:새\s*)?(?:찬송가|찬)?\s*(\d+)\s*장\s*$/);
+  if (only && /(?:찬|장)/.test(raw)) return { title: "", hymnNo: String(only[1] || "").trim() };
+  return { title: raw, hymnNo: "" };
+}
+
+function resolvePresenterPreparationHymnSong(value = "") {
+  const hint = parsePresenterPreparationHymnHint(value);
+  if (!hint.hymnNo) return null;
+  const hymnMatches = state.songs.filter((song) => String(song.hymn_no || "").trim() === hint.hymnNo);
+  if (!hymnMatches.length) return null;
+  if (!hint.title) return hymnMatches.length === 1 ? hymnMatches[0] : null;
+  const titleKey = compactSearchValue(hint.title);
+  const titled = hymnMatches.filter((song) => [
+    song.title,
+    stripHymnNumber(song.title || ""),
+    songServiceOptionLabel(song),
+    song.subtitle,
+  ].some((label) => compactSearchValue(label) === titleKey));
+  return titled.length === 1 ? titled[0] : (hymnMatches.length === 1 ? hymnMatches[0] : null);
+}
+
 function resolvePresenterPreparationSong(value, item, service) {
   const query = compactSearchValue(value);
   if (!query) return null;
+  const hymnSong = resolvePresenterPreparationHymnSong(value);
+  if (hymnSong) return hymnSong;
+  const praiseSong = findServicePraiseSong(value);
+  if (praiseSong) return praiseSong;
   const exact = state.songs.filter((song) => presenterPreparationSongLabels(song)
     .some((label) => compactSearchValue(label) === query));
   if (exact.length === 1) return exact[0];
@@ -18345,30 +18365,11 @@ async function applyPresenterPreparationInput(serviceId = state.selectedServiceI
   }
 }
 
-function presenterServiceInputGroups(service) {
-  const groups = [];
-  servicePrepEditorItems(service.id).forEach((item) => {
-    const index = item._origIndex;
-    if (!presenterServiceInputControls(item, index, service)) return;
-    const key = String(item._worshipSectionId || item._worshipSectionKey || item.label || index).trim();
-    const title = String(item._worshipSectionTitle || item.label || "예배 입력").trim();
-    const previous = groups[groups.length - 1];
-    if (previous && previous.key === key) {
-      previous.items.push({ item, index });
-      return;
-    }
-    groups.push({ key, title, items: [{ item, index }] });
-  });
-  return groups;
-}
-
-function presenterServiceInputModeLabel(mode) {
-  return {
-    praise_db: "찬양 DB",
-    scripture: "성경 DB",
-    text: "직접 입력",
-    asset: "파일",
-  }[mode] || "입력";
+function presenterServiceEditableInputCount(service) {
+  if (!service?.id) return 0;
+  return servicePrepEditorItems(service.id)
+    .filter((item) => presenterServiceInputHasEditableField(item, service))
+    .length;
 }
 
 function presenterServiceInputItem(item, service) {
@@ -18388,6 +18389,7 @@ function presenterServiceInputIsStatic(item = {}, memo = parseServiceItemMemo(it
     || Boolean(presenterFixedTitleText(item))
     || isLiturgicalBodyServiceItem(item)
     || isConfessionPrayerServiceItem(item)
+    || isSharedScriptureReadingServiceItem(item)
     || label === "환영"
     || sectionKey === "announcements"
     || sectionKey === "closing_visual";
@@ -18426,22 +18428,6 @@ function presenterServiceInputHasEditableField(item, service) {
   if (["praise_db", "scripture", "asset"].includes(context.mode)) return true;
   const { needsTitle, needsAssignee } = presenterServiceTextInputSpec(item, context.model, context.memo);
   return needsTitle || needsAssignee;
-}
-
-function renderPresenterServiceInputItem(item, index, service) {
-  const context = presenterServiceInputItem(item, service);
-  if (!context) return "";
-  const label = String(item.label || "항목").trim();
-  return `
-    <article class="svc-presenter-input-item" data-presenter-input-item="${escapeAttr(index)}">
-      <div class="svc-presenter-input-item-head">
-        <strong>${escapeHtml(label)}</strong>
-        <span>${escapeHtml(presenterServiceInputModeLabel(context.mode))}</span>
-      </div>
-      <div class="svc-presenter-input-controls">
-        ${presenterServiceInputControls(item, index, service)}
-      </div>
-    </article>`;
 }
 
 function renderPresenterServicePraiseInput(item, index, model) {
@@ -19364,6 +19350,11 @@ function presenterBoardSubgroupContentTitle(slide = {}, label = "") {
     return slide.contentTitle || presenterSermonContentTitle(String(slide.assignee || "").split("\n")[0]);
   }
   const title = slide.elementTitle || slide.title || presenterSlideMainText(slide);
+  if (isPresenterMainPraiseSlide(slide)) {
+    const titleKey = compactSearchValue(title);
+    const elementLabelKey = compactSearchValue(slide.elementLabel || "");
+    if ((elementLabelKey && titleKey === elementLabelKey) || ["환영", "입례찬양"].includes(titleKey)) return "";
+  }
   if (presenterTitleAssigneeTitleIsGeneric(title, label)) return "";
   return title;
 }
@@ -19497,24 +19488,56 @@ function renderPresenterBoardSubgroup(subgroup, activeIndex, serviceId, options 
   const visibleLabel = rawLabel;
   const interactionLabel = presenterSlideInteractionHint(serviceId, subgroup.name || visibleLabel);
   const warnings = presenterWarningsForEntries(subgroup.slides);
+  const inputControls = renderPresenterBoardSubgroupInputControls(serviceId, subgroup);
   return `
     <div class="svc-board-subgroup${active ? " active" : ""}${options.showHead ? "" : " collapsed-head"}">
       ${options.showHead ? `
-        <button class="svc-board-subgroup-head" type="button"
-          data-presenter-action="jump"
-          data-presenter-index="${firstIndex}"
-          data-service-id="${escapeAttr(serviceId)}"
-          aria-label="${escapeAttr(interactionLabel)}"
-          title="${escapeAttr(interactionLabel)}">
-          ${visibleLabel ? `<span>${escapeHtml(visibleLabel)}</span>` : ""}
-          ${visibleTitle ? `<strong>${escapeHtml(visibleTitle)}</strong>` : ""}
-          ${renderPresenterWarnings(warnings)}
-        </button>` : ""}
+        <header class="svc-board-subgroup-head-row">
+          <button class="svc-board-subgroup-head" type="button"
+            data-presenter-action="jump"
+            data-presenter-index="${firstIndex}"
+            data-service-id="${escapeAttr(serviceId)}"
+            aria-label="${escapeAttr(interactionLabel)}"
+            title="${escapeAttr(interactionLabel)}">
+            ${visibleLabel ? `<span>${escapeHtml(visibleLabel)}</span>` : ""}
+            ${visibleTitle ? `<strong>${escapeHtml(visibleTitle)}</strong>` : ""}
+            ${renderPresenterWarnings(warnings)}
+          </button>
+          ${inputControls}
+        </header>` : ""}
       <div class="svc-board-grid">
         ${slides.map(({ slide, slideIndex, formLabel }) =>
           renderPresenterSlideThumb(slide, slideIndex, activeIndex, serviceId, formLabel)).join("")}
       </div>
     </div>`;
+}
+
+function renderPresenterBoardSubgroupInputControls(serviceId, subgroup = {}) {
+  const context = presenterBoardSubgroupInputContext(serviceId, subgroup);
+  if (!context) return "";
+  const controls = presenterServiceInputControls(context.item, context.index, context.service);
+  if (!controls) return "";
+  return `
+    <div class="svc-board-subgroup-controls" aria-label="${escapeAttr(`${context.item.label || "항목"} 입력`)}">
+      ${controls}
+    </div>`;
+}
+
+function presenterBoardSubgroupInputContext(serviceId, subgroup = {}) {
+  const service = state.services.find((svc) => svc.id === serviceId);
+  if (!service) return null;
+  const elementId = String(subgroup.id || subgroup.slides?.[0]?.slide?.elementId || "").trim();
+  if (!elementId) return null;
+  const items = getServiceItems(serviceId);
+  const itemIndex = items.findIndex((item) => String(item.id || "") === elementId);
+  if (itemIndex < 0) return null;
+  const item = items[itemIndex];
+  if (!presenterServiceInputHasEditableField(item, service)) return null;
+  return {
+    service,
+    item,
+    index: Number.isInteger(item._origIndex) ? item._origIndex : itemIndex,
+  };
 }
 
 function presenterWarningsForEntries(entries = []) {
@@ -20647,7 +20670,7 @@ function presenterSlideOutputContext(slide, fallbackChromakey = true) {
   const elementType = presenterSlideElementType(slide);
   if (layout === PRESENTER_SLIDE_LAYOUTS.BLANK) return fallbackChromakey ? "chromakey" : "clean";
   const scoreLike = slide?.sourceType === "score" || slide?.componentType === "score" || slide?.scoreBackground;
-  if (scoreLike) return fallbackChromakey ? "chromakey" : "clean";
+  if (scoreLike) return "clean";
   if (
     layout === PRESENTER_SLIDE_LAYOUTS.MEDIA
     || layout === PRESENTER_SLIDE_LAYOUTS.FILE
@@ -20807,6 +20830,7 @@ function resolvePresenterServiceItemContentState(item = {}, memo = emptyServiceI
   const requiresSongSelection = serviceItemRequiresSongSelection(item, service);
   const effectiveInputMode = requiresSongSelection ? "praise_db" : inputMode;
   const rawText = String(item?.raw_title || item?.title || "").trim();
+  const labelKey = compactSearchValue(item?.label || "");
   const assignee = cleanServiceAssignee(item?.assignee);
   const asset = normalizeServiceAsset(memo?.asset);
   const hasCustomSlideText = (memo.slides || []).some((slide) => String(slide || "").trim());
@@ -20821,11 +20845,20 @@ function resolvePresenterServiceItemContentState(item = {}, memo = emptyServiceI
   const filled = (reason) => result("filled", true, reason);
   const missing = (reason) => result("missing", false, reason);
   if (presenterFixedTitleText(item)) return filled("fixed_title");
+  if (elementType === "title_content" && labelKey === "환영") return filled("title_content");
   if (isLiturgicalBodyServiceItem(item)) {
     return liturgicalBodyText(item, memo, rawText) ? filled("liturgical_body") : missing("liturgical_body_empty");
   }
   if (isPublicClosingImageServiceItem(item, memo)) return filled("closing_visual_asset");
   if (isPublicFixedDoxologyServiceItem(item, memo, service)) return filled("fixed_doxology");
+  if (isSharedScriptureReadingServiceItem(item)) {
+    return serviceItemScriptureReferences(item, memo, service).length
+      ? filled("shared_sermon_scripture")
+      : filled("shared_sermon_scripture_pending");
+  }
+  if (isOptionalCitationScriptureServiceItem(item) && !serviceItemScriptureReferences(item, memo, service).length) {
+    return filled("optional_citation_empty");
+  }
   if (item?._worshipTemplatePlaceholder) return missing("template_placeholder");
   if (isScriptureBodyServiceItem(item)) {
     return serviceItemScriptureReferences(item, memo).length || serviceScriptureTextPayload(item, memo).verses.length
@@ -20894,9 +20927,17 @@ function presenterMissingContentSlide(item = {}, section = {}, index = 0, conten
 }
 
 function buildPresenterSlidesForServiceItem(item, service, index) {
+  const sharedSermonBody = sharedSermonScriptureBodyItem(item, service);
+  if (sharedSermonBody) {
+    item = {
+      ...item,
+      raw_title: sharedSermonBody.raw_title || "",
+      memo: sharedSermonBody.memo || "",
+    };
+  }
   const initialMemo = parseServiceItemMemo(item?.memo);
   if (isPublicFixedDoxologyServiceItem(item, initialMemo, service) && !item?._worshipElementTemplateModified) {
-    item = { ...item, raw_title: publicFixedDoxologyDisplayText() };
+    item = { ...item, raw_title: publicFixedDoxologyDisplayText(service) };
   }
   const label = item.label || "";
   const displayText = serviceItemDisplayText(item);
