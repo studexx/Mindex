@@ -61,7 +61,7 @@
   --presenter-scripture-clean-size: calc(72 * var(--presenter-stage-unit));
   --presenter-scripture-reading-ref-size: var(--presenter-size-section);
   --presenter-scripture-reading-version-size: var(--presenter-size-caption);
-  --presenter-scripture-reading-text-size: calc(80 * var(--presenter-stage-unit));
+  --presenter-scripture-reading-text-size: calc(88 * var(--presenter-stage-unit));
   display: grid;
   width: var(--presenter-stage-width);
   height: var(--presenter-stage-height);
@@ -99,7 +99,7 @@
   --presenter-scripture-clean-size: calc(72 * var(--presenter-stage-unit));
   --presenter-scripture-reading-ref-size: calc(72 * var(--presenter-stage-unit));
   --presenter-scripture-reading-version-size: calc(40 * var(--presenter-stage-unit));
-  --presenter-scripture-reading-text-size: calc(80 * var(--presenter-stage-unit));
+  --presenter-scripture-reading-text-size: calc(88 * var(--presenter-stage-unit));
 }
 .svc-slide-mini-canvas.presenter-output-root {
   position: absolute;

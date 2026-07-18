@@ -2650,7 +2650,7 @@ def main() -> int:
                         and presenter_font_contract["chromakey"]["meta"] == "52px"
                         and presenter_font_contract["chromakey"]["scriptureBar"] == "72px"
                         and presenter_font_contract["chromakey"]["scriptureClean"] == "72px"
-                        and presenter_font_contract["chromakey"]["scriptureReadingText"] == "80px"
+                        and presenter_font_contract["chromakey"]["scriptureReadingText"] == "88px"
                         and presenter_font_contract["clean"]["display"] == "168px"
                         and presenter_font_contract["clean"]["section"] == "144px"
                         and presenter_font_contract["clean"]["body"] == "96px"
@@ -2658,7 +2658,7 @@ def main() -> int:
                         and presenter_font_contract["clean"]["meta"] == "104px"
                         and presenter_font_contract["clean"]["scriptureBar"] == "72px"
                         and presenter_font_contract["clean"]["scriptureClean"] == "72px"
-                        and presenter_font_contract["clean"]["scriptureReadingText"] == "80px"
+                        and presenter_font_contract["clean"]["scriptureReadingText"] == "88px"
                     ):
                         pass_("presenter-font-contract", json.dumps(presenter_font_contract, ensure_ascii=False))
                     else:
