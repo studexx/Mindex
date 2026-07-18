@@ -7976,6 +7976,16 @@ function isPublicClosingImageServiceItem(item = {}, memo = emptyServiceItemMemo(
   return sectionKey === "closing_visual" || isClosingVisualServiceTemplateLabel(item?.label || "");
 }
 
+function isPublicFixedDoxologyServiceItem(item = {}, memo = emptyServiceItemMemo(), service = null) {
+  if (serviceMemoElementType(memo) !== "praise" || compactSearchValue(item?.label || "") !== "송영") return false;
+  const itemService = service || state.services.find((candidate) => candidate.id === item?.service_id) || null;
+  return ["sunday-first", "sunday-second"].includes(worshipAppServiceTypeId(itemService?.type_id));
+}
+
+function publicFixedDoxologyDisplayText() {
+  return "5 이 천지간 만물들아";
+}
+
 function worshipTemplateElementAsset(step = {}, label = "") {
   const asset = normalizeServiceAsset(step.asset || step.media || step.file);
   if (asset.url) return asset;
@@ -13799,11 +13809,16 @@ function publicWorshipDoxologyStep(options = {}) {
 }
 
 function publicWorshipDoxologyElement(options = {}) {
+  const defaultSong = options.defaultSong || (options.defaultText ? null : {
+    title: "이 천지간 만물들아",
+    hymnNo: "5",
+  });
   return {
     label: "송영",
     name: "송영",
     elementType: "praise",
-    default_text: options.defaultText || "찬 5장",
+    default_text: options.defaultText || publicFixedDoxologyDisplayText(),
+    ...(defaultSong ? { defaultSong } : {}),
     ...scoreOutputMode(options.score !== false),
   };
 }
@@ -14443,6 +14458,11 @@ function templateProjectionRawTitle(templateItem = {}, existingItem = {}, elemen
     && !existingItem.song_id
     && compactSearchValue(existingTitle) === compactSearchValue(templateLabel)) return "";
   if (["creed", "lords_prayer", "community_confession"].includes(sectionKey)) return templateItem.raw_title || existingItem.raw_title || "";
+  if (compactSearchValue(templateItem.label || "") === "송영"
+    && templateType === "praise"
+    && compactSearchValue(templateItem.raw_title || "") === compactSearchValue(publicFixedDoxologyDisplayText())) {
+    return templateItem.raw_title || publicFixedDoxologyDisplayText();
+  }
   if (templateType === "image" || templateType === "video") return templateItem.raw_title || existingItem.raw_title || "";
   return existingTitle || templateItem.raw_title || "";
 }
@@ -20805,6 +20825,7 @@ function resolvePresenterServiceItemContentState(item = {}, memo = emptyServiceI
     return liturgicalBodyText(item, memo, rawText) ? filled("liturgical_body") : missing("liturgical_body_empty");
   }
   if (isPublicClosingImageServiceItem(item, memo)) return filled("closing_visual_asset");
+  if (isPublicFixedDoxologyServiceItem(item, memo, service)) return filled("fixed_doxology");
   if (item?._worshipTemplatePlaceholder) return missing("template_placeholder");
   if (isScriptureBodyServiceItem(item)) {
     return serviceItemScriptureReferences(item, memo).length || serviceScriptureTextPayload(item, memo).verses.length
@@ -20873,6 +20894,10 @@ function presenterMissingContentSlide(item = {}, section = {}, index = 0, conten
 }
 
 function buildPresenterSlidesForServiceItem(item, service, index) {
+  const initialMemo = parseServiceItemMemo(item?.memo);
+  if (isPublicFixedDoxologyServiceItem(item, initialMemo, service) && !item?._worshipElementTemplateModified) {
+    item = { ...item, raw_title: publicFixedDoxologyDisplayText() };
+  }
   const label = item.label || "";
   const displayText = serviceItemDisplayText(item);
   const song = presenterSongForServiceItem(item, displayText, label, service);
@@ -20880,7 +20905,7 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
   const formPlan = version ? presenterFormPlanForServiceItem(version, item, song) : { forms: [], warnings: [] };
   const forms = formPlan.forms;
   const formWarnings = formPlan.warnings;
-  const memo = parseServiceItemMemo(item?.memo);
+  const memo = initialMemo;
   if (isPublicClosingImageServiceItem(item, memo) && !hasServiceAsset(memo.asset)) {
     memo.asset = { ...PUBLIC_WORSHIP_CLOSING_IMAGE_ASSET };
   }

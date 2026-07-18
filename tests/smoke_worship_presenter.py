@@ -1643,6 +1643,26 @@ def main() -> int:
                         lordsPrayerService,
                         99
                       );
+                      const doxologyTemplatePlaceholder = {
+                        id: '__smoke_doxology_template_placeholder__',
+                        label: '송영',
+                        raw_title: '',
+                        memo: serializeServiceItemMemo({ elementType: 'praise', outputMode: 'score' }),
+                        _worshipSectionKey: 'sending',
+                        _worshipTemplateProjected: true,
+                        _worshipTemplatePlaceholder: true,
+                      };
+                      const doxologyTemplatePlaceholderState = resolvePresenterServiceItemContentState(
+                        doxologyTemplatePlaceholder,
+                        parseServiceItemMemo(doxologyTemplatePlaceholder.memo),
+                        null,
+                        lordsPrayerService
+                      );
+                      const doxologyTemplatePlaceholderSlides = buildPresenterSlidesForServiceItem(
+                        doxologyTemplatePlaceholder,
+                        lordsPrayerService,
+                        100
+                      );
 	                      const lordsPrayerSlides = normalizePresenterSlidesForServiceOutput(buildPresenterSlidesForServiceItem(
 	                        lordsPrayerItem,
 	                        { id: '__smoke_lords_prayer_chromakey_service__', type_id: 'sunday-main', date: '2026-07-05' },
@@ -1776,6 +1796,12 @@ def main() -> int:
 	                          type: slide.type || '',
 	                          imageSrc: slide.imageSrc || '',
 	                        })),
+	                        doxologyTemplatePlaceholderState,
+	                        doxologyTemplatePlaceholderSlides: doxologyTemplatePlaceholderSlides.map((slide) => ({
+	                          type: slide.type || '',
+	                          title: slide.title || '',
+	                          imageSrc: slide.imageSrc || '',
+	                        })),
 	                        communityScaffold: communitySlides,
 	                        communityFullscreen: communityFullscreenSlides,
 	                        scaffoldClosing: scaffoldClosingSlides,
@@ -1810,6 +1836,23 @@ def main() -> int:
 	                    and title_and_liturgical_state["closingTemplatePlaceholderSlides"] == [{
 	                        "type": "image",
 	                        "imageSrc": "assets/worship-templates/public-closing.png",
+	                    }]
+	                    and title_and_liturgical_state["doxologyTemplatePlaceholderState"]["state"] == "filled"
+	                    and title_and_liturgical_state["doxologyTemplatePlaceholderState"]["hasOutputContent"] is True
+	                    and title_and_liturgical_state["doxologyTemplatePlaceholderState"]["reason"] == "fixed_doxology"
+	                    and title_and_liturgical_state["doxologyTemplatePlaceholderSlides"][0] == {
+	                        "type": "song-title",
+	                        "title": "5 이 천지간 만물들아",
+	                        "imageSrc": "",
+	                    }
+	                    and title_and_liturgical_state["doxologyTemplatePlaceholderSlides"][1:] == [{
+	                        "type": "image",
+	                        "title": "5 이 천지간 만물들아",
+	                        "imageSrc": "assets/hymn-scores/5/slide-01.webp",
+	                    }, {
+	                        "type": "image",
+	                        "title": "5 이 천지간 만물들아",
+	                        "imageSrc": "assets/hymn-scores/5/slide-02.webp",
 	                    }]
                     and "presenter-title-assignee" in title_and_liturgical_state["confession"]["html"]
                     and 'presenter-slide--title"' not in title_and_liturgical_state["confession"]["html"]
