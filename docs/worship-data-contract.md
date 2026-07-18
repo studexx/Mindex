@@ -60,6 +60,26 @@ mindex_worship_slides (인스턴스 출력 프레임)
 └─ instance-level slide override, not canonical Praise/Scripture data
 ```
 
+## Public Worship Schedule
+
+The public Worship schedule is operational metadata. Home uses these local
+Korea Standard Time (KST) windows to identify an in-progress service before it
+selects the next one. Keep this table and `SERVICE_TIME_WINDOWS` in `app.js`
+in sync when the church changes a regular meeting time.
+
+| Service type | Meeting window |
+| --- | --- |
+| 수요예배 (`wednesday`) | 19:10-20:30 |
+| 금요기도회 (`friday`) | 20:00-22:00 |
+| 월삭예배 (`monthly`) | 20:00-22:00 |
+| 주일예배 [1부] (`sunday-first`) | 07:00-08:00 |
+| 주일예배 [2부] (`sunday-second`) | 08:50-10:00 |
+| 주일예배 [3부] (`sunday-main`) | 10:50-12:00 |
+| 주일오후예배 (`sunday-afternoon`) | 13:20-14:30 |
+
+Special and department services do not have a universal time window. Until a
+time field is modeled for them, Home falls back to their service date.
+
 ## Runtime Projection Tree
 
 This is the structure the app should keep in mind when turning a recurring

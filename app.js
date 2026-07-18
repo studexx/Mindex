@@ -9156,6 +9156,17 @@ const SERVICE_RECURRENCE = {
   monthly: { kind: "first-weekday", weekday: 5 },
 };
 
+// Home chooses public services by their actual meeting window, not only by date.
+const SERVICE_TIME_WINDOWS = {
+  wednesday: { start: "19:10", end: "20:30" },
+  friday: { start: "20:00", end: "22:00" },
+  "sunday-first": { start: "07:00", end: "08:00" },
+  "sunday-second": { start: "08:50", end: "10:00" },
+  "sunday-main": { start: "10:50", end: "12:00" },
+  "sunday-afternoon": { start: "13:20", end: "14:30" },
+  monthly: { start: "20:00", end: "22:00" },
+};
+
 const AUTO_UPCOMING_PUBLIC_SERVICE_TYPES = [
   "wednesday",
   "friday",
@@ -9621,7 +9632,7 @@ function renderHomeDetail() {
           <header class="home-workbench-head">
             <span>${escapeHtml(service.eyebrow || "다음 예배")}</span>
             <strong>${escapeHtml(nextService ? serviceDisplayTypeName(nextService) : service.title)}</strong>
-            <small>${escapeHtml(nextService ? formatServiceDate(nextService) : service.detail)}</small>
+            <small>${escapeHtml(nextService ? homeServiceScheduleLabel(nextService) : service.detail)}</small>
           </header>
           <div class="home-service-summary">
             <span>${escapeHtml(nextServicePrep?.preview || service.meta[0] || "예배 일정 없음")}</span>
@@ -9962,10 +9973,10 @@ function homeModuleCards() {
       eyebrow: "다음 예배",
       icon: "layout-template",
       sidebarMeta: nextService ? cleanList([
-        formatServiceDate(nextService, { compact: true }),
+        homeServiceScheduleLabel(nextService, { compact: true }),
         serviceDisplayTypeName(nextService),
       ]).join(" · ") : serviceCountText,
-      detail: nextService ? formatServiceDate(nextService) : serviceCountText,
+      detail: nextService ? homeServiceScheduleLabel(nextService) : serviceCountText,
       actionDetail: "목록/템플릿",
       compactMeta: null,
       meta: cleanList([
@@ -9989,7 +10000,7 @@ function homeModuleCards() {
         ? { value: serviceDisplayTypeName(nextService), label: "" }
         : { value: formatCount(state.services.length), label: "예배" },
       meta: cleanList([
-        nextService ? formatServiceDate(nextService, { compact: true }) : serviceCountText,
+        nextService ? homeServiceScheduleLabel(nextService, { compact: true }) : serviceCountText,
       ]),
     },
     {
@@ -15461,14 +15472,50 @@ function getServiceDashboardServices() {
   return sortServicesByDate([...upcoming, ...getExpectedServicesInRange(start, end)]);
 }
 
+function serviceTimeWindow(service) {
+  const day = parseLocalDate(service?.date);
+  if (Number.isNaN(day.getTime())) return null;
+  const range = SERVICE_TIME_WINDOWS[worshipAppServiceTypeId(service?.type_id)];
+  if (!range) {
+    const finalDay = parseLocalDate(service?.date_end || service?.date);
+    finalDay.setHours(23, 59, 59, 999);
+    return { start: day, end: finalDay, timed: false };
+  }
+  const atTime = (time) => {
+    const [hour, minute] = time.split(":").map(Number);
+    const value = new Date(day);
+    value.setHours(hour, minute, 0, 0);
+    return value;
+  };
+  return { start: atTime(range.start), end: atTime(range.end), timed: true };
+}
+
+function homeServiceScheduleLabel(service, options = {}) {
+  const date = formatServiceDate(service, options);
+  const range = SERVICE_TIME_WINDOWS[worshipAppServiceTypeId(service?.type_id)];
+  return range ? `${date} · ${range.start}-${range.end}` : date;
+}
+
 function getHomeNextService(baseDate = new Date()) {
-  const today = toLocalDateStr(baseDate);
-  if (!today) return null;
-  const upcoming = state.services.filter((service) => {
-    const finalDate = String(service.date_end || service.date || "").trim();
-    return finalDate >= today;
+  const now = new Date(baseDate);
+  if (Number.isNaN(now.getTime())) return null;
+  const candidates = state.services
+    .map((service) => ({ service, window: serviceTimeWindow(service) }))
+    .filter(({ window }) => window && window.end >= now);
+  const ongoing = candidates
+    .filter(({ window }) => window.timed && window.start <= now)
+    .sort((a, b) => a.window.start - b.window.start);
+  if (ongoing.length) return ongoing[0].service;
+
+  candidates.sort((a, b) => {
+    const dayOrder = toLocalDateStr(a.window.start).localeCompare(toLocalDateStr(b.window.start));
+    if (dayOrder) return dayOrder;
+    if (a.window.timed !== b.window.timed) return a.window.timed ? -1 : 1;
+    const timeOrder = a.window.start - b.window.start;
+    if (timeOrder) return timeOrder;
+    return Number(a.service.sort_order || 0) - Number(b.service.sort_order || 0);
   });
-  return sortServicesByDate(upcoming)[0] || null;
+  return candidates[0]?.service || null;
 }
 
 function currentServiceWeekRange(base = new Date()) {
