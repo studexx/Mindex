@@ -1906,7 +1906,7 @@ def main() -> int:
                                 makeItem('__smoke_share_first__', '봉헌찬송', 'offering', 2, { songId: offeringSong?.id, versionId: offeringVersion?.id }),
                               ],
                               __smoke_share_second__: [
-                                makeItem('__smoke_share_second__', '찬양 1', 'praise', 1),
+                                makeItem('__smoke_share_second__', '찬양 1', 'praise', 1, { rawTitle: '9 하늘에 가득 찬 영광의' }),
                                 makeItem('__smoke_share_second__', '성경봉독', 'scripture_reading', 2, { rawTitle: '히 10:38-39', scriptureReference: '히 10:38-39' }),
                                 makeItem('__smoke_share_second__', '설교 제목', 'sermon', 3, { elementType: 'title_person', inputMode: 'text', rawTitle: '믿음으로 사는 사람', assignee: '김남영 목사' }),
                                 makeItem('__smoke_share_second__', '봉헌찬송', 'offering', 4),
@@ -1926,6 +1926,7 @@ def main() -> int:
                             const thirdOffering = getServiceOutputItems('__smoke_share_third__').find((item) => item.label === '봉헌찬송');
                             const result = {
                               secondPraiseText: serviceItemDisplayText(secondPraise),
+                              secondPraiseSongId: serviceItemWithSharedSundayContent(secondPraise, services[1]).song_id || '',
                               secondPraiseStatic: presenterServiceInputIsStatic(secondPraise),
                               secondPraiseMissing: resolvePresenterServiceItemContentState(secondPraise, parseServiceItemMemo(secondPraise.memo), null, services[1]).state,
                               secondOfferingText: serviceItemDisplayText(secondOffering),
@@ -2339,6 +2340,7 @@ def main() -> int:
                         and template_terms["sharedSundayContentProjection"]["secondPraiseStatic"] is True
                         and template_terms["sharedSundayContentProjection"]["secondPraiseMissing"] == "filled"
                         and template_terms["sharedSundayContentProjection"]["secondPraiseText"]
+                        and template_terms["sharedSundayContentProjection"]["secondPraiseSongId"]
                         and template_terms["sharedSundayContentProjection"]["secondOfferingText"]
                         and template_terms["sharedSundayContentProjection"]["thirdReadingRefs"] == ["히 10:38–39"]
                         and template_terms["sharedSundayContentProjection"]["thirdReadingMissing"] == "filled"

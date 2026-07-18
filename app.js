@@ -17908,6 +17908,9 @@ function serviceItemHasDirectSundaySharedContent(item = {}, service = null) {
     return hasSpecificTitle;
   }
   if (key.startsWith("main-praise:") || key === "offering-hymn") {
+    if (serviceItemRequiresSongSelection(item, service)) {
+      return Boolean(item?.song_id && !serviceItemSongSelectionInvalid(item, service));
+    }
     return Boolean(item?.song_id || String(item?.raw_title || "").trim() || (memo.slides || []).some((slide) => String(slide || "").trim()));
   }
   void service;
