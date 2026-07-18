@@ -2746,6 +2746,7 @@ function commitPresenterOutputFrame(root, payload, slide, frameState, token, opt
       nextLayer.innerHTML = html;
       nextLayer.dataset.presenterFrameToken = String(token);
     }
+    fitPresenterChromakeyScriptureText(nextLayer, frameState);
     nextLayer.classList.add("is-next");
     applyPresenterOutputFrameState(root, frameState);
     layers.active.classList.remove("is-active");
@@ -2776,6 +2777,24 @@ function commitPresenterOutputFrame(root, payload, slide, frameState, token, opt
       root.removeAttribute("aria-busy");
       commit();
     });
+}
+
+function fitPresenterChromakeyScriptureText(host, frameState = {}) {
+  if (!host || frameState.noChromakey) return;
+  const textBox = host.querySelector(
+    ".presenter-slide--scripture:not(.presenter-slide--scripture-reading) > .presenter-slide-text",
+  );
+  if (!textBox) return;
+
+  textBox.style.removeProperty("--presenter-scripture-fitted-size");
+  const baseSize = Number.parseFloat(window.getComputedStyle(textBox).fontSize);
+  if (!Number.isFinite(baseSize) || baseSize <= 0) return;
+
+  const minimumSize = Math.min(48, baseSize);
+  for (let size = baseSize; size >= minimumSize; size -= 2) {
+    textBox.style.setProperty("--presenter-scripture-fitted-size", `${size}px`);
+    if (textBox.scrollHeight <= textBox.clientHeight + 1 && textBox.scrollWidth <= textBox.clientWidth + 1) return;
+  }
 }
 
 function bindPresenterOutputAutoAdvance(root, payload, slide, options = {}, token = presenterOutputRenderState.token) {

@@ -4499,6 +4499,47 @@ def main() -> int:
                 else:
                     fail("presenter-live-scripture-lower-bar", json.dumps(live_scripture_state, ensure_ascii=False))
 
+                long_live_scripture_state = output_page.evaluate(
+                    """
+                    (() => {
+                      const slide = {
+                        id: '__smoke_long_live_scripture__',
+                        elementType: PRESENTER_ELEMENT_TYPES.SCRIPTURE_TEXT,
+                        layout: PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT,
+                        type: 'scripture',
+                        title: '로마서 8:17',
+                        text: '17 자녀이면 또한 상속자 곧 하나님의 상속자요 그리스도와 함께 한 상속자니 우리가 그와 함께 영광을 받기 위하여 고난도 함께 받아야 할 것이니라',
+                        live: true,
+                        outputContext: 'chromakey',
+                      };
+                      renderPresenterOutput({
+                        serviceId: '__smoke_long_live_scripture_service__',
+                        serviceType: 'sunday-main',
+                        chromakey: true,
+                        slides: [slide],
+                        index: 0,
+                        safetyBlank: false,
+                      }, {});
+                      const root = document.getElementById('presenterOutputRoot');
+                      const textEl = root?.querySelector('.presenter-slide--scripture .presenter-slide-text');
+                      const style = textEl ? getComputedStyle(textEl) : null;
+                      return {
+                        fontSize: Number.parseFloat(style?.fontSize || '0'),
+                        fitsHeight: textEl ? textEl.scrollHeight <= textEl.clientHeight + 1 : false,
+                        fitsWidth: textEl ? textEl.scrollWidth <= textEl.clientWidth + 1 : false,
+                      };
+                    })()
+                    """
+                )
+                if (
+                    long_live_scripture_state["fontSize"] < 72
+                    and long_live_scripture_state["fitsHeight"]
+                    and long_live_scripture_state["fitsWidth"]
+                ):
+                    pass_("presenter-long-live-scripture-fits-lower-bar", json.dumps(long_live_scripture_state, ensure_ascii=False))
+                else:
+                    fail("presenter-long-live-scripture-fits-lower-bar", json.dumps(long_live_scripture_state, ensure_ascii=False))
+
                 live_scripture_controller_state = page.evaluate(
                     """
                     (() => ({

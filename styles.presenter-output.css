@@ -415,7 +415,7 @@
 .presenter-slide--scripture .presenter-slide-text {
   align-items: flex-start;
   font-family: var(--presenter-scripture-font);
-  font-size: var(--presenter-scripture-bar-size);
+  font-size: var(--presenter-scripture-fitted-size, var(--presenter-scripture-bar-size));
   font-weight: var(--presenter-scripture-weight);
   line-height: var(--presenter-scripture-line-height);
   padding-right: 2.8cqw;
@@ -425,7 +425,7 @@
 .presenter-slide--scripture .presenter-slide-text span {
   display: block;
   width: 100%;
-  font-size: var(--presenter-size-section);
+  font-size: var(--presenter-scripture-fitted-size, var(--presenter-scripture-bar-size));
   overflow-wrap: anywhere;
   white-space: normal;
 }
