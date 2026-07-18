@@ -3369,9 +3369,9 @@ def main() -> int:
                     and scripture_context_state["readingBodyBelowHeader"]
                     and scripture_context_state["readingNumber"] == "14"
                     and "너는 매년 세 번" in scripture_context_state["readingText"]
-                    and scripture_context_state["readingFontFamily"] == scripture_context_state["sermonFontFamily"]
-                    and scripture_context_state["readingFontWeight"] == scripture_context_state["sermonFontWeight"]
-                    and scripture_context_state["readingNumberFontWeight"] == scripture_context_state["readingFontWeight"]
+                    and "Eulyoo1945" in scripture_context_state["readingFontFamily"]
+                    and scripture_context_state["readingFontWeight"] == "800"
+                    and scripture_context_state["readingNumberFontWeight"] == scripture_context_state["sermonFontWeight"]
                     and scripture_context_state["sermonContext"] == "sermon"
                     and scripture_context_state["sermonElementTitle"] == "출 23:14–19"
                     and scripture_context_state["sermonOutputContext"] == "chromakey"

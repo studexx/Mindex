@@ -655,7 +655,7 @@
   overflow: visible;
   font-family: "Eulyoo1945", "을유1945", "AppleMyungjo", "Nanum Myeongjo", serif;
   font-size: var(--presenter-scripture-reading-text-size);
-  font-weight: var(--presenter-scripture-weight);
+  font-weight: 800;
   line-height: var(--presenter-scripture-line-height);
   overflow-wrap: anywhere;
   text-overflow: clip;
