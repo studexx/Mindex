@@ -1538,11 +1538,14 @@ function normalizePresenterCustomMarker(value) {
     .replace(/^lyrics/i, "Lyrics");
 }
 
-function buildPresenterScriptureTextSlides(item, section, index) {
+function buildPresenterScriptureTextSlides(item, section, index, service = null) {
   if (!isScriptureBodyServiceItem(item)) return [];
   const payload = serviceScriptureTextPayload(item);
   if (!payload.verses.length) return [];
   const context = presenterScriptureBodyContext(item, section);
+  const outputContext = context === "reading" && service && presenterServiceUsesChromakey(service)
+    ? "chromakey"
+    : context;
   const reference = payload.reference || section.sectionTitle || "본문";
   const lastVerseIndex = payload.verses.length - 1;
   const citation = isPresenterCitationScriptureItem(item);
@@ -1574,7 +1577,7 @@ function buildPresenterScriptureTextSlides(item, section, index) {
       translationLabel: payload.translationLabel || "",
       text: verseText,
       scriptureReadingFinal: readingFinal,
-      ...(context === "reading" ? { outputContext: "clean" } : {}),
+      ...(context === "reading" ? { outputContext } : {}),
       ...(context === "sermon" ? { outputContext: "chromakey" } : {}),
       sort: index + verseIndex / 100,
     };
