@@ -1813,6 +1813,31 @@ def main() -> int:
                             ).map((row) => row.label);
                             return { pastorPreacher, layPreacher };
                           })(),
+                          fullscreenSermonBodyCompatibility: (() => {
+                            const service = { id: '__smoke_fullscreen_sermon_body__', type_id: 'sunday-first', date: '2026-07-05' };
+                            const previousServices = state.services.slice();
+                            state.services.push(service);
+                            const item = normalizeServiceItem({
+                              id: '__smoke_fullscreen_sermon_body_item__',
+                              service_id: service.id,
+                              label: '설교 본문',
+                              raw_title: '요 21:15-25',
+                              _worshipSectionKey: 'sermon',
+                              _worshipSectionTitle: '설교',
+                              memo: serializeServiceItemMemo({ elementType: 'scripture_body', inputMode: 'scripture', scriptureReference: '요 21:15-25' })
+                            });
+                            const memo = parseServiceItemMemo(item.memo);
+                            const content = resolvePresenterServiceItemContentState(item, memo, null, service);
+                            const slides = buildPresenterSlidesForServiceItem(item, service, 0);
+                            const staticInput = presenterServiceInputIsStatic(item, memo);
+                            state.services = previousServices;
+                            return {
+                              staticInput,
+                              contentState: content.state || '',
+                              reason: content.reason || '',
+                              slideCount: slides.length
+                            };
+                          })(),
                           cards: document.querySelectorAll('.svc-template-draft-card, .svc-template-inventory-card').length,
                           overflow: Math.max(document.documentElement.scrollWidth - window.innerWidth, document.body.scrollWidth - window.innerWidth)
                         }))()
@@ -1902,8 +1927,7 @@ def main() -> int:
                             {"type": "title_person", "label": "봉헌기도", "outputMode": ""},
                         ]
                         and template_terms["sundayPublicScaffold"]["first"]["sermonElements"] == [
-                            {"type": "title_person", "label": "설교 제목", "outputMode": ""},
-                            {"type": "scripture_body", "label": "설교 본문", "outputMode": ""},
+                            {"type": "title_person", "label": "설교 제목", "person": "김석범 목사", "outputMode": ""},
                         ]
                         and template_terms["sundayPublicScaffold"]["second"]["sermonElements"] == [
                             {"type": "title_person", "label": "설교 제목", "outputMode": ""},
@@ -2158,6 +2182,12 @@ def main() -> int:
                         and template_terms["sundayFirstSendingPrune"] == {
                             "pastorPreacher": ["설교 제목", "축도"],
                             "layPreacher": ["설교 제목", "주기도문"],
+                        }
+                        and template_terms["fullscreenSermonBodyCompatibility"] == {
+                            "staticInput": True,
+                            "contentState": "filled",
+                            "reason": "redundant_fullscreen_sermon_body",
+                            "slideCount": 0,
                         }
                         and len(template_terms["monthlyScaffold"]["corporatePrayerElements"]) == 5
                         and len(template_terms["monthlyScaffold"]["offeringElements"]) == 2

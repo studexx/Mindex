@@ -24,8 +24,12 @@ Small visual polish that does not alter behavior does not need an entry.
 
 ### Scripture Input And Reading
 
-- `성경봉독` and `설교 본문` are separate visible service elements, but their
-  scripture references may be shared when one side is intentionally empty.
+- `성경봉독` and `설교 본문` are separate visible service elements in chromakey
+  services, but their scripture references may be shared when one side is
+  intentionally empty.
+- Fullscreen/clean public worship does not need a separate `설교 본문` element:
+  `성경봉독` is already the fullscreen scripture output. Existing clean-output
+  `설교 본문` items are treated as redundant no-output compatibility items.
 - A directly entered `성경봉독` reference is valid content for the reading and
   must not be ignored merely because `설교 본문` is empty.
 - If `설교 본문` is empty and `성경봉독` has a valid reference, `설교 본문`
@@ -106,9 +110,12 @@ Small visual polish that does not alter behavior does not need an entry.
   slide must render as the primary `score` slide class before generic image
   handling so fullscreen output does not inherit chromakey or lower-bar image
   fallback behavior.
-- Score image slides remain clean fullscreen media with black background and no
-  visible presenter meta. Title slides remain the same praise title contract as
-  non-score praise.
+- Score image slides remain clean fullscreen media with a white score canvas and
+  no visible presenter meta. Title slides remain the same praise title contract
+  as non-score praise.
+- In chromakey services, the automatic blank after a score image returns to the
+  chromakey blank context. It must not appear as a black fullscreen blank behind
+  or after the score.
 
 ## Source Of Truth
 

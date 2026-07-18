@@ -13852,16 +13852,23 @@ function publicWorshipSermonStep(options = {}) {
   const defaultPerson = cleanServiceAssignee(
     options.defaultPerson || options.person || defaultServiceSermonLeader(options.typeId || options.type_id),
   );
+  const typeId = options.typeId || options.type_id || "";
+  const includeSermonBody = options.includeSermonBody !== undefined
+    ? Boolean(options.includeSermonBody)
+    : (typeId ? serviceTypeUsesChromakey(typeId) : true);
+  const elements = [
+    { label: "설교 제목", name: "설교 제목", elementType: "title_person", person: defaultPerson },
+  ];
+  if (includeSermonBody) {
+    elements.push({ label: "설교 본문", name: "설교 본문", elementType: "scripture_body" });
+  }
   return {
     label: "설교",
     name: "설교",
     required: true,
     flex: false,
     sectionKey: "sermon",
-    elements: [
-      { label: "설교 제목", name: "설교 제목", elementType: "title_person", person: defaultPerson },
-      { label: "설교 본문", name: "설교 본문", elementType: "scripture_body" },
-    ],
+    elements,
   };
 }
 
@@ -17774,6 +17781,15 @@ function serviceItemSupportsScriptureReferenceList(item = {}) {
   return compactSearchValue(item.label || "") === "인용구절";
 }
 
+function isRedundantFullscreenSermonBodyServiceItem(item = {}, service = null) {
+  if (!service || presenterServiceUsesChromakey(service)) return false;
+  const sectionKey = String(item?._worshipSectionKey || item?.sectionKey || item?.section_key || "").trim();
+  const label = compactSearchValue(item?.label || item?.raw_title || "");
+  return sectionKey === "sermon"
+    && ["설교본문", "본문", "성경본문"].includes(label)
+    && isScriptureBodyServiceItem(item);
+}
+
 function isSharedScriptureReadingServiceItem(item = {}) {
   return String(item?._worshipSectionKey || "").trim() === "scripture_reading"
     && compactSearchValue(item?.label || "") === "성경봉독";
@@ -18578,7 +18594,8 @@ function presenterServiceInputItem(item, service) {
 function presenterServiceInputIsStatic(item = {}, memo = parseServiceItemMemo(item.memo)) {
   const label = compactSearchValue(item.label || "");
   const sectionKey = String(item._worshipSectionKey || "").trim();
-  const usesSharedScripture = Boolean(serviceItemSharedScriptureSource(item, memo, state.services.find((service) => service.id === item?.service_id) || null));
+  const service = state.services.find((candidate) => candidate.id === item?.service_id) || null;
+  const usesSharedScripture = Boolean(serviceItemSharedScriptureSource(item, memo, service));
   return isServicePreparationItem(item, memo)
     || Boolean(presenterFixedTitleText(item))
     || isPublicFixedDoxologyServiceItem(
@@ -18588,6 +18605,7 @@ function presenterServiceInputIsStatic(item = {}, memo = parseServiceItemMemo(it
     )
     || isLiturgicalBodyServiceItem(item)
     || isConfessionPrayerServiceItem(item)
+    || isRedundantFullscreenSermonBodyServiceItem(item, service)
     || usesSharedScripture
     || label === "환영"
     || sectionKey === "announcements"
@@ -20769,8 +20787,7 @@ function presenterSlideElementGroupKey(slide) {
 function presenterElementTrailingBlankSlide(slide, index, service = null) {
   const idBase = slide.id || slide.elementId || slide.sectionId || `slide:${index}`;
   const serviceChromakey = presenterServiceUsesChromakey(service);
-  const sectionKey = String(slide.sectionKey || slide.section_key || "").trim();
-  const suppressBackgroundImage = sectionKey === "scripture_reading";
+  const scoreLike = slide?.sourceType === "score" || slide?.componentType === "score" || slide?.scoreBackground;
   return {
     ...slide,
     id: `${idBase}:after-blank`,
@@ -20794,8 +20811,10 @@ function presenterElementTrailingBlankSlide(slide, index, service = null) {
     sourceType: "",
     componentType: "",
     scoreBackground: false,
-    suppressBackgroundImage,
-    outputContext: presenterSlideOutputContext(slide, serviceChromakey),
+    // A reading's closing blank remains on the same clean background.
+    suppressBackgroundImage: false,
+    noBackgroundImage: false,
+    outputContext: scoreLike && serviceChromakey ? "chromakey" : presenterSlideOutputContext(slide, serviceChromakey),
     autoTrailingBlank: true,
     sort: (Number(slide.sort) || index) + 0.009,
   };
@@ -21044,6 +21063,7 @@ function resolvePresenterServiceItemContentState(item = {}, memo = emptyServiceI
   });
   const filled = (reason) => result("filled", true, reason);
   const missing = (reason) => result("missing", false, reason);
+  if (isRedundantFullscreenSermonBodyServiceItem(item, service)) return filled("redundant_fullscreen_sermon_body");
   if (presenterFixedTitleText(item)) return filled("fixed_title");
   if (elementType === "title_content" && labelKey === "환영") return filled("title_content");
   if (isLiturgicalBodyServiceItem(item)) {
@@ -21130,6 +21150,7 @@ function presenterMissingContentSlide(item = {}, section = {}, index = 0, conten
 }
 
 function buildPresenterSlidesForServiceItem(item, service, index) {
+  if (isRedundantFullscreenSermonBodyServiceItem(item, service)) return [];
   const sharedScriptureSource = serviceItemSharedScriptureSource(item, parseServiceItemMemo(item?.memo), service);
   if (sharedScriptureSource) {
     item = {
