@@ -150,8 +150,8 @@ const PRESENTER_PUBLIC_APOSTLES_CREED_TEXT = `나는 전능하신 아버지 하�
 장사된 지 사흘 만에 죽은 자 가운데서 다시 살아나셨으며,
 하늘에 오르시어 전능하신 아버지 하나님 우편에 앉아 계시다가,
 거기로부터 살아 있는 자와 죽은 자를 심판하러 오십니다.
-나는 성령을 믿으며, 거룩한 공교회와 성도의 교제와 죄를 용서받는 것과
-몸의 부활과 영생을 믿습니다. 아멘.`;
+나는 성령을 믿으며, 거룩한 공교회와 성도의 교제와
+죄를 용서받는 것과 몸의 부활과 영생을 믿습니다. 아멘.`;
 
 const PRESENTER_SCRIPTURE_READING_BACKGROUND = "assets/worship-backgrounds/scripture-reading-cross.png";
 const PRESENTER_FRIDAY_PRAYER_READY_IMAGE = "assets/presenter/friday-prayer-ready.png";
