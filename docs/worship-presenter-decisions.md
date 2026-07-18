@@ -93,6 +93,23 @@ Small visual polish that does not alter behavior does not need an entry.
 - These are template rules, not copied weekly content. A service instance may
   override them only through a deliberate template-modified edit.
 
+
+### Preparation Input Parsing
+
+- `본문`, `성경본문`, `설교본문`, `말씀`, and `말씀본문` are dynamic
+  preparation aliases. If the service has a `설교 본문` element, they target
+  that element; otherwise they target `성경봉독`.
+- This keeps fullscreen/clean public worship from failing when it has no
+  separate `설교 본문` input because `성경봉독` is the fullscreen scripture
+  source.
+- `인용 구절` accepts the same scripture-reference normalization as scripture
+  search, including abbreviations, `~`, and comma-separated references. If a
+  service has no `설교 본문` element, citation slides are inserted in the
+  sermon section after `설교 제목`.
+- Implicit praise shorthand numbering advances from the highest explicit
+  `찬양 N` already parsed, so mixed explicit and shorthand lines do not reuse a
+  number.
+
 ### Hymn Version Selection
 
 - When a hymn has both 새찬송가 and 통일찬송가 versions, 새찬송가 is the

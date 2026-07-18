@@ -18131,17 +18131,17 @@ function parsePresenterPreparationInput(value = "") {
   const entries = [];
   const errors = [];
   const seenKeys = new Set();
-  let implicitPraiseCount = 0;
+  let nextImplicitPraiseNumber = 1;
   String(value || "").split(/\r?\n/).forEach((line, index) => {
     const text = normalizePresenterPreparationLineText(line);
     if (!text) return;
     const parsedLine = parsePresenterPreparationLine(text)
-      || inferPresenterPreparationShorthandLine(text, implicitPraiseCount + 1);
+      || inferPresenterPreparationShorthandLine(text, nextImplicitPraiseNumber);
     if (!parsedLine) {
       errors.push(`${index + 1}번째 줄 형식을 확인해 주세요.`);
       return;
     }
-    const lineEntries = expandPresenterPreparationParsedLine(parsedLine, implicitPraiseCount + 1);
+    const lineEntries = expandPresenterPreparationParsedLine(parsedLine, nextImplicitPraiseNumber);
     for (const entry of lineEntries) {
       const { label, content } = entry;
       const key = compactSearchValue(label);
@@ -18154,7 +18154,8 @@ function parsePresenterPreparationInput(value = "") {
         return;
       }
       seenKeys.add(key);
-      if (/^찬양\d+$/.test(key)) implicitPraiseCount += 1;
+      const praiseMatch = key.match(/^찬양(\d+)$/);
+      if (praiseMatch) nextImplicitPraiseNumber = Math.max(nextImplicitPraiseNumber, Number(praiseMatch[1]) + 1);
       entries.push({ label, key, content, line: index + 1 });
     }
   });
@@ -18262,19 +18263,32 @@ function normalizePresenterPreparationInputLabel(label = "") {
   return raw;
 }
 
-function presenterPreparationTargetLabel(key = "") {
+function presenterPreparationSermonBodyTargetLabel(service = null) {
+  const items = service?.id ? servicePrepEditorItems(service.id) : [];
+  const hasSermonBody = items.some((item) =>
+    String(item?._worshipSectionKey || "").trim() === "sermon"
+    && ["설교본문", "본문", "성경본문"].includes(compactSearchValue(item?.label || "")));
+  if (hasSermonBody) return "설교 본문";
+  const hasScriptureReading = items.some((item) =>
+    String(item?._worshipSectionKey || "").trim() === "scripture_reading"
+    && compactSearchValue(item?.label || "") === "성경봉독");
+  return hasScriptureReading ? "성경봉독" : "설교 본문";
+}
+
+function presenterPreparationTargetLabel(key = "", service = null) {
+  const sermonBodyTarget = presenterPreparationSermonBodyTargetLabel(service);
   return {
     대표기도: "기도",
     기도: "기도",
     성경: "성경봉독",
     성경봉독: "성경봉독",
-    성경본문: "설교 본문",
-    본문: "설교 본문",
+    성경본문: sermonBodyTarget,
+    본문: sermonBodyTarget,
     설교: "설교 제목",
     설교제목: "설교 제목",
-    설교본문: "설교 본문",
-    말씀본문: "설교 본문",
-    말씀: "설교 본문",
+    설교본문: sermonBodyTarget,
+    말씀본문: sermonBodyTarget,
+    말씀: sermonBodyTarget,
     인용구절: "인용 구절",
     봉헌: "봉헌찬송",
     결단: "결단찬양",
@@ -18396,14 +18410,23 @@ function presenterPreparationCitationItems(service, items, references) {
       if (!projected) return null;
       return items[materializePresenterPreparationItem(service, items, projected)] || null;
     })();
-  if (!sermonBody) return { error: "인용 구절을 넣을 설교 본문 항목을 찾지 못했습니다.", items };
+  const anchor = sermonBody
+    || items.find((item) =>
+      String(item?._worshipSectionKey || "").trim() === "sermon"
+      && ["설교", "설교제목"].includes(compactSearchValue(item?.label || "")))
+    || (() => {
+      const projected = findPresenterPreparationProjectedItem(service, "설교 제목");
+      if (!projected) return null;
+      return items[materializePresenterPreparationItem(service, items, projected)] || null;
+    })();
+  if (!anchor) return { error: "인용 구절을 넣을 설교 항목을 찾지 못했습니다.", items };
 
   const existing = items.filter(isPresenterPreparationCitationItem);
   const next = items.filter((item) => !isPresenterPreparationCitationItem(item));
-  const insertionIndex = next.findIndex((item) => item.id === sermonBody.id) + 1;
-  const baseOrder = Number(sermonBody._worshipElementOrder) || 2;
+  const insertionIndex = next.findIndex((item) => item.id === anchor.id) + 1;
+  const baseOrder = Number(anchor._worshipElementOrder) || 2;
   const current = existing[0] || {};
-  const parsed = parseServiceItemMemo(current.memo || sermonBody.memo);
+  const parsed = parseServiceItemMemo(current.memo || sermonBody?.memo || "");
   parsed.elementType = "scripture_body";
   parsed.componentType = "scripture_body";
   parsed.inputMode = "scripture";
@@ -18419,10 +18442,10 @@ function presenterPreparationCitationItems(service, items, references) {
     song_id: null,
     version_id: null,
     memo: serializeServiceItemMemo(parsed),
-    _worshipSectionId: sermonBody._worshipSectionId || "",
-    _worshipSectionKey: sermonBody._worshipSectionKey || "sermon",
-    _worshipSectionTitle: sermonBody._worshipSectionTitle || "설교",
-    _worshipSectionOrder: Number(sermonBody._worshipSectionOrder) || 0,
+    _worshipSectionId: anchor._worshipSectionId || "",
+    _worshipSectionKey: anchor._worshipSectionKey || "sermon",
+    _worshipSectionTitle: anchor._worshipSectionTitle || "설교",
+    _worshipSectionOrder: Number(anchor._worshipSectionOrder) || 0,
     _worshipElementOrder: baseOrder + 0.01,
     _worshipElementTemplateModified: true,
     _worshipTemplateProjected: false,
@@ -18456,7 +18479,7 @@ async function applyPresenterPreparationInput(serviceId = state.selectedServiceI
 
     for (const entry of entries) {
       if (entry.key === "인용구절") {
-        const references = entry.content.split(/[;；]/).map((reference) => normalizeServiceItemReferenceSpacing(reference)).filter(Boolean);
+        const references = normalizeServiceScriptureReferenceList(entry.content);
         if (!references.length || references.some((reference) => !parseBibleReference(reference))) {
           errors.push("인용 구절의 성경 주소를 확인해 주세요.");
         } else {
@@ -18465,7 +18488,7 @@ async function applyPresenterPreparationInput(serviceId = state.selectedServiceI
         continue;
       }
 
-      const targetLabel = presenterPreparationTargetLabel(entry.label);
+      const targetLabel = presenterPreparationTargetLabel(entry.label, service);
       const contentParts = entry.content.split(/\s+\/\s+/);
       const content = String(contentParts.shift() || "").trim();
       const assignee = contentParts.join(" / ").trim();
