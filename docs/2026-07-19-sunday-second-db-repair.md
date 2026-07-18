@@ -67,6 +67,13 @@ The same 2026-07-19 operating pass also filled the `주일오후예배` special
 song:
 
 - Service id: `22c319c7-2e4a-4ddf-89ff-ca7750847cb9`
+- `찬송`: hymn 80, `천지에 있는 이름 중`
+- `대표기도`: `이대범 집사`
+- `성경봉독`: `계 3:19–22`
 - `특송`: hymn 505, `온 세상 위하여`
 - Assignee: `4·5남전도회 일동`
 - Version: 새찬송가
+- `설교 제목`: `모든 것 되신 예수`
+- Sermon assignee: `김광한 전도사`
+- `봉헌찬송`: hymn 95, `나의 기쁨 나의 소망되시며`
+- `봉헌기도`: `김강석 집사`
