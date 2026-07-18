@@ -45,6 +45,10 @@ Small visual polish that does not alter behavior does not need an entry.
   nor an empty slide.
 - A scripture-reading final slide is followed by one clean blank that keeps the
   service background. It must not fall back to a black blank frame.
+- Scripture-reading body text uses the installed `Eulyoo1945` / `을유1945`
+  font when available on the church PC. Only the verse body text changes; the
+  reference, translation label, verse number, and `Fin.` keep the presenter
+  font. Do not bundle the Eulyoo font file in this repo.
 
 ### Service Outline And Input State
 
