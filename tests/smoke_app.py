@@ -3399,6 +3399,32 @@ def main() -> int:
                             applyPresenterPreparationInput(hymnService.id);
                             const hymnItems = (state.serviceItems[hymnService.id] || [])
                               .filter((entry) => ['찬양 1', '찬양 2', '찬양 3'].includes(entry.label || ''));
+                            const rawTitleScoreItem = normalizeServiceItem({
+                              id: '__smoke_raw_title_score_praise__',
+                              service_id: hymnService.id,
+                              label: '찬양 1',
+                              raw_title: '9 하늘에 가득 찬 영광의',
+                              song_id: '',
+                              memo: serializeServiceItemMemo({ elementType: 'praise', inputMode: 'praise_db', outputMode: 'score' }),
+                              _worshipSectionId: '__smoke_hymn_praise__',
+                              _worshipSectionKey: 'praise',
+                              _worshipSectionTitle: '찬양',
+                              _worshipSectionOrder: 2,
+                              _worshipElementOrder: 1,
+                            }, 0);
+                            const rawTitleScoreSong = presenterSongForServiceItem(
+                              rawTitleScoreItem,
+                              serviceItemDisplayText(rawTitleScoreItem),
+                              rawTitleScoreItem.label,
+                              hymnService,
+                            );
+                            const rawTitleScoreState = resolvePresenterServiceItemContentState(
+                              rawTitleScoreItem,
+                              parseServiceItemMemo(rawTitleScoreItem.memo),
+                              rawTitleScoreSong,
+                              hymnService,
+                            );
+                            const rawTitleScoreSlides = buildPresenterSlidesForServiceItem(rawTitleScoreItem, hymnService, 10);
                             const citations = items.filter(isPresenterPreparationCitationItem);
                             const citation = citations[0] || {};
                             const citationReferences = parseServiceItemMemo(citation.memo).scriptureReferences || [];
@@ -3467,6 +3493,12 @@ def main() -> int:
                                 const song = serviceItemLinkedSong(entry);
                                 return resolvePresenterServiceItemContentState(entry, memo, song, hymnService).reason;
                               }),
+                              rawTitleScore: {
+                                songId: rawTitleScoreSong?.id || '',
+                                reason: rawTitleScoreState.reason || '',
+                                missingCount: rawTitleScoreSlides.filter((slide) => slide.missingContent).length,
+                                slideTypes: rawTitleScoreSlides.map((slide) => slide.type || ''),
+                              },
                               prayer: byLabel('기도').assignee || '',
                               reading: byLabel('성경봉독').raw_title || '',
                               sermonTitle: byLabel('설교 제목').raw_title || '',
@@ -3521,6 +3553,10 @@ def main() -> int:
                             "__batch_hymn_9_v__", "__batch_hymn_288_v__", "__batch_hymn_182_v__"
                         ]
                         and presenter_preparation_paste["hymnMissingReasons"] == ["song", "song", "song"]
+                        and presenter_preparation_paste["rawTitleScore"]["songId"] == "__batch_hymn_9__"
+                        and presenter_preparation_paste["rawTitleScore"]["reason"] == "song"
+                        and presenter_preparation_paste["rawTitleScore"]["missingCount"] == 0
+                        and presenter_preparation_paste["rawTitleScore"]["slideTypes"]
                         and presenter_preparation_paste["prayer"] == "정선분 권사"
                         and presenter_preparation_paste["reading"] == "히 10:38–39"
                         and presenter_preparation_paste["sermonTitle"] == "믿음을 잃어버릴 수도 있어요?"

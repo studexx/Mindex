@@ -21504,7 +21504,7 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
   if (isScriptureBodyServiceItem(item)) return [];
 
   const songLikeItem = isSongServiceLabel(label) || isSpecialSongServiceItem(item);
-  if ((outputMode === "score" || requestedOutputMode === "score") && !linkedSongId && !templateOwnedScoreSong) {
+  if ((outputMode === "score" || requestedOutputMode === "score") && !linkedSongId && !song && !templateOwnedScoreSong) {
     if (isSpecialSongServiceItem(item)) {
       return withIntro([
         presenterSpecialSongSectionTitleSlide(
@@ -21587,7 +21587,7 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
   }
 
   const { no, title } = splitHymnNo(displayText);
-  if ((outputMode === "score" || requestedOutputMode === "score") && (!song || (!linkedSongId && !templateOwnedScoreSong))) return [];
+  if ((outputMode === "score" || requestedOutputMode === "score") && !song && !templateOwnedScoreSong) return [];
   if (!songLikeItem) return [];
   if (serviceItemRequiresSongSelection(item, service) && (!song || serviceItemSongSelectionInvalid(item, service, song))) return [];
   const sectionHeading = presenterSongTitleSectionHeading(item, section);
