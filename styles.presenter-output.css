@@ -43,6 +43,8 @@
   --presenter-size-body: calc(64 * var(--presenter-stage-unit));
   --presenter-size-lyrics: calc(64 * var(--presenter-stage-unit));
   --presenter-size-meta: calc(52 * var(--presenter-stage-unit));
+  --presenter-size-liturgical-body: var(--presenter-size-meta);
+  --presenter-size-liturgical-heading: var(--presenter-size-section);
   --presenter-size-caption: calc(40 * var(--presenter-stage-unit));
   --presenter-size-thumbnail: calc(44 * var(--presenter-stage-unit));
   --presenter-scripture-thumbnail-size: calc(44 * var(--presenter-stage-unit));
@@ -85,6 +87,8 @@
   --presenter-size-body: calc(96 * var(--presenter-stage-unit));
   --presenter-size-lyrics: calc(96 * var(--presenter-stage-unit));
   --presenter-size-meta: calc(104 * var(--presenter-stage-unit));
+  --presenter-size-liturgical-body: calc(56 * var(--presenter-stage-unit));
+  --presenter-size-liturgical-heading: calc(72 * var(--presenter-stage-unit));
   --presenter-size-caption: calc(80 * var(--presenter-stage-unit));
   --presenter-size-thumbnail: calc(88 * var(--presenter-stage-unit));
   --presenter-size-file-caption: calc(80 * var(--presenter-stage-unit));
@@ -235,7 +239,7 @@
 .presenter-slide--liturgical-body .presenter-slide-text {
   align-items: center;
   gap: .18em;
-  font-size: var(--presenter-size-meta);
+  font-size: var(--presenter-size-liturgical-body);
   font-weight: var(--presenter-weight-body);
   line-height: 1.34;
   text-align: center;
@@ -266,7 +270,7 @@
   align-items: flex-start;
   justify-content: center;
   gap: 1.8cqh;
-  font-size: var(--presenter-size-meta);
+  font-size: var(--presenter-size-liturgical-body);
   font-weight: var(--presenter-weight-body);
   line-height: 1.18;
   word-break: keep-all;
@@ -290,7 +294,7 @@
   display: block;
   max-width: 100%;
   white-space: nowrap;
-  font-size: var(--presenter-size-section);
+  font-size: var(--presenter-size-liturgical-heading);
   font-weight: var(--presenter-weight-display);
   line-height: .95;
 }
@@ -299,12 +303,12 @@
   gap: 2.2cqh;
 }
 .presenter-slide--liturgical-body .presenter-title-content-title {
-  font-size: var(--presenter-size-section);
+  font-size: var(--presenter-size-liturgical-heading);
   font-weight: var(--presenter-weight-display);
 }
 .presenter-slide--liturgical-body .presenter-title-content-body {
   gap: .12em;
-  font-size: var(--presenter-size-meta);
+  font-size: var(--presenter-size-liturgical-body);
   font-weight: var(--presenter-weight-body);
   line-height: 1.34;
 }
