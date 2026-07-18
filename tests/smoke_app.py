@@ -2434,6 +2434,14 @@ def main() -> int:
                             const strictResults = serviceSongPickerResults('은혜', strictItem, service).map((song) => song.id);
                             const scoreCcmResults = serviceSongPickerResults('은혜', scoreItem, service).map((song) => song.id);
                             const scoreHymnResults = serviceSongPickerResults('만복', scoreItem, service).map((song) => song.id);
+                            updateServiceItemField({
+                              dataset: { serviceItemIndex: '1', serviceItemField: 'raw_title' },
+                              value: '1 만복의 근원 하나님',
+                            });
+                            const typedScore = state.serviceItems[service.id][1];
+                            const typedScoreSongId = typedScore.song_id || '';
+                            const typedScoreVersionId = typedScore.version_id || '';
+                            const typedScoreRawTitle = typedScore.raw_title || '';
                             selectServiceSongForItem(0, ccm.id);
                             const selected = state.serviceItems[service.id][0];
                             const selectedVersionImmediately = selected.version_id || '';
@@ -2484,6 +2492,9 @@ def main() -> int:
                               strictRequires: serviceItemRequiresSongSelection(strictItem, service),
                               typedSongId,
                               typedVersionId,
+                              typedScoreSongId,
+                              typedScoreVersionId,
+                              typedScoreRawTitle,
                               strictResults,
                               scoreCcmResults,
                               scoreHymnResults,
@@ -2525,8 +2536,11 @@ def main() -> int:
                     )
                     if (
                         strict_song_picker["strictRequires"]
-                        and strict_song_picker["typedSongId"] == ""
+                        and strict_song_picker["typedSongId"] == "__smoke_ccm_song__"
                         and strict_song_picker["typedVersionId"] == ""
+                        and strict_song_picker["typedScoreSongId"] == "__smoke_hymn_song__"
+                        and strict_song_picker["typedScoreVersionId"] == "__smoke_hymn_new__"
+                        and strict_song_picker["typedScoreRawTitle"] == ""
                         and strict_song_picker["strictResults"] == ["__smoke_ccm_song__"]
                         and "__smoke_ccm_song__" not in strict_song_picker["scoreCcmResults"]
                         and strict_song_picker["scoreHymnResults"] == ["__smoke_hymn_song__"]

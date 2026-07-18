@@ -6496,7 +6496,7 @@ function updateServiceItemField(field) {
       }
       if (serviceItemUsesFlexibleOfferingSlot(item)) parsed.outputMode = "";
       item.memo = serializeServiceItemMemo(parsed);
-      if (!strictSongInput) applyServiceSongSelection(item);
+      applyServiceSongSelectionWithService(item, service);
       scheduleServiceScriptureBodyResolve(state.selectedServiceId, index);
     }
   }

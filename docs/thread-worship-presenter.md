@@ -269,3 +269,8 @@ Manual checks when changing live presenter behavior:
   praise items require a linked Praise record before presenter output, and
   scripture body rows resolve valid references into lower-bar verse slides while
   blocking unnormalized free text from output.
+- Strict praise/score inputs still require a linked Praise record, but typing a
+  uniquely resolvable hymn number/title now immediately promotes the input to
+  `song_id` plus the preferred score `version_id`. Do not restore the old
+  behavior where score rows kept raw search text only; it leaves valid 1/2부
+  hymn-score entries showing `찬양 입력 필요`.
