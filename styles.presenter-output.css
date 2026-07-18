@@ -576,7 +576,7 @@
 
 .svc-slide-mini-canvas .presenter-slide--scripture .presenter-slide-text span,
 .svc-slide-mini-canvas.presenter-output-root.no-chromakey .presenter-slide--scripture .presenter-slide-text span {
-  font-size: var(--presenter-scripture-thumbnail-size);
+  font-size: var(--presenter-scripture-fitted-size, var(--presenter-scripture-bar-size));
 }
 .presenter-output-root.no-chromakey .presenter-slide--scripture-reading {
   justify-content: flex-start;

@@ -4540,6 +4540,44 @@ def main() -> int:
                 else:
                     fail("presenter-long-live-scripture-fits-lower-bar", json.dumps(long_live_scripture_state, ensure_ascii=False))
 
+                long_live_scripture_preview_state = page.evaluate(
+                    """
+                    (() => {
+                      const slide = {
+                        id: '__smoke_long_live_scripture_preview__',
+                        elementType: PRESENTER_ELEMENT_TYPES.SCRIPTURE_TEXT,
+                        layout: PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT,
+                        type: 'scripture',
+                        title: '로마서 8:17',
+                        text: '17 자녀이면 또한 상속자 곧 하나님의 상속자요 그리스도와 함께 한 상속자니 우리가 그와 함께 영광을 받기 위하여 고난도 함께 받아야 할 것이니라',
+                        live: true,
+                        outputContext: 'chromakey',
+                      };
+                      const mount = document.createElement('div');
+                      mount.innerHTML = renderPresenterSlideMiniPreview(slide);
+                      document.body.append(mount);
+                      fitPresenterChromakeyScripturePreviews(mount);
+                      const textEl = mount.querySelector('.presenter-slide--scripture .presenter-slide-text');
+                      const style = textEl ? getComputedStyle(textEl) : null;
+                      const result = {
+                        fontSize: Number.parseFloat(style?.fontSize || '0'),
+                        fitsHeight: textEl ? textEl.scrollHeight <= textEl.clientHeight + 1 : false,
+                        fitsWidth: textEl ? textEl.scrollWidth <= textEl.clientWidth + 1 : false,
+                      };
+                      mount.remove();
+                      return result;
+                    })()
+                    """
+                )
+                if (
+                    abs(long_live_scripture_preview_state["fontSize"] - long_live_scripture_state["fontSize"]) <= 0.1
+                    and long_live_scripture_preview_state["fitsHeight"]
+                    and long_live_scripture_preview_state["fitsWidth"]
+                ):
+                    pass_("presenter-long-live-scripture-preview-parity", json.dumps(long_live_scripture_preview_state, ensure_ascii=False))
+                else:
+                    fail("presenter-long-live-scripture-preview-parity", json.dumps(long_live_scripture_preview_state, ensure_ascii=False))
+
                 live_scripture_controller_state = page.evaluate(
                     """
                     (() => ({

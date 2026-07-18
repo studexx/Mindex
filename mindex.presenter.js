@@ -2797,6 +2797,13 @@ function fitPresenterChromakeyScriptureText(host, frameState = {}) {
   }
 }
 
+function fitPresenterChromakeyScripturePreviews(host) {
+  if (!host) return;
+  host
+    .querySelectorAll(".svc-slide-mini-canvas.presenter-output-root:not(.no-chromakey)")
+    .forEach((preview) => fitPresenterChromakeyScriptureText(preview));
+}
+
 function bindPresenterOutputAutoAdvance(root, payload, slide, options = {}, token = presenterOutputRenderState.token) {
   clearPresenterOutputAutoAdvanceTimer();
   bindPresenterVideoTimelineCatchUp(root, payload, slide, options, token);

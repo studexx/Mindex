@@ -16603,6 +16603,9 @@ function renderPresenterDetail() {
     </div>`;
   refreshIcons();
   updateSaveState();
+  requestAnimationFrame(() => {
+    fitPresenterChromakeyScripturePreviews(refs.detailPane);
+  });
   if (state.module === "presenter") renderServiceList();
 }
 
