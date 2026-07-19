@@ -171,3 +171,6 @@ Small visual polish that does not alter behavior does not need an entry.
   `docs/worship-data-contract.md`.
 - Presenter-specific workflow and verification:
   `docs/thread-worship-presenter.md`.
+
+## Presenter Output Rules
+- `주일오후 헌신예배`는 일반 오후예배 순서에 `특송`과 `봉헌`을 추가한다. `특송`은 악보(score)가 아니라 일반 praise/lyrics 입력이며, 추가되는 `봉헌찬송`만 score output을 사용한다.
