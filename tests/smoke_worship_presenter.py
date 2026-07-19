@@ -4628,6 +4628,11 @@ def main() -> int:
                       const firstRect = firstLine?.getBoundingClientRect();
                       const style = textEl ? getComputedStyle(textEl) : null;
                       const lineStyle = firstLine ? getComputedStyle(firstLine) : null;
+                      const probe = document.createElement('span');
+                      probe.style.cssText = 'position:fixed;visibility:hidden;font-size:var(--presenter-size-lyrics)';
+                      root.appendChild(probe);
+                      const lyricsFontSize = Number.parseFloat(getComputedStyle(probe).fontSize || '0');
+                      probe.remove();
                       return {
                         slideClass: slide?.className || '',
                         elementType: slide?.dataset.elementType || '',
@@ -4636,6 +4641,8 @@ def main() -> int:
                         html: firstLine?.innerHTML || '',
                         textAlign: style?.textAlign || '',
                         alignItems: style?.alignItems || '',
+                        fontSize: Number.parseFloat(style?.fontSize || '0'),
+                        lyricsFontSize,
                         barRatio: rootRect && textRect ? Number((textRect.height / rootRect.height).toFixed(3)) : 0,
                         lineDisplay: lineStyle?.display || '',
                         lineFits: firstLine ? firstLine.scrollWidth <= firstLine.clientWidth + 1 : false,
@@ -4655,6 +4662,7 @@ def main() -> int:
                     and "요 3:16&nbsp;&nbsp;&nbsp;하나님이" in live_scripture_state["html"]
                     and live_scripture_state["textAlign"] == "left"
                     and live_scripture_state["alignItems"] == "flex-start"
+                    and live_scripture_state["fontSize"] <= live_scripture_state["lyricsFontSize"]
                     and abs(live_scripture_state["barRatio"] - (7 / 40)) <= 0.01
                     and live_scripture_state["lineDisplay"] == "block"
                     and live_scripture_state["lineFits"]

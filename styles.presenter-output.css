@@ -57,7 +57,7 @@
   --presenter-scripture-line-height: 1.1;
   --presenter-scripture-fit-width: 64cqw;
   --presenter-scripture-fit-ratio: .74;
-  --presenter-scripture-bar-size: calc(72 * var(--presenter-stage-unit));
+  --presenter-scripture-bar-size: var(--presenter-size-lyrics);
   --presenter-scripture-clean-size: calc(72 * var(--presenter-stage-unit));
   --presenter-scripture-reading-ref-size: var(--presenter-size-section);
   --presenter-scripture-reading-version-size: var(--presenter-size-caption);
