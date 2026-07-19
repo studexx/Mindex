@@ -1530,9 +1530,6 @@ function buildPresenterScriptureTextSlides(item, section, index, service = null)
   const payload = serviceScriptureTextPayload(item);
   if (!payload.verses.length) return [];
   const context = presenterScriptureBodyContext(item, section);
-  const outputContext = context === "reading" && service && presenterServiceUsesChromakey(service)
-    ? "chromakey"
-    : context;
   const reference = payload.reference || section.sectionTitle || "본문";
   const lastVerseIndex = payload.verses.length - 1;
   const citation = isPresenterCitationScriptureItem(item);
@@ -1564,7 +1561,7 @@ function buildPresenterScriptureTextSlides(item, section, index, service = null)
       translationLabel: payload.translationLabel || "",
       text: verseText,
       scriptureReadingFinal: readingFinal,
-      ...(context === "reading" ? { outputContext } : {}),
+      ...(context === "reading" ? { outputContext: "clean" } : {}),
       ...(context === "sermon" ? { outputContext: "chromakey" } : {}),
       sort: index + verseIndex / 100,
     };
