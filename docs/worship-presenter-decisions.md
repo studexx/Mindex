@@ -47,11 +47,8 @@ Small visual polish that does not alter behavior does not need an entry.
   followed by one plain trailing blank that suppresses the service background.
   In chromakey output this is the chromakey blank; in fullscreen/clean output it
   is the default blank frame.
-- Scripture-reading body text uses the installed `Eulyoo1945` / `을유1945`
-  font when available on the church PC, with `font-weight: 800` for stronger
-  projection readability. Only the verse body text changes; the reference,
-  translation label, verse number, and `Fin.` keep the presenter font. Do not
-  bundle the Eulyoo font file in this repo.
+- Scripture-reading body text uses the normal presenter font stack. Do not add
+  a separate Eulyoo font override or bundle the Eulyoo font file in this repo.
 
 ### Service Outline And Input State
 
@@ -87,6 +84,9 @@ Small visual polish that does not alter behavior does not need an entry.
 - 주일예배 [2부], [3부], 주일오후예배, 수요예배, and 월삭예배 default to
   김남영 목사 for sermon and benediction when those elements exist.
 - 금요기도회 defaults to 김남영 목사 for sermon. It has no benediction element.
+- In the sending section, `축도` and `주기도문` are mutually exclusive in the
+  presenter/order projection. If both legacy/persisted items exist, keep `축도`
+  and drop `주기도문`.
 
 ### Sunday Public Worship Templates
 

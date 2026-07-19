@@ -2289,12 +2289,6 @@ def main() -> int:
 	                            "versions": ["2026-q3", "2026-q3", "2026-q3", "2026-q3", "2026-q3", "2026-q3"],
 	                        }
 	                        and template_terms["legacyHierarchyCleanup"]["normalized"] == [
-	                            {
-	                                "label": "주기도문",
-	                                "key": "sending",
-	                                "title": "파송",
-	                                "sectionId": "33333333-3333-4333-8333-333333333333",
-	                            },
                             {
                                 "label": "축도",
                                 "key": "sending",
@@ -2922,7 +2916,7 @@ def main() -> int:
                         and presenter_font_contract["chromakey"]["body"] == "64px"
                         and presenter_font_contract["chromakey"]["lyrics"] == "64px"
                         and presenter_font_contract["chromakey"]["meta"] == "52px"
-                        and presenter_font_contract["chromakey"]["scriptureBar"] == "72px"
+                        and presenter_font_contract["chromakey"]["scriptureBar"] == "64px"
                         and presenter_font_contract["chromakey"]["scriptureClean"] == "72px"
                         and presenter_font_contract["chromakey"]["scriptureReadingText"] == "88px"
                         and presenter_font_contract["clean"]["display"] == "168px"

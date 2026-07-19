@@ -14495,9 +14495,14 @@ function projectWorshipServiceItemsFromTemplate(service, items = []) {
     if (shouldDropUnmodifiedTemplateProjectionExtra(item)) continue;
     projected.push(item);
   }
-  projected = collapseDuplicateBenedictionProjectionItems(projected);
+  projected = normalizeSendingConclusionProjectionItems(projected);
 
   return normalizeServiceItemsForTemplateHierarchy(service, projected);
+}
+
+function normalizeSendingConclusionProjectionItems(items = []) {
+  const withoutDuplicateBenedictions = collapseDuplicateBenedictionProjectionItems(items);
+  return collapseBenedictionLordsPrayerProjectionItems(withoutDuplicateBenedictions);
 }
 
 function collapseDuplicateBenedictionProjectionItems(items = []) {
@@ -14518,6 +14523,18 @@ function collapseDuplicateBenedictionProjectionItems(items = []) {
     })[0];
 
   return items.filter((_, index) => index === keep.index || !benedictionIndexes.some((entry) => entry.index === index));
+}
+
+function collapseBenedictionLordsPrayerProjectionItems(items = []) {
+  const hasBenediction = items.some((item) => {
+    const labelKey = compactSearchValue(item?.label || item?.raw_title || "");
+    return templateProjectionSectionKey(item) === "sending" && labelKey === "축도";
+  });
+  if (!hasBenediction) return items;
+  return items.filter((item) => {
+    const labelKey = compactSearchValue(item?.label || item?.raw_title || "");
+    return !(templateProjectionSectionKey(item) === "sending" && labelKey === "주기도문");
+  });
 }
 
 function serviceItemProjectionSpecificity(item = {}) {
@@ -14786,13 +14803,17 @@ function normalizeServiceItemsForTemplateHierarchy(service, items = [], options 
   const sectionIdByGroup = canonicalServiceSectionIds(classified);
   const sectionTitleByGroup = canonicalServiceSectionTitles(classified);
 
-  return classified
+  const ordered = classified
     .map(({ item, meta }) => canonicalizeServiceItemForTemplateHierarchy(item, meta, sectionIdByGroup, sectionTitleByGroup))
     .sort(compareServiceItemsByTemplateHierarchy)
     .map(({ _templateSourceOrder, ...item }, index) => ({
       ...item,
       sort_order: index + 1,
     }));
+  return collapseBenedictionLordsPrayerProjectionItems(ordered).map((item, index) => ({
+    ...item,
+    sort_order: index + 1,
+  }));
 }
 
 function normalizeSundayFirstSendingItems(service = null, items = [], referenceItems = null) {
@@ -15479,7 +15500,7 @@ function getServiceOutlineItems(service) {
 }
 
 function adaptServiceItemsForPresenterView(service, items = [], options = {}) {
-  const annotated = collapseDuplicateBenedictionProjectionItems(
+  const annotated = normalizeSendingConclusionProjectionItems(
     normalizeServiceItemsForTemplateHierarchy(service, items, options),
   );
   return annotated.map((item, index) => ({

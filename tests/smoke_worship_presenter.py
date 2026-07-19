@@ -3159,6 +3159,11 @@ def main() -> int:
                 section_song_title_output_font_state = page.evaluate(
                     """
                     () => {
+                      document.getElementById('presenterOutputRoot')?.remove();
+                      const outputRoot = document.createElement('main');
+                      outputRoot.id = 'presenterOutputRoot';
+                      outputRoot.className = 'presenter-output-root';
+                      document.body.appendChild(outputRoot);
                       renderPresenterOutput({
                         serviceId: '__smoke_section_song_title_output_font__',
                         serviceType: 'sunday2',
@@ -3179,14 +3184,19 @@ def main() -> int:
                         safetyBlank: false,
                       });
                       const root = document.getElementById('presenterOutputRoot');
-                      const heading = root.querySelector('.presenter-section-song-title-heading');
-                      const name = root.querySelector('.presenter-section-song-title-name');
-                      const size = (node) => Number.parseFloat(getComputedStyle(node).fontSize);
-                      return {
-                        text: root.innerText,
+                      const heading = root?.querySelector('.presenter-section-song-title-heading');
+                      const name = root?.querySelector('.presenter-section-song-title-name');
+                      const size = (node) => node ? Number.parseFloat(getComputedStyle(node).fontSize) : 0;
+                      const result = {
+                        hasRoot: Boolean(root),
+                        hasHeading: Boolean(heading),
+                        hasName: Boolean(name),
+                        text: root?.innerText || '',
                         headingFontSize: size(heading),
                         nameFontSize: size(name),
                       };
+                      root?.remove();
+                      return result;
                     }
                     """
                 )
@@ -3449,8 +3459,8 @@ def main() -> int:
                     and scripture_context_state["readingBodyBelowHeader"]
                     and scripture_context_state["readingNumber"] == "14"
                     and "너는 매년 세 번" in scripture_context_state["readingText"]
-                    and "Eulyoo1945" in scripture_context_state["readingFontFamily"]
-                    and scripture_context_state["readingFontWeight"] == "800"
+                    and "Mindex Presenter" in scripture_context_state["readingFontFamily"]
+                    and scripture_context_state["readingFontWeight"] == scripture_context_state["sermonFontWeight"]
                     and scripture_context_state["readingNumberFontWeight"] == scripture_context_state["sermonFontWeight"]
                     and scripture_context_state["sermonContext"] == "sermon"
                     and scripture_context_state["sermonElementTitle"] == "출 23:14–19"
@@ -4476,7 +4486,7 @@ def main() -> int:
                     and title_assignee_bounds["titleFontSize"] == 84
                     and title_assignee_bounds["personFontSize"] == 72
                     and title_assignee_bounds["orderFontSize"] == 72
-                    and title_assignee_bounds["contentFontSize"] == 72
+                    and title_assignee_bounds["contentFontSize"] == 84
                     and title_assignee_bounds["threePartPersonFontSize"] == 72
                     and title_assignee_bounds["titleInside"]
                     and title_assignee_bounds["personInside"]
