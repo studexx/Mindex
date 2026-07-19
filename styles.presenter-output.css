@@ -486,6 +486,7 @@
 }
 .presenter-title-assignee-content {
   text-align: center;
+  font-size: var(--presenter-size-display);
 }
 .presenter-title-assignee-person {
   text-align: right;
@@ -508,6 +509,9 @@
 .presenter-output-root:not(.no-chromakey) .presenter-title-assignee-content,
 .presenter-output-root:not(.no-chromakey) .presenter-title-assignee-person {
   font-size: var(--presenter-size-section);
+}
+.presenter-output-root:not(.no-chromakey) .presenter-title-assignee--three-part .presenter-title-assignee-content {
+  font-size: var(--presenter-size-display);
 }
 .presenter-title-assignee--solo .presenter-title-assignee-title {
   font-size: var(--presenter-size-section);

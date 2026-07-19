@@ -4443,6 +4443,54 @@ def main() -> int:
                 else:
                     fail("presenter-title-assignee-long-fit", json.dumps(title_assignee_bounds, ensure_ascii=False))
 
+                sermon_title_font_state = output_page.evaluate(
+                    """
+                    () => {
+                      renderPresenterOutput({
+                        serviceId: '__smoke_sermon_title_font__',
+                        serviceType: 'sunday2',
+                        chromakey: true,
+                        outputTheme: 'chromakey',
+                        backgroundImage: '',
+                        slides: [{
+                          id: '__smoke_sermon_title_font_slide__',
+                          type: 'title-assignee',
+                          elementType: PRESENTER_ELEMENT_TYPES.TITLE_ASSIGNEE,
+                          layout: PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT,
+                          title: '베드로의 고백',
+                          orderTitle: '설교',
+                          contentTitle: '베드로의 고백',
+                          assignee: '김남영 목사',
+                          text: '설교\\n베드로의 고백\\n김남영 목사',
+                        }],
+                        index: 0,
+                        safetyBlank: false,
+                      });
+                      const root = document.getElementById('presenterOutputRoot');
+                      const order = root.querySelector('.presenter-title-assignee-order');
+                      const content = root.querySelector('.presenter-title-assignee-content');
+                      const person = root.querySelector('.presenter-title-assignee-person');
+                      const size = (node) => Number.parseFloat(getComputedStyle(node).fontSize);
+                      return {
+                        text: root.innerText,
+                        hasThreePartClass: Boolean(root.querySelector('.presenter-title-assignee--three-part')),
+                        orderFontSize: size(order),
+                        contentFontSize: size(content),
+                        personFontSize: size(person),
+                      };
+                    }
+                    """
+                )
+                if (
+                    "베드로의 고백" in sermon_title_font_state["text"]
+                    and sermon_title_font_state["hasThreePartClass"]
+                    and sermon_title_font_state["contentFontSize"] > sermon_title_font_state["orderFontSize"]
+                    and sermon_title_font_state["contentFontSize"] > sermon_title_font_state["personFontSize"]
+                ):
+                    pass_("presenter-sermon-title-content-font", json.dumps(sermon_title_font_state, ensure_ascii=False))
+                else:
+                    fail("presenter-sermon-title-content-font", json.dumps(sermon_title_font_state, ensure_ascii=False))
+
                 title_assignee_solo = output_page.evaluate(
                     """
                     () => {
