@@ -3059,9 +3059,9 @@ def main() -> int:
                     and abs(form_preset_state["scoreSafeArea"]["right"]) <= 1
                     and abs(form_preset_state["scoreSafeArea"]["bottom"]) <= 1
                     and abs(form_preset_state["scoreSafeArea"]["left"]) <= 1
-                    and form_preset_state["scoreSafeArea"]["slideBackground"] == "rgb(0, 0, 0)"
+                    and form_preset_state["scoreSafeArea"]["slideBackground"] == "rgb(255, 255, 255)"
                     and form_preset_state["scoreSafeArea"]["imageBackground"] == "none"
-                    and form_preset_state["scoreSafeArea"]["imageBackgroundColor"] == "rgb(0, 0, 0)"
+                    and form_preset_state["scoreSafeArea"]["imageBackgroundColor"] == "rgb(255, 255, 255)"
                     and form_preset_state["audioMemo"]["elementType"] == "audio"
                     and form_preset_state["audioMemo"]["asset"] == {
                         "kind": "audio",

@@ -148,7 +148,7 @@ Small visual polish that does not alter behavior does not need an entry.
   slide must render as the primary `score` slide class before generic image
   handling so fullscreen output does not inherit chromakey or lower-bar image
   fallback behavior.
-- Score image slides remain clean fullscreen media with a black score canvas and
+- Score image slides remain clean fullscreen media with a white score canvas and
   no visible presenter meta. Title slides remain the same praise title contract
   as non-score praise.
 - In chromakey services, the automatic blank after a score image returns to the

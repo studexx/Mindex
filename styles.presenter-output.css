@@ -748,12 +748,12 @@
   justify-content: center;
   align-items: center;
   padding: 0;
-  background: #000;
+  background: #fff;
 }
 .presenter-slide--score > .presenter-slide-meta { display: none; }
 .presenter-slide--score .presenter-image {
   object-position: center center;
-  background: #000;
+  background: #fff;
 }
 .presenter-slide-file {
   display: grid;
