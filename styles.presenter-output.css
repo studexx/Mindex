@@ -457,9 +457,12 @@
 .presenter-section-song-title-name {
   justify-self: end;
   max-width: 100%;
-  font-size: var(--presenter-size-section);
+  font-size: var(--presenter-size-display);
   font-weight: var(--presenter-weight-body);
   text-align: right;
+}
+.presenter-slide--song-title .presenter-section-song-title-name {
+  font-size: var(--presenter-size-display);
 }
 .presenter-slide--title-assignee .presenter-slide-text {
   display: grid;

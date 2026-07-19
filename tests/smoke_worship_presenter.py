@@ -3156,6 +3156,49 @@ def main() -> int:
                 else:
                     fail("presenter-section-song-title-fit", json.dumps(section_song_title_fit_state, ensure_ascii=False))
 
+                section_song_title_output_font_state = page.evaluate(
+                    """
+                    () => {
+                      renderPresenterOutput({
+                        serviceId: '__smoke_section_song_title_output_font__',
+                        serviceType: 'sunday2',
+                        chromakey: true,
+                        outputTheme: 'chromakey',
+                        backgroundImage: '',
+                        slides: [{
+                          id: '__smoke_section_song_title_output_font_slide__',
+                          elementType: PRESENTER_ELEMENT_TYPES.PRAISE,
+                          layout: PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT,
+                          type: 'song-title',
+                          title: '주 내 아버지',
+                          text: '♪ 주 내 아버지',
+                          sectionHeading: '찬양',
+                          sectionKey: 'praise',
+                        }],
+                        index: 0,
+                        safetyBlank: false,
+                      });
+                      const root = document.getElementById('presenterOutputRoot');
+                      const heading = root.querySelector('.presenter-section-song-title-heading');
+                      const name = root.querySelector('.presenter-section-song-title-name');
+                      const size = (node) => Number.parseFloat(getComputedStyle(node).fontSize);
+                      return {
+                        text: root.innerText,
+                        headingFontSize: size(heading),
+                        nameFontSize: size(name),
+                      };
+                    }
+                    """
+                )
+                if (
+                    "주 내 아버지" in section_song_title_output_font_state["text"]
+                    and section_song_title_output_font_state["nameFontSize"] > section_song_title_output_font_state["headingFontSize"]
+                    and section_song_title_output_font_state["nameFontSize"] >= 84
+                ):
+                    pass_("presenter-section-song-title-output-font", json.dumps(section_song_title_output_font_state, ensure_ascii=False))
+                else:
+                    fail("presenter-section-song-title-output-font", json.dumps(section_song_title_output_font_state, ensure_ascii=False))
+
                 scripture_fit_state = page.evaluate(
                     """
                     () => {
