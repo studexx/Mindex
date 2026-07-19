@@ -429,6 +429,9 @@
   overflow-wrap: anywhere;
   white-space: normal;
 }
+.presenter-output-root:not(.no-chromakey) .presenter-slide--scripture-sermon {
+  --presenter-scripture-bar-size: var(--presenter-size-lyrics);
+}
 .presenter-slide--song-title .presenter-section-song-title {
   display: grid;
   width: 100%;
@@ -498,8 +501,19 @@
   font-size: var(--presenter-size-section);
   font-weight: var(--presenter-weight-body);
 }
+.presenter-output-root:not(.no-chromakey) .presenter-title-assignee-title {
+  font-size: var(--presenter-size-display);
+}
+.presenter-output-root:not(.no-chromakey) .presenter-title-assignee-order,
+.presenter-output-root:not(.no-chromakey) .presenter-title-assignee-content,
+.presenter-output-root:not(.no-chromakey) .presenter-title-assignee-person {
+  font-size: var(--presenter-size-section);
+}
 .presenter-title-assignee--solo .presenter-title-assignee-title {
   font-size: var(--presenter-size-section);
+}
+.presenter-output-root:not(.no-chromakey) .presenter-title-assignee--solo .presenter-title-assignee-title {
+  font-size: var(--presenter-size-display);
 }
 .presenter-title-assignee-person {
   min-width: 0;

@@ -3366,8 +3366,10 @@ def main() -> int:
                         sermonHasClass: slides[1]?.classList.contains('presenter-slide--scripture-sermon') || false,
                         sermonHasLowerBarText: Boolean(slides[1]?.querySelector('.presenter-slide-text')),
                         sermonFontFamily: sermonTextStyle?.fontFamily || '',
+                        sermonFontSize: Number.parseFloat(sermonTextStyle?.fontSize || '0'),
                         sermonFontWeight: sermonTextStyle?.fontWeight || '',
                         sermonLineHeight: sermonTextStyle?.lineHeight || '',
+                        lyricsFontSizeToken: 64,
                         citationTexts: citationSlides.map((slide) => slide.text || ''),
                       };
                       mount.remove();
@@ -3413,6 +3415,7 @@ def main() -> int:
                     and not scripture_context_state["sermonNoChromakey"]
                     and scripture_context_state["sermonHasClass"]
                     and scripture_context_state["sermonHasLowerBarText"]
+                    and scripture_context_state["sermonFontSize"] == scripture_context_state["lyricsFontSizeToken"]
                     and scripture_context_state["citationTexts"] == [
                         "출 24:1   또 모세에게 이르시되",
                         "출 24:2   너 모세만 여호와께 가까이 나아오고",
@@ -4373,7 +4376,7 @@ def main() -> int:
                       const personRect = rect(person);
                       const titleStyle = getComputedStyle(title);
                       const personStyle = getComputedStyle(person);
-                      return {
+                      const twoPart = {
                         text: root.innerText,
                         titleOverflow: titleStyle.textOverflow,
                         personOverflow: personStyle.textOverflow,
@@ -4384,6 +4387,41 @@ def main() -> int:
                         noOverlap: titleRect.bottom <= personRect.top + 1 || personRect.bottom <= titleRect.top + 1,
                         titleCentered: Math.abs(((rootRect.left + rootRect.right) / 2) - ((titleRect.left + titleRect.right) / 2)) < 2,
                       };
+                      renderPresenterOutput({
+                        serviceId: '__smoke_title_assignee_three_part__',
+                        serviceType: 'friday',
+                        chromakey: true,
+                        outputTheme: 'chromakey',
+                        backgroundImage: '',
+                        slides: [{
+                          id: '__smoke_three_part_title_assignee__',
+                          type: 'title-assignee',
+                          elementType: PRESENTER_ELEMENT_TYPES.TITLE_ASSIGNEE,
+                          layout: PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT,
+                          orderTitle: '설교',
+                          contentTitle: '모든 것 되신 예수',
+                          assignee: '김광한 전도사',
+                        }],
+                        index: 0,
+                        safetyBlank: false,
+                      });
+                      const order = root.querySelector('.presenter-title-assignee-order');
+                      const content = root.querySelector('.presenter-title-assignee-content');
+                      const threePerson = root.querySelector('.presenter-title-assignee-person');
+                      return {
+                        text: twoPart.text,
+                        titleOverflow: twoPart.titleOverflow,
+                        personOverflow: twoPart.personOverflow,
+                        titleFontSize: twoPart.titleFontSize,
+                        personFontSize: twoPart.personFontSize,
+                        orderFontSize: Number.parseFloat(getComputedStyle(order).fontSize),
+                        contentFontSize: Number.parseFloat(getComputedStyle(content).fontSize),
+                        threePartPersonFontSize: Number.parseFloat(getComputedStyle(threePerson).fontSize),
+                        titleInside: twoPart.titleInside,
+                        personInside: twoPart.personInside,
+                        noOverlap: twoPart.noOverlap,
+                        titleCentered: twoPart.titleCentered,
+                      };
                     }
                     """
                 )
@@ -4392,6 +4430,11 @@ def main() -> int:
                     and "김남영 담임목사 외 공동집례자" in title_assignee_bounds["text"]
                     and title_assignee_bounds["titleOverflow"] == "clip"
                     and title_assignee_bounds["personOverflow"] == "clip"
+                    and title_assignee_bounds["titleFontSize"] == 84
+                    and title_assignee_bounds["personFontSize"] == 72
+                    and title_assignee_bounds["orderFontSize"] == 72
+                    and title_assignee_bounds["contentFontSize"] == 72
+                    and title_assignee_bounds["threePartPersonFontSize"] == 72
                     and title_assignee_bounds["titleInside"]
                     and title_assignee_bounds["personInside"]
                     and not title_assignee_bounds["titleCentered"]
