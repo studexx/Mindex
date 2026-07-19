@@ -5738,6 +5738,7 @@ def main() -> int:
                         blankIsBlank: root?.classList.contains('is-blank') || false,
                         blankInlineBackground: root?.style.getPropertyValue('--presenter-bg-image') || '',
                         blankSlideClass: blankSlide?.className || '',
+                        blankSlideBackground: blankSlide?.style.getPropertyValue('--presenter-slide-bg-image') || '',
                         blankText: blankSlide?.innerText.trim() || '',
                       };
                     }
@@ -5758,6 +5759,8 @@ def main() -> int:
                     and scripture_blank_background_state["blankIsBlank"]
                     and scripture_blank_background_state["blankInlineBackground"] == ""
                     and "presenter-slide--blank" in scripture_blank_background_state["blankSlideClass"]
+                    and "presenter-slide--scripture-reading" not in scripture_blank_background_state["blankSlideClass"]
+                    and scripture_blank_background_state["blankSlideBackground"] == ""
                     and scripture_blank_background_state["blankText"] == ""
                 ):
                     pass_("presenter-scripture-reading-plain-trailing-blank", json.dumps(scripture_blank_background_state, ensure_ascii=False))

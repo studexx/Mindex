@@ -3312,9 +3312,10 @@ function renderPresenterSlideFrame(slide, options = {}) {
 
 function presenterSlideExtraClasses(slide) {
   const classes = [];
+  const layout = presenterSlideLayout(slide);
   if (slide?.sourceType === "score" || slide?.componentType === "score" || slide?.scoreBackground) classes.push("presenter-slide--score");
-  if (slide?.scriptureContext === "reading") classes.push("presenter-slide--scripture-reading");
-  if (slide?.scriptureContext === "sermon") classes.push("presenter-slide--scripture-sermon");
+  if (layout !== PRESENTER_SLIDE_LAYOUTS.BLANK && slide?.scriptureContext === "reading") classes.push("presenter-slide--scripture-reading");
+  if (layout !== PRESENTER_SLIDE_LAYOUTS.BLANK && slide?.scriptureContext === "sermon") classes.push("presenter-slide--scripture-sermon");
   return classes.join(" ");
 }
 
