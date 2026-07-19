@@ -138,8 +138,9 @@ Small visual polish that does not alter behavior does not need an entry.
 - Hymn-score praise items such as `봉헌찬송` and `송영` keep the normal
   `song-title` title slide. Do not create a separate score-only title layout.
 - Score-mode praise may resolve a song from the raw title, so rough input like
-  `찬송 80` or `특송 505` can find hymn score slides even before the item has
-  a persisted `song_id`.
+  `찬송 80` can find hymn score slides even before the item has a persisted
+  `song_id`. `특송` is the explicit exception: it must never output hymn score
+  images, even if an item still carries `outputMode: "score"`.
 - Non-score praise items that require DB selection must not silently resolve
   lyrics by raw title alone. Leave them as `입력 필요` unless they have a
   linked song or explicit manual slide text.

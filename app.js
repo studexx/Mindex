@@ -21537,21 +21537,13 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
   }
   if (isScriptureBodyServiceItem(item)) return [];
 
-  const songLikeItem = isSongServiceLabel(label) || isSpecialSongServiceItem(item);
-  if ((outputMode === "score" || requestedOutputMode === "score") && !linkedSongId && !song && !templateOwnedScoreSong) {
-    if (isSpecialSongServiceItem(item)) {
-      return withIntro([
-        presenterSpecialSongSectionTitleSlide(
-          { ...item, raw_title: "", title: "", assignee: "입력 필요" },
-          section,
-          index,
-          null,
-        ),
-      ]);
-    }
+  const specialSongItem = isSpecialSongServiceItem(item);
+  const songLikeItem = isSongServiceLabel(label) || specialSongItem;
+  const scoreOutput = !specialSongItem && (outputMode === "score" || requestedOutputMode === "score");
+  if (scoreOutput && !linkedSongId && !song && !templateOwnedScoreSong) {
     return [];
   }
-  if (outputMode === "score" || requestedOutputMode === "score") {
+  if (scoreOutput) {
     if (!song) return [];
     const scoreSlides = presenterScoreSlidesForServiceItem(item, section, index, song, version, displayText, memo, forms, formWarnings);
     const slides = shouldSuppressMainPraiseScoreSongTitle(item, service)
@@ -21611,7 +21603,7 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
     return withIntro(slides);
   }
 
-  if (song && presenterHymnScoreAssetSlides(song, version, displayText).length) {
+  if (!specialSongItem && song && presenterHymnScoreAssetSlides(song, version, displayText).length) {
     const scoreSlides = presenterScoreSlidesForServiceItem(item, section, index, song, version, displayText, memo, forms, formWarnings);
     const slides = [
 	      ...(song && shouldIncludeSongTitleSlide(item, label) ? [presenterSongTitleSlide(item, section, song, version, displayText, index)] : []),
@@ -21621,7 +21613,7 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
   }
 
   const { no, title } = splitHymnNo(displayText);
-  if ((outputMode === "score" || requestedOutputMode === "score") && !song && !templateOwnedScoreSong) return [];
+  if (scoreOutput && !song && !templateOwnedScoreSong) return [];
   if (!songLikeItem) return [];
   if (serviceItemRequiresSongSelection(item, service) && (!song || serviceItemSongSelectionInvalid(item, service, song))) return [];
   const sectionHeading = presenterSongTitleSectionHeading(item, section);

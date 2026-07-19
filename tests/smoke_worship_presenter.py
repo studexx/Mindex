@@ -2667,6 +2667,12 @@ def main() -> int:
                           sectionTitle: slide.sectionTitle,
                           label: slide.label
                         })),
+                        specialScoreSourceCount: specialScoreSlides.filter((slide) =>
+                          slide.sourceType === 'score' || slide.componentType === 'score' || slide.scoreBackground
+                        ).length,
+                        specialLinkedScoreSourceCount: specialLinkedScoreSlides.filter((slide) =>
+                          slide.sourceType === 'score' || slide.componentType === 'score' || slide.scoreBackground
+                        ).length,
                         specialLinkedIntroSlides,
                         sundayFirstMainScoreTitleSlides: sundayFirstMainScoreSlides.filter((slide) => slide.type === 'song-title').map((slide) => ({
                           title: slide.title,
@@ -2813,6 +2819,8 @@ def main() -> int:
                         "sectionTitle": "특송",
                         "label": "특송",
                     }]
+                    and form_preset_state["specialScoreSourceCount"] == 0
+                    and form_preset_state["specialLinkedScoreSourceCount"] == 0
                     and form_preset_state["specialLinkedIntroSlides"][:2] == [
                         {
                             "type": "title-assignee",
