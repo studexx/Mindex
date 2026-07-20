@@ -21074,6 +21074,7 @@ function presenterSlideSuppressesTrailingBlank(slide = {}) {
     slide.type === "ready"
     || sectionRole === "ready"
     || sectionKey === "ready"
+    || sectionKey === "scripture_reading"
     || sectionKey === "closing_visual"
     || sectionLabel.includes("준비")
     || sectionLabel.includes("마무리")

@@ -5900,6 +5900,7 @@ body[data-module="presenter"] .detail-pane {
   width: 100%;
   min-width: 0;
   align-items: flex-start;
+  flex-wrap: wrap;
   justify-content: flex-start;
   gap: 14px;
 }
@@ -6596,6 +6597,14 @@ body[data-module="presenter"] .detail-pane {
 
 @media (max-width: 760px) {
   .svc-board-grid { --svc-thumb-width: 148px; }
+  .svc-board-subgroup-head-row {
+    row-gap: 6px;
+  }
+  .svc-board-subgroup-controls {
+    min-width: 100%;
+    max-width: 100%;
+    flex-basis: 100%;
+  }
   .svc-presenter-main,
   .svc-presenter-action-group {
     border-radius: var(--r);

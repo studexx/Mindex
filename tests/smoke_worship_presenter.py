@@ -1083,10 +1083,39 @@ def main() -> int:
                               text: '성경봉독',
                             },
                           ]);
+                          const scriptureThenSpecialSlides = withPresenterElementTrailingBlanks([
+                            {
+                              id: '__smoke_reading_verse__',
+                              elementId: '__smoke_reading__',
+                              sectionId: '__smoke_reading_section__',
+                              sectionKey: 'scripture_reading',
+                              sectionLabel: '성경봉독',
+                              elementType: 'scripture_text',
+                              layout: 'lower_bar_text',
+                              type: 'scripture',
+                              title: '요한계시록 3장',
+                              text: '22 귀 있는 자는 성령이 교회들에게 하시는 말씀을 들을지어다',
+                              scriptureContext: 'reading',
+                              scriptureReadingFinal: true,
+                            },
+                            {
+                              id: '__smoke_special_song__',
+                              elementId: '__smoke_special_song__',
+                              sectionId: '__smoke_special_section__',
+                              sectionKey: 'special_song',
+                              sectionLabel: '특송',
+                              elementType: 'title_assignee',
+                              layout: 'lower_bar_text',
+                              type: 'title-assignee',
+                              title: '특송',
+                              text: '특송',
+                            },
+                          ]);
                           return {
                             readyHasBlankAfterReady: readySlides.some((slide) => slide.id === '__smoke_ready_media__:after-blank'),
                             closingHasBlankAfterClosing: closingSlides.some((slide) => slide.id === '__smoke_closing_visual__:after-blank'),
                             normalHasBlankAfterPrayer: normalSlides.some((slide) => slide.id === '__smoke_prayer__:after-blank'),
+                            scriptureHasBlankAfterReading: scriptureThenSpecialSlides.some((slide) => slide.id === '__smoke_reading_verse__:after-blank'),
                           };
                         })()
                       };
@@ -1156,6 +1185,7 @@ def main() -> int:
                         "readyHasBlankAfterReady": False,
                         "closingHasBlankAfterClosing": False,
                         "normalHasBlankAfterPrayer": True,
+                        "scriptureHasBlankAfterReading": False,
                     }
                 ):
                     pass_("presenter-section-element-model", json.dumps(fallback_state, ensure_ascii=False))
@@ -5838,24 +5868,16 @@ def main() -> int:
                         renderedReference: slide?.querySelector('.presenter-scripture-reading-ref')?.textContent?.trim() || '',
                         fin: slide?.querySelector('.presenter-scripture-reading-fin')?.textContent?.trim() || '',
                       };
-                      renderPresenterOutput({ ...payload, index: blankIndex, safetyBlank: false }, {});
-                      const blankSlide = root?.querySelector('.presenter-slide');
                       return {
                         ...finalState,
-                        blankHasBackground: root?.classList.contains('has-background') || false,
-                        blankNoChromakey: root?.classList.contains('no-chromakey') || false,
-                        blankIsBlank: root?.classList.contains('is-blank') || false,
-                        blankInlineBackground: root?.style.getPropertyValue('--presenter-bg-image') || '',
-                        blankSlideClass: blankSlide?.className || '',
-                        blankSlideBackground: blankSlide?.style.getPropertyValue('--presenter-slide-bg-image') || '',
-                        blankText: blankSlide?.innerText.trim() || '',
+                        blankAfterFinal: blankIndex === finalIndex + 1,
                       };
                     }
                     """,
                     scripture_blank_background_payload,
                 )
                 if (
-                    scripture_blank_background_state["blankIndex"] == scripture_blank_background_state["finalIndex"] + 1
+                    scripture_blank_background_state["blankIndex"] == -1
                     and scripture_blank_background_state["finalIndex"] >= 0
                     and scripture_blank_background_state["hasBackground"]
                     and scripture_blank_background_state["noChromakey"]
@@ -5863,18 +5885,11 @@ def main() -> int:
                     and "presenter-slide--scripture-reading" in scripture_blank_background_state["slideClass"]
                     and scripture_blank_background_state["renderedReference"] == "출애굽기 23장"
                     and scripture_blank_background_state["fin"] == "Fin."
-                    and not scripture_blank_background_state["blankHasBackground"]
-                    and scripture_blank_background_state["blankNoChromakey"]
-                    and scripture_blank_background_state["blankIsBlank"]
-                    and scripture_blank_background_state["blankInlineBackground"] == ""
-                    and "presenter-slide--blank" in scripture_blank_background_state["blankSlideClass"]
-                    and "presenter-slide--scripture-reading" not in scripture_blank_background_state["blankSlideClass"]
-                    and scripture_blank_background_state["blankSlideBackground"] == ""
-                    and scripture_blank_background_state["blankText"] == ""
+                    and not scripture_blank_background_state["blankAfterFinal"]
                 ):
-                    pass_("presenter-scripture-reading-plain-trailing-blank", json.dumps(scripture_blank_background_state, ensure_ascii=False))
+                    pass_("presenter-scripture-reading-no-trailing-blank", json.dumps(scripture_blank_background_state, ensure_ascii=False))
                 else:
-                    fail("presenter-scripture-reading-plain-trailing-blank", json.dumps(scripture_blank_background_state, ensure_ascii=False))
+                    fail("presenter-scripture-reading-no-trailing-blank", json.dumps(scripture_blank_background_state, ensure_ascii=False))
 
                 scripture_final_background_state = output_page.evaluate(
                     """
