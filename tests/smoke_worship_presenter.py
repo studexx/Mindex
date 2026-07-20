@@ -1120,6 +1120,9 @@ def main() -> int:
                               const blank = scriptureThenSpecialSlides.find((slide) => slide.id === '__smoke_reading_verse__:after-blank') || {};
                               return {
                                 outputContext: blank.outputContext || '',
+                                sectionKey: blank.sectionKey || '',
+                                sectionLabel: blank.sectionLabel || '',
+                                label: blank.label || '',
                                 scriptureContext: blank.scriptureContext || '',
                                 scriptureReadingFinal: Boolean(blank.scriptureReadingFinal),
                               };
@@ -1196,6 +1199,9 @@ def main() -> int:
                         "scriptureHasBlankAfterReading": True,
                         "scriptureBlank": {
                             "outputContext": "chromakey",
+                            "sectionKey": "",
+                            "sectionLabel": "",
+                            "label": "",
                             "scriptureContext": "",
                             "scriptureReadingFinal": False,
                         },
