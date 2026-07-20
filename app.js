@@ -15831,6 +15831,7 @@ function renderPresenterSidebarPreparationInput(service) {
   const inputCount = presenterServiceEditableInputCount(service);
   const draft = state.presenterPreparationDrafts[service.id] || "";
   const applying = state.presenterPreparationApplyingServiceIds.has(service.id);
+  const placeholder = presenterPreparationPlaceholder(service);
   return `
     <section class="service-sidebar-section service-sidebar-section--preparation-input" aria-label="예배 입력 붙여넣기">
       <div class="service-sidebar-head">
@@ -15838,7 +15839,7 @@ function renderPresenterSidebarPreparationInput(service) {
         <small>${escapeHtml(inputCount ? `${inputCount}개 항목` : "입력 없음")}</small>
       </div>
       <div class="svc-presenter-preparation-input svc-presenter-preparation-input--sidebar">
-        <textarea class="svc-presenter-preparation-text svc-presenter-preparation-text--sidebar" data-presenter-preparation-input data-service-id="${escapeAttr(service.id)}" rows="5" placeholder="곡명(9장)&#10;성경봉독: 히 10:38-39&#10;설교 제목: 제목&#10;봉헌찬송: 찬 187장" aria-label="예배 입력 붙여넣기">${escapeHtml(draft)}</textarea>
+        <textarea class="svc-presenter-preparation-text svc-presenter-preparation-text--sidebar" data-presenter-preparation-input data-service-id="${escapeAttr(service.id)}" rows="5" placeholder="${escapeAttr(placeholder)}" aria-label="예배 입력 붙여넣기">${escapeHtml(draft)}</textarea>
         <button class="svc-presenter-preparation-apply svc-presenter-preparation-apply--sidebar" type="button" data-presenter-preparation-apply data-service-id="${escapeAttr(service.id)}" ${applying ? "disabled" : ""}>
           <i data-lucide="wand-sparkles"></i>
           <span>${applying ? "반영 중" : "반영"}</span>
@@ -18369,6 +18370,7 @@ function renderServicePresenterControls(service, slides, active, index) {
 
 function renderPresenterServiceInputRail(service) {
   const draft = state.presenterPreparationDrafts[service.id] || "";
+  const placeholder = presenterPreparationPlaceholder(service);
   return `
     <aside class="svc-presenter-input-rail" aria-label="예배 입력">
       <header class="svc-presenter-input-rail-head">
@@ -18376,7 +18378,7 @@ function renderPresenterServiceInputRail(service) {
         <small>빠른 반영</small>
       </header>
       <section class="svc-presenter-preparation-input">
-        <textarea class="svc-presenter-preparation-text" data-presenter-preparation-input data-service-id="${escapeAttr(service.id)}" rows="7" placeholder="곡명(9장)&#10;성경봉독: 히 10:38-39&#10;설교 제목: 제목&#10;봉헌찬송: 찬 187장" aria-label="예배 준비 입력">${escapeHtml(draft)}</textarea>
+        <textarea class="svc-presenter-preparation-text" data-presenter-preparation-input data-service-id="${escapeAttr(service.id)}" rows="7" placeholder="${escapeAttr(placeholder)}" aria-label="예배 준비 입력">${escapeHtml(draft)}</textarea>
         <button class="svc-presenter-preparation-apply" type="button" data-presenter-preparation-apply data-service-id="${escapeAttr(service.id)}">
           <i data-lucide="wand-sparkles"></i>
           <span>반영</span>
@@ -18479,8 +18481,8 @@ function parseKnownPresenterPreparationLine(text = "") {
     /^(찬양)\s*(\d+)\s*(?:[:：.-]\s*)?(.+)$/,
     /^(기도\s*찬양)\s*(\d+)\s*(?:[:：.-]\s*)?(.+)$/,
     /^(공동기도)\s*(\d+)\s*(?:[:：.-]\s*)?(.+)$/,
-    /^(찬송가|찬송)\s*(?:[:：.-]\s*)?(.+)$/,
-    /^((?:대표\s*)?기도|성경\s*봉독|성경\s*본문|설교\s*본문|설교\s*제목|인용\s*구절|특송|봉헌\s*찬송|봉헌\s*기도|결단\s*찬양|결단\s*기도|본문|설교)\s*(?:[:：.-]\s*)?(.+)$/,
+    /^(입례\s*찬양|찬송가|찬송)\s*(?:[:：.-]\s*)?(.+)$/,
+    /^((?:대표\s*)?기도|성경\s*봉독|성경\s*본문|설교\s*본문|설교\s*제목|인용\s*구절|특송|봉헌\s*찬송|봉헌\s*기도|결단\s*찬양|결단\s*기도|파송\s*찬송|축도|본문|설교)\s*(?:[:：.-]\s*)?(.+)$/,
   ];
   for (const pattern of patterns) {
     const match = raw.match(pattern);
@@ -18515,11 +18517,90 @@ function normalizePresenterPreparationInputLabel(label = "") {
     인용구절: "인용 구절",
     봉헌: "봉헌찬송",
     결단: "결단찬양",
+    파송찬송: "파송찬송",
+    축도: "축도",
   };
   if (aliases[key]) return aliases[key];
   const numbered = key.match(/^(찬양|기도찬양|공동기도)(\d+)$/);
   if (numbered) return `${numbered[1]} ${Number(numbered[2])}`;
   return raw;
+}
+
+function presenterPreparationPlaceholder(service) {
+  const lines = presenterPreparationPlaceholderLines(service);
+  return lines.length ? lines.join("\n") : "입력할 항목이 없습니다.";
+}
+
+function presenterPreparationPlaceholderLines(service) {
+  if (!service?.id) return [];
+  const seen = new Set();
+  return servicePrepEditorItems(service.id)
+    .map((item) => presenterPreparationPlaceholderLine(item, service))
+    .filter((line) => {
+      const key = compactSearchValue(line);
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+}
+
+function presenterPreparationPlaceholderLine(item, service) {
+  const context = presenterServiceInputItem(item, service);
+  if (!context || !presenterServiceInputHasEditableField(item, service)) return "";
+  const label = presenterPreparationPlaceholderLabel(item, context);
+  if (!label) return "";
+  return `${label}: ${presenterPreparationPlaceholderExample(item, context, service)}`;
+}
+
+function presenterPreparationPlaceholderLabel(item, context) {
+  const label = String(item?.label || "").replace(/\s+/g, " ").trim();
+  const compact = compactSearchValue(label);
+  if (!label) return "";
+  if (/^찬양\d*$/.test(compact)) {
+    const order = Number(label.match(/\d+/)?.[0]) || Number(item?._worshipElementOrder) || 1;
+    return `찬양 ${order}`;
+  }
+  if (/^기도찬양\d*$/.test(compact)) {
+    const order = Number(label.match(/\d+/)?.[0]) || 1;
+    return `기도 찬양 ${order}`;
+  }
+  if (/^공동기도\d*$/.test(compact)) {
+    const order = Number(label.match(/\d+/)?.[0]) || 1;
+    return `공동기도 ${order}`;
+  }
+  if (compact === "기도" || compact === "대표기도") return "대표기도";
+  if (compact === "성경봉독" || compact === "성경본문") return "성경봉독";
+  if (compact === "설교" || compact === "설교제목") return "설교 제목";
+  if (compact === "설교본문" || compact === "본문" || compact === "말씀본문") return "설교 본문";
+  if (compact === "봉헌찬송" || compact === "봉헌찬양") return "봉헌찬송";
+  if (compact === "봉헌기도") return "봉헌기도";
+  if (compact === "결단찬양" || compact === "결단찬송") return "결단찬양";
+  if (compact === "결단기도") return "결단기도";
+  if (compact === "파송찬송" || compact === "파송찬양") return "파송찬송";
+  if (compact === "축도") return "축도";
+  if (compact === "특송") return "특송";
+  if (context.mode === "scripture") return label;
+  return label;
+}
+
+function presenterPreparationPlaceholderExample(item, context, service) {
+  const label = compactSearchValue(item?.label || "");
+  if (context.mode === "scripture") {
+    return serviceItemSupportsScriptureReferenceList(item) ? "렘 3:22; 마 3:11" : "히 10:38-39";
+  }
+  if (context.mode === "praise_db" || serviceItemRequiresSongSelection(item, service) || isSpecialSongServiceItem(item)) {
+    if (/봉헌/.test(label)) return "찬 187장";
+    if (/파송/.test(label)) return "5 이 천지간 만물들아";
+    if (/특송/.test(label)) return "곡명 / 담당기관";
+    return "곡명(9장)";
+  }
+  const { needsTitle, needsAssignee } = presenterServiceTextInputSpec(item, context.model, context.memo);
+  if (/설교/.test(label) && needsTitle) return "제목";
+  if (/특송/.test(label)) return "곡명 / 담당기관";
+  if (needsTitle && needsAssignee) return "내용 / 담당자";
+  if (needsAssignee) return "이름/직분";
+  if (needsTitle) return "내용";
+  return "내용";
 }
 
 function presenterPreparationSermonBodyTargetLabel(service = null) {

@@ -3174,6 +3174,7 @@ def main() -> int:
                           const legacyContext = document.querySelector('.service-sidebar-input-context');
                           const bulkInput = document.querySelector('.service-sidebar--presenter [data-presenter-preparation-input]');
                           const bulkButton = document.querySelector('.service-sidebar--presenter [data-presenter-preparation-apply]');
+                          const bulkPlaceholder = bulkInput?.getAttribute('placeholder') || '';
                           if (bulkInput) {
                             bulkInput.value = '찬양 1: 평화 하나님의 평강이';
                             bulkInput.dispatchEvent(new Event('input', { bubbles: true }));
@@ -3198,6 +3199,8 @@ def main() -> int:
                             editableLabels,
                             bulkInput: Boolean(bulkInput),
                             bulkButton: Boolean(bulkButton),
+                            bulkPlaceholder,
+                            placeholderLines: bulkPlaceholder.split('\\n').filter(Boolean),
                             bulkDraft: state.presenterPreparationDrafts[service?.id || ''] || '',
                             overflow: Math.max(document.documentElement.scrollWidth - window.innerWidth, document.body.scrollWidth - window.innerWidth)
                           };
@@ -3212,6 +3215,10 @@ def main() -> int:
                         and presenter_header_input["songFieldCount"] >= 1
                         and presenter_header_input["bulkInput"]
                         and presenter_header_input["bulkButton"]
+                        and len(presenter_header_input["placeholderLines"]) >= 4
+                        and any(line.startswith("찬양 1:") for line in presenter_header_input["placeholderLines"])
+                        and any(line.startswith("성경봉독:") for line in presenter_header_input["placeholderLines"])
+                        and any(line.startswith("설교 제목:") for line in presenter_header_input["placeholderLines"])
                         and presenter_header_input["bulkDraft"] == "찬양 1: 평화 하나님의 평강이"
                         and any("찬양" in label for label in presenter_header_input["headerLabels"])
                         and "결단기도" not in presenter_header_input["editableLabels"]

@@ -103,6 +103,10 @@ Small visual polish that does not alter behavior does not need an entry.
 
 ### Preparation Input Parsing
 
+- The `예배 입력` placeholder is generated from the selected service's
+  editable presenter items, not hard-coded globally. Keep examples parseable by
+  `parsePresenterPreparationInput`, such as `찬양 1: 곡명(9장)`,
+  `성경봉독: 히 10:38-39`, and `특송: 곡명 / 담당기관`.
 - `본문`, `성경본문`, `설교본문`, `말씀`, and `말씀본문` are dynamic
   preparation aliases. If the service has a `설교 본문` element, they target
   that element; otherwise they target `성경봉독`.
