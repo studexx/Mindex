@@ -84,9 +84,12 @@ Small visual polish that does not alter behavior does not need an entry.
 - 주일예배 [2부], [3부], 주일오후예배, 수요예배, and 월삭예배 default to
   김남영 목사 for sermon and benediction when those elements exist.
 - 금요기도회 defaults to 김남영 목사 for sermon. It has no benediction element.
-- In the sending section, `축도` and `주기도문` are mutually exclusive in the
-  presenter/order projection. If both legacy/persisted items exist, keep `축도`
-  and drop `주기도문`.
+- In the sending section, `축도` is the default conclusion slot for public
+  worship templates. Do not infer `축도` vs `주기도문` from the minister name.
+- `주기도문` is an explicit per-service override, stored as
+  `memo.sendingConclusion = "lords_prayer"` from the `축도 | 주기도문` control.
+  If legacy/persisted `축도` and `주기도문` both exist without an explicit
+  override, keep `축도` and drop `주기도문`.
 
 ### Sunday Public Worship Templates
 

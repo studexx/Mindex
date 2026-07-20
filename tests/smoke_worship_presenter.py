@@ -1624,7 +1624,13 @@ def main() -> int:
                       const lordsPrayerScaffold = buildWorshipServiceScaffold(lordsPrayerService.id, lordsPrayerService.type_id);
                       state.serviceItems[lordsPrayerService.id] = groupWorshipElements(lordsPrayerScaffold.sections, lordsPrayerScaffold.elements)[lordsPrayerService.id] || [];
                       const lordsPrayerItem = (state.serviceItems[lordsPrayerService.id] || [])
-                        .find((item) => item.label === '주기도문') || {};
+                        .find((item) => item.label === '주기도문')
+                        || applySendingConclusionToServiceItem(
+                          { ...((state.serviceItems[lordsPrayerService.id] || []).find((item) => item.label === '축도') || {}) },
+                          'lords_prayer',
+                          lordsPrayerService,
+                        )
+                        || {};
                       const creedTemplatePlaceholder = {
                         id: '__smoke_creed_template_placeholder__',
                         label: '사도신경',

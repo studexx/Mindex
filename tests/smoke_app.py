@@ -1829,6 +1829,60 @@ def main() -> int:
                             ).map((row) => row.label);
                             return { pastorPreacher, layPreacher };
                           })(),
+                          sendingConclusionOverride: (() => {
+                            const service = { id: '__smoke_sending_conclusion_override__', type_id: 'sunday-first', date: '2026-07-05' };
+                            const sectionId = '12121212-1212-4212-8212-121212121212';
+                            const item = (id, label, key, order, memo = {}) => normalizeServiceItem({
+                              id,
+                              service_id: service.id,
+                              sort_order: order,
+                              label,
+                              raw_title: label,
+                              _worshipSectionId: sectionId,
+                              _worshipSectionKey: key,
+                              _worshipSectionTitle: '파송',
+                              _worshipSectionOrder: 14,
+                              _worshipElementOrder: order,
+                              memo: serializeServiceItemMemo({
+                                elementType: label === '주기도문' ? 'body' : 'title_person',
+                                ...memo,
+                              }),
+                            });
+                            const projectedLord = projectWorshipServiceItemsFromTemplate(service, [
+                              item('12121212-1212-4212-8212-121212121213', '축도', 'sending', 1),
+                              item('12121212-1212-4212-8212-121212121214', '주기도문', 'sending', 2, { sendingConclusion: 'lords_prayer' }),
+                            ]).filter((row) => templateProjectionSectionKey(row) === 'sending' && serviceItemSendingConclusion(row))
+                              .map((row) => ({
+                                label: row.label,
+                                conclusion: serviceItemSendingConclusion(row),
+                                explicit: serviceItemExplicitSendingConclusion(row),
+                                elementType: serviceMemoElementType(parseServiceItemMemo(row.memo)),
+                              }));
+                            const projectedBenediction = projectWorshipServiceItemsFromTemplate(service, [
+                              item('12121212-1212-4212-8212-121212121215', '축도', 'sending', 1, { sendingConclusion: 'benediction' }),
+                              item('12121212-1212-4212-8212-121212121216', '주기도문', 'sending', 2),
+                            ]).filter((row) => templateProjectionSectionKey(row) === 'sending' && serviceItemSendingConclusion(row))
+                              .map((row) => ({
+                                label: row.label,
+                                conclusion: serviceItemSendingConclusion(row),
+                                explicit: serviceItemExplicitSendingConclusion(row),
+                              }));
+                            const toggleItem = { ...projectedBenediction[0] };
+                            applySendingConclusionToServiceItem(toggleItem, 'lords_prayer', service);
+                            const toggleMemo = parseServiceItemMemo(toggleItem.memo);
+                            return {
+                              projectedLord,
+                              projectedBenediction,
+                              toggled: {
+                                label: toggleItem.label,
+                                assignee: toggleItem.assignee,
+                                conclusion: toggleMemo.sendingConclusion,
+                                elementType: toggleMemo.elementType,
+                                inputMode: toggleMemo.inputMode,
+                                introTitle: toggleMemo.introSlide?.title || '',
+                              },
+                            };
+                          })(),
                           duplicateBenedictionProjection: (() => {
                             const service = { id: '__smoke_duplicate_benediction__', type_id: 'sunday-main', date: '2026-07-05' };
                             const item = (id, label, key, order, assignee = '') => normalizeServiceItem({
@@ -2322,7 +2376,32 @@ def main() -> int:
                         ]
                         and template_terms["sundayFirstSendingPrune"] == {
                             "pastorPreacher": ["설교 제목", "축도"],
-                            "layPreacher": ["설교 제목", "주기도문"],
+                            "layPreacher": ["설교 제목", "축도"],
+                        }
+                        and template_terms["sendingConclusionOverride"] == {
+                            "projectedLord": [
+                                {
+                                    "label": "주기도문",
+                                    "conclusion": "lords_prayer",
+                                    "explicit": "lords_prayer",
+                                    "elementType": "body",
+                                },
+                            ],
+                            "projectedBenediction": [
+                                {
+                                    "label": "축도",
+                                    "conclusion": "benediction",
+                                    "explicit": "benediction",
+                                },
+                            ],
+                            "toggled": {
+                                "label": "주기도문",
+                                "assignee": "",
+                                "conclusion": "lords_prayer",
+                                "elementType": "body",
+                                "inputMode": "text",
+                                "introTitle": "주기도문",
+                            },
                         }
                         and template_terms["duplicateBenedictionProjection"] == {
                             "count": 1,

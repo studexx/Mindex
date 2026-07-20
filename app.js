@@ -5551,6 +5551,15 @@ function handlePresenterDetailClick(event) {
     return true;
   }
 
+  if (presenterAction.dataset.presenterAction === "set-sending-conclusion") {
+    void setPresenterSendingConclusion(
+      presenterAction.dataset.serviceId || state.selectedServiceId,
+      Number(presenterAction.dataset.serviceItemIndex),
+      presenterAction.dataset.sendingConclusion,
+    );
+    return true;
+  }
+
   runPresenterAction(presenterAction.dataset.presenterAction, presenterAction.dataset.serviceId, {
     index: presenterAction.dataset.presenterIndex,
     nextServiceId: presenterAction.dataset.nextServiceId,
@@ -6473,6 +6482,61 @@ async function resolveAndSaveCommittedServiceItem(serviceId, index) {
   await saveService(serviceId);
 }
 
+async function setPresenterSendingConclusion(serviceId, index, conclusion) {
+  const normalized = normalizeServiceSendingConclusion(conclusion);
+  const service = state.services.find((candidate) => candidate.id === serviceId);
+  const items = getServiceItems(serviceId);
+  const item = items[Number(index)];
+  if (!service || !item || !normalized) return;
+  applySendingConclusionToServiceItem(item, normalized, service);
+  state.serviceItems[serviceId] = normalizeServiceItemsInCurrentOrder(items);
+  state.dirty.service = true;
+  refreshPresenterForService(serviceId);
+  renderCurrentServiceModuleDetail();
+  renderServiceList();
+  updateSaveState();
+  await saveService(serviceId);
+  showToast(normalized === "lords_prayer" ? "파송을 주기도문으로 변경했습니다." : "파송을 축도로 변경했습니다.");
+}
+
+function applySendingConclusionToServiceItem(item, conclusion, service = null) {
+  const normalized = normalizeServiceSendingConclusion(conclusion);
+  if (!normalized) return item;
+  const parsed = parseServiceItemMemo(item.memo);
+  parsed.sendingConclusion = normalized;
+  parsed.outputMode = "";
+  parsed.inputMode = "text";
+  parsed.slides = [];
+  parsed.scriptureReference = "";
+  parsed.scriptureReferences = [];
+  parsed.asset = { kind: "", name: "", url: "" };
+  item.song_id = null;
+  item.version_id = null;
+  item._worshipElementTemplateModified = true;
+  item._worshipSectionKey = "sending";
+  if (normalized === "lords_prayer") {
+    item.label = "주기도문";
+    item.name = "주기도문";
+    item.raw_title = "주기도문";
+    item.default_text = PUBLIC_LORDS_PRAYER_TEXT;
+    item.assignee = "";
+    parsed.elementType = "body";
+    parsed.componentType = "body";
+    parsed.introSlide = { title: "주기도문" };
+  } else {
+    item.label = "축도";
+    item.name = "축도";
+    item.raw_title = "";
+    item.default_text = "";
+    item.assignee = cleanServiceAssignee(item.assignee) || defaultServiceBenedictionLeader(service?.type_id);
+    parsed.elementType = "title_person";
+    parsed.componentType = "title_person";
+    parsed.introSlide = null;
+  }
+  item.memo = serializeServiceItemMemo(parsed);
+  return item;
+}
+
 function updateServiceItemField(field) {
   const items = getServiceItems(state.selectedServiceId);
   const index = Number(field.dataset.serviceItemIndex);
@@ -6684,6 +6748,14 @@ function normalizeServiceInputMode(value) {
     none: "none",
   };
   return aliases[mode] || "";
+}
+
+function normalizeServiceSendingConclusion(value = "") {
+  const key = compactSearchValue(value);
+  if (!key) return "";
+  if (["benediction", "blessing", "축도"].includes(key)) return "benediction";
+  if (["lordsprayer", "lordprayer", "주기도문"].includes(key)) return "lords_prayer";
+  return "";
 }
 
 function serviceInputModeForElementType(elementType = "") {
@@ -6987,6 +7059,7 @@ function emptyServiceItemMemo(rawNote = "") {
     asset: { kind: "", name: "", url: "" },
     playback: null,
     presenterRole: "",
+    sendingConclusion: "",
     hiddenInPresentation: false,
     templateSuppressed: false,
   };
@@ -7001,6 +7074,7 @@ function parseServiceItemMemo(value) {
       const elementType = serviceMemoElementType({ ...parsed, elementType: parsed.elementType || parsed.element_type || parsed.type });
       const asset = normalizeServiceAsset(parsed.asset || parsed.file || parsed.media);
       const presenterRole = normalizeServicePresenterRole(parsed.presenterRole || parsed.presenter_role || parsed.role);
+      const sendingConclusion = normalizeServiceSendingConclusion(parsed.sendingConclusion || parsed.sending_conclusion);
       const introSlide = normalizeServiceIntroSlide(parsed.introSlide || parsed.intro_slide || parsed.titleSlide || parsed.title_slide);
       return {
         note: String(parsed.note || parsed.memo || "").trim(),
@@ -7023,6 +7097,7 @@ function parseServiceItemMemo(value) {
         asset,
         playback: normalizeServicePlaybackConfig(parsed.playback, elementType),
         presenterRole,
+        sendingConclusion,
         hiddenInPresentation: Boolean(parsed.hiddenInPresentation || parsed.hidden_in_presentation || parsed.hidden),
         templateSuppressed: Boolean(parsed.templateSuppressed || parsed.template_suppressed),
       };
@@ -7118,11 +7193,12 @@ function serializeServiceItemMemo(value = {}) {
   const asset = normalizeServiceAsset(value.asset);
   const playback = normalizeServicePlaybackConfig(value.playback, elementType);
   const presenterRole = normalizeServicePresenterRole(value.presenterRole || value.presenter_role || value.role);
+  const sendingConclusion = normalizeServiceSendingConclusion(value.sendingConclusion || value.sending_conclusion);
   const hiddenInPresentation = Boolean(value.hiddenInPresentation || value.hidden_in_presentation || value.hidden);
   const templateSuppressed = Boolean(value.templateSuppressed || value.template_suppressed);
   const defaultAssetKind = serviceAssetKindForElementType(elementType);
   if (!asset.kind && defaultAssetKind && hasServiceAsset(asset)) asset.kind = defaultAssetKind;
-  if (!slides.length && !scriptureReference && !scriptureReferences.length && !hasServiceIntroSlide(introSlide) && !formHint && !formPreset && !formPresetRules.length && !templateKey && !templateVariant && !elementType && !outputMode && !inputMode && !textHighlights.length && !hasServiceAsset(asset) && !hasServicePlaybackConfig(playback) && !presenterRole && !hiddenInPresentation && !templateSuppressed) return note;
+  if (!slides.length && !scriptureReference && !scriptureReferences.length && !hasServiceIntroSlide(introSlide) && !formHint && !formPreset && !formPresetRules.length && !templateKey && !templateVariant && !elementType && !outputMode && !inputMode && !textHighlights.length && !hasServiceAsset(asset) && !hasServicePlaybackConfig(playback) && !presenterRole && !sendingConclusion && !hiddenInPresentation && !templateSuppressed) return note;
   const payload = { note };
   if (scriptureReference) payload.scriptureReference = scriptureReference;
   if (scriptureReferences.length) payload.scriptureReferences = scriptureReferences;
@@ -7137,6 +7213,7 @@ function serializeServiceItemMemo(value = {}) {
   if (inputMode) payload.inputMode = inputMode;
   if (textHighlights.length) payload.textHighlights = textHighlights;
   if (presenterRole) payload.presenterRole = presenterRole;
+  if (sendingConclusion) payload.sendingConclusion = sendingConclusion;
   if (hiddenInPresentation) payload.hiddenInPresentation = true;
   if (templateSuppressed) payload.templateSuppressed = true;
   if (hasServiceAsset(asset)) payload.asset = asset;
@@ -13615,10 +13692,7 @@ const PUBLIC_WORSHIP_CLOSING_IMAGE_ASSET = {
 
 const PUBLIC_WORSHIP_TEMPLATE_VERSIONS = {
   "sunday-first": [
-    publicWorshipTemplateBaseline((options = {}) => {
-        const pastorLeader = serviceHasPastorSermonLeader(options.service, options.items);
-        return publicSundayFirstTemplate({ score: true, benediction: pastorLeader, lordsPrayer: !pastorLeader });
-      }),
+    publicWorshipTemplateBaseline(() => publicSundayFirstTemplate({ score: true })),
   ],
   "sunday-second": [
     publicWorshipTemplateBaseline(() => publicSundaySecondTemplate({ score: true, specialScore: false })),
@@ -14129,8 +14203,6 @@ function publicSundayThirdSendingPraiseElement() {
 function publicSundayFirstTemplate(options = {}) {
   const typeId = "sunday-first";
   const score = Boolean(options.score);
-  const benediction = Boolean(options.benediction);
-  const lordsPrayer = options.lordsPrayer !== undefined ? Boolean(options.lordsPrayer) : !benediction;
   return [
     publicWorshipReadyStep(),
     publicWorshipCreedStep(),
@@ -14141,7 +14213,7 @@ function publicSundayFirstTemplate(options = {}) {
     publicWorshipResponseStep(),
     publicWorshipOfferingStep({ score }),
     publicWorshipAnnouncementsStep(),
-    publicWorshipSendingStep({ score, benediction, lordsPrayer, typeId }),
+    publicWorshipSendingStep({ score, typeId }),
     publicWorshipClosingStep(),
   ];
 }
@@ -14526,15 +14598,47 @@ function collapseDuplicateBenedictionProjectionItems(items = []) {
 }
 
 function collapseBenedictionLordsPrayerProjectionItems(items = []) {
-  const hasBenediction = items.some((item) => {
-    const labelKey = compactSearchValue(item?.label || item?.raw_title || "");
-    return templateProjectionSectionKey(item) === "sending" && labelKey === "축도";
+  const entries = items
+    .map((item, index) => ({
+      item,
+      index,
+      conclusion: serviceItemSendingConclusion(item),
+      explicit: serviceItemExplicitSendingConclusion(item),
+    }))
+    .filter(({ item, conclusion }) => templateProjectionSectionKey(item) === "sending" && conclusion);
+  if (entries.length <= 1) return items;
+  const explicitLord = bestSendingConclusionEntry(entries.filter((entry) => entry.explicit === "lords_prayer"));
+  const explicitBenediction = bestSendingConclusionEntry(entries.filter((entry) => entry.explicit === "benediction"));
+  const fallbackBenediction = bestSendingConclusionEntry(entries.filter((entry) => entry.conclusion === "benediction"));
+  const fallbackLord = bestSendingConclusionEntry(entries.filter((entry) => entry.conclusion === "lords_prayer"));
+  const keep = explicitLord || explicitBenediction || fallbackBenediction || fallbackLord;
+  if (!keep) return items;
+  return items.filter((_, index) => {
+    const entry = entries.find((candidate) => candidate.index === index);
+    return !entry || entry.index === keep.index;
   });
-  if (!hasBenediction) return items;
-  return items.filter((item) => {
-    const labelKey = compactSearchValue(item?.label || item?.raw_title || "");
-    return !(templateProjectionSectionKey(item) === "sending" && labelKey === "주기도문");
-  });
+}
+
+function bestSendingConclusionEntry(entries = []) {
+  return entries.slice().sort((a, b) => {
+    const explicitDiff = serviceItemProjectionSpecificity(b.item) - serviceItemProjectionSpecificity(a.item);
+    if (explicitDiff) return explicitDiff;
+    return a.index - b.index;
+  })[0] || null;
+}
+
+function serviceItemExplicitSendingConclusion(item = {}) {
+  const memo = parseServiceItemMemo(item?.memo);
+  return normalizeServiceSendingConclusion(memo.sendingConclusion || memo.sending_conclusion);
+}
+
+function serviceItemSendingConclusion(item = {}) {
+  const explicit = serviceItemExplicitSendingConclusion(item);
+  if (explicit) return explicit;
+  const labelKey = compactSearchValue(item?.label || item?.raw_title || "");
+  if (labelKey === "축도") return "benediction";
+  if (labelKey === "주기도문") return "lords_prayer";
+  return "";
 }
 
 function serviceItemProjectionSpecificity(item = {}) {
@@ -14722,6 +14826,10 @@ function mergeTemplateProjectionItem(templateItem = {}, existingItem = {}) {
     merged.label = existingItem.label || templateItem.label;
     merged._worshipElementOrder = existingItem._worshipElementOrder || templateItem._worshipElementOrder;
   }
+  const explicitConclusion = serviceItemExplicitSendingConclusion(existingItem);
+  if (explicitConclusion && templateProjectionSectionKey(merged) === "sending") {
+    applySendingConclusionToServiceItem(merged, explicitConclusion);
+  }
   return merged;
 }
 
@@ -14763,6 +14871,7 @@ function mergeTemplateProjectionMemo(templateMemo = "", existingMemo = "") {
     asset: template.asset?.url ? template.asset : existing.asset,
     playback: template.playback || existing.playback,
     presenterRole: template.presenterRole || existing.presenterRole,
+    sendingConclusion: existing.sendingConclusion || template.sendingConclusion,
     slides: existing.slides,
     reviewStatus: existing.reviewStatus,
     reviewFlags: existing.reviewFlags,
@@ -14817,27 +14926,9 @@ function normalizeServiceItemsForTemplateHierarchy(service, items = [], options 
 }
 
 function normalizeSundayFirstSendingItems(service = null, items = [], referenceItems = null) {
-  if (worshipAppServiceTypeId(service?.type_id) !== "sunday-first") return items;
-  const pastorLeader = serviceHasPastorSermonLeader(service, referenceItems || items);
-  return items.filter((item) => {
-    const sectionKey = String(item?._worshipSectionKey || item?.sectionKey || item?.section_key || "").trim();
-    const labelKey = compactSearchValue(item?.label || item?.raw_title || "");
-    const isBenediction = sectionKey === "benediction" || labelKey === "축도";
-    const isLordsPrayer = sectionKey === "lords_prayer" || labelKey === "주기도문";
-    const parsed = parseServiceItemMemo(item?.memo);
-    const rawTitle = String(item?.raw_title || "").trim();
-    const hasNonGenericTitle = rawTitle && compactSearchValue(rawTitle) !== labelKey;
-    const hasExplicitContent = Boolean(
-      item?._worshipElementTemplateModified
-      || hasNonGenericTitle
-      || cleanServiceAssignee(item?.assignee)
-      || parsed.note
-      || parsed.slides?.length
-    );
-    if ((isBenediction || isLordsPrayer) && hasExplicitContent) return true;
-    if (pastorLeader) return !isLordsPrayer;
-    return !isBenediction;
-  });
+  void service;
+  void referenceItems;
+  return items;
 }
 
 function serviceTemplateHierarchyIndex(typeId, options = {}) {
@@ -18870,10 +18961,16 @@ function presenterServiceInputItem(item, service) {
   const model = serviceItemEditorModel(item, { service });
   const memo = model.parsed || parseServiceItemMemo(item.memo);
   const inputMode = model.strictSong ? "praise_db" : serviceMemoInputMode(memo, item);
+  if (isSendingConclusionServiceItem(item, memo)) return { mode: "sending_conclusion", model, memo };
   if (presenterServiceInputIsStatic(item, memo)) return null;
   if (inputMode === "none" || inputMode === "config") return null;
   if (inputMode === "praise_db" && !model.strictSong) return { mode: "text", model, memo };
   return { mode: inputMode, model, memo };
+}
+
+function isSendingConclusionServiceItem(item = {}, memo = parseServiceItemMemo(item.memo)) {
+  void memo;
+  return templateProjectionSectionKey(item) === "sending" && Boolean(serviceItemSendingConclusion(item));
 }
 
 function presenterServiceInputIsStatic(item = {}, memo = parseServiceItemMemo(item.memo)) {
@@ -18912,6 +19009,9 @@ function presenterServiceInputControls(item, index, service) {
   if (mode === "asset") {
     return renderPresenterServiceAssetInput(item, index, memo);
   }
+  if (mode === "sending_conclusion") {
+    return renderPresenterServiceSendingConclusionInput(item, index, service, memo);
+  }
   return renderPresenterServiceTextInputs(item, index, model, memo);
 }
 
@@ -18929,9 +19029,38 @@ function presenterServiceTextInputSpec(item, model, memo) {
 function presenterServiceInputHasEditableField(item, service) {
   const context = presenterServiceInputItem(item, service);
   if (!context) return false;
+  if (context.mode === "sending_conclusion") return true;
   if (["praise_db", "scripture", "asset"].includes(context.mode)) return true;
   const { needsTitle, needsAssignee } = presenterServiceTextInputSpec(item, context.model, context.memo);
   return needsTitle || needsAssignee;
+}
+
+function renderPresenterServiceSendingConclusionInput(item, index, service, memo) {
+  void memo;
+  const current = serviceItemSendingConclusion(item) || "benediction";
+  const option = (value, label) => `
+    <button class="svc-sending-conclusion-option${current === value ? " active" : ""}" type="button"
+      data-presenter-action="set-sending-conclusion"
+      data-service-id="${escapeAttr(service?.id || item.service_id || state.selectedServiceId)}"
+      data-service-item-index="${escapeAttr(index)}"
+      data-sending-conclusion="${escapeAttr(value)}"
+      aria-pressed="${current === value ? "true" : "false"}">
+      ${escapeHtml(label)}
+    </button>`;
+  return `
+    <label class="svc-presenter-input-field svc-presenter-input-field--sending-conclusion">
+      <span>마침</span>
+      <span class="svc-sending-conclusion-toggle" role="group" aria-label="파송 마침 방식">
+        ${option("benediction", "축도")}
+        ${option("lords_prayer", "주기도문")}
+      </span>
+    </label>
+    ${current === "benediction" ? `
+      <label class="svc-presenter-input-field">
+        <span>담당</span>
+        <input class="svc-presenter-input-control" type="text" data-service-item-field="assignee" data-service-item-index="${index}"
+          value="${escapeAttr(item.assignee || "")}" placeholder="${escapeAttr(defaultServiceBenedictionLeader(service?.type_id))}" aria-label="축도 담당" />
+      </label>` : ""}`;
 }
 
 function renderPresenterServicePraiseInput(item, index, model) {
