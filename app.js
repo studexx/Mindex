@@ -21074,7 +21074,6 @@ function presenterSlideSuppressesTrailingBlank(slide = {}) {
     slide.type === "ready"
     || sectionRole === "ready"
     || sectionKey === "ready"
-    || sectionKey === "scripture_reading"
     || sectionKey === "closing_visual"
     || sectionLabel.includes("준비")
     || sectionLabel.includes("마무리")
@@ -21091,6 +21090,9 @@ function presenterElementTrailingBlankSlide(slide, index, service = null) {
   const serviceChromakey = presenterServiceUsesChromakey(service);
   const scoreLike = slide?.sourceType === "score" || slide?.componentType === "score" || slide?.scoreBackground;
   const scriptureReadingBlank = slide?.sectionKey === "scripture_reading";
+  const outputContext = scriptureReadingBlank
+    ? (serviceChromakey ? "chromakey" : "clean")
+    : (scoreLike && serviceChromakey ? "chromakey" : presenterSlideOutputContext(slide, serviceChromakey));
   return {
     ...slide,
     id: `${idBase}:after-blank`,
@@ -21114,10 +21116,14 @@ function presenterElementTrailingBlankSlide(slide, index, service = null) {
     sourceType: "",
     componentType: "",
     scoreBackground: false,
-    // A reading's closing blank should be the output mode's plain blank.
-    suppressBackgroundImage: scriptureReadingBlank,
-    noBackgroundImage: scriptureReadingBlank,
-    outputContext: scoreLike && serviceChromakey ? "chromakey" : presenterSlideOutputContext(slide, serviceChromakey),
+    scriptureContext: "",
+    scriptureReadingFinal: false,
+    referenceBook: "",
+    referenceRange: "",
+    translationLabel: "",
+    suppressBackgroundImage: false,
+    noBackgroundImage: false,
+    outputContext,
     autoTrailingBlank: true,
     sort: (Number(slide.sort) || index) + 0.009,
   };
