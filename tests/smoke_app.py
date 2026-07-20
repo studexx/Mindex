@@ -3180,6 +3180,12 @@ def main() -> int:
                           }
                           const controlGroups = [...document.querySelectorAll('.svc-board-subgroup-controls')];
                           const controls = [...document.querySelectorAll('.svc-board-subgroup-controls [data-service-item-field]')];
+                          const controlOffsets = controlGroups.map((node) => {
+                            const header = node.closest('.svc-board-subgroup')?.querySelector('.svc-board-subgroup-head');
+                            const headerRect = header?.getBoundingClientRect();
+                            const controlRect = node.getBoundingClientRect();
+                            return Math.round((controlRect?.left || 0) - (headerRect?.right || 0));
+                          });
                           const headerLabels = controlGroups.map((node) => {
                             const header = node.closest('.svc-board-subgroup')?.querySelector('.svc-board-subgroup-head');
                             return header?.textContent?.replace(/\\s+/g, ' ').trim() || '';
@@ -3194,6 +3200,7 @@ def main() -> int:
                             controlGroupCount: controlGroups.length,
                             fieldCount: controls.length,
                             songFieldCount: songFields.length,
+                            controlOffsets,
                             headerLabels,
                             editableLabels,
                             bulkInput: Boolean(bulkInput),
@@ -3213,6 +3220,8 @@ def main() -> int:
                         and presenter_header_input["bulkInput"]
                         and presenter_header_input["bulkButton"]
                         and presenter_header_input["bulkDraft"] == "찬양 1: 평화 하나님의 평강이"
+                        and presenter_header_input["controlOffsets"]
+                        and max(abs(offset) for offset in presenter_header_input["controlOffsets"]) <= 16
                         and any("찬양" in label for label in presenter_header_input["headerLabels"])
                         and "결단기도" not in presenter_header_input["editableLabels"]
                         and presenter_header_input["overflow"] <= 2
