@@ -3622,7 +3622,7 @@ def main() -> int:
                     and scripture_context_state["readingVersionOpacity"] == "1"
                     and float(scripture_context_state["readingVersionFontSize"].replace("px", "")) >= 50
                     and scripture_context_state["readingFinFontWeight"] == "600"
-                    and scripture_context_state["readingLetterSpacing"] in ["normal", "0px"]
+                    and float(scripture_context_state["readingLetterSpacing"].replace("px", "") or "0") < 0
                     and scripture_context_state["readingTextShadow"] == "none"
                     and float(scripture_context_state["readingTextStroke"].replace("px", "") or "0") > 0
                     and scripture_context_state["sermonContext"] == "sermon"

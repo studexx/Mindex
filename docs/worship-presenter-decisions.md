@@ -57,8 +57,9 @@ Small visual polish that does not alter behavior does not need an entry.
   e.g. `요한계시록 3:19`; the large standalone verse-number column is not used.
 - The translation label uses the same color as the reference line and is one
   text-size step larger than the old caption size.
-- Scripture-reading output intentionally keeps `letter-spacing: 0` and removes
-  text shadow; body stroke/weight synthesis is the only readability boost.
+- Scripture-reading output keeps the Eulyoo verse body tighter with
+  `letter-spacing: -0.05em` and removes text shadow; body stroke/weight
+  synthesis is the other readability boost.
 
 ### Service Outline And Input State
 
