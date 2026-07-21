@@ -2921,7 +2921,7 @@ def main() -> int:
                     and form_preset_state["ccmTexts"] == ["V1 첫 줄\nV1 둘째 줄", "C 첫 줄\nC 둘째 줄", "C 첫 줄\nC 둘째 줄"]
                     and len(set(form_preset_state["ccmFormKeys"])) == 3
                     and form_preset_state["defaultFormMetadataSummary"] == "V1-V2-C-V3-C-Coda"
-                    and form_preset_state["defaultFormMarkers"] == ["V1", "V2", "C", "V3", "C", "Coda"]
+                    and form_preset_state["defaultFormMarkers"] == ["Verse 1", "Verse 2", "Chorus", "Verse 3", "Chorus", "Coda"]
                     and form_preset_state["defaultFormTexts"] == [
                         "감사 1절 첫 줄\n감사 1절 둘째 줄",
                         "감사 2절 첫 줄\n감사 2절 둘째 줄",
@@ -2935,7 +2935,7 @@ def main() -> int:
                     and form_preset_state["fallbackVersionWarnings"] == []
                     and form_preset_state["fallbackTitleTexts"] == ["하나님은 너를 지키시는 자\n너의 우편에 그늘 되시니"]
                     and form_preset_state["fallbackTitleWarnings"] == []
-                    and form_preset_state["hymnAutoMarkers"] == ["Verse 1", "Chorus", "Verse 2", "Chorus", "Verse 3", "Chorus", "Verse 4", "Chorus", "Amen"]
+                    and form_preset_state["hymnAutoMarkers"] == ["Verse 1", "Chorus", "Verse 2", "Chorus", "Verse 3", "Chorus", "Verse 4", "Chorus", "Coda"]
                     and form_preset_state["hymnAutoTexts"] == [
                         "1절 첫 줄\n1절 둘째 줄",
                         "후렴 첫 줄\n후렴 둘째 줄",
