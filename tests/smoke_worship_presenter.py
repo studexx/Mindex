@@ -218,7 +218,7 @@ def main() -> int:
                 if ccm_form_order_state == {
                     "metadataOrder": ["v1", "c", "v2", "c"],
                     "inferredOrder": ["v1", "c", "v2", "c"],
-                    "forcedOrder": ["v1", "c", "v1", "v2"],
+                    "forcedOrder": ["v1", "c", "v1"],
                     "groupedLabels": ["V1A", "V1B"],
                     "groupedLyrics": ["첫 묶음 1\n첫 묶음 2", "둘째 묶음 1\n둘째 묶음 2"],
                 }:
@@ -1087,6 +1087,18 @@ def main() -> int:
                             readyHasBlankAfterReady: readySlides.some((slide) => slide.id === '__smoke_ready_media__:after-blank'),
                             closingHasBlankAfterClosing: closingSlides.some((slide) => slide.id === '__smoke_closing_visual__:after-blank'),
                             normalHasBlankAfterPrayer: normalSlides.some((slide) => slide.id === '__smoke_prayer__:after-blank'),
+                            scriptureHasBlankAfterReading: normalSlides.some((slide) => slide.id === '__smoke_scripture__:after-blank'),
+                            scriptureBlank: (() => {
+                              const blank = normalSlides.find((slide) => slide.id === '__smoke_scripture__:after-blank') || {};
+                              return {
+                                outputContext: blank.outputContext || '',
+                                sectionKey: blank.sectionKey || '',
+                                sectionLabel: blank.sectionLabel || '',
+                                label: blank.label || '',
+                                scriptureContext: blank.scriptureContext || '',
+                                scriptureReadingFinal: Boolean(blank.scriptureReadingFinal),
+                              };
+                            })(),
                           };
                         })()
                       };
@@ -1156,6 +1168,15 @@ def main() -> int:
                         "readyHasBlankAfterReady": False,
                         "closingHasBlankAfterClosing": False,
                         "normalHasBlankAfterPrayer": True,
+                        "scriptureHasBlankAfterReading": True,
+                        "scriptureBlank": {
+                            "outputContext": "clean",
+                            "sectionKey": "",
+                            "sectionLabel": "",
+                            "label": "",
+                            "scriptureContext": "",
+                            "scriptureReadingFinal": False,
+                        },
                     }
                 ):
                     pass_("presenter-section-element-model", json.dumps(fallback_state, ensure_ascii=False))
@@ -1612,19 +1633,19 @@ def main() -> int:
                       const scaffold = buildWorshipServiceScaffold(scaffoldService.id, scaffoldService.type_id);
                       state.serviceItems[scaffoldService.id] = groupWorshipElements(scaffold.sections, scaffold.elements)[scaffoldService.id] || [];
                       const scaffoldAllSlides = buildServicePresenterSlides(scaffoldService.id);
-                      const lordsPrayerService = {
-                        id: '__smoke_public_lords_prayer_scaffold__',
-                        type_id: 'sunday-first',
-                        date: '2026-07-05',
-                        service_date: '2026-07-05',
-                        _worshipSourceRef: { worship_leader: '이성도 집사' },
-                      };
+                      const lordsPrayerService = { id: '__smoke_public_lords_prayer_scaffold__', type_id: 'sunday-first', date: '2026-07-05', service_date: '2026-07-05' };
                       state.services = state.services.filter((service) => service.id !== lordsPrayerService.id);
                       state.services.push(lordsPrayerService);
                       const lordsPrayerScaffold = buildWorshipServiceScaffold(lordsPrayerService.id, lordsPrayerService.type_id);
                       state.serviceItems[lordsPrayerService.id] = groupWorshipElements(lordsPrayerScaffold.sections, lordsPrayerScaffold.elements)[lordsPrayerService.id] || [];
                       const lordsPrayerItem = (state.serviceItems[lordsPrayerService.id] || [])
-                        .find((item) => item.label === '주기도문') || {};
+                        .find((item) => item.label === '주기도문') || {
+                          id: '__smoke_lords_prayer_body__',
+                          label: '주기도문',
+                          raw_title: '주기도문',
+                          memo: serializeServiceItemMemo({ elementType: 'body', introSlide: { title: '주기도문' } }),
+                          _worshipSectionKey: 'sending',
+                        };
                       const creedTemplatePlaceholder = {
                         id: '__smoke_creed_template_placeholder__',
                         label: '사도신경',
@@ -1682,6 +1703,85 @@ def main() -> int:
                         lordsPrayerService,
                         100
                       );
+                      const afternoonDoxologyService = {
+                        id: '__smoke_afternoon_doxology_service__',
+                        type_id: 'sunday-afternoon',
+                        date: '2026-07-05',
+                      };
+                      const afternoonDoxologyTemplatePlaceholderState = resolvePresenterServiceItemContentState(
+                        doxologyTemplatePlaceholder,
+                        parseServiceItemMemo(doxologyTemplatePlaceholder.memo),
+                        null,
+                        afternoonDoxologyService
+                      );
+                      const afternoonDoxologyTemplatePlaceholderSlides = buildPresenterSlidesForServiceItem(
+                        doxologyTemplatePlaceholder,
+                        afternoonDoxologyService,
+                        101
+                      );
+	                      const sharedScriptureService = {
+	                        id: '__smoke_shared_scripture_service__',
+	                        type_id: 'friday',
+	                        date: '2026-07-17',
+	                      };
+	                      const sharedScriptureReadingItem = {
+	                        id: '__smoke_shared_scripture_reading__',
+	                        service_id: sharedScriptureService.id,
+	                        label: '성경봉독',
+	                        raw_title: '',
+	                        memo: serializeServiceItemMemo({ elementType: 'scripture_body', inputMode: 'scripture' }),
+	                        _worshipSectionKey: 'scripture_reading',
+	                        _worshipTemplatePlaceholder: true,
+	                      };
+	                      const sharedSermonBodyItem = {
+	                        id: '__smoke_shared_sermon_body__',
+	                        service_id: sharedScriptureService.id,
+	                        label: '설교 본문',
+	                        raw_title: '출 23:14–19',
+	                        memo: serializeServiceItemMemo({
+	                          elementType: 'scripture_body',
+	                          inputMode: 'scripture',
+	                          scriptureReference: '출 23:14–19',
+	                        }),
+	                        _worshipSectionKey: 'sermon',
+	                      };
+	                      const optionalCitationItem = {
+	                        id: '__smoke_optional_citation__',
+	                        service_id: sharedScriptureService.id,
+	                        label: '인용 구절',
+	                        raw_title: '',
+	                        memo: serializeServiceItemMemo({ elementType: 'scripture_body', inputMode: 'scripture' }),
+	                        _worshipSectionKey: 'sermon',
+	                      };
+	                      state.services = state.services.filter((service) => service.id !== sharedScriptureService.id);
+	                      state.services.push(sharedScriptureService);
+	                      state.serviceItems[sharedScriptureService.id] = [
+	                        sharedScriptureReadingItem,
+	                        sharedSermonBodyItem,
+	                        optionalCitationItem,
+	                      ];
+	                      const sharedScriptureReadingState = resolvePresenterServiceItemContentState(
+	                        sharedScriptureReadingItem,
+	                        parseServiceItemMemo(sharedScriptureReadingItem.memo),
+	                        null,
+	                        sharedScriptureService
+	                      );
+	                      const optionalCitationState = resolvePresenterServiceItemContentState(
+	                        optionalCitationItem,
+	                        parseServiceItemMemo(optionalCitationItem.memo),
+	                        null,
+	                        sharedScriptureService
+	                      );
+	                      const sharedScriptureReadingSlides = buildPresenterSlidesForServiceItem(
+	                        sharedScriptureReadingItem,
+	                        sharedScriptureService,
+	                        102
+	                      );
+	                      const sharedScriptureReadingReferences = serviceItemScriptureReferences(
+	                        sharedScriptureReadingItem,
+	                        parseServiceItemMemo(sharedScriptureReadingItem.memo),
+	                        sharedScriptureService
+	                      );
 	                      const lordsPrayerSlides = normalizePresenterSlidesForServiceOutput(buildPresenterSlidesForServiceItem(
 	                        lordsPrayerItem,
 	                        { id: '__smoke_lords_prayer_chromakey_service__', type_id: 'sunday-main', date: '2026-07-05' },
@@ -1821,6 +1921,21 @@ def main() -> int:
 	                          title: slide.title || '',
 	                          imageSrc: slide.imageSrc || '',
 	                        })),
+	                        afternoonDoxologyTemplatePlaceholderState,
+	                        afternoonDoxologyTemplatePlaceholderSlides: afternoonDoxologyTemplatePlaceholderSlides.map((slide) => ({
+	                          type: slide.type || '',
+	                          title: slide.title || '',
+	                          imageSrc: slide.imageSrc || '',
+	                        })),
+	                        sharedScripture: {
+	                          readingReferences: sharedScriptureReadingReferences,
+	                          readingState: sharedScriptureReadingState,
+	                          readingInput: presenterServiceInputItem(sharedScriptureReadingItem, sharedScriptureService),
+	                          readingSlideCount: sharedScriptureReadingSlides.length,
+	                          citationState: optionalCitationState,
+	                          citationInputMode: presenterServiceInputItem(optionalCitationItem, sharedScriptureService)?.mode || '',
+	                          targetLabel: presenterPreparationTargetLabel('성경봉독'),
+	                        },
 	                        communityScaffold: communitySlides,
 	                        communityFullscreen: communityFullscreenSlides,
 	                        scaffoldClosing: scaffoldClosingSlides,
@@ -1873,6 +1988,32 @@ def main() -> int:
 	                        "title": "5 이 천지간 만물들아",
 	                        "imageSrc": "assets/hymn-scores/5/slide-02.webp",
 	                    }]
+	                    and title_and_liturgical_state["afternoonDoxologyTemplatePlaceholderState"]["state"] == "filled"
+	                    and title_and_liturgical_state["afternoonDoxologyTemplatePlaceholderState"]["hasOutputContent"] is True
+	                    and title_and_liturgical_state["afternoonDoxologyTemplatePlaceholderState"]["reason"] == "fixed_doxology"
+	                    and title_and_liturgical_state["afternoonDoxologyTemplatePlaceholderSlides"][0] == {
+	                        "type": "song-title",
+	                        "title": "1 만복의 근원 하나님",
+	                        "imageSrc": "",
+	                    }
+	                    and title_and_liturgical_state["afternoonDoxologyTemplatePlaceholderSlides"][1:] == [{
+	                        "type": "image",
+	                        "title": "1 만복의 근원 하나님",
+	                        "imageSrc": "assets/hymn-scores/1/slide-01.webp",
+	                    }, {
+	                        "type": "image",
+	                        "title": "1 만복의 근원 하나님",
+	                        "imageSrc": "assets/hymn-scores/1/slide-02.webp",
+	                    }]
+	                    and title_and_liturgical_state["sharedScripture"]["readingReferences"] == ["출 23:14–19"]
+	                    and title_and_liturgical_state["sharedScripture"]["readingState"]["state"] == "filled"
+		                    and title_and_liturgical_state["sharedScripture"]["readingState"]["reason"] == "scripture_body"
+		                    and title_and_liturgical_state["sharedScripture"]["readingInput"] is not None
+	                    and title_and_liturgical_state["sharedScripture"]["readingSlideCount"] > 0
+	                    and title_and_liturgical_state["sharedScripture"]["citationState"]["state"] == "filled"
+	                    and title_and_liturgical_state["sharedScripture"]["citationState"]["reason"] == "optional_citation_empty"
+	                    and title_and_liturgical_state["sharedScripture"]["citationInputMode"] == "scripture"
+		                    and title_and_liturgical_state["sharedScripture"]["targetLabel"] == "성경봉독"
                     and "presenter-title-assignee" in title_and_liturgical_state["confession"]["html"]
                     and 'presenter-slide--title"' not in title_and_liturgical_state["confession"]["html"]
                     and len(title_and_liturgical_state["chromakey"]) >= 3
@@ -1923,7 +2064,7 @@ def main() -> int:
                     and all(slide["chromakey"] is True for slide in title_and_liturgical_state["scaffold"])
                     and all(slide["outputContext"] == "chromakey" for slide in title_and_liturgical_state["scaffold"])
                     and title_and_liturgical_state["chromakeyCenterTextSlides"] == []
-                    and title_and_liturgical_state["scaffoldOutputContexts"].get("clean", 0) >= 1
+	                    and title_and_liturgical_state["scaffoldOutputContexts"].get("clean", 0) >= 1
                     and title_and_liturgical_state["scaffoldOutputContexts"].get("chromakey", 0) > 0
                     and [slide["text"] for slide in title_and_liturgical_state["scaffold"] if slide["type"] == "lyrics"] == [
                         "나는 전능하신 아버지 하나님, 천지의 창조주를 믿습니다.\n나는 그의 유일하신 아들, 우리 주 예수 그리스도를 믿습니다.",
@@ -2748,7 +2889,7 @@ def main() -> int:
                           componentType: slide.componentType,
                           audioSrc: slide.audioSrc,
                           body: renderPresenterSlideBody(slide).trim(),
-                          preview: renderPresenterSlidePreviewBody(slide),
+                          preview: renderPresenterSlideBody(slide),
                         })),
                         scoreFormBadges: [...scoreBadgeNode.querySelectorAll('.svc-slide-form-badge')].map((node) => node.textContent.trim()),
                         missingWarnings: [...new Set(missingSlides.flatMap((slide) => slide.warnings || []))],
@@ -2780,7 +2921,7 @@ def main() -> int:
                     and form_preset_state["ccmTexts"] == ["V1 첫 줄\nV1 둘째 줄", "C 첫 줄\nC 둘째 줄", "C 첫 줄\nC 둘째 줄"]
                     and len(set(form_preset_state["ccmFormKeys"])) == 3
                     and form_preset_state["defaultFormMetadataSummary"] == "V1-V2-C-V3-C-Coda"
-                    and form_preset_state["defaultFormMarkers"] == ["Verse 1", "Verse 2", "Chorus", "Verse 3", "Chorus", "Coda"]
+                    and form_preset_state["defaultFormMarkers"] == ["V1", "V2", "C", "V3", "C", "Coda"]
                     and form_preset_state["defaultFormTexts"] == [
                         "감사 1절 첫 줄\n감사 1절 둘째 줄",
                         "감사 2절 첫 줄\n감사 2절 둘째 줄",
@@ -2792,9 +2933,9 @@ def main() -> int:
                     and form_preset_state["unifiedHymnTitleText"] == "♪ 통 1 만복의 근원 하나님"
                     and form_preset_state["fallbackVersionTexts"] == ["하나님은 너를 지키시는 자\n너의 우편에 그늘 되시니"]
                     and form_preset_state["fallbackVersionWarnings"] == []
-                    and form_preset_state["fallbackTitleTexts"] == []
-                    and form_preset_state["fallbackTitleWarnings"] == ["입력 필요"]
-                    and form_preset_state["hymnAutoMarkers"] == ["Verse 1", "Chorus", "Verse 2", "Chorus", "Verse 3", "Chorus", "Verse 4", "Chorus", "Coda"]
+                    and form_preset_state["fallbackTitleTexts"] == ["하나님은 너를 지키시는 자\n너의 우편에 그늘 되시니"]
+                    and form_preset_state["fallbackTitleWarnings"] == []
+                    and form_preset_state["hymnAutoMarkers"] == ["Verse 1", "Chorus", "Verse 2", "Chorus", "Verse 3", "Chorus", "Verse 4", "Chorus", "Amen"]
                     and form_preset_state["hymnAutoTexts"] == [
                         "1절 첫 줄\n1절 둘째 줄",
                         "후렴 첫 줄\n후렴 둘째 줄",
@@ -2966,11 +3107,9 @@ def main() -> int:
 	                                "required": False,
 	                            },
 	                        },
-                    ]
-                    and len(form_preset_state["sectionSongTitleSlides"]["offering"]) == 1
+	                    ]
+	                    and len(form_preset_state["sectionSongTitleSlides"]["offering"]) == 1
                     and len(form_preset_state["sectionSongTitleSlides"]["special"]) == 1
-                    and form_preset_state["sectionSongTitleSlides"]["special"][0]["sectionHeading"] == ""
-                    and "presenter-section-song-title" not in form_preset_state["sectionSongTitleSlides"]["special"][0]["body"]
                     and len(form_preset_state["sectionSongTitleSlides"]["doxology"]) == 1
                     and form_preset_state["scoreSlides"] == [{
                         "type": "file",
@@ -3079,10 +3218,8 @@ def main() -> int:
                         "componentType": "audio",
                         "audioSrc": "assets/audio/choir.m4a",
                         "body": "",
-                        "preview": form_preset_state["audioSlides"][0]["preview"],
+                        "preview": "",
                     }]
-                    and "오디오" in form_preset_state["audioSlides"][0]["preview"]
-                    and "성가대 MR" in form_preset_state["audioSlides"][0]["preview"]
                     and form_preset_state["missingWarnings"] == ["Bridge 없음"]
                     and "Bridge 없음" not in form_preset_state["missingPreviewText"]
                     and form_preset_state["warningChipText"] == "Bridge 없음"
@@ -3374,6 +3511,8 @@ def main() -> int:
                       const readingVersionRect = readingVersion?.getBoundingClientRect();
                       const readingTextRect = readingText?.getBoundingClientRect();
                       const readingTextStyle = readingText ? getComputedStyle(readingText) : null;
+                      const readingRefStyle = readingRef ? getComputedStyle(readingRef) : null;
+                      const readingVersionStyle = readingVersion ? getComputedStyle(readingVersion) : null;
                       const readingNoStyle = readingNo ? getComputedStyle(readingNo) : null;
                       const readingFinStyle = readingFin ? getComputedStyle(readingFin) : null;
                       const readingSlideStyle = slides[0] ? getComputedStyle(slides[0]) : null;
@@ -3410,8 +3549,21 @@ def main() -> int:
                         readingSidePadding: parseFloat(readingSlideStyle?.paddingLeft || '0'),
                         readingFontFamily: readingTextStyle?.fontFamily || '',
                         readingFontWeight: readingTextStyle?.fontWeight || '',
+                        readingFontSynthesis: readingTextStyle?.fontSynthesis || '',
+                        readingLetterSpacing: readingTextStyle?.letterSpacing || '',
+                        readingTextShadow: readingTextStyle?.textShadow || '',
+                        readingTextStroke: readingTextStyle?.webkitTextStrokeWidth || '',
                         readingLineHeight: readingTextStyle?.lineHeight || '',
+                        readingRefFontFamily: readingRefStyle?.fontFamily || '',
+                        readingRefFontWeight: readingRefStyle?.fontWeight || '',
+                        readingVersionFontFamily: readingVersionStyle?.fontFamily || '',
+                        readingVersionFontSize: readingVersionStyle?.fontSize || '',
+                        readingVersionFontWeight: readingVersionStyle?.fontWeight || '',
+                        readingVersionOpacity: readingVersionStyle?.opacity || '',
+                        readingNumberFontFamily: readingNoStyle?.fontFamily || '',
                         readingNumberFontWeight: readingNoStyle?.fontWeight || '',
+                        readingFinFontFamily: readingFinStyle?.fontFamily || '',
+                        readingFinFontWeight: readingFinStyle?.fontWeight || '',
                         sermonContext: sermonSlide.scriptureContext || '',
                         sermonElementTitle: sermonSlide.elementTitle || '',
                         sermonOutputContext: presenterSlideOutputContext(sermonSlide, true),
@@ -3444,7 +3596,7 @@ def main() -> int:
                     and scripture_context_state["readingHasClass"]
                     and scripture_context_state["readingSlideBackground"] != ""
                     and not scripture_context_state["readingHasLowerBarText"]
-                    and scripture_context_state["readingReference"] == "출애굽기 23장"
+                    and scripture_context_state["readingReference"] == "출애굽기 23:14"
                     and scripture_context_state["hebrewsChapterReference"] == "히브리서 10장"
                     and scripture_context_state["readingReferenceBook"] == "출애굽기"
                     and scripture_context_state["readingReferenceRange"] == "23:14–19"
@@ -3457,11 +3609,22 @@ def main() -> int:
                     and scripture_context_state["readingSidePadding"] >= 100
                     and scripture_context_state["readingHeaderSplit"]
                     and scripture_context_state["readingBodyBelowHeader"]
-                    and scripture_context_state["readingNumber"] == "14"
+                    and scripture_context_state["readingNumber"] == ""
                     and "너는 매년 세 번" in scripture_context_state["readingText"]
-                    and "Mindex Presenter" in scripture_context_state["readingFontFamily"]
-                    and scripture_context_state["readingFontWeight"] == scripture_context_state["sermonFontWeight"]
-                    and scripture_context_state["readingNumberFontWeight"] == scripture_context_state["sermonFontWeight"]
+                    and "Eulyoo1945" in scripture_context_state["readingFontFamily"]
+                    and "Eulyoo1945" not in scripture_context_state["readingRefFontFamily"]
+                    and "Eulyoo1945" not in scripture_context_state["readingVersionFontFamily"]
+                    and "Eulyoo1945" not in scripture_context_state["readingFinFontFamily"]
+                    and scripture_context_state["readingFontWeight"] == "700"
+                    and scripture_context_state["readingFontSynthesis"] in ["weight", "auto"]
+                    and scripture_context_state["readingRefFontWeight"] == "700"
+                    and scripture_context_state["readingVersionFontWeight"] == "600"
+                    and scripture_context_state["readingVersionOpacity"] == "1"
+                    and float(scripture_context_state["readingVersionFontSize"].replace("px", "")) >= 50
+                    and scripture_context_state["readingFinFontWeight"] == "600"
+                    and scripture_context_state["readingLetterSpacing"] in ["normal", "0px"]
+                    and scripture_context_state["readingTextShadow"] == "none"
+                    and float(scripture_context_state["readingTextStroke"].replace("px", "") or "0") > 0
                     and scripture_context_state["sermonContext"] == "sermon"
                     and scripture_context_state["sermonElementTitle"] == "출 23:14–19"
                     and scripture_context_state["sermonOutputContext"] == "chromakey"
@@ -4203,7 +4366,7 @@ def main() -> int:
                 if (
                     output_state["serviceType"] == payload["serviceType"]
                     and output_state["outputTheme"] == payload["outputTheme"]
-                    and output_state["noChromakey"] == (payload["chromakey"] is False)
+                    and output_state["noChromakey"] is False
                     and output_state["slideClass"]
                     and output_state["elementType"]
                     and output_state["layout"]
@@ -4213,7 +4376,7 @@ def main() -> int:
                     and output_state["frame"]["width"] == 1920
                     and output_state["frame"]["height"] == 1080
                     and abs(output_state["frame"]["ratio"] - (16 / 9)) <= 0.01
-                    and abs(output_state["lowerBarRatio"] - (7 / 40)) <= 0.01
+                    and abs(output_state["lowerBarRatio"] - 0.175) <= 0.01
                     and output_state["overflow"] <= 2
                 ):
                     pass_("presenter-output-route", json.dumps(output_state, ensure_ascii=False))
@@ -4262,6 +4425,46 @@ def main() -> int:
                     pass_("presenter-controller-preview-shared-frame", json.dumps(preview_state, ensure_ascii=False))
                 else:
                     fail("presenter-controller-preview-shared-frame", json.dumps({"output": output_state, "preview": preview_state}, ensure_ascii=False))
+
+                preview_renderer_state = page.evaluate(
+                    """
+                    (() => {
+                      const video = {
+                        id: '__smoke_preview_video__',
+                        elementType: PRESENTER_ELEMENT_TYPES.VIDEO,
+                        layout: PRESENTER_SLIDE_LAYOUTS.MEDIA,
+                        type: 'video',
+                        title: '영상',
+                        videoSrc: 'assets/presenter/friday-prayer-ready.mp4',
+                        outputContext: 'clean',
+                      };
+                      const audio = {
+                        id: '__smoke_preview_audio__',
+                        elementType: PRESENTER_ELEMENT_TYPES.AUDIO,
+                        layout: PRESENTER_SLIDE_LAYOUTS.FILE,
+                        type: 'audio',
+                        title: '오디오',
+                        audioSrc: 'assets/audio/choir.m4a',
+                        outputContext: 'clean',
+                      };
+                      const videoPreview = renderPresenterSlideMiniPreview(video);
+                      const audioPreview = renderPresenterSlideMiniPreview(audio);
+                      return {
+                        videoUsesOutputElement: videoPreview.includes('presenter-video'),
+                        videoUsesPlaceholder: videoPreview.includes('presenter-slide-file'),
+                        audioUsesPlaceholder: audioPreview.includes('presenter-slide-file'),
+                      };
+                    })()
+                    """
+                )
+                if (
+                    preview_renderer_state["videoUsesOutputElement"]
+                    and not preview_renderer_state["videoUsesPlaceholder"]
+                    and not preview_renderer_state["audioUsesPlaceholder"]
+                ):
+                    pass_("presenter-preview-uses-output-renderer", json.dumps(preview_renderer_state, ensure_ascii=False))
+                else:
+                    fail("presenter-preview-uses-output-renderer", json.dumps(preview_renderer_state, ensure_ascii=False))
 
                 output_viewport_shot = output_page.screenshot()
                 fixed_viewport_pixels = {
@@ -5758,7 +5961,7 @@ def main() -> int:
                     () => {
                       const service = {
                         id: '__smoke_scripture_blank_background_service__',
-                        type_id: 'youth',
+                        type_id: 'sunday-second',
                         date: '2026-07-05',
                         title: 'Scripture Blank Background Smoke',
                         leader: '테스트',
@@ -5768,11 +5971,11 @@ def main() -> int:
                       if (!state.serviceTypes.some((item) => item.id === service.type_id)) {
                         state.serviceTypes.push({
                           id: service.type_id,
-                          name: '청소년부 예배',
+                          name: '주일예배 [2부]',
                           sort_order: 5,
                           _worship: true,
-                          _worshipOutputContext: 'clean',
-                          _worshipChromakey: false,
+                          _worshipOutputContext: 'chromakey',
+                          _worshipChromakey: true,
                         });
                       }
                       if (!state.bibleTranslations.some((translation) => translation.id === '__smoke_ko__')) {
@@ -5815,36 +6018,39 @@ def main() -> int:
                 scripture_blank_background_state = output_page.evaluate(
                     """
                     (payload) => {
-                      const blankIndex = payload.slides.findIndex((slide) =>
-                        slide?.layout === 'blank'
-                        && slide?.autoTrailingBlank
-                        && slide?.sectionKey === 'scripture_reading'
-                      );
                       const finalIndex = payload.slides.findIndex((slide) =>
                         slide?.type === 'scripture'
                         && slide?.sectionKey === 'scripture_reading'
                         && slide?.scriptureReadingFinal
                       );
+                      const blankIndex = finalIndex + 1;
+                      const blankModel = payload.slides[blankIndex] || {};
                       renderPresenterOutput({ ...payload, index: finalIndex, safetyBlank: false }, {});
                       const root = document.getElementById('presenterOutputRoot');
-                      const slide = root?.querySelector('.presenter-slide');
+                      const finalSlide = root?.querySelector('.presenter-slide');
                       const finalState = {
-                        blankIndex,
-                        finalIndex,
                         hasBackground: root?.classList.contains('has-background') || false,
                         noChromakey: root?.classList.contains('no-chromakey') || false,
                         inlineBackground: root?.style.getPropertyValue('--presenter-bg-image') || '',
-                        slideClass: slide?.className || '',
-                        renderedReference: slide?.querySelector('.presenter-scripture-reading-ref')?.textContent?.trim() || '',
-                        fin: slide?.querySelector('.presenter-scripture-reading-fin')?.textContent?.trim() || '',
+                        slideClass: finalSlide?.className || '',
+                        renderedReference: finalSlide?.querySelector('.presenter-scripture-reading-ref')?.textContent?.trim() || '',
+                        fin: finalSlide?.querySelector('.presenter-scripture-reading-fin')?.textContent?.trim() || '',
                       };
                       renderPresenterOutput({ ...payload, index: blankIndex, safetyBlank: false }, {});
                       const blankSlide = root?.querySelector('.presenter-slide');
                       return {
+                        blankIndex,
+                        finalIndex,
                         ...finalState,
+                        blankIsBlank: blankModel?.layout === 'blank' && Boolean(blankModel?.autoTrailingBlank),
+                        blankModelSectionKey: blankModel?.sectionKey || '',
+                        blankModelSectionLabel: blankModel?.sectionLabel || '',
+                        blankModelLabel: blankModel?.label || '',
+                        blankModelScriptureContext: blankModel?.scriptureContext || '',
+                        blankModelScriptureReadingFinal: Boolean(blankModel?.scriptureReadingFinal),
+                        blankModelOutputContext: blankModel?.outputContext || '',
                         blankHasBackground: root?.classList.contains('has-background') || false,
                         blankNoChromakey: root?.classList.contains('no-chromakey') || false,
-                        blankIsBlank: root?.classList.contains('is-blank') || false,
                         blankInlineBackground: root?.style.getPropertyValue('--presenter-bg-image') || '',
                         blankSlideClass: blankSlide?.className || '',
                         blankSlideBackground: blankSlide?.style.getPropertyValue('--presenter-slide-bg-image') || '',
@@ -5857,24 +6063,30 @@ def main() -> int:
                 if (
                     scripture_blank_background_state["blankIndex"] == scripture_blank_background_state["finalIndex"] + 1
                     and scripture_blank_background_state["finalIndex"] >= 0
-                    and scripture_blank_background_state["hasBackground"]
                     and scripture_blank_background_state["noChromakey"]
-                    and scripture_blank_background_state["inlineBackground"] != ""
+                    and not scripture_blank_background_state["hasBackground"]
+                    and scripture_blank_background_state["inlineBackground"] == ""
                     and "presenter-slide--scripture-reading" in scripture_blank_background_state["slideClass"]
-                    and scripture_blank_background_state["renderedReference"] == "출애굽기 23장"
+                    and scripture_blank_background_state["renderedReference"] == "출애굽기 23:14"
                     and scripture_blank_background_state["fin"] == "Fin."
-                    and not scripture_blank_background_state["blankHasBackground"]
-                    and scripture_blank_background_state["blankNoChromakey"]
                     and scripture_blank_background_state["blankIsBlank"]
+                    and scripture_blank_background_state["blankModelSectionKey"] == ""
+                    and scripture_blank_background_state["blankModelSectionLabel"] == ""
+                    and scripture_blank_background_state["blankModelLabel"] == ""
+                    and scripture_blank_background_state["blankModelScriptureContext"] == ""
+                    and not scripture_blank_background_state["blankModelScriptureReadingFinal"]
+                    and scripture_blank_background_state["blankModelOutputContext"] == "chromakey"
+                    and not scripture_blank_background_state["blankHasBackground"]
+                    and not scripture_blank_background_state["blankNoChromakey"]
                     and scripture_blank_background_state["blankInlineBackground"] == ""
                     and "presenter-slide--blank" in scripture_blank_background_state["blankSlideClass"]
                     and "presenter-slide--scripture-reading" not in scripture_blank_background_state["blankSlideClass"]
                     and scripture_blank_background_state["blankSlideBackground"] == ""
                     and scripture_blank_background_state["blankText"] == ""
                 ):
-                    pass_("presenter-scripture-reading-plain-trailing-blank", json.dumps(scripture_blank_background_state, ensure_ascii=False))
+                    pass_("presenter-scripture-reading-generic-trailing-blank", json.dumps(scripture_blank_background_state, ensure_ascii=False))
                 else:
-                    fail("presenter-scripture-reading-plain-trailing-blank", json.dumps(scripture_blank_background_state, ensure_ascii=False))
+                    fail("presenter-scripture-reading-generic-trailing-blank", json.dumps(scripture_blank_background_state, ensure_ascii=False))
 
                 scripture_final_background_state = output_page.evaluate(
                     """
@@ -5908,11 +6120,11 @@ def main() -> int:
                 if (
                     scripture_final_background_state["finalIndex"] >= 0
                     and not scripture_final_background_state["suppressBackgroundImage"]
-                    and scripture_final_background_state["hasBackground"]
                     and scripture_final_background_state["noChromakey"]
-                    and scripture_final_background_state["inlineBackground"] != ""
+                    and not scripture_final_background_state["hasBackground"]
+                    and scripture_final_background_state["inlineBackground"] == ""
                     and scripture_final_background_state["slideBackground"] != ""
-                    and scripture_final_background_state["renderedReference"] == "출애굽기 23장"
+                    and scripture_final_background_state["renderedReference"] == "출애굽기 23:14"
                     and scripture_final_background_state["fin"] == "Fin."
                 ):
                     pass_("presenter-scripture-final-has-background", json.dumps(scripture_final_background_state, ensure_ascii=False))

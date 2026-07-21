@@ -60,7 +60,7 @@
   --presenter-scripture-bar-size: var(--presenter-size-lyrics);
   --presenter-scripture-clean-size: calc(72 * var(--presenter-stage-unit));
   --presenter-scripture-reading-ref-size: var(--presenter-size-section);
-  --presenter-scripture-reading-version-size: var(--presenter-size-caption);
+  --presenter-scripture-reading-version-size: var(--presenter-size-meta);
   --presenter-scripture-reading-text-size: calc(88 * var(--presenter-stage-unit));
   display: grid;
   width: var(--presenter-stage-width);
@@ -90,7 +90,7 @@
   --presenter-size-song-title: calc(128 * var(--presenter-stage-unit));
   --presenter-size-meta: calc(104 * var(--presenter-stage-unit));
   --presenter-size-liturgical-body: calc(56 * var(--presenter-stage-unit));
-  --presenter-size-liturgical-heading: calc(72 * var(--presenter-stage-unit));
+  --presenter-size-liturgical-heading: calc(96 * var(--presenter-stage-unit));
   --presenter-size-caption: calc(80 * var(--presenter-stage-unit));
   --presenter-size-thumbnail: calc(88 * var(--presenter-stage-unit));
   --presenter-size-file-caption: calc(80 * var(--presenter-stage-unit));
@@ -98,7 +98,7 @@
   --presenter-scripture-bar-size: calc(72 * var(--presenter-stage-unit));
   --presenter-scripture-clean-size: calc(72 * var(--presenter-stage-unit));
   --presenter-scripture-reading-ref-size: calc(72 * var(--presenter-stage-unit));
-  --presenter-scripture-reading-version-size: calc(40 * var(--presenter-stage-unit));
+  --presenter-scripture-reading-version-size: calc(52 * var(--presenter-stage-unit));
   --presenter-scripture-reading-text-size: calc(88 * var(--presenter-stage-unit));
 }
 .svc-slide-mini-canvas.presenter-output-root {
@@ -256,18 +256,19 @@
   text-align: left;
 }
 .presenter-liturgical-body {
-  display: grid;
+  display: block;
   width: 100%;
   height: 100%;
-  grid-template-columns: minmax(0, 1fr) minmax(230px, 28cqw);
-  align-items: center;
-  gap: 5cqw;
+  position: relative;
   color: var(--presenter-output-fg);
   text-shadow: 0 2px 18px rgba(0, 0, 0, .34);
 }
 .presenter-liturgical-body-lines {
   display: flex;
+  width: 100%;
   min-width: 0;
+  max-width: none;
+  height: 100%;
   flex-direction: column;
   align-items: flex-start;
   justify-content: center;
@@ -278,17 +279,22 @@
   word-break: keep-all;
 }
 .presenter-liturgical-body-lines span {
-  max-width: 100%;
+  max-width: none;
   white-space: normal;
-  overflow-wrap: anywhere;
+  overflow-wrap: normal;
   font-size: inherit;
 }
 .presenter-liturgical-body-heading {
   display: flex;
-  height: 100%;
+  width: max-content;
+  max-width: 38cqw;
+  height: auto;
   flex-direction: column;
   align-items: flex-end;
   justify-content: flex-start;
+  position: absolute;
+  top: 1cqh;
+  right: 0;
   padding-top: 1cqh;
   text-align: right;
 }
@@ -622,9 +628,10 @@
   color: var(--presenter-output-fg);
   font-family: var(--presenter-scripture-font);
   font-weight: var(--presenter-scripture-weight);
+  letter-spacing: 0;
   line-height: var(--presenter-scripture-line-height);
   text-align: left;
-  text-shadow: 0 2px 18px rgba(0, 0, 0, .38);
+  text-shadow: none;
   word-break: keep-all;
 }
 .presenter-scripture-reading-head {
@@ -651,7 +658,7 @@
   justify-self: end;
   font-size: var(--presenter-scripture-reading-version-size);
   font-weight: var(--presenter-weight-meta);
-  opacity: .82;
+  opacity: 1;
   text-align: right;
 }
 .presenter-scripture-reading-line {
@@ -674,10 +681,14 @@
   flex: 1 1 auto;
   max-width: 100%;
   overflow: visible;
+  font-family: "Eulyoo1945", "을유1945", "AppleMyungjo", "Nanum Myeongjo", serif;
+  font-synthesis: weight;
   font-size: var(--presenter-scripture-reading-text-size);
+  font-weight: 700;
   line-height: var(--presenter-scripture-line-height);
   overflow-wrap: anywhere;
   text-overflow: clip;
+  -webkit-text-stroke: .01em currentColor;
   white-space: normal;
 }
 .presenter-scripture-reading-fin {
@@ -688,7 +699,7 @@
   font-style: italic;
   font-weight: var(--presenter-weight-meta);
   line-height: 1;
-  opacity: .82;
+  opacity: 1;
 }
 .presenter-output-root[data-output-theme="children"] .presenter-slide--lyrics .presenter-slide-text,
 .presenter-output-root[data-output-theme="children"] .presenter-slide--song-title .presenter-slide-text,

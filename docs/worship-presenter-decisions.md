@@ -47,8 +47,18 @@ Small visual polish that does not alter behavior does not need an entry.
   followed by one plain trailing blank that suppresses the service background.
   In chromakey output this is the chromakey blank; in fullscreen/clean output it
   is the default blank frame.
-- Scripture-reading body text uses the normal presenter font stack. Do not add
-  a separate Eulyoo font override or bundle the Eulyoo font file in this repo.
+- Scripture-reading output uses the installed `Eulyoo1945` / `을유1945` face
+  for the verse body text only. The body uses `font-weight: 700`, allows weight
+  synthesis, and applies a very small text stroke for projection readability
+  because the installed Eulyoo face can render too thin at screen size. The
+  reference line, translation label, and `Fin.` keep the presenter font. Do not
+  bundle the Eulyoo font file in this repo.
+- Scripture-reading references include the current verse number in the header,
+  e.g. `요한계시록 3:19`; the large standalone verse-number column is not used.
+- The translation label uses the same color as the reference line and is one
+  text-size step larger than the old caption size.
+- Scripture-reading output intentionally keeps `letter-spacing: 0` and removes
+  text shadow; body stroke/weight synthesis is the only readability boost.
 
 ### Service Outline And Input State
 
@@ -90,6 +100,14 @@ Small visual polish that does not alter behavior does not need an entry.
 
 ### Sunday Public Worship Templates
 
+- Sunday first and second service share the same three main-praise contents:
+  `찬양 1`, `찬양 2`, and `찬양 3`.
+- Sunday second and third service share scripture reading and sermon contents:
+  `성경봉독`, `설교 제목`, and `설교 본문`.
+- Sunday first, second, and third service share `봉헌찬송`.
+- These are same-date content sharing rules. Direct input in a service always
+  wins; an empty shared slot may fall back to another same-date service in its
+  sharing group.
 - Sunday first and second service doxology is fixed to hymn 5,
   `이 천지간 만물들아`.
 - Sunday afternoon doxology is fixed to hymn 1, `만복의 근원 하나님`.
@@ -99,7 +117,6 @@ Small visual polish that does not alter behavior does not need an entry.
   `찬양 1` through `찬양 4`.
 - These are template rules, not copied weekly content. A service instance may
   override them only through a deliberate template-modified edit.
-
 
 ### Preparation Input Parsing
 
@@ -133,8 +150,7 @@ Small visual polish that does not alter behavior does not need an entry.
 
 - `특송` praise items with an assignee output a separate `특송 / 담당자`
   title-assignee slide before the normal praise song-title slide. The song-title
-  slide remains visible, carries the song name, and uses the ordinary centered
-  praise title layout rather than the section-heading title layout.
+  slide remains visible and carries the song name.
 - Hymn-score praise items such as `봉헌찬송` and `송영` keep the normal
   `song-title` title slide. Do not create a separate score-only title layout.
 - Score-mode praise may resolve a song from the raw title, so rough input like

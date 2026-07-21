@@ -401,12 +401,8 @@ function presenterFormPlanForServiceItem(version = {}, item, song = null) {
 
 function presenterFormPresetShouldOmitUnlisted(preset = null) {
   if (preset?.omitUnlisted) return true;
-  const forms = cleanList(preset?.forms);
   const strength = String(preset?.strength || "").trim().toLowerCase();
-  const targets = forms.map((label) => normalizePresenterFormPresetLabel(label));
-  const grouped = targets.some((target) => target.groupIndex);
-  const consecutiveRepeat = targets.some((target, index) => index > 0 && target.key && target.key === targets[index - 1]?.key);
-  return grouped || consecutiveRepeat || ["forced", "manual", "song-default"].includes(strength);
+  return ["default", "forced", "manual", "song-default"].includes(strength);
 }
 
 function presenterFormsWithNoSourceOmissions(plannedForms = [], sourceForms = []) {
@@ -749,21 +745,21 @@ function presenterFormPresetGroupItem(label = "", target = {}, form = {}) {
 }
 
 function presenterGroupedLyricChunks(lyrics = "", target = {}) {
-  const blocks = splitPresenterLyricChunks(lyrics);
-  const groupCount = Number(target.groupIndex) || 0;
-  if (groupCount > 1 && blocks.length === 1) {
-    const lines = String(lyrics || "")
-      .split(/\r?\n/g)
-      .map((line) => line.trim())
-      .filter(Boolean);
-    if (lines.length >= groupCount && lines.length % groupCount === 0) {
-      const size = lines.length / groupCount;
-      return Array.from({ length: groupCount }, (_, index) =>
-        lines.slice(index * size, (index + 1) * size).join("\n")
-      );
-    }
+  const explicitChunks = splitPresenterLyricChunks(lyrics);
+  if (explicitChunks.length > 1) return explicitChunks;
+  const groupIndex = Number(target?.groupIndex) || 0;
+  if (!groupIndex) return explicitChunks;
+  const lines = String(lyrics || "")
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (lines.length < 2) return explicitChunks;
+  const chunkSize = Math.max(1, Math.ceil(lines.length / Math.max(groupIndex, 2)));
+  const chunks = [];
+  for (let index = 0; index < lines.length; index += chunkSize) {
+    chunks.push(lines.slice(index, index + chunkSize).join("\n"));
   }
-  return blocks;
+  return chunks.length ? chunks : explicitChunks;
 }
 
 function presenterFormDisplayLabel(form = {}) {
@@ -1525,7 +1521,7 @@ function normalizePresenterCustomMarker(value) {
     .replace(/^lyrics/i, "Lyrics");
 }
 
-function buildPresenterScriptureTextSlides(item, section, index, service = null) {
+function buildPresenterScriptureTextSlides(item, section, index) {
   if (!isScriptureBodyServiceItem(item)) return [];
   const payload = serviceScriptureTextPayload(item);
   if (!payload.verses.length) return [];
@@ -1964,15 +1960,6 @@ function presenterSongForServiceItem(item = {}, displayText = serviceItemDisplay
     : null;
   if (linkedSong) return linkedSong;
   if (!isSongServiceLabel(label) && !isPresenterSpecialSongItem(item)) return null;
-  const memo = parseServiceItemMemo(item?.memo);
-  const outputMode = normalizeServiceOutputMode(
-    memo.outputMode
-    || item.outputMode
-    || item.output_mode
-    || item.renderMode
-    || item.render_mode,
-  );
-  if (serviceItemRequiresSongSelection(item, service) && outputMode !== "score") return null;
   return findServicePraiseSong(displayText) || presenterSyntheticHymnSongFromDisplayText(displayText);
 }
 
@@ -2513,6 +2500,12 @@ function initPresenterOutputCore() {
       }
       return;
     }
+    if (!event.metaKey && !event.ctrlKey && !event.altKey && (event.key === "Enter" || event.key === " ")) {
+      event.preventDefault();
+      requestLocalPresenterFullscreen();
+      postHeartbeat();
+      return;
+    }
     if (!event.metaKey && !event.ctrlKey && !event.altKey && event.key === "Escape" && jumpDraft) {
       event.preventDefault();
       jumpDraft = "";
@@ -2529,11 +2522,6 @@ function initPresenterOutputCore() {
       }
       exitArmedAt = now;
       postHeartbeat();
-      return;
-    }
-    if (!event.metaKey && !event.ctrlKey && !event.altKey && (event.key === " " || event.key === "Enter")) {
-      event.preventDefault();
-      document.documentElement.requestFullscreen?.().catch?.(() => {});
       return;
     }
     const action = presenterOutputKeyAction(event);
@@ -2734,6 +2722,7 @@ function presenterFrameSlideOutputContext(slide, fallbackChromakey = true) {
   if (explicit) return explicit;
   const layout = presenterSlideLayout(slide);
   const elementType = presenterSlideElementType(slide);
+  if (slide?.live && elementType === PRESENTER_ELEMENT_TYPES.SCRIPTURE_TEXT) return "chromakey";
   if (layout === PRESENTER_SLIDE_LAYOUTS.BLANK) return fallbackChromakey ? "chromakey" : "clean";
   const scoreLike = slide?.sourceType === "score" || slide?.componentType === "score" || slide?.scoreBackground;
   if (scoreLike) return "clean";
@@ -3298,7 +3287,7 @@ function trimPresenterOutputImagePreloadCache() {
 function renderPresenterSlideFrame(slide, options = {}) {
   const slideClass = presenterSlideRenderClass(slide);
   const extraClasses = presenterSlideExtraClasses(slide);
-  const body = options.preview ? renderPresenterSlidePreviewBody(slide) : renderPresenterSlideBody(slide, options);
+  const body = renderPresenterSlideBody(slide, options);
   const backgroundStyle = slide?.scriptureContext === "reading" && !slide?.suppressBackgroundImage && !slide?.noBackgroundImage
     ? ` style="--presenter-slide-bg-image: url('${escapeAttr(PRESENTER_SCRIPTURE_READING_BACKGROUND)}')"`
     : "";
@@ -3360,26 +3349,11 @@ function renderPresenterSlideBody(slide, options = {}) {
   return `<div class="presenter-slide-text">${renderPresenterSlideText(slide)}</div>`;
 }
 
-function renderPresenterSlidePreviewBody(slide) {
-  const layout = presenterSlideLayout(slide);
-  const elementType = presenterSlideElementType(slide);
-  if (elementType === PRESENTER_ELEMENT_TYPES.AUDIO) {
-    const source = presenterSlideAudioSource(slide);
-    return renderPresenterPreviewFileSlide(slide, presenterFileTypeLabel(slide.sourceType || slide.asset?.kind || "audio"), source);
-  }
-  if (layout === PRESENTER_SLIDE_LAYOUTS.MEDIA && elementType === PRESENTER_ELEMENT_TYPES.VIDEO) {
-    const source = normalizePresenterMediaSource(slide.videoSrc || slide.text);
-    if (!source) return "";
-    return renderPresenterPreviewFileSlide(slide, "VIDEO", source);
-  }
-  return renderPresenterSlideBody(slide);
-}
-
 function renderPresenterScriptureReadingSlide(slide) {
   const reference = String(slide?.title || slide?.marker || "").trim();
   const translationLabel = String(slide?.translationLabel || "").trim();
-  const headerReference = presenterScriptureReadingHeaderReference(slide) || reference;
   const { number, text } = presenterScriptureVerseParts(slide?.text || "");
+  const headerReference = presenterScriptureReadingHeaderReference(slide, number) || reference;
   const referenceChars = presenterLineCharEstimate(headerReference || "본문");
   const translationChars = presenterLineCharEstimate(translationLabel || "역본");
   const verseChars = presenterLineCharEstimate(text || slide?.text || "");
@@ -3390,18 +3364,18 @@ function renderPresenterScriptureReadingSlide(slide) {
         ${translationLabel ? `<div class="presenter-scripture-reading-version" style="--line-chars: ${escapeAttr(translationChars)}">${escapeHtml(translationLabel)}</div>` : ""}
       </div>
       <div class="presenter-scripture-reading-line">
-        ${number ? `<span class="presenter-scripture-reading-no">${escapeHtml(number)}</span>` : ""}
         <span class="presenter-scripture-reading-text" style="--line-chars: ${escapeAttr(verseChars)}">${escapePresenterSlideLine(text || slide?.text || " ", slide)}</span>
       </div>
       ${slide?.scriptureReadingFinal ? `<div class="presenter-scripture-reading-fin">Fin.</div>` : ""}
     </div>`;
 }
 
-function presenterScriptureReadingHeaderReference(slide = {}) {
+function presenterScriptureReadingHeaderReference(slide = {}, verseNumber = "") {
   const referenceBook = presenterScriptureReadingBookName(slide?.referenceBook);
   const referenceRange = String(slide?.referenceRange || "").trim();
   const chapter = referenceRange.match(/^(\d+)/)?.[1] || "";
-  const chapterReference = [referenceBook, chapter ? `${chapter}장` : referenceRange].filter(Boolean).join(" ").trim();
+  const verse = String(verseNumber || "").trim();
+  const chapterReference = [referenceBook, chapter && verse ? `${chapter}:${verse}` : chapter ? `${chapter}장` : referenceRange].filter(Boolean).join(" ").trim();
   return chapterReference || String(slide?.title || slide?.marker || "").trim();
 }
 
@@ -3416,15 +3390,6 @@ function presenterScriptureVerseParts(value = "") {
   const match = text.match(/^(\d{1,3})\s{2,}(.+)$/);
   if (!match) return { number: "", text };
   return { number: match[1], text: match[2].trim() };
-}
-
-function renderPresenterPreviewFileSlide(slide, typeLabel, source) {
-  return `
-    <div class="presenter-slide-file">
-      <small>${escapeHtml(typeLabel)}</small>
-      <strong>${escapeHtml(presenterFileDisplayTitle({ ...slide, asset: { ...slide.asset, url: source } }, typeLabel))}</strong>
-    </div>
-  `;
 }
 
 function renderPresenterVideoSlide(slide, options = {}) {

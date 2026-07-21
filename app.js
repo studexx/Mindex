@@ -20194,7 +20194,7 @@ function renderPresenterSlideMiniPreview(slide, serviceId = state.presenter.serv
   return `
     <span class="${escapeAttr(outputClasses)}">
       <span class="${escapeAttr(canvasClasses)}" data-output-theme="${escapeAttr(theme)}"${backgroundStyle}>
-        ${renderPresenterSlideFrame(slide, { preview: true })}
+        ${renderPresenterSlideFrame(slide, { noChromakey: frameState.noChromakey, previewStage: true })}
       </span>
     </span>`;
 }
@@ -21105,6 +21105,13 @@ function presenterElementTrailingBlankSlide(slide, index, service = null) {
     bodyText: "",
     assignee: "",
     sectionAssignee: "",
+    sectionKey: "",
+    sectionLabel: "",
+    sectionTitle: "",
+    sectionName: "",
+    elementLabel: "",
+    elementTitle: "",
+    label: "",
     warnings: [],
     imageSrc: "",
     videoSrc: "",
@@ -21114,9 +21121,16 @@ function presenterElementTrailingBlankSlide(slide, index, service = null) {
     componentType: "",
     scoreBackground: false,
     // A reading's closing blank should be the output mode's plain blank.
-    suppressBackgroundImage: scriptureReadingBlank,
-    noBackgroundImage: scriptureReadingBlank,
-    outputContext: scoreLike && serviceChromakey ? "chromakey" : presenterSlideOutputContext(slide, serviceChromakey),
+    scriptureContext: "",
+    scriptureReadingFinal: false,
+    referenceBook: "",
+    referenceRange: "",
+    translationLabel: "",
+    suppressBackgroundImage: false,
+    noBackgroundImage: false,
+    outputContext: scriptureReadingBlank
+      ? (serviceChromakey ? "chromakey" : "clean")
+      : (scoreLike && serviceChromakey ? "chromakey" : presenterSlideOutputContext(slide, serviceChromakey)),
     autoTrailingBlank: true,
     sort: (Number(slide.sort) || index) + 0.009,
   };
@@ -21552,7 +21566,7 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
   const customSlides = buildPresenterCustomSlides(item, section, index);
   if (customSlides.length) return withIntroAndSpecialTitle(customSlides);
 
-  const scriptureTextSlides = buildPresenterScriptureTextSlides(item, section, index, service);
+  const scriptureTextSlides = buildPresenterScriptureTextSlides(item, section, index);
   if (scriptureTextSlides.length) {
     return withIntroAndSpecialTitle(presenterSlidesWithScriptureReadingTitle(item, section, scriptureTextSlides, index));
   }
