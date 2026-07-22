@@ -38,7 +38,7 @@
   --presenter-output-bar-edge: #000A32;
   --presenter-output-stroke: #000;
   --presenter-scripture-font: var(--font-presenter);
-  --presenter-size-display: calc(88 * var(--presenter-stage-unit));
+  --presenter-size-display: calc(92 * var(--presenter-stage-unit));
   --presenter-size-section: calc(72 * var(--presenter-stage-unit));
   --presenter-size-body: calc(72 * var(--presenter-stage-unit));
   --presenter-size-lyrics: calc(72 * var(--presenter-stage-unit));

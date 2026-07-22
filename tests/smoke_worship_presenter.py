@@ -4813,15 +4813,15 @@ def main() -> int:
                     and "김남영 담임목사 외 공동집례자" in title_assignee_bounds["text"]
                     and title_assignee_bounds["titleOverflow"] == "clip"
                     and title_assignee_bounds["personOverflow"] == "clip"
-                    and title_assignee_bounds["titleFontSize"] == 88
+                    and title_assignee_bounds["titleFontSize"] == 92
                     and title_assignee_bounds["titleFontWeight"] == "800"
-                    and title_assignee_bounds["personFontSize"] == 88
+                    and title_assignee_bounds["personFontSize"] == 92
                     and title_assignee_bounds["personFontWeight"] == "700"
-                    and title_assignee_bounds["orderFontSize"] == 88
+                    and title_assignee_bounds["orderFontSize"] == 92
                     and title_assignee_bounds["orderFontWeight"] == "800"
-                    and title_assignee_bounds["contentFontSize"] == 88
+                    and title_assignee_bounds["contentFontSize"] == 92
                     and title_assignee_bounds["contentFontWeight"] == "700"
-                    and title_assignee_bounds["threePartPersonFontSize"] == 88
+                    and title_assignee_bounds["threePartPersonFontSize"] == 92
                     and title_assignee_bounds["threePartPersonFontWeight"] == "700"
                     and title_assignee_bounds["titleInside"]
                     and title_assignee_bounds["personInside"]
@@ -4881,8 +4881,8 @@ def main() -> int:
                     and sermon_title_font_state["hasSermonClass"]
                     and not sermon_title_font_state["hasOrder"]
                     and sermon_title_font_state["contentBeforePerson"]
-                    and sermon_title_font_state["contentFontSize"] == 88
-                    and sermon_title_font_state["personFontSize"] == 88
+                    and sermon_title_font_state["contentFontSize"] == 92
+                    and sermon_title_font_state["personFontSize"] == 92
                 ):
                     pass_("presenter-sermon-title-content-font", json.dumps(sermon_title_font_state, ensure_ascii=False))
                 else:
