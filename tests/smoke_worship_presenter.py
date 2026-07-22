@@ -3551,8 +3551,10 @@ def main() -> int:
                         readingFontWeight: readingTextStyle?.fontWeight || '',
                         readingFontSynthesis: readingTextStyle?.fontSynthesis || '',
                         readingLetterSpacing: readingTextStyle?.letterSpacing || '',
+                        readingLineBreak: readingTextStyle?.lineBreak || '',
                         readingTextShadow: readingTextStyle?.textShadow || '',
                         readingTextStroke: readingTextStyle?.webkitTextStrokeWidth || '',
+                        readingWordBreak: readingTextStyle?.wordBreak || '',
                         readingLineHeight: readingTextStyle?.lineHeight || '',
                         readingRefFontFamily: readingRefStyle?.fontFamily || '',
                         readingRefFontWeight: readingRefStyle?.fontWeight || '',
@@ -3622,9 +3624,11 @@ def main() -> int:
                     and scripture_context_state["readingVersionOpacity"] == "1"
                     and float(scripture_context_state["readingVersionFontSize"].replace("px", "")) >= 50
                     and scripture_context_state["readingFinFontWeight"] == "600"
-                    and float(scripture_context_state["readingLetterSpacing"].replace("px", "") or "0") < 0
+                    and float(scripture_context_state["readingLetterSpacing"].replace("px", "") or "0") < -4
+                    and scripture_context_state["readingLineBreak"] == "anywhere"
                     and scripture_context_state["readingTextShadow"] == "none"
                     and float(scripture_context_state["readingTextStroke"].replace("px", "") or "0") > 0
+                    and scripture_context_state["readingWordBreak"] == "break-all"
                     and scripture_context_state["sermonContext"] == "sermon"
                     and scripture_context_state["sermonElementTitle"] == "출 23:14–19"
                     and scripture_context_state["sermonOutputContext"] == "chromakey"
