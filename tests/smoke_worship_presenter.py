@@ -3346,6 +3346,58 @@ def main() -> int:
                 else:
                     fail("presenter-section-song-title-output-font", json.dumps(section_song_title_output_font_state, ensure_ascii=False))
 
+                plain_song_title_output_font_state = page.evaluate(
+                    """
+                    () => {
+                      document.getElementById('presenterOutputRoot')?.remove();
+                      const outputRoot = document.createElement('main');
+                      outputRoot.id = 'presenterOutputRoot';
+                      outputRoot.className = 'presenter-output-root';
+                      document.body.appendChild(outputRoot);
+                      renderPresenterOutput({
+                        serviceId: '__smoke_plain_song_title_output_font__',
+                        serviceType: 'sunday2',
+                        chromakey: true,
+                        outputTheme: 'chromakey',
+                        backgroundImage: '',
+                        slides: [{
+                          id: '__smoke_plain_song_title_output_font_slide__',
+                          elementType: PRESENTER_ELEMENT_TYPES.PRAISE,
+                          layout: PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT,
+                          type: 'song-title',
+                          title: '주 찬양합니다',
+                          text: '♪ 주 찬양합니다',
+                          sectionKey: 'praise',
+                        }],
+                        index: 0,
+                        safetyBlank: false,
+                      });
+                      const root = document.getElementById('presenterOutputRoot');
+                      const text = root?.querySelector('.presenter-slide--song-title > .presenter-slide-text');
+                      const textRect = text?.getBoundingClientRect();
+                      const style = text ? getComputedStyle(text) : null;
+                      const result = {
+                        hasRoot: Boolean(root),
+                        hasText: Boolean(text),
+                        text: root?.innerText || '',
+                        fontSize: style ? Number.parseFloat(style.fontSize) : 0,
+                        lineHeight: style ? Number.parseFloat(style.lineHeight) : 0,
+                        boxHeight: textRect ? Math.round(textRect.height) : 0,
+                      };
+                      root?.remove();
+                      return result;
+                    }
+                    """
+                )
+                if (
+                    "주 찬양합니다" in plain_song_title_output_font_state["text"]
+                    and plain_song_title_output_font_state["fontSize"] >= 128
+                    and plain_song_title_output_font_state["lineHeight"] >= 128
+                ):
+                    pass_("presenter-plain-song-title-output-font", json.dumps(plain_song_title_output_font_state, ensure_ascii=False))
+                else:
+                    fail("presenter-plain-song-title-output-font", json.dumps(plain_song_title_output_font_state, ensure_ascii=False))
+
                 scripture_fit_state = page.evaluate(
                     """
                     () => {

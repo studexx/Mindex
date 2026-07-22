@@ -548,6 +548,18 @@
   line-height: 1.08;
   padding-block: 1.35cqh;
 }
+:is(.svc-slide-mini-output, .presenter-output-root):not(.no-chromakey) .presenter-slide--song-title > .presenter-slide-text {
+  font-size: var(--presenter-size-song-title);
+  font-weight: var(--presenter-weight-body);
+  line-height: 1.04;
+  padding-block: 1.1cqh;
+}
+:is(.svc-slide-mini-output, .presenter-output-root):not(.no-chromakey) .presenter-section-song-title-heading {
+  font-size: var(--presenter-size-meta);
+}
+:is(.svc-slide-mini-output, .presenter-output-root):not(.no-chromakey) .presenter-section-song-title-name {
+  font-size: var(--presenter-size-song-title);
+}
 .presenter-output-root.no-chromakey .presenter-slide--lyrics,
 .presenter-output-root.no-chromakey .presenter-slide--song-title,
 .presenter-output-root.no-chromakey .presenter-slide--scripture,
