@@ -3340,7 +3340,7 @@ def main() -> int:
                 if (
                     "주 내 아버지" in section_song_title_output_font_state["text"]
                     and section_song_title_output_font_state["nameFontSize"] > section_song_title_output_font_state["headingFontSize"]
-                    and section_song_title_output_font_state["nameFontSize"] >= 128
+                    and 112 <= section_song_title_output_font_state["nameFontSize"] < 128
                 ):
                     pass_("presenter-section-song-title-output-font", json.dumps(section_song_title_output_font_state, ensure_ascii=False))
                 else:
@@ -3391,8 +3391,8 @@ def main() -> int:
                 )
                 if (
                     "주 찬양합니다" in plain_song_title_output_font_state["text"]
-                    and plain_song_title_output_font_state["fontSize"] >= 128
-                    and plain_song_title_output_font_state["lineHeight"] >= 128
+                    and 112 <= plain_song_title_output_font_state["fontSize"] < 128
+                    and plain_song_title_output_font_state["lineHeight"] >= 112
                 ):
                     pass_("presenter-plain-song-title-output-font", json.dumps(plain_song_title_output_font_state, ensure_ascii=False))
                 else:
