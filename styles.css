@@ -5231,16 +5231,16 @@ body[data-module="presenter"] .detail-pane {
 }
 .svc-presenter-preparation-input {
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 .svc-presenter-preparation-text {
   box-sizing: border-box;
   width: 100%;
-  min-height: 132px;
+  min-height: 104px;
   resize: vertical;
   border: 0;
-  border-radius: var(--r);
-  background: color-mix(in srgb, var(--panel-2) 54%, transparent);
+  border-radius: calc(var(--r) - 1px);
+  background: color-mix(in srgb, var(--panel-2) 44%, transparent);
   color: var(--ink);
   font: inherit;
   font-size: 13px;
@@ -5249,8 +5249,58 @@ body[data-module="presenter"] .detail-pane {
   outline: 0;
   padding: 10px 12px;
 }
-.svc-presenter-preparation-text::placeholder { color: var(--ink-4); font-weight: 500; }
-.svc-presenter-preparation-text:focus { background: color-mix(in srgb, var(--panel-2) 78%, transparent); }
+.svc-presenter-preparation-text::placeholder { color: var(--ink-4); font-weight: 600; }
+.svc-presenter-preparation-text:focus { background: color-mix(in srgb, var(--panel-2) 68%, transparent); }
+.svc-presenter-preparation-examples {
+  border-radius: calc(var(--r) - 2px);
+  color: var(--ink-4);
+  font-size: 11px;
+  font-weight: 700;
+}
+.svc-presenter-preparation-examples summary {
+  display: inline-flex;
+  width: max-content;
+  height: 24px;
+  align-items: center;
+  border-radius: calc(var(--r) - 2px);
+  cursor: pointer;
+  list-style: none;
+  padding: 0 2px;
+}
+.svc-presenter-preparation-examples summary::-webkit-details-marker {
+  display: none;
+}
+.svc-presenter-preparation-examples summary::after {
+  content: "";
+  width: 5px;
+  height: 5px;
+  margin-left: 7px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg) translateY(-1px);
+}
+.svc-presenter-preparation-examples[open] summary::after {
+  transform: rotate(225deg) translate(-1px, -1px);
+}
+.svc-presenter-preparation-examples pre {
+  max-height: 156px;
+  overflow: auto;
+  margin: 2px 0 0;
+  border-radius: calc(var(--r) - 2px);
+  background: color-mix(in srgb, var(--panel-2) 30%, transparent);
+  color: var(--ink-3);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.45;
+  padding: 8px 10px;
+  white-space: pre-wrap;
+}
+.svc-presenter-preparation-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
 .svc-presenter-preparation-apply {
   display: inline-flex;
   width: max-content;
@@ -5278,9 +5328,9 @@ body[data-module="presenter"] .detail-pane {
   padding: 0 var(--sidebar-item-pad-x);
 }
 .svc-presenter-preparation-text--sidebar {
-  min-height: 104px;
-  max-height: 220px;
-  background: var(--sidebar-active-bg);
+  min-height: 78px;
+  max-height: 180px;
+  background: color-mix(in srgb, var(--sidebar-active-bg) 76%, transparent);
   color: var(--sidebar-ink);
   font-size: 12px;
   line-height: 1.45;
@@ -5288,6 +5338,20 @@ body[data-module="presenter"] .detail-pane {
 }
 .svc-presenter-preparation-text--sidebar:focus {
   background: var(--sidebar-hover-bg);
+}
+.svc-presenter-preparation-input--sidebar .svc-presenter-preparation-examples {
+  color: var(--sidebar-muted);
+  font-size: 10px;
+}
+.svc-presenter-preparation-input--sidebar .svc-presenter-preparation-examples summary {
+  height: 20px;
+}
+.svc-presenter-preparation-input--sidebar .svc-presenter-preparation-examples pre {
+  max-height: 120px;
+  background: color-mix(in srgb, var(--sidebar-active-bg) 58%, transparent);
+  color: var(--sidebar-muted);
+  font-size: 10px;
+  padding: 7px 8px;
 }
 .svc-presenter-preparation-apply--sidebar {
   justify-self: start;

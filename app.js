@@ -15831,7 +15831,7 @@ function renderPresenterSidebarPreparationInput(service) {
   const inputCount = presenterServiceEditableInputCount(service);
   const draft = state.presenterPreparationDrafts[service.id] || "";
   const applying = state.presenterPreparationApplyingServiceIds.has(service.id);
-  const placeholder = presenterPreparationPlaceholderForService(service);
+  const examples = presenterPreparationPlaceholderForService(service);
   return `
     <section class="service-sidebar-section service-sidebar-section--preparation-input" aria-label="예배 입력 붙여넣기">
       <div class="service-sidebar-head">
@@ -15839,11 +15839,14 @@ function renderPresenterSidebarPreparationInput(service) {
         <small>${escapeHtml(inputCount ? `${inputCount}개 항목` : "입력 없음")}</small>
       </div>
       <div class="svc-presenter-preparation-input svc-presenter-preparation-input--sidebar">
-        <textarea class="svc-presenter-preparation-text svc-presenter-preparation-text--sidebar" data-presenter-preparation-input data-service-id="${escapeAttr(service.id)}" rows="5" placeholder="${escapeAttr(placeholder)}" aria-label="예배 입력 붙여넣기">${escapeHtml(draft)}</textarea>
-        <button class="svc-presenter-preparation-apply svc-presenter-preparation-apply--sidebar" type="button" data-presenter-preparation-apply data-service-id="${escapeAttr(service.id)}" ${applying ? "disabled" : ""}>
-          <i data-lucide="wand-sparkles"></i>
-          <span>${applying ? "반영 중" : "반영"}</span>
-        </button>
+        <textarea class="svc-presenter-preparation-text svc-presenter-preparation-text--sidebar" data-presenter-preparation-input data-service-id="${escapeAttr(service.id)}" rows="4" placeholder="여기에 붙여넣기" aria-label="예배 입력 붙여넣기">${escapeHtml(draft)}</textarea>
+        ${renderPresenterPreparationExamples(examples)}
+        <div class="svc-presenter-preparation-actions">
+          <button class="svc-presenter-preparation-apply svc-presenter-preparation-apply--sidebar" type="button" data-presenter-preparation-apply data-service-id="${escapeAttr(service.id)}" ${applying ? "disabled" : ""}>
+            <i data-lucide="wand-sparkles"></i>
+            <span>${applying ? "반영 중" : "반영"}</span>
+          </button>
+        </div>
       </div>
     </section>`;
 }
@@ -18370,7 +18373,7 @@ function renderServicePresenterControls(service, slides, active, index) {
 
 function renderPresenterServiceInputRail(service) {
   const draft = state.presenterPreparationDrafts[service.id] || "";
-  const placeholder = presenterPreparationPlaceholderForService(service);
+  const examples = presenterPreparationPlaceholderForService(service);
   return `
     <aside class="svc-presenter-input-rail" aria-label="예배 입력">
       <header class="svc-presenter-input-rail-head">
@@ -18378,13 +18381,26 @@ function renderPresenterServiceInputRail(service) {
         <small>빠른 반영</small>
       </header>
       <section class="svc-presenter-preparation-input">
-        <textarea class="svc-presenter-preparation-text" data-presenter-preparation-input data-service-id="${escapeAttr(service.id)}" rows="7" placeholder="${escapeAttr(placeholder)}" aria-label="예배 준비 입력">${escapeHtml(draft)}</textarea>
-        <button class="svc-presenter-preparation-apply" type="button" data-presenter-preparation-apply data-service-id="${escapeAttr(service.id)}">
-          <i data-lucide="wand-sparkles"></i>
-          <span>반영</span>
-        </button>
+        <textarea class="svc-presenter-preparation-text" data-presenter-preparation-input data-service-id="${escapeAttr(service.id)}" rows="5" placeholder="여기에 붙여넣기" aria-label="예배 준비 입력">${escapeHtml(draft)}</textarea>
+        ${renderPresenterPreparationExamples(examples)}
+        <div class="svc-presenter-preparation-actions">
+          <button class="svc-presenter-preparation-apply" type="button" data-presenter-preparation-apply data-service-id="${escapeAttr(service.id)}">
+            <i data-lucide="wand-sparkles"></i>
+            <span>반영</span>
+          </button>
+        </div>
       </section>
     </aside>`;
+}
+
+function renderPresenterPreparationExamples(examples = "") {
+  const text = String(examples || "").trim();
+  if (!text) return "";
+  return `
+    <details class="svc-presenter-preparation-examples">
+      <summary>예시</summary>
+      <pre>${escapeHtml(text)}</pre>
+    </details>`;
 }
 
 function presenterPreparationPlaceholderForService(service) {
