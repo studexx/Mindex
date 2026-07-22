@@ -3207,6 +3207,7 @@ def main() -> int:
                           }
                           const controlGroups = [...document.querySelectorAll('.svc-board-subgroup-controls')];
                           const controls = [...document.querySelectorAll('.svc-board-subgroup-controls [data-service-item-field]')];
+                          const firstControlStyle = controlGroups[0] ? getComputedStyle(controlGroups[0]) : null;
                           const headerLabels = controlGroups.map((node) => {
                             const header = node.closest('.svc-board-subgroup')?.querySelector('.svc-board-subgroup-head');
                             return header?.textContent?.replace(/\\s+/g, ' ').trim() || '';
@@ -3219,6 +3220,8 @@ def main() -> int:
                             legacyContextRemoved: !legacyContext,
                             railRemoved: !document.querySelector('.svc-presenter-input-rail'),
                             controlGroupCount: controlGroups.length,
+                            controlGroupJustify: firstControlStyle?.justifyContent || '',
+                            controlGroupMaxWidth: firstControlStyle?.maxWidth || '',
                             fieldCount: controls.length,
                             songFieldCount: songFields.length,
                             headerLabels,
@@ -3235,6 +3238,8 @@ def main() -> int:
                         presenter_header_input["legacyContextRemoved"]
                         and presenter_header_input["railRemoved"]
                         and presenter_header_input["controlGroupCount"] >= 1
+                        and presenter_header_input["controlGroupJustify"] == "flex-start"
+                        and presenter_header_input["controlGroupMaxWidth"] == "100%"
                         and presenter_header_input["fieldCount"] >= 1
                         and presenter_header_input["songFieldCount"] >= 1
                         and presenter_header_input["bulkInput"]

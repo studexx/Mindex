@@ -6033,11 +6033,11 @@ body[data-module="presenter"] .detail-pane {
 .svc-board-subgroup-controls {
   display: flex;
   min-width: min(100%, 320px);
-  max-width: min(560px, 62%);
-  flex: 1 1 420px;
+  max-width: 100%;
+  flex: 1 1 680px;
   flex-wrap: wrap;
   align-items: flex-start;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 6px;
 }
 .svc-board-subgroup-controls .svc-presenter-input-field {
