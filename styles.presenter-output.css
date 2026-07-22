@@ -40,9 +40,9 @@
   --presenter-scripture-font: var(--font-presenter);
   --presenter-size-display: calc(84 * var(--presenter-stage-unit));
   --presenter-size-section: calc(72 * var(--presenter-stage-unit));
-  --presenter-size-body: calc(64 * var(--presenter-stage-unit));
-  --presenter-size-lyrics: calc(64 * var(--presenter-stage-unit));
-  --presenter-size-song-title: calc(112 * var(--presenter-stage-unit));
+  --presenter-size-body: calc(72 * var(--presenter-stage-unit));
+  --presenter-size-lyrics: calc(72 * var(--presenter-stage-unit));
+  --presenter-size-song-title: calc(104 * var(--presenter-stage-unit));
   --presenter-size-meta: calc(52 * var(--presenter-stage-unit));
   --presenter-size-liturgical-body: var(--presenter-size-meta);
   --presenter-size-liturgical-heading: var(--presenter-size-section);

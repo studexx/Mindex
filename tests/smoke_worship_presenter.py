@@ -3340,7 +3340,7 @@ def main() -> int:
                 if (
                     "주 내 아버지" in section_song_title_output_font_state["text"]
                     and section_song_title_output_font_state["nameFontSize"] > section_song_title_output_font_state["headingFontSize"]
-                    and 112 <= section_song_title_output_font_state["nameFontSize"] < 128
+                    and 104 <= section_song_title_output_font_state["nameFontSize"] < 112
                 ):
                     pass_("presenter-section-song-title-output-font", json.dumps(section_song_title_output_font_state, ensure_ascii=False))
                 else:
@@ -3391,8 +3391,8 @@ def main() -> int:
                 )
                 if (
                     "주 찬양합니다" in plain_song_title_output_font_state["text"]
-                    and 112 <= plain_song_title_output_font_state["fontSize"] < 128
-                    and plain_song_title_output_font_state["lineHeight"] >= 112
+                    and 104 <= plain_song_title_output_font_state["fontSize"] < 112
+                    and plain_song_title_output_font_state["lineHeight"] >= 104
                 ):
                     pass_("presenter-plain-song-title-output-font", json.dumps(plain_song_title_output_font_state, ensure_ascii=False))
                 else:
@@ -3443,7 +3443,7 @@ def main() -> int:
                 if (
                     offering_song_title_output_font_state["sectionKey"] == "offering"
                     and "내 주 되신 주를 참 사랑하고" in offering_song_title_output_font_state["text"]
-                    and 60 <= offering_song_title_output_font_state["nameFontSize"] < 112
+                    and 72 <= offering_song_title_output_font_state["nameFontSize"] < 104
                 ):
                     pass_("presenter-offering-song-title-output-font", json.dumps(offering_song_title_output_font_state, ensure_ascii=False))
                 else:
@@ -3679,7 +3679,14 @@ def main() -> int:
                         sermonFontSize: Number.parseFloat(sermonTextStyle?.fontSize || '0'),
                         sermonFontWeight: sermonTextStyle?.fontWeight || '',
                         sermonLineHeight: sermonTextStyle?.lineHeight || '',
-                        lyricsFontSizeToken: 64,
+                        lyricsFontSizeToken: (() => {
+                          const probe = document.createElement('span');
+                          probe.style.cssText = 'position:fixed;visibility:hidden;font-size:var(--presenter-size-lyrics)';
+                          (slides[1]?.closest('.presenter-output-root') || mount.querySelector('.presenter-output-root') || mount).appendChild(probe);
+                          const value = Number.parseFloat(getComputedStyle(probe).fontSize || '0');
+                          probe.remove();
+                          return value;
+                        })(),
                         citationTexts: citationSlides.map((slide) => slide.text || ''),
                       };
                       mount.remove();
