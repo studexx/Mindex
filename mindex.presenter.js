@@ -2235,6 +2235,13 @@ async function positionPresenterOutputWindow(outputWindow) {
 function handlePresenterShortcut(event) {
   const presenterServiceId = state.presenter.serviceId;
   if (state.module !== "presenter" || !presenterServiceId) return false;
+  if (event.key === "F11" && isPresenterOutputWindowOpen()) {
+    event.preventDefault();
+    event.stopPropagation?.();
+    state.presenter.exitArmedAt = 0;
+    requestPresenterOutputFullscreenFromController();
+    return true;
+  }
   if (shouldKeepPresenterShortcutInFocusedControl(event)) return false;
   if (event.metaKey || event.ctrlKey || event.altKey) return false;
   const activeServiceSelected = state.selectedServiceId === presenterServiceId;
@@ -2299,6 +2306,22 @@ function handlePresenterShortcut(event) {
   }
 
   return false;
+}
+
+function requestPresenterOutputFullscreenFromController() {
+  window.mindexElectron?.fullscreenPresenterOutput?.().catch?.(() => {});
+  try {
+    const outputWindow = presenterOutputWindowRef();
+    outputWindow?.document?.documentElement?.requestFullscreen?.().catch?.(() => {});
+  } catch {
+    // Cross-window fullscreen can be rejected outside the current browser activation.
+  }
+  const payload = {
+    type: "presenter-output-fullscreen",
+    updatedAt: Date.now(),
+  };
+  state.presenter.channel?.postMessage(payload);
+  safeStorageSet("local", PRESENTER_SIGNAL_KEY, JSON.stringify(payload));
 }
 
 function shouldKeepPresenterShortcutInFocusedControl(event) {
@@ -2449,6 +2472,10 @@ function initPresenterOutputCore() {
           window.close();
         }, 40);
       }
+      if (event.data?.type === "presenter-output-fullscreen") {
+        requestLocalPresenterFullscreen({ retry: true, requireActivation: true });
+        postHeartbeat();
+      }
     };
     window.setTimeout(() => {
       channel.postMessage({ type: "presenter-ready", clientId: outputClientId });
@@ -2470,7 +2497,20 @@ function initPresenterOutputCore() {
   });
 
   window.addEventListener("storage", (event) => {
-    if (event.key === PRESENTER_STORAGE_KEY) renderStoredState();
+    if (event.key === PRESENTER_STORAGE_KEY) {
+      renderStoredState();
+      return;
+    }
+    if (event.key !== PRESENTER_SIGNAL_KEY || !event.newValue) return;
+    try {
+      const message = JSON.parse(event.newValue);
+      if (message.type === "presenter-output-fullscreen") {
+        requestLocalPresenterFullscreen({ retry: true, requireActivation: true });
+        postHeartbeat();
+      }
+    } catch {
+      // Ignore malformed cross-window presenter signals.
+    }
   });
   window.addEventListener("keydown", (event) => {
     if (event.key.toLowerCase() === "f") {
@@ -2553,14 +2593,19 @@ function shouldAutoFullscreenPresenterOutput() {
 }
 
 function requestLocalPresenterFullscreen(options = {}) {
-  if (!options.retry) {
+  const canRequest = () => !options.requireActivation || !navigator.userActivation || navigator.userActivation.isActive;
+  const request = () => {
+    if (!canRequest()) return;
     document.documentElement.requestFullscreen?.().catch?.(() => {});
+  };
+  if (!options.retry) {
+    request();
     return;
   }
   const delays = options.retry ? PRESENTER_FULLSCREEN_RETRY_DELAYS_MS : [0];
   delays.forEach((delay) => {
     window.setTimeout(() => {
-      document.documentElement.requestFullscreen?.().catch?.(() => {});
+      request();
     }, delay);
   });
 }

@@ -4,6 +4,7 @@ contextBridge.exposeInMainWorld("mindexElectron", {
   isDesktop: true,
   openPresenterOutput: (payload) => ipcRenderer.invoke("mindex:open-presenter", payload),
   closePresenterOutput: () => ipcRenderer.invoke("mindex:close-presenter"),
+  fullscreenPresenterOutput: () => ipcRenderer.invoke("mindex:fullscreen-presenter"),
   checkForUpdates: () => ipcRenderer.invoke("mindex:check-for-updates"),
   downloadUpdate: () => ipcRenderer.invoke("mindex:download-update"),
   installUpdate: () => ipcRenderer.invoke("mindex:install-update"),

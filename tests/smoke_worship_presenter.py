@@ -5434,6 +5434,93 @@ def main() -> int:
                 else:
                     fail("presenter-controller-escape-stop-other-service", json.dumps(controller_esc_state, ensure_ascii=False))
 
+                controller_f11_state = page.evaluate(
+                    """
+                    () => {
+                      const previousModule = state.module;
+                      const previousSelectedServiceId = state.selectedServiceId;
+                      const previousPresenterServiceId = state.presenter.serviceId;
+                      const previousOutputWindow = state.presenter.outputWindow;
+                      const previousOutputConnectedAt = state.presenter.outputConnectedAt;
+                      const previousChannel = state.presenter.channel;
+                      const previousElectron = window.mindexElectron;
+                      let preventCount = 0;
+                      let stopCount = 0;
+                      let directFullscreenCalls = 0;
+                      let electronFullscreenCalls = 0;
+                      const messages = [];
+                      state.module = 'presenter';
+                      state.selectedServiceId = '__smoke_active_presenter__';
+                      state.presenter.serviceId = '__smoke_active_presenter__';
+                      state.presenter.outputConnectedAt = Date.now();
+                      state.presenter.outputWindow = {
+                        closed: false,
+                        document: {
+                          documentElement: {
+                            requestFullscreen() {
+                              directFullscreenCalls += 1;
+                              return Promise.resolve();
+                            },
+                          },
+                        },
+                      };
+                      state.presenter.channel = {
+                        postMessage(message) {
+                          messages.push(message);
+                        },
+                      };
+                      window.mindexElectron = {
+                        fullscreenPresenterOutput() {
+                          electronFullscreenCalls += 1;
+                          return Promise.resolve();
+                        },
+                      };
+                      const input = document.createElement('input');
+                      document.body.appendChild(input);
+                      const handled = handlePresenterShortcut({
+                        key: 'F11',
+                        target: input,
+                        metaKey: false,
+                        ctrlKey: false,
+                        altKey: false,
+                        preventDefault() { preventCount += 1; },
+                        stopPropagation() { stopCount += 1; },
+                      });
+                      const signal = JSON.parse(localStorage.getItem(PRESENTER_SIGNAL_KEY) || '{}');
+                      input.remove();
+                      state.module = previousModule;
+                      state.selectedServiceId = previousSelectedServiceId;
+                      state.presenter.serviceId = previousPresenterServiceId;
+                      state.presenter.outputWindow = previousOutputWindow;
+                      state.presenter.outputConnectedAt = previousOutputConnectedAt;
+                      state.presenter.channel = previousChannel;
+                      if (previousElectron === undefined) delete window.mindexElectron;
+                      else window.mindexElectron = previousElectron;
+                      return {
+                        handled,
+                        preventCount,
+                        stopCount,
+                        directFullscreenCalls,
+                        electronFullscreenCalls,
+                        messageTypes: messages.map((message) => message.type),
+                        signalType: signal.type || '',
+                      };
+                    }
+                    """
+                )
+                if (
+                    controller_f11_state["handled"]
+                    and controller_f11_state["preventCount"] == 1
+                    and controller_f11_state["stopCount"] == 1
+                    and controller_f11_state["directFullscreenCalls"] == 1
+                    and controller_f11_state["electronFullscreenCalls"] == 1
+                    and controller_f11_state["messageTypes"] == ["presenter-output-fullscreen"]
+                    and controller_f11_state["signalType"] == "presenter-output-fullscreen"
+                ):
+                    pass_("presenter-controller-f11-output-fullscreen", json.dumps(controller_f11_state, ensure_ascii=False))
+                else:
+                    fail("presenter-controller-f11-output-fullscreen", json.dumps(controller_f11_state, ensure_ascii=False))
+
                 switch_state = page.evaluate(
                     """
                     (switchId) => {

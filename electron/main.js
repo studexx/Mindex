@@ -169,6 +169,13 @@ ipcMain.handle("mindex:close-presenter", () => {
   return { ok: true };
 });
 
+ipcMain.handle("mindex:fullscreen-presenter", () => {
+  if (!presenterWindow || presenterWindow.isDestroyed()) return { ok: false, reason: "presenter-window-unavailable" };
+  presenterWindow.setFullScreen(true);
+  presenterWindow.focus();
+  return { ok: true };
+});
+
 ipcMain.handle("mindex:check-for-updates", async () => {
   if (!app.isPackaged || !updatesEnabled() || !autoUpdater) return { ok: false, reason: "updates-unavailable" };
   const result = await autoUpdater.checkForUpdates();
