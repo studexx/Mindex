@@ -463,12 +463,12 @@
 .presenter-section-song-title-name {
   justify-self: end;
   max-width: 100%;
-  font-size: var(--presenter-size-song-title);
+  font-size: var(--presenter-size-body);
   font-weight: var(--presenter-weight-body);
   text-align: right;
 }
 .presenter-slide--song-title .presenter-section-song-title-name {
-  font-size: var(--presenter-size-song-title);
+  font-size: var(--presenter-size-body);
 }
 .presenter-slide--title-assignee .presenter-slide-text {
   display: grid;
@@ -548,7 +548,7 @@
   line-height: 1.08;
   padding-block: 1.35cqh;
 }
-:is(.svc-slide-mini-output, .presenter-output-root):not(.no-chromakey) .presenter-slide--song-title > .presenter-slide-text {
+:is(.svc-slide-mini-output, .presenter-output-root):not(.no-chromakey) .presenter-slide--song-title[data-section-key="praise"] > .presenter-slide-text {
   font-size: var(--presenter-size-song-title);
   font-weight: var(--presenter-weight-body);
   line-height: 1.04;
@@ -557,7 +557,7 @@
 :is(.svc-slide-mini-output, .presenter-output-root):not(.no-chromakey) .presenter-section-song-title-heading {
   font-size: var(--presenter-size-meta);
 }
-:is(.svc-slide-mini-output, .presenter-output-root):not(.no-chromakey) .presenter-section-song-title-name {
+:is(.svc-slide-mini-output, .presenter-output-root):not(.no-chromakey) .presenter-slide--song-title[data-section-key="praise"] .presenter-section-song-title-name {
   font-size: var(--presenter-size-song-title);
 }
 .presenter-output-root.no-chromakey .presenter-slide--lyrics,
@@ -601,7 +601,7 @@
 .presenter-output-root.no-chromakey .presenter-slide--lyrics[data-element-type="praise"] .presenter-slide-text {
   font-size: var(--presenter-size-lyrics);
 }
-.presenter-output-root.no-chromakey .presenter-slide--song-title .presenter-slide-text {
+.presenter-output-root.no-chromakey .presenter-slide--song-title[data-section-key="praise"] .presenter-slide-text {
   font-size: var(--presenter-size-song-title);
 }
 .presenter-output-root.no-chromakey .presenter-slide--lyrics .presenter-slide-text span {
@@ -610,7 +610,7 @@
 .presenter-output-root.no-chromakey .presenter-section-song-title-heading {
   font-size: var(--presenter-size-meta);
 }
-.presenter-output-root.no-chromakey .presenter-section-song-title-name {
+.presenter-output-root.no-chromakey .presenter-slide--song-title[data-section-key="praise"] .presenter-section-song-title-name {
   font-size: var(--presenter-size-song-title);
 }
 .presenter-output-root.no-chromakey .presenter-slide--scripture .presenter-slide-text span {

@@ -3398,6 +3398,57 @@ def main() -> int:
                 else:
                     fail("presenter-plain-song-title-output-font", json.dumps(plain_song_title_output_font_state, ensure_ascii=False))
 
+                offering_song_title_output_font_state = page.evaluate(
+                    """
+                    () => {
+                      document.getElementById('presenterOutputRoot')?.remove();
+                      const outputRoot = document.createElement('main');
+                      outputRoot.id = 'presenterOutputRoot';
+                      outputRoot.className = 'presenter-output-root';
+                      document.body.appendChild(outputRoot);
+                      renderPresenterOutput({
+                        serviceId: '__smoke_offering_song_title_output_font__',
+                        serviceType: 'sunday2',
+                        chromakey: true,
+                        outputTheme: 'chromakey',
+                        backgroundImage: '',
+                        slides: [{
+                          id: '__smoke_offering_song_title_output_font_slide__',
+                          elementType: PRESENTER_ELEMENT_TYPES.PRAISE,
+                          layout: PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT,
+                          type: 'song-title',
+                          title: '내 주 되신 주를 참 사랑하고',
+                          text: '♪ 내 주 되신 주를 참 사랑하고',
+                          sectionHeading: '봉헌찬송',
+                          sectionKey: 'offering',
+                        }],
+                        index: 0,
+                        safetyBlank: false,
+                      });
+                      const root = document.getElementById('presenterOutputRoot');
+                      const slide = root?.querySelector('.presenter-slide--song-title');
+                      const name = root?.querySelector('.presenter-section-song-title-name');
+                      const size = (node) => node ? Number.parseFloat(getComputedStyle(node).fontSize) : 0;
+                      const result = {
+                        hasRoot: Boolean(root),
+                        sectionKey: slide?.dataset.sectionKey || '',
+                        text: root?.innerText || '',
+                        nameFontSize: size(name),
+                      };
+                      root?.remove();
+                      return result;
+                    }
+                    """
+                )
+                if (
+                    offering_song_title_output_font_state["sectionKey"] == "offering"
+                    and "내 주 되신 주를 참 사랑하고" in offering_song_title_output_font_state["text"]
+                    and 60 <= offering_song_title_output_font_state["nameFontSize"] < 112
+                ):
+                    pass_("presenter-offering-song-title-output-font", json.dumps(offering_song_title_output_font_state, ensure_ascii=False))
+                else:
+                    fail("presenter-offering-song-title-output-font", json.dumps(offering_song_title_output_font_state, ensure_ascii=False))
+
                 scripture_fit_state = page.evaluate(
                     """
                     () => {
