@@ -2508,14 +2508,46 @@ function autoUpcomingPublicServiceTargets(baseDate = new Date()) {
   const wednesday = nextDateForWeekday(3);
   const friday = nextDateForWeekday(5);
   const sunday = nextDateForWeekday(0);
+  const integratedSunday = isAllGenerationsWorshipDate(sunday);
   return [
     { typeId: "wednesday", date: wednesday },
     { typeId: "friday", date: friday },
     { typeId: "sunday-first", date: sunday },
     { typeId: "sunday-second", date: sunday },
     { typeId: "sunday-main", date: sunday },
+    { typeId: "children", date: sunday },
+    { typeId: "youth", date: sunday },
     { typeId: "sunday-afternoon", date: sunday },
-  ].filter((target) => AUTO_UPCOMING_PUBLIC_SERVICE_TYPES.includes(target.typeId) && target.date);
+  ].filter((target) =>
+    AUTO_UPCOMING_PUBLIC_SERVICE_TYPES.includes(target.typeId)
+    && target.date
+    && !(integratedSunday && SUNDAY_MINISTRY_SERVICE_TYPES.has(target.typeId)));
+}
+
+function isAllGenerationsWorshipDate(date) {
+  const targetDate = String(date || "").trim();
+  if (!targetDate) return false;
+  const calendarText = (state.calendarData || [])
+    .filter((row) => String(row?.date || "").trim() === targetDate)
+    .map((row) => cleanList([
+      row.liturgical,
+      row.note,
+      row.church_schedule,
+      ...CALENDAR_DEPARTMENT_FIELDS.map(([field]) => row[field]),
+    ]).join(" "))
+    .join(" ");
+  const serviceText = (state.services || [])
+    .filter((service) =>
+      String(service?.date || "").trim() === targetDate
+      && worshipAppServiceTypeId(service?.type_id) === "sunday-main")
+    .map((service) => cleanList([
+      service.title,
+      service.raw_text,
+      ...(Array.isArray(service.tags) ? service.tags : []),
+    ]).join(" "))
+    .join(" ");
+  const compact = compactSearchValue([calendarText, serviceText].filter(Boolean).join(" "));
+  return compact.includes("온세대") || compact.includes("찬양예배");
 }
 
 function worshipServiceExistsForTarget(target = {}) {
@@ -9240,9 +9272,13 @@ const SERVICE_TIME_WINDOWS = {
   "sunday-first": { start: "07:00", end: "08:00" },
   "sunday-second": { start: "08:50", end: "10:00" },
   "sunday-main": { start: "10:50", end: "12:00" },
+  children: { start: "10:50", end: "12:00" },
+  youth: { start: "10:50", end: "12:00" },
   "sunday-afternoon": { start: "13:20", end: "14:30" },
   monthly: { start: "20:00", end: "22:00" },
 };
+
+const SUNDAY_MINISTRY_SERVICE_TYPES = new Set(["children", "youth"]);
 
 const AUTO_UPCOMING_PUBLIC_SERVICE_TYPES = [
   "wednesday",
@@ -9250,6 +9286,8 @@ const AUTO_UPCOMING_PUBLIC_SERVICE_TYPES = [
   "sunday-first",
   "sunday-second",
   "sunday-main",
+  "children",
+  "youth",
   "sunday-afternoon",
 ];
 

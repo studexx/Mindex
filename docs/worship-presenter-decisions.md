@@ -203,3 +203,9 @@ Small visual polish that does not alter behavior does not need an entry.
 - 크로마키 찬양 제목 slide는 본문 가사 크기와 별도로 더 큰 제목 scale을
   사용한다. 설교 제목 lower bar는 왼쪽 `설교` label을 출력하지 않고
   설교 제목을 왼쪽, 담당자를 오른쪽에 둔다.
+
+## Service Auto-Schedule Rules
+- 어린이부 예배와 청소년부 예배는 주일 자동 생성 대상이다.
+- 단, 해당 주일의 교회력/일정/예배 태그에 `온세대` 또는 `찬양예배`가
+  있으면 어린이부와 청소년부 예배를 별도로 생성하지 않는다. 그날은
+  3부 예배(`sunday-main`)가 통합 예배의 source of truth다.

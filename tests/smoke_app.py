@@ -1385,11 +1385,28 @@ def main() -> int:
                             versions: ['sunday-first', 'sunday-second', 'sunday-main', 'sunday-afternoon', 'monthly', 'wednesday']
                               .map((typeId) => resolvePublicWorshipTemplateVersion(typeId, { service: { type_id: typeId, date: '2026-07-05' } })?.version || ''),
                           },
-                          autoScheduleTargets: {
-                            monday: autoUpcomingPublicServiceTargets('2026-07-20').map((item) => `${item.typeId}:${item.date}`),
-                            saturday: autoUpcomingPublicServiceTargets('2026-07-18').map((item) => `${item.typeId}:${item.date}`),
-                            sunday: autoUpcomingPublicServiceTargets('2026-07-19').map((item) => `${item.typeId}:${item.date}`),
-                          },
+                          autoScheduleTargets: (() => {
+                            const previousCalendarData = state.calendarData;
+                            const regularMonday = autoUpcomingPublicServiceTargets('2026-07-20').map((item) => `${item.typeId}:${item.date}`);
+                            try {
+                              state.calendarData = [
+                                ...(previousCalendarData || []),
+                                {
+                                  id: '__smoke_all_generations__',
+                                  date: '2026-07-26',
+                                  church_schedule: '온세대 찬양예배'
+                                }
+                              ];
+                              return {
+                                monday: regularMonday,
+                                allGenerationsMonday: autoUpcomingPublicServiceTargets('2026-07-20').map((item) => `${item.typeId}:${item.date}`),
+                                saturday: autoUpcomingPublicServiceTargets('2026-07-18').map((item) => `${item.typeId}:${item.date}`),
+                                sunday: autoUpcomingPublicServiceTargets('2026-07-19').map((item) => `${item.typeId}:${item.date}`),
+                              };
+                            } finally {
+                              state.calendarData = previousCalendarData;
+                            }
+                          })(),
                           levels: [...document.querySelectorAll('.svc-template-level-card strong')]
                             .map((node) => node.textContent.trim()),
                           monthlyFirst: (() => {
@@ -1978,6 +1995,16 @@ def main() -> int:
                         template_terms["levels"] == ["Service", "Section", "Element", "Slide"]
                         and template_terms["autoScheduleTargets"] == {
                             "monday": [
+                                "wednesday:2026-07-22",
+                                "friday:2026-07-24",
+                                "sunday-first:2026-07-26",
+                                "sunday-second:2026-07-26",
+                                "sunday-main:2026-07-26",
+                                "children:2026-07-26",
+                                "youth:2026-07-26",
+                                "sunday-afternoon:2026-07-26",
+                            ],
+                            "allGenerationsMonday": [
                                 "wednesday:2026-07-22",
                                 "friday:2026-07-24",
                                 "sunday-first:2026-07-26",
