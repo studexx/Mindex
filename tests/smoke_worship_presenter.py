@@ -3324,6 +3324,7 @@ def main() -> int:
                       const heading = root?.querySelector('.presenter-section-song-title-heading');
                       const name = root?.querySelector('.presenter-section-song-title-name');
                       const size = (node) => node ? Number.parseFloat(getComputedStyle(node).fontSize) : 0;
+                      const weight = (node) => node ? getComputedStyle(node).fontWeight : '';
                       const result = {
                         hasRoot: Boolean(root),
                         hasHeading: Boolean(heading),
@@ -3331,6 +3332,7 @@ def main() -> int:
                         text: root?.innerText || '',
                         headingFontSize: size(heading),
                         nameFontSize: size(name),
+                        nameFontWeight: weight(name),
                       };
                       root?.remove();
                       return result;
@@ -3341,6 +3343,7 @@ def main() -> int:
                     "주 내 아버지" in section_song_title_output_font_state["text"]
                     and section_song_title_output_font_state["nameFontSize"] > section_song_title_output_font_state["headingFontSize"]
                     and 96 <= section_song_title_output_font_state["nameFontSize"] < 104
+                    and section_song_title_output_font_state["nameFontWeight"] == "800"
                 ):
                     pass_("presenter-section-song-title-output-font", json.dumps(section_song_title_output_font_state, ensure_ascii=False))
                 else:
@@ -3381,6 +3384,7 @@ def main() -> int:
                         hasText: Boolean(text),
                         text: root?.innerText || '',
                         fontSize: style ? Number.parseFloat(style.fontSize) : 0,
+                        fontWeight: style?.fontWeight || '',
                         lineHeight: style ? Number.parseFloat(style.lineHeight) : 0,
                         boxHeight: textRect ? Math.round(textRect.height) : 0,
                       };
@@ -3392,6 +3396,7 @@ def main() -> int:
                 if (
                     "주 찬양합니다" in plain_song_title_output_font_state["text"]
                     and 96 <= plain_song_title_output_font_state["fontSize"] < 104
+                    and plain_song_title_output_font_state["fontWeight"] == "800"
                     and plain_song_title_output_font_state["lineHeight"] >= 96
                 ):
                     pass_("presenter-plain-song-title-output-font", json.dumps(plain_song_title_output_font_state, ensure_ascii=False))
@@ -3734,11 +3739,12 @@ def main() -> int:
                     and scripture_context_state["readingVersionOpacity"] == "1"
                     and float(scripture_context_state["readingVersionFontSize"].replace("px", "")) >= 50
                     and scripture_context_state["readingFinFontWeight"] == "600"
-                    and -5 <= float(scripture_context_state["readingLetterSpacing"].replace("px", "") or "0") <= -3
+                    and -6 <= float(scripture_context_state["readingLetterSpacing"].replace("px", "") or "0") <= -5
                     and scripture_context_state["readingLineBreak"] == "anywhere"
                     and scripture_context_state["readingTextShadow"] == "none"
                     and float(scripture_context_state["readingTextStroke"].replace("px", "") or "0") > 0
                     and scripture_context_state["readingWordBreak"] == "break-all"
+                    and float(scripture_context_state["readingLineHeight"].replace("px", "") or "0") >= 100
                     and scripture_context_state["sermonContext"] == "sermon"
                     and scripture_context_state["sermonElementTitle"] == "출 23:14–19"
                     and scripture_context_state["sermonOutputContext"] == "chromakey"
@@ -4751,7 +4757,9 @@ def main() -> int:
                         titleOverflow: titleStyle.textOverflow,
                         personOverflow: personStyle.textOverflow,
                         titleFontSize: Number.parseFloat(titleStyle.fontSize),
+                        titleFontWeight: titleStyle.fontWeight,
                         personFontSize: Number.parseFloat(personStyle.fontSize),
+                        personFontWeight: personStyle.fontWeight,
                         titleInside: titleRect.left >= rootRect.left - 1 && titleRect.right <= rootRect.right + 1,
                         personInside: personRect.left >= rootRect.left - 1 && personRect.right <= rootRect.right + 1,
                         noOverlap: titleRect.bottom <= personRect.top + 1 || personRect.bottom <= titleRect.top + 1,
@@ -4783,10 +4791,15 @@ def main() -> int:
                         titleOverflow: twoPart.titleOverflow,
                         personOverflow: twoPart.personOverflow,
                         titleFontSize: twoPart.titleFontSize,
+                        titleFontWeight: twoPart.titleFontWeight,
                         personFontSize: twoPart.personFontSize,
+                        personFontWeight: twoPart.personFontWeight,
                         orderFontSize: Number.parseFloat(getComputedStyle(order).fontSize),
+                        orderFontWeight: getComputedStyle(order).fontWeight,
                         contentFontSize: Number.parseFloat(getComputedStyle(content).fontSize),
+                        contentFontWeight: getComputedStyle(content).fontWeight,
                         threePartPersonFontSize: Number.parseFloat(getComputedStyle(threePerson).fontSize),
+                        threePartPersonFontWeight: getComputedStyle(threePerson).fontWeight,
                         titleInside: twoPart.titleInside,
                         personInside: twoPart.personInside,
                         noOverlap: twoPart.noOverlap,
@@ -4801,10 +4814,15 @@ def main() -> int:
                     and title_assignee_bounds["titleOverflow"] == "clip"
                     and title_assignee_bounds["personOverflow"] == "clip"
                     and title_assignee_bounds["titleFontSize"] == 84
+                    and title_assignee_bounds["titleFontWeight"] == "800"
                     and title_assignee_bounds["personFontSize"] == 84
+                    and title_assignee_bounds["personFontWeight"] == "700"
                     and title_assignee_bounds["orderFontSize"] == 84
+                    and title_assignee_bounds["orderFontWeight"] == "800"
                     and title_assignee_bounds["contentFontSize"] == 84
+                    and title_assignee_bounds["contentFontWeight"] == "700"
                     and title_assignee_bounds["threePartPersonFontSize"] == 84
+                    and title_assignee_bounds["threePartPersonFontWeight"] == "700"
                     and title_assignee_bounds["titleInside"]
                     and title_assignee_bounds["personInside"]
                     and not title_assignee_bounds["titleCentered"]

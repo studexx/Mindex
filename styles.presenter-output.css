@@ -550,7 +550,7 @@
 }
 :is(.svc-slide-mini-output, .presenter-output-root):not(.no-chromakey) .presenter-slide--song-title[data-section-key="praise"] > .presenter-slide-text {
   font-size: var(--presenter-size-song-title);
-  font-weight: var(--presenter-weight-body);
+  font-weight: var(--presenter-weight-display);
   line-height: 1.04;
   padding-block: 1.1cqh;
 }
@@ -559,6 +559,11 @@
 }
 :is(.svc-slide-mini-output, .presenter-output-root):not(.no-chromakey) .presenter-slide--song-title[data-section-key="praise"] .presenter-section-song-title-name {
   font-size: var(--presenter-size-song-title);
+  font-weight: var(--presenter-weight-display);
+}
+:is(.svc-slide-mini-output, .presenter-output-root):not(.no-chromakey) .presenter-title-assignee:not(.presenter-title-assignee--solo) .presenter-title-assignee-title,
+:is(.svc-slide-mini-output, .presenter-output-root):not(.no-chromakey) .presenter-title-assignee-order {
+  font-weight: var(--presenter-weight-display);
 }
 .presenter-output-root.no-chromakey .presenter-slide--lyrics,
 .presenter-output-root.no-chromakey .presenter-slide--song-title,
@@ -701,8 +706,8 @@
   font-synthesis: weight;
   font-size: var(--presenter-scripture-reading-text-size);
   font-weight: 700;
-  letter-spacing: -.04em;
-  line-height: var(--presenter-scripture-line-height);
+  letter-spacing: -.06em;
+  line-height: 1.14;
   line-break: anywhere;
   overflow-wrap: anywhere;
   text-overflow: clip;
