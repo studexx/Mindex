@@ -3734,7 +3734,7 @@ def main() -> int:
                     and scripture_context_state["readingVersionOpacity"] == "1"
                     and float(scripture_context_state["readingVersionFontSize"].replace("px", "")) >= 50
                     and scripture_context_state["readingFinFontWeight"] == "600"
-                    and float(scripture_context_state["readingLetterSpacing"].replace("px", "") or "0") < -4
+                    and -5 <= float(scripture_context_state["readingLetterSpacing"].replace("px", "") or "0") <= -3
                     and scripture_context_state["readingLineBreak"] == "anywhere"
                     and scripture_context_state["readingTextShadow"] == "none"
                     and float(scripture_context_state["readingTextStroke"].replace("px", "") or "0") > 0

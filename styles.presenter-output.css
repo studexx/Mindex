@@ -701,7 +701,7 @@
   font-synthesis: weight;
   font-size: var(--presenter-scripture-reading-text-size);
   font-weight: 700;
-  letter-spacing: -.08em;
+  letter-spacing: -.04em;
   line-height: var(--presenter-scripture-line-height);
   line-break: anywhere;
   overflow-wrap: anywhere;
