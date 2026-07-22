@@ -2966,8 +2966,8 @@ def main() -> int:
                         and presenter_terms["helpLabel"] == "도움말"
                         and "Esc Esc" in presenter_terms["helpText"]
                         and "실시간 성구 송출" in presenter_terms["helpText"]
-                        and "Mac: ⌃⌘F" in presenter_terms["helpText"]
-                        and "Windows/Linux: F11" in presenter_terms["helpText"]
+                        and "출력 창이 열려 있으면 컨트롤러 F11도 출력 창 전체화면을 우선 적용합니다" in presenter_terms["helpText"]
+                        and "출력 전체화면 컨트롤러 F11 · 출력 창 F / Space / Enter" in presenter_terms["helpText"]
                         and "번호 + Enter" in presenter_terms["helpText"]
                         and "0 + Enter" in presenter_terms["helpText"]
                         and "범위 밖 번호 현재 화면 유지" in presenter_terms["helpText"]
@@ -3040,12 +3040,12 @@ def main() -> int:
                         presenter_font_contract["chromakey"]["unit"] == "1px"
                         and presenter_font_contract["chromakey"]["barHeight"] == "17.5%"
                         and presenter_font_contract["chromakey"]["outputBg"] == "#00ff00"
-                        and presenter_font_contract["chromakey"]["display"] == "84px"
+                        and presenter_font_contract["chromakey"]["display"] == "92px"
                         and presenter_font_contract["chromakey"]["section"] == "72px"
-                        and presenter_font_contract["chromakey"]["body"] == "64px"
-                        and presenter_font_contract["chromakey"]["lyrics"] == "64px"
+                        and presenter_font_contract["chromakey"]["body"] == "72px"
+                        and presenter_font_contract["chromakey"]["lyrics"] == "72px"
                         and presenter_font_contract["chromakey"]["meta"] == "52px"
-                        and presenter_font_contract["chromakey"]["scriptureBar"] == "64px"
+                        and presenter_font_contract["chromakey"]["scriptureBar"] == "72px"
                         and presenter_font_contract["chromakey"]["scriptureClean"] == "72px"
                         and presenter_font_contract["chromakey"]["scriptureReadingText"] == "88px"
                         and presenter_font_contract["clean"]["display"] == "168px"

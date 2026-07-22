@@ -18375,7 +18375,7 @@ function renderPresenterHelpControl() {
     ["범위 밖 번호", "현재 화면 유지"],
     ["Esc Esc", "프레젠터 종료"],
     ["실시간 성구 송출", "해당 순서에서 성구 입력"],
-    ["전체화면 안 될 때", "Mac: ⌃⌘F · Windows/Linux: F11"],
+    ["출력 전체화면", "컨트롤러 F11 · 출력 창 F / Space / Enter"],
   ];
   return `
     <details class="svc-presenter-help" data-presenter-help>
@@ -18385,7 +18385,7 @@ function renderPresenterHelpControl() {
       <div class="svc-presenter-help-panel" role="dialog" aria-label="${escapeAttr(uiText("presenter.help.title"))}">
         <div class="svc-presenter-help-head">
           <strong>${escapeHtml(uiText("presenter.help.title"))}</strong>
-          <small>전체화면이 안 되면 출력 창에서 브라우저 전체화면 단축키를 눌러 주세요</small>
+          <small>출력 창이 열려 있으면 컨트롤러 F11도 출력 창 전체화면을 우선 적용합니다</small>
         </div>
         <dl>
           ${rows.map(([key, value]) => `
