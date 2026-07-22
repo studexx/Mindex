@@ -17218,8 +17218,7 @@ function renderServiceItemGroups(items) {
               />`
               : `<span class="svc-edit-empty" aria-hidden="true"></span>`}
             ${renderServiceSongPicker(item, origIndex, subModel)}
-            ${group.kind === "main-praise" ? renderServiceFormHintInput(item, origIndex, { compact: true, placeholder: "송폼" }) : ""}
-            ${group.kind === "main-praise" ? renderServiceFormPresetBadges(item, { compact: true }) : ""}
+            ${renderServiceEditorFormControls(item, origIndex, subModel, { compact: true, placeholder: "송폼" })}
             ${renderServiceItemLinkControl(item, origIndex)}
           </div>
           <div class="svc-edit-actions">
@@ -17280,7 +17279,7 @@ function renderServiceEditorLabelCell(item, origIndex, attrs = {}, model = servi
   return `
     <span class="svc-edit-label svc-edit-label--static">${escapeHtml(item.label || "항목")}</span>
     ${renderServiceTemplateBadge(service?.type_id, item)}
-    ${renderServiceEditorFormControls(item, origIndex, model)}`;
+    ${model.showTitle ? "" : renderServiceEditorFormControls(item, origIndex, model)}`;
 }
 
 function renderServiceEditorFormControls(item, origIndex, model = serviceItemEditorModel(item), options = {}) {
@@ -17337,6 +17336,7 @@ function renderServiceEditorTitleControl(item, origIndex, attrs = {}, model = se
         aria-label="${attrs.isDefault ? "기본 항목 내용" : "항목 내용"}"
       />
       ${renderServiceSongPicker(item, origIndex, model)}
+      ${renderServiceEditorFormControls(item, origIndex, model, { compact: true, placeholder: "송폼" })}
       ${renderServiceItemLinkControl(item, origIndex)}
     </div>`;
 }
