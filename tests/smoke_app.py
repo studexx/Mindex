@@ -3318,12 +3318,14 @@ def main() -> int:
 
                     presenter_preparation_paste = page.evaluate(
                         """
-                        (() => {
+                        (async () => {
                           const original = {
                             module: state.module,
                             songs: state.songs,
                             services: state.services,
                             serviceItems: state.serviceItems,
+                            client: state.client,
+                            songVersionTablesSupported: state.songVersionTablesSupported,
                             selectedServiceId: state.selectedServiceId,
                             selectedServiceTypeId: state.selectedServiceTypeId,
                             drafts: state.presenterPreparationDrafts,
@@ -3373,7 +3375,7 @@ def main() -> int:
                             state.presenterPreparationDrafts = {
                               [service.id]: `찬양 1: 평화 하나님의 평강이\n찬양 2: 이 세상은 내 집 아니네\n찬양 3: 슬픈 마음 있는 사람\n찬양 4: 충만\n\n대표기도: 정선분 권사\n성경봉독: 히 10:38–39\n설교 제목: 믿음을 잃어버릴 수도 있어요?\n인용 구절: 렘 3:22; 마 3:11; 눅 24:49; 행 2:4; 고후 10:4; 롬 8:35-37; 살전 4:3; 벧전 1:14–15; 히 4:12; 엡 5:26; 요일 1:7; 행 15:8–9; 눅 11:13; 롬 8:30; 마 5:48; 롬 13:10\n결단찬양: 나는 믿네`,
                             };
-                            applyPresenterPreparationInput(service.id);
+                            await applyPresenterPreparationInput(service.id);
                             const items = state.serviceItems[service.id];
                             const byLabel = (label) => items.find((entry) => entry.label === label) || {};
                             const hymnService = { id: '__smoke_preparation_hymn_versions__', type_id: 'sunday-second', date: '2026-07-19', tags: [] };
@@ -3390,7 +3392,7 @@ def main() -> int:
                               _worshipElementOrder: index + 1,
                             }, index));
                             state.presenterPreparationDrafts[hymnService.id] = `찬양 1: 하늘에 가득 찬 영광의(9장)\n찬양 2: 예수를 나의 구주 삼고(288장)\n찬양 3: 강물같이 흐르는 기쁨(182장)`;
-                            applyPresenterPreparationInput(hymnService.id);
+                            await applyPresenterPreparationInput(hymnService.id);
                             const hymnItems = (state.serviceItems[hymnService.id] || [])
                               .filter((entry) => ['찬양 1', '찬양 2', '찬양 3'].includes(entry.label || ''));
                             const rawTitleScoreItem = normalizeServiceItem({
@@ -3473,11 +3475,56 @@ def main() -> int:
                               }, 1),
                             ];
                             state.presenterPreparationDrafts[fullscreenService.id] = `본문 요 21:15~25\n인용 구절: 렘 3:22, 마 3:11, 눅 24:49`;
-                            applyPresenterPreparationInput(fullscreenService.id);
+                            await applyPresenterPreparationInput(fullscreenService.id);
                             const fullscreenItems = state.serviceItems[fullscreenService.id] || [];
                             const fullscreenReading = fullscreenItems.find((entry) => entry.label === '성경봉독') || {};
                             const fullscreenCitation = fullscreenItems.find(isPresenterPreparationCitationItem) || {};
                             const fullscreenCitationMemo = parseServiceItemMemo(fullscreenCitation.memo);
+                            const looseService = { id: '__smoke_preparation_loose__', type_id: 'sunday-afternoon', date: '2026-07-19', tags: [] };
+                            const createdSongs = [];
+                            state.client = {
+                              from(table) {
+                                if (table !== 'mindex_songs') return original.client.from(table);
+                                return {
+                                  insert(payload) {
+                                    const row = {
+                                      id: `__created_song_${createdSongs.length + 1}__`,
+                                      title: payload.title,
+                                      praise_types: payload.praise_types || [],
+                                      memo: payload.memo || null,
+                                    };
+                                    createdSongs.push(row);
+                                    return {
+                                      select() {
+                                        return {
+                                          single: async () => ({ data: row, error: null }),
+                                        };
+                                      },
+                                    };
+                                  },
+                                  update() {
+                                    return {
+                                      eq: async () => ({ data: null, error: null }),
+                                    };
+                                  },
+                                };
+                              },
+                            };
+                            state.songVersionTablesSupported = false;
+                            state.services = [looseService];
+                            state.serviceItems[looseService.id] = [
+                              item('찬양 1', 'praise', 'praise', 2),
+                              item('찬양 2', 'praise', 'praise', 2),
+                              item('찬양 3', 'praise', 'praise', 2),
+                              item('찬양 4', 'praise', 'praise', 2),
+                              item('기도', 'title_person', 'prayer', 3),
+                              item('설교 제목', 'title_person', 'sermon', 6),
+                            ];
+                            const loosePlaceholder = presenterPreparationPlaceholderForService(looseService);
+                            state.presenterPreparationDrafts[looseService.id] = `찬양1 주 찬양합니다\n찬양2 변찮는 주님의 사랑과\n찬양3 승리는 내 것일세\n찬양4 꽃들도\n대표기도 문병자 권사\n말씀 “신유란 무엇인가요?”\n설교 김남영 목사`;
+                            await applyPresenterPreparationInput(looseService.id);
+                            const looseItems = state.serviceItems[looseService.id] || [];
+                            const looseByLabel = (label) => looseItems.find((entry) => entry.label === label) || {};
                             return {
                               songIds: ['찬양 1', '찬양 2', '찬양 3', '찬양 4', '결단찬양'].map((label) => byLabel(label).song_id || ''),
                               versionIds: ['찬양 1', '찬양 2', '찬양 3'].map((label) => byLabel(label).version_id || byLabel(label).song_version_id || ''),
@@ -3513,6 +3560,15 @@ def main() -> int:
                                 citationReferences: fullscreenCitationMemo.scriptureReferences || [],
                                 citationSection: fullscreenCitation._worshipSectionKey || '',
                               },
+                              looseInput: {
+                                placeholder: loosePlaceholder,
+                                createdTitles: createdSongs.map((song) => song.title),
+                                praiseSongIds: ['찬양 1', '찬양 2', '찬양 3', '찬양 4'].map((label) => looseByLabel(label).song_id || ''),
+                                prayer: looseByLabel('기도').assignee || '',
+                                sermonTitle: looseByLabel('설교 제목').raw_title || '',
+                                sermonAssignee: looseByLabel('설교 제목').assignee || '',
+                                draftCleared: !state.presenterPreparationDrafts[looseService.id],
+                              },
                               citationCount: citations.length,
                               citationReferences,
                               citationRawTitle: citation.raw_title || '',
@@ -3527,6 +3583,8 @@ def main() -> int:
                             state.songs = original.songs;
                             state.services = original.services;
                             state.serviceItems = original.serviceItems;
+                            state.client = original.client;
+                            state.songVersionTablesSupported = original.songVersionTablesSupported;
                             state.selectedServiceId = original.selectedServiceId;
                             state.selectedServiceTypeId = original.selectedServiceTypeId;
                             state.presenterPreparationDrafts = original.drafts;
@@ -3577,6 +3635,15 @@ def main() -> int:
                             "citationCount": 1,
                             "citationReferences": ["렘 3:22", "마 3:11", "눅 24:49"],
                             "citationSection": "sermon",
+                        }
+                        and presenter_preparation_paste["looseInput"] == {
+                            "placeholder": "찬양1 곡명\n찬양2 곡명\n찬양3 곡명\n찬양4 곡명\n대표기도 이름 직분\n말씀 \"설교 제목\"\n설교 김남영 목사",
+                            "createdTitles": ["주 찬양합니다", "변찮는 주님의 사랑과", "승리는 내 것일세", "꽃들도"],
+                            "praiseSongIds": ["__created_song_1__", "__created_song_2__", "__created_song_3__", "__created_song_4__"],
+                            "prayer": "문병자 권사",
+                            "sermonTitle": "신유란 무엇인가요?",
+                            "sermonAssignee": "김남영 목사",
+                            "draftCleared": True,
                         }
                         and presenter_preparation_paste["citationCount"] == 1
                         and presenter_preparation_paste["citationReferences"] == [

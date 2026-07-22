@@ -75,6 +75,14 @@ Small visual polish that does not alter behavior does not need an entry.
   같은 한 줄 hymn list는 순서대로 `찬양 1`, `찬양 2`, `찬양 3`에
   매핑하고, `성경봉독 롬 8:12~17`, `설교 제목 한 가지 그것을`,
   `봉헌찬송 찬 187장`처럼 colon 없는 known-label line도 인식한다.
+- `예배 입력`의 placeholder는 선택된 예배의 editable input만 예시로
+  보여준다. Fixed/default/shared output은 예시에 넣지 않는다.
+- `말씀 <제목>`은 성경 주소처럼 보이지 않으면 `설교 제목`으로,
+  `설교 <이름/직분>`은 설교 제목 요소의 담당자로 반영한다.
+- 찬양 DB에서 원제/부제/첫 가사 등으로도 곡을 하나로 찾지 못하면,
+  새찬송가 score 전용 슬롯을 제외하고 입력 제목의 빈 Praise record를
+  만들고 해당 예배 항목에 연결한다. 사용자는 나중에 Praise 탭에서
+  가사와 버전을 채운다.
 
 ### Public Worship Timing
 
