@@ -1055,6 +1055,53 @@ def main() -> int:
                         json.dumps({"before": single_tab_close_before, "after": single_tab_close_state}, ensure_ascii=False),
                     )
 
+                tab_reorder_state = page.evaluate(
+                    """
+                    (() => {
+                      const probeTabs = [
+                        newPageTab(homePageTabSnapshot()),
+                        newPageTab({...homePageTabSnapshot(), module: 'scripture'}),
+                        newPageTab({...homePageTabSnapshot(), module: 'calendar'})
+                      ];
+                      normalizePageTabsState(probeTabs, 1);
+                      renderPageTabs();
+                      refreshIcons();
+                      const activeId = state.pageTabs[state.pageTabIndex].id;
+                      const before = state.pageTabs.map(tab => tab.id);
+                      const draggableTabs = document.querySelectorAll('.page-tab[draggable="true"]').length;
+                      const addDraggable = document.querySelector('#pageTabAddBtn')?.draggable === true;
+                      const moved = reorderPageTab(0, 3);
+                      const after = state.pageTabs.map(tab => tab.id);
+                      const persisted = JSON.parse(sessionStorage.getItem(MINDEX_TAB_STATE_STORAGE_KEY) || '{}');
+                      const result = {
+                        moved,
+                        before,
+                        after,
+                        activePreserved: state.pageTabs[state.pageTabIndex]?.id === activeId,
+                        persisted: (persisted.tabs || []).map(tab => tab.id),
+                        draggableTabs,
+                        addDraggable
+                      };
+                      normalizePageTabsState([], 0);
+                      persistPageTabsState();
+                      renderPageTabs();
+                      refreshIcons();
+                      return result;
+                    })()
+                    """
+                )
+                if (
+                    tab_reorder_state["moved"]
+                    and tab_reorder_state["after"] == tab_reorder_state["before"][1:] + tab_reorder_state["before"][:1]
+                    and tab_reorder_state["activePreserved"]
+                    and tab_reorder_state["persisted"] == tab_reorder_state["after"]
+                    and tab_reorder_state["draggableTabs"] == 3
+                    and not tab_reorder_state["addDraggable"]
+                ):
+                    pass_("page-tab-drag-reorder", json.dumps(tab_reorder_state, ensure_ascii=False))
+                else:
+                    fail("page-tab-drag-reorder", json.dumps(tab_reorder_state, ensure_ascii=False))
+
                 page.evaluate("switchModule('calendar')")
                 page.wait_for_function("() => document.body.dataset.module === 'calendar'", timeout=5000)
                 page.wait_for_selector(".cal-tab.active", timeout=15000)
@@ -1225,6 +1272,61 @@ def main() -> int:
                     pass_("global-search-cross-module", json.dumps(global_search_state, ensure_ascii=False))
                 else:
                     fail("global-search-cross-module", json.dumps(global_search_state, ensure_ascii=False))
+
+                global_search_deep_state = page.evaluate(
+                    """
+                    (() => {
+                      const originalSongs = state.songs;
+                      const originalSearch = state.search;
+                      const originalInputValue = refs.searchInput?.value || "";
+                      const syntheticSong = {
+                        id: "__smoke_global_search_song__",
+                        title: "통합검색 대표 제목",
+                        hymn_no: "",
+                        subtitle: "숨은 부제 검색어",
+                        original_title: "Original Integrated Search",
+                        scripture: ["요 3:16"],
+                        metadata: { artist: "검색 아티스트" },
+                        versions: [{
+                          id: "__smoke_global_search_version__",
+                          version_label: "대표 버전",
+                          raw_section_name: "원제 섹션",
+                          metadata: { album: "검색 앨범" },
+                          forms: [{ part_type: "Verse", lyrics: "첫 가사 통합검색 문장" }]
+                        }]
+                      };
+                      const directMatches = {
+                        subtitle: Boolean(getSongSearchMatch(syntheticSong, getSearchTokens("숨은 부제"))),
+                        originalTitle: Boolean(getSongSearchMatch(syntheticSong, getSearchTokens("Original Integrated"))),
+                        firstLyrics: Boolean(getSongSearchMatch(syntheticSong, getSearchTokens("첫 가사 통합검색"))),
+                        initials: Boolean(getSongSearchMatch(syntheticSong, getSearchTokens("ㅌㅎㄱㅅ"))),
+                      };
+                      state.songs = [syntheticSong, ...originalSongs];
+                      state.search = "첫 가사 통합검색";
+                      if (refs.searchInput) refs.searchInput.value = state.search;
+                      renderSongList();
+                      const rendered = {
+                        headings: [...document.querySelectorAll(".global-search-heading")].map((node) => node.textContent.trim()),
+                        songResult: Boolean(document.querySelector('[data-global-song-id="__smoke_global_search_song__"]')),
+                      };
+                      const scriptureReferences = normalizeServiceScriptureReferenceList("요3:16~17, 18");
+                      state.songs = originalSongs;
+                      state.search = originalSearch;
+                      if (refs.searchInput) refs.searchInput.value = originalInputValue;
+                      renderSongList();
+                      return { directMatches, rendered, scriptureReferences };
+                    })()
+                    """
+                )
+                if (
+                    all(global_search_deep_state["directMatches"].values())
+                    and "찬양" in global_search_deep_state["rendered"]["headings"]
+                    and global_search_deep_state["rendered"]["songResult"]
+                    and global_search_deep_state["scriptureReferences"] == ["요 3:16–17", "요 3:18"]
+                ):
+                    pass_("global-search-deep-matching", json.dumps(global_search_deep_state, ensure_ascii=False))
+                else:
+                    fail("global-search-deep-matching", json.dumps(global_search_deep_state, ensure_ascii=False))
 
                 page.fill("#searchInput", "")
                 page.wait_for_selector("[data-service-list]", timeout=5000)
