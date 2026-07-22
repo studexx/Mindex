@@ -3310,6 +3310,10 @@ def main() -> int:
                           const controlGroups = [...document.querySelectorAll('.svc-board-subgroup-controls')];
                           const controls = [...document.querySelectorAll('.svc-board-subgroup-controls [data-service-item-field]')];
                           const firstControlStyle = controlGroups[0] ? getComputedStyle(controlGroups[0]) : null;
+                          const firstHead = controlGroups[0]?.closest('.svc-board-subgroup')?.querySelector('.svc-board-subgroup-head');
+                          const firstHeadRowStyle = controlGroups[0]?.parentElement ? getComputedStyle(controlGroups[0].parentElement) : null;
+                          const firstControlRect = controlGroups[0]?.getBoundingClientRect();
+                          const firstHeadRect = firstHead?.getBoundingClientRect();
                           const headerLabels = controlGroups.map((node) => {
                             const header = node.closest('.svc-board-subgroup')?.querySelector('.svc-board-subgroup-head');
                             return header?.textContent?.replace(/\\s+/g, ' ').trim() || '';
@@ -3322,8 +3326,15 @@ def main() -> int:
                             legacyContextRemoved: !legacyContext,
                             railRemoved: !document.querySelector('.svc-presenter-input-rail'),
                             controlGroupCount: controlGroups.length,
+                            headRowDisplay: firstHeadRowStyle?.display || '',
                             controlGroupJustify: firstControlStyle?.justifyContent || '',
                             controlGroupMaxWidth: firstControlStyle?.maxWidth || '',
+                            controlBelowHead: firstControlRect && firstHeadRect
+                              ? Math.round(firstControlRect.top - firstHeadRect.bottom)
+                              : null,
+                            controlAlignedLeft: firstControlRect && firstHeadRect
+                              ? Math.round(firstControlRect.left - firstHeadRect.left)
+                              : null,
                             fieldCount: controls.length,
                             songFieldCount: songFields.length,
                             headerLabels,
@@ -3340,8 +3351,12 @@ def main() -> int:
                         presenter_header_input["legacyContextRemoved"]
                         and presenter_header_input["railRemoved"]
                         and presenter_header_input["controlGroupCount"] >= 1
+                        and presenter_header_input["headRowDisplay"] == "grid"
                         and presenter_header_input["controlGroupJustify"] == "flex-start"
                         and presenter_header_input["controlGroupMaxWidth"] == "100%"
+                        and presenter_header_input["controlBelowHead"] is not None
+                        and 0 <= presenter_header_input["controlBelowHead"] <= 8
+                        and abs(presenter_header_input["controlAlignedLeft"] or 0) <= 2
                         and presenter_header_input["fieldCount"] >= 1
                         and presenter_header_input["songFieldCount"] >= 1
                         and presenter_header_input["bulkInput"]

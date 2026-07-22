@@ -5960,12 +5960,12 @@ body[data-module="presenter"] .detail-pane {
   min-width: 0;
 }
 .svc-board-subgroup-head-row {
-  display: flex;
+  display: grid;
   width: 100%;
   min-width: 0;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 10px;
+  align-items: start;
+  justify-content: stretch;
+  gap: 5px;
 }
 .svc-board-subgroup-head {
   display: inline-flex;
@@ -6032,9 +6032,9 @@ body[data-module="presenter"] .detail-pane {
 }
 .svc-board-subgroup-controls {
   display: flex;
-  min-width: min(100%, 320px);
+  width: 100%;
+  min-width: 0;
   max-width: 100%;
-  flex: 1 1 680px;
   flex-wrap: wrap;
   align-items: flex-start;
   justify-content: flex-start;
