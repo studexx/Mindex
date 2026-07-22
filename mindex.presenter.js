@@ -3435,6 +3435,14 @@ function renderPresenterTitleAssigneeSlide(slide) {
   const assigneeChars = presenterLineCharEstimate(assignee);
   const orderChars = presenterLineCharEstimate(orderTitle);
   const contentChars = presenterLineCharEstimate(contentTitle);
+  if (presenterTitleAssigneeIsSermon(slide) && contentTitle && assignee) {
+    return `
+      <div class="presenter-slide-text presenter-title-assignee presenter-title-assignee--sermon">
+        <span class="presenter-title-assignee-content" style="--line-chars: ${escapeAttr(contentChars)}">${escapeHtml(contentTitle)}</span>
+        <span class="presenter-title-assignee-person" style="--line-chars: ${escapeAttr(assigneeChars)}">${escapeHtml(assignee)}</span>
+      </div>
+    `;
+  }
   if (orderTitle && contentTitle && assignee) {
     return `
       <div class="presenter-slide-text presenter-title-assignee presenter-title-assignee--three-part">
@@ -3451,6 +3459,17 @@ function renderPresenterTitleAssigneeSlide(slide) {
       ${assignee ? `<span class="presenter-title-assignee-person" style="--line-chars: ${escapeAttr(assigneeChars)}">${escapeHtml(assignee)}</span>` : ""}
     </div>
   `;
+}
+
+function presenterTitleAssigneeIsSermon(slide = {}) {
+  const values = [
+    slide.sectionKey,
+    slide.sectionLabel,
+    slide.sectionTitle,
+    slide.orderTitle,
+    slide.label,
+  ].map((value) => compactSearchValue(value));
+  return values.some((value) => value === "설교" || value === "sermon");
 }
 
 function renderPresenterSectionSongTitleSlide(slide) {

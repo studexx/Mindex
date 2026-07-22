@@ -200,3 +200,6 @@ Small visual polish that does not alter behavior does not need an entry.
 
 ## Presenter Output Rules
 - `주일오후 헌신예배`는 일반 오후예배 순서에 `특송`과 `봉헌`을 추가한다. `특송`은 악보(score)가 아니라 일반 praise/lyrics 입력이며, 추가되는 `봉헌찬송`만 score output을 사용한다.
+- 크로마키 찬양 제목 slide는 본문 가사 크기와 별도로 더 큰 제목 scale을
+  사용한다. 설교 제목 lower bar는 왼쪽 `설교` label을 출력하지 않고
+  설교 제목을 왼쪽, 담당자를 오른쪽에 둔다.

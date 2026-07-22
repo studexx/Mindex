@@ -3340,7 +3340,7 @@ def main() -> int:
                 if (
                     "주 내 아버지" in section_song_title_output_font_state["text"]
                     and section_song_title_output_font_state["nameFontSize"] > section_song_title_output_font_state["headingFontSize"]
-                    and section_song_title_output_font_state["nameFontSize"] >= 84
+                    and section_song_title_output_font_state["nameFontSize"] >= 104
                 ):
                     pass_("presenter-section-song-title-output-font", json.dumps(section_song_title_output_font_state, ensure_ascii=False))
                 else:
@@ -4654,7 +4654,7 @@ def main() -> int:
                           type: 'title-assignee',
                           elementType: PRESENTER_ELEMENT_TYPES.TITLE_ASSIGNEE,
                           layout: PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT,
-                          orderTitle: '설교',
+                          orderTitle: '순서',
                           contentTitle: '모든 것 되신 예수',
                           assignee: '김광한 전도사',
                         }],
@@ -4687,10 +4687,10 @@ def main() -> int:
                     and title_assignee_bounds["titleOverflow"] == "clip"
                     and title_assignee_bounds["personOverflow"] == "clip"
                     and title_assignee_bounds["titleFontSize"] == 84
-                    and title_assignee_bounds["personFontSize"] == 72
-                    and title_assignee_bounds["orderFontSize"] == 72
+                    and title_assignee_bounds["personFontSize"] == 84
+                    and title_assignee_bounds["orderFontSize"] == 84
                     and title_assignee_bounds["contentFontSize"] == 84
-                    and title_assignee_bounds["threePartPersonFontSize"] == 72
+                    and title_assignee_bounds["threePartPersonFontSize"] == 84
                     and title_assignee_bounds["titleInside"]
                     and title_assignee_bounds["personInside"]
                     and not title_assignee_bounds["titleCentered"]
@@ -4726,11 +4726,17 @@ def main() -> int:
                       const order = root.querySelector('.presenter-title-assignee-order');
                       const content = root.querySelector('.presenter-title-assignee-content');
                       const person = root.querySelector('.presenter-title-assignee-person');
+                      const rootRect = root.getBoundingClientRect();
+                      const contentRect = content.getBoundingClientRect();
+                      const personRect = person.getBoundingClientRect();
                       const size = (node) => Number.parseFloat(getComputedStyle(node).fontSize);
                       return {
                         text: root.innerText,
-                        hasThreePartClass: Boolean(root.querySelector('.presenter-title-assignee--three-part')),
-                        orderFontSize: size(order),
+                        hasSermonClass: Boolean(root.querySelector('.presenter-title-assignee--sermon')),
+                        hasOrder: Boolean(order),
+                        contentLeft: Math.round(contentRect.left - rootRect.left),
+                        contentBeforePerson: contentRect.left < personRect.left,
+                        personRight: Math.round(rootRect.right - personRect.right),
                         contentFontSize: size(content),
                         personFontSize: size(person),
                       };
@@ -4739,9 +4745,12 @@ def main() -> int:
                 )
                 if (
                     "베드로의 고백" in sermon_title_font_state["text"]
-                    and sermon_title_font_state["hasThreePartClass"]
-                    and sermon_title_font_state["contentFontSize"] > sermon_title_font_state["orderFontSize"]
-                    and sermon_title_font_state["contentFontSize"] > sermon_title_font_state["personFontSize"]
+                    and "설교" not in sermon_title_font_state["text"]
+                    and sermon_title_font_state["hasSermonClass"]
+                    and not sermon_title_font_state["hasOrder"]
+                    and sermon_title_font_state["contentBeforePerson"]
+                    and sermon_title_font_state["contentFontSize"] == 84
+                    and sermon_title_font_state["personFontSize"] == 84
                 ):
                     pass_("presenter-sermon-title-content-font", json.dumps(sermon_title_font_state, ensure_ascii=False))
                 else:

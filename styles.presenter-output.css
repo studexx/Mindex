@@ -42,7 +42,7 @@
   --presenter-size-section: calc(72 * var(--presenter-stage-unit));
   --presenter-size-body: calc(64 * var(--presenter-stage-unit));
   --presenter-size-lyrics: calc(64 * var(--presenter-stage-unit));
-  --presenter-size-song-title: var(--presenter-size-section);
+  --presenter-size-song-title: calc(104 * var(--presenter-stage-unit));
   --presenter-size-meta: calc(52 * var(--presenter-stage-unit));
   --presenter-size-liturgical-body: var(--presenter-size-meta);
   --presenter-size-liturgical-heading: var(--presenter-size-section);
@@ -463,12 +463,12 @@
 .presenter-section-song-title-name {
   justify-self: end;
   max-width: 100%;
-  font-size: var(--presenter-size-display);
+  font-size: var(--presenter-size-song-title);
   font-weight: var(--presenter-weight-body);
   text-align: right;
 }
 .presenter-slide--song-title .presenter-section-song-title-name {
-  font-size: var(--presenter-size-display);
+  font-size: var(--presenter-size-song-title);
 }
 .presenter-slide--title-assignee .presenter-slide-text {
   display: grid;
@@ -517,10 +517,14 @@
 .presenter-output-root:not(.no-chromakey) .presenter-title-assignee-order,
 .presenter-output-root:not(.no-chromakey) .presenter-title-assignee-content,
 .presenter-output-root:not(.no-chromakey) .presenter-title-assignee-person {
-  font-size: var(--presenter-size-section);
-}
-.presenter-output-root:not(.no-chromakey) .presenter-title-assignee--three-part .presenter-title-assignee-content {
   font-size: var(--presenter-size-display);
+}
+.presenter-output-root:not(.no-chromakey) .presenter-title-assignee--sermon {
+  grid-template-columns: minmax(0, 1fr) minmax(0, max-content);
+  gap: 4.2cqw;
+}
+.presenter-output-root:not(.no-chromakey) .presenter-title-assignee--sermon .presenter-title-assignee-content {
+  text-align: left;
 }
 .presenter-title-assignee--solo .presenter-title-assignee-title {
   font-size: var(--presenter-size-section);
