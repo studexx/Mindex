@@ -3481,10 +3481,10 @@ body[data-module="presenter"] .detail-pane {
   display: grid;
   width: 100%;
   grid-template-columns: minmax(0, 1fr);
-  gap: var(--s4);
+  gap: var(--s5);
   padding: 0;
 }
-.service-dashboard-section { display: flex; flex-direction: column; gap: var(--s3); }
+.service-dashboard-section { display: flex; flex-direction: column; gap: var(--s4); }
 .service-section-head { display: flex; min-height: 28px; align-items: baseline; justify-content: space-between; gap: var(--s3); }
 .service-week-range {
   margin-top: 3px;
@@ -3531,12 +3531,12 @@ body[data-module="presenter"] .detail-pane {
 }
 .service-list-groups {
   display: grid;
-  gap: var(--s4);
+  gap: var(--s5);
 }
 .service-list-group {
   display: grid;
   min-width: 0;
-  gap: var(--s2);
+  gap: var(--s3);
 }
 .service-list-group > h3 {
   color: var(--ink-4);
@@ -3548,12 +3548,12 @@ body[data-module="presenter"] .detail-pane {
 }
 .service-list-type-stack {
   display: grid;
-  gap: var(--s3);
+  gap: var(--s4);
 }
 .service-list-type-block {
   display: grid;
   min-width: 0;
-  gap: var(--s2);
+  gap: var(--s3);
 }
 .service-list-type-block > header {
   display: flex;
@@ -3615,9 +3615,9 @@ body[data-module="presenter"] .detail-pane {
   font-size: 10px;
   font-weight: 600;
 }
-.service-date-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(176px, 1fr)); gap: 4px; }
+.service-date-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(176px, 1fr)); gap: 8px; }
 .service-date-grid--dashboard { grid-template-columns: repeat(auto-fill, minmax(184px, 1fr)); }
-.service-date-card { display: flex; min-height: 74px; flex-direction: column; gap: 2px; align-items: stretch; padding: 10px 11px; border: 1px solid transparent; border-radius: var(--r); background: color-mix(in srgb, var(--panel-2) 24%, transparent); cursor: pointer; text-align: left; }
+.service-date-card { display: flex; min-height: 80px; flex-direction: column; gap: 3px; align-items: stretch; padding: 12px; border: 1px solid transparent; border-radius: var(--r); background: color-mix(in srgb, var(--panel-2) 24%, transparent); cursor: pointer; text-align: left; }
 .service-date-card:hover,
 .service-date-card:focus-visible { border-color: color-mix(in srgb, var(--accent) 44%, transparent); background: color-mix(in srgb, var(--panel-2) 72%, transparent); outline: none; }
 .service-date-card.is-expected { background: color-mix(in srgb, var(--warn-bg) 18%, transparent); }
@@ -3729,7 +3729,7 @@ body[data-module="presenter"] .detail-pane {
   flex-direction: column;
   gap: 0;
   min-height: 0;
-  padding: 2px 0 0;
+  padding: 4px 0 18px;
 }
 .svc-header {
   position: sticky;
@@ -3744,7 +3744,7 @@ body[data-module="presenter"] .detail-pane {
   border-bottom: 0;
   background: var(--bg);
   isolation: isolate;
-  padding: 0 0 4px;
+  padding: 0 0 12px;
 }
 .svc-header::before {
   content: "";
@@ -5460,7 +5460,7 @@ body[data-module="presenter"] .detail-pane {
   gap: 8px;
   align-items: center;
   background: var(--bg);
-  padding: 2px 0 24px;
+  padding: 4px 0 30px;
 }
 .svc-presenter-main {
   display: inline-flex;
@@ -5892,10 +5892,10 @@ body[data-module="presenter"] .detail-pane {
   display: grid;
   min-width: 0;
   max-width: 100%;
-  gap: 22px;
+  gap: 30px;
   align-items: start;
   overflow-x: hidden;
-  padding: 2px 0 8px;
+  padding: 4px 0 16px;
   scrollbar-width: thin;
 }
 .svc-slide-board--empty {
@@ -5909,12 +5909,12 @@ body[data-module="presenter"] .detail-pane {
   display: grid;
   width: 100%;
   min-width: 0;
-  gap: 9px;
+  gap: 12px;
   align-content: start;
   border-radius: 0;
   background: transparent;
   box-shadow: none;
-  padding: 6px 0 10px;
+  padding: 8px 0 16px;
 }
 .svc-board-section-head-row {
   display: grid;
@@ -5991,12 +5991,12 @@ body[data-module="presenter"] .detail-pane {
   display: grid;
   width: 100%;
   min-width: 0;
-  gap: 12px;
+  gap: 18px;
 }
 .svc-board-subgroup {
   display: grid;
   width: 100%;
-  gap: 8px;
+  gap: 10px;
   min-width: 0;
 }
 .svc-board-subgroup-head-row {
@@ -6187,7 +6187,7 @@ body[data-module="presenter"] .detail-pane {
   min-width: 0;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--svc-thumb-wrap-width)), 1fr));
   justify-content: stretch;
-  gap: 16px;
+  gap: 12px;
   max-width: 100%;
   overflow-x: hidden;
   padding: 0;

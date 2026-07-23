@@ -448,6 +448,16 @@
   align-items: center;
   text-align: left;
 }
+.presenter-slide--song-title:not([data-section-key="praise"]) .presenter-section-song-title {
+  grid-template-columns: minmax(0, 1fr);
+  gap: .16em;
+  justify-items: center;
+  text-align: center;
+}
+.presenter-slide--song-title:not([data-section-key="praise"]) .presenter-section-song-title-name {
+  justify-self: center;
+  text-align: center;
+}
 .presenter-section-song-title-heading,
 .presenter-section-song-title-name {
   min-width: 0;
