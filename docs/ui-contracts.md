@@ -45,6 +45,10 @@ Home hierarchy:
 
 Inactive module tabs should stay visually quiet. Active tabs may show a clearer label and accent.
 
+- When two or more page tabs are open, tabs can be dragged to reorder them.
+- The active page remains active after reordering, and the new order is persisted with the existing tab session state.
+- The add-tab control is not part of the draggable sequence.
+
 ## Sidebar
 
 - Sidebar width should stay consistent unless a module has a strong reason.

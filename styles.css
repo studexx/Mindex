@@ -310,6 +310,10 @@ body.sidebar-collapsed .brand-home {
   line-height: 1;
   padding: 0 36px 0 16px;
 }
+.page-tab[draggable="true"] { cursor: grab; }
+.page-tab.dragging { cursor: grabbing; opacity: .55; }
+.page-tab.drag-before { box-shadow: inset 2px 0 0 var(--accent); }
+.page-tab.drag-after { box-shadow: inset -2px 0 0 var(--accent); }
 .page-tab.active {
   background: var(--tab-active-bg);
   color: var(--ink);
@@ -3516,7 +3520,15 @@ body[data-module="presenter"] .detail-pane {
 .service-type-card:hover { background: var(--sidebar-hover-bg); color: var(--sidebar-ink); }
 .service-type-card.active { background: var(--sidebar-active-bg); color: var(--sidebar-ink); font-weight: 500; }
 .service-date-list { padding: 0; display: flex; flex-direction: column; gap: var(--s3); }
+.service-section-title-block { display: grid; min-width: 0; gap: 3px; }
 .service-date-list-title { font-size: var(--page-title-size); font-weight: var(--page-title-weight); color: var(--ink); }
+.service-date-list-helper {
+  max-width: 620px;
+  color: var(--ink-4);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 17px;
+}
 .service-list-groups {
   display: grid;
   gap: var(--s4);
@@ -3550,6 +3562,29 @@ body[data-module="presenter"] .detail-pane {
   justify-content: space-between;
   gap: var(--s3);
 }
+.service-list-new-btn {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: 0;
+  border-radius: var(--r);
+  background: color-mix(in srgb, var(--panel-2) 34%, transparent);
+  color: var(--ink-3);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 0 8px;
+}
+.service-list-new-btn:hover {
+  background: color-mix(in srgb, var(--accent) 22%, var(--panel-2));
+  color: var(--ink);
+}
+.service-list-new-btn svg {
+  width: 14px;
+  height: 14px;
+}
 .service-list-type-open {
   display: grid;
   min-width: 0;
@@ -3582,11 +3617,16 @@ body[data-module="presenter"] .detail-pane {
 }
 .service-date-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(176px, 1fr)); gap: 4px; }
 .service-date-grid--dashboard { grid-template-columns: repeat(auto-fill, minmax(184px, 1fr)); }
-.service-date-card { display: flex; min-height: 66px; flex-direction: column; gap: 2px; align-items: flex-start; padding: 10px 11px; border: 0; border-radius: var(--r); background: color-mix(in srgb, var(--panel-2) 24%, transparent); cursor: pointer; text-align: left; }
-.service-date-card:hover { background: color-mix(in srgb, var(--panel-2) 72%, transparent); }
+.service-date-card { display: flex; min-height: 74px; flex-direction: column; gap: 2px; align-items: stretch; padding: 10px 11px; border: 1px solid transparent; border-radius: var(--r); background: color-mix(in srgb, var(--panel-2) 24%, transparent); cursor: pointer; text-align: left; }
+.service-date-card:hover,
+.service-date-card:focus-visible { border-color: color-mix(in srgb, var(--accent) 44%, transparent); background: color-mix(in srgb, var(--panel-2) 72%, transparent); outline: none; }
 .service-date-card.is-expected { background: color-mix(in srgb, var(--warn-bg) 18%, transparent); }
 .service-date-card.is-expected:hover { background: color-mix(in srgb, var(--warn-bg) 34%, transparent); }
+.service-date-card-top { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: var(--s2); }
 .service-date-card-date { font-size: 14px; font-weight: 500; color: var(--ink); }
+.service-date-card-open { color: var(--ink-4); font-size: 10px; font-weight: 700; opacity: 0; transition: opacity .1s, color .1s; }
+.service-date-card:hover .service-date-card-open,
+.service-date-card:focus-visible .service-date-card-open { color: var(--accent); opacity: 1; }
 .service-date-card-type { color: var(--accent); font-size: 10px; font-weight: 500; letter-spacing: .04em; text-transform: uppercase; }
 .service-date-card-preview { display: -webkit-box; overflow: hidden; color: var(--ink-4); font-size: 11px; line-height: 15px; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .service-week-board {

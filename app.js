@@ -817,6 +817,10 @@ function bindStaticEvents() {
   });
   refs.pageTabAddBtn?.addEventListener("click", openNewPageTab);
   refs.pageTabs?.addEventListener("click", handlePageTabClick);
+  refs.pageTabs?.addEventListener("dragstart", handlePageTabDragStart);
+  refs.pageTabs?.addEventListener("dragover", handlePageTabDragOver);
+  refs.pageTabs?.addEventListener("drop", handlePageTabDrop);
+  refs.pageTabs?.addEventListener("dragend", clearPageTabDragState);
   refs.navButtons?.forEach((button) => {
     button.addEventListener("click", () => handleNavigationRailClick(button));
   });
@@ -8668,13 +8672,78 @@ function renderPageTabs() {
       ? `<button class="page-tab-close" type="button" data-page-tab-close="${escapeAttr(String(index))}" aria-label="Close ${escapeAttr(tab.label)}"><i data-lucide="x"></i></button>`
       : "";
     return `
-      <button class="page-tab${active ? " active" : ""}" type="button" role="tab" data-page-tab-index="${escapeAttr(String(index))}" aria-selected="${active ? "true" : "false"}" ${active ? 'aria-current="page"' : ""}>
+      <button class="page-tab${active ? " active" : ""}" type="button" role="tab" draggable="${state.pageTabs.length > 1 ? "true" : "false"}" data-page-tab-index="${escapeAttr(String(index))}" aria-selected="${active ? "true" : "false"}" ${active ? 'aria-current="page"' : ""}>
         <span>${escapeHtml(tab.label)}</span>
         ${close}
       </button>
     `;
   }).join("");
   if (addButton) refs.pageTabs.appendChild(addButton);
+}
+
+let pageTabDragIndex = null;
+let pageTabDropIndex = null;
+
+function clearPageTabDragState() {
+  pageTabDragIndex = null;
+  pageTabDropIndex = null;
+  refs.pageTabs?.querySelectorAll(".page-tab.dragging, .page-tab.drag-before, .page-tab.drag-after").forEach((tab) => {
+    tab.classList.remove("dragging", "drag-before", "drag-after");
+    tab.removeAttribute("aria-grabbed");
+  });
+}
+
+function handlePageTabDragStart(event) {
+  if (event.target.closest("[data-page-tab-close]")) {
+    event.preventDefault();
+    return;
+  }
+  const tab = event.target.closest("[data-page-tab-index]");
+  if (!tab || state.pageTabs.length < 2) return;
+  pageTabDragIndex = Number(tab.dataset.pageTabIndex);
+  event.dataTransfer.effectAllowed = "move";
+  event.dataTransfer.setData("text/plain", String(pageTabDragIndex));
+  tab.classList.add("dragging");
+  tab.setAttribute("aria-grabbed", "true");
+}
+
+function handlePageTabDragOver(event) {
+  if (!Number.isInteger(pageTabDragIndex)) return;
+  const tab = event.target.closest("[data-page-tab-index]");
+  if (!tab) return;
+  event.preventDefault();
+  event.dataTransfer.dropEffect = "move";
+  const targetIndex = Number(tab.dataset.pageTabIndex);
+  const bounds = tab.getBoundingClientRect();
+  const after = event.clientX >= bounds.left + bounds.width / 2;
+  pageTabDropIndex = targetIndex + (after ? 1 : 0);
+  refs.pageTabs.querySelectorAll(".page-tab.drag-before, .page-tab.drag-after").forEach((item) => {
+    item.classList.remove("drag-before", "drag-after");
+  });
+  tab.classList.add(after ? "drag-after" : "drag-before");
+}
+
+function reorderPageTab(fromIndex, insertionIndex) {
+  if (!Number.isInteger(fromIndex) || !Number.isInteger(insertionIndex)) return false;
+  if (fromIndex < 0 || fromIndex >= state.pageTabs.length) return false;
+  const activeId = state.pageTabs[state.pageTabIndex]?.id;
+  const [tab] = state.pageTabs.splice(fromIndex, 1);
+  const targetIndex = Math.max(0, Math.min(insertionIndex > fromIndex ? insertionIndex - 1 : insertionIndex, state.pageTabs.length));
+  state.pageTabs.splice(targetIndex, 0, tab);
+  state.pageTabIndex = Math.max(0, state.pageTabs.findIndex((item) => item.id === activeId));
+  persistPageTabsState();
+  renderPageTabs();
+  refreshIcons();
+  return targetIndex !== fromIndex;
+}
+
+function handlePageTabDrop(event) {
+  if (!Number.isInteger(pageTabDragIndex) || !Number.isInteger(pageTabDropIndex)) return;
+  event.preventDefault();
+  const fromIndex = pageTabDragIndex;
+  const insertionIndex = pageTabDropIndex;
+  clearPageTabDragState();
+  reorderPageTab(fromIndex, insertionIndex);
 }
 
 async function handlePageTabClick(event) {
@@ -16445,10 +16514,17 @@ function renderServiceListDetail() {
     }))
     .filter((group) => group.types.length);
   const count = groups.reduce((total, group) => total + group.types.reduce((sum, entry) => sum + entry.services.length, 0), 0);
+  const title = q ? "예배 검색 결과" : "전체 예배";
+  const helperText = q
+    ? `"${state.search.trim()}" 검색 결과입니다. 카드를 선택하면 바로 예배 입력 화면으로 이동합니다.`
+    : "유형별 최근 예배입니다. 카드를 선택해 입력/송출을 준비하고, 추가로 같은 유형의 예배를 만들 수 있습니다.";
   refs.detailPane.innerHTML = `
     <div class="service-date-list service-date-list--all">
       <div class="service-section-head">
-        <h2 class="service-date-list-title">${q ? "검색 결과" : "목록"}</h2>
+        <div class="service-section-title-block">
+          <h2 class="service-date-list-title">${escapeHtml(title)}</h2>
+          <p class="service-date-list-helper">${escapeHtml(helperText)}</p>
+        </div>
         <div class="service-section-head-actions">
           <span class="service-search-count">${count}${q ? "개 결과" : "개 예배"}</span>
         </div>
@@ -16469,15 +16545,17 @@ function renderServiceListDetail() {
 
 function renderServiceListTypeBlock(type, services, query) {
   const sorted = sortServicesByDate(services, "desc");
+  const typeName = serviceTypeDisplayName(type.id);
   return `
     <section class="service-list-type-block">
       <header>
         <button class="service-list-type-open" type="button" data-select-service-type="${escapeAttr(type.id)}">
-          <strong>${escapeHtml(serviceTypeDisplayName(type.id))}</strong>
+          <strong>${escapeHtml(typeName)}</strong>
           <small>${escapeHtml(sorted.length)}${query ? "개 결과" : "개 예배"}</small>
         </button>
-        <button class="icon-btn quiet svc-new-btn" type="button" data-new-service="${escapeAttr(type.id)}" aria-label="예배 추가">
+        <button class="service-list-new-btn" type="button" data-new-service="${escapeAttr(type.id)}" aria-label="${escapeAttr(`${typeName} 추가`)}">
           <i data-lucide="plus"></i>
+          <span>추가</span>
         </button>
       </header>
       ${sorted.length ? `<div class="service-date-grid">
@@ -17789,16 +17867,21 @@ function renderServiceWeekCard(service) {
 function renderServiceDateCard(service, options = {}) {
   const preview = serviceItemPreview(service.id);
   const note = (service.tags || []).join(", ");
+  const serviceName = serviceDisplayTypeName(service);
   return `
     <button
       class="service-date-card"
       type="button"
       data-service-id="${escapeAttr(service.id)}"
+      aria-label="${escapeAttr(`${formatServiceDate(service, { compact: true })} ${serviceName} 열기`)}"
     >
-      <span class="service-date-card-date">${escapeHtml(formatServiceDate(service, { compact: true }))}</span>
-      ${options.showType ? `<span class="service-date-card-type">${escapeHtml(serviceDisplayTypeName(service))}</span>` : ""}
+      <span class="service-date-card-top">
+        <span class="service-date-card-date">${escapeHtml(formatServiceDate(service, { compact: true }))}</span>
+        <span class="service-date-card-open">열기</span>
+      </span>
+      ${options.showType ? `<span class="service-date-card-type">${escapeHtml(serviceName)}</span>` : ""}
       ${note ? `<span class="service-date-card-note">${escapeHtml(note)}</span>` : ""}
-      ${preview ? `<span class="service-date-card-preview">${escapeHtml(preview)}</span>` : ""}
+      ${preview ? `<span class="service-date-card-preview">${escapeHtml(preview)}</span>` : `<span class="service-date-card-preview">순서 확인</span>`}
     </button>`;
 }
 
@@ -20204,6 +20287,9 @@ function renderPresenterBoardSection(group, activeIndex, serviceId, options = {}
 function presenterBoardSectionEditKey(group = {}) {
   const id = String(group?.id || "").trim();
   if (!id) return "";
+  const syntheticReadyOnly = (group.slides || []).length
+    && group.slides.every(({ slide }) => isPresenterPreparationSlide(slide) && !String(slide?.elementId || "").trim());
+  if (syntheticReadyOnly) return "";
   if (/^(main-praise|section-id:|section-key:|item:)/.test(id)) return id;
   return isUuid(id) ? `section-id:${id}` : id;
 }
