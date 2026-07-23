@@ -127,6 +127,19 @@ Small visual polish that does not alter behavior does not need an entry.
 - These are template rules, not copied weekly content. A service instance may
   override them only through a deliberate template-modified edit.
 
+### Youth Worship Template
+
+- 청소년부 예배 is a regular 10:50 Sunday ministry service. On a date marked
+  `온세대 찬양예배`, it is not generated because youth worship is integrated
+  with 주일예배 [3부].
+- New 청소년부 예배 services receive this weekly scaffold: `사도신경`, main
+  praise 3곡, `대표기도`, `봉헌` (`봉헌찬양`, `봉헌기도`), `성경봉독`, `설교`,
+  `결단기도`, `주기도문`, `광고`, and `반별 모임`.
+- `통성기도` and `결단찬양` are not part of the regular youth template unless
+  a user deliberately adds them for that service.
+- The regular `봉헌찬양` default is `대단한 믿음 없어도`. It is prefilled for
+  each weekly service rather than copied from the previous week.
+
 ### Preparation Input Parsing
 
 - `본문`, `성경본문`, `설교본문`, `말씀`, and `말씀본문` are dynamic

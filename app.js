@@ -8877,6 +8877,13 @@ const SERVICE_CATEGORIES = {
   special: ["special","holy-week-dawn","omer"],
 };
 
+// Ministry services remain independently configurable, but youth services use a
+// verified weekly scaffold so a newly created service is ready for input.
+const TEMPLATE_PROJECTED_SERVICE_TYPES = new Set([
+  ...SERVICE_CATEGORIES.public,
+  "youth",
+]);
+
 const SERVICE_TYPE_DISPLAY_NAMES = {
   "sunday-first": "주일예배 [1부]",
   "sunday-second": "주일예배 [2부]",
@@ -14067,6 +14074,45 @@ function publicWorshipResponseStep() {
   };
 }
 
+function youthWorshipTemplate() {
+  return [
+    publicWorshipReadyStep(),
+    publicWorshipCreedStep(),
+    publicWorshipPraiseStep({ count: 3, required: true }),
+    publicWorshipPrayerStep(),
+    {
+      label: "봉헌",
+      name: "봉헌",
+      required: true,
+      flex: false,
+      sectionKey: "offering",
+      elements: [
+        {
+          label: "봉헌찬양",
+          name: "봉헌찬양",
+          elementType: "praise",
+          default_text: "대단한 믿음 없어도",
+        },
+        { label: "봉헌기도", name: "봉헌기도", elementType: "title_person" },
+      ],
+    },
+    publicWorshipScriptureReadingStep(),
+    publicWorshipSermonStep({ typeId: "youth", includeSermonBody: false }),
+    publicWorshipResponseStep(),
+    publicWorshipLordsPrayerStep(),
+    publicWorshipAnnouncementsStep(),
+    {
+      label: "교제",
+      name: "교제",
+      required: false,
+      flex: true,
+      sectionKey: "fellowship",
+      elements: [{ label: "반별 모임", name: "반별 모임", elementType: "title", default_text: "반별 모임" }],
+    },
+    legacyImageClosingStep(),
+  ];
+}
+
 function publicWorshipAnnouncementsStep() {
   return {
     label: "광고",
@@ -14487,7 +14533,7 @@ const SERVICE_ORDER_TEMPLATE_FALLBACKS = {
   omer: ["찬양", "기도", "특송", "결단"],
   special: [],
   children: ["사도신경", "찬양", "예배의 부름", "성경봉독", "설교", "결단기도", "봉헌", "봉헌찬양", "봉헌기도", "나래파송", "주기도문", "광고", "교제"],
-  youth: ["사도신경", "찬양", "통성기도", "대표기도", "봉헌", "봉헌찬양", "봉헌기도", "성경봉독", "설교", responseSectionTemplate(), "주기도문", "광고", "교제"],
+  youth: youthWorshipTemplate(),
   "young-adult": ["사도신경", "대표기도", "찬양", "통성기도", "성경봉독", "설교", responseSectionTemplate(), "봉헌", "봉헌찬양", "봉헌기도", "광고", "찬양", "축도", "교제"],
 };
 
@@ -14564,7 +14610,7 @@ function projectGroupedWorshipItemsFromTemplates(grouped = {}) {
 
 function projectWorshipServiceItemsFromTemplate(service, items = []) {
   const appTypeId = worshipAppServiceTypeId(service?.type_id);
-  if (!SERVICE_CATEGORIES.public.includes(appTypeId)) {
+  if (!TEMPLATE_PROJECTED_SERVICE_TYPES.has(appTypeId)) {
     return normalizeServiceItemsForTemplateHierarchy(service, items);
   }
 
@@ -14885,7 +14931,7 @@ function shouldDropUnmodifiedTemplateProjectionExtra(item = {}) {
 
 function normalizeServiceItemsForTemplateHierarchy(service, items = [], options = {}) {
   const appTypeId = worshipAppServiceTypeId(service?.type_id);
-  if (!SERVICE_CATEGORIES.public.includes(appTypeId)) {
+  if (!TEMPLATE_PROJECTED_SERVICE_TYPES.has(appTypeId)) {
     return items.map((item, index) => ({
       ...item,
       ...(options.preserveSourceIndex ? { _serviceItemIndex: index } : {}),

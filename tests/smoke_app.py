@@ -2488,6 +2488,47 @@ def main() -> int:
                     else:
                         fail("service-template-terminology", json.dumps(template_terms, ensure_ascii=False))
 
+                    youth_template = page.evaluate(
+                        """
+                        (() => {
+                          const service = { id: '__smoke_youth_template__', type_id: 'youth', date: '2026-07-26' };
+                          const previousCalendarData = state.calendarData;
+                          const template = serviceOrderTemplate('youth', { service });
+                          const projected = projectWorshipServiceItemsFromTemplate(service, []);
+                          try {
+                            state.calendarData = [
+                              ...previousCalendarData,
+                              { id: '__smoke_youth_integrated__', date: '2026-07-26', church_schedule: '온세대 찬양예배' },
+                            ];
+                            return {
+                              sections: template.map((step) => step.sectionKey || step.label),
+                              labels: projected.map((item) => item.label || ''),
+                              offeringTitle: projected.find((item) => item.label === '봉헌찬양')?.raw_title || '',
+                              scheduledOnIntegratedSunday: autoUpcomingPublicServiceTargets('2026-07-20')
+                                .some((item) => item.typeId === 'youth' && item.date === '2026-07-26'),
+                            };
+                          } finally {
+                            state.calendarData = previousCalendarData;
+                          }
+                        })()
+                        """
+                    )
+                    if youth_template == {
+                        "sections": [
+                            "ready", "creed", "praise", "prayer", "offering", "scripture_reading",
+                            "sermon", "response_song", "lords_prayer", "announcements", "fellowship", "closing_visual",
+                        ],
+                        "labels": [
+                            "대기 영상", "사도신경", "찬양 1", "찬양 2", "찬양 3", "기도", "봉헌찬양", "봉헌기도",
+                            "성경봉독", "설교 제목", "결단기도", "주기도문", "교회소식", "반별 모임", "마무리",
+                        ],
+                        "offeringTitle": "대단한 믿음 없어도",
+                        "scheduledOnIntegratedSunday": False,
+                    }:
+                        pass_("youth-service-template", json.dumps(youth_template, ensure_ascii=False))
+                    else:
+                        fail("youth-service-template", json.dumps(youth_template, ensure_ascii=False))
+
                     strict_song_picker = page.evaluate(
                         """
                         (() => {
