@@ -1448,7 +1448,9 @@ function applyTheme(theme) {
   state.theme = theme;
   document.body.dataset.theme = theme;
   if (!refs.themeBtn) return;
-  refs.themeBtn.setAttribute("aria-label", theme === "dark" ? "Use light mode" : "Use dark mode");
+  const themeLabel = theme === "dark" ? "Use light mode" : "Use dark mode";
+  refs.themeBtn.setAttribute("aria-label", themeLabel);
+  refs.themeBtn.setAttribute("title", themeLabel);
   refs.themeBtn.innerHTML = `<i data-lucide="${theme === "dark" ? "sun" : "moon"}"></i>`;
   refreshIcons();
   resizeFormTextareas();
@@ -17341,7 +17343,6 @@ function renderServiceItemGroups(items) {
             ${renderServiceTemplateBadge(selectedService?.type_id, groupFirst)}
             ${renderServiceEditorFormControls(groupFirst, groupFirstIndex, groupFirstModel, { compact: true, placeholder: "송폼/범위" })}
           </span>
-          ${renderServiceSectionEditButton(groupFirst, selectedService?.id)}
           ${group.kind === "main-praise" && serviceUsesPraiseLeader(selectedService?.type_id) ? `
             <input
               class="svc-group-assignee svc-group-assignee-input"
@@ -17406,20 +17407,6 @@ function serviceEditorGroupInfo(item) {
   return label
     ? { key: `label:${label}`, kind: "label", label }
     : { key: "", kind: "", label: "" };
-}
-
-function renderServiceSectionEditButton(item, serviceId = state.selectedServiceId) {
-  const sectionKey = presenterSectionEditorGroupKey(item);
-  if (!sectionKey || !serviceId) return "";
-  const label = String(item?._worshipSectionTitle || item?.label || "섹션").trim() || "섹션";
-  return `
-    <button class="icon-btn svc-section-edit-btn" type="button"
-      data-presenter-section-edit="${escapeAttr(sectionKey)}"
-      data-service-id="${escapeAttr(serviceId)}"
-      aria-label="${escapeAttr(`${label} 섹션 편집`)}"
-      title="섹션 편집">
-      <i data-lucide="pencil"></i>
-    </button>`;
 }
 
 function renderServiceEditorLabelCell(item, origIndex, attrs = {}, model = serviceItemEditorModel(item, attrs)) {
@@ -17605,7 +17592,6 @@ function renderServiceEditorItem(item, mergedIndex, mergedItems, groupNum) {
       <span class="svc-edit-order">${groupNum || mergedIndex + 1}</span>
       <span class="svc-edit-section-cell">
         ${renderServiceEditorLabelCell(item, origIndex, attrs, model)}
-        ${!isDefault ? renderServiceSectionEditButton(item, model.service?.id || state.selectedServiceId) : ""}
       </span>
       ${renderServiceEditorAssigneeControl(item, origIndex, attrs, model)}
       ${renderServiceEditorTitleControl(item, origIndex, attrs, model)}
@@ -18490,7 +18476,7 @@ function renderPresenterScreenControl() {
       </label>`;
   }
   return `
-    <button class="icon-btn" type="button" data-presenter-action="detect-screens" aria-label="${escapeAttr(uiText("presenter.action.detectDisplays"))}">
+    <button class="icon-btn" type="button" data-presenter-action="detect-screens" aria-label="${escapeAttr(uiText("presenter.action.detectDisplays"))}" title="${escapeAttr(uiText("presenter.action.detectDisplays"))}">
       <i data-lucide="monitor"></i>
     </button>`;
 }
@@ -18509,7 +18495,7 @@ function renderPresenterHelpControl() {
   ];
   return `
     <details class="svc-presenter-help" data-presenter-help>
-      <summary class="icon-btn" aria-label="${escapeAttr(uiText("presenter.action.help"))}">
+      <summary class="icon-btn" aria-label="${escapeAttr(uiText("presenter.action.help"))}" title="${escapeAttr(uiText("presenter.action.help"))}">
         <i data-lucide="circle-help"></i>
       </summary>
       <div class="svc-presenter-help-panel" role="dialog" aria-label="${escapeAttr(uiText("presenter.help.title"))}">
@@ -19426,10 +19412,10 @@ function renderPresenterControlsTop(service, slides, active, index) {
               ${renderLiveScriptureControl(service.id)}
             </span>` : ""}
           <span class="svc-presenter-action-group svc-presenter-action-group--nav" aria-label="${escapeAttr(uiText("presenter.aria.slideNav"))}">
-            <button class="icon-btn" type="button" data-presenter-action="prev" data-service-id="${escapeAttr(service.id)}" ${count ? "" : "disabled"} aria-label="${escapeAttr(uiText("presenter.action.prev"))}">
+            <button class="icon-btn" type="button" data-presenter-action="prev" data-service-id="${escapeAttr(service.id)}" ${count ? "" : "disabled"} aria-label="${escapeAttr(uiText("presenter.action.prev"))}" title="${escapeAttr(uiText("presenter.action.prev"))}">
               <i data-lucide="chevron-left"></i>
             </button>
-            <button class="icon-btn" type="button" data-presenter-action="next" data-service-id="${escapeAttr(service.id)}" ${count ? "" : "disabled"} aria-label="${escapeAttr(uiText("presenter.action.next"))}">
+            <button class="icon-btn" type="button" data-presenter-action="next" data-service-id="${escapeAttr(service.id)}" ${count ? "" : "disabled"} aria-label="${escapeAttr(uiText("presenter.action.next"))}" title="${escapeAttr(uiText("presenter.action.next"))}">
               <i data-lucide="chevron-right"></i>
             </button>
           </span>
@@ -19523,12 +19509,12 @@ function renderServiceMusicPlayer() {
   return `
     <span class="svc-music-player">
       <input class="svc-music-file" type="file" accept="audio/*" data-service-music-file hidden />
-      <button class="svc-music-name" type="button" data-service-music-action="choose">
+      <button class="svc-music-name" type="button" data-service-music-action="choose" title="음악 선택">
         <i data-lucide="${context.source ? "volume-2" : "music"}"></i>
         <span>${escapeHtml(fileLabel)}</span>
       </button>
       ${hasSource ? `
-        <button class="icon-btn svc-music-toggle${music.playing ? " is-active" : ""}" type="button" data-service-music-action="toggle" aria-label="${escapeAttr(music.playing ? uiText("presenter.music.pause") : uiText("presenter.music.play"))}">
+        <button class="icon-btn svc-music-toggle${music.playing ? " is-active" : ""}" type="button" data-service-music-action="toggle" aria-label="${escapeAttr(music.playing ? uiText("presenter.music.pause") : uiText("presenter.music.play"))}" title="${escapeAttr(music.playing ? uiText("presenter.music.pause") : uiText("presenter.music.play"))}">
           <i data-lucide="${music.playing ? "pause" : "play"}"></i>
         </button>
         <span class="svc-volume-control">
@@ -19545,11 +19531,11 @@ function renderLiveScriptureControl(serviceId) {
   return `
     <span class="svc-live-scripture${live.active ? " is-active" : ""}">
       <input class="svc-live-scripture-input" type="text" value="${escapeAttr(live.draft || live.reference || "")}" data-live-scripture-input data-service-id="${escapeAttr(serviceId)}" placeholder="${escapeAttr(uiText("presenter.scripture.placeholder"))}" />
-      <button class="icon-btn svc-action-text-btn svc-live-scripture-show" type="button" data-live-scripture-action="show" data-service-id="${escapeAttr(serviceId)}" aria-label="${escapeAttr(uiText("presenter.action.showScripture"))}">
+      <button class="icon-btn svc-action-text-btn svc-live-scripture-show" type="button" data-live-scripture-action="show" data-service-id="${escapeAttr(serviceId)}" aria-label="${escapeAttr(uiText("presenter.action.showScripture"))}" title="${escapeAttr(uiText("presenter.action.showScripture"))}">
         <i data-lucide="send"></i>
         <span>${escapeHtml(uiText("presenter.action.send"))}</span>
       </button>
-      <button class="icon-btn svc-action-text-btn svc-live-scripture-clear" type="button" data-live-scripture-action="clear" data-service-id="${escapeAttr(serviceId)}" aria-label="${escapeAttr(uiText("presenter.action.hideScripture"))}" ${live.active ? "" : "disabled"}>
+      <button class="icon-btn svc-action-text-btn svc-live-scripture-clear" type="button" data-live-scripture-action="clear" data-service-id="${escapeAttr(serviceId)}" aria-label="${escapeAttr(uiText("presenter.action.hideScripture"))}" title="${escapeAttr(uiText("presenter.action.hideScripture"))}" ${live.active ? "" : "disabled"}>
         <i data-lucide="eye-off"></i>
         <span>${escapeHtml(uiText("presenter.action.hide"))}</span>
       </button>
@@ -20291,7 +20277,6 @@ function renderPresenterBoardSection(group, activeIndex, serviceId, options = {}
   const firstIndex = group.slides[0]?.slideIndex ?? 0;
   const visibleTitle = group.title || group.label || group.name;
   const interactionLabel = presenterSlideInteractionHint(serviceId, group.name || visibleTitle);
-  const editKey = presenterBoardSectionEditKey(group);
   let previousFormKey = "";
   const subgroupsHtml = group.subgroups.map((subgroup) => {
     const annotated = annotatePresenterFormStarts(subgroup.slides, previousFormKey);
@@ -20315,14 +20300,6 @@ function renderPresenterBoardSection(group, activeIndex, serviceId, options = {}
             ${group.meta ? `<small>${escapeHtml(group.meta)}</small>` : ""}
           </span>
         </button>
-        ${editKey ? `
-          <button class="icon-btn svc-section-edit-btn" type="button"
-            data-presenter-section-edit="${escapeAttr(editKey)}"
-            data-service-id="${escapeAttr(serviceId)}"
-            aria-label="${escapeAttr(`${visibleTitle || "섹션"} 섹션 편집`)}"
-            title="섹션 편집">
-            <i data-lucide="pencil"></i>
-          </button>` : ""}
       </div>
       <div class="svc-board-subgroups">
         ${subgroupsHtml}

@@ -4,10 +4,10 @@ Read `HANDOFF.md` first. This file is the short UI contract for Codex threads so
 
 ## Shell
 
-- Detail pane page padding: `25px` on all sides on desktop and narrow layouts,
+- Detail pane page padding: `24px` on all sides on desktop and narrow layouts,
   unless a feature has an explicit fullscreen/presenter reason to override it.
 - Sidebar open or closed must not change the detail pane gutter.
-- Topbar icon buttons are square, normally `32px` by `32px`.
+- Topbar icon buttons are square, `40px` by `40px`.
 - Sidebar toggle, home, theme, and save controls should share the same button geometry.
 - Left topbar actions align to the left rail edge. Right topbar actions align to
   the right rail edge because they belong to the app-level utility side.
@@ -16,9 +16,12 @@ Read `HANDOFF.md` first. This file is the short UI contract for Codex threads so
 
 ## Color And Surfaces
 
-- Preserve token relationships across light and dark themes. If `accent`,
-  `warn`, and `danger` are grouped in one mode, keep that grouping in the other
-  mode.
+- Keep `accent`, `warn`, and `danger` semantically distinct in both themes:
+  accent is primary/selection, warning is incomplete attention, and danger is
+  destructive or failed work. Do not make them aliases of one another.
+- All normal-size text on a solid UI surface must meet at least WCAG AA `4.5:1`.
+  Accent-colored text needs a text-safe accent token; do not reuse a low-contrast
+  decorative fill color for labels or buttons.
 - Shell controls should stay neutral. Theme, navigation, and disabled save
   buttons should not pull accent color into the app chrome.
 - Use accent for active/primary/data emphasis, such as selected rows, brand
