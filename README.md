@@ -75,14 +75,22 @@ Run the Electron app:
 pnpm run electron:dev
 ```
 
-Create a packaged build:
+Create a local packaged build for testing:
 
 ```sh
-pnpm run electron:dist
+pnpm run electron:pack
 ```
 
-Auto-update support is scaffolded with `electron-updater`. Choose a release
-provider before shipping updates to non-technical users.
+Publish a signed, notarized desktop release and its update metadata:
+
+```sh
+pnpm run electron:release
+```
+
+The release command requires the GitHub upload token, Developer ID signing
+certificate, and Apple notarization credentials described in
+`docs/electron-packaging-plan.md`. Each published desktop release must increase
+the version in `package.json`; installed apps only download a newer version.
 
 ## Supabase
 

@@ -46,6 +46,15 @@ publishing unless all of these are configured:
 The macOS artifact must be Developer ID signed and notarized. A local
 `electron:pack` build is for testing only and must not be distributed.
 
+## Release Versioning
+
+- Increase the semantic version in `package.json` before every public desktop
+  release. An installed app only accepts a strictly newer version.
+- Build and publish from the reviewed commit, then tag that same commit as
+  `v<version>` in GitHub.
+- The GitHub Release must include the installer/archive and electron-builder's
+  update metadata. Do not hand-upload only a DMG.
+
 ## Data And Schema
 
 Supabase is the primary database. Electron should not add a competing local database.
@@ -57,11 +66,5 @@ Local data is limited to:
 - Media/cache files if needed later.
 
 Schema changes should be backward-compatible first. Old cache can be invalidated by a cache version instead of migrated.
-
-## Release Provider To Decide Later
-
-- GitHub Releases: easiest if the repository can host public or private releases.
-- S3-compatible storage: good for controlled church/internal distribution.
-- Generic HTTPS server: simple if there is an existing hosting place.
 
 Do not embed service role keys or private Supabase secrets in the desktop app.
