@@ -8,7 +8,7 @@ let autoUpdater = null;
 let mainWindowEnsureTimer = null;
 
 function updatesEnabled() {
-  return process.env.MINDEX_ENABLE_UPDATES === "1";
+  return app.isPackaged && process.env.MINDEX_DISABLE_UPDATES !== "1";
 }
 
 function appRoot() {
@@ -17,6 +17,22 @@ function appRoot() {
 
 function indexPath() {
   return path.join(appRoot(), "index.html");
+}
+
+function isMainWindowReloadShortcut(input = {}) {
+  if (input.type !== "keyDown") return false;
+  const key = String(input.key || "").toLowerCase();
+  if (process.platform === "darwin") return input.meta && key === "r";
+  return key === "f5" || (input.control && key === "r");
+}
+
+function bindMainWindowReloadShortcut(window) {
+  window.webContents.on("before-input-event", (event, input) => {
+    if (!isMainWindowReloadShortcut(input)) return;
+    event.preventDefault();
+    if (input.shift) window.webContents.reloadIgnoringCache();
+    else window.webContents.reload();
+  });
 }
 
 function createMainWindow() {
@@ -41,6 +57,7 @@ function createMainWindow() {
     },
   });
 
+  bindMainWindowReloadShortcut(mainWindow);
   mainWindow.once("ready-to-show", () => mainWindow.show());
   mainWindow.webContents.once("did-finish-load", () => {
     if (!mainWindow?.isVisible()) mainWindow.show();

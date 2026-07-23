@@ -30,15 +30,21 @@ Renderer
 
 ## Update Strategy
 
-Use `electron-updater` after a release provider is chosen.
+Mindex uses GitHub Releases (`studexx/Mindex`) through `electron-updater`.
+Packaged apps check on startup, show an update prompt, download only after the
+operator confirms, and install on restart. Set `MINDEX_DISABLE_UPDATES=1` only
+when an installed test build must stay offline. Dev builds never check.
 
-Recommended phases:
+Every release must be built with `pnpm electron:release`. It stops before
+publishing unless all of these are configured:
 
-1. Manual installer replacement for early testing.
-2. In-app update available notice with a download/install button.
-3. Automatic background download and "Restart to update" prompt.
+1. `GH_TOKEN` for the GitHub Release upload.
+2. `CSC_LINK` and `CSC_KEY_PASSWORD` for the Developer ID Application certificate.
+3. Apple notarization credentials: API key (`APPLE_API_KEY`, `APPLE_API_KEY_ID`,
+   `APPLE_API_ISSUER`), Apple ID/app-specific password, or a keychain profile.
 
-The app should check updates on startup only when packaged. Dev builds do not check updates.
+The macOS artifact must be Developer ID signed and notarized. A local
+`electron:pack` build is for testing only and must not be distributed.
 
 ## Data And Schema
 

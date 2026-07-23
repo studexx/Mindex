@@ -10,12 +10,21 @@
     "dev:web": "python3 serve.py",
     "electron:dev": "electron .",
     "electron:pack": "electron-builder --dir",
-    "electron:dist": "electron-builder"
+    "electron:dist": "electron-builder",
+    "electron:release": "node scripts/verify-release.mjs && electron-builder --publish always"
   },
   "build": {
     "appId": "kr.mindex.app",
     "productName": "Mindex",
-    "asar": false,
+    "asar": true,
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "studexx",
+        "repo": "Mindex",
+        "releaseType": "release"
+      }
+    ],
     "files": [
       "index.html",
       "app.js",
@@ -40,7 +49,9 @@
     "mac": {
       "target": [
         "dmg"
-      ]
+      ],
+      "hardenedRuntime": true,
+      "notarize": true
     },
     "win": {
       "target": [
