@@ -14092,6 +14092,7 @@ function youthWorshipTemplate() {
           name: "봉헌찬양",
           elementType: "praise",
           default_text: "대단한 믿음 없어도",
+          defaultSong: { title: "대단한 믿음 없어도" },
         },
         { label: "봉헌기도", name: "봉헌기도", elementType: "title_person" },
       ],
@@ -14637,7 +14638,7 @@ function projectWorshipServiceItemsFromTemplate(service, items = []) {
     if (matchIndex < 0) return {
       ...templateItem,
       _worshipTemplateProjected: true,
-      _worshipTemplatePlaceholder: true,
+      _worshipTemplatePlaceholder: !(templateItem.song_id && templateItem.version_id),
     };
     unmatched.delete(matchIndex);
     return mergeTemplateProjectionItem(templateItem, existing[matchIndex]);

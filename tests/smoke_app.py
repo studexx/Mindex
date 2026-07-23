@@ -2500,10 +2500,28 @@ def main() -> int:
                               ...previousCalendarData,
                               { id: '__smoke_youth_integrated__', date: '2026-07-26', church_schedule: '온세대 찬양예배' },
                             ];
+                            const offering = projected.find((item) => item.label === '봉헌찬양');
+                            const offeringSong = presenterSongForServiceItem(
+                              offering,
+                              serviceItemDisplayText(offering),
+                              offering?.label || '',
+                              service,
+                            );
+                            const offeringContent = resolvePresenterServiceItemContentState(
+                              offering,
+                              parseServiceItemMemo(offering?.memo),
+                              offeringSong,
+                              service,
+                            );
                             return {
                               sections: template.map((step) => step.sectionKey || step.label),
                               labels: projected.map((item) => item.label || ''),
-                              offeringTitle: projected.find((item) => item.label === '봉헌찬양')?.raw_title || '',
+                              offeringTitle: offering?.raw_title || '',
+                              offeringLinked: Boolean(
+                                offering?.song_id
+                                && offering?.version_id
+                              ),
+                              offeringReady: offeringContent.state === 'filled' && offeringContent.reason === 'song',
                               scheduledOnIntegratedSunday: autoUpcomingPublicServiceTargets('2026-07-20')
                                 .some((item) => item.typeId === 'youth' && item.date === '2026-07-26'),
                             };
@@ -2522,7 +2540,9 @@ def main() -> int:
                             "대기 영상", "사도신경", "찬양 1", "찬양 2", "찬양 3", "기도", "봉헌찬양", "봉헌기도",
                             "성경봉독", "설교 제목", "결단기도", "주기도문", "교회소식", "반별 모임", "마무리",
                         ],
-                        "offeringTitle": "대단한 믿음 없어도",
+                        "offeringTitle": "",
+                        "offeringLinked": True,
+                        "offeringReady": True,
                         "scheduledOnIntegratedSunday": False,
                     }:
                         pass_("youth-service-template", json.dumps(youth_template, ensure_ascii=False))
