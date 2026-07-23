@@ -22,6 +22,8 @@ Read `HANDOFF.md` first. This file is the short UI contract for Codex threads so
 - All normal-size text on a solid UI surface must meet at least WCAG AA `4.5:1`.
   Accent-colored text needs a text-safe accent token; do not reuse a low-contrast
   decorative fill color for labels or buttons.
+- Keyboard focus must remain conspicuous in both themes: use a `2px` accent
+  outline with an offset rather than a low-contrast neutral hairline.
 - Shell controls should stay neutral. Theme, navigation, and disabled save
   buttons should not pull accent color into the app chrome.
 - Use accent for active/primary/data emphasis, such as selected rows, brand
