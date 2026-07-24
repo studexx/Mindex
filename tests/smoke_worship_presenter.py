@@ -3636,6 +3636,15 @@ def main() -> int:
                         buildPresenterSlidesForServiceItem(citationItem, service, 2),
                         service
                       );
+                      const fullscreenCitationService = {
+                        ...service,
+                        id: '__smoke_fullscreen_citation_context__',
+                        type_id: 'sunday-first',
+                      };
+                      const fullscreenCitationSlides = normalizePresenterSlidesForServiceOutput(
+                        buildPresenterSlidesForServiceItem(citationItem, fullscreenCitationService, 3),
+                        fullscreenCitationService
+                      );
                       const mount = document.createElement('div');
                       mount.style.cssText = 'position:fixed;left:16px;top:16px;width:368px;height:207px;z-index:99999;pointer-events:none';
                       mount.innerHTML = [
@@ -3663,6 +3672,12 @@ def main() -> int:
                       const readingFinStyle = readingFin ? getComputedStyle(readingFin) : null;
                       const readingSlideStyle = slides[0] ? getComputedStyle(slides[0]) : null;
                       const sermonTextStyle = sermonText ? getComputedStyle(sermonText) : null;
+                      const citationMount = document.createElement('div');
+                      citationMount.style.cssText = 'position:fixed;left:16px;top:240px;width:368px;height:207px;z-index:99999;pointer-events:none';
+                      citationMount.innerHTML = renderPresenterSlideMiniPreview(fullscreenCitationSlides[0], fullscreenCitationService.id);
+                      document.body.appendChild(citationMount);
+                      const fullscreenCitationOutput = citationMount.querySelector('.svc-slide-mini-output');
+                      const fullscreenCitationSlide = citationMount.querySelector('.presenter-slide');
                       const result = {
                         readingTypes: readingSlides.map((slide) => slide.type),
                         readingTitleText: readingTitleSlide.text || '',
@@ -3731,7 +3746,13 @@ def main() -> int:
                           return value;
                         })(),
                         citationTexts: citationSlides.map((slide) => slide.text || ''),
+                        fullscreenCitationContext: fullscreenCitationSlides[0]?.scriptureContext || '',
+                        fullscreenCitationOutputContext: presenterSlideOutputContext(fullscreenCitationSlides[0], true),
+                        fullscreenCitationNoChromakey: fullscreenCitationOutput?.classList.contains('no-chromakey') || false,
+                        fullscreenCitationHasReadingClass: fullscreenCitationSlide?.classList.contains('presenter-slide--scripture-reading') || false,
+                        fullscreenCitationHasReadingBody: Boolean(citationMount.querySelector('.presenter-scripture-reading')),
                       };
+                      citationMount.remove();
                       mount.remove();
                       state.services = state.services.filter((item) => item.id !== service.id);
                       return result;
@@ -3794,6 +3815,11 @@ def main() -> int:
                         "출 24:1   또 모세에게 이르시되",
                         "출 24:2   너 모세만 여호와께 가까이 나아오고",
                     ]
+                    and scripture_context_state["fullscreenCitationContext"] == "citation"
+                    and scripture_context_state["fullscreenCitationOutputContext"] == "clean"
+                    and scripture_context_state["fullscreenCitationNoChromakey"]
+                    and scripture_context_state["fullscreenCitationHasReadingClass"]
+                    and scripture_context_state["fullscreenCitationHasReadingBody"]
                 ):
                     pass_("presenter-scripture-context-layouts", json.dumps(scripture_context_state, ensure_ascii=False))
                 else:

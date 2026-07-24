@@ -21986,7 +21986,7 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
   const customSlides = buildPresenterCustomSlides(item, section, index);
   if (customSlides.length) return withIntroAndSpecialTitle(customSlides);
 
-  const scriptureTextSlides = buildPresenterScriptureTextSlides(item, section, index);
+  const scriptureTextSlides = buildPresenterScriptureTextSlides(item, section, index, service);
   if (scriptureTextSlides.length) {
     return withIntroAndSpecialTitle(presenterSlidesWithScriptureReadingTitle(item, section, scriptureTextSlides, index));
   }

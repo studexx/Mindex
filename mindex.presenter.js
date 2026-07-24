@@ -1543,20 +1543,21 @@ function normalizePresenterCustomMarker(value) {
     .replace(/^lyrics/i, "Lyrics");
 }
 
-function buildPresenterScriptureTextSlides(item, section, index) {
+function buildPresenterScriptureTextSlides(item, section, index, service = null) {
   if (!isScriptureBodyServiceItem(item)) return [];
   const payload = serviceScriptureTextPayload(item);
   if (!payload.verses.length) return [];
-  const context = presenterScriptureBodyContext(item, section);
+  const context = presenterScriptureBodyContext(item, section, service);
+  const readingForm = presenterScriptureContextUsesReadingForm(context);
   const reference = payload.reference || section.sectionTitle || "본문";
   const lastVerseIndex = payload.verses.length - 1;
   const citation = isPresenterCitationScriptureItem(item);
   return payload.verses.map((verse, verseIndex) => {
-    const readingFinal = context === "reading" && verseIndex === lastVerseIndex;
-    const referenceBook = context === "reading"
+    const readingFinal = readingForm && verseIndex === lastVerseIndex;
+    const referenceBook = readingForm
       ? (verse.referenceBookFull || payload.referenceBookFull || verse.referenceBook || payload.referenceBook || "")
       : (verse.referenceBook || payload.referenceBook || "");
-    const verseReference = context === "reading"
+    const verseReference = readingForm
       ? [referenceBook, verse.referenceRange || payload.referenceRange || ""].filter(Boolean).join(" ")
       : (verse.reference || reference);
     const verseText = citation
@@ -1579,7 +1580,7 @@ function buildPresenterScriptureTextSlides(item, section, index) {
       translationLabel: payload.translationLabel || "",
       text: verseText,
       scriptureReadingFinal: readingFinal,
-      ...(context === "reading" ? { outputContext: "clean" } : {}),
+      ...(readingForm ? { outputContext: "clean" } : {}),
       ...(context === "sermon" ? { outputContext: "chromakey" } : {}),
       sort: index + verseIndex / 100,
     };
@@ -1599,11 +1600,16 @@ function presenterCitationScriptureText(verse = {}, payload = {}) {
   return [verseReference, verse.text].filter(Boolean).join("   ");
 }
 
-function presenterScriptureBodyContext(item = {}, section = {}) {
+function presenterScriptureBodyContext(item = {}, section = {}, service = null) {
   const sectionKey = String(section.sectionKey || item?._worshipSectionKey || "").trim();
   if (sectionKey === "scripture_reading") return "reading";
+  if (isPresenterCitationScriptureItem(item) && service && !presenterServiceUsesChromakey(service)) return "citation";
   if (sectionKey === "sermon") return "sermon";
   return "";
+}
+
+function presenterScriptureContextUsesReadingForm(context = "") {
+  return context === "reading" || context === "citation";
 }
 
 function serviceScriptureTextPayload(item, memo = parseServiceItemMemo(item?.memo)) {
@@ -3356,7 +3362,7 @@ function renderPresenterSlideFrame(slide, options = {}) {
   const extraClasses = presenterSlideExtraClasses(slide);
   const body = renderPresenterSlideBody(slide, options);
   const sectionKey = String(slide?.sectionKey || slide?.section_key || "").trim();
-  const backgroundStyle = slide?.scriptureContext === "reading" && !slide?.suppressBackgroundImage && !slide?.noBackgroundImage
+  const backgroundStyle = presenterScriptureContextUsesReadingForm(slide?.scriptureContext) && !slide?.suppressBackgroundImage && !slide?.noBackgroundImage
     ? ` style="--presenter-slide-bg-image: url('${escapeAttr(PRESENTER_SCRIPTURE_READING_BACKGROUND)}')"`
     : "";
   return `
@@ -3371,7 +3377,7 @@ function presenterSlideExtraClasses(slide) {
   const classes = [];
   const layout = presenterSlideLayout(slide);
   if (slide?.sourceType === "score" || slide?.componentType === "score" || slide?.scoreBackground) classes.push("presenter-slide--score");
-  if (layout !== PRESENTER_SLIDE_LAYOUTS.BLANK && slide?.scriptureContext === "reading") classes.push("presenter-slide--scripture-reading");
+  if (layout !== PRESENTER_SLIDE_LAYOUTS.BLANK && presenterScriptureContextUsesReadingForm(slide?.scriptureContext)) classes.push("presenter-slide--scripture-reading");
   if (layout !== PRESENTER_SLIDE_LAYOUTS.BLANK && slide?.scriptureContext === "sermon") classes.push("presenter-slide--scripture-sermon");
   return classes.join(" ");
 }
@@ -3408,7 +3414,7 @@ function renderPresenterSlideBody(slide, options = {}) {
   if (layout === PRESENTER_SLIDE_LAYOUTS.MEDIA && elementType === PRESENTER_ELEMENT_TYPES.VIDEO) return renderPresenterVideoSlide(slide, options);
   if (layout === PRESENTER_SLIDE_LAYOUTS.MEDIA && elementType === PRESENTER_ELEMENT_TYPES.IMAGE) return renderPresenterImageSlide(slide);
   if (layout === PRESENTER_SLIDE_LAYOUTS.FILE) return renderPresenterFileSlide(slide);
-  if (elementType === PRESENTER_ELEMENT_TYPES.SCRIPTURE_TEXT && slide?.scriptureContext === "reading") return renderPresenterScriptureReadingSlide(slide);
+  if (elementType === PRESENTER_ELEMENT_TYPES.SCRIPTURE_TEXT && presenterScriptureContextUsesReadingForm(slide?.scriptureContext)) return renderPresenterScriptureReadingSlide(slide);
   if (layout === PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT && elementType === PRESENTER_ELEMENT_TYPES.TITLE_ASSIGNEE) return renderPresenterTitleAssigneeSlide(slide);
   if (layout === PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT && slide?.type === "song-title" && slide.sectionHeading) return renderPresenterSectionSongTitleSlide(slide);
   if (layout === PRESENTER_SLIDE_LAYOUTS.BLANK) return "";
