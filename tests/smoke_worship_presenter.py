@@ -3415,25 +3415,27 @@ def main() -> int:
                       outputRoot.id = 'presenterOutputRoot';
                       outputRoot.className = 'presenter-output-root no-chromakey';
                       document.body.appendChild(outputRoot);
-                      renderPresenterOutput({
-                        serviceId: '__smoke_fullscreen_song_title_output_font__',
-                        serviceType: 'sunday2', chromakey: false, outputTheme: 'formal', backgroundImage: '',
-                        slides: [{ id: '__smoke_fullscreen_song_title_output_font_slide__', elementType: PRESENTER_ELEMENT_TYPES.PRAISE,
-                          layout: PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT, type: 'song-title', title: '주 찬양합니다',
-                          text: '♪ 주 찬양합니다', sectionKey: 'praise' }], index: 0, safetyBlank: false,
+                      const result = ['praise', 'pre_scripture_praise', 'prayer_meeting_praise'].map((sectionKey) => {
+                        renderPresenterOutput({
+                          serviceId: '__smoke_fullscreen_song_title_output_font__',
+                          serviceType: 'sunday2', chromakey: false, outputTheme: 'formal', backgroundImage: '',
+                          slides: [{ id: `__smoke_fullscreen_song_title_output_font_${sectionKey}__`, elementType: PRESENTER_ELEMENT_TYPES.PRAISE,
+                            layout: PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT, type: 'song-title', title: '주 찬양합니다',
+                            text: '♪ 주 찬양합니다', sectionKey }], index: 0, safetyBlank: false,
+                        });
+                        const name = outputRoot.querySelector('.presenter-slide--song-title > .presenter-slide-text');
+                        const style = name ? getComputedStyle(name) : null;
+                        return { sectionKey, text: outputRoot.innerText || '', fontSize: style ? Number.parseFloat(style.fontSize) : 0, fontWeight: style?.fontWeight || '' };
                       });
-                      const name = outputRoot.querySelector('.presenter-section-song-title-name');
-                      const style = name ? getComputedStyle(name) : null;
-                      const result = { text: outputRoot.innerText || '', fontSize: style ? Number.parseFloat(style.fontSize) : 0, fontWeight: style?.fontWeight || '' };
                       outputRoot.remove();
                       return result;
                     }
                     """
                 )
                 if (
-                    "주 찬양합니다" in fullscreen_song_title_output_font_state["text"]
-                    and fullscreen_song_title_output_font_state["fontSize"] == 152
-                    and fullscreen_song_title_output_font_state["fontWeight"] == "800"
+                    all("주 찬양합니다" in item["text"] for item in fullscreen_song_title_output_font_state)
+                    and all(item["fontSize"] == 152 for item in fullscreen_song_title_output_font_state)
+                    and all(item["fontWeight"] == "800" for item in fullscreen_song_title_output_font_state)
                 ):
                     pass_("presenter-fullscreen-song-title-output-font", json.dumps(fullscreen_song_title_output_font_state, ensure_ascii=False))
                 else:

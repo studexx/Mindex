@@ -558,7 +558,7 @@
   line-height: 1.08;
   padding-block: 1.35cqh;
 }
-:is(.svc-slide-mini-output, .presenter-output-root):not(.no-chromakey) .presenter-slide--song-title[data-section-key="praise"] > .presenter-slide-text {
+:is(.svc-slide-mini-output, .presenter-output-root):not(.no-chromakey) .presenter-slide--song-title:is([data-section-key="praise"], [data-section-key="pre_scripture_praise"], [data-section-key="prayer_meeting_praise"]) > .presenter-slide-text {
   font-size: var(--presenter-size-song-title);
   font-weight: var(--presenter-weight-display);
   line-height: 1.04;
@@ -567,7 +567,7 @@
 :is(.svc-slide-mini-output, .presenter-output-root):not(.no-chromakey) .presenter-section-song-title-heading {
   font-size: var(--presenter-size-meta);
 }
-:is(.svc-slide-mini-output, .presenter-output-root):not(.no-chromakey) .presenter-slide--song-title[data-section-key="praise"] .presenter-section-song-title-name {
+:is(.svc-slide-mini-output, .presenter-output-root):not(.no-chromakey) .presenter-slide--song-title:is([data-section-key="praise"], [data-section-key="pre_scripture_praise"], [data-section-key="prayer_meeting_praise"]) .presenter-section-song-title-name {
   font-size: var(--presenter-size-song-title);
   font-weight: var(--presenter-weight-display);
 }
@@ -616,7 +616,7 @@
 .presenter-output-root.no-chromakey .presenter-slide--lyrics[data-element-type="praise"] .presenter-slide-text {
   font-size: var(--presenter-size-lyrics);
 }
-.presenter-output-root.no-chromakey .presenter-slide--song-title[data-section-key="praise"] .presenter-slide-text {
+.presenter-output-root.no-chromakey .presenter-slide--song-title:is([data-section-key="praise"], [data-section-key="pre_scripture_praise"], [data-section-key="prayer_meeting_praise"]) .presenter-slide-text {
   font-size: var(--presenter-size-song-title);
   font-weight: var(--presenter-weight-display);
 }
@@ -626,7 +626,7 @@
 .presenter-output-root.no-chromakey .presenter-section-song-title-heading {
   font-size: var(--presenter-size-meta);
 }
-.presenter-output-root.no-chromakey .presenter-slide--song-title[data-section-key="praise"] .presenter-section-song-title-name {
+.presenter-output-root.no-chromakey .presenter-slide--song-title:is([data-section-key="praise"], [data-section-key="pre_scripture_praise"], [data-section-key="prayer_meeting_praise"]) .presenter-section-song-title-name {
   font-size: var(--presenter-size-song-title);
   font-weight: var(--presenter-weight-display);
 }
