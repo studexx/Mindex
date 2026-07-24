@@ -7480,7 +7480,7 @@ async function fetchServiceScriptureVerses(reference) {
   if (!state.bibleTranslations.length && !state.bibleReaderError) await loadBibleTranslations({ silent: true });
   const translation = selectedPresenterBibleTranslation();
   if (!translation?.id) return [];
-  let request = state.client
+  const request = state.client
     .from("mindex_bible_verses")
     .select("book_code,chapter,verse,verse_end,text,section_title")
     .eq("is_active", true)
@@ -7488,16 +7488,11 @@ async function fetchServiceScriptureVerses(reference) {
     .eq("book_code", reference.book.code)
     .eq("chapter", reference.chapter)
     .order("verse", { ascending: true });
-  if (reference.verse !== null) {
-    request = request
-      .gte("verse", reference.verse)
-      .lte("verse", reference.verseEnd || reference.verse);
-  }
   const { data, error } = await request;
   if (error) throw error;
   const verses = (data || []).map(normalizeServerBibleVerse);
   cacheServiceScriptureVerses(reference, verses);
-  return verses;
+  return getCachedServiceScriptureVerses(reference);
 }
 
 async function preloadWorshipScriptureReferences(sections = [], elements = []) {
@@ -7547,6 +7542,7 @@ function serviceScriptureTextPayloadFromBible(item = {}, memo = parseServiceItem
     verses: resolved.flatMap(({ reference, normalizedReference, referenceBook, referenceBookFull, referenceRange }) =>
       getCachedServiceScriptureVerses(reference).map((verse) => ({
         number: String(verse.verse || "").trim(),
+        verseEnd: Number(verse.verse_end) || null,
         text: String(verse.text || "").trim(),
         reference: normalizedReference,
         referenceBook,
@@ -7598,7 +7594,28 @@ function cacheServiceScriptureVerses(reference, verses = [], translation = selec
   verses.map(normalizeServerBibleVerse).forEach((verse) => {
     if (verse.verse) byVerse.set(verse.verse, verse);
   });
-  state.bibleVerseCache.set(key, [...byVerse.values()].sort(sortBibleVerseRows));
+  state.bibleVerseCache.set(key, inferBibleVerseEndRanges([...byVerse.values()].sort(sortBibleVerseRows)));
+}
+
+function inferBibleVerseEndRanges(verses = []) {
+  const rows = (Array.isArray(verses) ? verses : [])
+    .map(normalizeServerBibleVerse)
+    .sort(sortBibleVerseRows);
+  return rows.map((verse, index) => {
+    const next = rows[index + 1];
+    const start = Number(verse.verse) || 0;
+    const explicitEnd = Number(verse.verse_end) || 0;
+    const nextStart = Number(next?.verse) || 0;
+    // Preserve source rows whose printed label covers skipped verse numbers.
+    const inferredEnd = !explicitEnd
+      && next
+      && String(next.book_code || "") === String(verse.book_code || "")
+      && Number(next.chapter) === Number(verse.chapter)
+      && nextStart > start + 1
+      ? nextStart - 1
+      : 0;
+    return { ...verse, verse_end: explicitEnd || inferredEnd || null };
+  });
 }
 
 function formatServiceScriptureBodySlideBlocks(verses = []) {

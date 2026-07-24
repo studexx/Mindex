@@ -5279,6 +5279,8 @@ def main() -> int:
                       const slide = document.querySelector('.presenter-slide--blank');
                       const vertical = getComputedStyle(slide, '::before');
                       const horizontal = getComputedStyle(slide, '::after');
+                      const verseRange = presenterScriptureVerseNumber({ number: '18', verseEnd: 19 });
+                      const verseParts = presenterScriptureVerseParts(`${verseRange}   함께 저장된 본문`);
                       return {
                         verticalAnimation: vertical.animationName,
                         verticalDelay: vertical.animationDelay,
@@ -5286,6 +5288,8 @@ def main() -> int:
                         horizontalAnimation: horizontal.animationName,
                         horizontalDelay: horizontal.animationDelay,
                         horizontalOrigin: horizontal.transformOrigin,
+                        verseRange,
+                        verseParts,
                       };
                     })()
                     """
@@ -5297,6 +5301,8 @@ def main() -> int:
                     and blank_cross_animation["horizontalAnimation"] == "presenter-blank-cross-horizontal"
                     and blank_cross_animation["horizontalDelay"] == "0.32s"
                     and blank_cross_animation["horizontalOrigin"].startswith("0px ")
+                    and blank_cross_animation["verseRange"] == "18–19"
+                    and blank_cross_animation["verseParts"] == {"number": "18–19", "text": "함께 저장된 본문"}
                 ):
                     pass_("presenter-blank-cross-draw-order", json.dumps(blank_cross_animation, ensure_ascii=False))
                 else:

@@ -1553,6 +1553,7 @@ function buildPresenterScriptureTextSlides(item, section, index, service = null)
   const lastVerseIndex = payload.verses.length - 1;
   const citation = isPresenterCitationScriptureItem(item);
   return payload.verses.map((verse, verseIndex) => {
+    const verseNumber = presenterScriptureVerseNumber(verse);
     const readingFinal = readingForm && verseIndex === lastVerseIndex;
     const referenceBook = readingForm
       ? (verse.referenceBookFull || payload.referenceBookFull || verse.referenceBook || payload.referenceBook || "")
@@ -1562,9 +1563,9 @@ function buildPresenterScriptureTextSlides(item, section, index, service = null)
       : (verse.reference || reference);
     const verseText = citation
       ? presenterCitationScriptureText(verse, payload)
-      : (verse.number ? [verse.number, verse.text].filter(Boolean).join("   ") : verse.text);
+      : (verseNumber ? [verseNumber, verse.text].filter(Boolean).join("   ") : verse.text);
     return {
-      id: `${item.id || index}:scripture:${verseReference}:${verse.number || verseIndex + 1}`,
+      id: `${item.id || index}:scripture:${verseReference}:${verseNumber || verseIndex + 1}`,
       ...section,
       elementTitle: verseReference,
       sectionName: presenterNameParts(section.sectionLabel, verseReference).join(" / ") || verseReference,
@@ -1587,6 +1588,13 @@ function buildPresenterScriptureTextSlides(item, section, index, service = null)
   });
 }
 
+function presenterScriptureVerseNumber(verse = {}) {
+  const start = Number(verse.number || verse.verse) || 0;
+  const end = Number(verse.verseEnd || verse.verse_end) || 0;
+  if (!start) return String(verse.number || verse.verse || "").trim();
+  return end > start ? `${start}–${end}` : String(start);
+}
+
 function isPresenterCitationScriptureItem(item = {}) {
   return compactSearchValue(item?.label || "") === "인용구절";
 }
@@ -1594,7 +1602,7 @@ function isPresenterCitationScriptureItem(item = {}) {
 function presenterCitationScriptureText(verse = {}, payload = {}) {
   const referenceBook = String(verse.referenceBook || payload.referenceBook || "").trim();
   const referenceRange = String(verse.referenceRange || payload.referenceRange || "").trim();
-  const number = String(verse.number || verse.verse || "").trim();
+  const number = presenterScriptureVerseNumber(verse);
   const chapter = referenceRange.match(/^(\d+)/)?.[1] || "";
   const verseReference = [referenceBook, chapter && number ? `${chapter}:${number}` : referenceRange].filter(Boolean).join(" ");
   return [verseReference, verse.text].filter(Boolean).join("   ");
@@ -3447,7 +3455,7 @@ function presenterScriptureReadingBookName(value = "") {
 
 function presenterScriptureVerseParts(value = "") {
   const text = String(value || "").trim();
-  const match = text.match(/^(\d{1,3})\s{2,}(.+)$/);
+  const match = text.match(/^(\d{1,3}(?:[–-]\d{1,3})?)\s{2,}(.+)$/);
   if (!match) return { number: "", text };
   return { number: match[1], text: match[2].trim() };
 }

@@ -2088,6 +2088,10 @@ def main() -> int:
                               slideCount: slides.length
                             };
                           })(),
+                          scriptureRangeInference: inferBibleVerseEndRanges([
+                            { book_code: 'DEU', chapter: 6, verse: 18, text: '18-19가 함께 저장된 본문' },
+                            { book_code: 'DEU', chapter: 6, verse: 20, text: '다음 절' },
+                          ]).map((verse) => ({ verse: verse.verse, verseEnd: verse.verse_end })),
                           cards: document.querySelectorAll('.svc-template-draft-card, .svc-template-inventory-card').length,
                           overflow: Math.max(document.documentElement.scrollWidth - window.innerWidth, document.body.scrollWidth - window.innerWidth)
                         }))()
@@ -2498,6 +2502,10 @@ def main() -> int:
                             "reason": "redundant_fullscreen_sermon_body",
                             "slideCount": 0,
                         }
+                        and template_terms["scriptureRangeInference"] == [
+                            {"verse": 18, "verseEnd": 19},
+                            {"verse": 20, "verseEnd": None},
+                        ]
                         and len(template_terms["monthlyScaffold"]["corporatePrayerElements"]) == 5
                         and len(template_terms["monthlyScaffold"]["offeringElements"]) == 2
                         and template_terms["overflow"] <= 2

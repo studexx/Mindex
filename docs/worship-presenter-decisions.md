@@ -40,6 +40,9 @@ Small visual polish that does not alter behavior does not need an entry.
 - Scripture reference normalization for service inputs follows the Scripture
   search parser: Korean/English abbreviations, attached book+chapter text such
   as `요21:15~25`, `~` ranges, and comma-separated references are accepted.
+- 성경 원본 데이터가 한 행에 여러 절을 묶고 다음 절 번호를 생략한 경우에는
+  (예: 대한성서공회 `신 6:18-19`) 그 번호 공백을 읽어 화면 표기를 `18–19`로
+  복원한다. 이 규칙은 특정 역본이나 문장 종결 판단에 의존하지 않는다.
 - `인용 구절` is optional, separate from the sermon body, and may be entered
   before or during worship. An empty citation creates neither a missing warning
   nor an empty slide.
