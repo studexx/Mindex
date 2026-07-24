@@ -233,7 +233,6 @@ const PRESENTER_SIGNAL_KEY = "mindex.presenter.signal";
 const PRESENTER_JUMP_MAX_DIGITS = 3;
 const PRESENTER_OUTPUT_HEARTBEAT_INTERVAL_MS = 1000;
 const PRESENTER_OUTPUT_HEARTBEAT_TTL_MS = 3000;
-const PRESENTER_OUTPUT_INITIAL_STATE_FALLBACK_MS = 450;
 const PRESENTER_FULLSCREEN_RETRY_DELAYS_MS = [0, 80, 240, 600];
 const PRESENTER_OUTPUT_ESCAPE_EXIT_MS = 1600;
 const PRESENTER_OUTPUT_IMAGE_PRELOAD_RADIUS = 8;
@@ -14043,6 +14042,7 @@ function publicWorshipSermonStep(options = {}) {
     : (typeId ? !serviceTypeUsesChromakey(typeId) : true);
   const elements = [
     { label: "설교 제목", name: "설교 제목", elementType: "title_person", person: defaultPerson },
+    { label: "인용 구절", name: "인용 구절", elementType: "scripture_body" },
   ];
   if (includeSermonBody) {
     elements.push({ label: "설교 본문", name: "설교 본문", elementType: "scripture_body" });
@@ -14069,6 +14069,7 @@ function publicWorshipThirdSermonStep(options = {}) {
     sectionKey: "sermon",
     elements: [
       { label: "설교 제목", name: "설교 제목", elementType: "title_person", person: defaultPerson },
+      { label: "인용 구절", name: "인용 구절", elementType: "scripture_body" },
       { label: "설교 본문", name: "설교 본문", elementType: "scripture_body" },
     ],
   };
@@ -14527,6 +14528,7 @@ function publicFridayTemplate() {
     publicWorshipPrayerStep(),
     publicWorshipSpecialSongStep(),
     publicWorshipAnnouncementsStep(),
+    publicWorshipScriptureReadingStep(),
     {
       label: "입례찬양",
       name: "입례찬양",
@@ -14535,7 +14537,6 @@ function publicFridayTemplate() {
       sectionKey: "pre_scripture_praise",
       elementType: "praise",
     },
-    publicWorshipScriptureReadingStep(),
     publicWorshipSermonStep({ typeId: "friday", includeSermonBody: false }),
     responseSectionTemplate(),
     {
@@ -14547,9 +14548,9 @@ function publicFridayTemplate() {
       elements: [
         { label: "기도 찬양 1", name: "기도 찬양 1", elementType: "praise" },
         { label: "기도 찬양 2", name: "기도 찬양 2", elementType: "praise" },
+        { label: "자율기도", name: "자율기도", elementType: "title", default_text: "자율기도" },
       ],
     },
-    { label: "자율기도", name: "자율기도", required: false, flex: true, sectionKey: "free_prayer", elementType: "title" },
   ];
 }
 
@@ -14693,10 +14694,24 @@ function migrateLegacyFridayTemplateItems(service = null, items = []) {
       && compactSearchValue(item?.label || "") === "성경봉독전찬양";
     const isLegacyPrayerMeeting = sectionKey === "prayer_meeting_praise"
       && compactSearchValue(item?._worshipSectionTitle || "") === "기도찬양";
+    const isLegacyFreePrayer = sectionKey === "free_prayer"
+      && compactSearchValue(item?.label || "") === "자율기도";
+    const isMisplacedAnnouncement = sectionKey === "scripture_reading"
+      && compactSearchValue(item?.label || "") === "교회소식";
     return {
       ...item,
       ...(isLegacyEntrancePraise ? { label: "입례찬양" } : {}),
       ...(isLegacyPrayerMeeting ? { _worshipSectionTitle: "기도회" } : {}),
+      ...(isLegacyFreePrayer ? {
+        _worshipSectionKey: "prayer_meeting_praise",
+        _worshipSectionTitle: "기도회",
+        _worshipElementOrder: 3,
+      } : {}),
+      ...(isMisplacedAnnouncement ? {
+        _worshipSectionKey: "announcements",
+        _worshipSectionTitle: "광고",
+        _worshipElementOrder: 1,
+      } : {}),
     };
   });
 }

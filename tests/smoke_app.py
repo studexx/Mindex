@@ -2119,7 +2119,7 @@ def main() -> int:
                         }
                         and template_terms["monthlyFirst"] == {"label": "준비", "elementType": "video"}
                         and template_terms["monthlyScaffold"]["sections"] == 12
-                        and template_terms["monthlyScaffold"]["elements"] == 24
+                        and template_terms["monthlyScaffold"]["elements"] == 25
                         and template_terms["monthlyScaffold"]["firstSection"] == "준비"
                         and template_terms["monthlyScaffold"]["firstElementType"] == "video"
                         and template_terms["monthlyScaffold"]["firstElementLabel"] == "대기 영상"
@@ -2140,6 +2140,7 @@ def main() -> int:
                             "title": "설교",
                             "elements": [
                                 {"type": "title_person", "label": "설교 제목"},
+                                {"type": "scripture_body", "label": "인용 구절"},
                             ],
                         }
                         and template_terms["monthlyScaffold"]["responseSection"] == {
@@ -2199,10 +2200,12 @@ def main() -> int:
                         ]
                         and template_terms["sundayPublicScaffold"]["first"]["sermonElements"] == [
                             {"type": "title_person", "label": "설교 제목", "person": "김석범 목사", "outputMode": ""},
+                            {"type": "scripture_body", "label": "인용 구절", "outputMode": ""},
                             {"type": "scripture_body", "label": "설교 본문", "outputMode": ""},
                         ]
                         and template_terms["sundayPublicScaffold"]["second"]["sermonElements"] == [
                             {"type": "title_person", "label": "설교 제목", "person": "김남영 목사", "outputMode": ""},
+                            {"type": "scripture_body", "label": "인용 구절", "outputMode": ""},
                         ]
                         and template_terms["sundayPublicScaffold"]["second"]["prayerElements"] == [
                             {"type": "title_person", "label": "기도", "outputMode": ""}
@@ -2268,6 +2271,7 @@ def main() -> int:
                         ]
                         and template_terms["sundayPublicScaffold"]["afternoon"]["sermonElements"] == [
                             {"type": "title_person", "label": "설교 제목", "person": "김남영 목사", "outputMode": ""},
+                            {"type": "scripture_body", "label": "인용 구절", "outputMode": ""},
                         ]
                         and template_terms["sundayPublicScaffold"]["afternoon"]["sendingElements"] == [
                             {"type": "praise", "label": "송영", "outputMode": "score"},
@@ -2314,6 +2318,7 @@ def main() -> int:
                         }
                         and template_terms["sundayPublicScaffold"]["third"]["sermonElements"] == [
                             {"type": "title_person", "label": "설교 제목", "person": "김남영 목사", "outputMode": ""},
+                            {"type": "scripture_body", "label": "인용 구절", "outputMode": ""},
                             {"type": "scripture_body", "label": "설교 본문", "outputMode": ""},
                         ]
                         and template_terms["sundayPublicScaffold"]["third"]["sendingElements"] == [
@@ -2372,8 +2377,8 @@ def main() -> int:
                             "defaultLeader": "이재희 청년",
                             "monthlyDefaultLeader": "",
                         }
-                        and template_terms["fridayScaffold"]["sections"][-1] == "자율기도"
-                        and template_terms["fridayScaffold"]["sections"][-3:] == ["결단", "기도회", "자율기도"]
+                        and template_terms["fridayScaffold"]["sections"][-2:] == ["결단", "기도회"]
+                        and template_terms["fridayScaffold"]["sections"].index("성경봉독") < template_terms["fridayScaffold"]["sections"].index("입례찬양")
                         and any(
                             item["label"] == "입례찬양"
                             and item["sectionKey"] == "pre_scripture_praise"
@@ -2385,6 +2390,16 @@ def main() -> int:
                         and any(
                             item["label"] == "기도 찬양 1"
                             and item["sectionKey"] == "prayer_meeting_praise"
+                            for item in template_terms["fridayScaffold"]["rawTitles"]
+                        )
+                        and any(
+                            item["label"] == "자율기도"
+                            and item["sectionKey"] == "prayer_meeting_praise"
+                            for item in template_terms["fridayScaffold"]["rawTitles"]
+                        )
+                        and any(
+                            item["label"] == "인용 구절"
+                            and item["sectionKey"] == "sermon"
                             for item in template_terms["fridayScaffold"]["rawTitles"]
                         )
                         and "통성기도" not in template_terms["fridayScaffold"]["sections"]
@@ -3828,6 +3843,7 @@ def main() -> int:
                                 songInputs: ['주 내 소망은 주 더 알기 원합니다 G', '오직 주의 사랑에 매여 D', '내 삶의 이유라 D'].map(presenterPreparationSongContent),
                                 legacyEntranceLabel: fridayLegacyItems.find((entry) => entry._worshipSectionKey === 'pre_scripture_praise')?.label || '',
                                 legacyPrayerMeetingTitle: fridayLegacyItems.find((entry) => entry._worshipSectionKey === 'prayer_meeting_praise')?._worshipSectionTitle || '',
+                                freePrayerSection: freePrayer._worshipSectionKey || '',
                                 freePrayerEditable: presenterServiceInputHasEditableField(freePrayer, fridayService),
                                 freePrayerMissing: freePrayerSlides.some((slide) => slide.missingContent),
                                 draftCleared: !state.presenterPreparationDrafts[fridayService.id],
@@ -3921,6 +3937,7 @@ def main() -> int:
                         ]
                         and presenter_preparation_paste["fridayInput"]["legacyEntranceLabel"] == "입례찬양"
                         and presenter_preparation_paste["fridayInput"]["legacyPrayerMeetingTitle"] == "기도회"
+                        and presenter_preparation_paste["fridayInput"]["freePrayerSection"] == "prayer_meeting_praise"
                         and presenter_preparation_paste["fridayInput"]["freePrayerEditable"] is False
                         and presenter_preparation_paste["fridayInput"]["freePrayerMissing"] is False
                         and presenter_preparation_paste["fridayInput"]["draftCleared"] is True

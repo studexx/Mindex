@@ -774,18 +774,40 @@
   pointer-events: none;
 }
 .presenter-output-root.no-chromakey .presenter-slide--blank::before {
-  top: 50%;
+  top: calc(50% - (227 * var(--presenter-stage-unit)));
   left: 50%;
   width: var(--presenter-blank-cross-stroke);
   height: calc(454 * var(--presenter-stage-unit));
-  transform: translate(-50%, -50%);
+  transform: translateX(-50%) scaleY(0);
+  transform-origin: center top;
+  animation: presenter-blank-cross-vertical .32s ease-out forwards;
 }
 .presenter-output-root.no-chromakey .presenter-slide--blank::after {
   top: calc(50% - (87 * var(--presenter-stage-unit)));
-  left: 50%;
+  left: calc(50% - (140 * var(--presenter-stage-unit)));
   width: calc(280 * var(--presenter-stage-unit));
   height: var(--presenter-blank-cross-stroke);
-  transform: translate(-50%, -50%);
+  transform: translateY(-50%) scaleX(0);
+  transform-origin: left center;
+  animation: presenter-blank-cross-horizontal .24s ease-out .32s forwards;
+}
+@keyframes presenter-blank-cross-vertical {
+  to { transform: translateX(-50%) scaleY(1); }
+}
+@keyframes presenter-blank-cross-horizontal {
+  to { transform: translateY(-50%) scaleX(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .presenter-output-root.no-chromakey .presenter-slide--blank::before,
+  .presenter-output-root.no-chromakey .presenter-slide--blank::after {
+    animation: none;
+  }
+  .presenter-output-root.no-chromakey .presenter-slide--blank::before {
+    transform: translateX(-50%) scaleY(1);
+  }
+  .presenter-output-root.no-chromakey .presenter-slide--blank::after {
+    transform: translateY(-50%) scaleX(1);
+  }
 }
 .presenter-video { display: block; width: 100%; height: 100%; object-fit: cover; background: #000; }
 .presenter-output-root:not(.no-chromakey) .presenter-video,

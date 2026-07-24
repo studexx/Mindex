@@ -2388,8 +2388,6 @@ function initPresenterOutputCore() {
   let jumpDraft = "";
   let exitArmedAt = 0;
   let outputStopping = false;
-  let receivedInitialPresenterState = false;
-  let storedStateFallbackTimer = null;
   const outputClientId = `presenter-output:${Date.now()}:${Math.random().toString(36).slice(2)}`;
   let heartbeatTimer = null;
   const applyPayload = (payload) => {
@@ -2398,11 +2396,6 @@ function initPresenterOutputCore() {
     renderPresenterOutput(currentPayload, { onAutoAdvance: requestPresenterOutputNext });
   };
   const applyInitialPresenterState = (payload) => {
-    receivedInitialPresenterState = true;
-    if (storedStateFallbackTimer) {
-      window.clearTimeout(storedStateFallbackTimer);
-      storedStateFallbackTimer = null;
-    }
     applyPayload(payload);
   };
   const postHeartbeat = () => {
@@ -2418,10 +2411,6 @@ function initPresenterOutputCore() {
     if (heartbeatTimer) {
       window.clearInterval(heartbeatTimer);
       heartbeatTimer = null;
-    }
-    if (storedStateFallbackTimer) {
-      window.clearTimeout(storedStateFallbackTimer);
-      storedStateFallbackTimer = null;
     }
     channel?.close?.();
     channel = null;
@@ -2510,12 +2499,9 @@ function initPresenterOutputCore() {
       postHeartbeat();
     }, 50);
     heartbeatTimer = window.setInterval(postHeartbeat, PRESENTER_OUTPUT_HEARTBEAT_INTERVAL_MS);
-    // Wait for the current controller state before rendering. Reusing the
-    // previous local payload here could briefly expose its chromakey frame.
-    storedStateFallbackTimer = window.setTimeout(() => {
-      if (!receivedInitialPresenterState) renderStoredState();
-      storedStateFallbackTimer = null;
-    }, PRESENTER_OUTPUT_INITIAL_STATE_FALLBACK_MS);
+    // Keep the startup canvas black until the controller publishes its current
+    // state. Rendering a stale local payload can flash the previous chromakey
+    // frame before a fullscreen service appears.
   } else {
     renderStoredState();
   }

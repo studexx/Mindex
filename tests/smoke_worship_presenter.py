@@ -5265,6 +5265,43 @@ def main() -> int:
                 else:
                     fail("presenter-invalid-jump-blank", json.dumps(safety_blank_state, ensure_ascii=False))
 
+                blank_cross_animation = output_page.evaluate(
+                    """
+                    (() => {
+                      renderPresenterOutput({
+                        serviceType: 'friday',
+                        chromakey: false,
+                        outputTheme: 'formal',
+                        slides: [],
+                        index: 0,
+                        safetyBlank: true,
+                      });
+                      const slide = document.querySelector('.presenter-slide--blank');
+                      const vertical = getComputedStyle(slide, '::before');
+                      const horizontal = getComputedStyle(slide, '::after');
+                      return {
+                        verticalAnimation: vertical.animationName,
+                        verticalDelay: vertical.animationDelay,
+                        verticalOrigin: vertical.transformOrigin,
+                        horizontalAnimation: horizontal.animationName,
+                        horizontalDelay: horizontal.animationDelay,
+                        horizontalOrigin: horizontal.transformOrigin,
+                      };
+                    })()
+                    """
+                )
+                if (
+                    blank_cross_animation["verticalAnimation"] == "presenter-blank-cross-vertical"
+                    and blank_cross_animation["verticalDelay"] == "0s"
+                    and blank_cross_animation["verticalOrigin"].endswith(" 0px")
+                    and blank_cross_animation["horizontalAnimation"] == "presenter-blank-cross-horizontal"
+                    and blank_cross_animation["horizontalDelay"] == "0.32s"
+                    and blank_cross_animation["horizontalOrigin"].startswith("0px ")
+                ):
+                    pass_("presenter-blank-cross-draw-order", json.dumps(blank_cross_animation, ensure_ascii=False))
+                else:
+                    fail("presenter-blank-cross-draw-order", json.dumps(blank_cross_animation, ensure_ascii=False))
+
                 safety_blank_controller_state = page.evaluate(
                     """
                     (() => ({
