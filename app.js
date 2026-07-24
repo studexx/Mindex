@@ -21514,7 +21514,6 @@ function presenterSlideSuppressesTrailingBlank(slide = {}) {
     slide.sectionTitle,
     slide.elementLabel,
     slide.label,
-    slide.title,
   ].filter(Boolean).join(" "));
   return (
     slide.type === "ready"

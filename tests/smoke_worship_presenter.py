@@ -1083,11 +1083,40 @@ def main() -> int:
                               text: '성경봉독',
                             },
                           ]);
+                          const prayerPraiseSlides = withPresenterElementTrailingBlanks([
+                            {
+                              id: '__smoke_prayer_praise_1__',
+                              elementId: '__smoke_prayer_praise_1__',
+                              sectionId: '__smoke_prayer_meeting__',
+                              sectionKey: 'prayer_meeting_praise',
+                              sectionLabel: '기도회',
+                              elementLabel: '기도 찬양 1',
+                              elementType: 'praise',
+                              layout: 'lower_bar_text',
+                              type: 'song-title',
+                              title: '비 준비하시니',
+                              text: '♪ 비 준비하시니',
+                            },
+                            {
+                              id: '__smoke_prayer_praise_2__',
+                              elementId: '__smoke_prayer_praise_2__',
+                              sectionId: '__smoke_prayer_meeting__',
+                              sectionKey: 'prayer_meeting_praise',
+                              sectionLabel: '기도회',
+                              elementLabel: '기도 찬양 2',
+                              elementType: 'praise',
+                              layout: 'lower_bar_text',
+                              type: 'song-title',
+                              title: '나는 믿노라',
+                              text: '♪ 나는 믿노라',
+                            },
+                          ]);
                           return {
                             readyHasBlankAfterReady: readySlides.some((slide) => slide.id === '__smoke_ready_media__:after-blank'),
                             closingHasBlankAfterClosing: closingSlides.some((slide) => slide.id === '__smoke_closing_visual__:after-blank'),
                             normalHasBlankAfterPrayer: normalSlides.some((slide) => slide.id === '__smoke_prayer__:after-blank'),
                             scriptureHasBlankAfterReading: normalSlides.some((slide) => slide.id === '__smoke_scripture__:after-blank'),
+                            prayerPraiseHasBlankAfterFirst: prayerPraiseSlides.some((slide) => slide.id === '__smoke_prayer_praise_1__:after-blank'),
                             scriptureBlank: (() => {
                               const blank = normalSlides.find((slide) => slide.id === '__smoke_scripture__:after-blank') || {};
                               return {
@@ -1169,6 +1198,7 @@ def main() -> int:
                         "closingHasBlankAfterClosing": False,
                         "normalHasBlankAfterPrayer": True,
                         "scriptureHasBlankAfterReading": True,
+                        "prayerPraiseHasBlankAfterFirst": True,
                         "scriptureBlank": {
                             "outputContext": "clean",
                             "sectionKey": "",
