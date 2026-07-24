@@ -620,6 +620,15 @@
   font-size: var(--presenter-size-song-title);
   font-weight: var(--presenter-weight-display);
 }
+.presenter-output-root.no-chromakey .presenter-slide--song-title .presenter-section-song-title {
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  text-align: center;
+}
+.presenter-output-root.no-chromakey .presenter-slide--song-title .presenter-section-song-title-name {
+  justify-self: center;
+  text-align: center;
+}
 .presenter-output-root.no-chromakey .presenter-slide--lyrics .presenter-slide-text span {
   font-size: inherit;
 }
