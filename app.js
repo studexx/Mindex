@@ -14646,11 +14646,11 @@ function projectWorshipServiceItemsFromTemplate(service, items = []) {
     return normalizeServiceItemsForTemplateHierarchy(service, items);
   }
 
-  const existing = collapseLegacyPresenterCitationItems(
+  const existing = migrateLegacyFridayTemplateItems(service, collapseLegacyPresenterCitationItems(
     collapseLegacyScriptureReadingItems(
       normalizeServiceItemsForTemplateHierarchy(service, items, { preserveSourceIndex: true }),
     ),
-  );
+  ));
   const suppressedTemplateKeys = new Set(existing
     .filter(isTemplateSuppressedServiceItem)
     .map((item) => serviceItemTemplateProjectionKey(item, { includeLabel: true })));
@@ -14683,6 +14683,15 @@ function projectWorshipServiceItemsFromTemplate(service, items = []) {
   projected = normalizeSendingConclusionProjectionItems(projected);
 
   return normalizeServiceItemsForTemplateHierarchy(service, projected);
+}
+
+function migrateLegacyFridayTemplateItems(service = null, items = []) {
+  if (worshipAppServiceTypeId(service?.type_id || "") !== "friday") return items;
+  return items.map((item) => {
+    const isLegacyEntrancePraise = String(item?._worshipSectionKey || "").trim() === "pre_scripture_praise"
+      && compactSearchValue(item?.label || "") === "성경봉독전찬양";
+    return isLegacyEntrancePraise ? { ...item, label: "입례찬양" } : item;
+  });
 }
 
 function normalizeSendingConclusionProjectionItems(items = []) {
@@ -21760,6 +21769,7 @@ function presenterFixedTitleText(item = {}) {
   if (sectionKey === "announcements" && ["교회소식", "광고"].includes(label)) return "교회소식";
   if (sectionKey === "response_song" && label === "결단기도") return "결단기도";
   if (sectionKey === "prayer_meeting" || label === "기도회" || label === "통성기도") return "통성기도";
+  if (sectionKey === "free_prayer" || label === "자율기도") return "자율기도";
   return "";
 }
 

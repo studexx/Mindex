@@ -3741,6 +3741,17 @@ def main() -> int:
                             const fridayService = { id: '__smoke_preparation_friday__', type_id: 'friday', date: '2026-07-24', tags: [] };
                             state.services = [fridayService];
                             state.serviceItems[fridayService.id] = projectWorshipServiceItemsFromTemplate(fridayService, []);
+                            const fridayLegacyItems = projectWorshipServiceItemsFromTemplate(fridayService, [{
+                              id: '__smoke_friday_legacy_entrance__',
+                              service_id: fridayService.id,
+                              label: '성경봉독 전 찬양',
+                              memo: serializeServiceItemMemo({ elementType: 'praise', inputMode: 'praise_db' }),
+                              _worshipSectionKey: 'pre_scripture_praise',
+                              _worshipSectionTitle: '찬양',
+                              _worshipElementTemplateModified: true,
+                            }]);
+                            const freePrayer = state.serviceItems[fridayService.id].find((entry) => entry.label === '자율기도') || {};
+                            const freePrayerSlides = buildPresenterSlidesForServiceItem(freePrayer, fridayService, 0);
                             const fridayPlaceholder = presenterPreparationPlaceholderForService(fridayService);
                             state.presenterPreparationDrafts[fridayService.id] = `[썸프레이즈.07.24]
 
@@ -3807,6 +3818,9 @@ def main() -> int:
                                 praiseSongIds: ['찬양 1', '찬양 2', '찬양 3', '찬양 4', '찬양 5'].map((label) => fridayByLabel(label).song_id || ''),
                                 entryPraiseSongIds: ['입례찬양', '기도 찬양 1', '기도 찬양 2'].map((label) => fridayByLabel(label).song_id || ''),
                                 songInputs: ['주 내 소망은 주 더 알기 원합니다 G', '오직 주의 사랑에 매여 D', '내 삶의 이유라 D'].map(presenterPreparationSongContent),
+                                legacyEntranceLabel: fridayLegacyItems.find((entry) => entry._worshipSectionKey === 'pre_scripture_praise')?.label || '',
+                                freePrayerEditable: presenterServiceInputHasEditableField(freePrayer, fridayService),
+                                freePrayerMissing: freePrayerSlides.some((slide) => slide.missingContent),
                                 draftCleared: !state.presenterPreparationDrafts[fridayService.id],
                               },
                               citationCount: citations.length,
@@ -3896,6 +3910,9 @@ def main() -> int:
                         and presenter_preparation_paste["fridayInput"]["songInputs"] == [
                             "주 내 소망은 주 더 알기 원합니다", "오직 주의 사랑에 매여", "내 삶의 이유라"
                         ]
+                        and presenter_preparation_paste["fridayInput"]["legacyEntranceLabel"] == "입례찬양"
+                        and presenter_preparation_paste["fridayInput"]["freePrayerEditable"] is False
+                        and presenter_preparation_paste["fridayInput"]["freePrayerMissing"] is False
                         and presenter_preparation_paste["fridayInput"]["draftCleared"] is True
                         and presenter_preparation_paste["citationCount"] == 1
                         and presenter_preparation_paste["citationReferences"] == [
