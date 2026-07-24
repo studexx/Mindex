@@ -8963,9 +8963,11 @@ const WORSHIP_BACKGROUND_SEASON_CODES = ["S1", "S2", "S3", "S4", "S5", "S6", "SH
 const SERVICE_DEFAULT_BACKGROUND_GROUPS = {
   "sunday-first": "A",
   "young-adult": "A",
-  friday: "B",
   youth: "B",
   children: "C",
+};
+const SERVICE_DEFAULT_BACKGROUND_FILES = {
+  friday: "26-A3.png",
 };
 const WORSHIP_BACKGROUND_STATIC_FILES = new Set([
   "26-A1.png",
@@ -9041,7 +9043,11 @@ function presenterBackgroundSourcesForService(service) {
     sourceRef.backgroundImage,
     sourceRef.background,
   );
-  if (!value) {
+  // Friday used to persist its rotating B4 default as an explicit source.
+  // Treat that one legacy value as the new fixed Friday default instead.
+  const isLegacyFridayDefault = worshipAppServiceTypeId(service?.type_id || "") === "friday"
+    && worshipBackgroundFileNameFromPath(value) === "26-B4.png";
+  if (!value || isLegacyFridayDefault) {
     const defaultFileName = presenterDefaultBackgroundFileNameForService(service);
     return defaultFileName ? worshipBackgroundSourcesForFileName(defaultFileName) : [];
   }
@@ -9060,6 +9066,8 @@ function presenterBackgroundSourcesForService(service) {
 
 function presenterDefaultBackgroundFileNameForService(service) {
   const serviceType = worshipAppServiceTypeId(service?.type_id || "");
+  const fixedFileName = SERVICE_DEFAULT_BACKGROUND_FILES[serviceType];
+  if (fixedFileName) return fixedFileName;
   const group = SERVICE_DEFAULT_BACKGROUND_GROUPS[serviceType];
   const serviceDate = service?.date || new Date();
   return group ? worshipBackgroundFileName(group, presenterBackgroundSlotForDate(serviceDate), serviceDate) : "";
@@ -13751,6 +13759,9 @@ const PUBLIC_WORSHIP_TEMPLATE_VERSIONS = {
   wednesday: [
     publicWorshipTemplateBaseline((options = {}) => publicWednesdayTemplate(options)),
   ],
+  friday: [
+    publicWorshipTemplateBaseline(() => publicFridayTemplate()),
+  ],
 };
 
 function responseSectionTemplate() {
@@ -14510,27 +14521,45 @@ function publicWednesdayTemplate(options = {}) {
   ];
 }
 
+function publicFridayTemplate() {
+  return [
+    publicWorshipPraiseStep({ count: 5, required: true }),
+    publicWorshipPrayerStep(),
+    publicWorshipSpecialSongStep(),
+    publicWorshipAnnouncementsStep(),
+    {
+      label: "입례찬양",
+      name: "입례찬양",
+      required: false,
+      flex: true,
+      sectionKey: "pre_scripture_praise",
+      elementType: "praise",
+    },
+    publicWorshipScriptureReadingStep(),
+    publicWorshipSermonStep({ typeId: "friday", includeSermonBody: false }),
+    responseSectionTemplate(),
+    {
+      label: "기도 찬양",
+      name: "기도 찬양",
+      required: false,
+      flex: true,
+      sectionKey: "prayer_meeting_praise",
+      elements: [
+        { label: "기도 찬양 1", name: "기도 찬양 1", elementType: "praise" },
+        { label: "기도 찬양 2", name: "기도 찬양 2", elementType: "praise" },
+      ],
+    },
+    { label: "자율기도", name: "자율기도", required: false, flex: true, sectionKey: "free_prayer", elementType: "title" },
+  ];
+}
+
 const SERVICE_ORDER_TEMPLATE_FALLBACKS = {
   "sunday-first": publicSundayFirstTemplate({ score: true }),
   "sunday-second": publicSundaySecondTemplate({ score: true, specialScore: false }),
   "sunday-main": publicSundayThirdTemplate(),
   "sunday-afternoon": publicSundayAfternoonTemplate(),
   wednesday: publicWednesdayTemplate(),
-  friday: [
-    "찬양",
-    "대표기도",
-    "특송",
-    publicWorshipAnnouncementsStep(),
-    { label: "찬양", name: "찬양", required: false, flex: true, sectionKey: "pre_scripture_praise", elementType: "praise" },
-    "성경봉독",
-    "설교",
-    responseSectionTemplate(),
-    { label: "기도 찬양", name: "기도 찬양", required: false, flex: true, sectionKey: "prayer_meeting_praise", elements: [
-      { label: "기도 찬양 1", name: "기도 찬양 1", elementType: "praise" },
-      { label: "기도 찬양 2", name: "기도 찬양 2", elementType: "praise" },
-    ] },
-    "자율기도",
-  ],
+  friday: publicFridayTemplate(),
   monthly: publicMonthlyTemplate(),
   "holy-week-dawn": ["찬양", "기도", "성경봉독", "설교", "기도"],
   omer: ["찬양", "기도", "특송", "결단"],
@@ -17486,7 +17515,7 @@ function renderServiceEditorTitleControl(item, origIndex, attrs = {}, model = se
         aria-label="${attrs.isDefault ? "기본 항목 내용" : "항목 내용"}"
       />
       ${renderServiceSongPicker(item, origIndex, model)}
-      ${renderServiceEditorFormControls(item, origIndex, model, { compact: true, placeholder: "송폼" })}
+      ${attrs.hideFormControls ? "" : renderServiceEditorFormControls(item, origIndex, model, { compact: true, placeholder: "송폼" })}
       ${renderServiceItemLinkControl(item, origIndex)}
     </div>`;
 }
@@ -18640,6 +18669,7 @@ function parsePresenterPreparationInput(value = "") {
   String(value || "").split(/\r?\n/).forEach((line, index) => {
     const text = normalizePresenterPreparationLineText(line);
     if (!text) return;
+    if (isPresenterPreparationContextLine(text)) return;
     const parsedLine = parsePresenterPreparationLine(text)
       || inferPresenterPreparationShorthandLine(text, nextImplicitPraiseNumber);
     if (!parsedLine) {
@@ -18669,6 +18699,13 @@ function parsePresenterPreparationInput(value = "") {
     }
   });
   return { entries, errors };
+}
+
+function isPresenterPreparationContextLine(text = "") {
+  const value = String(text || "").trim();
+  if (!value) return true;
+  if (/^\[[^\]]{1,120}\]$/.test(value)) return true;
+  return /(?:예배|기도회|찬양예배|집회)입니다[!.。]?$/u.test(value);
 }
 
 function cleanPresenterPreparationContent(value = "") {
@@ -18759,7 +18796,7 @@ function parseKnownPresenterPreparationLine(text = "") {
     /^(기도\s*찬양)\s*(\d+)\s*(?:[:：.-]\s*)?(.+)$/,
     /^(공동기도)\s*(\d+)\s*(?:[:：.-]\s*)?(.+)$/,
     /^(찬송가|찬송)\s*(?:[:：.-]\s*)?(.+)$/,
-    /^((?:대표\s*)?기도|성경\s*봉독|성경\s*본문|설교\s*본문|설교\s*제목|인용\s*구절|특송|봉헌\s*찬송|봉헌\s*기도|결단\s*찬양|결단\s*기도|말씀|본문|설교)\s*(?:[:：.-]\s*)?(.+)$/,
+    /^((?:대표\s*)?기도|성경\s*봉독|성경\s*본문|설교\s*본문|설교\s*제목|인용\s*구절|특송|입례\s*찬양|봉헌\s*찬송|봉헌\s*기도|결단\s*찬양|결단\s*기도|말씀|본문|설교)\s*(?:[:：.-]\s*)?(.+)$/,
   ];
   for (const pattern of patterns) {
     const match = raw.match(pattern);
@@ -18940,24 +18977,31 @@ function resolvePresenterPreparationHymnSong(value = "") {
 }
 
 function resolvePresenterPreparationSong(value, item, service) {
-  const query = compactSearchValue(value);
+  const songInput = presenterPreparationSongContent(value);
+  const query = compactSearchValue(songInput);
   if (!query) return null;
-  const hymnSong = resolvePresenterPreparationHymnSong(value);
+  const hymnSong = resolvePresenterPreparationHymnSong(songInput);
   if (hymnSong) return hymnSong;
-  const praiseSong = findServicePraiseSong(value);
+  const praiseSong = findServicePraiseSong(songInput);
   if (praiseSong) return praiseSong;
   const exact = state.songs.filter((song) => presenterPreparationSongLabels(song)
     .some((label) => compactSearchValue(label) === query));
   if (exact.length === 1) return exact[0];
   const titleExact = state.songs.filter((song) => compactSearchValue(stripHymnNumber(song.title || "")) === query);
   if (titleExact.length === 1) return titleExact[0];
-  const results = serviceSongPickerResults(value, item, service, 2);
+  const results = serviceSongPickerResults(songInput, item, service, 2);
   return results.length === 1 ? results[0] : null;
+}
+
+function presenterPreparationSongContent(value = "") {
+  const text = cleanPresenterPreparationContent(value);
+  // Keys such as G or D are notes for the instrumental team, not part of a song title.
+  return text.replace(/\s+[A-G](?:#|b)?(?:m|M|maj7|sus[24]|add\d+|\d+)?$/u, "").trim();
 }
 
 async function createBlankPraiseSongForServiceInput(value, service = selectedServiceForEditor()) {
   if (!state.client) return null;
-  const title = stripHymnNo(cleanPresenterPreparationContent(value)).title.trim();
+  const title = stripHymnNo(presenterPreparationSongContent(value)).title.trim();
   if (!title) return null;
   const existing = findServicePraiseSong(title);
   if (existing) return existing;
@@ -19294,13 +19338,19 @@ function presenterServiceInputHasEditableField(item, service) {
 }
 
 function renderPresenterServicePraiseInput(item, index, model) {
+  const formControls = renderServiceEditorFormControls(item, index, model, { compact: true, placeholder: "송폼" });
   return `
     <label class="svc-presenter-input-field svc-presenter-input-field--song">
       <span>곡</span>
-      ${renderServiceEditorTitleControl(item, index, { service: model.service }, model)}
+      ${renderServiceEditorTitleControl(item, index, { service: model.service, hideFormControls: true }, model)}
     </label>
+    ${formControls ? `
+      <label class="svc-presenter-input-field svc-presenter-input-field--form">
+        <span>송폼</span>
+        <span class="svc-presenter-form-control">${formControls}</span>
+      </label>` : ""}
     ${model.showAssignee ? `
-      <label class="svc-presenter-input-field">
+      <label class="svc-presenter-input-field svc-presenter-input-field--assignee">
         <span>담당</span>
         <input class="svc-presenter-input-control" type="text" data-service-item-field="assignee" data-service-item-index="${index}"
           value="${escapeAttr(model.assigneeValue || "")}" placeholder="${escapeAttr(inferServiceItemAssignee(item))}" aria-label="${escapeAttr(`${item.label || "항목"} 담당`)}" />

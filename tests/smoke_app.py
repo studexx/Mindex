@@ -2375,10 +2375,13 @@ def main() -> int:
                         and template_terms["fridayScaffold"]["sections"][-1] == "자율기도"
                         and template_terms["fridayScaffold"]["sections"][-3:] == ["결단", "기도 찬양", "자율기도"]
                         and any(
-                            item["label"] == "찬양"
+                            item["label"] == "입례찬양"
                             and item["sectionKey"] == "pre_scripture_praise"
                             for item in template_terms["fridayScaffold"]["rawTitles"]
                         )
+                        and [item for item in template_terms["fridayScaffold"]["labels"] if item.startswith("찬양 ")] == [
+                            "찬양 1", "찬양 2", "찬양 3", "찬양 4", "찬양 5"
+                        ]
                         and any(
                             item["label"] == "기도 찬양 1"
                             and item["sectionKey"] == "prayer_meeting_praise"
@@ -3735,6 +3738,25 @@ def main() -> int:
                             await applyPresenterPreparationInput(looseService.id);
                             const looseItems = state.serviceItems[looseService.id] || [];
                             const looseByLabel = (label) => looseItems.find((entry) => entry.label === label) || {};
+                            const fridayService = { id: '__smoke_preparation_friday__', type_id: 'friday', date: '2026-07-24', tags: [] };
+                            state.services = [fridayService];
+                            state.serviceItems[fridayService.id] = projectWorshipServiceItemsFromTemplate(fridayService, []);
+                            const fridayPlaceholder = presenterPreparationPlaceholderForService(fridayService);
+                            state.presenterPreparationDrafts[fridayService.id] = `[썸프레이즈.07.24]
+
+1. 주 내 소망은 주 더 알기 원합니다 G
+2. 왕의 왕 주의 주 G
+3. 기뻐하며 왕께 노래부르리 G
+4. 오직 주의 사랑에 매여 D
+5. 내 삶의 이유라 D
+
+금요기도회입니다!
+입례찬양 주 예수 나의 산 소망 G
+기도찬양1 마지막 날에 D
+기도찬양2 부흥 G`;
+                            await applyPresenterPreparationInput(fridayService.id);
+                            const fridayItems = state.serviceItems[fridayService.id] || [];
+                            const fridayByLabel = (label) => fridayItems.find((entry) => entry.label === label) || {};
                             return {
                               songIds: ['찬양 1', '찬양 2', '찬양 3', '찬양 4', '결단찬양'].map((label) => byLabel(label).song_id || ''),
                               versionIds: ['찬양 1', '찬양 2', '찬양 3'].map((label) => byLabel(label).version_id || byLabel(label).song_version_id || ''),
@@ -3772,12 +3794,20 @@ def main() -> int:
                               },
                               looseInput: {
                                 placeholder: loosePlaceholder,
-                                createdTitles: createdSongs.map((song) => song.title),
+                                createdTitles: createdSongs.slice(0, 4).map((song) => song.title),
                                 praiseSongIds: ['찬양 1', '찬양 2', '찬양 3', '찬양 4'].map((label) => looseByLabel(label).song_id || ''),
                                 prayer: looseByLabel('기도').assignee || '',
                                 sermonTitle: looseByLabel('설교 제목').raw_title || '',
                                 sermonAssignee: looseByLabel('설교 제목').assignee || '',
                                 draftCleared: !state.presenterPreparationDrafts[looseService.id],
+                              },
+                              fridayInput: {
+                                placeholder: fridayPlaceholder,
+                                labels: ['찬양 1', '찬양 2', '찬양 3', '찬양 4', '찬양 5'].map((label) => fridayByLabel(label).label || ''),
+                                praiseSongIds: ['찬양 1', '찬양 2', '찬양 3', '찬양 4', '찬양 5'].map((label) => fridayByLabel(label).song_id || ''),
+                                entryPraiseSongIds: ['입례찬양', '기도 찬양 1', '기도 찬양 2'].map((label) => fridayByLabel(label).song_id || ''),
+                                songInputs: ['주 내 소망은 주 더 알기 원합니다 G', '오직 주의 사랑에 매여 D', '내 삶의 이유라 D'].map(presenterPreparationSongContent),
+                                draftCleared: !state.presenterPreparationDrafts[fridayService.id],
                               },
                               citationCount: citations.length,
                               citationReferences,
@@ -3855,6 +3885,18 @@ def main() -> int:
                             "sermonAssignee": "김남영 목사",
                             "draftCleared": True,
                         }
+                        and presenter_preparation_paste["fridayInput"]["placeholder"].split("\n")[:5] == [
+                            "찬양1 곡명", "찬양2 곡명", "찬양3 곡명", "찬양4 곡명", "찬양5 곡명"
+                        ]
+                        and presenter_preparation_paste["fridayInput"]["labels"] == [
+                            "찬양 1", "찬양 2", "찬양 3", "찬양 4", "찬양 5"
+                        ]
+                        and all(presenter_preparation_paste["fridayInput"]["praiseSongIds"])
+                        and all(presenter_preparation_paste["fridayInput"]["entryPraiseSongIds"])
+                        and presenter_preparation_paste["fridayInput"]["songInputs"] == [
+                            "주 내 소망은 주 더 알기 원합니다", "오직 주의 사랑에 매여", "내 삶의 이유라"
+                        ]
+                        and presenter_preparation_paste["fridayInput"]["draftCleared"] is True
                         and presenter_preparation_paste["citationCount"] == 1
                         and presenter_preparation_paste["citationReferences"] == [
                             "렘 3:22", "마 3:11", "눅 24:49", "행 2:4", "고후 10:4", "롬 8:35–37", "살전 4:3", "벧전 1:14–15",

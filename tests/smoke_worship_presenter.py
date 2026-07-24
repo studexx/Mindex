@@ -5906,7 +5906,7 @@ def main() -> int:
                       const cases = [
                         { type_id: 'sunday-first', date: '2026-07-05', expected: '26-A4.png', defaultFile: '26-A4.png', seasonFile: '', chromakey: false },
                         { type_id: 'young-adult', date: '2026-01-04', expected: '26-A1.png', defaultFile: '26-A1.png', seasonFile: '', chromakey: false },
-                        { type_id: 'friday', date: '2026-03-06', expected: '26-B2.png', defaultFile: '26-B2.png', seasonFile: '', chromakey: false },
+                        { type_id: 'friday', date: '2026-03-06', expected: '26-A3.png', defaultFile: '26-A3.png', seasonFile: '', chromakey: false },
                         { type_id: 'youth', date: '2026-01-04', expected: '26-B1.png', defaultFile: '26-B1.png', seasonFile: '', chromakey: false },
                         { type_id: 'children', date: '2026-01-04', expected: '26-C1.png', defaultFile: '26-C1.png', seasonFile: '', chromakey: false },
                         { type_id: 'sunday-first', date: '2026-03-29', tags: ['종려주일'], expected: '26-S4.png', defaultFile: '26-A2.png', seasonFile: '26-S4.png', chromakey: false },
@@ -5953,6 +5953,21 @@ def main() -> int:
                     pass_("presenter-default-background-groups", json.dumps(default_background_state, ensure_ascii=False))
                 else:
                     fail("presenter-default-background-groups", json.dumps(default_background_state, ensure_ascii=False))
+
+                friday_legacy_background_state = page.evaluate(
+                    """
+                    () => presenterBackgroundSourcesForService({
+                      id: '__smoke_friday_legacy_background__',
+                      type_id: 'friday',
+                      date: '2026-07-24',
+                      _worshipSourceRef: { presenter_background: '26-B4.png' },
+                    })
+                    """
+                )
+                if any("26-A3.png" in source for source in friday_legacy_background_state) and not any("26-B4.png" in source for source in friday_legacy_background_state):
+                    pass_("presenter-friday-legacy-background-migration", json.dumps(friday_legacy_background_state, ensure_ascii=False))
+                else:
+                    fail("presenter-friday-legacy-background-migration", json.dumps(friday_legacy_background_state, ensure_ascii=False))
 
                 no_chromakey_payload = page.evaluate(
                     """

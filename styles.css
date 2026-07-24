@@ -6000,6 +6000,7 @@ body[data-module="presenter"] .detail-pane {
 }
 .svc-board-subgroup-head-row {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   width: 100%;
   min-width: 0;
   align-items: start;
@@ -6070,23 +6071,27 @@ body[data-module="presenter"] .detail-pane {
   white-space: nowrap;
 }
 .svc-board-subgroup-controls {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 0.48fr);
   width: 100%;
   min-width: 0;
   max-width: 100%;
-  flex-wrap: wrap;
   align-items: flex-start;
-  justify-content: flex-start;
-  gap: 6px;
+  gap: 8px 10px;
 }
 .svc-board-subgroup-controls .svc-presenter-input-field {
   display: grid;
-  min-width: 120px;
-  flex: 1 1 160px;
+  min-width: 0;
   gap: 3px;
 }
 .svc-board-subgroup-controls .svc-presenter-input-field--song {
-  flex-basis: 260px;
+  grid-column: 1 / -1;
+}
+.svc-board-subgroup-controls .svc-presenter-input-field--form {
+  grid-column: 1;
+}
+.svc-board-subgroup-controls .svc-presenter-input-field--assignee {
+  grid-column: 2;
 }
 .svc-board-subgroup-controls .svc-presenter-input-field > span {
   color: var(--ink-4);
@@ -6126,6 +6131,22 @@ body[data-module="presenter"] .detail-pane {
 .svc-board-subgroup-controls .svc-presenter-input-control {
   flex: 1 1 150px;
 }
+.svc-presenter-form-control {
+  display: inline-flex;
+  min-width: 0;
+  min-height: 26px;
+  align-items: center;
+  gap: 5px;
+}
+.svc-presenter-form-control .svc-form-hint {
+  height: 26px;
+}
+.svc-presenter-form-control .svc-form-preset-badges {
+  min-width: 0;
+}
+.svc-presenter-form-control .svc-form-preset-badge {
+  max-width: min(320px, 100%);
+}
 .svc-board-subgroup-controls .svc-song-picker[role="listbox"] {
   display: flex;
   flex: 1 1 100%;
@@ -6148,6 +6169,15 @@ body[data-module="presenter"] .detail-pane {
 }
 .svc-board-subgroup-controls .svc-song-clear {
   height: 24px;
+}
+@media (max-width: 760px) {
+  .svc-board-subgroup-controls {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .svc-board-subgroup-controls .svc-presenter-input-field--form,
+  .svc-board-subgroup-controls .svc-presenter-input-field--assignee {
+    grid-column: 1;
+  }
 }
 .svc-slide-form-badge {
   display: inline-flex;
