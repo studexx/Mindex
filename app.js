@@ -21509,19 +21509,11 @@ function presenterMainPraiseElementOrdinal(targetSlide, slides = []) {
 function presenterSlideSuppressesTrailingBlank(slide = {}) {
   const sectionKey = String(slide.sectionKey || "").trim();
   const sectionRole = String(slide.sectionRole || "").trim();
-  const sectionLabel = compactSearchValue([
-    slide.sectionLabel,
-    slide.sectionTitle,
-    slide.elementLabel,
-    slide.label,
-  ].filter(Boolean).join(" "));
   return (
     slide.type === "ready"
     || sectionRole === "ready"
     || sectionKey === "ready"
     || sectionKey === "closing_visual"
-    || sectionLabel.includes("준비")
-    || sectionLabel.includes("마무리")
   );
 }
 
