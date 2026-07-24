@@ -1902,19 +1902,31 @@ def main() -> int:
                             };
                           })(),
                           templateSuppressionProjection: (() => {
-                            const service = { id: '__smoke_template_suppression__', type_id: 'monthly', date: '2026-07-03' };
+                            const service = { id: '__smoke_template_suppression__', type_id: 'friday', date: '2026-07-24' };
                             const scaffold = buildWorshipServiceScaffold(service.id, service.type_id, { service });
                             const items = groupWorshipElements(scaffold.sections, scaffold.elements)[service.id] || [];
-                            const target = items.find((item) => item.label === '결단기도') || {};
-                            const suppressed = {
-                              ...target,
-                              memo: serializeServiceItemMemo({ ...parseServiceItemMemo(target.memo), templateSuppressed: true }),
-                            };
-                            const projected = projectWorshipServiceItemsFromTemplate(service, [suppressed]);
+                            const target = items.find((item) => item.label === '특송') || {};
+                            const source = items.map((item) => ({
+                              ...item,
+                              raw_title: `입력:${item.label}`,
+                              _worshipElementTemplateModified: true,
+                              memo: item.id === target.id
+                                ? serializeServiceItemMemo({ ...parseServiceItemMemo(item.memo), templateSuppressed: true })
+                                : item.memo,
+                            }));
+                            const suppressed = source.find((item) => item.id === target.id) || {};
+                            const projected = projectWorshipServiceItemsFromTemplate(service, source);
+                            const itemFor = (label) => projected.find((item) => item.label === label) || {};
                             return {
                               sourceFound: Boolean(target.id),
                               suppressed: isTemplateSuppressedServiceItem(suppressed),
-                              projected: projected.some((item) => item.label === '결단기도'),
+                              projected: projected.some((item) => item.label === '특송'),
+                              preservedSlots: ['교회소식', '성경봉독', '입례찬양', '결단찬양', '기도 찬양 1', '자율기도']
+                                .map((label) => ({
+                                  label,
+                                  sectionKey: itemFor(label)._worshipSectionKey || '',
+                                  title: itemFor(label).raw_title || '',
+                                })),
                             };
                           })(),
                           sundayFirstSendingPrune: (() => {
@@ -2433,6 +2445,14 @@ def main() -> int:
 	                            "sourceFound": True,
 	                            "suppressed": True,
 	                            "projected": False,
+	                            "preservedSlots": [
+	                                {"label": "교회소식", "sectionKey": "announcements", "title": "입력:교회소식"},
+	                                {"label": "성경봉독", "sectionKey": "scripture_reading", "title": "입력:성경봉독"},
+	                                {"label": "입례찬양", "sectionKey": "pre_scripture_praise", "title": "입력:입례찬양"},
+	                                {"label": "결단찬양", "sectionKey": "response_song", "title": "입력:결단찬양"},
+	                                {"label": "기도 찬양 1", "sectionKey": "prayer_meeting_praise", "title": "입력:기도 찬양 1"},
+	                                {"label": "자율기도", "sectionKey": "prayer_meeting_praise", "title": "입력:자율기도"},
+	                            ],
 	                        }
 	                        and template_terms["templateVersionBaseline"] == {
 	                            "version": "2026-q3",

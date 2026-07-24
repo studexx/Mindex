@@ -14690,7 +14690,9 @@ function projectWorshipServiceItemsFromTemplate(service, items = []) {
       _worshipTemplatePlaceholder: !(templateItem.song_id && templateItem.version_id),
     };
     unmatched.delete(matchIndex);
-    return mergeTemplateProjectionItem(templateItem, existing[matchIndex]);
+    // matchIndex is an index into visibleExisting. Using the unfiltered array
+    // here shifts every later item whenever an earlier template item is hidden.
+    return mergeTemplateProjectionItem(templateItem, visibleExisting[matchIndex]);
   });
 
   for (const index of unmatched) {
@@ -14713,8 +14715,6 @@ function migrateLegacyFridayTemplateItems(service = null, items = []) {
       && compactSearchValue(item?._worshipSectionTitle || "") === "기도찬양";
     const isLegacyFreePrayer = sectionKey === "free_prayer"
       && compactSearchValue(item?.label || "") === "자율기도";
-    const isMisplacedAnnouncement = sectionKey === "scripture_reading"
-      && compactSearchValue(item?.label || "") === "교회소식";
     return {
       ...item,
       ...(isLegacyEntrancePraise ? { label: "입례찬양" } : {}),
@@ -14723,11 +14723,6 @@ function migrateLegacyFridayTemplateItems(service = null, items = []) {
         _worshipSectionKey: "prayer_meeting_praise",
         _worshipSectionTitle: "기도회",
         _worshipElementOrder: 3,
-      } : {}),
-      ...(isMisplacedAnnouncement ? {
-        _worshipSectionKey: "announcements",
-        _worshipSectionTitle: "광고",
-        _worshipElementOrder: 1,
       } : {}),
     };
   });
