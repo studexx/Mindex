@@ -87,7 +87,7 @@
   --presenter-size-section: calc(144 * var(--presenter-stage-unit));
   --presenter-size-body: calc(96 * var(--presenter-stage-unit));
   --presenter-size-lyrics: calc(104 * var(--presenter-stage-unit));
-  --presenter-size-song-title: calc(128 * var(--presenter-stage-unit));
+  --presenter-size-song-title: calc(152 * var(--presenter-stage-unit));
   --presenter-size-meta: calc(104 * var(--presenter-stage-unit));
   --presenter-size-liturgical-body: calc(56 * var(--presenter-stage-unit));
   --presenter-size-liturgical-heading: calc(96 * var(--presenter-stage-unit));
@@ -618,6 +618,7 @@
 }
 .presenter-output-root.no-chromakey .presenter-slide--song-title[data-section-key="praise"] .presenter-slide-text {
   font-size: var(--presenter-size-song-title);
+  font-weight: var(--presenter-weight-display);
 }
 .presenter-output-root.no-chromakey .presenter-slide--lyrics .presenter-slide-text span {
   font-size: inherit;
@@ -627,6 +628,7 @@
 }
 .presenter-output-root.no-chromakey .presenter-slide--song-title[data-section-key="praise"] .presenter-section-song-title-name {
   font-size: var(--presenter-size-song-title);
+  font-weight: var(--presenter-weight-display);
 }
 .presenter-output-root.no-chromakey .presenter-slide--scripture .presenter-slide-text span {
   font-size: var(--presenter-scripture-clean-size);

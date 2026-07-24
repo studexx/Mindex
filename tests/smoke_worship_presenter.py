@@ -3407,6 +3407,38 @@ def main() -> int:
                 else:
                     fail("presenter-plain-song-title-output-font", json.dumps(plain_song_title_output_font_state, ensure_ascii=False))
 
+                fullscreen_song_title_output_font_state = page.evaluate(
+                    """
+                    () => {
+                      document.getElementById('presenterOutputRoot')?.remove();
+                      const outputRoot = document.createElement('main');
+                      outputRoot.id = 'presenterOutputRoot';
+                      outputRoot.className = 'presenter-output-root no-chromakey';
+                      document.body.appendChild(outputRoot);
+                      renderPresenterOutput({
+                        serviceId: '__smoke_fullscreen_song_title_output_font__',
+                        serviceType: 'sunday2', chromakey: false, outputTheme: 'formal', backgroundImage: '',
+                        slides: [{ id: '__smoke_fullscreen_song_title_output_font_slide__', elementType: PRESENTER_ELEMENT_TYPES.PRAISE,
+                          layout: PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT, type: 'song-title', title: '주 찬양합니다',
+                          text: '♪ 주 찬양합니다', sectionKey: 'praise' }], index: 0, safetyBlank: false,
+                      });
+                      const name = outputRoot.querySelector('.presenter-section-song-title-name');
+                      const style = name ? getComputedStyle(name) : null;
+                      const result = { text: outputRoot.innerText || '', fontSize: style ? Number.parseFloat(style.fontSize) : 0, fontWeight: style?.fontWeight || '' };
+                      outputRoot.remove();
+                      return result;
+                    }
+                    """
+                )
+                if (
+                    "주 찬양합니다" in fullscreen_song_title_output_font_state["text"]
+                    and fullscreen_song_title_output_font_state["fontSize"] == 152
+                    and fullscreen_song_title_output_font_state["fontWeight"] == "800"
+                ):
+                    pass_("presenter-fullscreen-song-title-output-font", json.dumps(fullscreen_song_title_output_font_state, ensure_ascii=False))
+                else:
+                    fail("presenter-fullscreen-song-title-output-font", json.dumps(fullscreen_song_title_output_font_state, ensure_ascii=False))
+
                 offering_song_title_output_font_state = page.evaluate(
                     """
                     () => {

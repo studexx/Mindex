@@ -14539,8 +14539,8 @@ function publicFridayTemplate() {
     publicWorshipSermonStep({ typeId: "friday", includeSermonBody: false }),
     responseSectionTemplate(),
     {
-      label: "기도 찬양",
-      name: "기도 찬양",
+      label: "기도회",
+      name: "기도회",
       required: false,
       flex: true,
       sectionKey: "prayer_meeting_praise",
@@ -14688,9 +14688,16 @@ function projectWorshipServiceItemsFromTemplate(service, items = []) {
 function migrateLegacyFridayTemplateItems(service = null, items = []) {
   if (worshipAppServiceTypeId(service?.type_id || "") !== "friday") return items;
   return items.map((item) => {
-    const isLegacyEntrancePraise = String(item?._worshipSectionKey || "").trim() === "pre_scripture_praise"
+    const sectionKey = String(item?._worshipSectionKey || "").trim();
+    const isLegacyEntrancePraise = sectionKey === "pre_scripture_praise"
       && compactSearchValue(item?.label || "") === "성경봉독전찬양";
-    return isLegacyEntrancePraise ? { ...item, label: "입례찬양" } : item;
+    const isLegacyPrayerMeeting = sectionKey === "prayer_meeting_praise"
+      && compactSearchValue(item?._worshipSectionTitle || "") === "기도찬양";
+    return {
+      ...item,
+      ...(isLegacyEntrancePraise ? { label: "입례찬양" } : {}),
+      ...(isLegacyPrayerMeeting ? { _worshipSectionTitle: "기도회" } : {}),
+    };
   });
 }
 
@@ -20203,7 +20210,7 @@ function serviceCanonicalSectionTitle(sectionKey = "") {
     sermon: "설교",
     response_song: "결단",
     pre_scripture_praise: "찬양",
-    prayer_meeting_praise: "기도 찬양",
+    prayer_meeting_praise: "기도회",
     offering: "봉헌",
     announcements: "광고",
     community_confession: "공동체고백",

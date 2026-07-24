@@ -2373,7 +2373,7 @@ def main() -> int:
                             "monthlyDefaultLeader": "",
                         }
                         and template_terms["fridayScaffold"]["sections"][-1] == "자율기도"
-                        and template_terms["fridayScaffold"]["sections"][-3:] == ["결단", "기도 찬양", "자율기도"]
+                        and template_terms["fridayScaffold"]["sections"][-3:] == ["결단", "기도회", "자율기도"]
                         and any(
                             item["label"] == "입례찬양"
                             and item["sectionKey"] == "pre_scripture_praise"
@@ -2388,7 +2388,7 @@ def main() -> int:
                             for item in template_terms["fridayScaffold"]["rawTitles"]
                         )
                         and "통성기도" not in template_terms["fridayScaffold"]["sections"]
-                        and "기도회" not in template_terms["fridayScaffold"]["sections"]
+                        and template_terms["fridayScaffold"]["sections"].count("기도회") == 1
                         and "폐회" not in template_terms["fridayScaffold"]["sections"]
                         and "마무리" not in template_terms["fridayScaffold"]["labels"]
                         and next(item["rawTitle"] for item in template_terms["fridayScaffold"]["rawTitles"] if item["label"] == "교회소식") == "교회소식"
@@ -3749,6 +3749,14 @@ def main() -> int:
                               _worshipSectionKey: 'pre_scripture_praise',
                               _worshipSectionTitle: '찬양',
                               _worshipElementTemplateModified: true,
+                            }, {
+                              id: '__smoke_friday_legacy_prayer_praise__',
+                              service_id: fridayService.id,
+                              label: '기도 찬양 1',
+                              memo: serializeServiceItemMemo({ elementType: 'praise', inputMode: 'praise_db' }),
+                              _worshipSectionKey: 'prayer_meeting_praise',
+                              _worshipSectionTitle: '기도 찬양',
+                              _worshipElementTemplateModified: true,
                             }]);
                             const freePrayer = state.serviceItems[fridayService.id].find((entry) => entry.label === '자율기도') || {};
                             const freePrayerSlides = buildPresenterSlidesForServiceItem(freePrayer, fridayService, 0);
@@ -3819,6 +3827,7 @@ def main() -> int:
                                 entryPraiseSongIds: ['입례찬양', '기도 찬양 1', '기도 찬양 2'].map((label) => fridayByLabel(label).song_id || ''),
                                 songInputs: ['주 내 소망은 주 더 알기 원합니다 G', '오직 주의 사랑에 매여 D', '내 삶의 이유라 D'].map(presenterPreparationSongContent),
                                 legacyEntranceLabel: fridayLegacyItems.find((entry) => entry._worshipSectionKey === 'pre_scripture_praise')?.label || '',
+                                legacyPrayerMeetingTitle: fridayLegacyItems.find((entry) => entry._worshipSectionKey === 'prayer_meeting_praise')?._worshipSectionTitle || '',
                                 freePrayerEditable: presenterServiceInputHasEditableField(freePrayer, fridayService),
                                 freePrayerMissing: freePrayerSlides.some((slide) => slide.missingContent),
                                 draftCleared: !state.presenterPreparationDrafts[fridayService.id],
@@ -3911,6 +3920,7 @@ def main() -> int:
                             "주 내 소망은 주 더 알기 원합니다", "오직 주의 사랑에 매여", "내 삶의 이유라"
                         ]
                         and presenter_preparation_paste["fridayInput"]["legacyEntranceLabel"] == "입례찬양"
+                        and presenter_preparation_paste["fridayInput"]["legacyPrayerMeetingTitle"] == "기도회"
                         and presenter_preparation_paste["fridayInput"]["freePrayerEditable"] is False
                         and presenter_preparation_paste["fridayInput"]["freePrayerMissing"] is False
                         and presenter_preparation_paste["fridayInput"]["draftCleared"] is True
