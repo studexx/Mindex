@@ -152,6 +152,13 @@ Small visual polish that does not alter behavior does not need an entry.
   input rail, block saving, or produce an `입력 필요` warning.
 - Sunday afternoon worship starts with four main-praise slots:
   `찬양 1` through `찬양 4`.
+- Sunday third service uses the same `신앙고백 → 사도신경` title-slide rule as
+  the first and second services. `공동체고백` and `주기도문` also retain their
+  own title slides before their body text.
+- Template-provided praise defaults are real linked Praise selections, not
+  display-only text. Sunday third preloads `입례찬양` (내 한 가지 소원),
+  `파송찬송` (359 천성을 향해 가는 성도들아), and `폐회찬송` (352 십자가
+  군병들아) when their catalog records are available.
 - These are template rules, not copied weekly content. A service instance may
   override them only through a deliberate template-modified edit.
 
@@ -165,8 +172,9 @@ Small visual polish that does not alter behavior does not need an entry.
   `결단기도`, `주기도문`, `광고`, and `반별 모임`.
 - `통성기도` and `결단찬양` are not part of the regular youth template unless
   a user deliberately adds them for that service.
-- The regular `봉헌찬양` default is `대단한 믿음 없어도`. It is prefilled for
-  each weekly service rather than copied from the previous week.
+- The regular `봉헌찬양` default is `대단한 믿음 없어도` with the `V1-C` song
+  form. It is prefilled for each weekly service rather than copied from the
+  previous week.
 
 ### Preparation Input Parsing
 
