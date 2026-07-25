@@ -4646,7 +4646,7 @@ function buildWorshipPersistenceRows(service, items, existingSectionById = {}, e
       person: cleanServiceAssignee(item.assignee),
       body: manualBody || "",
       song_id: item.song_id || null,
-      song_version_id: item.version_id || item.song_version_id || null,
+      song_version_id: serviceItemSongVersionIdForSave(item, service),
       scripture_id: existingElement?.scripture_id || null,
       scripture_reference: scriptureReference,
       asset,
@@ -4968,6 +4968,9 @@ async function saveSongVersions(song) {
     .from("mindex_song_versions")
     .upsert(versionRows, { onConflict: "id" });
   if (versionError) throw versionError;
+  versions.forEach((version) => {
+    version._worshipVersionPersisted = true;
+  });
 
   const nextVersionIds = new Set(versionRows.map((version) => version.id));
   const deletedVersionIds = existingVersionIds.filter((id) => !nextVersionIds.has(id));
@@ -6664,6 +6667,7 @@ function updateServiceItemField(field) {
       if (strictSongInput) {
         item.song_id = null;
         item.version_id = null;
+        item.song_version_id = null;
       }
       const parsed = clearGeneratedServiceScriptureSlides(item);
       if (isScriptureBodyServiceItem(item)) {
@@ -6688,6 +6692,7 @@ function updateServiceItemField(field) {
     const song = serviceItemLinkedSong(item);
     const versions = serviceSelectableSongVersions(song, item, service);
     item.version_id = versions.some((version) => version.id === field.value) ? field.value : null;
+    item.song_version_id = item.version_id;
   }
   if (key === "scripture_translation_id") {
     const parsed = parseServiceItemMemo(item.memo);
@@ -6740,6 +6745,7 @@ function updateServiceItemField(field) {
     if (serviceItemRequiresSongSelection(item, service)) {
       item.song_id = null;
       item.version_id = null;
+      item.song_version_id = null;
     } else {
       applyServiceSongSelection(item);
     }
@@ -7437,9 +7443,23 @@ function serviceItemVersionSelectionInvalid(item = {}, service = selectedService
   const song = serviceItemLinkedSong(item);
   if (!song) return false;
   const versions = serviceSelectableSongVersions(song, item, service);
-  if (versions.length <= 1) return false;
   const selectedId = item.version_id || item.song_version_id || "";
+  if (selectedId && !versions.some((version) => version.id === selectedId)) return true;
+  if (versions.length <= 1) return false;
   return !versions.some((version) => version.id === selectedId);
+}
+
+function serviceItemSongVersionIdForSave(item = {}, service = selectedServiceForEditor()) {
+  const song = serviceItemLinkedSong(item);
+  if (!song) return null;
+  const selectedId = String(item.version_id || item.song_version_id || "").trim();
+  if (!selectedId) return null;
+  const version = serviceSelectableSongVersions(song, item, service)
+    .find((candidate) => candidate.id === selectedId);
+  if (!version) return null;
+  // mindex_worship_elements.song_version_id is an FK to mindex_song_versions.
+  // Memo/default-only versions can render, but cannot be persisted as FK ids.
+  return version._worshipVersionPersisted ? version.id : null;
 }
 
 function serviceInputSaveProblem(service = selectedServiceForEditor()) {
@@ -7888,6 +7908,7 @@ async function createPraiseSongFromServiceItem(index) {
     const versions = serviceSelectableSongVersions(existing, item, service);
     item.version_id = preferredNewHymnalVersion(existing, versions)?.id
       || (versions.length === 1 ? versions[0].id : null);
+    item.song_version_id = item.version_id;
     state.serviceItems[serviceId] = normalizeServiceItemsInCurrentOrder(items);
     state.dirty.service = true;
     renderCurrentServiceModuleDetail();
@@ -7935,6 +7956,7 @@ async function createPraiseSongFromServiceItem(index) {
     state.songs = [song, ...state.songs].sort(sortSongs);
     item.song_id = song.id;
     item.version_id = getDefaultVersionId(song);
+    item.song_version_id = item.version_id;
     state.serviceItems[serviceId] = normalizeServiceItemsInCurrentOrder(items);
     state.dirty.service = true;
     renderCurrentServiceModuleDetail();
@@ -7961,6 +7983,7 @@ function selectServiceSongForItem(index, songId) {
   const versions = serviceSelectableSongVersions(song, item, service);
   item.version_id = preferredNewHymnalVersion(song, versions)?.id
     || (versions.length === 1 ? versions[0].id : null);
+  item.song_version_id = item.version_id;
   state.serviceItems[serviceId] = normalizeServiceItemsInCurrentOrder(items);
   state.dirty.service = true;
   refreshPresenterForService(serviceId);
@@ -7976,6 +7999,7 @@ function clearServiceSongForItem(index) {
   if (!serviceId || !item) return;
   item.song_id = null;
   item.version_id = null;
+  item.song_version_id = null;
   state.serviceItems[serviceId] = normalizeServiceItemsInCurrentOrder(items);
   state.dirty.service = true;
   refreshPresenterForService(serviceId);
@@ -8171,6 +8195,7 @@ function applyServiceSongSelectionWithService(item, service = null) {
     if (item) {
       item.song_id = null;
       item.version_id = null;
+      item.song_version_id = null;
     }
     return;
   }
@@ -8179,6 +8204,7 @@ function applyServiceSongSelectionWithService(item, service = null) {
   if (!song) {
     item.song_id = null;
     item.version_id = null;
+    item.song_version_id = null;
     return;
   }
   item.song_id = song.id;
@@ -8186,6 +8212,7 @@ function applyServiceSongSelectionWithService(item, service = null) {
   const versions = serviceSelectableSongVersions(song, item, service || state.services.find((svc) => svc.id === state.selectedServiceId));
   item.version_id = preferredNewHymnalVersion(song, versions)?.id
     || (versions.length === 1 ? versions[0].id : null);
+  item.song_version_id = item.version_id;
 }
 
 function runServiceDefaultItemAction(action, index) {
@@ -12618,6 +12645,7 @@ function normalizeSongVersions(song, versions) {
 function normalizeRelationalVersion(row, index) {
   return {
     id: row.id,
+    _worshipVersionPersisted: true,
     version_order: Number(row.version_order) || index + 1,
     name: normalizeGeneratedVersionName(row.curated_version_name || row.version_label || `Version ${index + 1}`),
     version_label: row.version_label || null,
@@ -20663,6 +20691,7 @@ function presenterSermonContentTitle(value = "") {
     ['"', '"'],
     ["‘", "’"],
     ["“", "”"],
+    ["｢", "｣"],
     ["〈", "〉"],
     ["‹", "›"],
   ];
@@ -20671,7 +20700,7 @@ function presenterSermonContentTitle(value = "") {
       ? current.slice(open.length, current.length - close.length).trim()
       : current
   ), title);
-  return `‘${unwrapped}’`;
+  return `｢${unwrapped}｣`;
 }
 
 function presenterBoardLinkedSongTitle(slide = {}) {

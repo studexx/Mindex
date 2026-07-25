@@ -1413,9 +1413,9 @@ def main() -> int:
                             "layout": "lower_bar_text",
                             "type": "title-assignee",
                             "renderClass": "title-assignee",
-                            "title": "‘정함’",
+                            "title": "｢정함｣",
                             "assignee": "김남영 목사",
-                            "text": "설교\n‘정함’\n김남영 목사",
+                            "text": "설교\n｢정함｣\n김남영 목사",
                             "html": title_assignee_state["slides"][2]["html"],
                         },
                         {
@@ -1430,7 +1430,7 @@ def main() -> int:
                         },
                     ]
                     and all("presenter-title-assignee" in item["html"] for item in title_assignee_state["slides"])
-                    and title_assignee_state["sermonTitleQuote"] == "‘정함’\n김남영 목사"
+                    and title_assignee_state["sermonTitleQuote"] == "｢정함｣\n김남영 목사"
                     and title_assignee_state["offeringBoard"] == {
                         "label": "봉헌기도",
                         "title": "",
@@ -1465,9 +1465,9 @@ def main() -> int:
                             "layout": "center_text",
                             "type": "title-content",
                             "renderClass": "title-content",
-                            "title": "‘정함’",
+                            "title": "｢정함｣",
                             "bodyText": "김남영 목사",
-                            "text": "‘정함’\n김남영 목사",
+                            "text": "｢정함｣\n김남영 목사",
                             "outputContext": "clean",
                             "html": title_assignee_state["cleanSlides"][2]["html"],
                         },
@@ -3876,11 +3876,11 @@ def main() -> int:
                     and float(scripture_context_state["readingTextStroke"].replace("px", "") or "0") > 0
                     and scripture_context_state["readingWordBreak"] == "break-all"
                     and float(scripture_context_state["readingLineHeight"].replace("px", "") or "0") >= 100
-                    and scripture_context_state["sermonContext"] == "sermon"
+                    and scripture_context_state["sermonContext"] == "sermon-chromakey"
                     and scripture_context_state["sermonElementTitle"] == "출 23:14–19"
                     and scripture_context_state["sermonOutputContext"] == "chromakey"
                     and not scripture_context_state["sermonNoChromakey"]
-                    and scripture_context_state["sermonHasClass"]
+                    and not scripture_context_state["sermonHasClass"]
                     and scripture_context_state["sermonHasLowerBarText"]
                     and scripture_context_state["sermonFontSize"] == scripture_context_state["lyricsFontSizeToken"]
                     and scripture_context_state["citationTexts"] == [

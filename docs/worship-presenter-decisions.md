@@ -253,7 +253,7 @@ Small visual polish that does not alter behavior does not need an entry.
   사용한다. 설교 제목 lower bar는 왼쪽 `설교` label을 출력하지 않고
   설교 제목을 왼쪽, 담당자를 오른쪽에 둔다.
 - 모든 예배 타입의 설교 제목은 presenter와 프리뷰에서 홑낫표
-  `‘제목’`로 감싼다. 입력에 기존 따옴표가 있어도 출력에서는 중첩하지 않는다.
+  `｢제목｣`로 감싼다. 입력에 기존 따옴표가 있어도 출력에서는 중첩하지 않는다.
 
 ## Service Auto-Schedule Rules
 - 어린이부 예배와 청소년부 예배는 주일 자동 생성 대상이다.

@@ -1607,7 +1607,7 @@ function buildPresenterScriptureTextSlides(item, section, index, service = null)
       referenceBook,
       referenceRange: verse.referenceRange || payload.referenceRange || "",
       translationLabel: payload.translationLabel || "",
-      text: verseText,
+      text: citation ? presenterCitationScriptureText(verse, payload) : verseText,
       scriptureReadingFinal: readingFinal,
       ...(readingForm ? { outputContext: "clean" } : {}),
       sort: index + verseIndex / 100,
@@ -1638,8 +1638,9 @@ function presenterCitationScriptureText(verse = {}, payload = {}) {
 function presenterScriptureBodyContext(item = {}, section = {}, service = null) {
   const sectionKey = String(section.sectionKey || item?._worshipSectionKey || "").trim();
   if (sectionKey === "scripture_reading") return "reading";
-  if (isPresenterCitationScriptureItem(item) && service && !presenterServiceUsesChromakey(service)) return "citation";
-  if (sectionKey === "sermon") return "sermon";
+  const chromakey = Boolean(service && presenterServiceUsesChromakey(service));
+  if (isPresenterCitationScriptureItem(item)) return chromakey ? "citation-chromakey" : "citation";
+  if (sectionKey === "sermon") return chromakey ? "sermon-chromakey" : "sermon";
   return "";
 }
 
