@@ -100,10 +100,3 @@ begin
     execute format('grant select on public.%I to anon, authenticated', table_name);
   end loop;
 end $$;
-
-do $$
-begin
-  if to_regprocedure('public.get_youtube_live_source(date)') is not null then
-    grant execute on function public.get_youtube_live_source(date) to anon, authenticated;
-  end if;
-end $$;

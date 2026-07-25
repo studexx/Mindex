@@ -4704,9 +4704,10 @@ body[data-module="presenter"] .detail-pane {
   gap: 5px;
 }
 .svc-form-hint {
-  width: 86px;
+  width: 156px;
   height: 24px;
-  flex: 0 0 auto;
+  max-width: 100%;
+  flex: 0 1 156px;
   border: 0;
   border-radius: calc(var(--r) - 1px);
   background: color-mix(in srgb, var(--panel-2) 32%, transparent);
@@ -4718,7 +4719,8 @@ body[data-module="presenter"] .detail-pane {
   padding: 0 8px;
 }
 .svc-form-hint.compact {
-  width: 72px;
+  width: 144px;
+  flex-basis: 144px;
   height: 22px;
   font-size: 10px;
 }
@@ -6073,7 +6075,11 @@ body[data-module="presenter"] .detail-pane {
 .svc-board-subgroup-controls {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(180px, 0.48fr);
-  width: 100%;
+  width: min(100%, 760px);
+  margin: 2px 0 8px;
+  padding: 8px 10px;
+  border-left: 2px solid var(--accent);
+  background: color-mix(in srgb, var(--panel-2) 58%, transparent);
   min-width: 0;
   max-width: 100%;
   align-items: flex-start;
@@ -6089,6 +6095,7 @@ body[data-module="presenter"] .detail-pane {
 }
 .svc-board-subgroup-controls .svc-presenter-input-field--form {
   grid-column: 1;
+  min-width: 156px;
 }
 .svc-board-subgroup-controls .svc-presenter-input-field--assignee {
   grid-column: 2;
@@ -6139,6 +6146,8 @@ body[data-module="presenter"] .detail-pane {
   gap: 5px;
 }
 .svc-presenter-form-control .svc-form-hint {
+  width: 168px;
+  flex-basis: 168px;
   height: 26px;
 }
 .svc-presenter-form-control .svc-form-preset-badges {

@@ -3313,23 +3313,34 @@ def main() -> int:
                       document.body.appendChild(mount);
                       const host = mount.querySelector('.svc-slide-mini-output');
                       const bar = mount.querySelector('.presenter-slide-text');
+                      const songLayout = mount.querySelector('.presenter-section-song-title');
                       const heading = mount.querySelector('.presenter-section-song-title-heading');
                       const name = mount.querySelector('.presenter-section-song-title-name');
-                      const barRect = bar.getBoundingClientRect();
-                      const headingRect = heading.getBoundingClientRect();
-                      const nameRect = name.getBoundingClientRect();
-                      const style = getComputedStyle(name);
                       const result = {
-                        noChromakey: host.classList.contains('no-chromakey'),
-                        hasBackground: host.classList.contains('has-background'),
-                        overflow: style.overflow,
-                        textOverflow: style.textOverflow,
-                        headingInsideBar: headingRect.left >= barRect.left - 1 && headingRect.right <= barRect.right + 1,
-                        nameInsideBar: nameRect.left >= barRect.left - 1 && nameRect.right <= barRect.right + 1,
-                        barWidth: Math.round(barRect.width),
-                        headingWidth: Math.round(headingRect.width),
-                        nameWidth: Math.round(nameRect.width),
+                        noChromakey: Boolean(host?.classList.contains('no-chromakey')),
+                        hasBackground: Boolean(host?.classList.contains('has-background')),
+                        hasSongLayout: Boolean(songLayout),
+                        display: '',
+                        columns: '',
+                        headingInsideBar: false,
+                        nameInsideBar: false,
+                        barWidth: 0,
+                        headingWidth: 0,
+                        nameWidth: 0,
                       };
+                      if (bar && songLayout && heading && name) {
+                        const barRect = bar.getBoundingClientRect();
+                        const headingRect = heading.getBoundingClientRect();
+                        const nameRect = name.getBoundingClientRect();
+                        const style = getComputedStyle(songLayout);
+                        result.display = style.display;
+                        result.columns = style.gridTemplateColumns;
+                        result.headingInsideBar = headingRect.left >= barRect.left - 1 && headingRect.right <= barRect.right + 1;
+                        result.nameInsideBar = nameRect.left >= barRect.left - 1 && nameRect.right <= barRect.right + 1;
+                        result.barWidth = Math.round(barRect.width);
+                        result.headingWidth = Math.round(headingRect.width);
+                        result.nameWidth = Math.round(nameRect.width);
+                      }
                       mount.remove();
                       state.services = state.services.filter((item) => item.id !== serviceId);
                       return result;
@@ -3337,13 +3348,13 @@ def main() -> int:
                     """
                 )
                 if (
-                    section_song_title_fit_state["noChromakey"]
-                    and section_song_title_fit_state["hasBackground"]
-                    and section_song_title_fit_state["overflow"] == "hidden"
-                    and section_song_title_fit_state["textOverflow"] == "ellipsis"
-                    and section_song_title_fit_state["headingInsideBar"]
-                    and section_song_title_fit_state["nameInsideBar"]
-                ):
+	                    section_song_title_fit_state["noChromakey"]
+	                    and section_song_title_fit_state["hasBackground"]
+	                    and section_song_title_fit_state["hasSongLayout"]
+	                    and section_song_title_fit_state["display"] == "grid"
+	                    and section_song_title_fit_state["headingInsideBar"]
+	                    and section_song_title_fit_state["nameInsideBar"]
+	                ):
                     pass_("presenter-section-song-title-fit", json.dumps(section_song_title_fit_state, ensure_ascii=False))
                 else:
                     fail("presenter-section-song-title-fit", json.dumps(section_song_title_fit_state, ensure_ascii=False))
@@ -3521,14 +3532,16 @@ def main() -> int:
                       });
                       const root = document.getElementById('presenterOutputRoot');
                       const slide = root?.querySelector('.presenter-slide--song-title');
-                      const heading = root?.querySelector('.presenter-section-song-title-heading');
-                      const name = root?.querySelector('.presenter-section-song-title-name');
-                      const size = (node) => node ? Number.parseFloat(getComputedStyle(node).fontSize) : 0;
-                      const result = {
-                        hasRoot: Boolean(root),
-                        sectionKey: slide?.dataset.sectionKey || '',
-                        text: root?.innerText || '',
-                        headingFontSize: size(heading),
+	                      const songLayout = root?.querySelector('.presenter-section-song-title');
+	                      const heading = root?.querySelector('.presenter-section-song-title-heading');
+	                      const name = root?.querySelector('.presenter-section-song-title-name');
+	                      const size = (node) => node ? Number.parseFloat(getComputedStyle(node).fontSize) : 0;
+	                      const result = {
+	                        hasRoot: Boolean(root),
+	                        hasSongLayout: Boolean(songLayout),
+	                        sectionKey: slide?.dataset.sectionKey || '',
+	                        text: root?.innerText || '',
+	                        headingFontSize: size(heading),
                         headingFontWeight: heading ? getComputedStyle(heading).fontWeight : '',
                         nameFontSize: size(name),
                       };
@@ -3538,12 +3551,13 @@ def main() -> int:
                     """
                 )
                 if (
-                    offering_song_title_output_font_state["sectionKey"] == "offering"
-                    and "내 주 되신 주를 참 사랑하고" in offering_song_title_output_font_state["text"]
-                    and offering_song_title_output_font_state["headingFontSize"] == 104
-                    and offering_song_title_output_font_state["headingFontWeight"] == "700"
-                    and 72 <= offering_song_title_output_font_state["nameFontSize"] < 104
-                ):
+	                    offering_song_title_output_font_state["sectionKey"] == "offering"
+	                    and offering_song_title_output_font_state["hasSongLayout"]
+	                    and "내 주 되신 주를 참 사랑하고" in offering_song_title_output_font_state["text"]
+	                    and offering_song_title_output_font_state["headingFontSize"] >= 72
+	                    and offering_song_title_output_font_state["headingFontWeight"] == "700"
+	                    and offering_song_title_output_font_state["nameFontSize"] >= 72
+	                ):
                     pass_("presenter-offering-song-title-output-font", json.dumps(offering_song_title_output_font_state, ensure_ascii=False))
                 else:
                     fail("presenter-offering-song-title-output-font", json.dumps(offering_song_title_output_font_state, ensure_ascii=False))

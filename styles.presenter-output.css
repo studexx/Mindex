@@ -196,7 +196,7 @@
 .presenter-output-root.no-chromakey .presenter-slide--liturgical-body .presenter-slide-text,
 .presenter-output-root.no-chromakey .presenter-title-content {
   -webkit-text-stroke: 0;
-  text-shadow: 0 2px 18px rgba(0, 0, 0, .34);
+  text-shadow: 0 1px 9px rgba(255, 255, 255, .17);
 }
 .presenter-output-empty { color: #fff; font-size: var(--presenter-size-body); font-weight: var(--presenter-weight-display); -webkit-text-stroke: 0; text-shadow: none; }
 .presenter-slide { display: flex; width: 100%; height: 100%; max-width: 100%; max-height: 100%; flex-direction: column; justify-content: flex-end; overflow: hidden; padding: 7cqh 7cqw 10cqh; }
@@ -261,7 +261,7 @@
   height: 100%;
   position: relative;
   color: var(--presenter-output-fg);
-  text-shadow: 0 2px 18px rgba(0, 0, 0, .34);
+  text-shadow: 0 1px 9px rgba(255, 255, 255, .17);
 }
 .presenter-liturgical-body-lines {
   display: flex;
@@ -334,7 +334,7 @@
   gap: 1.25cqh;
   color: var(--presenter-output-fg);
   text-align: center;
-  text-shadow: 0 2px 12px rgba(0, 0, 0, .28);
+  text-shadow: 0 1px 6px rgba(255, 255, 255, .14);
   word-break: keep-all;
 }
 .presenter-title-content-title {
@@ -567,10 +567,6 @@
 :is(.svc-slide-mini-output, .presenter-output-root):not(.no-chromakey) .presenter-section-song-title-heading {
   font-size: var(--presenter-size-meta);
 }
-:is(.svc-slide-mini-output, .presenter-output-root):not(.no-chromakey) .presenter-slide--song-title[data-section-key="offering"] .presenter-section-song-title-heading {
-  font-size: var(--presenter-size-display);
-  font-weight: var(--presenter-weight-display);
-}
 :is(.svc-slide-mini-output, .presenter-output-root):not(.no-chromakey) .presenter-slide--song-title:is([data-section-key="praise"], [data-section-key="pre_scripture_praise"], [data-section-key="prayer_meeting_praise"]) .presenter-section-song-title-name {
   font-size: var(--presenter-size-song-title);
   font-weight: var(--presenter-weight-display);
@@ -609,7 +605,7 @@
   padding: 0;
   margin: 0;
   text-align: center;
-  text-shadow: 0 2px 18px rgba(0, 0, 0, .28);
+  text-shadow: 0 1px 9px rgba(255, 255, 255, .14);
 }
 .presenter-output-root.no-chromakey .presenter-slide--scripture .presenter-slide-text {
   font-family: var(--presenter-scripture-font);
@@ -638,6 +634,10 @@
 }
 .presenter-output-root.no-chromakey .presenter-section-song-title-heading {
   font-size: var(--presenter-size-meta);
+}
+.presenter-output-root.no-chromakey .presenter-slide--song-title:is([data-section-key="offering"], [data-section-key="doxology"], [data-section-key="sending"]) .presenter-section-song-title-heading {
+  font-size: var(--presenter-size-body);
+  font-weight: var(--presenter-weight-body);
 }
 .presenter-output-root.no-chromakey .presenter-slide--song-title:is([data-section-key="praise"], [data-section-key="pre_scripture_praise"], [data-section-key="prayer_meeting_praise"]) .presenter-section-song-title-name {
   font-size: var(--presenter-size-song-title);
@@ -739,6 +739,18 @@
   -webkit-text-stroke: .01em currentColor;
   white-space: normal;
   word-break: break-all;
+}
+.presenter-slide--scripture-sermon .presenter-scripture-reading,
+.presenter-slide--scripture-citation .presenter-scripture-reading {
+  font-family: var(--font-presenter);
+}
+.presenter-slide--scripture-sermon .presenter-scripture-reading-text,
+.presenter-slide--scripture-citation .presenter-scripture-reading-text {
+  font-family: inherit;
+  font-synthesis: none;
+  font-weight: var(--presenter-weight-body);
+  letter-spacing: 0;
+  -webkit-text-stroke: 0;
 }
 .presenter-scripture-reading-fin {
   position: absolute;

@@ -1,71 +1,63 @@
 #!/usr/bin/env python3
-"""Create the weekly YouTube live reservation from Mindex source data."""
+"""Create the next Sunday YouTube live reservation."""
 from __future__ import annotations
 
 import argparse
 import base64
 import json
 import os
-import re
-import tempfile
-from datetime import datetime, timedelta
+from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
-try:
-    from youtube_live_source import (
-        DEFAULT_STATE_DIR,
-        KST,
-        RestClient,
-        clear_retry_marker,
-        has_retry_marker,
-        read_config,
-        resolve_live_source,
-        scheduled_start_at,
-        target_date_from_args,
-        today_from_args,
-        write_retry_marker,
-    )
-except ModuleNotFoundError:
-    from scripts.youtube_live_source import (
-        DEFAULT_STATE_DIR,
-        KST,
-        RestClient,
-        clear_retry_marker,
-        has_retry_marker,
-        read_config,
-        resolve_live_source,
-        scheduled_start_at,
-        target_date_from_args,
-        today_from_args,
-        write_retry_marker,
-    )
-
 
 SCOPES = ["https://www.googleapis.com/auth/youtube"]
+KST = timezone(timedelta(hours=9))
 SERVICE_LABEL = "검단우리교회 주일예배"
 DEFAULT_PLAYLIST_TEMPLATE = "주일예배 LIVE {year}"
 DEFAULT_PRIVACY_STATUS = "public"
 DEFAULT_DURATION_MINUTES = 90
+START_TIME = time(10, 45)
 
 
 def clean_text(value: Any) -> str:
     return " ".join(str(value or "").split())
 
 
-def normalize_passage(value: Any) -> str:
-    passage = clean_text(value)
-    passage = passage.replace("~", "–")
-    passage = re.sub(r"(?<=\d)\s*-\s*(?=\d)", "–", passage)
-    return passage
+def parse_date(raw: str) -> date:
+    return datetime.strptime(raw, "%Y-%m-%d").date()
+
+
+def next_sunday(today: date, weeks: int = 0) -> date:
+    days_until_sunday = (6 - today.weekday()) % 7
+    if days_until_sunday == 0:
+        days_until_sunday = 7
+    return today + timedelta(days=days_until_sunday + weeks * 7)
+
+
+def target_date_from_args(raw_date: str | None, weeks: int, now: datetime | None = None) -> date:
+    if raw_date:
+        return parse_date(raw_date)
+    base = (now or datetime.now(KST)).astimezone(KST).date()
+    return next_sunday(base, weeks)
+
+
+def scheduled_start_at(service_date: date) -> str:
+    return datetime.combine(service_date, START_TIME, tzinfo=KST).isoformat()
+
+
+def reservation_source(service_date: date) -> dict[str, Any]:
+    date_text = service_date.isoformat()
+    return {
+        "date": date_text,
+        "serviceDate": date_text,
+        "scheduledStartTime": scheduled_start_at(service_date),
+    }
 
 
 def live_title(source: dict[str, Any]) -> str:
-    title = clean_text(source.get("sermonTitle"))
-    passage = normalize_passage(source.get("passage"))
-    preacher = clean_text(source.get("preacher"))
     service_date = clean_text(source.get("date"))
-    return f"{title} ({passage}) | {preacher} | {SERVICE_LABEL} | {service_date}"
+    return f"[LIVE] {SERVICE_LABEL} | {service_date}"
 
 
 def live_description(source: dict[str, Any]) -> str:
@@ -93,10 +85,6 @@ def validate_title(title: str) -> None:
         raise ValueError("YouTube live title is empty.")
     if len(title) > 100:
         raise ValueError(f"YouTube live title is {len(title)} characters; limit is 100.")
-    if "~" in title:
-        raise ValueError("YouTube live title still contains '~'.")
-    if re.search(r"\[[^\]]+\]", title):
-        raise ValueError("YouTube live title still contains old bracket text.")
 
 
 def read_json_secret(name: str, path_name: str | None = None) -> dict[str, Any]:
@@ -189,33 +177,6 @@ def find_existing_broadcast(youtube, service_date: str) -> dict[str, Any] | None
                 return item
         request = youtube.liveBroadcasts().list_next(request, response)
     return None
-
-
-def thumbnail_path_from_env() -> str | None:
-    direct_path = os.environ.get("YOUTUBE_LIVE_THUMBNAIL_PATH", "")
-    if direct_path:
-        return direct_path
-
-    raw_b64 = os.environ.get("YOUTUBE_LIVE_THUMBNAIL_B64", "")
-    if not raw_b64:
-        return None
-
-    suffix = os.environ.get("YOUTUBE_LIVE_THUMBNAIL_EXT", ".jpg")
-    if not suffix.startswith("."):
-        suffix = f".{suffix}"
-    handle = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
-    handle.write(base64.b64decode(raw_b64))
-    handle.close()
-    return handle.name
-
-
-def set_thumbnail(youtube, video_id: str, thumbnail_path: str) -> None:
-    from googleapiclient.http import MediaFileUpload
-
-    youtube.thumbnails().set(
-        videoId=video_id,
-        media_body=MediaFileUpload(thumbnail_path, resumable=False),
-    ).execute()
 
 
 def add_to_playlist(youtube, video_id: str, playlist_id: str) -> None:
@@ -312,7 +273,6 @@ def create_or_find_live(youtube, source: dict[str, Any], apply: bool) -> dict[st
     privacy_status = os.environ.get("YOUTUBE_LIVE_PRIVACY_STATUS", DEFAULT_PRIVACY_STATUS)
     duration_minutes = int(os.environ.get("YOUTUBE_LIVE_DURATION_MINUTES", DEFAULT_DURATION_MINUTES))
     stream_id = os.environ.get("YOUTUBE_LIVE_STREAM_ID", "")
-    thumbnail_path = thumbnail_path_from_env()
     body = broadcast_body(source, privacy_status, duration_minutes)
     playlist_title = playlist_title_for_source(source)
 
@@ -327,7 +287,6 @@ def create_or_find_live(youtube, source: dict[str, Any], apply: bool) -> dict[st
         "playlistConfigured": True,
         "playlistTitle": playlist_title,
         "playlistLookupMode": "configured_id" if os.environ.get("YOUTUBE_LIVE_PLAYLIST_ID", "") else "title_lookup",
-        "thumbnailConfigured": bool(thumbnail_path),
     }
     if not apply:
         return {"status": "dry_run", **plan}
@@ -353,8 +312,6 @@ def create_or_find_live(youtube, source: dict[str, Any], apply: bool) -> dict[st
 
     if stream_id:
         bind_stream(youtube, video_id, stream_id)
-    if thumbnail_path:
-        set_thumbnail(youtube, video_id, thumbnail_path)
     playlist_result = add_to_live_playlist(youtube, video_id, source)
 
     return {
@@ -366,52 +323,18 @@ def create_or_find_live(youtube, source: dict[str, Any], apply: bool) -> dict[st
     }
 
 
-def resolve_source_from_args(args: argparse.Namespace) -> dict[str, Any]:
-    service_date = today_from_args(args.date) if args.today else target_date_from_args(args.date, args.weeks)
-    if args.retry_only_if_marked and not has_retry_marker(args.state_dir, service_date):
-        return {
-            "ready": False,
-            "skipped": True,
-            "reason": "retry marker not found",
-            "date": service_date.isoformat(),
-            "timezone": "UTC+09:00",
-            "scheduledStartTime": scheduled_start_at(service_date),
-        }
-
-    result = resolve_live_source(RestClient(read_config()), service_date)
-    if result["ready"]:
-        clear_retry_marker(args.state_dir, service_date)
-    elif args.mark_retry_if_not_ready:
-        write_retry_marker(args.state_dir, service_date, result)
-    return result
-
-
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--date", help="Service date as YYYY-MM-DD. Defaults to this week's Sunday in UTC+9.")
-    parser.add_argument("--weeks", type=int, default=0, help="0=this week's Sunday, 1=next week's Sunday.")
-    parser.add_argument("--today", action="store_true", help="Use the current UTC+9 calendar date.")
-    parser.add_argument("--state-dir", type=Path, default=DEFAULT_STATE_DIR)
-    parser.add_argument("--mark-retry-if-not-ready", action="store_true")
-    parser.add_argument("--retry-only-if-marked", action="store_true")
-    parser.add_argument("--require-ready", action="store_true")
+    parser.add_argument("--date", help="Service date as YYYY-MM-DD. Defaults to the next Sunday in UTC+9.")
+    parser.add_argument("--weeks", type=int, default=0, help="0=next Sunday, 1=the Sunday after that.")
     parser.add_argument("--apply", action="store_true", help="Create the YouTube live reservation.")
     args = parser.parse_args()
 
-    source = resolve_source_from_args(args)
-    if not source.get("ready"):
-        print(json.dumps(source, ensure_ascii=False, indent=2))
-        return 2 if args.require_ready and not source.get("skipped") else 0
-
+    source = reservation_source(target_date_from_args(args.date, args.weeks))
     youtube = youtube_service() if args.apply else None
     result = create_or_find_live(youtube, source, args.apply)
     result["source"] = {
         "date": source.get("date"),
-        "sermonTitle": source.get("sermonTitle"),
-        "passage": source.get("passage"),
-        "preacher": source.get("preacher"),
-        "preacherSource": source.get("preacherSource"),
-        "serviceId": source.get("serviceId"),
     }
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0

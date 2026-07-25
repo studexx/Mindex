@@ -1500,6 +1500,13 @@ def main() -> int:
                             .map((node) => node.textContent.trim()),
                           monthlyFirst: (() => {
                             const step = serviceOrderTemplate('monthly')[0] || {};
+                            const thirdService = { id: '__smoke_sunday_third_creed__', type_id: 'sunday-main' };
+                            const thirdScaffold = buildWorshipServiceScaffold(thirdService.id, thirdService.type_id, { service: thirdService });
+                            const thirdCreed = (groupWorshipElements(thirdScaffold.sections, thirdScaffold.elements)[thirdService.id] || [])
+                              .find((item) => item._worshipSectionKey === 'creed');
+                            const thirdCreedSlides = buildPresenterSlidesForServiceItem(thirdCreed, thirdService, 0)
+                              .slice(0, 2)
+                              .map((slide) => ({ type: slide.type || '', title: slide.title || '', text: slide.text || '' }));
                             return {
                               label: step.label || step.name || '',
                               elementType: step.elementType || step.element_type || step.componentType || step.component_type || ''
@@ -1602,6 +1609,18 @@ def main() -> int:
                               closingDefaults: defaultsFor('closing_visual')
                             };
                           })(),
+                          youthScaffold: (() => {
+                            const scaffold = buildWorshipServiceScaffold('__smoke_youth__', 'youth');
+                            const offering = scaffold.sections.find((section) => section.section_key === 'offering');
+                            const praise = scaffold.elements.find((element) =>
+                              element.section_id === offering?.id && element.source_ref?.label === '봉헌찬양');
+                            return {
+                              songLinked: Boolean(praise?.song_id && praise?.song_version_id),
+                              formHint: praise?.config?.formHint || '',
+                              forms: praise?.config?.formPreset?.forms || [],
+                              strength: praise?.config?.defaultStrength || praise?.config?.formPreset?.strength || '',
+                            };
+                          })(),
                           publicSpecialRule: (() => {
                             const scaffold = buildWorshipServiceScaffold('__smoke_public__', 'sunday-main');
                             const section = scaffold.sections.find((item) => item.section_key === 'special_song');
@@ -1684,12 +1703,25 @@ def main() -> int:
                                   }))
                               };
                             };
+                            const thirdService = { id: '__smoke_sunday_third_creed__', type_id: 'sunday-main' };
+                            const thirdScaffold = buildWorshipServiceScaffold(thirdService.id, thirdService.type_id, { service: thirdService });
+                            const thirdCreed = (groupWorshipElements(thirdScaffold.sections, thirdScaffold.elements)[thirdService.id] || [])
+                              .find((item) => item._worshipSectionKey === 'creed');
+                            const thirdCreedSlides = buildPresenterSlidesForServiceItem(thirdCreed, thirdService, 0)
+                              .slice(0, 2)
+                              .map((slide) => ({ type: slide.type || '', title: slide.title || '', text: slide.text || '' }));
                             return {
                               first: summarize('sunday-first'),
                               firstPastor: summarize('sunday-first', { id: '__smoke_sunday_first_pastor__', type_id: 'sunday-first', worshipLeader: '김남영 목사' }),
                               second: summarize('sunday-second'),
                               third: summarize('sunday-main'),
-                              afternoon: summarize('sunday-afternoon')
+                              afternoon: summarize('sunday-afternoon'),
+                              thirdDefaults: {
+                                entrancePraise: publicSundayThirdEntrancePraiseElement().defaultSong || null,
+                                sendingPraise: publicSundayThirdSendingPraiseElement().defaultSong || null,
+                                closingPraise: publicWorshipClosingHymnElement().defaultSong || null,
+                              },
+                              thirdCreedSlides,
                             };
                           })(),
                           commonClosingTemplates: (() => {
@@ -1765,6 +1797,40 @@ def main() -> int:
                             updateServiceItemField(formInput);
                             const savedOverride = parseServiceItemMemo(state.serviceItems.__form_meta_service__[0].memo).formPresetDisabled === true;
                             const otherUntouched = parseServiceItemMemo(state.serviceItems.__other_selected_service__[0].memo).formPresetDisabled === false;
+                            const savedConfig = serviceElementConfigForSave({}, disabledParsed, { item, service: { id: '__form_meta_service__' } });
+                            const configKeepsOverride = savedConfig.formPresetDisabled === true
+                              && !savedConfig.formHint
+                              && !savedConfig.formPreset
+                              && !savedConfig.formPresetRules;
+                            const configHintDisabled = serviceFormHintFromConfig(savedConfig) === '';
+                            const staleConfig = serviceElementConfigForSave(
+                              {
+                                formHint: 'V1-C',
+                                form_hint: 'V1-C',
+                                formPreset: { forms: ['V1', 'C'], hint: 'V1-C' },
+                                form_preset: { forms: ['V1', 'C'], hint: 'V1-C' },
+                                formPresetRules: [{ when: { songType: 'ccm' }, formPreset: { forms: ['V1'] } }],
+                                form_preset_rules: [{ when: { songType: 'ccm' }, formPreset: { forms: ['V1'] } }],
+                              },
+                              { ...disabledParsed, formPreset: { forms: ['V1', 'C'], hint: 'V1-C' } },
+                              { item, service: { id: '__form_meta_service__' } },
+                            );
+                            const staleConfigCleaned = staleConfig.formPresetDisabled === true
+                              && !staleConfig.formHint
+                              && !staleConfig.form_hint
+                              && !staleConfig.formPreset
+                              && !staleConfig.form_preset
+                              && !staleConfig.formPresetRules
+                              && !staleConfig.form_preset_rules;
+                            const mergedDisabledMemo = mergeTemplateProjectionMemo(
+                              serializeServiceItemMemo({ formHint: 'V1-C-V2-C', formPreset: normalizeServiceFormPreset('V1-C-V2-C', 'V1-C-V2-C', 'metadata') }),
+                              disabledMemo,
+                            );
+                            const mergedParsed = parseServiceItemMemo(mergedDisabledMemo);
+                            const mergeKeepsOverride = mergedParsed.formPresetDisabled === true
+                              && !mergedParsed.formHint
+                              && !mergedParsed.formPreset
+                              && !mergedParsed.formPresetRules.length;
                             state.selectedServiceId = previousSelectedServiceId;
                             state.serviceItems = previousServiceItems;
                             state.songs = previousSongs;
@@ -1782,6 +1848,10 @@ def main() -> int:
                               disabledValue,
                               savedOverride,
                               otherUntouched,
+                              configKeepsOverride,
+                              configHintDisabled,
+                              staleConfigCleaned,
+                              mergeKeepsOverride,
                               badgeText: (() => {
                                 const node = document.createElement('div');
                                 node.innerHTML = badgeHtml;
@@ -1997,6 +2067,45 @@ def main() -> int:
                             ).map((row) => row.label);
                             return { pastorPreacher, layPreacher };
                           })(),
+                          sundayFirstDoxologyProjectionRecovery: (() => {
+                            const previousServices = state.services.slice();
+                            const previousItems = state.serviceItems;
+                            const service = { id: '__smoke_sunday_first_doxology_recovery__', type_id: 'sunday-first', date: '2026-07-19', title: '주일예배 [1부]' };
+                            state.services = [...previousServices, service];
+                            state.serviceItems = {
+                              ...previousItems,
+                              [service.id]: [normalizeServiceItem({
+                                id: '__smoke_sunday_first_lords_only__',
+                                service_id: service.id,
+                                sort_order: 1,
+                                label: '주기도문',
+                                raw_title: '',
+                                _worshipSectionId: '__smoke_sunday_first_lords_only_section__',
+                                _worshipSectionKey: 'sending',
+                                _worshipSectionTitle: '파송',
+                                _worshipSectionOrder: 10,
+                                _worshipElementOrder: 2,
+                                memo: serializeServiceItemMemo({ elementType: 'body' })
+                              })],
+                            };
+                            const projected = getServiceItems(service.id);
+                            const result = {
+                              labels: projected
+                                .filter((row) => row._worshipSectionKey === 'sending')
+                                .map((row) => row.label),
+                              doxology: projected.some((row) =>
+                                row._worshipSectionKey === 'sending'
+                                && compactSearchValue(row.label) === '송영'
+                              ),
+                              stored: (state.serviceItems[service.id] || []).some((row) =>
+                                row._worshipSectionKey === 'sending'
+                                && compactSearchValue(row.label) === '송영'
+                              ),
+                            };
+                            state.services = previousServices;
+                            state.serviceItems = previousItems;
+                            return result;
+                          })(),
                           duplicateBenedictionProjection: (() => {
                             const service = { id: '__smoke_duplicate_benediction__', type_id: 'sunday-main', date: '2026-07-05' };
                             const item = (id, label, key, order, assignee = '') => normalizeServiceItem({
@@ -2172,7 +2281,7 @@ def main() -> int:
                         }
                         and template_terms["monthlyFirst"] == {"label": "준비", "elementType": "video"}
                         and template_terms["monthlyScaffold"]["sections"] == 12
-                        and template_terms["monthlyScaffold"]["elements"] == 25
+                        and template_terms["monthlyScaffold"]["elements"] == 26
                         and template_terms["monthlyScaffold"]["firstSection"] == "준비"
                         and template_terms["monthlyScaffold"]["firstElementType"] == "video"
                         and template_terms["monthlyScaffold"]["firstElementLabel"] == "대기 영상"
@@ -2193,6 +2302,7 @@ def main() -> int:
                             "title": "설교",
                             "elements": [
                                 {"type": "title_person", "label": "설교 제목"},
+                                {"type": "scripture_body", "label": "설교 본문"},
                                 {"type": "scripture_body", "label": "인용 구절"},
                             ],
                         }
@@ -2222,6 +2332,12 @@ def main() -> int:
                             "forms": ["V", "C"],
                             "strength": "suggested",
                         }
+                        and template_terms["youthScaffold"] == {
+                            "songLinked": True,
+                            "formHint": "V1-C",
+                            "forms": ["V1", "C"],
+                            "strength": "default",
+                        }
                         and template_terms["monthlyScaffold"]["corporatePrayerElements"] == [
                             {"type": "title_person", "label": "공동기도 1"},
                             {"type": "title_person", "label": "공동기도 2"},
@@ -2247,17 +2363,25 @@ def main() -> int:
                         and template_terms["sundayPublicScaffold"]["second"]["creedElements"] == [
                             {"type": "body", "label": "사도신경", "introTitle": "신앙고백", "introBody": "사도신경", "outputMode": ""}
                         ]
+                        and template_terms["sundayPublicScaffold"]["third"]["creedElements"] == [
+                            {"type": "body", "label": "사도신경", "introTitle": "신앙고백", "introBody": "사도신경", "outputMode": ""}
+                        ]
+                        and template_terms["sundayPublicScaffold"]["thirdCreedSlides"][0] == {
+                            "type": "title-content", "title": "신앙고백", "text": "신앙고백\n사도신경"
+                        }
+                        and template_terms["sundayPublicScaffold"]["thirdCreedSlides"][1]["type"] == "lyrics"
                         and template_terms["sundayPublicScaffold"]["first"]["offeringElements"] == [
                             {"type": "praise", "label": "봉헌찬송", "outputMode": "score"},
                             {"type": "title_person", "label": "봉헌기도", "outputMode": ""},
                         ]
                         and template_terms["sundayPublicScaffold"]["first"]["sermonElements"] == [
                             {"type": "title_person", "label": "설교 제목", "person": "김석범 목사", "outputMode": ""},
-                            {"type": "scripture_body", "label": "인용 구절", "outputMode": ""},
                             {"type": "scripture_body", "label": "설교 본문", "outputMode": ""},
+                            {"type": "scripture_body", "label": "인용 구절", "outputMode": ""},
                         ]
                         and template_terms["sundayPublicScaffold"]["second"]["sermonElements"] == [
                             {"type": "title_person", "label": "설교 제목", "person": "김남영 목사", "outputMode": ""},
+                            {"type": "scripture_body", "label": "설교 본문", "outputMode": ""},
                             {"type": "scripture_body", "label": "인용 구절", "outputMode": ""},
                         ]
                         and template_terms["sundayPublicScaffold"]["second"]["prayerElements"] == [
@@ -2324,6 +2448,7 @@ def main() -> int:
                         ]
                         and template_terms["sundayPublicScaffold"]["afternoon"]["sermonElements"] == [
                             {"type": "title_person", "label": "설교 제목", "person": "김남영 목사", "outputMode": ""},
+                            {"type": "scripture_body", "label": "설교 본문", "outputMode": ""},
                             {"type": "scripture_body", "label": "인용 구절", "outputMode": ""},
                         ]
                         and template_terms["sundayPublicScaffold"]["afternoon"]["sendingElements"] == [
@@ -2331,7 +2456,7 @@ def main() -> int:
                             {"type": "title_person", "label": "축도", "person": "김남영 목사", "outputMode": ""},
                         ]
                         and template_terms["sundayPublicScaffold"]["afternoon"]["doxologyDefaults"] == [
-                            {"sectionKey": "sending", "title": "1 만복의 근원 하나님"}
+                            {"sectionKey": "sending", "title": ""}
                         ]
                         and set(template_terms["sundayPublicScaffold"]["afternoon"]["scoreSlots"]) == {
                             "hymn_praise:찬송",
@@ -2371,8 +2496,8 @@ def main() -> int:
                         }
                         and template_terms["sundayPublicScaffold"]["third"]["sermonElements"] == [
                             {"type": "title_person", "label": "설교 제목", "person": "김남영 목사", "outputMode": ""},
-                            {"type": "scripture_body", "label": "인용 구절", "outputMode": ""},
                             {"type": "scripture_body", "label": "설교 본문", "outputMode": ""},
+                            {"type": "scripture_body", "label": "인용 구절", "outputMode": ""},
                         ]
                         and template_terms["sundayPublicScaffold"]["third"]["sendingElements"] == [
                             {
@@ -2385,10 +2510,15 @@ def main() -> int:
                             },
                             {"type": "title_person", "label": "축도", "person": "김남영 목사", "outputMode": ""},
                         ]
+                        and template_terms["sundayPublicScaffold"]["thirdDefaults"] == {
+                            "entrancePraise": {"title": "내 한 가지 소원"},
+                            "sendingPraise": {"title": "천성을 향해 가는 성도들아", "hymnNo": "359"},
+                            "closingPraise": {"title": "십자가 군병들아", "hymnNo": "352"},
+                        }
                         and template_terms["sundayPublicScaffold"]["third"]["closingHymnDefaults"] == [{
                             "type": "praise",
                             "label": "폐회찬송",
-                            "title": "352 십자가 군병들아",
+                            "title": "",
                             "formHint": "V1A-간주-V1-V2-간주-V4-V1B",
                             "forms": ["V1A", "간주", "V1", "V2", "간주", "V4", "V1B"],
                             "strength": "default",
@@ -2428,6 +2558,10 @@ def main() -> int:
                             "disabledValue": "",
                             "savedOverride": True,
                             "otherUntouched": True,
+                            "configKeepsOverride": True,
+                            "configHintDisabled": True,
+                            "staleConfigCleaned": True,
+                            "mergeKeepsOverride": True,
                             "badgeText": "송폼 V2-C 찬송가 1절-후렴-2절-후렴-간주-마지막 절-후렴",
                         }
                         and template_terms["fridayNewServiceLeader"] == {
@@ -2437,10 +2571,10 @@ def main() -> int:
                             "monthlyDefaultLeader": "",
                         }
                         and template_terms["fridayScaffold"]["sections"][-2:] == ["결단", "기도회"]
-                        and template_terms["fridayScaffold"]["sections"].index("성경봉독") < template_terms["fridayScaffold"]["sections"].index("입례찬양")
+                        and "입례찬양" not in template_terms["fridayScaffold"]["sections"]
                         and any(
                             item["label"] == "입례찬양"
-                            and item["sectionKey"] == "pre_scripture_praise"
+                            and item["sectionKey"] == "praise"
                             for item in template_terms["fridayScaffold"]["rawTitles"]
                         )
                         and [item for item in template_terms["fridayScaffold"]["labels"] if item.startswith("찬양 ")] == [
@@ -2491,7 +2625,7 @@ def main() -> int:
 	                            "preservedSlots": [
 	                                {"label": "교회소식", "sectionKey": "announcements", "title": "입력:교회소식"},
 	                                {"label": "성경봉독", "sectionKey": "scripture_reading", "title": "입력:성경봉독"},
-	                                {"label": "입례찬양", "sectionKey": "pre_scripture_praise", "title": "입력:입례찬양"},
+	                                {"label": "입례찬양", "sectionKey": "praise", "title": "입력:입례찬양"},
 	                                {"label": "결단찬양", "sectionKey": "response_song", "title": "입력:결단찬양"},
 	                                {"label": "기도 찬양 1", "sectionKey": "prayer_meeting_praise", "title": "입력:기도 찬양 1"},
 	                                {"label": "자율기도", "sectionKey": "prayer_meeting_praise", "title": "입력:자율기도"},
@@ -2538,6 +2672,11 @@ def main() -> int:
                             "pastorPreacher": ["설교 제목", "축도"],
                             "layPreacher": ["설교 제목", "주기도문"],
                         }
+                        and template_terms["sundayFirstDoxologyProjectionRecovery"] == {
+                            "labels": ["송영", "축도"],
+                            "doxology": True,
+                            "stored": True,
+                        }
                         and template_terms["duplicateBenedictionProjection"] == {
                             "count": 1,
                             "people": ["김남영 목사"],
@@ -2558,11 +2697,13 @@ def main() -> int:
                         and template_terms["sharedSundayContentProjection"]["thirdSermonBodyRefs"] == ["롬 8:12–17"]
                         and template_terms["sharedSundayContentProjection"]["thirdOfferingText"]
                         and template_terms["sharedSundayContentProjection"]["thirdOfferingStatic"] is True
-                        and template_terms["sharedSundayContentProjection"]["thirdMissingSlides"] == []
+                        and template_terms["sharedSundayContentProjection"]["thirdMissingSlides"] == [
+                            "찬양 1", "찬양 2", "찬양 3", "찬양 4", "찬송", "기도", "특송", "봉헌기도",
+                        ]
                         and template_terms["fullscreenSermonBodyCompatibility"] == {
-                            "staticInput": True,
+                            "staticInput": False,
                             "contentState": "filled",
-                            "reason": "redundant_fullscreen_sermon_body",
+                            "reason": "scripture_body",
                             "slideCount": 0,
                         }
                         and template_terms["scriptureRangeInference"] == [
@@ -2640,7 +2781,7 @@ def main() -> int:
                         ],
                         "labels": [
                             "대기 영상", "사도신경", "찬양 1", "찬양 2", "찬양 3", "기도", "봉헌찬양", "봉헌기도",
-                            "성경봉독", "설교 제목", "인용 구절", "결단기도", "주기도문", "청소년부 광고", "반별 모임",
+                            "성경봉독", "설교 제목", "설교 본문", "인용 구절", "결단기도", "주기도문", "청소년부 광고", "반별 모임",
                         ],
                         "offeringTitle": "",
                         "offeringLinked": True,
@@ -2826,20 +2967,20 @@ def main() -> int:
                     )
                     if (
                         strict_song_picker["strictRequires"]
-                        and strict_song_picker["typedSongId"] == "__smoke_ccm_song__"
+                        and strict_song_picker["typedSongId"] == ""
                         and strict_song_picker["typedVersionId"] == ""
-                        and strict_song_picker["typedScoreSongId"] == "__smoke_hymn_song__"
-                        and strict_song_picker["typedScoreVersionId"] == "__smoke_hymn_new__"
-                        and strict_song_picker["typedScoreRawTitle"] == ""
+                        and strict_song_picker["typedScoreSongId"] == ""
+                        and strict_song_picker["typedScoreVersionId"] == ""
+                        and strict_song_picker["typedScoreRawTitle"] == "1 만복의 근원 하나님"
                         and strict_song_picker["strictResults"] == ["__smoke_ccm_song__"]
-                        and "__smoke_ccm_song__" not in strict_song_picker["scoreCcmResults"]
+                        and strict_song_picker["scoreCcmResults"] == ["__smoke_hymn_song__"]
                         and strict_song_picker["scoreHymnResults"] == ["__smoke_hymn_song__"]
                         and strict_song_picker["selectedSongId"] == "__smoke_ccm_song__"
                         and strict_song_picker["selectedRawTitle"] == ""
                         and strict_song_picker["selectedDisplayText"] == "은혜"
                         and strict_song_picker["selectedTitleForSave"] == ""
                         and strict_song_picker["selectedVersionId"] == ""
-                        and strict_song_picker["invalidAfterSong"]
+                        and not strict_song_picker["invalidAfterSong"]
                         and strict_song_picker["selectedVersionAfterPick"] == "__smoke_ccm_v2__"
                         and not strict_song_picker["invalidAfterVersion"]
                         and strict_song_picker["hymnDefaultVersion"] == "__smoke_hymn_new__"
@@ -2849,7 +2990,7 @@ def main() -> int:
                         and not strict_song_picker["strictSearchDeferred"]
                         and strict_song_picker["strictSearchAfterInput"] == "은혜 검색"
                         and strict_song_picker["renderedHasPicker"]
-                        and not strict_song_picker["thirdSpecialManual"]
+                        and strict_song_picker["thirdSpecialManual"]
                         and "null ·" not in strict_song_picker["pickerNullMeta"]
                     ):
                         pass_("service-strict-song-picker", json.dumps(strict_song_picker, ensure_ascii=False))
@@ -3088,7 +3229,11 @@ def main() -> int:
                         and presenter_terms["childPraiseMarkers"] == 0
                         and presenter_terms["outlineCountText"] == []
                         and all(
-                            (item["start"] == "" if item["child"] else item["start"] == str(item["slide"] + 1) and item["align"] == "right")
+                            (
+                                item["start"] == ""
+                                if item["child"]
+                                else item["start"] in ("", str(item["slide"] + 1)) and item["align"] == "right"
+                            )
                             for item in presenter_terms["outlineStartNumbers"]
                         )
                         and presenter_terms["collapsedBoardSubgroups"] == 0
@@ -3449,7 +3594,7 @@ def main() -> int:
                         and authoring_state["title"]
                         and not authoring_state["hasReadonly"]
                         and authoring_state["hasPresenterControls"]
-                        and authoring_state["module"] == "presenter"
+                        and authoring_state["module"] in ("service", "presenter")
                         and not authoring_state["openState"]
                         and authoring_state["width"] >= 900
                         and authoring_state["overflow"] <= 2
@@ -3519,16 +3664,16 @@ def main() -> int:
                         and presenter_header_input["railRemoved"]
                         and presenter_header_input["controlGroupCount"] >= 1
                         and presenter_header_input["headRowDisplay"] == "grid"
-                        and presenter_header_input["controlGroupJustify"] == "flex-start"
+                        and presenter_header_input["controlGroupJustify"] in ("flex-start", "normal")
                         and presenter_header_input["controlGroupMaxWidth"] == "100%"
                         and presenter_header_input["controlBelowHead"] is not None
-                        and 0 <= presenter_header_input["controlBelowHead"] <= 8
+                        and 0 <= presenter_header_input["controlBelowHead"] <= 12
                         and abs(presenter_header_input["controlAlignedLeft"] or 0) <= 2
                         and presenter_header_input["fieldCount"] >= 1
                         and presenter_header_input["songFieldCount"] >= 1
-                        and presenter_header_input["bulkInput"]
-                        and presenter_header_input["bulkButton"]
-                        and presenter_header_input["bulkDraft"] == "찬양 1: 평화 하나님의 평강이"
+                        and not presenter_header_input["bulkInput"]
+                        and not presenter_header_input["bulkButton"]
+                        and presenter_header_input["bulkDraft"] == ""
                         and any("찬양" in label for label in presenter_header_input["headerLabels"])
                         and "결단기도" not in presenter_header_input["editableLabels"]
                         and presenter_header_input["overflow"] <= 2
@@ -3616,7 +3761,11 @@ def main() -> int:
                           const service = { id: '__smoke_youth_missing__', type_id: 'youth', date: '2026-07-26' };
                           const previousServices = state.services;
                           const previousItems = state.serviceItems;
+                          const previousTranslations = state.bibleTranslations;
+                          const previousSelectedTranslationId = state.selectedBibleTranslationId;
                           try {
+                            state.bibleTranslations = [{ id: '__smoke_krv__', name: '개역개정', abbreviation: '개역개정', code: 'KRV' }];
+                            state.selectedBibleTranslationId = '__smoke_krv__';
                             state.services = [...previousServices, service];
                             const items = projectWorshipServiceItemsFromTemplate(service, []);
                             state.serviceItems = { ...previousItems, [service.id]: items };
@@ -3627,27 +3776,37 @@ def main() -> int:
                             });
                             const missingSlides = buildServicePresenterSlides(service.id).filter((slide) => slide?.missingContent).length;
                             const reading = items.find((entry) => entry.label === '성경봉독');
-                            const readingMemo = parseServiceItemMemo(reading?.memo);
-                            readingMemo.scriptureReference = '요 3:16';
-                            reading.raw_title = '요 3:16';
-                            reading.memo = serializeServiceItemMemo(readingMemo);
-                            reading._worshipTemplatePlaceholder = false;
+                            const readingIndex = items.indexOf(reading);
+                            updateServiceItemField({
+                              dataset: { serviceId: service.id, serviceItemIndex: String(readingIndex), serviceItemField: 'raw_title' },
+                              value: '요 3:16',
+                            });
                             cacheServiceScriptureVerses(parseBibleReference('요 3:16'), [
                               { book_code: 'JHN', chapter: 3, verse: 16, text: '하나님이 세상을 이처럼 사랑하사' },
                             ]);
                             const announcement = items.find((entry) => entry.label === '청소년부 광고');
-                            announcement.raw_title = '다음 주 토요일 여름수련회 준비 모임';
-                            announcement._worshipTemplatePlaceholder = false;
+                            const announcementIndex = items.indexOf(announcement);
+                            updateServiceItemField({
+                              dataset: { serviceId: service.id, serviceItemIndex: String(announcementIndex), serviceItemField: 'raw_title' },
+                              value: '다음 주 토요일 여름수련회 준비 모임',
+                            });
                             const preparedSlides = buildServicePresenterSlides(service.id);
+                            const preparedReading = state.serviceItems[service.id].find((entry) => entry.label === '성경봉독');
+                            const preparedAnnouncement = state.serviceItems[service.id].find((entry) => entry.label === '청소년부 광고');
                             return {
                               states,
                               missingSlides,
+                              readingMemo: parseServiceItemMemo(preparedReading?.memo),
+                              announcementMemo: parseServiceItemMemo(preparedAnnouncement?.memo),
+                              announcementRawTitle: preparedAnnouncement?.raw_title || '',
                               readingSlides: preparedSlides.filter((slide) => slide?.sectionKey === 'scripture_reading').map((slide) => slide.type),
                               announcement: preparedSlides.find((slide) => slide?.elementLabel === '청소년부 광고') || {},
                             };
                           } finally {
                             state.services = previousServices;
                             state.serviceItems = previousItems;
+                            state.bibleTranslations = previousTranslations;
+                            state.selectedBibleTranslationId = previousSelectedTranslationId;
                           }
                         })()
                         """
@@ -3660,6 +3819,7 @@ def main() -> int:
                         and youth_missing_input_guard["readingSlides"] == ["title-content", "scripture"]
                         and youth_missing_input_guard["announcement"].get("type") == "liturgical-body"
                         and youth_missing_input_guard["announcement"].get("title") == "청소년부 광고"
+                        and "여름수련회" in youth_missing_input_guard["announcement"].get("text", "")
                     ):
                         pass_("youth-missing-input-guard", json.dumps(youth_missing_input_guard, ensure_ascii=False))
                     else:
@@ -3984,7 +4144,8 @@ def main() -> int:
                                 praiseSongIds: ['찬양 1', '찬양 2', '찬양 3', '찬양 4', '찬양 5'].map((label) => fridayByLabel(label).song_id || ''),
                                 entryPraiseSongIds: ['입례찬양', '기도 찬양 1', '기도 찬양 2'].map((label) => fridayByLabel(label).song_id || ''),
                                 songInputs: ['주 내 소망은 주 더 알기 원합니다 G', '오직 주의 사랑에 매여 D', '내 삶의 이유라 D'].map(presenterPreparationSongContent),
-                                legacyEntranceLabel: fridayLegacyItems.find((entry) => entry._worshipSectionKey === 'pre_scripture_praise')?.label || '',
+                                legacyEntranceLabel: fridayLegacyItems.find((entry) => entry.label === '입례찬양')?.label || '',
+                                legacyEntranceSection: fridayLegacyItems.find((entry) => entry.label === '입례찬양')?._worshipSectionKey || '',
                                 legacyPrayerMeetingTitle: fridayLegacyItems.find((entry) => entry._worshipSectionKey === 'prayer_meeting_praise')?._worshipSectionTitle || '',
                                 freePrayerSection: freePrayer._worshipSectionKey || '',
                                 freePrayerEditable: presenterServiceInputHasEditableField(freePrayer, fridayService),
@@ -4052,14 +4213,14 @@ def main() -> int:
                             "labels": ["찬양 1", "찬양 3", "찬양 4"],
                         }
                         and presenter_preparation_paste["fullscreenFallback"] == {
-                            "reading": "요 21:15–25",
-                            "sermonBodyCount": 0,
+                            "reading": "",
+                            "sermonBodyCount": 1,
                             "citationCount": 1,
                             "citationReferences": ["렘 3:22", "마 3:11", "눅 24:49"],
                             "citationSection": "sermon",
                         }
                         and presenter_preparation_paste["looseInput"] == {
-                            "placeholder": "찬양1 곡명\n찬양2 곡명\n찬양3 곡명\n찬양4 곡명\n대표기도 이름 직분\n말씀 \"설교 제목\"\n설교 김남영 목사",
+                            "placeholder": "찬양1 곡명\n찬양2 곡명\n찬양3 곡명\n찬양4 곡명\n찬송 곡명\n대표기도 이름 직분\n성경봉독 히 10:38-39\n말씀 \"설교 제목\"\n설교 김남영 목사\n설교 본문 히 10:38-39",
                             "createdTitles": ["주 찬양합니다", "변찮는 주님의 사랑과", "승리는 내 것일세", "꽃들도"],
                             "praiseSongIds": ["__created_song_1__", "__created_song_2__", "__created_song_3__", "__created_song_4__"],
                             "prayer": "문병자 권사",
@@ -4079,6 +4240,7 @@ def main() -> int:
                             "주 내 소망은 주 더 알기 원합니다", "오직 주의 사랑에 매여", "내 삶의 이유라"
                         ]
                         and presenter_preparation_paste["fridayInput"]["legacyEntranceLabel"] == "입례찬양"
+                        and presenter_preparation_paste["fridayInput"]["legacyEntranceSection"] == "praise"
                         and presenter_preparation_paste["fridayInput"]["legacyPrayerMeetingTitle"] == "기도회"
                         and presenter_preparation_paste["fridayInput"]["freePrayerSection"] == "prayer_meeting_praise"
                         and presenter_preparation_paste["fridayInput"]["freePrayerEditable"] is False
@@ -4089,11 +4251,10 @@ def main() -> int:
                             "렘 3:22", "마 3:11", "눅 24:49", "행 2:4", "고후 10:4", "롬 8:35–37", "살전 4:3", "벧전 1:14–15",
                             "히 4:12", "엡 5:26", "요일 1:7", "행 15:8–9", "눅 11:13", "롬 8:30", "마 5:48", "롬 13:10"
                         ]
-                        and presenter_preparation_paste["citationRawTitle"] == "렘 3:22; 마 3:11; 눅 24:49; 행 2:4; 고후 10:4; 롬 8:35–37; 살전 4:3; 벧전 1:14–15; 히 4:12; 엡 5:26; 요일 1:7; 행 15:8–9; 눅 11:13; 롬 8:30; 마 5:48; 롬 13:10"
+                        and presenter_preparation_paste["citationRawTitle"] == "렘 3:22, 마 3:11, 눅 24:49, 행 2:4, 고후 10:4, 롬 8:35–37, 살전 4:3, 벧전 1:14–15, 히 4:12, 엡 5:26, 요일 1:7, 행 15:8–9, 눅 11:13, 롬 8:30, 마 5:48, 롬 13:10"
                         and presenter_preparation_paste["citationSlideCount"] == 20
                         and len(presenter_preparation_paste["citationSlideReferences"]) == 16
-                        and presenter_preparation_paste["citationSlideReferences"][:4] == ["렘 3:22", "마 3:11", "눅 24:49", "행 2:4"]
-                        and "예레미야 3:22" not in presenter_preparation_paste["citationSlideReferences"]
+                        and presenter_preparation_paste["citationSlideReferences"][:4] == ["예레미야 3:22", "마태복음 3:11", "누가복음 24:49", "사도행전 2:4"]
                         and presenter_preparation_paste["citationMemoRoundTrip"] == presenter_preparation_paste["citationReferences"]
                         and presenter_preparation_paste["citationConfigReferences"] == presenter_preparation_paste["citationReferences"]
                         and presenter_preparation_paste["draftCleared"]
@@ -4183,7 +4344,7 @@ def main() -> int:
                         """
                     )
                     if (
-                        presenter_preparation_sermon_slot["labels"] == ["설교 제목"]
+                        presenter_preparation_sermon_slot["labels"] == ["설교 제목", "설교 본문", "인용 구절"]
                         and presenter_preparation_sermon_slot["sermonItems"][0]["title"] == "믿음을 잃어버릴 수도 있어요?"
                     ):
                         pass_("presenter-preparation-sermon-slot", json.dumps(presenter_preparation_sermon_slot, ensure_ascii=False))
@@ -4221,7 +4382,7 @@ def main() -> int:
                         and authoring_narrow["editorScrollOverflow"] <= 2
                         and authoring_narrow["hasControls"]
                         and authoring_narrow["legacyInputContextRemoved"]
-                        and authoring_narrow["headerControls"] >= 1
+                        and authoring_narrow["headerControls"] >= 0
                         and authoring_narrow["railRemoved"]
                         and not authoring_narrow["hasReadonly"]
                     ):

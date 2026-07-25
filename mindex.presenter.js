@@ -1562,9 +1562,7 @@ function buildPresenterScriptureTextSlides(item, section, index, service = null)
     const verseReference = readingForm
       ? [referenceBook, verse.referenceRange || payload.referenceRange || ""].filter(Boolean).join(" ")
       : (verse.reference || reference);
-    const verseText = citation
-      ? presenterCitationScriptureText(verse, payload)
-      : (verseNumber ? [verseNumber, verse.text].filter(Boolean).join("   ") : verse.text);
+    const verseText = verseNumber ? [verseNumber, verse.text].filter(Boolean).join("   ") : verse.text;
     return {
       id: `${item.id || index}:scripture:${verseReference}:${verseNumber || verseIndex + 1}`,
       ...section,
@@ -1583,7 +1581,6 @@ function buildPresenterScriptureTextSlides(item, section, index, service = null)
       text: verseText,
       scriptureReadingFinal: readingFinal,
       ...(readingForm ? { outputContext: "clean" } : {}),
-      ...(context === "sermon" ? { outputContext: "chromakey" } : {}),
       sort: index + verseIndex / 100,
     };
   });
@@ -1618,7 +1615,7 @@ function presenterScriptureBodyContext(item = {}, section = {}, service = null) 
 }
 
 function presenterScriptureContextUsesReadingForm(context = "") {
-  return context === "reading" || context === "citation";
+  return context === "reading" || context === "sermon" || context === "citation";
 }
 
 function serviceScriptureTextPayload(item, memo = parseServiceItemMemo(item?.memo)) {
@@ -1752,18 +1749,50 @@ function presenterUnifiedHymnVersionNo(version = null) {
 
 function presenterSongTitleSectionHeading(item = {}, section = {}) {
   if (!presenterSongTitleUsesSectionHeading(item, section)) return "";
-  const sectionKey = String(section.sectionKey || item?._worshipSectionKey || "").trim();
-  if (sectionKey === "offering") {
-    return String(section.sectionLabel || item?._worshipSectionTitle || "봉헌").trim();
-  }
-  return String(item?.label || section.elementLabel || section.sectionLabel || "").trim();
+  const heading = String(
+    item?.label
+    || section.elementLabel
+    || section.sectionLabel
+    || item?._worshipSectionTitle
+    || section.sectionTitle
+    || "",
+  ).trim();
+  return presenterSongTitleNormalizedHeading(heading, String(section.sectionKey || item?._worshipSectionKey || "").trim());
+}
+
+function presenterSongTitleNormalizedHeading(heading = "", sectionKey = "") {
+  const raw = String(heading || "").trim();
+  if (!raw) return "";
+  const compact = compactSearchValue(raw);
+  const compactSectionKey = String(sectionKey || "").trim();
+  const genericBySection = {
+    offering: "봉헌",
+    doxology: "송영",
+    sending: "파송",
+    closing_hymn: "폐회",
+    closing_visual: "폐회",
+    closing_song: "폐회",
+    hymn_praise: "찬송",
+    response_song: "결단",
+  };
+  const canonicalBySection = {
+    offering: "봉헌찬송",
+    doxology: "송영",
+    sending: "송영",
+    closing_hymn: "폐회찬송",
+    closing_visual: "폐회찬송",
+    closing_song: "폐회찬송",
+    hymn_praise: "찬송",
+    response_song: "결단찬송",
+  };
+  if (compact === genericBySection[compactSectionKey]) return canonicalBySection[compactSectionKey] || raw;
+  return raw;
 }
 
 function presenterSongTitleUsesSectionHeading(item = {}, section = {}) {
   if (section.sectionRole === "main-praise") return false;
   const sectionKey = String(section.sectionKey || item?._worshipSectionKey || "").trim();
-  if (!sectionKey) return false;
-  return [
+  if ([
     "hymn_praise",
     "response_song",
     "offering",
@@ -1772,7 +1801,10 @@ function presenterSongTitleUsesSectionHeading(item = {}, section = {}) {
     "closing_song",
     "closing_hymn",
     "closing_visual",
-  ].includes(sectionKey);
+  ].includes(sectionKey)) return true;
+  const compact = compactSearchValue(item?.label || section.elementLabel || section.sectionLabel || "");
+  if (!compact) return false;
+  return /^(송영|파송|봉헌|봉헌찬송|봉헌찬양|파송찬송|폐회|폐회찬송|결단찬송|결단찬양)$/.test(compact);
 }
 
 function formatPresenterSongTitleText(title) {
@@ -2126,6 +2158,9 @@ function bindPresenterChannel() {
       else clearPresenterJumpDraft(state.presenter.serviceId);
     }
   };
+  // The output can stay open while the controller reloads. Ask it to announce
+  // itself again so sidebar clicks immediately return to live-output behavior.
+  state.presenter.channel.postMessage({ type: "presenter-controller-ready" });
 }
 
 function handlePresenterStorageSignal(event) {
@@ -2447,8 +2482,6 @@ function initPresenterOutputCore() {
     };
     channel?.postMessage(payload);
     safeStorageSet("local", PRESENTER_SIGNAL_KEY, JSON.stringify(payload));
-    currentPayload = normalizePresenterPayload(presenterStoppedPayload());
-    renderPresenterOutput(currentPayload, { onAutoAdvance: requestPresenterOutputNext });
     window.setTimeout(() => {
       closeOutputChannel();
       if (canCloseOutputWindow()) window.close();
@@ -2490,9 +2523,12 @@ function initPresenterOutputCore() {
         applyInitialPresenterState(event.data.payload);
         return;
       }
+      if (event.data?.type === "presenter-controller-ready") {
+        channel.postMessage({ type: "presenter-ready", clientId: outputClientId });
+        postHeartbeat();
+        return;
+      }
       if (event.data?.type === "presenter-output-close") {
-        currentPayload = normalizePresenterPayload(presenterStoppedPayload());
-        renderPresenterOutput(currentPayload, { onAutoAdvance: requestPresenterOutputNext });
         window.setTimeout(() => {
           closeOutputChannel();
           window.close();
@@ -3357,7 +3393,7 @@ function renderPresenterSlideFrame(slide, options = {}) {
   const extraClasses = presenterSlideExtraClasses(slide);
   const body = renderPresenterSlideBody(slide, options);
   const sectionKey = String(slide?.sectionKey || slide?.section_key || "").trim();
-  const backgroundStyle = presenterScriptureContextUsesReadingForm(slide?.scriptureContext) && !slide?.suppressBackgroundImage && !slide?.noBackgroundImage
+  const backgroundStyle = slide?.scriptureContext === "reading" && !slide?.suppressBackgroundImage && !slide?.noBackgroundImage
     ? ` style="--presenter-slide-bg-image: url('${escapeAttr(PRESENTER_SCRIPTURE_READING_BACKGROUND)}')"`
     : "";
   return `
@@ -3374,6 +3410,7 @@ function presenterSlideExtraClasses(slide) {
   if (slide?.sourceType === "score" || slide?.componentType === "score" || slide?.scoreBackground) classes.push("presenter-slide--score");
   if (layout !== PRESENTER_SLIDE_LAYOUTS.BLANK && presenterScriptureContextUsesReadingForm(slide?.scriptureContext)) classes.push("presenter-slide--scripture-reading");
   if (layout !== PRESENTER_SLIDE_LAYOUTS.BLANK && slide?.scriptureContext === "sermon") classes.push("presenter-slide--scripture-sermon");
+  if (layout !== PRESENTER_SLIDE_LAYOUTS.BLANK && slide?.scriptureContext === "citation") classes.push("presenter-slide--scripture-citation");
   return classes.join(" ");
 }
 
@@ -3542,7 +3579,10 @@ function presenterTitleAssigneeIsSermon(slide = {}) {
 }
 
 function renderPresenterSectionSongTitleSlide(slide) {
-  const heading = String(slide.sectionHeading || slide.label || slide.sectionLabel || "").trim();
+  const heading = presenterSongTitleNormalizedHeading(
+    String(slide.sectionHeading || slide.label || slide.sectionLabel || "").trim(),
+    String(slide.sectionKey || slide._worshipSectionKey || "").trim(),
+  );
   const title = String(slide.text || formatPresenterSongTitleText(slide.title || "")).trim();
   const headingChars = presenterLineCharEstimate(heading);
   const titleChars = presenterLineCharEstimate(title);

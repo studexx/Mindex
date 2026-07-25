@@ -2,19 +2,23 @@ from __future__ import annotations
 
 import sys
 import unittest
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from scripts.youtube_live_schedule import (
+    KST,
     find_playlist_by_title,
     find_existing_broadcast,
     is_same_service_date,
     live_description,
     live_title,
-    normalize_passage,
+    next_sunday,
     playlist_title_for_source,
+    reservation_source,
     scheduled_end_time,
+    target_date_from_args,
     validate_title,
 )
 
@@ -22,9 +26,6 @@ from scripts.youtube_live_schedule import (
 SOURCE = {
     "date": "2026-07-05",
     "scheduledStartTime": "2026-07-05T10:45:00+09:00",
-    "sermonTitle": "눈을 뜨시오",
-    "passage": "요 9:1–7",
-    "preacher": "김남영 목사",
 }
 
 
@@ -32,15 +33,25 @@ class YoutubeLiveScheduleTests(unittest.TestCase):
     def test_live_title_uses_channel_format(self) -> None:
         self.assertEqual(
             live_title(SOURCE),
-            "눈을 뜨시오 (요 9:1–7) | 김남영 목사 | 검단우리교회 주일예배 | 2026-07-05",
+            "[LIVE] 검단우리교회 주일예배 | 2026-07-05",
         )
 
     def test_live_description_is_empty(self) -> None:
         self.assertEqual(live_description(SOURCE), "")
 
-    def test_normalize_passage_uses_en_dash_for_ranges(self) -> None:
-        self.assertEqual(normalize_passage("에 9:20-32"), "에 9:20–32")
-        self.assertEqual(normalize_passage("창 21:8~21"), "창 21:8–21")
+    def test_next_sunday_skips_today_when_today_is_sunday(self) -> None:
+        self.assertEqual(next_sunday(date(2026, 7, 26)), date(2026, 8, 2))
+        self.assertEqual(next_sunday(date(2026, 7, 27)), date(2026, 8, 2))
+
+    def test_default_target_date_is_next_sunday_in_utc_plus_9(self) -> None:
+        utc_now = datetime(2026, 7, 26, 15, 30, tzinfo=timezone.utc)
+        self.assertEqual(target_date_from_args(None, 0, now=utc_now), date(2026, 8, 2))
+        self.assertEqual(KST.utcoffset(None).total_seconds(), 9 * 60 * 60)
+
+    def test_reservation_source_uses_1045_utc_plus_9(self) -> None:
+        source = reservation_source(date(2026, 8, 2))
+        self.assertEqual(source["date"], "2026-08-02")
+        self.assertEqual(source["scheduledStartTime"], "2026-08-02T10:45:00+09:00")
 
     def test_scheduled_end_time_defaults_from_start(self) -> None:
         self.assertEqual(scheduled_end_time(SOURCE, 90), "2026-07-05T12:15:00+09:00")
@@ -55,7 +66,7 @@ class YoutubeLiveScheduleTests(unittest.TestCase):
     def test_existing_broadcast_match_uses_kst_service_date(self) -> None:
         broadcast = {
             "snippet": {
-                "title": "눈을 뜨시오 (요 9:1–7) | 김남영 목사 | 검단우리교회 주일예배 | 2026-07-05",
+                "title": "[LIVE] 검단우리교회 주일예배 | 2026-07-05",
                 "scheduledStartTime": "2026-07-05T01:45:00Z",
             }
         }
