@@ -8983,7 +8983,7 @@ const SERVICE_DEFAULT_BACKGROUND_GROUPS = {
   children: "C",
 };
 const SERVICE_DEFAULT_BACKGROUND_FILES = {
-  friday: "26-A3.png",
+  friday: "26-B4.png",
 };
 const WORSHIP_BACKGROUND_STATIC_FILES = new Set([
   "26-A1.png",
@@ -9059,11 +9059,7 @@ function presenterBackgroundSourcesForService(service) {
     sourceRef.backgroundImage,
     sourceRef.background,
   );
-  // Friday used to persist its rotating B4 default as an explicit source.
-  // Treat that one legacy value as the new fixed Friday default instead.
-  const isLegacyFridayDefault = worshipAppServiceTypeId(service?.type_id || "") === "friday"
-    && worshipBackgroundFileNameFromPath(value) === "26-B4.png";
-  if (!value || isLegacyFridayDefault) {
+  if (!value) {
     const defaultFileName = presenterDefaultBackgroundFileNameForService(service);
     return defaultFileName ? worshipBackgroundSourcesForFileName(defaultFileName) : [];
   }
