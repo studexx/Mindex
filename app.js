@@ -21612,6 +21612,9 @@ function buildServicePresenterSlides(serviceId) {
 function normalizePresenterSlidesForServiceOutput(slides = [], service = null) {
   const chromakey = presenterServiceUsesChromakey(service);
   return slides.map((slide) => {
+    const outputContext = presenterSlideOutputContext(slide, chromakey);
+    if (outputContext === "clean") return normalizeCleanPresenterSlideLayout(slide);
+    if (outputContext === "chromakey") return normalizeChromakeyPresenterSlideLayout(slide);
     return chromakey
       ? normalizeChromakeyPresenterSlideLayout(slide)
       : normalizeCleanPresenterSlideLayout(slide);
@@ -22214,7 +22217,7 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
   const confessionPrayer = isConfessionPrayerServiceItem(item);
   const section = presenterSectionForServiceItem(item, index, displayText, song, version);
   const withIntro = (slides) => presenterSlidesWithIntroSlide(item, section, index, memo, slides);
-  const withSpecialTitle = (slides) => presenterSlidesWithSpecialSongTitle(item, section, slides, index);
+  const withSpecialTitle = (slides) => presenterSlidesWithSpecialSongTitle(item, section, slides, index, service);
   const withIntroAndSpecialTitle = (slides) => withIntro(withSpecialTitle(slides));
   const contentState = resolvePresenterServiceItemContentState(item, memo, song, service);
   const fixedTitle = presenterFixedTitleText(item);
@@ -22290,7 +22293,7 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
 	        ...(song && shouldIncludeSongTitleSlide(item, label) ? [presenterSongTitleSlide(item, section, song, version, displayText, index)] : []),
         ...scoreSlides,
       ];
-    return withIntro(presenterSlidesWithSpecialSongTitle(item, section, slides, index));
+    return withIntro(presenterSlidesWithSpecialSongTitle(item, section, slides, index, service));
   }
 
   if (song && forms.length) {
@@ -22336,7 +22339,7 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
       ? presenterSlidesWithSpecialSongTitle(item, section, [
           presenterSongTitleSlide(item, section, song, version, displayText, index),
           ...lyricsSlides,
-        ], index)
+        ], index, service)
       : lyricsSlides;
     return withIntro(slides);
   }
@@ -22347,7 +22350,7 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
 	      ...(song && shouldIncludeSongTitleSlide(item, label) ? [presenterSongTitleSlide(item, section, song, version, displayText, index)] : []),
       ...scoreSlides,
     ];
-    return withIntro(presenterSlidesWithSpecialSongTitle(item, section, slides, index));
+    return withIntro(presenterSlidesWithSpecialSongTitle(item, section, slides, index, service));
   }
 
   const { no, title } = splitHymnNo(displayText);
@@ -22367,7 +22370,7 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
     sectionHeading,
     text: formatPresenterSongTitleText(presenterSongTitleDisplayTitle(null, null, displayText, sectionHeading)),
     sort: index,
-  }], index));
+  }], index, service));
 }
 
 function shouldSuppressMainPraiseScoreSongTitle(item = {}, service = {}) {

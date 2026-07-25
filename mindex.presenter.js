@@ -40,18 +40,25 @@ function presenterIntroSlideFromMemo(item = {}, section = {}, index = 0, memo = 
   };
 }
 
-function presenterSlidesWithSpecialSongTitle(item = {}, section = {}, slides = [], index = 0) {
-  if (!shouldIncludeSpecialSongSectionTitleSlide(item, section, slides)) return slides;
+function presenterSlidesWithSpecialSongTitle(item = {}, section = {}, slides = [], index = 0, service = null) {
+  if (!shouldIncludeSpecialSongSectionTitleSlide(item, section, slides)) {
+    return presenterSlidesWithSundayMainSpecialSongOutput(slides, item, section, service);
+  }
   const titleSlideIndex = slides.findIndex((slide) => slide?.type === "song-title");
   const existingSpecialTitleIndex = slides.findIndex((slide) =>
     slide?.type === "title-assignee"
     && normalizeTitle(slide.title) === normalizeTitle("특송"));
   const existingSpecialTitle = existingSpecialTitleIndex >= 0 ? slides[existingSpecialTitleIndex] : null;
-  if (existingSpecialTitle?.missingContent) return slides;
+  if (existingSpecialTitle?.missingContent) {
+    return presenterSlidesWithSundayMainSpecialSongOutput(slides, item, section, service);
+  }
   const titleSlide = titleSlideIndex >= 0 ? slides[titleSlideIndex] : null;
   const remainingSlides = slides.filter((_, slideIndex) =>
     slideIndex !== existingSpecialTitleIndex);
-  return [presenterSpecialSongSectionTitleSlide(item, section, index, titleSlide), ...remainingSlides];
+  return presenterSlidesWithSundayMainSpecialSongOutput([
+    presenterSpecialSongSectionTitleSlide(item, section, index, titleSlide),
+    ...remainingSlides,
+  ], item, section, service);
 }
 
 function presenterSlidesWithScriptureReadingTitle(item = {}, section = {}, slides = [], index = 0) {
@@ -96,6 +103,23 @@ function isPresenterSpecialSongItem(item = {}, section = {}) {
   const sectionKey = String(section.sectionKey || item?._worshipSectionKey || "").trim();
   if (sectionKey === "special_song") return true;
   return compactSearchValue(item?._worshipSectionTitle || "") === "특송";
+}
+
+function presenterSlidesWithSundayMainSpecialSongOutput(slides = [], item = {}, section = {}, service = null) {
+  if (!shouldUseSundayMainSpecialSongCleanOutput(item, section, service)) return slides;
+  return (Array.isArray(slides) ? slides : []).map((slide) => ({
+    ...slide,
+    outputContext: "clean",
+  }));
+}
+
+function shouldUseSundayMainSpecialSongCleanOutput(item = {}, section = {}, service = null) {
+  if (!isPresenterSpecialSongItem(item, section)) return false;
+  const rawType = String(service?.type_id || service?.typeId || "").trim();
+  const typeId = typeof worshipAppServiceTypeId === "function"
+    ? worshipAppServiceTypeId(rawType)
+    : rawType;
+  return typeId === "sunday-main";
 }
 
 function presenterSpecialSongSectionTitleSlide(item = {}, section = {}, index = 0, songTitleSlide = null) {
