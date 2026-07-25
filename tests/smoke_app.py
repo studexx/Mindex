@@ -2605,6 +2605,7 @@ def main() -> int:
                             ];
                             const offering = projected.find((item) => item.label === '봉헌찬양');
                             const fellowship = projected.find((item) => item.label === '반별 모임');
+                            const announcement = projected.find((item) => item.label === '청소년부 광고');
                             const offeringSong = presenterSongForServiceItem(
                               offering,
                               serviceItemDisplayText(offering),
@@ -2634,6 +2635,7 @@ def main() -> int:
                               offeringReady: offeringContent.state === 'filled' && offeringContent.reason === 'song',
                               fellowshipStatic: presenterServiceInputItem({ ...fellowship, raw_title: '' }, service) === null,
                               fellowshipContent: fellowshipContent.reason,
+                              announcementEditable: presenterServiceInputItem(announcement, service)?.mode === 'text',
                               childrenLastSection: serviceOrderTemplate('children', { service: childrenService }).at(-1)?.label || '',
                               scheduledOnIntegratedSunday: autoUpcomingPublicServiceTargets('2026-07-20')
                                 .some((item) => item.typeId === 'youth' && item.date === '2026-07-26'),
@@ -2651,13 +2653,14 @@ def main() -> int:
                         ],
                         "labels": [
                             "대기 영상", "사도신경", "찬양 1", "찬양 2", "찬양 3", "기도", "봉헌찬양", "봉헌기도",
-                            "성경봉독", "설교 제목", "인용 구절", "결단기도", "주기도문", "교회소식", "반별 모임",
+                            "성경봉독", "설교 제목", "인용 구절", "결단기도", "주기도문", "청소년부 광고", "반별 모임",
                         ],
                         "offeringTitle": "",
                         "offeringLinked": True,
                         "offeringReady": True,
                         "fellowshipStatic": True,
                         "fellowshipContent": "fixed_title",
+                        "announcementEditable": True,
                         "childrenLastSection": "교제",
                         "scheduledOnIntegratedSunday": False,
                     }:
@@ -3635,9 +3638,25 @@ def main() -> int:
                               const content = resolvePresenterServiceItemContentState(item, parseServiceItemMemo(item?.memo), null, service);
                               return { label, state: content.state, reason: content.reason };
                             });
+                            const missingSlides = buildServicePresenterSlides(service.id).filter((slide) => slide?.missingContent).length;
+                            const reading = items.find((entry) => entry.label === '성경봉독');
+                            const readingMemo = parseServiceItemMemo(reading?.memo);
+                            readingMemo.scriptureReference = '요 3:16';
+                            reading.raw_title = '요 3:16';
+                            reading.memo = serializeServiceItemMemo(readingMemo);
+                            reading._worshipTemplatePlaceholder = false;
+                            cacheServiceScriptureVerses(parseBibleReference('요 3:16'), [
+                              { book_code: 'JHN', chapter: 3, verse: 16, text: '하나님이 세상을 이처럼 사랑하사' },
+                            ]);
+                            const announcement = items.find((entry) => entry.label === '청소년부 광고');
+                            announcement.raw_title = '다음 주 토요일 여름수련회 준비 모임';
+                            announcement._worshipTemplatePlaceholder = false;
+                            const preparedSlides = buildServicePresenterSlides(service.id);
                             return {
                               states,
-                              missingSlides: buildServicePresenterSlides(service.id).filter((slide) => slide?.missingContent).length,
+                              missingSlides,
+                              readingSlides: preparedSlides.filter((slide) => slide?.sectionKey === 'scripture_reading').map((slide) => slide.type),
+                              announcement: preparedSlides.find((slide) => slide?.elementLabel === '청소년부 광고') || {},
                             };
                           } finally {
                             state.services = previousServices;
@@ -3651,6 +3670,9 @@ def main() -> int:
                         == ["기도", "성경봉독", "설교 제목", "봉헌기도"]
                         and all(entry["state"] == "missing" for entry in youth_missing_input_guard["states"])
                         and youth_missing_input_guard["missingSlides"] >= 4
+                        and youth_missing_input_guard["readingSlides"] == ["title-content", "scripture"]
+                        and youth_missing_input_guard["announcement"].get("type") == "liturgical-body"
+                        and youth_missing_input_guard["announcement"].get("title") == "청소년부 광고"
                     ):
                         pass_("youth-missing-input-guard", json.dumps(youth_missing_input_guard, ensure_ascii=False))
                     else:

@@ -2801,7 +2801,11 @@ function groupWorshipElements(sections = [], elements = []) {
       componentType: config.componentType || config.component_type,
     }) || normalizeWorshipElementType(element.element_type);
     if (configuredElementType === "live_scripture" && compactSearchValue(elementLabel) === "실시간성구송출") return grouped;
-    const elementType = sectionKey === "announcements" ? "title" : configuredElementType;
+    const youthAnnouncementBody = sectionKey === "announcements"
+      && compactSearchValue(elementLabel) === "청소년부광고";
+    const elementType = sectionKey === "announcements" && !youthAnnouncementBody
+      ? "title"
+      : configuredElementType;
     const inputMode = normalizeServiceInputMode(
       element.input_mode
       || element.content_state?.inputMode
@@ -6551,6 +6555,7 @@ function updateServiceItemField(field) {
   const key = field.dataset.serviceItemField;
   const service = state.services.find((candidate) => candidate.id === serviceId) || selectedServiceForEditor();
   item._worshipElementTemplateModified = true;
+  item._worshipTemplatePlaceholder = false;
   const strictSongInput = key === "raw_title" && serviceItemRequiresSongSelection(item, service);
   if (key === "label" || key === "assignee" || key === "raw_title") {
     item[key] = key === "raw_title" ? normalizeServiceItemRawTitleForItem(item, field.value) : field.value;
@@ -14177,7 +14182,7 @@ function youthWorshipTemplate() {
     publicWorshipSermonStep({ typeId: "youth", includeSermonBody: false }),
     publicWorshipResponseStep(),
     publicWorshipLordsPrayerStep(),
-    publicWorshipAnnouncementsStep(),
+    youthWorshipAnnouncementsStep(),
     {
       label: "교제",
       name: "교제",
@@ -14197,6 +14202,17 @@ function publicWorshipAnnouncementsStep() {
     flex: false,
     sectionKey: "announcements",
     elements: [{ label: "교회소식", name: "교회소식", elementType: "title", default_text: "교회소식" }],
+  };
+}
+
+function youthWorshipAnnouncementsStep() {
+  return {
+    label: "광고",
+    name: "광고",
+    required: false,
+    flex: true,
+    sectionKey: "announcements",
+    elements: [{ label: "청소년부 광고", name: "청소년부 광고", elementType: "body" }],
   };
 }
 
@@ -15006,6 +15022,8 @@ function templateProjectionRawTitle(templateItem = {}, existingItem = {}, elemen
   const sectionKey = templateProjectionSectionKey(templateItem);
   const existingTitle = String(existingItem.raw_title || "").trim();
   const templateLabel = String(templateItem.label || "").trim();
+  if (compactSearchValue(templateLabel) === "청소년부광고"
+    && ["교회소식", "광고"].includes(compactSearchValue(existingTitle))) return "";
   // A generated slot name such as "찬양 1" is not a song query. Keep real
   // template defaults (for example a hymn title), but clear this placeholder.
   if (isSongServiceLabel(templateLabel)
@@ -19285,6 +19303,7 @@ async function applyPresenterPreparationInput(serviceId = state.selectedServiceI
         item.raw_title = "";
         if (assignee) item.assignee = assignee;
         item._worshipElementTemplateModified = true;
+        item._worshipTemplatePlaceholder = false;
         const versions = serviceSelectableSongVersions(song, item, service);
         const preferredVersion = preferredNewHymnalVersion(song, versions);
         if (preferredVersion) item.version_id = preferredVersion.id;
@@ -19301,6 +19320,7 @@ async function applyPresenterPreparationInput(serviceId = state.selectedServiceI
         }
         item.raw_title = reference;
         item._worshipElementTemplateModified = true;
+        item._worshipTemplatePlaceholder = false;
         item.memo = serializeServiceItemMemo({
           ...memo,
           elementType: "scripture_body",
@@ -19323,6 +19343,7 @@ async function applyPresenterPreparationInput(serviceId = state.selectedServiceI
         item.raw_title = normalizeServiceItemRawTitleForItem(item, content);
       }
       item._worshipElementTemplateModified = true;
+      item._worshipTemplatePlaceholder = false;
     }
 
     if (citationReferences) {
@@ -19411,13 +19432,13 @@ function presenterServiceInputIsStatic(item = {}, memo = parseServiceItemMemo(it
       memo,
       state.services.find((candidate) => candidate.id === item?.service_id) || null,
     )
-    || isLiturgicalBodyServiceItem(item)
+    || (isLiturgicalBodyServiceItem(item) && compactSearchValue(item?.label || "") !== "청소년부광고")
     || isConfessionPrayerServiceItem(item)
     || isRedundantFullscreenSermonBodyServiceItem(item, service)
     || usesSharedScripture
     || usesSharedSundayContent
     || label === "환영"
-    || sectionKey === "announcements"
+    || (sectionKey === "announcements" && compactSearchValue(item?.label || "") !== "청소년부광고")
     || sectionKey === "closing_visual";
 }
 
@@ -19442,6 +19463,7 @@ function presenterServiceTextInputSpec(item, model, memo) {
   const label = compactSearchValue(item.label || "");
   const genericTitle = presenterTitleAssigneeTitleIsGeneric(item.raw_title || "", item.label || "");
   const needsTitle = /설교제목|특송|공동기도/.test(label)
+    || label === "청소년부광고"
     || (Boolean(String(item.raw_title || "").trim()) && !genericTitle && elementType !== "title_person");
   const needsAssignee = elementType === "title_person"
     && /설교|기도|특송|축도/.test(label);
@@ -21323,6 +21345,7 @@ function preparePresenterService(serviceId = state.selectedServiceId) {
   if (!songCatalogLoaded && !songLoadPromise && canUseClientData()) {
     void loadSongs().then(() => refreshPresenterForService(serviceId));
   }
+  schedulePendingServiceScriptureResolves(serviceId);
   const slides = buildServicePresenterSlides(serviceId);
   if (state.presenter.serviceId !== serviceId) {
     stopServiceMusicPlayback({ clearSource: true, mode: "manual", render: false });
@@ -21337,6 +21360,17 @@ function preparePresenterService(serviceId = state.selectedServiceId) {
   state.presenter.index = clampPresenterIndex(state.presenter.index, slides.length);
   if (!slides.length) state.presenter.safetyBlank = false;
   syncServiceMusicWithPresenterContext(serviceId, { render: false });
+}
+
+function schedulePendingServiceScriptureResolves(serviceId) {
+  const items = getServiceItems(serviceId);
+  items.forEach((item, index) => {
+    if (!isScriptureBodyServiceItem(item)) return;
+    const memo = parseServiceItemMemo(item.memo);
+    if (!serviceItemScriptureReferences(item, memo).length) return;
+    if (serviceScriptureTextPayload(item, memo).verses.length) return;
+    scheduleServiceScriptureBodyResolve(serviceId, index);
+  });
 }
 
 function refreshPresenterForService(serviceId, options = {}) {
