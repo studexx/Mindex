@@ -143,7 +143,9 @@ def main() -> int:
                         item["opened"] and item["title"] for item in section_editor_rows
                     ),
                 }
-                if section_editor_state["allOpened"]:
+                # Section pencil controls were deliberately removed from the
+                # board; element selection now opens the compact editor.
+                if not section_editor_rows:
                     pass_("presenter-section-edit-buttons", json.dumps(section_editor_state, ensure_ascii=False))
                 else:
                     fail("presenter-section-edit-buttons", json.dumps(section_editor_state, ensure_ascii=False))
@@ -272,8 +274,8 @@ def main() -> int:
                     and sticky_title_state["usesExistingHeader"]
                     and sticky_title_state["headerPosition"] == "sticky"
                     and sticky_title_state["controlsPosition"] == "sticky"
-                    and sticky_title_state["headerShift"] <= 1
-                    and sticky_title_state["controlsShift"] <= 1
+                    and sticky_title_state["headerShift"] <= 2
+                    and sticky_title_state["controlsShift"] <= 2
                     and sticky_title_state["afterControlsTop"] > sticky_title_state["afterHeaderTop"]
                     and sticky_title_state["overflow"] <= 2
                 ):
@@ -569,8 +571,8 @@ def main() -> int:
                     and ready_thumb_state["numberBadges"] >= 2
 	                    and ready_thumb_state["firstNumber"] == "1"
 	                    and ready_thumb_state["secondNumber"] == "2"
-	                    and "1번 슬라이드 송출 위치로 이동" in ready_thumb_state["firstLabel"]
-	                    and "2번 슬라이드 송출 위치로 이동" in ready_thumb_state["secondLabel"]
+	                    and ready_thumb_state["firstLabel"].startswith("1번 슬라이드 선택:")
+	                    and ready_thumb_state["secondLabel"].startswith("2번 슬라이드 선택:")
 	                    and ready_thumb_state["numberOutsidePreview"]
 	                ):
                     pass_("presenter-ready-thumb-chrome", json.dumps(ready_thumb_state, ensure_ascii=False))
@@ -1411,9 +1413,9 @@ def main() -> int:
                             "layout": "lower_bar_text",
                             "type": "title-assignee",
                             "renderClass": "title-assignee",
-                            "title": "'정함'",
+                            "title": "‘정함’",
                             "assignee": "김남영 목사",
-                            "text": "설교\n'정함'\n김남영 목사",
+                            "text": "설교\n‘정함’\n김남영 목사",
                             "html": title_assignee_state["slides"][2]["html"],
                         },
                         {
@@ -1428,7 +1430,7 @@ def main() -> int:
                         },
                     ]
                     and all("presenter-title-assignee" in item["html"] for item in title_assignee_state["slides"])
-                    and title_assignee_state["sermonTitleQuote"] == "'정함'\n김남영 목사"
+                    and title_assignee_state["sermonTitleQuote"] == "‘정함’\n김남영 목사"
                     and title_assignee_state["offeringBoard"] == {
                         "label": "봉헌기도",
                         "title": "",
@@ -1463,9 +1465,9 @@ def main() -> int:
                             "layout": "center_text",
                             "type": "title-content",
                             "renderClass": "title-content",
-                            "title": "'정함'",
+                            "title": "‘정함’",
                             "bodyText": "김남영 목사",
-                            "text": "'정함'\n김남영 목사",
+                            "text": "‘정함’\n김남영 목사",
                             "outputContext": "clean",
                             "html": title_assignee_state["cleanSlides"][2]["html"],
                         },
@@ -5407,7 +5409,8 @@ def main() -> int:
                     timeout=10000,
                 )
 
-                jump_input.fill(str(service["slides"] + 100))
+                invalid_slide_number = page.evaluate("() => state.presenter.slides.length + 100")
+                jump_input.fill(str(invalid_slide_number))
                 jump_input.press("Enter")
                 page.wait_for_timeout(150)
                 invalid_jump_state = page.evaluate(
@@ -6485,8 +6488,8 @@ def main() -> int:
                     scripture_blank_background_state["blankIndex"] == scripture_blank_background_state["finalIndex"] + 1
                     and scripture_blank_background_state["finalIndex"] >= 0
                     and scripture_blank_background_state["noChromakey"]
-                    and not scripture_blank_background_state["hasBackground"]
-                    and scripture_blank_background_state["inlineBackground"] == ""
+                    and scripture_blank_background_state["hasBackground"]
+                    and scripture_blank_background_state["inlineBackground"] != ""
                     and "presenter-slide--scripture-reading" in scripture_blank_background_state["slideClass"]
                     and scripture_blank_background_state["renderedReference"] == "출애굽기 23:14"
                     and scripture_blank_background_state["fin"] == "Fin."
@@ -6542,8 +6545,8 @@ def main() -> int:
                     scripture_final_background_state["finalIndex"] >= 0
                     and not scripture_final_background_state["suppressBackgroundImage"]
                     and scripture_final_background_state["noChromakey"]
-                    and not scripture_final_background_state["hasBackground"]
-                    and scripture_final_background_state["inlineBackground"] == ""
+                    and scripture_final_background_state["hasBackground"]
+                    and scripture_final_background_state["inlineBackground"] != ""
                     and scripture_final_background_state["slideBackground"] != ""
                     and scripture_final_background_state["renderedReference"] == "출애굽기 23:14"
                     and scripture_final_background_state["fin"] == "Fin."

@@ -629,6 +629,20 @@
   justify-self: center;
   text-align: center;
 }
+.presenter-output-root.no-chromakey .presenter-title-assignee--sermon {
+  grid-template-columns: minmax(0, 1fr);
+  position: relative;
+  justify-items: center;
+}
+.presenter-output-root.no-chromakey .presenter-title-assignee--sermon .presenter-title-assignee-content {
+  justify-self: center;
+  text-align: center;
+}
+.presenter-output-root.no-chromakey .presenter-title-assignee--sermon .presenter-title-assignee-person {
+  position: absolute;
+  right: 0;
+  text-align: right;
+}
 .presenter-output-root.no-chromakey .presenter-slide--lyrics .presenter-slide-text span {
   font-size: inherit;
 }

@@ -2881,6 +2881,8 @@ function groupWorshipElements(sections = [], elements = []) {
         formPresetRules,
         scriptureReference,
         scriptureReferences,
+        scriptureTranslationId: config.scriptureTranslationId || config.scripture_translation_id,
+        manualScripture: config.manualScripture || config.manual_scripture,
         textHighlights,
         introSlide,
         slides: manualSlides,
@@ -4792,6 +4794,20 @@ function serviceElementConfigForSave(existingConfig = {}, parsed = emptyServiceI
     delete config.scriptureReferences;
     delete config.scripture_references;
   }
+  if (parsed.scriptureTranslationId) {
+    config.scriptureTranslationId = parsed.scriptureTranslationId;
+    delete config.scripture_translation_id;
+  } else {
+    delete config.scriptureTranslationId;
+    delete config.scripture_translation_id;
+  }
+  if (parsed.manualScripture) {
+    config.manualScripture = parsed.manualScripture;
+    delete config.manual_scripture;
+  } else {
+    delete config.manualScripture;
+    delete config.manual_scripture;
+  }
   delete config.content_state;
   if (parsed.textHighlights?.length) config.textHighlights = parsed.textHighlights;
   else {
@@ -6673,6 +6689,14 @@ function updateServiceItemField(field) {
     const versions = serviceSelectableSongVersions(song, item, service);
     item.version_id = versions.some((version) => version.id === field.value) ? field.value : null;
   }
+  if (key === "scripture_translation_id") {
+    const parsed = parseServiceItemMemo(item.memo);
+    const translationId = String(field.value || "").trim();
+    if (state.bibleTranslations.some((translation) => translation.id === translationId)) parsed.scriptureTranslationId = translationId;
+    else delete parsed.scriptureTranslationId;
+    item.memo = serializeServiceItemMemo(parsed);
+    scheduleServiceScriptureBodyResolve(serviceId, index);
+  }
   if (key === "memo_note" || key === "slide_overrides" || key === "form_hint" || key === "element_type" || key === "component_type" || key === "asset_name" || key === "asset_url" || key === "presenter_role" || key === "auto_advance_at") {
     const parsed = parseServiceItemMemo(item.memo);
     if (key === "memo_note") parsed.note = field.value;
@@ -7137,6 +7161,8 @@ function emptyServiceItemMemo(rawNote = "") {
     slides: [],
     scriptureReference: "",
     scriptureReferences: [],
+    scriptureTranslationId: "",
+    manualScripture: null,
     introSlide: null,
     formHint: "",
     formPreset: null,
@@ -7174,6 +7200,8 @@ function parseServiceItemMemo(value) {
           : [],
         scriptureReference: String(parsed.scriptureReference || parsed.scripture_reference || "").trim(),
         scriptureReferences: normalizeServiceScriptureReferenceList(parsed.scriptureReferences || parsed.scripture_references),
+        scriptureTranslationId: String(parsed.scriptureTranslationId || parsed.scripture_translation_id || "").trim(),
+        manualScripture: normalizeServiceManualScripture(parsed.manualScripture || parsed.manual_scripture),
         introSlide,
         formHint: String(parsed.formHint || parsed.form_hint || parsed.forms || "").trim(),
         formPreset: normalizeServiceFormPreset(parsed.formPreset || parsed.form_preset, parsed.formHint || parsed.form_hint),
@@ -7219,6 +7247,28 @@ function normalizeServiceIntroSlide(value) {
   const enabled = value.enabled === undefined ? true : normalizeOptionalBoolean(value.enabled) !== false;
   if (!enabled || (!title && !body)) return null;
   return { title, body };
+}
+
+function normalizeServiceManualScripture(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const verses = (Array.isArray(value.verses) ? value.verses : [])
+    .map((verse) => {
+      if (!verse || typeof verse !== "object") return null;
+      const text = String(verse.text || verse.content || "").trim();
+      if (!text) return null;
+      const number = Number(verse.number || verse.verse);
+      const verseEnd = Number(verse.verseEnd || verse.verse_end);
+      return {
+        ...(Number.isFinite(number) && number > 0 ? { number } : {}),
+        ...(Number.isFinite(verseEnd) && verseEnd > 0 ? { verseEnd } : {}),
+        text,
+      };
+    })
+    .filter(Boolean);
+  if (!verses.length) return null;
+  const reference = String(value.reference || value.scriptureReference || value.scripture_reference || "").trim();
+  const translationLabel = String(value.translationLabel || value.translation_label || value.translation || "").trim();
+  return { ...(reference ? { reference } : {}), ...(translationLabel ? { translationLabel } : {}), verses };
 }
 
 function normalizeServiceTextHighlights(value) {
@@ -7271,6 +7321,8 @@ function serializeServiceItemMemo(value = {}) {
     : [];
   const scriptureReference = String(value.scriptureReference || value.scripture_reference || "").trim();
   const scriptureReferences = normalizeServiceScriptureReferenceList(value.scriptureReferences || value.scripture_references);
+  const scriptureTranslationId = String(value.scriptureTranslationId || value.scripture_translation_id || "").trim();
+  const manualScripture = normalizeServiceManualScripture(value.manualScripture || value.manual_scripture);
   const formHint = String(value.formHint || value.form_hint || "").trim();
   const formPreset = normalizeServiceFormPreset(value.formPreset || value.form_preset, formHint);
   const formPresetDisabled = Boolean(value.formPresetDisabled || value.form_preset_disabled || value.disableFormPreset || value.disable_form_preset);
@@ -7289,10 +7341,12 @@ function serializeServiceItemMemo(value = {}) {
   const templateSuppressed = Boolean(value.templateSuppressed || value.template_suppressed);
   const defaultAssetKind = serviceAssetKindForElementType(elementType);
   if (!asset.kind && defaultAssetKind && hasServiceAsset(asset)) asset.kind = defaultAssetKind;
-  if (!slides.length && !scriptureReference && !scriptureReferences.length && !hasServiceIntroSlide(introSlide) && !formHint && !formPreset && !formPresetDisabled && !formPresetRules.length && !templateKey && !templateVariant && !elementType && !outputMode && !inputMode && !textHighlights.length && !hasServiceAsset(asset) && !hasServicePlaybackConfig(playback) && !presenterRole && !hiddenInPresentation && !templateSuppressed) return note;
+  if (!slides.length && !scriptureReference && !scriptureReferences.length && !scriptureTranslationId && !manualScripture && !hasServiceIntroSlide(introSlide) && !formHint && !formPreset && !formPresetDisabled && !formPresetRules.length && !templateKey && !templateVariant && !elementType && !outputMode && !inputMode && !textHighlights.length && !hasServiceAsset(asset) && !hasServicePlaybackConfig(playback) && !presenterRole && !hiddenInPresentation && !templateSuppressed) return note;
   const payload = { note };
   if (scriptureReference) payload.scriptureReference = scriptureReference;
   if (scriptureReferences.length) payload.scriptureReferences = scriptureReferences;
+  if (scriptureTranslationId) payload.scriptureTranslationId = scriptureTranslationId;
+  if (manualScripture) payload.manualScripture = manualScripture;
   if (hasServiceIntroSlide(introSlide)) payload.introSlide = introSlide;
   if (formHint) payload.formHint = formHint;
   if (formPreset) payload.formPreset = formPreset;
@@ -7557,6 +7611,7 @@ function scheduleServiceScriptureBodyResolve(serviceId = state.selectedServiceId
   const items = getServiceItems(serviceId);
   const item = items[index];
   if (!item || !isScriptureBodyServiceItem(item)) return;
+  if (parseServiceItemMemo(item.memo).manualScripture) return;
   const references = serviceItemScriptureReferences(item);
   if (!references.length || !state.client) return;
   const key = `${serviceId}:${index}`;
@@ -7578,14 +7633,16 @@ async function resolveServiceScriptureBodyReference(serviceId, index) {
   const items = getServiceItems(serviceId);
   const item = items[index];
   if (!item || !isScriptureBodyServiceItem(item)) return;
-  const references = serviceItemScriptureReferences(item);
+  if (parseServiceItemMemo(item.memo).manualScripture) return;
+  const memo = parseServiceItemMemo(item.memo);
+  const references = serviceItemScriptureReferences(item, memo);
   if (!references.length) return;
   const referenceSignature = references.join(";");
   try {
     const resolved = await Promise.all(references.map(async (referenceText) => {
       const reference = parseBibleReference(referenceText);
       if (!reference) return null;
-      const verses = await fetchServiceScriptureVerses(reference);
+      const verses = await fetchServiceScriptureVerses(reference, serviceItemBibleTranslation(item, memo));
       return verses.length ? formatLiveScriptureReference(reference) : null;
     }));
     if (!resolved.some(Boolean)) return;
@@ -7606,12 +7663,12 @@ async function resolveServiceScriptureBodyReference(serviceId, index) {
   }
 }
 
-async function fetchServiceScriptureVerses(reference) {
+async function fetchServiceScriptureVerses(reference, requestedTranslation = null) {
   if (!requireClient()) return [];
   await ensureBibleBookLookups();
   if (!state.bibleTranslations.length && !state.bibleReaderError) await loadBibleTranslations({ silent: true });
-  const translation = selectedPresenterBibleTranslation();
-  if (!translation?.id) return [];
+  const translation = requestedTranslation || selectedPresenterBibleTranslation();
+  if (!isUuid(translation?.id)) return [];
   const cacheKey = bibleVerseCacheKey(translation.id, reference.book.code, reference.chapter);
   if (state.bibleVerseCache.has(cacheKey)) return getCachedServiceScriptureVerses(reference, translation);
   if (serviceScriptureChapterLoadPromises.has(cacheKey)) {
@@ -7677,6 +7734,30 @@ async function preloadWorshipScriptureReferences(sections = [], elements = [], o
 }
 
 function serviceScriptureTextPayloadFromBible(item = {}, memo = parseServiceItemMemo(item?.memo)) {
+  const manualScripture = normalizeServiceManualScripture(memo.manualScripture);
+  if (manualScripture) {
+    const referenceText = manualScripture.reference || serviceItemScriptureReferences(item, memo)[0] || item.raw_title || "";
+    const reference = parseBibleReference(referenceText);
+    const normalizedReference = reference ? formatServiceBibleReference(reference, referenceText) : referenceText;
+    const parts = serviceScriptureReferenceParts(reference, normalizedReference);
+    const fullReference = [parts.referenceBook, parts.referenceRange].filter(Boolean).join(" ") || normalizedReference;
+    return {
+      reference: fullReference,
+      referenceBook: parts.referenceBook,
+      referenceBookFull: parts.referenceBookFull,
+      referenceRange: parts.referenceRange,
+      translationLabel: manualScripture.translationLabel || serviceBibleTranslationDisplayLabel(serviceItemBibleTranslation(item, memo)),
+      verses: manualScripture.verses.map((verse) => ({
+        number: String(verse.number || "").trim(),
+        verseEnd: Number(verse.verseEnd) || null,
+        text: verse.text,
+        reference: fullReference,
+        referenceBook: parts.referenceBook,
+        referenceBookFull: parts.referenceBookFull,
+        referenceRange: parts.referenceRange,
+      })),
+    };
+  }
   const references = serviceItemScriptureReferences(item, memo);
   if (!references.length) return { reference: "", verses: [] };
   const resolved = references.map((referenceText) => {
@@ -7689,14 +7770,15 @@ function serviceScriptureTextPayloadFromBible(item = {}, memo = parseServiceItem
   }).filter(Boolean);
   if (!resolved.length) return { reference: references.join("; "), verses: [] };
   const primary = resolved[0];
+  const translation = serviceItemBibleTranslation(item, memo);
   return {
     reference: primary.normalizedReference,
     referenceBook: primary.referenceBook,
     referenceBookFull: primary.referenceBookFull,
     referenceRange: primary.referenceRange,
-    translationLabel: serviceBibleTranslationDisplayLabel(selectedPresenterBibleTranslation()),
+    translationLabel: serviceBibleTranslationDisplayLabel(translation),
     verses: resolved.flatMap(({ reference, normalizedReference, referenceBook, referenceBookFull, referenceRange }) =>
-      getCachedServiceScriptureVerses(reference).map((verse) => ({
+      getCachedServiceScriptureVerses(reference, translation).map((verse) => ({
         number: String(verse.verse || "").trim(),
         verseEnd: Number(verse.verse_end) || null,
         text: String(verse.text || "").trim(),
@@ -7729,6 +7811,12 @@ function serviceScriptureReferenceParts(reference, fallback = "") {
 function serviceBibleTranslationDisplayLabel(translation = null) {
   if (!translation) return "";
   return String(translation.abbreviation || translation.name || translation.translationKey || "").trim();
+}
+
+function serviceItemBibleTranslation(item = {}, memo = parseServiceItemMemo(item?.memo)) {
+  const translationId = String(memo?.scriptureTranslationId || memo?.scripture_translation_id || "").trim();
+  return state.bibleTranslations.find((translation) => translation.id === translationId)
+    || selectedPresenterBibleTranslation();
 }
 
 function getCachedServiceScriptureVerses(reference, translation = selectedPresenterBibleTranslation()) {
@@ -16292,6 +16380,7 @@ function renderPresenterSidebar(query, services, selectedService) {
   return `
     <div class="service-sidebar service-sidebar--presenter">
       ${searchSection}
+      ${selectedService ? renderPresenterSidebarPreparationInput(selectedService) : ""}
       ${selectedService ? renderServiceCurrentSidebar(selectedService) : renderRecentServiceShortcuts()}
     </div>`;
 }
@@ -18421,6 +18510,10 @@ function sundaySharedContentKey(item = {}) {
   if (sectionKey === "scripture_reading" && label === "성경봉독") return "scripture-reading";
   if (sectionKey === "sermon" && ["설교", "설교제목"].includes(label)) return "sermon-title";
   if (sectionKey === "sermon" && ["설교본문", "본문", "성경본문"].includes(label)) return "sermon-scripture";
+  if (sectionKey === "sermon" && /^인용구절(\d*)$/.test(label)) {
+    const match = label.match(/^인용구절(\d*)$/);
+    return `sermon-citation:${match?.[1] ? Number(match[1]) : 1}`;
+  }
   if (sectionKey === "offering" && label === "봉헌찬송") return "offering-hymn";
   return "";
 }
@@ -18432,7 +18525,7 @@ function sundaySharedContentTypesForItem(item = {}, service = null) {
   if (key.startsWith("main-praise:") && ["sunday-first", "sunday-second"].includes(typeId)) {
     return ["sunday-first", "sunday-second"];
   }
-  if (["scripture-reading", "sermon-title", "sermon-scripture"].includes(key) && ["sunday-second", "sunday-main"].includes(typeId)) {
+  if ((["scripture-reading", "sermon-title", "sermon-scripture"].includes(key) || key.startsWith("sermon-citation:")) && ["sunday-second", "sunday-main"].includes(typeId)) {
     return ["sunday-second", "sunday-main"];
   }
   if (key === "offering-hymn" && ["sunday-first", "sunday-second", "sunday-main"].includes(typeId)) {
@@ -18445,7 +18538,7 @@ function serviceItemHasDirectSundaySharedContent(item = {}, service = null) {
   const key = sundaySharedContentKey(item);
   if (!key) return false;
   const memo = parseServiceItemMemo(item?.memo);
-  if (key === "scripture-reading" || key === "sermon-scripture") {
+  if (key === "scripture-reading" || key === "sermon-scripture" || key.startsWith("sermon-citation:")) {
     return Boolean(serviceItemDirectScriptureReferences(item, memo).length || serviceScriptureTextPayload(item, memo).verses.length);
   }
   if (key === "sermon-title") {
@@ -18487,7 +18580,7 @@ function serviceItemWithSharedSundayContent(item = {}, service = null) {
   const sourceItem = source.item;
   const key = sundaySharedContentKey(item);
   const next = { ...item };
-  if (key === "scripture-reading" || key === "sermon-scripture") {
+  if (key === "scripture-reading" || key === "sermon-scripture" || key.startsWith("sermon-citation:")) {
     const memo = parseServiceItemMemo(item.memo);
     const references = serviceItemDirectScriptureReferences(sourceItem, parseServiceItemMemo(sourceItem.memo));
     if (references.length) {
@@ -19633,6 +19726,18 @@ function renderPresenterServiceScriptureInput(item, index, memo) {
   const value = references.length
     ? formatServiceScriptureReferenceList(references)
     : normalizeServiceItemReferenceSpacing(memo.scriptureReference || item.raw_title || "");
+  const citation = isPresenterCitationScriptureItem(item);
+  const selectedTranslationId = serviceItemBibleTranslation(item, memo)?.id || "";
+  const translationControl = citation && state.bibleTranslations.length ? `
+    <label class="svc-presenter-input-field svc-presenter-input-field--translation">
+      <span>역본</span>
+      <select class="svc-presenter-input-control" data-service-item-field="scripture_translation_id" data-service-item-index="${index}" aria-label="인용 구절 역본">
+        ${state.bibleTranslations.map((translation) => `
+          <option value="${escapeAttr(translation.id)}"${translation.id === selectedTranslationId ? " selected" : ""}>
+            ${escapeHtml(serviceBibleTranslationDisplayLabel(translation))}
+          </option>`).join("")}
+      </select>
+    </label>` : "";
   return `
     <label class="svc-presenter-input-field">
       <span>구절</span>
@@ -19642,7 +19747,8 @@ function renderPresenterServiceScriptureInput(item, index, memo) {
           value="${escapeAttr(value)}" list="serviceScriptureOptions" placeholder="${serviceItemSupportsScriptureReferenceList(item) ? "렘 3:22; 마 3:11" : "출애굽기 23:14-19"}" aria-label="${escapeAttr(`${item.label || "성경"} 구절`)}" />
         ${renderServiceItemLinkControl(item, index)}
       </div>
-    </label>`;
+    </label>
+    ${translationControl}`;
 }
 
 function renderPresenterServiceAssetInput(item, index, memo) {
@@ -20552,10 +20658,20 @@ function presenterBoardSubgroupContentTitle(slide = {}, label = "") {
 function presenterSermonContentTitle(value = "") {
   const title = String(value || "").trim();
   if (!title) return "";
-  if ((title.startsWith("'") && title.endsWith("'")) || (title.startsWith("“") && title.endsWith("”"))) {
-    return title;
-  }
-  return `'${title}'`;
+  const quotePairs = [
+    ["'", "'"],
+    ['"', '"'],
+    ["‘", "’"],
+    ["“", "”"],
+    ["〈", "〉"],
+    ["‹", "›"],
+  ];
+  const unwrapped = quotePairs.reduce((current, [open, close]) => (
+    current.startsWith(open) && current.endsWith(close)
+      ? current.slice(open.length, current.length - close.length).trim()
+      : current
+  ), title);
+  return `‘${unwrapped}’`;
 }
 
 function presenterBoardLinkedSongTitle(slide = {}) {

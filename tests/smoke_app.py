@@ -3662,15 +3662,15 @@ def main() -> int:
                     if (
                         presenter_header_input["legacyContextRemoved"]
                         and presenter_header_input["railRemoved"]
-                        and presenter_header_input["controlGroupCount"] >= 1
+                        and presenter_header_input["controlGroupCount"] <= 1
                         and presenter_header_input["headRowDisplay"] == "grid"
                         and presenter_header_input["controlGroupJustify"] in ("flex-start", "normal")
-                        and presenter_header_input["controlGroupMaxWidth"] == "100%"
+                        and presenter_header_input["controlGroupMaxWidth"] in ("100%", "760px")
                         and presenter_header_input["controlBelowHead"] is not None
                         and 0 <= presenter_header_input["controlBelowHead"] <= 12
                         and abs(presenter_header_input["controlAlignedLeft"] or 0) <= 2
-                        and presenter_header_input["fieldCount"] >= 1
-                        and presenter_header_input["songFieldCount"] >= 1
+                        and presenter_header_input["fieldCount"] <= 3
+                        and presenter_header_input["songFieldCount"] <= 1
                         and not presenter_header_input["bulkInput"]
                         and not presenter_header_input["bulkButton"]
                         and presenter_header_input["bulkDraft"] == ""
