@@ -793,7 +793,7 @@
   height: calc(454 * var(--presenter-stage-unit));
   transform: translateX(-50%) scaleY(0);
   transform-origin: center top;
-  animation: presenter-blank-cross-vertical .32s ease-out forwards;
+  animation: presenter-blank-cross-vertical .55s ease-out forwards;
 }
 .presenter-output-root.no-chromakey .presenter-slide--blank::after {
   top: calc(50% - (87 * var(--presenter-stage-unit)));
@@ -802,7 +802,7 @@
   height: var(--presenter-blank-cross-stroke);
   transform: translateY(-50%) scaleX(0);
   transform-origin: left center;
-  animation: presenter-blank-cross-horizontal .24s ease-out .32s forwards;
+  animation: presenter-blank-cross-horizontal .45s ease-out .55s forwards;
 }
 @keyframes presenter-blank-cross-vertical {
   to { transform: translateX(-50%) scaleY(1); }

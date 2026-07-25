@@ -5355,7 +5355,7 @@ def main() -> int:
                     and blank_cross_animation["verticalDelay"] == "0s"
                     and blank_cross_animation["verticalOrigin"].endswith(" 0px")
                     and blank_cross_animation["horizontalAnimation"] == "presenter-blank-cross-horizontal"
-                    and blank_cross_animation["horizontalDelay"] == "0.32s"
+                    and blank_cross_animation["horizontalDelay"] == "0.55s"
                     and blank_cross_animation["horizontalOrigin"].startswith("0px ")
                     and blank_cross_animation["verseRange"] == "18–19"
                     and blank_cross_animation["verseParts"] == {"number": "18–19", "text": "함께 저장된 본문"}
