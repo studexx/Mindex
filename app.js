@@ -19326,7 +19326,17 @@ function presenterServiceInputIsStatic(item = {}, memo = parseServiceItemMemo(it
   const label = compactSearchValue(item.label || "");
   const sectionKey = String(item._worshipSectionKey || "").trim();
   const service = state.services.find((service) => service.id === item?.service_id) || null;
-  const usesSharedScripture = Boolean(serviceItemSharedScriptureSource(item, memo, service));
+  const sharedScriptureSource = serviceItemSharedScriptureSource(item, memo, service);
+  const usesSharedScripture = Boolean(sharedScriptureSource && (
+    serviceItemDirectScriptureReferences(
+      sharedScriptureSource,
+      parseServiceItemMemo(sharedScriptureSource.memo),
+    ).length
+    || serviceScriptureTextPayload(
+      sharedScriptureSource,
+      parseServiceItemMemo(sharedScriptureSource.memo),
+    ).verses.length
+ ));
   const usesSharedSundayContent = Boolean(sharedSundayContentSourceItem(item, service));
   return isServicePreparationItem(item, memo)
     || Boolean(presenterFixedTitleText(item))
