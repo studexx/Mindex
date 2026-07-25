@@ -1584,7 +1584,7 @@ function buildPresenterScriptureTextSlides(item, section, index, service = null)
   const citation = isPresenterCitationScriptureItem(item);
   return payload.verses.map((verse, verseIndex) => {
     const verseNumber = presenterScriptureVerseNumber(verse);
-    const readingFinal = readingForm && verseIndex === lastVerseIndex;
+    const readingFinal = context === "reading" && verseIndex === lastVerseIndex;
     const referenceBook = readingForm
       ? (verse.referenceBookFull || payload.referenceBookFull || verse.referenceBook || payload.referenceBook || "")
       : (verse.referenceBook || payload.referenceBook || "");
@@ -3516,7 +3516,7 @@ function renderPresenterScriptureReadingSlide(slide) {
       <div class="presenter-scripture-reading-line">
         <span class="presenter-scripture-reading-text" style="--line-chars: ${escapeAttr(verseChars)}">${escapePresenterSlideLine(text || slide?.text || " ", slide)}</span>
       </div>
-      ${slide?.scriptureReadingFinal ? `<div class="presenter-scripture-reading-fin">Fin.</div>` : ""}
+      ${slide?.scriptureContext === "reading" && slide?.scriptureReadingFinal ? `<div class="presenter-scripture-reading-fin">Fin.</div>` : ""}
     </div>`;
 }
 
