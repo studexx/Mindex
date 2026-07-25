@@ -1808,6 +1808,11 @@ def main() -> int:
 	                        sharedScriptureService,
 	                        102
 	                      );
+	                      const optionalCitationSlides = buildPresenterSlidesForServiceItem(
+	                        optionalCitationItem,
+	                        sharedScriptureService,
+	                        103
+	                      );
 	                      const sharedScriptureReadingReferences = serviceItemScriptureReferences(
 	                        sharedScriptureReadingItem,
 	                        parseServiceItemMemo(sharedScriptureReadingItem.memo),
@@ -1965,6 +1970,12 @@ def main() -> int:
 	                          readingSlideCount: sharedScriptureReadingSlides.length,
 	                          citationState: optionalCitationState,
 	                          citationInputMode: presenterServiceInputItem(optionalCitationItem, sharedScriptureService)?.mode || '',
+	                          citationSlides: optionalCitationSlides.map((slide) => ({
+	                            type: slide.type || '',
+	                            elementType: slide.elementType || '',
+	                            liveScriptureControl: Boolean(slide.liveScriptureControl),
+	                            isLiveScriptureElement: presenterSlideIsLiveScriptureElement(slide),
+	                          })),
 	                          targetLabel: presenterPreparationTargetLabel('성경봉독'),
 	                        },
 	                        communityScaffold: communitySlides,
@@ -2044,6 +2055,12 @@ def main() -> int:
 	                    and title_and_liturgical_state["sharedScripture"]["citationState"]["state"] == "filled"
 	                    and title_and_liturgical_state["sharedScripture"]["citationState"]["reason"] == "optional_citation_empty"
 	                    and title_and_liturgical_state["sharedScripture"]["citationInputMode"] == "scripture"
+	                    and title_and_liturgical_state["sharedScripture"]["citationSlides"] == [{
+	                        "type": "blank",
+	                        "elementType": "blank",
+	                        "liveScriptureControl": True,
+	                        "isLiveScriptureElement": True,
+	                    }]
 		                    and title_and_liturgical_state["sharedScripture"]["targetLabel"] == "성경봉독"
                     and "presenter-title-assignee" in title_and_liturgical_state["confession"]["html"]
                     and 'presenter-slide--title"' not in title_and_liturgical_state["confession"]["html"]

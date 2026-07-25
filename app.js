@@ -19519,8 +19519,8 @@ function renderPresenterControlsTop(service, slides, active, index) {
 
 function presenterSlideIsLiveScriptureElement(slide = null) {
   if (!slide) return false;
-  const key = compactSearchValue(`${slide.sectionKey || ""} ${slide.sectionLabel || ""} ${slide.title || ""} ${slide.text || ""}`);
-  return key.includes("실시간성구송출") || key.includes("livescripture");
+  return Boolean(slide.liveScriptureControl)
+    || presenterSlideElementType(slide) === PRESENTER_ELEMENT_TYPES.LIVE_SCRIPTURE;
 }
 
 function presenterControlsClassName(active, chromakey) {
@@ -21910,6 +21910,26 @@ function presenterMissingContentSlide(item = {}, section = {}, index = 0, conten
   };
 }
 
+function presenterOptionalCitationLiveControlSlide(item = {}, section = {}, index = 0) {
+  const label = String(item.label || "인용 구절").trim() || "인용 구절";
+  return {
+    id: `${item.id || index}:live-scripture-control`,
+    ...section,
+    elementLabel: label,
+    elementTitle: label,
+    elementType: PRESENTER_ELEMENT_TYPES.BLANK,
+    layout: PRESENTER_SLIDE_LAYOUTS.BLANK,
+    type: "blank",
+    label,
+    title: "빈 화면",
+    marker: "",
+    text: "",
+    liveScriptureControl: true,
+    skipTrailingBlank: true,
+    sort: index,
+  };
+}
+
 function buildPresenterSlidesForServiceItem(item, service, index) {
   item = serviceItemWithSharedSundayContent(item, service);
   if (isRedundantFullscreenSermonBodyServiceItem(item, service)) return [];
@@ -21959,6 +21979,11 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
   const contentState = resolvePresenterServiceItemContentState(item, memo, song, service);
   const fixedTitle = presenterFixedTitleText(item);
   if (fixedTitle) return [presenterTitleOnlySlide(item, section, index, fixedTitle)];
+  if (isOptionalCitationScriptureServiceItem(item)
+    && !serviceItemScriptureReferences(item, memo, service).length
+    && !serviceScriptureTextPayload(item, memo).verses.length) {
+    return [presenterOptionalCitationLiveControlSlide(item, section, index)];
+  }
   if (!confessionPrayer && !contentState.hasOutputContent) {
     return withIntroAndSpecialTitle([presenterMissingContentSlide(item, section, index, contentState)]);
   }
