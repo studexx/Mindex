@@ -763,7 +763,8 @@ function loadInitialData() {
 }
 
 function isServiceDataModule(moduleName = state.module) {
-  return moduleName === "service" || moduleName === "presenter";
+  // The home screen is the weekly worship board, so it needs the same data.
+  return moduleName === "home" || moduleName === "service" || moduleName === "presenter";
 }
 
 function renderCurrentServiceModuleDetail() {
@@ -5422,6 +5423,10 @@ function handleDetailClick(event) {
 
   const serviceDateCard = event.target.closest(".service-date-card[data-service-id], .service-week-card[data-service-id]");
   if (serviceDateCard) {
+    if (state.module === "home") {
+      void openHomeNextService("service", serviceDateCard.dataset.serviceId);
+      return;
+    }
     selectService(serviceDateCard.dataset.serviceId);
     renderServiceList();
     return;
@@ -8216,16 +8221,13 @@ function worshipTemplateDefaultSong(step = {}, elementType = "") {
   const spec = step.defaultSong && typeof step.defaultSong === "object" ? step.defaultSong : null;
   const title = String(spec?.title || "").trim();
   if (!title) return null;
-  const titleKey = compactSearchValue(title);
   const hymnNo = String(spec?.hymnNo || spec?.hymn_no || "").trim();
-  const matches = state.songs.filter((song) =>
-    compactSearchValue(song.title) === titleKey
-    && (!hymnNo || String(song.hymn_no || "").trim() === hymnNo));
-  if (matches.length !== 1) return null;
-  const song = matches[0];
+  const song = findServicePraiseSong([hymnNo, title].filter(Boolean).join(" "))
+    || findServicePraiseSong(title);
+  if (!song || (hymnNo && String(song.hymn_no || "").trim() !== hymnNo)) return null;
   const versions = Array.isArray(song.versions) ? song.versions : [];
-  if (versions.length !== 1) return null;
-  return { song, version: versions[0] };
+  const version = versions.find((item) => item.id === getPreferredVersionId(song)) || versions[0] || null;
+  return version ? { song, version } : null;
 }
 
 function isReadyServiceTemplateLabel(label) {
@@ -9871,19 +9873,7 @@ function clearGlobalSearchInput() {
 }
 
 function renderHomeList() {
-  const modules = homeModuleCards();
-  const service = modules.find((module) => module.id === "service");
-  const nextService = getHomeNextService();
-  refs.songCount.textContent = "";
-  refs.songList.innerHTML = `
-    <div class="home-sidebar">
-      ${service ? `<section class="home-sidebar-section home-sidebar-section--primary">
-        <span class="home-sidebar-heading">다음 예배</span>
-        ${nextService ? renderHomeNextServiceSidebarCard(nextService) : renderHomeSidebarCard(service)}
-      </section>` : ""}
-    </div>
-  `;
-  finishListRender();
+  renderServiceList();
 }
 
 function renderHomeNextServiceSidebarCard(service) {
@@ -9924,48 +9914,7 @@ function renderHomeDetail() {
     renderHomeSearchDetail();
     return;
   }
-
-  const modules = homeModuleCards();
-  const service = modules.find((module) => module.id === "service");
-  const commandModules = ["scripture", "praise", "calendar", "references"]
-    .map((id) => modules.find((module) => module.id === id))
-    .filter(Boolean);
-  const nextService = getHomeNextService();
-  const nextServicePrep = nextService ? homeServicePrepSummary(nextService.id) : null;
-  refs.detailPane.innerHTML = `
-    <div class="home-screen">
-      <div class="home-workbench">
-        ${service ? `<section class="home-workbench-main" aria-label="예배">
-          <header class="home-workbench-head">
-            <span>${escapeHtml(service.eyebrow || "다음 예배")}</span>
-            <strong>${escapeHtml(nextService ? serviceDisplayTypeName(nextService) : service.title)}</strong>
-            <small>${escapeHtml(nextService ? homeServiceScheduleLabel(nextService) : service.detail)}</small>
-          </header>
-          <div class="home-service-summary">
-            <span>${escapeHtml(nextServicePrep?.preview || service.meta[0] || "예배 일정 없음")}</span>
-            ${nextServicePrep ? `<small class="${nextServicePrep.missingCount ? "needs-input" : "ready"}">${escapeHtml(nextServicePrep.status)}</small>` : ""}
-          </div>
-          <div class="home-command-row">
-            <button type="button" data-home-next-service-action="service" data-home-service-id="${escapeAttr(nextService?.id || "")}">
-              <i data-lucide="panels-top-left"></i>
-              <span>구성</span>
-            </button>
-            <button type="button" data-home-next-service-action="presenter" data-home-service-id="${escapeAttr(nextService?.id || "")}">
-              <i data-lucide="screen-share"></i>
-              <span>송출 준비</span>
-            </button>
-          </div>
-        </section>` : ""}
-        <section class="home-command-panel" aria-label="바로 실행">
-          <div class="home-section-label">바로 실행</div>
-          <div class="home-action-grid">
-            ${commandModules.map((module) => renderHomeActionTile(module)).join("")}
-          </div>
-        </section>
-      </div>
-    </div>
-  `;
-  refreshIcons();
+  renderServiceDashboard();
 }
 
 function renderHomeSearchDetail() {
@@ -14146,13 +14095,11 @@ function publicWorshipSermonStep(options = {}) {
   const includeSermonBody = options.includeSermonBody !== undefined
     ? Boolean(options.includeSermonBody)
     : (typeId ? !serviceTypeUsesChromakey(typeId) : true);
-  const elements = [
-    { label: "설교 제목", name: "설교 제목", elementType: "title_person", person: defaultPerson },
-    { label: "인용 구절", name: "인용 구절", elementType: "scripture_body" },
-  ];
+  const elements = [{ label: "설교 제목", name: "설교 제목", elementType: "title_person", person: defaultPerson }];
   if (includeSermonBody) {
     elements.push({ label: "설교 본문", name: "설교 본문", elementType: "scripture_body" });
   }
+  elements.push({ label: "인용 구절", name: "인용 구절", elementType: "scripture_body" });
   return {
     label: "설교",
     name: "설교",
@@ -14175,8 +14122,8 @@ function publicWorshipThirdSermonStep(options = {}) {
     sectionKey: "sermon",
     elements: [
       { label: "설교 제목", name: "설교 제목", elementType: "title_person", person: defaultPerson },
-      { label: "인용 구절", name: "인용 구절", elementType: "scripture_body" },
       { label: "설교 본문", name: "설교 본문", elementType: "scripture_body" },
+      { label: "인용 구절", name: "인용 구절", elementType: "scripture_body" },
     ],
   };
 }
@@ -21945,6 +21892,7 @@ function presenterFixedTitleText(item = {}) {
   const label = compactSearchValue(item?.label || item?.raw_title || "");
   const sectionKey = String(item?._worshipSectionKey || item?.sectionKey || item?.section_key || "").trim();
   if (sectionKey === "announcements" && ["교회소식", "광고"].includes(label)) return "교회소식";
+  if (sectionKey === "announcements" && label === "새가족환영") return "새가족환영";
   if (sectionKey === "response_song" && label === "결단기도") return "결단기도";
   if (sectionKey === "prayer_meeting" || label === "기도회" || label === "통성기도") return "통성기도";
   if (sectionKey === "free_prayer" || label === "자율기도") return "자율기도";

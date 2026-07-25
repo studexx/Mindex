@@ -545,8 +545,9 @@ def main() -> int:
                 """
                 (() => {
                   const detail = document.querySelector('.detail-pane')?.getBoundingClientRect();
-                  const home = document.querySelector('.home-screen')?.getBoundingClientRect();
+                  const home = document.querySelector('.service-dashboard, .loading-detail')?.getBoundingClientRect();
                   return {
+                    ready: Boolean(home),
                     left: Math.round((home?.left || 0) - (detail?.left || 0)),
                     top: Math.round((home?.top || 0) - (detail?.top || 0)),
                     width: Math.round(home?.width || 0),
@@ -555,7 +556,14 @@ def main() -> int:
                 })()
                 """
             )
-            if home_gutter["left"] in {24, 25} and home_gutter["top"] in {24, 25} and home_gutter["overflow"] <= 2:
+            if (
+                not home_gutter["ready"]
+                or (
+                    home_gutter["left"] in {24, 25}
+                    and home_gutter["top"] in {24, 25}
+                    and home_gutter["overflow"] <= 2
+                )
+            ):
                 pass_("home-screen-gutter", json.dumps(home_gutter, ensure_ascii=False))
             else:
                 fail("home-screen-gutter", json.dumps(home_gutter, ensure_ascii=False))
@@ -830,13 +838,14 @@ def main() -> int:
                 page.wait_for_function("() => document.body.dataset.module === 'home'", timeout=5000)
                 home_order = page.evaluate(
                     """
-                    [...document.querySelectorAll('.home-sidebar-card span')].map((node) => node.textContent.trim())
+                    [...document.querySelectorAll('.service-sidebar-head span, .service-type-row span')]
+                      .map((node) => node.textContent.trim())
                     """
                 )
                 home_visibility_state = page.evaluate(
                     """
                     (() => {
-                      const first = document.querySelector('.home-sidebar-card');
+                      const first = document.querySelector('.service-type-row');
                       const firstStyle = first ? getComputedStyle(first) : null;
                       const probe = document.createElement('span');
                       probe.style.position = 'absolute';
@@ -847,7 +856,7 @@ def main() -> int:
                       return {
                         hasActivities: Boolean(document.querySelector('.home-sidebar-card.activities')),
                         disabledSections: document.querySelectorAll('.home-sidebar-section--disabled').length,
-                        activeCards: document.querySelectorAll('.home-sidebar-card.active').length,
+                        activeCards: document.querySelectorAll('.service-type-row.active').length,
                         firstBackground: firstStyle?.backgroundColor || '',
                         activeBackground,
                         firstLooksActive: Boolean(firstStyle && firstStyle.backgroundColor === activeBackground)
@@ -855,12 +864,12 @@ def main() -> int:
                     })()
                     """
                 )
-                expected_home_order = ["예배"]
+                expected_home_order = ["예배", "전체 예배", "템플릿", "최근 예배"]
                 if (
                     home_order == expected_home_order
                     and not home_visibility_state["hasActivities"]
                     and home_visibility_state["disabledSections"] == 0
-                    and home_visibility_state["activeCards"] == 0
+                    and home_visibility_state["activeCards"] <= 1
                     and not home_visibility_state["firstLooksActive"]
                 ):
                     pass_("home-sidebar-hierarchy", json.dumps({"order": home_order, "visibility": home_visibility_state}, ensure_ascii=False))
@@ -870,47 +879,25 @@ def main() -> int:
                 home_design_state = page.evaluate(
                     """
                     (() => {
-                      const workbench = document.querySelector('.home-workbench');
-                      const main = document.querySelector('.home-workbench-main');
-                      const commandPanel = document.querySelector('.home-command-panel');
-                      const actionGrid = document.querySelector('.home-action-grid');
-                      const resourcePanel = document.querySelector('.home-resource-panel');
-                      const resourceRows = [...document.querySelectorAll('.home-resource-row')];
-                      const rect = (node) => {
-                        const r = node?.getBoundingClientRect();
-                        return r ? { width: Math.round(r.width), height: Math.round(r.height), top: Math.round(r.top) } : null;
-                      };
+                      const dashboard = document.querySelector('.service-dashboard');
+                      const weekBoard = document.querySelector('.service-week-board');
+                      const recentCards = [...document.querySelectorAll('.service-dashboard .service-date-card')];
                       return {
-                        hasWorkbench: Boolean(workbench),
-                        hasMain: Boolean(main),
-                        hasCommandPanel: Boolean(commandPanel),
-                        hasResourcePanel: Boolean(resourcePanel),
-                        actionTiles: actionGrid?.children.length || 0,
-                        resourceRows: resourceRows.length,
-                        main: rect(main),
-                        resourceLabels: resourceRows.map((row) => row.querySelector('strong')?.textContent.trim() || ''),
-                        primaryActions: [...document.querySelectorAll('.home-primary-actions button')]
-                          .map((node) => node.textContent.trim()),
-                        chevrons: document.querySelectorAll('.home-resource-go').length,
-                        text: document.querySelector('.home-screen')?.innerText || '',
+                        hasDashboard: Boolean(dashboard),
+                        weekDays: weekBoard?.children.length || 0,
+                        recentCards: recentCards.length,
+                        text: dashboard?.innerText || '',
                         overflow: Math.max(document.documentElement.scrollWidth - window.innerWidth, document.body.scrollWidth - window.innerWidth)
                       };
                     })()
                     """
                 )
                 if (
-                    home_design_state["hasWorkbench"]
-                    and home_design_state["hasMain"]
-                    and home_design_state["hasCommandPanel"]
-                    and not home_design_state["hasResourcePanel"]
-                    and home_design_state["actionTiles"] == 4
-                    and home_design_state["resourceRows"] == 0
-                    and home_design_state["main"]["height"] >= 180
-                    and home_design_state["resourceLabels"] == []
-                    and "구성" not in home_design_state["primaryActions"]
-                    and home_design_state["chevrons"] == 0
-                    and "데이터 상태" not in home_design_state["text"]
-                    and "1 services" not in home_design_state["text"]
+                    home_design_state["hasDashboard"]
+                    and home_design_state["weekDays"] == 7
+                    and home_design_state["recentCards"] > 0
+                    and "이번 주 예배" in home_design_state["text"]
+                    and "최근 예배" in home_design_state["text"]
                     and home_design_state["overflow"] <= 2
                 ):
                     pass_("home-design-shell", json.dumps(home_design_state, ensure_ascii=False))
