@@ -21795,6 +21795,7 @@ function presenterFixedTitleText(item = {}) {
   if (sectionKey === "response_song" && label === "결단기도") return "결단기도";
   if (sectionKey === "prayer_meeting" || label === "기도회" || label === "통성기도") return "통성기도";
   if (sectionKey === "free_prayer" || label === "자율기도") return "자율기도";
+  if (sectionKey === "fellowship" && label === "반별모임") return "반별 모임";
   return "";
 }
 

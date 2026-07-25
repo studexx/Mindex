@@ -2547,6 +2547,7 @@ def main() -> int:
                               { id: '__smoke_youth_integrated__', date: '2026-07-26', church_schedule: '온세대 찬양예배' },
                             ];
                             const offering = projected.find((item) => item.label === '봉헌찬양');
+                            const fellowship = projected.find((item) => item.label === '반별 모임');
                             const offeringSong = presenterSongForServiceItem(
                               offering,
                               serviceItemDisplayText(offering),
@@ -2559,6 +2560,12 @@ def main() -> int:
                               offeringSong,
                               service,
                             );
+                            const fellowshipContent = resolvePresenterServiceItemContentState(
+                              { ...fellowship, raw_title: '' },
+                              parseServiceItemMemo(fellowship?.memo),
+                              null,
+                              service,
+                            );
                             return {
                               sections: template.map((step) => step.sectionKey || step.label),
                               labels: projected.map((item) => item.label || ''),
@@ -2568,6 +2575,8 @@ def main() -> int:
                                 && offering?.version_id
                               ),
                               offeringReady: offeringContent.state === 'filled' && offeringContent.reason === 'song',
+                              fellowshipStatic: presenterServiceInputItem({ ...fellowship, raw_title: '' }, service) === null,
+                              fellowshipContent: fellowshipContent.reason,
                               scheduledOnIntegratedSunday: autoUpcomingPublicServiceTargets('2026-07-20')
                                 .some((item) => item.typeId === 'youth' && item.date === '2026-07-26'),
                             };
@@ -2584,11 +2593,13 @@ def main() -> int:
                         ],
                         "labels": [
                             "대기 영상", "사도신경", "찬양 1", "찬양 2", "찬양 3", "기도", "봉헌찬양", "봉헌기도",
-                            "성경봉독", "설교 제목", "결단기도", "주기도문", "교회소식", "반별 모임", "마무리",
+                            "성경봉독", "설교 제목", "인용 구절", "결단기도", "주기도문", "교회소식", "반별 모임", "마무리",
                         ],
                         "offeringTitle": "",
                         "offeringLinked": True,
                         "offeringReady": True,
+                        "fellowshipStatic": True,
+                        "fellowshipContent": "fixed_title",
                         "scheduledOnIntegratedSunday": False,
                     }:
                         pass_("youth-service-template", json.dumps(youth_template, ensure_ascii=False))
