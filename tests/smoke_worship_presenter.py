@@ -3354,13 +3354,13 @@ def main() -> int:
                       document.getElementById('presenterOutputRoot')?.remove();
                       const outputRoot = document.createElement('main');
                       outputRoot.id = 'presenterOutputRoot';
-                      outputRoot.className = 'presenter-output-root';
+                      outputRoot.className = 'presenter-output-root no-chromakey';
                       document.body.appendChild(outputRoot);
                       renderPresenterOutput({
                         serviceId: '__smoke_section_song_title_output_font__',
                         serviceType: 'sunday2',
-                        chromakey: true,
-                        outputTheme: 'chromakey',
+                        chromakey: false,
+                        outputTheme: 'formal',
                         backgroundImage: '',
                         slides: [{
                           id: '__smoke_section_song_title_output_font_slide__',
@@ -3498,13 +3498,13 @@ def main() -> int:
                       document.getElementById('presenterOutputRoot')?.remove();
                       const outputRoot = document.createElement('main');
                       outputRoot.id = 'presenterOutputRoot';
-                      outputRoot.className = 'presenter-output-root';
+                      outputRoot.className = 'presenter-output-root no-chromakey';
                       document.body.appendChild(outputRoot);
                       renderPresenterOutput({
                         serviceId: '__smoke_offering_song_title_output_font__',
                         serviceType: 'sunday2',
-                        chromakey: true,
-                        outputTheme: 'chromakey',
+                        chromakey: false,
+                        outputTheme: 'formal',
                         backgroundImage: '',
                         slides: [{
                           id: '__smoke_offering_song_title_output_font_slide__',
@@ -3540,7 +3540,7 @@ def main() -> int:
                 if (
                     offering_song_title_output_font_state["sectionKey"] == "offering"
                     and "내 주 되신 주를 참 사랑하고" in offering_song_title_output_font_state["text"]
-                    and offering_song_title_output_font_state["headingFontSize"] == 92
+                    and offering_song_title_output_font_state["headingFontSize"] == 168
                     and offering_song_title_output_font_state["headingFontWeight"] == "800"
                     and 72 <= offering_song_title_output_font_state["nameFontSize"] < 104
                 ):
