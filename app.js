@@ -8361,6 +8361,7 @@ function buildWorshipServiceScaffold(serviceId, typeId, options = {}) {
       const textHighlights = normalizeServiceTextHighlights(elementStep.textHighlights || elementStep.text_highlights || elementStep.highlights);
       const asset = worshipTemplateElementAsset(elementStep, elementLabel);
       const defaultSong = worshipTemplateDefaultSong(elementStep, elementType);
+      const defaultSongVersionId = defaultSong?.version?._worshipVersionPersisted ? defaultSong.version.id : null;
       elements.push({
         id: createUuid(),
         section_id: sectionId,
@@ -8371,7 +8372,7 @@ function buildWorshipServiceScaffold(serviceId, typeId, options = {}) {
         body: "",
         scripture_reference: "",
         song_id: defaultSong?.song.id || null,
-        song_version_id: defaultSong?.version.id || null,
+        song_version_id: defaultSongVersionId,
         source_kind: "mindex",
         source_ref: { label: elementLabel, template: true, placeholder: !ready, ...(templateVersion ? { template_version: templateVersion } : {}) },
         config: {
@@ -19564,6 +19565,7 @@ async function applyPresenterPreparationInput(serviceId = state.selectedServiceI
         }
         item.song_id = song.id;
         item.version_id = null;
+        item.song_version_id = null;
         item.raw_title = "";
         if (assignee) item.assignee = assignee;
         item._worshipElementTemplateModified = true;
@@ -19573,6 +19575,7 @@ async function applyPresenterPreparationInput(serviceId = state.selectedServiceI
         if (preferredVersion) item.version_id = preferredVersion.id;
         else if (versions.length === 1) item.version_id = versions[0].id;
         else if (versions.length > 1) versionWarnings.push(entry.label);
+        item.song_version_id = item.version_id;
         continue;
       }
 

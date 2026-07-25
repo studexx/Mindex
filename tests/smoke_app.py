@@ -2250,6 +2250,54 @@ def main() -> int:
                               slideCount: slides.length
                             };
                           })(),
+                          worshipSongVersionFkGuard: (() => {
+                            const previousSongs = state.songs;
+                            const service = { id: '__smoke_fk_service__', type_id: 'sunday-second', date: '2026-07-26' };
+                            const persistedSong = {
+                              id: '__smoke_song_persisted__',
+                              title: '저장 가능 곡',
+                              versions: [{ id: '__smoke_version_persisted__', name: '기본', is_primary: true, _worshipVersionPersisted: true }],
+                            };
+                            const otherSong = {
+                              id: '__smoke_song_other__',
+                              title: '다른 곡',
+                              versions: [{ id: '__smoke_version_other__', name: '기본', is_primary: true, _worshipVersionPersisted: true }],
+                            };
+                            const memoOnlySong = {
+                              id: '__smoke_song_memo__',
+                              title: '메모 버전 곡',
+                              versions: [{ id: '__smoke_version_memo__', name: '기본', is_primary: true }],
+                            };
+                            const makeItem = (song, versionId) => normalizeServiceItem({
+                              id: `__smoke_fk_item_${song.id}__`,
+                              service_id: service.id,
+                              label: '찬양 1',
+                              song_id: song.id,
+                              version_id: versionId,
+                              _worshipSectionId: '__smoke_fk_section__',
+                              _worshipSectionKey: 'praise',
+                              _worshipSectionTitle: '찬양',
+                              memo: serializeServiceItemMemo({ elementType: 'praise', inputMode: 'praise_db' }),
+                            });
+                            try {
+                              state.songs = [persistedSong, otherSong, memoOnlySong];
+                              const staleItem = makeItem(persistedSong, otherSong.versions[0].id);
+                              const validItem = makeItem(persistedSong, persistedSong.versions[0].id);
+                              const memoOnlyItem = makeItem(memoOnlySong, memoOnlySong.versions[0].id);
+                              const staleRows = buildWorshipPersistenceRows(service, [staleItem], {}, {}).elements;
+                              const validRows = buildWorshipPersistenceRows(service, [validItem], {}, {}).elements;
+                              const memoOnlyRows = buildWorshipPersistenceRows(service, [memoOnlyItem], {}, {}).elements;
+                              return {
+                                staleInvalid: serviceItemVersionSelectionInvalid(staleItem, service),
+                                staleSavedVersion: staleRows[0]?.song_version_id || null,
+                                validSavedVersion: validRows[0]?.song_version_id || null,
+                                memoOnlySavedVersion: memoOnlyRows[0]?.song_version_id || null,
+                              };
+                            } finally {
+                              state.songs = previousSongs;
+                              state.songLookupSource = null;
+                            }
+                          })(),
                           scriptureRangeInference: inferBibleVerseEndRanges([
                             { book_code: 'DEU', chapter: 6, verse: 18, text: '18-19가 함께 저장된 본문' },
                             { book_code: 'DEU', chapter: 6, verse: 20, text: '다음 절' },
@@ -2710,6 +2758,12 @@ def main() -> int:
                             "contentState": "filled",
                             "reason": "scripture_body",
                             "slideCount": 0,
+                        }
+                        and template_terms["worshipSongVersionFkGuard"] == {
+                            "staleInvalid": True,
+                            "staleSavedVersion": None,
+                            "validSavedVersion": "__smoke_version_persisted__",
+                            "memoOnlySavedVersion": None,
                         }
                         and template_terms["scriptureRangeInference"] == [
                             {"verse": 18, "verseEnd": 19},
