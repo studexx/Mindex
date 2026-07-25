@@ -3540,8 +3540,8 @@ def main() -> int:
                 if (
                     offering_song_title_output_font_state["sectionKey"] == "offering"
                     and "내 주 되신 주를 참 사랑하고" in offering_song_title_output_font_state["text"]
-                    and offering_song_title_output_font_state["headingFontSize"] == 168
-                    and offering_song_title_output_font_state["headingFontWeight"] == "800"
+                    and offering_song_title_output_font_state["headingFontSize"] == 104
+                    and offering_song_title_output_font_state["headingFontWeight"] == "700"
                     and 72 <= offering_song_title_output_font_state["nameFontSize"] < 104
                 ):
                     pass_("presenter-offering-song-title-output-font", json.dumps(offering_song_title_output_font_state, ensure_ascii=False))

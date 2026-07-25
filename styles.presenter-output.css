@@ -639,10 +639,6 @@
 .presenter-output-root.no-chromakey .presenter-section-song-title-heading {
   font-size: var(--presenter-size-meta);
 }
-.presenter-output-root.no-chromakey .presenter-slide--song-title[data-section-key="offering"] .presenter-section-song-title-heading {
-  font-size: var(--presenter-size-display);
-  font-weight: var(--presenter-weight-display);
-}
 .presenter-output-root.no-chromakey .presenter-slide--song-title:is([data-section-key="praise"], [data-section-key="pre_scripture_praise"], [data-section-key="prayer_meeting_praise"]) .presenter-section-song-title-name {
   font-size: var(--presenter-size-song-title);
   font-weight: var(--presenter-weight-display);

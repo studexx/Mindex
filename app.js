@@ -11,8 +11,10 @@ const {
 } = MINDEX_CONSTANTS;
 const TABLE_COLUMN_SUPPORT_CACHE = new Map();
 let songLoadPromise = null;
+let serviceDataLoadPromise = null;
 let songCatalogLoaded = false;
 let backgroundSongLoadScheduled = false;
+const serviceScriptureChapterLoadPromises = new Map();
 
 const { BIBLE_CHAPTER_COUNTS } = MINDEX_CONSTANTS;
 
@@ -2484,14 +2486,26 @@ async function loadScriptureBooks({ silent = false } = {}) {
 }
 
 async function loadServiceData({ silent = false } = {}) {
+  if (serviceDataLoadPromise) return serviceDataLoadPromise;
+  serviceDataLoadPromise = loadServiceDataOnce({ silent });
+  try {
+    return await serviceDataLoadPromise;
+  } finally {
+    serviceDataLoadPromise = null;
+  }
+}
+
+async function loadServiceDataOnce({ silent = false } = {}) {
   if (!requireClient({ silent })) {
     state.serviceError = "연결 없음";
     render();
     return;
   }
   try {
-    await loadHymnScoreManifest();
-    await loadWorshipData();
+    await Promise.all([
+      loadHymnScoreManifest({ silent }),
+      loadWorshipData(),
+    ]);
     if (state.module === "presenter") await loadWorshipPresenterSlides();
     state.dirtyServiceTypeIds.clear();
     state.dirty.service = false;
@@ -2675,9 +2689,6 @@ async function loadWorshipData() {
       query.order("template_id", { ascending: true }).order("sort_order", { ascending: true })),
   ]);
 
-  await loadSongsForIds(elements.map((item) => item.song_id));
-  await preloadWorshipScriptureReferences(sections, elements);
-
   const resolvedTypes = types.length ? types : defaultWorshipServiceTypes();
   state.serviceTypes = resolvedTypes.map(normalizeWorshipServiceType);
   state.services = services.map(normalizeWorshipService);
@@ -2695,6 +2706,9 @@ async function loadWorshipData() {
   state.serviceItemVersionSupported = true;
   state.serviceItemMemoSupported = true;
   state.serviceTitleSupported = true;
+
+  await loadSongsForIds(elements.map((item) => item.song_id));
+  warmWorshipScriptureReferencesForService(state.selectedServiceId);
 }
 
 async function loadWorshipPresenterSlides() {
@@ -7523,29 +7537,53 @@ async function fetchServiceScriptureVerses(reference) {
   if (!state.bibleTranslations.length && !state.bibleReaderError) await loadBibleTranslations({ silent: true });
   const translation = selectedPresenterBibleTranslation();
   if (!translation?.id) return [];
-  const request = state.client
-    .from("mindex_bible_verses")
-    .select("book_code,chapter,verse,verse_end,text,section_title")
-    .eq("is_active", true)
-    .eq("translation_id", translation.id)
-    .eq("book_code", reference.book.code)
-    .eq("chapter", reference.chapter)
-    .order("verse", { ascending: true });
-  const { data, error } = await request;
-  if (error) throw error;
-  const verses = (data || []).map(normalizeServerBibleVerse);
-  cacheServiceScriptureVerses(reference, verses);
-  return getCachedServiceScriptureVerses(reference);
+  const cacheKey = bibleVerseCacheKey(translation.id, reference.book.code, reference.chapter);
+  if (state.bibleVerseCache.has(cacheKey)) return getCachedServiceScriptureVerses(reference, translation);
+  if (serviceScriptureChapterLoadPromises.has(cacheKey)) {
+    await serviceScriptureChapterLoadPromises.get(cacheKey);
+    return getCachedServiceScriptureVerses(reference, translation);
+  }
+
+  const requestPromise = (async () => {
+    const { data, error } = await state.client
+      .from("mindex_bible_verses")
+      .select("book_code,chapter,verse,verse_end,text,section_title")
+      .eq("is_active", true)
+      .eq("translation_id", translation.id)
+      .eq("book_code", reference.book.code)
+      .eq("chapter", reference.chapter)
+      .order("verse", { ascending: true });
+    if (error) throw error;
+    cacheServiceScriptureVerses(reference, (data || []).map(normalizeServerBibleVerse), translation);
+  })();
+  serviceScriptureChapterLoadPromises.set(cacheKey, requestPromise);
+  try {
+    await requestPromise;
+  } finally {
+    serviceScriptureChapterLoadPromises.delete(cacheKey);
+  }
+  return getCachedServiceScriptureVerses(reference, translation);
 }
 
-async function preloadWorshipScriptureReferences(sections = [], elements = []) {
+function warmWorshipScriptureReferencesForService(serviceId = state.selectedServiceId) {
+  if (!serviceId || !state.worshipSections.length || !state.worshipElements.length) return;
+  void preloadWorshipScriptureReferences(state.worshipSections, state.worshipElements, { serviceId });
+}
+
+async function preloadWorshipScriptureReferences(sections = [], elements = [], options = {}) {
   if (!state.client || !elements.length) return;
   try {
     await ensureBibleBookLookups();
     if (!state.bibleTranslations.length && !state.bibleReaderError) await loadBibleTranslations({ silent: true });
     if (!selectedPresenterBibleTranslation()?.id) return;
-    const sectionById = Object.fromEntries(sections.map((section) => [section.id, section]));
+    const serviceId = String(options.serviceId || "").trim();
+    const matchingSections = serviceId
+      ? sections.filter((section) => String(section.service_id || "") === serviceId)
+      : sections;
+    const sectionById = Object.fromEntries(matchingSections.map((section) => [section.id, section]));
+    const matchingSectionIds = new Set(matchingSections.map((section) => section.id));
     const references = uniqueList(elements
+      .filter((element) => !serviceId || matchingSectionIds.has(element.section_id))
       .flatMap((element) => serviceElementScriptureReferences(
         element,
         sectionById[element.section_id] || {},
@@ -7553,11 +7591,11 @@ async function preloadWorshipScriptureReferences(sections = [], elements = []) {
         element.config && typeof element.config === "object" ? element.config : {},
       ))
       .filter(Boolean));
-    for (const referenceText of references) {
+    await Promise.all(references.map(async (referenceText) => {
       const reference = parseBibleReference(referenceText);
-      if (!reference || getCachedServiceScriptureVerses(reference).length) continue;
+      if (!reference || getCachedServiceScriptureVerses(reference).length) return;
       await fetchServiceScriptureVerses(reference);
-    }
+    }));
   } catch (error) {
     console.warn("Worship scripture preload failed", error);
   }
@@ -21345,6 +21383,7 @@ function preparePresenterService(serviceId = state.selectedServiceId) {
   if (!songCatalogLoaded && !songLoadPromise && canUseClientData()) {
     void loadSongs().then(() => refreshPresenterForService(serviceId));
   }
+  warmWorshipScriptureReferencesForService(serviceId);
   schedulePendingServiceScriptureResolves(serviceId);
   const slides = buildServicePresenterSlides(serviceId);
   if (state.presenter.serviceId !== serviceId) {
