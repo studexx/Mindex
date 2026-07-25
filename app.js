@@ -13479,7 +13479,7 @@ function normalizeReferenceInput(value) {
     .normalize("NFKC")
     .trim()
     .replace(/[：.]/g, ":")
-    .replace(/[–~]/g, "-")
+    .replace(/[–—~]/g, "-")
     .replace(/(\d{1,3})\s*장\s*(\d{1,3})(?:\s*-\s*(\d{1,3}))?\s*절?/g, (_, chapter, verse, verseEnd) =>
       `${chapter} ${verse}${verseEnd ? `-${verseEnd}` : ""}`)
     .replace(/(\d{1,3})\s*장/g, "$1")
@@ -18505,7 +18505,7 @@ function expandServiceScriptureReferenceText(value = "") {
   for (const part of parts) {
     const candidates = [part];
     if (lastBookName) {
-      if (lastChapter && /^\d{1,3}(?:\s*[-–~]\s*\d{1,3})?$/.test(part)) {
+      if (lastChapter && /^\d{1,3}(?:\s*[-–—~]\s*\d{1,3})?$/.test(part)) {
         candidates.push(`${lastBookName} ${lastChapter}:${part}`);
       }
       candidates.push(`${lastBookName} ${part}`);
@@ -18663,12 +18663,23 @@ function serviceItemDirectScriptureReferences(item = {}, memo = parseServiceItem
   return normalizeServiceScriptureReferenceList(memo.scriptureReference || item.raw_title || "");
 }
 
+function serviceScriptureReadingReferencesForService(service = null) {
+  const serviceId = String(service?.id || "").trim();
+  if (!serviceId) return [];
+  const readingItem = (state.serviceItems[serviceId] || []).find((candidate) => isSharedScriptureReadingServiceItem(candidate));
+  if (!readingItem) return [];
+  return serviceItemScriptureReferences(readingItem, parseServiceItemMemo(readingItem.memo), service);
+}
+
 function serviceItemScriptureReferences(item = {}, memo = parseServiceItemMemo(item.memo), service = null) {
   const effectiveItem = serviceItemWithSharedSundayContent(item, service);
   if (effectiveItem !== item) {
     return serviceItemDirectScriptureReferences(effectiveItem, parseServiceItemMemo(effectiveItem.memo));
   }
   const direct = serviceItemDirectScriptureReferences(item, memo);
+  if (!direct.length && isSermonScriptureBodyServiceItem(item)) {
+    return serviceScriptureReadingReferencesForService(service);
+  }
   return direct;
 }
 

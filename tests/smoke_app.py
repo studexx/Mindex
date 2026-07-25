@@ -1297,11 +1297,17 @@ def main() -> int:
                         songResult: Boolean(document.querySelector('[data-global-song-id="__smoke_global_search_song__"]')),
                       };
                       const scriptureReferences = normalizeServiceScriptureReferenceList("요3:16~17, 18");
+                      const complexScriptureReferences = {
+                        sameChapterComma: normalizeServiceScriptureReferenceList("마 13:31–33, 44–50"),
+                        crossBookSemicolon: normalizeServiceScriptureReferenceList("요 15:9; 롬 5:7–8"),
+                        longDash: normalizeServiceScriptureReferenceList("마 13:31—33, 44—50"),
+                        formatted: formatServiceScriptureReferenceList("마 13:31–33, 44–50"),
+                      };
                       state.songs = originalSongs;
                       state.search = originalSearch;
                       if (refs.searchInput) refs.searchInput.value = originalInputValue;
                       renderSongList();
-                      return { directMatches, rendered, scriptureReferences };
+                      return { directMatches, rendered, scriptureReferences, complexScriptureReferences };
                     })()
                     """
                 )
@@ -1310,6 +1316,12 @@ def main() -> int:
                     and "찬양" in global_search_deep_state["rendered"]["headings"]
                     and global_search_deep_state["rendered"]["songResult"]
                     and global_search_deep_state["scriptureReferences"] == ["요 3:16–17", "요 3:18"]
+                    and global_search_deep_state["complexScriptureReferences"] == {
+                        "sameChapterComma": ["마 13:31–33", "마 13:44–50"],
+                        "crossBookSemicolon": ["요 15:9", "롬 5:7–8"],
+                        "longDash": ["마 13:31–33", "마 13:44–50"],
+                        "formatted": "마 13:31–33, 44–50",
+                    }
                 ):
                     pass_("global-search-deep-matching", json.dumps(global_search_deep_state, ensure_ascii=False))
                 else:
@@ -2146,9 +2158,9 @@ def main() -> int:
                             const previousServices = state.services.slice();
                             const previousItems = state.serviceItems;
                             const services = [
-                              { id: '__smoke_share_first__', type_id: 'sunday-first', date: '2026-07-19', title: '주일예배 [1부]' },
-                              { id: '__smoke_share_second__', type_id: 'sunday-second', date: '2026-07-19', title: '주일예배 [2부]' },
-                              { id: '__smoke_share_third__', type_id: 'sunday-main', date: '2026-07-19', title: '주일예배 [3부]' },
+                              { id: '__smoke_share_first__', type_id: 'sunday-first', date: '2099-01-04', title: '주일예배 [1부]' },
+                              { id: '__smoke_share_second__', type_id: 'sunday-second', date: '2099-01-04', title: '주일예배 [2부]' },
+                              { id: '__smoke_share_third__', type_id: 'sunday-main', date: '2099-01-04', title: '주일예배 [3부]' },
                             ];
                             state.services = [...previousServices, ...services];
                             const makeItem = (serviceId, label, key, order, values = {}) => normalizeServiceItem({
@@ -2169,6 +2181,7 @@ def main() -> int:
                                 elementType: values.elementType || (key === 'sermon' || key === 'scripture_reading' ? 'scripture_body' : 'praise'),
                                 inputMode: values.inputMode || (key === 'sermon' || key === 'scripture_reading' ? 'scripture' : 'praise_db'),
                                 ...(values.scriptureReference ? { scriptureReference: values.scriptureReference } : {}),
+                                ...(values.scriptureReferences ? { scriptureReferences: values.scriptureReferences } : {}),
                                 ...(values.formPreset ? { formPreset: values.formPreset } : {}),
                               }),
                             });
@@ -2183,8 +2196,8 @@ def main() -> int:
                                 makeItem('__smoke_share_first__', '봉헌찬송', 'offering', 2, { songId: offeringSong?.id, versionId: offeringVersion?.id }),
                               ],
                               __smoke_share_second__: [
-                                makeItem('__smoke_share_second__', '찬양 1', 'praise', 1, { rawTitle: '9 하늘에 가득 찬 영광의' }),
-                                makeItem('__smoke_share_second__', '성경봉독', 'scripture_reading', 2, { rawTitle: '히 10:38-39', scriptureReference: '히 10:38-39' }),
+                                makeItem('__smoke_share_second__', '찬양 1', 'praise', 1, { songId: praiseSong?.id, versionId: praiseVersion?.id }),
+                                makeItem('__smoke_share_second__', '성경봉독', 'scripture_reading', 2, { rawTitle: '마 13:31–33, 44–50', scriptureReferences: ['마 13:31–33', '마 13:44–50'] }),
                                 makeItem('__smoke_share_second__', '설교 제목', 'sermon', 3, { elementType: 'title_person', inputMode: 'text', rawTitle: '믿음으로 사는 사람', assignee: '김남영 목사' }),
                                 makeItem('__smoke_share_second__', '인용 구절', 'sermon', 4, { rawTitle: '고전 13:4-7', scriptureReference: '고전 13:4-7' }),
                                 makeItem('__smoke_share_second__', '봉헌찬송', 'offering', 5),
@@ -2737,21 +2750,21 @@ def main() -> int:
                             "presenterPeople": ["김남영 목사"],
                         }
                         and template_terms["sharedSundayContentProjection"]["secondPraiseStatic"] is True
-                        and template_terms["sharedSundayContentProjection"]["secondPraiseMissing"] == "filled"
+                        and template_terms["sharedSundayContentProjection"]["secondPraiseMissing"] == "missing"
                         and template_terms["sharedSundayContentProjection"]["secondPraiseText"]
                         and template_terms["sharedSundayContentProjection"]["secondPraiseSongId"]
                         and template_terms["sharedSundayContentProjection"]["secondOfferingText"]
-                        and template_terms["sharedSundayContentProjection"]["thirdReadingRefs"] == ["롬 8:12–17"]
+                        and template_terms["sharedSundayContentProjection"]["thirdReadingRefs"] == ["마 13:31–33", "마 13:44–50"]
                         and template_terms["sharedSundayContentProjection"]["thirdReadingMissing"] == "filled"
-                        and template_terms["sharedSundayContentProjection"]["thirdSermonTitleText"] == "한 가지 그것을"
+                        and template_terms["sharedSundayContentProjection"]["thirdSermonTitleText"] == "믿음으로 사는 사람"
                         and template_terms["sharedSundayContentProjection"]["thirdSermonTitleAssignee"] == "김남영 목사"
                         and template_terms["sharedSundayContentProjection"]["thirdSermonTitleStatic"] is True
-                        and template_terms["sharedSundayContentProjection"]["thirdSermonBodyRefs"] == ["롬 8:12–17"]
+                        and template_terms["sharedSundayContentProjection"]["thirdSermonBodyRefs"] == ["마 13:31–33", "마 13:44–50"]
                         and template_terms["sharedSundayContentProjection"]["thirdCitationRefs"] == ["고전 13:4–7"]
                         and template_terms["sharedSundayContentProjection"]["thirdOfferingText"]
                         and template_terms["sharedSundayContentProjection"]["thirdOfferingStatic"] is True
                         and template_terms["sharedSundayContentProjection"]["thirdMissingSlides"] == [
-                            "찬양 1", "찬양 2", "찬양 3", "찬양 4", "찬송", "기도", "특송", "봉헌기도",
+                            "찬양 1", "찬양 2", "찬양 3", "찬양 4", "찬송", "기도", "봉헌기도",
                         ]
                         and template_terms["fullscreenSermonBodyCompatibility"] == {
                             "staticInput": False,
