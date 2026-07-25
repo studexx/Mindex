@@ -3354,13 +3354,13 @@ def main() -> int:
                       document.getElementById('presenterOutputRoot')?.remove();
                       const outputRoot = document.createElement('main');
                       outputRoot.id = 'presenterOutputRoot';
-                      outputRoot.className = 'presenter-output-root no-chromakey';
+                      outputRoot.className = 'presenter-output-root';
                       document.body.appendChild(outputRoot);
                       renderPresenterOutput({
                         serviceId: '__smoke_section_song_title_output_font__',
                         serviceType: 'sunday2',
-                        chromakey: false,
-                        outputTheme: 'formal',
+                        chromakey: true,
+                        outputTheme: 'chromakey',
                         backgroundImage: '',
                         slides: [{
                           id: '__smoke_section_song_title_output_font_slide__',
