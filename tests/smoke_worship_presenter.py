@@ -3518,12 +3518,15 @@ def main() -> int:
                       });
                       const root = document.getElementById('presenterOutputRoot');
                       const slide = root?.querySelector('.presenter-slide--song-title');
+                      const heading = root?.querySelector('.presenter-section-song-title-heading');
                       const name = root?.querySelector('.presenter-section-song-title-name');
                       const size = (node) => node ? Number.parseFloat(getComputedStyle(node).fontSize) : 0;
                       const result = {
                         hasRoot: Boolean(root),
                         sectionKey: slide?.dataset.sectionKey || '',
                         text: root?.innerText || '',
+                        headingFontSize: size(heading),
+                        headingFontWeight: heading ? getComputedStyle(heading).fontWeight : '',
                         nameFontSize: size(name),
                       };
                       root?.remove();
@@ -3534,6 +3537,8 @@ def main() -> int:
                 if (
                     offering_song_title_output_font_state["sectionKey"] == "offering"
                     and "내 주 되신 주를 참 사랑하고" in offering_song_title_output_font_state["text"]
+                    and offering_song_title_output_font_state["headingFontSize"] == 92
+                    and offering_song_title_output_font_state["headingFontWeight"] == "800"
                     and 72 <= offering_song_title_output_font_state["nameFontSize"] < 104
                 ):
                     pass_("presenter-offering-song-title-output-font", json.dumps(offering_song_title_output_font_state, ensure_ascii=False))
