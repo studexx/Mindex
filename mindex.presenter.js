@@ -1528,7 +1528,7 @@ function buildPresenterCustomSlides(item, section, index) {
   if (!slides.length) return [];
   const label = item.label || "";
   const songLikeItem = isSongServiceLabel(label) || isPresenterSpecialSongItem(item, section);
-  return slides.map((block, blockIndex) => {
+  const lyricSlides = slides.map((block, blockIndex) => {
     const parsed = parsePresenterCustomSlideBlock(block);
     return {
       id: `${item.id || index}:custom:${blockIndex}`,
@@ -1544,6 +1544,11 @@ function buildPresenterCustomSlides(item, section, index) {
       sort: index + blockIndex / 100,
     };
   }).filter((slide) => String(slide.text || "").trim());
+  if (!songLikeItem || !shouldIncludeSongTitleSlide(item, label)) return lyricSlides;
+  return [
+    presenterSongTitleSlide(item, section, null, null, serviceItemDisplayText(item), index),
+    ...lyricSlides,
+  ];
 }
 
 function parsePresenterCustomSlideBlock(block) {
@@ -1842,8 +1847,17 @@ function presenterPraiseTitle(song, fallbackText = "") {
   const cleanLinkedTitle = song?.hymn_no ? stripHymnNumber(linkedTitle) : linkedTitle;
   const normalizedLinkedTitle = cleanLinkedTitle.replace(/^찬송가\s*\d+\s*장\s*/i, "").trim();
   if (normalizedLinkedTitle) return normalizedLinkedTitle;
-  const { title } = splitHymnNo(fallbackText);
-  return title || fallbackText || "";
+  const fallbackTitle = presenterPraiseFallbackTitle(fallbackText);
+  const { title } = splitHymnNo(fallbackTitle);
+  return title || fallbackTitle || "";
+}
+
+function presenterPraiseFallbackTitle(fallbackText = "") {
+  const firstLine = String(fallbackText || "")
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .find(Boolean) || "";
+  return firstLine.split(/\s+\/\s+/)[0]?.trim() || firstLine;
 }
 
 function presenterPraiseElementTitle(song, version = null, fallbackText = "") {
@@ -2128,13 +2142,18 @@ function isSongServiceLabel(label) {
 function presenterStatePayload(serviceId = state.presenter.serviceId) {
   const service = state.services.find((svc) => svc.id === serviceId);
   const slides = presenterSlidesForService(serviceId);
-  const backgroundImages = presenterBackgroundSourcesForService(service);
+  const serviceChromakey = presenterServiceUsesChromakey(service);
+  const hasCleanSlides = slides.some((slide) =>
+    presenterSlideOutputContext(slide, serviceChromakey) === "clean");
+  const backgroundImages = presenterBackgroundSourcesForService(service, {
+    includeChromakeyCleanSlides: hasCleanSlides,
+  });
   return {
     serviceId,
     serviceType: service?.type_id || "",
     serviceTitle: [serviceDisplayTypeName(service), service ? formatServiceDate(service) : ""].filter(Boolean).join(" · "),
     serviceDate: service?.date || "",
-    chromakey: presenterServiceUsesChromakey(service),
+    chromakey: serviceChromakey,
     outputTheme: presenterOutputTheme(service?.type_id),
     backgroundImage: backgroundImages[0] || "",
     backgroundImages,

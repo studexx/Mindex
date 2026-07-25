@@ -9131,6 +9131,8 @@ const WORSHIP_BACKGROUND_REGISTRY_SLOTS = [1, 2, 3, 4, 5, 6];
 const WORSHIP_BACKGROUND_SEASON_CODES = ["S1", "S2", "S3", "S4", "S5", "S6", "SH", "ST"];
 const SERVICE_DEFAULT_BACKGROUND_GROUPS = {
   "sunday-first": "A",
+  "sunday-second": "A",
+  "sunday-main": "A",
   "young-adult": "A",
   friday: "B",
   youth: "B",
@@ -9189,8 +9191,10 @@ function presenterOutputTheme(typeId) {
   return "chromakey";
 }
 
-function presenterBackgroundSourcesForService(service) {
-  if (!service || presenterServiceUsesChromakey(service)) return [];
+function presenterBackgroundSourcesForService(service, options = {}) {
+  if (!service) return [];
+  const includeChromakeyCleanSlides = Boolean(options.includeChromakeyCleanSlides);
+  if (presenterServiceUsesChromakey(service) && !includeChromakeyCleanSlides) return [];
   const seasonFileName = presenterSeasonBackgroundFileNameForService(service);
   if (seasonFileName) {
     const seasonSources = worshipBackgroundSourcesForFileName(seasonFileName);
@@ -20845,7 +20849,9 @@ function renderPresenterSlideThumb(slide, slideIndex, activeIndex, serviceId, fo
 function renderPresenterSlideMiniPreview(slide, serviceId = state.presenter.serviceId) {
   const service = state.services.find((svc) => svc.id === serviceId);
   const serviceChromakey = presenterServiceUsesChromakey(service);
-  const backgroundImages = presenterBackgroundSourcesForService(service);
+  const backgroundImages = presenterBackgroundSourcesForService(service, {
+    includeChromakeyCleanSlides: presenterSlideOutputContext(slide, serviceChromakey) === "clean",
+  });
   const theme = presenterOutputTheme(service?.type_id);
   const frameState = presenterOutputFrameStateForSlide(slide, {
     chromakey: serviceChromakey,
