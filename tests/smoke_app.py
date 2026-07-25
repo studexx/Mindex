@@ -2186,13 +2186,15 @@ def main() -> int:
                                 makeItem('__smoke_share_second__', '찬양 1', 'praise', 1, { rawTitle: '9 하늘에 가득 찬 영광의' }),
                                 makeItem('__smoke_share_second__', '성경봉독', 'scripture_reading', 2, { rawTitle: '히 10:38-39', scriptureReference: '히 10:38-39' }),
                                 makeItem('__smoke_share_second__', '설교 제목', 'sermon', 3, { elementType: 'title_person', inputMode: 'text', rawTitle: '믿음으로 사는 사람', assignee: '김남영 목사' }),
-                                makeItem('__smoke_share_second__', '봉헌찬송', 'offering', 4),
+                                makeItem('__smoke_share_second__', '인용 구절', 'sermon', 4, { rawTitle: '고전 13:4-7', scriptureReference: '고전 13:4-7' }),
+                                makeItem('__smoke_share_second__', '봉헌찬송', 'offering', 5),
                               ],
                               __smoke_share_third__: [
                                 makeItem('__smoke_share_third__', '성경봉독', 'scripture_reading', 1),
                                 makeItem('__smoke_share_third__', '설교 제목', 'sermon', 2, { elementType: 'title_person', inputMode: 'text' }),
                                 makeItem('__smoke_share_third__', '설교 본문', 'sermon', 3),
-                                makeItem('__smoke_share_third__', '봉헌찬송', 'offering', 4),
+                                makeItem('__smoke_share_third__', '인용 구절', 'sermon', 4),
+                                makeItem('__smoke_share_third__', '봉헌찬송', 'offering', 5),
                               ],
                             };
                             const secondPraise = getServiceOutputItems('__smoke_share_second__').find((item) => item.label === '찬양 1');
@@ -2200,6 +2202,7 @@ def main() -> int:
                             const thirdReading = getServiceOutputItems('__smoke_share_third__').find((item) => item.label === '성경봉독');
                             const thirdSermonTitle = getServiceOutputItems('__smoke_share_third__').find((item) => item.label === '설교 제목');
                             const thirdSermonBody = getServiceOutputItems('__smoke_share_third__').find((item) => item.label === '설교 본문');
+                            const thirdCitation = getServiceOutputItems('__smoke_share_third__').find((item) => item.label === '인용 구절');
                             const thirdOffering = getServiceOutputItems('__smoke_share_third__').find((item) => item.label === '봉헌찬송');
                             const result = {
                               secondPraiseText: serviceItemDisplayText(secondPraise),
@@ -2213,6 +2216,7 @@ def main() -> int:
                               thirdSermonTitleAssignee: serviceItemWithSharedSundayContent(thirdSermonTitle, services[2]).assignee || '',
                               thirdSermonTitleStatic: presenterServiceInputIsStatic(thirdSermonTitle),
                               thirdSermonBodyRefs: serviceItemScriptureReferences(thirdSermonBody, parseServiceItemMemo(thirdSermonBody.memo), services[2]),
+                              thirdCitationRefs: serviceItemScriptureReferences(thirdCitation, parseServiceItemMemo(thirdCitation.memo), services[2]),
                               thirdOfferingText: serviceItemDisplayText(thirdOffering),
                               thirdOfferingStatic: presenterServiceInputIsStatic(thirdOffering),
                               thirdMissingSlides: buildServicePresenterSlides('__smoke_share_third__').filter((slide) => slide.missingContent).map((slide) => slide.label),
@@ -2695,6 +2699,7 @@ def main() -> int:
                         and template_terms["sharedSundayContentProjection"]["thirdSermonTitleAssignee"] == "김남영 목사"
                         and template_terms["sharedSundayContentProjection"]["thirdSermonTitleStatic"] is True
                         and template_terms["sharedSundayContentProjection"]["thirdSermonBodyRefs"] == ["롬 8:12–17"]
+                        and template_terms["sharedSundayContentProjection"]["thirdCitationRefs"] == ["고전 13:4–7"]
                         and template_terms["sharedSundayContentProjection"]["thirdOfferingText"]
                         and template_terms["sharedSundayContentProjection"]["thirdOfferingStatic"] is True
                         and template_terms["sharedSundayContentProjection"]["thirdMissingSlides"] == [

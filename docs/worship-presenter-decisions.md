@@ -139,8 +139,8 @@ Small visual polish that does not alter behavior does not need an entry.
 
 - Sunday first and second service share the same three main-praise contents:
   `찬양 1`, `찬양 2`, and `찬양 3`.
-- Sunday second and third service share scripture reading and sermon contents:
-  `성경봉독`, `설교 제목`, and `설교 본문`.
+- Sunday second and third service share scripture reading and the whole sermon
+  section content: `성경봉독`, `설교 제목`, `설교 본문`, and `인용 구절`.
 - Sunday first, second, and third service share `봉헌찬송`.
 - These are same-date content sharing rules. Direct input in a service always
   wins; an empty shared slot may fall back to another same-date service in its
