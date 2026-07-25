@@ -8979,12 +8979,11 @@ const WORSHIP_BACKGROUND_SEASON_CODES = ["S1", "S2", "S3", "S4", "S5", "S6", "SH
 const SERVICE_DEFAULT_BACKGROUND_GROUPS = {
   "sunday-first": "A",
   "young-adult": "A",
+  friday: "B",
   youth: "B",
   children: "C",
 };
-const SERVICE_DEFAULT_BACKGROUND_FILES = {
-  friday: "26-B4.png",
-};
+const SERVICE_DEFAULT_BACKGROUND_FILES = {};
 const WORSHIP_BACKGROUND_STATIC_FILES = new Set([
   "26-A1.png",
   "26-A2.png",
