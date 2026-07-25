@@ -33,7 +33,13 @@ begin
   from public.mindex_worship_services s
   where s.service_type_id in ('sun_3rd', 'sunday-main')
     and s.service_date = v_service_date
-  order by s.created_at asc
+  order by
+    case s.service_type_id
+      when 'sunday-main' then 0
+      when 'sun_3rd' then 1
+      else 99
+    end,
+    s.created_at asc
   limit 1;
 
   select *

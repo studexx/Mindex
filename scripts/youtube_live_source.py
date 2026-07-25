@@ -27,6 +27,7 @@ DEFAULT_STATE_DIR = ROOT / "output" / "youtube-live-source"
 DEFAULT_PREACHER = "김남영 위임목사"
 DEFAULT_PREACHER_ALIASES = {"김남영목사", "김남영위임목사"}
 SUNDAY_MAIN_SERVICE_TYPE_IDS = ("sun_3rd", "sunday-main")
+SUNDAY_MAIN_SERVICE_TYPE_PRIORITY = {"sunday-main": 0, "sun_3rd": 1}
 
 
 @dataclass(frozen=True)
@@ -175,6 +176,14 @@ def first_text(row: dict[str, Any], *keys: str) -> str:
     return ""
 
 
+def sunday_main_service_sort_key(service: dict[str, Any]) -> tuple[int, str]:
+    service_type = clean_text(service.get("service_type_id"))
+    return (
+        SUNDAY_MAIN_SERVICE_TYPE_PRIORITY.get(service_type, 99),
+        clean_text(service.get("created_at")),
+    )
+
+
 def retry_marker_path(state_dir: Path, service_date: date) -> Path:
     return state_dir / f"{service_date.isoformat()}.retry.json"
 
@@ -259,6 +268,7 @@ def resolve_live_source_from_worship_tables(
         for service in services
         if service.get("service_type_id") in SUNDAY_MAIN_SERVICE_TYPE_IDS
     ]
+    matching_services.sort(key=sunday_main_service_sort_key)
     if len(matching_services) > 1:
         warnings.append({"code": "multiple_services", "count": len(matching_services)})
     service = matching_services[0] if matching_services else None

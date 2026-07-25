@@ -250,3 +250,6 @@ Small visual polish that does not alter behavior does not need an entry.
 - 단, 해당 주일의 교회력/일정/예배 태그에 `온세대` 또는 `찬양예배`가
   있으면 어린이부와 청소년부 예배를 별도로 생성하지 않는다. 그날은
   3부 예배(`sunday-main`)가 통합 예배의 source of truth다.
+- YouTube live source resolution treats `sunday-main` as the current 3부 source
+  of truth. Legacy `sun_3rd` rows may still be read as compatibility fallback,
+  but if both exist on the same date, `sunday-main` wins.

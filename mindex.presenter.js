@@ -388,6 +388,7 @@ function presenterImageSourcesFromAssetUrl(value) {
 function presenterFormPlanForServiceItem(version = {}, item, song = null) {
   version = version || {};
   const forms = normalizeForms(version.forms || []).filter((form) => normalizeLyricsForCopy(form.lyrics));
+  if (typeof serviceItemFormPresetDisabled === "function" && serviceItemFormPresetDisabled(item)) return { forms, warnings: [] };
   const isHymn = versionEffectivePraiseTypes(song, version).includes("hymn");
   const itemPreset = serviceItemFormPreset(item);
   const matchedRule = matchedServiceItemFormPresetRule(item, song, version);
@@ -764,21 +765,19 @@ function presenterFormPresetGroupItem(label = "", target = {}, form = {}) {
 }
 
 function presenterGroupedLyricChunks(lyrics = "", target = {}) {
-  const explicitChunks = splitPresenterLyricChunks(lyrics);
-  if (explicitChunks.length > 1) return explicitChunks;
   const groupIndex = Number(target?.groupIndex) || 0;
-  if (!groupIndex) return explicitChunks;
+  if (!groupIndex) return splitPresenterLyricChunks(lyrics);
   const lines = String(lyrics || "")
     .split(/\n+/)
     .map((line) => line.trim())
     .filter(Boolean);
-  if (lines.length < 2) return explicitChunks;
+  if (lines.length < 2) return lines;
   const chunkSize = Math.max(1, Math.ceil(lines.length / Math.max(groupIndex, 2)));
   const chunks = [];
   for (let index = 0; index < lines.length; index += chunkSize) {
     chunks.push(lines.slice(index, index + chunkSize).join("\n"));
   }
-  return chunks.length ? chunks : explicitChunks;
+  return chunks;
 }
 
 function presenterFormDisplayLabel(form = {}) {

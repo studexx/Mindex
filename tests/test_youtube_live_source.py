@@ -279,6 +279,90 @@ class YoutubeLiveSourceTests(unittest.TestCase):
         self.assertIn("rpc_source_not_ready", [warning["code"] for warning in result["warnings"]])
         self.assertIn("used_worship_table_fallback", [warning["code"] for warning in result["warnings"]])
 
+    def test_worship_table_fallback_prefers_current_sunday_main_over_legacy_sun_3rd(self) -> None:
+        client = FakeClient(
+            {
+                "serviceDate": "2026-07-05",
+                "scheduledStartTime": "2026-07-05T10:45:00+09:00",
+                "sermonTitle": "",
+                "passage": "",
+                "preacher": "",
+                "preacherSource": "",
+                "serviceId": None,
+                "ready": False,
+                "missing": ["sermonTitle", "passage"],
+                "warnings": [{"code": "service_not_found"}],
+            },
+            {
+                "mindex_worship_services": [
+                    {
+                        "id": "legacy-service",
+                        "service_date": "2026-07-05",
+                        "service_type_id": "sun_3rd",
+                        "title": "주일예배 [3부]",
+                        "worship_leader": "",
+                        "created_at": "2026-07-04T00:00:00Z",
+                    },
+                    {
+                        "id": "current-service",
+                        "service_date": "2026-07-05",
+                        "service_type_id": "sunday-main",
+                        "title": "주일예배 [3부]",
+                        "worship_leader": "",
+                        "created_at": "2026-07-05T00:00:00Z",
+                    },
+                ],
+                "mindex_worship_sections": [
+                    {
+                        "id": "current-scripture",
+                        "service_id": "current-service",
+                        "section_key": "scripture_reading",
+                        "title": "성경봉독",
+                        "person": "",
+                        "sort_order": 5,
+                    },
+                    {
+                        "id": "current-sermon",
+                        "service_id": "current-service",
+                        "section_key": "sermon",
+                        "title": "설교",
+                        "person": "",
+                        "sort_order": 7,
+                    },
+                ],
+                "mindex_worship_elements": [
+                    {
+                        "id": "current-scripture-element",
+                        "section_id": "current-scripture",
+                        "element_type": "scripture_reading",
+                        "title": "",
+                        "body": "",
+                        "scripture_reference": "요 9:1-7",
+                        "person": "",
+                        "sort_order": 1,
+                    },
+                    {
+                        "id": "current-sermon-element",
+                        "section_id": "current-sermon",
+                        "element_type": "title_person",
+                        "title": "눈을 뜨시오",
+                        "body": "",
+                        "scripture_reference": "",
+                        "person": "김남영 목사",
+                        "sort_order": 1,
+                    },
+                ],
+            },
+        )
+
+        result = resolve_live_source(client, date(2026, 7, 5))
+
+        self.assertTrue(result["ready"])
+        self.assertEqual(result["serviceId"], "current-service")
+        self.assertEqual(result["sermonTitle"], "눈을 뜨시오")
+        self.assertEqual(result["passage"], "요 9:1-7")
+        self.assertIn("multiple_services", [warning["code"] for warning in result["warnings"]])
+
 
 if __name__ == "__main__":
     unittest.main()

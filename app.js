@@ -5711,7 +5711,7 @@ function handleDetailKeydown(event) {
   if (serviceTextField && event.key === "Enter") {
     event.preventDefault();
     updateServiceItemField(serviceTextField);
-    saveCommittedServiceItem(serviceTextField.dataset.serviceItemIndex);
+    saveCommittedServiceItem(serviceTextField.dataset.serviceItemIndex, serviceTextField.dataset.serviceId || state.selectedServiceId);
     return;
   }
   if (event.key !== "Enter" && event.key !== " ") return;
@@ -5860,7 +5860,7 @@ function handleDetailInput(event) {
   if (serviceField) {
     if (isDeferredServiceTextInput(serviceField)) return;
     updateServiceItemField(serviceField);
-    if (serviceField.matches("select")) saveCommittedServiceItem(serviceField.dataset.serviceItemIndex);
+    if (serviceField.matches("select")) saveCommittedServiceItem(serviceField.dataset.serviceItemIndex, serviceField.dataset.serviceId || state.selectedServiceId);
     return;
   }
 
@@ -5977,7 +5977,7 @@ function handleDetailChange(event) {
   if (serviceField) {
     if (isDeferredServiceTextInput(serviceField)) return;
     updateServiceItemField(serviceField);
-    if (serviceField.matches("select")) saveCommittedServiceItem(serviceField.dataset.serviceItemIndex);
+    if (serviceField.matches("select")) saveCommittedServiceItem(serviceField.dataset.serviceItemIndex, serviceField.dataset.serviceId || state.selectedServiceId);
     return;
   }
 
@@ -6542,13 +6542,14 @@ async function resolveAndSaveCommittedServiceItem(serviceId, index) {
 }
 
 function updateServiceItemField(field) {
-  const items = getServiceItems(state.selectedServiceId);
+  const serviceId = field.dataset.serviceId || state.selectedServiceId;
+  const items = getServiceItems(serviceId);
   const index = Number(field.dataset.serviceItemIndex);
   const item = items[index];
   if (!item) return;
 
   const key = field.dataset.serviceItemField;
-  const service = selectedServiceForEditor();
+  const service = state.services.find((candidate) => candidate.id === serviceId) || selectedServiceForEditor();
   item._worshipElementTemplateModified = true;
   const strictSongInput = key === "raw_title" && serviceItemRequiresSongSelection(item, service);
   if (key === "label" || key === "assignee" || key === "raw_title") {
@@ -6584,10 +6585,12 @@ function updateServiceItemField(field) {
     if (key === "memo_note") parsed.note = field.value;
     if (key === "slide_overrides") parsed.slides = parseServiceSlideOverrideInput(field.value);
     if (key === "form_hint") {
-      parsed.formHint = field.value;
-      parsed.formPreset = field.value
-        ? normalizeServiceFormPreset(field.value, field.value, "manual")
+      const formHint = String(field.value || "").trim();
+      parsed.formHint = formHint;
+      parsed.formPreset = formHint
+        ? normalizeServiceFormPreset(formHint, formHint, "manual")
         : null;
+      parsed.formPresetDisabled = !formHint;
     }
     if (key === "element_type" || key === "component_type") {
       parsed.elementType = normalizeServiceElementType(field.value);
@@ -6625,10 +6628,10 @@ function updateServiceItemField(field) {
     }
     scheduleServiceScriptureBodyResolve(state.selectedServiceId, index);
   }
-  applyServicePreparationDefaults(item, state.selectedServiceId);
-  state.serviceItems[state.selectedServiceId] = normalizeServiceItemsInCurrentOrder(items);
+  applyServicePreparationDefaults(item, serviceId);
+  state.serviceItems[serviceId] = normalizeServiceItemsInCurrentOrder(items);
   state.dirty.service = true;
-  refreshPresenterForService(state.selectedServiceId);
+  refreshPresenterForService(serviceId);
   updateSaveState();
 }
 
@@ -7044,6 +7047,7 @@ function emptyServiceItemMemo(rawNote = "") {
     introSlide: null,
     formHint: "",
     formPreset: null,
+    formPresetDisabled: false,
     formPresetRules: [],
     templateKey: "",
     templateVariant: "",
@@ -7080,6 +7084,7 @@ function parseServiceItemMemo(value) {
         introSlide,
         formHint: String(parsed.formHint || parsed.form_hint || parsed.forms || "").trim(),
         formPreset: normalizeServiceFormPreset(parsed.formPreset || parsed.form_preset, parsed.formHint || parsed.form_hint),
+        formPresetDisabled: Boolean(parsed.formPresetDisabled || parsed.form_preset_disabled || parsed.disableFormPreset || parsed.disable_form_preset),
         formPresetRules: normalizeServiceFormPresetRules(parsed.formPresetRules || parsed.form_preset_rules),
         templateKey: String(parsed.templateKey || parsed.template_key || "").trim(),
         templateVariant: String(parsed.templateVariant || parsed.template_variant || "").trim(),
@@ -7175,6 +7180,7 @@ function serializeServiceItemMemo(value = {}) {
   const scriptureReferences = normalizeServiceScriptureReferenceList(value.scriptureReferences || value.scripture_references);
   const formHint = String(value.formHint || value.form_hint || "").trim();
   const formPreset = normalizeServiceFormPreset(value.formPreset || value.form_preset, formHint);
+  const formPresetDisabled = Boolean(value.formPresetDisabled || value.form_preset_disabled || value.disableFormPreset || value.disable_form_preset);
   const formPresetRules = normalizeServiceFormPresetRules(value.formPresetRules || value.form_preset_rules);
   const introSlide = normalizeServiceIntroSlide(value.introSlide || value.intro_slide || value.titleSlide || value.title_slide);
   const templateKey = String(value.templateKey || value.template_key || "").trim();
@@ -7190,13 +7196,14 @@ function serializeServiceItemMemo(value = {}) {
   const templateSuppressed = Boolean(value.templateSuppressed || value.template_suppressed);
   const defaultAssetKind = serviceAssetKindForElementType(elementType);
   if (!asset.kind && defaultAssetKind && hasServiceAsset(asset)) asset.kind = defaultAssetKind;
-  if (!slides.length && !scriptureReference && !scriptureReferences.length && !hasServiceIntroSlide(introSlide) && !formHint && !formPreset && !formPresetRules.length && !templateKey && !templateVariant && !elementType && !outputMode && !inputMode && !textHighlights.length && !hasServiceAsset(asset) && !hasServicePlaybackConfig(playback) && !presenterRole && !hiddenInPresentation && !templateSuppressed) return note;
+  if (!slides.length && !scriptureReference && !scriptureReferences.length && !hasServiceIntroSlide(introSlide) && !formHint && !formPreset && !formPresetDisabled && !formPresetRules.length && !templateKey && !templateVariant && !elementType && !outputMode && !inputMode && !textHighlights.length && !hasServiceAsset(asset) && !hasServicePlaybackConfig(playback) && !presenterRole && !hiddenInPresentation && !templateSuppressed) return note;
   const payload = { note };
   if (scriptureReference) payload.scriptureReference = scriptureReference;
   if (scriptureReferences.length) payload.scriptureReferences = scriptureReferences;
   if (hasServiceIntroSlide(introSlide)) payload.introSlide = introSlide;
   if (formHint) payload.formHint = formHint;
   if (formPreset) payload.formPreset = formPreset;
+  if (formPresetDisabled) payload.formPresetDisabled = true;
   if (formPresetRules.length) payload.formPresetRules = formPresetRules;
   if (templateKey) payload.templateKey = templateKey;
   if (templateVariant) payload.templateVariant = templateVariant;
@@ -15675,11 +15682,30 @@ function serviceItemFormHint(item) {
 }
 
 function serviceItemFormPreset(item) {
-  return parseServiceItemMemo(item?.memo).formPreset || null;
+  const parsed = parseServiceItemMemo(item?.memo);
+  return parsed.formPresetDisabled ? null : parsed.formPreset || null;
+}
+
+function serviceItemFormPresetDisabled(item) {
+  return Boolean(parseServiceItemMemo(item?.memo).formPresetDisabled);
 }
 
 function serviceItemFormPresetRules(item) {
   return parseServiceItemMemo(item?.memo).formPresetRules || [];
+}
+
+function serviceItemMetadataFormPreset(item = {}) {
+  const song = serviceItemLinkedSong(item);
+  const version = serviceItemLinkedVersion(item, song);
+  const versionMeta = normalizeSongMetadata(version?.metadata);
+  const songMeta = normalizeSongMetadata(song?.metadata);
+  return versionMeta.presenter_form || songMeta.presenter_form || null;
+}
+
+function serviceItemEffectiveFormHint(item = {}) {
+  const parsed = parseServiceItemMemo(item?.memo);
+  if (parsed.formPresetDisabled) return "";
+  return parsed.formHint || serviceFormPresetSummary(serviceItemMetadataFormPreset(item));
 }
 
 function serviceFormPresetSummary(preset) {
@@ -15717,8 +15743,9 @@ function renderServiceFormHintInput(item, index, options = {}) {
       class="svc-form-hint${options.compact ? " compact" : ""}"
       type="text"
       data-service-item-field="form_hint"
+      data-service-id="${escapeAttr(item.service_id || options.serviceId || state.selectedServiceId || "")}"
       data-service-item-index="${index}"
-      value="${escapeAttr(serviceItemFormHint(item))}"
+      value="${escapeAttr(serviceItemEffectiveFormHint(item))}"
       placeholder="${escapeAttr(options.placeholder || "송폼/범위")}"
       aria-label="섹션 송폼/범위"
     />`;
@@ -21882,14 +21909,6 @@ function resolvePresenterServiceItemContentState(item = {}, memo = emptyServiceI
   }
   if (isPublicClosingImageServiceItem(item, memo)) return filled("closing_visual_asset");
   if (isPublicFixedDoxologyServiceItem(item, memo, service)) return filled("fixed_doxology");
-  if (isSharedScriptureReadingServiceItem(item)) {
-    if (serviceItemDirectScriptureReferences(item, memo).length || serviceScriptureTextPayload(item, memo).verses.length) {
-      return filled("scripture_body");
-    }
-    return serviceItemScriptureReferences(item, memo, service).length
-      ? filled("shared_sermon_scripture")
-      : filled("shared_sermon_scripture_pending");
-  }
   if (isOptionalCitationScriptureServiceItem(item) && !serviceItemScriptureReferences(item, memo, service).length) {
     return filled("optional_citation_empty");
   }
@@ -21914,6 +21933,15 @@ function resolvePresenterServiceItemContentState(item = {}, memo = emptyServiceI
     return serviceItemScriptureReferences(item, memo, service).length || serviceScriptureTextPayload(item, memo).verses.length
       ? filled("scripture_reference")
       : missing(rawText ? "scripture_reference_invalid" : "scripture_empty");
+  }
+  if (elementType === "title_person") {
+    const { needsTitle, needsAssignee } = presenterServiceTextInputSpec(
+      item,
+      serviceItemEditorModel(item, { service }),
+      memo,
+    );
+    if (needsTitle && !rawText) return missing("title_empty");
+    if (needsAssignee && !assignee) return missing("assignee_empty");
   }
   if (song || item?.song_id) return filled("song");
   if (rawText) return filled("raw_title");

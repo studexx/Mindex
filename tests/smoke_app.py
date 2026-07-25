@@ -1741,10 +1741,60 @@ def main() -> int:
                             });
                             const parsed = parseServiceItemMemo(memo);
                             const badgeHtml = renderServiceFormPresetBadges({ memo });
+                            const previousSongs = state.songs;
+                            const song = {
+                              id: '__form_meta_song__',
+                              title: '송폼 메타 찬양',
+                              metadata: { presenter_form: { forms: ['V1', 'C', 'V2', 'C'], hint: 'V1-C-V2-C' } },
+                              versions: [{ id: '__form_meta_version__', forms: [] }]
+                            };
+                            const item = normalizeServiceItem({
+                              id: '__form_meta_item__',
+                              service_id: '__form_meta_service__',
+                              label: '찬양 1',
+                              song_id: song.id,
+                              version_id: '__form_meta_version__',
+                              memo: serializeServiceItemMemo({ elementType: 'praise', inputMode: 'praise_db' })
+                            });
+                            state.songs = [song];
+                            const metadataValue = serviceItemEffectiveFormHint(item);
+                            const inputHtml = renderServiceFormHintInput(item, 0, { compact: true, placeholder: '송폼' });
+                            const disabledMemo = serializeServiceItemMemo({ ...parseServiceItemMemo(item.memo), formHint: '', formPreset: null, formPresetDisabled: true });
+                            const disabledParsed = parseServiceItemMemo(disabledMemo);
+                            const disabledValue = serviceItemEffectiveFormHint({ ...item, memo: disabledMemo });
+                            const previousServiceItems = state.serviceItems;
+                            const previousSelectedServiceId = state.selectedServiceId;
+                            const editableItem = { ...item, memo: item.memo };
+                            state.serviceItems = {
+                              ...previousServiceItems,
+                              __form_meta_service__: [editableItem],
+                              __other_selected_service__: [normalizeServiceItem({ id: '__other_item__', service_id: '__other_selected_service__', label: '찬양 1' })],
+                            };
+                            state.selectedServiceId = '__other_selected_service__';
+                            const inputNode = document.createElement('div');
+                            inputNode.innerHTML = renderServiceFormHintInput(editableItem, 0, { compact: true, placeholder: '송폼' });
+                            const formInput = inputNode.querySelector('input');
+                            formInput.value = '';
+                            updateServiceItemField(formInput);
+                            const savedOverride = parseServiceItemMemo(state.serviceItems.__form_meta_service__[0].memo).formPresetDisabled === true;
+                            const otherUntouched = parseServiceItemMemo(state.serviceItems.__other_selected_service__[0].memo).formPresetDisabled === false;
+                            state.selectedServiceId = previousSelectedServiceId;
+                            state.serviceItems = previousServiceItems;
+                            state.songs = previousSongs;
                             return {
                               formHint: parsed.formHint || '',
                               forms: parsed.formPreset?.forms || [],
                               strength: parsed.formPreset?.strength || '',
+                              metadataValue,
+                              inputValue: (() => {
+                                const node = document.createElement('div');
+                                node.innerHTML = inputHtml;
+                                return node.querySelector('input')?.value || '';
+                              })(),
+                              disabledMemoKeepsOverride: disabledParsed.formPresetDisabled === true,
+                              disabledValue,
+                              savedOverride,
+                              otherUntouched,
                               badgeText: (() => {
                                 const node = document.createElement('div');
                                 node.innerHTML = badgeHtml;
@@ -2385,6 +2435,12 @@ def main() -> int:
                             "formHint": "V2-C",
                             "forms": ["V2", "C"],
                             "strength": "manual",
+                            "metadataValue": "V1-C-V2-C",
+                            "inputValue": "V1-C-V2-C",
+                            "disabledMemoKeepsOverride": True,
+                            "disabledValue": "",
+                            "savedOverride": True,
+                            "otherUntouched": True,
                             "badgeText": "송폼 V2-C 찬송가 1절-후렴-2절-후렴-간주-마지막 절-후렴",
                         }
                         and template_terms["fridayNewServiceLeader"] == {
@@ -3563,6 +3619,42 @@ def main() -> int:
                         pass_("presenter-response-prayer-input-guard", json.dumps(presenter_response_prayer_input_guard, ensure_ascii=False))
                     else:
                         fail("presenter-response-prayer-input-guard", json.dumps(presenter_response_prayer_input_guard, ensure_ascii=False))
+
+                    youth_missing_input_guard = page.evaluate(
+                        """
+                        (() => {
+                          const service = { id: '__smoke_youth_missing__', type_id: 'youth', date: '2026-07-26' };
+                          const previousServices = state.services;
+                          const previousItems = state.serviceItems;
+                          try {
+                            state.services = [...previousServices, service];
+                            const items = projectWorshipServiceItemsFromTemplate(service, []);
+                            state.serviceItems = { ...previousItems, [service.id]: items };
+                            const states = ['기도', '성경봉독', '설교 제목', '봉헌기도'].map((label) => {
+                              const item = items.find((entry) => entry.label === label);
+                              const content = resolvePresenterServiceItemContentState(item, parseServiceItemMemo(item?.memo), null, service);
+                              return { label, state: content.state, reason: content.reason };
+                            });
+                            return {
+                              states,
+                              missingSlides: buildServicePresenterSlides(service.id).filter((slide) => slide?.missingContent).length,
+                            };
+                          } finally {
+                            state.services = previousServices;
+                            state.serviceItems = previousItems;
+                          }
+                        })()
+                        """
+                    )
+                    if (
+                        [entry["label"] for entry in youth_missing_input_guard["states"]]
+                        == ["기도", "성경봉독", "설교 제목", "봉헌기도"]
+                        and all(entry["state"] == "missing" for entry in youth_missing_input_guard["states"])
+                        and youth_missing_input_guard["missingSlides"] >= 4
+                    ):
+                        pass_("youth-missing-input-guard", json.dumps(youth_missing_input_guard, ensure_ascii=False))
+                    else:
+                        fail("youth-missing-input-guard", json.dumps(youth_missing_input_guard, ensure_ascii=False))
 
                     presenter_preparation_real_song_match = page.evaluate(
                         """
