@@ -887,6 +887,12 @@ function bindStaticEvents() {
 
     if (isPresenterPreparationInputEvent(event)) return;
 
+    const homeNextServiceAction = event.target.closest("[data-home-next-service-action]");
+    if (homeNextServiceAction) {
+      await openHomeNextService(homeNextServiceAction.dataset.homeNextServiceAction, homeNextServiceAction.dataset.homeServiceId);
+      return;
+    }
+
     const homeModule = event.target.closest("[data-home-module]");
     if (homeModule) {
       await switchModule(homeModule.dataset.homeModule);
@@ -1128,7 +1134,8 @@ const handleSidebarToggle = () => {
 function serviceOutlineSlideTarget(serviceOutlineItem) {
   const itemIndex = Number(serviceOutlineItem?.dataset?.serviceOutlineItemIndex);
   const serviceId = serviceOutlineItem?.dataset?.serviceOutlineService || state.selectedServiceId;
-  let slideIndex = Number(serviceOutlineItem?.dataset?.serviceOutlineSlide);
+  const slideValue = String(serviceOutlineItem?.dataset?.serviceOutlineSlide || "").trim();
+  let slideIndex = slideValue ? Number(slideValue) : -1;
   const service = state.services.find((svc) => svc.id === serviceId);
   const slides = presenterSlidesForService(serviceId);
   const outlineItems = service ? getServiceOutlineItems(service) : [];
@@ -1144,7 +1151,25 @@ function serviceOutlineSlideTarget(serviceOutlineItem) {
 
 function handleServiceOutlineSlideClick(serviceOutlineItem) {
   const target = serviceOutlineSlideTarget(serviceOutlineItem);
-  if (!target) return;
+  if (!target) {
+    const serviceId = serviceOutlineItem?.dataset?.serviceOutlineService || state.selectedServiceId;
+    const itemIndex = Number(serviceOutlineItem?.dataset?.serviceOutlineItemIndex);
+    const service = state.services.find((entry) => entry.id === serviceId);
+    const items = service ? getServiceOutlineItems(service) : [];
+    const item = Number.isInteger(itemIndex) && itemIndex >= 0
+      ? items.find((entry, index) => (Number.isInteger(entry._serviceItemIndex) ? entry._serviceItemIndex : index) === itemIndex)
+      : null;
+    if (!serviceId || !item) return;
+
+    // A missing slide means this item needs preparation, not that it cannot be selected.
+    state.selectedServiceItemIndex = itemIndex;
+    openPresenterSectionEditor(serviceId, {
+      itemId: item.id,
+      sectionKey: item._worshipSectionKey || "",
+    });
+    renderServiceList();
+    return;
+  }
   const selectionChanged = Number.isFinite(target.itemIndex)
     && target.itemIndex >= 0
     && state.selectedServiceItemIndex !== target.itemIndex;
@@ -5128,6 +5153,12 @@ function writeFormsToSelectedVersion() {
 
 function handleDetailClick(event) {
   if (handleServiceOutlineSlideEvent(event)) return;
+
+  const homeNextServiceAction = event.target.closest("[data-home-next-service-action]");
+  if (homeNextServiceAction) {
+    void openHomeNextService(homeNextServiceAction.dataset.homeNextServiceAction, homeNextServiceAction.dataset.homeServiceId);
+    return;
+  }
 
   const backgroundSelect = event.target.closest("[data-background-select]");
   if (backgroundSelect) {
@@ -9792,16 +9823,30 @@ function clearGlobalSearchInput() {
 function renderHomeList() {
   const modules = homeModuleCards();
   const service = modules.find((module) => module.id === "service");
+  const nextService = getHomeNextService();
   refs.songCount.textContent = "";
   refs.songList.innerHTML = `
     <div class="home-sidebar">
       ${service ? `<section class="home-sidebar-section home-sidebar-section--primary">
         <span class="home-sidebar-heading">다음 예배</span>
-        ${renderHomeSidebarCard(service)}
+        ${nextService ? renderHomeNextServiceSidebarCard(nextService) : renderHomeSidebarCard(service)}
       </section>` : ""}
     </div>
   `;
   finishListRender();
+}
+
+function renderHomeNextServiceSidebarCard(service) {
+  return `
+    <button class="home-sidebar-card service has-meta" type="button"
+      data-home-next-service-action="presenter"
+      data-home-service-id="${escapeAttr(service.id)}"
+      aria-label="${escapeAttr(`${serviceDisplayTypeName(service)} 송출 준비`)}">
+      <i data-lucide="screen-share"></i>
+      <span>${escapeHtml(serviceDisplayTypeName(service))}</span>
+      <small>${escapeHtml(homeServiceScheduleLabel(service, { compact: true }))}</small>
+    </button>
+  `;
 }
 
 function renderModuleSidebarContext() {
@@ -9851,16 +9896,14 @@ function renderHomeDetail() {
             ${nextServicePrep ? `<small class="${nextServicePrep.missingCount ? "needs-input" : "ready"}">${escapeHtml(nextServicePrep.status)}</small>` : ""}
           </div>
           <div class="home-command-row">
-            <button type="button" data-home-module="service">
+            <button type="button" data-home-next-service-action="service" data-home-service-id="${escapeAttr(nextService?.id || "")}">
               <i data-lucide="panels-top-left"></i>
               <span>구성</span>
             </button>
-            ${service.actions?.map((action) => `
-              <button type="button" data-home-module="${escapeAttr(action.id)}">
-                <i data-lucide="${escapeAttr(action.id === "presenter" ? "screen-share" : "list-checks")}"></i>
-                <span>${escapeHtml(action.label)}</span>
-              </button>
-            `).join("") || ""}
+            <button type="button" data-home-next-service-action="presenter" data-home-service-id="${escapeAttr(nextService?.id || "")}">
+              <i data-lucide="screen-share"></i>
+              <span>송출 준비</span>
+            </button>
           </div>
         </section>` : ""}
         <section class="home-command-panel" aria-label="바로 실행">
@@ -14136,7 +14179,6 @@ function youthWorshipTemplate() {
       sectionKey: "fellowship",
       elements: [{ label: "반별 모임", name: "반별 모임", elementType: "title", default_text: "반별 모임" }],
     },
-    legacyImageClosingStep(),
   ];
 }
 
@@ -14584,6 +14626,8 @@ const SERVICE_ORDER_TEMPLATE_FALLBACKS = {
 
 const SERVICE_ORDER_TEMPLATE_OPTIONS = {
   friday: { appendClosing: false },
+  children: { appendClosing: false },
+  youth: { appendClosing: false },
 };
 
 function normalizeServiceItem(item = {}, index = 0) {
@@ -16234,7 +16278,7 @@ function renderServiceOutlineGroup(service, group, groupIndex, selectedIndex, sl
         data-service-outline-service="${escapeAttr(service.id)}"
         aria-label="${escapeAttr(interactionHint)}"
         title="${escapeAttr(interactionHint)}"
-        ${firstSlideIndex >= 0 ? "" : "disabled"}>
+        >
         <span class="service-outline-no">${escapeHtml(groupIndex + 1)}</span>
         <span class="service-outline-main">
           <strong>${escapeHtml(title)}</strong>
@@ -16262,7 +16306,7 @@ function renderServiceOutlineChildRow(service, item, index, selectedIndex, slide
       data-service-outline-service="${escapeAttr(service.id)}"
       aria-label="${escapeAttr(interactionHint)}"
       title="${escapeAttr(interactionHint)}"
-      ${slideIndex >= 0 ? "" : "disabled"}>
+      >
       <span class="service-outline-no"></span>
       <span class="service-outline-main">
         <strong>${escapeHtml(title)}</strong>
@@ -22224,6 +22268,25 @@ function selectService(id) {
   renderServiceList();
   syncBrowserHistory();
   if (id) loadServiceItems(id);
+}
+
+async function openHomeNextService(action = "presenter", serviceId = "") {
+  const id = serviceId || getHomeNextService()?.id;
+  if (!id) {
+    showToast("준비된 다음 예배가 없습니다.", "info");
+    return;
+  }
+  if (action === "presenter") {
+    await openServiceInPresenter(id);
+    return;
+  }
+  if (id !== state.selectedServiceId && !confirmDiscardServiceChanges()) return;
+  state.selectedServiceId = id;
+  state.selectedServiceItemIndex = 0;
+  const service = state.services.find((entry) => entry.id === id);
+  if (service) state.selectedServiceTypeId = service.type_id;
+  await loadServiceItems(id);
+  await switchModule("service", { clearSearch: false });
 }
 
 async function openServiceInPresenter(id) {

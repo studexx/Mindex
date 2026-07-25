@@ -1719,7 +1719,7 @@ def main() -> int:
                                 lastScaffoldKey: lastSection.section_key || '',
                               };
                             };
-                            return ['holy-week-dawn', 'omer', 'special', 'children'].map(summarize);
+                            return ['holy-week-dawn', 'omer', 'special'].map(summarize);
                           })(),
                           scoreModeMemo: (() => {
                             const memo = serializeServiceItemMemo({ elementType: 'praise', outputMode: 'score' });
@@ -2538,6 +2538,7 @@ def main() -> int:
                         """
                         (() => {
                           const service = { id: '__smoke_youth_template__', type_id: 'youth', date: '2026-07-26' };
+                          const childrenService = { id: '__smoke_children_template__', type_id: 'children', date: '2026-07-26' };
                           const previousCalendarData = state.calendarData;
                           const template = serviceOrderTemplate('youth', { service });
                           const projected = projectWorshipServiceItemsFromTemplate(service, []);
@@ -2577,6 +2578,7 @@ def main() -> int:
                               offeringReady: offeringContent.state === 'filled' && offeringContent.reason === 'song',
                               fellowshipStatic: presenterServiceInputItem({ ...fellowship, raw_title: '' }, service) === null,
                               fellowshipContent: fellowshipContent.reason,
+                              childrenLastSection: serviceOrderTemplate('children', { service: childrenService }).at(-1)?.label || '',
                               scheduledOnIntegratedSunday: autoUpcomingPublicServiceTargets('2026-07-20')
                                 .some((item) => item.typeId === 'youth' && item.date === '2026-07-26'),
                             };
@@ -2589,17 +2591,18 @@ def main() -> int:
                     if youth_template == {
                         "sections": [
                             "ready", "creed", "praise", "prayer", "offering", "scripture_reading",
-                            "sermon", "response_song", "lords_prayer", "announcements", "fellowship", "closing_visual",
+                            "sermon", "response_song", "lords_prayer", "announcements", "fellowship",
                         ],
                         "labels": [
                             "대기 영상", "사도신경", "찬양 1", "찬양 2", "찬양 3", "기도", "봉헌찬양", "봉헌기도",
-                            "성경봉독", "설교 제목", "인용 구절", "결단기도", "주기도문", "교회소식", "반별 모임", "마무리",
+                            "성경봉독", "설교 제목", "인용 구절", "결단기도", "주기도문", "교회소식", "반별 모임",
                         ],
                         "offeringTitle": "",
                         "offeringLinked": True,
                         "offeringReady": True,
                         "fellowshipStatic": True,
                         "fellowshipContent": "fixed_title",
+                        "childrenLastSection": "교제",
                         "scheduledOnIntegratedSunday": False,
                     }:
                         pass_("youth-service-template", json.dumps(youth_template, ensure_ascii=False))
