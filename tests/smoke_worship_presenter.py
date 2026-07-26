@@ -5964,6 +5964,8 @@ def main() -> int:
                         layout: first.layout || '',
                         imageSrc: first.imageSrc || '',
                         title: first.title || '',
+                        readyServiceName: first.readyServiceName || '',
+                        text: first.text || '',
                         normalizedRawTitle: normalizedReadyItem.raw_title || '',
                       };
                     }
@@ -5972,10 +5974,12 @@ def main() -> int:
                 if (
                     fullscreen_ready_state["chromakey"] is False
                     and fullscreen_ready_state["slideCount"] >= 2
-                    and fullscreen_ready_state["type"] == "image"
-                    and fullscreen_ready_state["elementType"] == "image"
+                    and fullscreen_ready_state["type"] == "ready"
+                    and fullscreen_ready_state["elementType"] == "video"
                     and fullscreen_ready_state["layout"] == "media"
-                    and fullscreen_ready_state["imageSrc"].endswith("assets/worship-backgrounds/26-A1.png")
+                    and fullscreen_ready_state["imageSrc"] == ""
+                    and fullscreen_ready_state["readyServiceName"] == "금요기도회"
+                    and fullscreen_ready_state["text"] == "잠시 후\n금요기도회\n가 시작됩니다"
                     and fullscreen_ready_state["normalizedRawTitle"] == ""
                 ):
                     pass_("presenter-fullscreen-ready-image", json.dumps(fullscreen_ready_state, ensure_ascii=False))
@@ -6020,6 +6024,7 @@ def main() -> int:
                         imageSrc: first.imageSrc || '',
                         title: first.title || '',
                         elementLabel: first.elementLabel || '',
+                        readyServiceName: first.readyServiceName || '',
                         videoSrc: first.videoSrc || '',
                       };
                     }
@@ -6027,13 +6032,13 @@ def main() -> int:
                 )
                 if (
                     friday_ready_default_state["chromakey"] is False
-                    and friday_ready_default_state["type"] == "image"
-                    and friday_ready_default_state["elementType"] == "image"
+                    and friday_ready_default_state["type"] == "ready"
+                    and friday_ready_default_state["elementType"] == "video"
                     and friday_ready_default_state["layout"] == "media"
-                    and friday_ready_default_state["imageSrc"].endswith("assets/presenter/friday-prayer-ready.png")
+                    and friday_ready_default_state["imageSrc"] == ""
                     and friday_ready_default_state["videoSrc"] == ""
-                    and friday_ready_default_state["elementLabel"] == "금요기도회 준비"
-                    and "영상" not in friday_ready_default_state["elementLabel"]
+                    and friday_ready_default_state["elementLabel"] == "대기 영상"
+                    and friday_ready_default_state["readyServiceName"] == "금요기도회"
                 ):
                     pass_("presenter-friday-ready-default-image", json.dumps(friday_ready_default_state, ensure_ascii=False))
                 else:

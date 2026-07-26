@@ -196,7 +196,7 @@ const PRESENTER_PUBLIC_APOSTLES_CREED_CHROMAKEY_TEXT = `나는 전능하신 아�
 몸의 부활과 영생을 믿습니다. 아멘.`;
 
 const PRESENTER_SCRIPTURE_READING_BACKGROUND = "assets/worship-backgrounds/scripture-reading-cross.png";
-const PRESENTER_FRIDAY_PRAYER_READY_IMAGE = "assets/presenter/friday-prayer-ready.png";
+const PRESENTER_CHURCH_LOGO = "assets/presenter/church-logo-white.png";
 
 const PRESENTER_PUBLIC_COMMUNITY_CONFESSION_TEXT = `우리는 세상으로부터 부름 받은 하나님의 거룩한 백성입니다.
 또한 세상으로 보냄 받은 그리스도의 제자입니다.
@@ -918,13 +918,19 @@ function isConfessionPrayerLabel(...values) {
   });
 }
 
+function isAbsolutionDeclarationLabel(...values) {
+  return values.some((value) => compactSearchValue(value) === "사죄의선언");
+}
+
 function isConfessionPrayerServiceItem(item = {}) {
-  return String(item?._worshipSectionKey || "").trim() === "confession"
+  return (String(item?._worshipSectionKey || "").trim() === "confession"
+      && !isAbsolutionDeclarationLabel(item?.label, item?.raw_title, item?._worshipSectionTitle))
     || isConfessionPrayerLabel(item?.label, item?.raw_title, item?._worshipSectionTitle);
 }
 
 function isConfessionPrayerElement(element = {}, section = {}, sourceRef = {}) {
-  return String(section?.section_key || "").trim() === "confession"
+  return (String(section?.section_key || "").trim() === "confession"
+      && !isAbsolutionDeclarationLabel(sourceRef?.label, section?.title, element?.title))
     || isConfessionPrayerLabel(sourceRef?.label, section?.title, element?.title);
 }
 
@@ -1058,15 +1064,19 @@ function buildPresenterLiturgicalBodySlides(item, section, index, service, memo,
 
 function presenterPreparationSlide(service, item, index) {
   const memo = parseServiceItemMemo(item?.memo);
+  const presenterRole = presenterPreparationRole(item, memo);
+  const elementLabel = presenterPreparationElementLabel(item, {}, presenterRole);
+  if (!presenterServiceUsesChromakey(service) && presenterRole !== "intro") {
+    return presenterFullscreenPreparationSlide(service, item, index, presenterRole, elementLabel);
+  }
   const configuredAsset = normalizeServiceAsset(memo.asset);
   const asset = configuredAsset.url
     ? configuredAsset
     : presenterDefaultPreparationAsset(service, item, memo);
   const elementType = servicePreparationElementTypeForType(service?.type_id);
   const source = normalizePresenterMediaSource(asset.url || "");
-  const presenterRole = presenterPreparationRole(item, memo);
   const playbackType = presenterRole === "intro" ? "intro-video" : "ready-video";
-  const elementLabel = presenterPreparationElementLabel(item, asset, presenterRole);
+  const assetElementLabel = presenterPreparationElementLabel(item, asset, presenterRole);
   if (source) {
     const title = asset.name || item?.raw_title || "";
     const base = {
@@ -1075,12 +1085,12 @@ function presenterPreparationSlide(service, item, index) {
       sectionId: item?._worshipSectionId || item?.id || `${service?.id || "service"}:ready`,
       sectionKey: item?._worshipSectionKey || "ready",
       sectionLabel: item?._worshipSectionTitle || "준비",
-      elementLabel,
+      elementLabel: assetElementLabel,
       elementId: item?.id || `${service?.id || "service"}:ready`,
       sectionIndex: index + 1,
       sectionTitle: item?._worshipSectionTitle || "준비",
       elementTitle: title,
-      sectionName: cleanList([item?._worshipSectionTitle || "준비", elementLabel]).join(" / "),
+      sectionName: cleanList([item?._worshipSectionTitle || "준비", assetElementLabel]).join(" / "),
       title,
       text: "",
       asset: { ...asset, kind: asset.kind || elementType },
@@ -1111,7 +1121,7 @@ function presenterPreparationSlide(service, item, index) {
     sectionId: item?._worshipSectionId || item?.id || `${service?.id || "service"}:ready`,
     sectionKey: item?._worshipSectionKey || "ready",
     sectionLabel: item?._worshipSectionTitle || item?.label || "준비",
-    elementLabel,
+    elementLabel: assetElementLabel,
     elementId: item?.id || `${service?.id || "service"}:ready`,
     sectionIndex: index + 1,
     presenterRole,
@@ -1119,34 +1129,36 @@ function presenterPreparationSlide(service, item, index) {
   };
 }
 
-function presenterDefaultPreparationAsset(service, item = {}, memo = {}) {
-  if (!presenterUsesFridayPrayerReadyImage(service, item, memo)) return { kind: "", name: "", url: "" };
+function presenterFullscreenPreparationSlide(service, item, index, presenterRole, elementLabel) {
   return {
-    kind: "image",
-    name: "금요기도회 준비",
-    url: PRESENTER_FRIDAY_PRAYER_READY_IMAGE,
+    ...presenterReadySlide(service),
+    id: `${item?.id || index}:ready`,
+    sectionId: item?._worshipSectionId || item?.id || `${service?.id || "service"}:ready`,
+    sectionKey: item?._worshipSectionKey || "ready",
+    sectionLabel: item?._worshipSectionTitle || item?.label || "준비",
+    elementLabel,
+    elementId: item?.id || `${service?.id || "service"}:ready`,
+    sectionIndex: index + 1,
+    sectionTitle: item?._worshipSectionTitle || "준비",
+    elementTitle: "준비",
+    sectionName: cleanList([item?._worshipSectionTitle || "준비", elementLabel]).join(" / "),
+    presenterRole,
+    sort: index,
   };
+}
+
+function presenterDefaultPreparationAsset(service, item = {}, memo = {}) {
+  return { kind: "", name: "", url: "" };
 }
 
 function presenterPreparationElementLabel(item = {}, asset = {}, presenterRole = "") {
   const assetName = String(asset?.name || "").trim();
-  if (asset?.url === PRESENTER_FRIDAY_PRAYER_READY_IMAGE) return assetName || "금요기도회 준비";
   const label = String(item?.label || "").trim();
   const compactLabel = compactSearchValue(label);
   if ((asset?.kind === "image" || presenterMediaSourceIsImage(asset?.url)) && compactLabel === "대기영상") {
     return assetName || "준비 이미지";
   }
   return label || (presenterRole === "intro" ? "인트로" : presenterRole === "still" ? "첫 화면" : "대기");
-}
-
-function presenterUsesFridayPrayerReadyImage(service, item = {}, memo = {}) {
-  const rawType = String(service?.type_id || "").trim();
-  const typeId = typeof worshipAppServiceTypeId === "function"
-    ? worshipAppServiceTypeId(rawType)
-    : rawType;
-  if (typeId !== "friday") return false;
-  const role = presenterPreparationRole(item, memo);
-  return role === "ready" || role === "waiting_loop" || role === "still";
 }
 
 function presenterPreparationRole(item = {}, memo = parseServiceItemMemo(item?.memo)) {
@@ -3486,6 +3498,7 @@ function presenterVisibleMeta(slide) {
 function renderPresenterSlideBody(slide, options = {}) {
   const layout = presenterSlideLayout(slide);
   const elementType = presenterSlideElementType(slide);
+  if (slide?.type === "ready" && options.noChromakey) return renderPresenterFullscreenReadySlide(slide);
   if (elementType === PRESENTER_ELEMENT_TYPES.AUDIO) return "";
   if (layout === PRESENTER_SLIDE_LAYOUTS.MEDIA && elementType === PRESENTER_ELEMENT_TYPES.VIDEO) return renderPresenterVideoSlide(slide, options);
   if (layout === PRESENTER_SLIDE_LAYOUTS.MEDIA && elementType === PRESENTER_ELEMENT_TYPES.IMAGE) return renderPresenterImageSlide(slide);
@@ -3497,6 +3510,18 @@ function renderPresenterSlideBody(slide, options = {}) {
   if (slide?.type === "liturgical-body") return renderPresenterLiturgicalBodySlide(slide);
   if (presenterSlideIsTitleContent(slide)) return renderPresenterTitleContentSlide(slide);
   return `<div class="presenter-slide-text">${renderPresenterSlideText(slide)}</div>`;
+}
+
+function renderPresenterFullscreenReadySlide(slide) {
+  const serviceName = String(slide?.readyServiceName || "").trim()
+    || String(slide?.text || "").split("\n").map((line) => line.trim()).filter(Boolean)[1]
+    || "예배";
+  return `
+    <div class="presenter-ready-screen">
+      <img class="presenter-ready-screen-logo" src="${escapeAttr(PRESENTER_CHURCH_LOGO)}" alt="기형 검단우리교회" decoding="sync" loading="eager" fetchpriority="high" draggable="false" />
+      <p class="presenter-ready-screen-message">잠시 후 ${escapeHtml(serviceName)}가 시작됩니다</p>
+    </div>
+  `;
 }
 
 function renderPresenterScriptureReadingSlide(slide) {

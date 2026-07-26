@@ -22014,6 +22014,7 @@ function presenterReadySlide(service) {
     title,
     marker: "",
     text: `잠시 후\n${serviceName}\n가 시작됩니다`,
+    readyServiceName: serviceName,
     outputContext: presenterServiceUsesChromakey(service) ? "chromakey" : "clean",
     sort: -1,
   };
@@ -22088,6 +22089,7 @@ function presenterSlideRenderClass(slide) {
   const layout = presenterSlideLayout(slide);
   const elementType = presenterSlideElementType(slide);
   if (slide?.sourceType === "score" || slide?.componentType === "score" || slide?.scoreBackground) return "score";
+  if (slide?.type === "ready" && presenterSlideOutputContext(slide, true) === "clean") return "ready";
   if (layout === PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT) {
     if (elementType === PRESENTER_ELEMENT_TYPES.SCRIPTURE_TEXT) return "scripture";
     if (elementType === PRESENTER_ELEMENT_TYPES.TITLE_ASSIGNEE) return "title-assignee";
