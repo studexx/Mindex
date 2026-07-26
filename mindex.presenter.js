@@ -2902,7 +2902,7 @@ function presenterOutputFrameStateForSlide(slide, payload = {}) {
   const cleanOutput = !slideChromakey;
   const blankSlide = presenterSlideLayout(slide) === PRESENTER_SLIDE_LAYOUTS.BLANK;
   const suppressBackground = Boolean(slide?.suppressBackgroundImage || slide?.noBackgroundImage);
-  const showBackground = Boolean(backgroundImages.length && cleanOutput && !blankSlide && !payload?.safetyBlank && !suppressBackground);
+  const showBackground = Boolean(backgroundImages.length && cleanOutput && !payload?.safetyBlank && !suppressBackground);
   return {
     cleanOutput,
     showBackground,

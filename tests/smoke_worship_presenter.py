@@ -6534,8 +6534,6 @@ def main() -> int:
                         noChromakey: root?.classList.contains('no-chromakey') || false,
                         inlineBackground: root?.style.getPropertyValue('--presenter-bg-image') || '',
                         slideClass: slide?.className || '',
-                        verticalAnimation: getComputedStyle(slide, '::before')?.animationName || '',
-                        horizontalAnimation: getComputedStyle(slide, '::after')?.animationName || '',
                         text: slide?.innerText.trim() || '',
                       };
                       renderPresenterOutput({ ...payload, index: blankIndex, safetyBlank: true }, {});
@@ -6558,13 +6556,11 @@ def main() -> int:
                 )
                 if (
                     clean_blank_background_state["cleanBlank"]["blankIndex"] >= 0
-                    and not clean_blank_background_state["cleanBlank"]["hasBackground"]
-                    and clean_blank_background_state["cleanBlank"]["isBlank"]
+                    and clean_blank_background_state["cleanBlank"]["hasBackground"]
+                    and not clean_blank_background_state["cleanBlank"]["isBlank"]
                     and clean_blank_background_state["cleanBlank"]["noChromakey"]
-                    and clean_blank_background_state["cleanBlank"]["inlineBackground"] == ""
+                    and "26-B2.png" in clean_blank_background_state["cleanBlank"]["inlineBackground"]
                     and "presenter-slide--blank" in clean_blank_background_state["cleanBlank"]["slideClass"]
-                    and clean_blank_background_state["cleanBlank"]["verticalAnimation"] == "presenter-blank-cross-vertical"
-                    and clean_blank_background_state["cleanBlank"]["horizontalAnimation"] == "presenter-blank-cross-horizontal"
                     and clean_blank_background_state["cleanBlank"]["text"] == ""
                     and not clean_blank_background_state["safetyBlank"]["hasBackground"]
                     and clean_blank_background_state["safetyBlank"]["isBlank"]
@@ -6572,9 +6568,9 @@ def main() -> int:
                     and "presenter-slide--blank" in clean_blank_background_state["safetyBlank"]["slideClass"]
                     and clean_blank_background_state["safetyBlank"]["text"] == ""
                 ):
-                    pass_("presenter-clean-blank-shows-cross", json.dumps(clean_blank_background_state, ensure_ascii=False))
+                    pass_("presenter-clean-blank-keeps-background", json.dumps(clean_blank_background_state, ensure_ascii=False))
                 else:
-                    fail("presenter-clean-blank-shows-cross", json.dumps(clean_blank_background_state, ensure_ascii=False))
+                    fail("presenter-clean-blank-keeps-background", json.dumps(clean_blank_background_state, ensure_ascii=False))
 
                 scripture_blank_background_payload = page.evaluate(
                     """
