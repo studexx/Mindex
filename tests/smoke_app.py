@@ -2331,6 +2331,7 @@ def main() -> int:
                                 "sunday-main:2026-07-26",
                                 "children:2026-07-26",
                                 "youth:2026-07-26",
+                                "young-adult:2026-07-26",
                                 "sunday-afternoon:2026-07-26",
                             ],
                             "allGenerationsMonday": [
@@ -2794,10 +2795,13 @@ def main() -> int:
                         """
                         (() => {
                           const service = { id: '__smoke_youth_template__', type_id: 'youth', date: '2026-07-26' };
+                          const youngAdultService = { id: '__smoke_young_adult_template__', type_id: 'young-adult', date: '2026-07-26' };
                           const childrenService = { id: '__smoke_children_template__', type_id: 'children', date: '2026-07-26' };
                           const previousCalendarData = state.calendarData;
                           const template = serviceOrderTemplate('youth', { service });
                           const projected = projectWorshipServiceItemsFromTemplate(service, []);
+                          const youngAdultTemplate = serviceOrderTemplate('young-adult', { service: youngAdultService });
+                          const youngAdultProjected = projectWorshipServiceItemsFromTemplate(youngAdultService, []);
                           try {
                             state.calendarData = [
                               ...previousCalendarData,
@@ -2836,9 +2840,13 @@ def main() -> int:
                               fellowshipStatic: presenterServiceInputItem({ ...fellowship, raw_title: '' }, service) === null,
                               fellowshipContent: fellowshipContent.reason,
                               announcementEditable: presenterServiceInputItem(announcement, service)?.mode === 'text',
+                              youngAdultSections: youngAdultTemplate.map((step) => step.sectionKey || step.label),
+                              youngAdultLabels: youngAdultProjected.map((item) => item.label || ''),
                               childrenLastSection: serviceOrderTemplate('children', { service: childrenService }).at(-1)?.label || '',
                               scheduledOnIntegratedSunday: autoUpcomingPublicServiceTargets('2026-07-20')
                                 .some((item) => item.typeId === 'youth' && item.date === '2026-07-26'),
+                              youngAdultScheduledOnIntegratedSunday: autoUpcomingPublicServiceTargets('2026-07-20')
+                                .some((item) => item.typeId === 'young-adult' && item.date === '2026-07-26'),
                             };
                           } finally {
                             state.calendarData = previousCalendarData;
@@ -2861,8 +2869,18 @@ def main() -> int:
                         "fellowshipStatic": True,
                         "fellowshipContent": "fixed_title",
                         "announcementEditable": True,
+                        "youngAdultSections": [
+                            "ready", "creed", "prayer", "praise", "scripture_reading",
+                            "sermon", "response_song", "offering", "announcements", "sending", "fellowship",
+                        ],
+                        "youngAdultLabels": [
+                            "대기 영상", "사도신경", "기도", "찬양 1", "찬양 2", "찬양 3", "찬양 4",
+                            "성경봉독", "설교 제목", "설교 본문", "인용 구절", "결단찬양", "결단기도",
+                            "봉헌찬양", "봉헌기도", "교회소식", "파송찬양", "축도", "셀 모임",
+                        ],
                         "childrenLastSection": "교제",
                         "scheduledOnIntegratedSunday": False,
+                        "youngAdultScheduledOnIntegratedSunday": False,
                     }:
                         pass_("youth-service-template", json.dumps(youth_template, ensure_ascii=False))
                     else:

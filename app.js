@@ -2569,6 +2569,7 @@ function autoUpcomingPublicServiceTargets(baseDate = new Date()) {
     { typeId: "sunday-main", date: sunday },
     { typeId: "children", date: sunday },
     { typeId: "youth", date: sunday },
+    { typeId: "young-adult", date: sunday },
     { typeId: "sunday-afternoon", date: sunday },
   ].filter((target) =>
     AUTO_UPCOMING_PUBLIC_SERVICE_TYPES.includes(target.typeId)
@@ -9183,6 +9184,7 @@ const SERVICE_CATEGORIES = {
 const TEMPLATE_PROJECTED_SERVICE_TYPES = new Set([
   ...SERVICE_CATEGORIES.public,
   "youth",
+  "young-adult",
 ]);
 
 const SERVICE_TYPE_DISPLAY_NAMES = {
@@ -9662,7 +9664,7 @@ const SERVICE_TIME_WINDOWS = {
   monthly: { start: "20:00", end: "22:00" },
 };
 
-const SUNDAY_MINISTRY_SERVICE_TYPES = new Set(["children", "youth"]);
+const SUNDAY_MINISTRY_SERVICE_TYPES = new Set(["children", "youth", "young-adult"]);
 
 const AUTO_UPCOMING_PUBLIC_SERVICE_TYPES = [
   "wednesday",
@@ -9672,6 +9674,7 @@ const AUTO_UPCOMING_PUBLIC_SERVICE_TYPES = [
   "sunday-main",
   "children",
   "youth",
+  "young-adult",
   "sunday-afternoon",
 ];
 
@@ -14442,6 +14445,42 @@ function youthWorshipTemplate() {
   ];
 }
 
+function youngAdultWorshipTemplate() {
+  return [
+    publicWorshipReadyStep(),
+    publicWorshipCreedStep(),
+    publicWorshipPrayerStep(),
+    publicWorshipPraiseStep({ count: 4, required: true }),
+    publicWorshipScriptureReadingStep(),
+    publicWorshipSermonStep({ typeId: "young-adult" }),
+    responseSectionTemplate(),
+    {
+      label: "봉헌",
+      name: "봉헌",
+      required: true,
+      flex: false,
+      sectionKey: "offering",
+      elements: [
+        { label: "봉헌찬양", name: "봉헌찬양", elementType: "praise" },
+        { label: "봉헌기도", name: "봉헌기도", elementType: "title", default_text: "봉헌기도" },
+      ],
+    },
+    publicWorshipAnnouncementsStep(),
+    publicWorshipSendingStep({
+      doxology: false,
+      extraElements: [{ label: "파송찬양", name: "파송찬양", elementType: "praise" }],
+    }),
+    {
+      label: "교제",
+      name: "교제",
+      required: false,
+      flex: true,
+      sectionKey: "fellowship",
+      elements: [{ label: "셀 모임", name: "셀 모임", elementType: "title", default_text: "셀 모임" }],
+    },
+  ];
+}
+
 function publicWorshipAnnouncementsStep() {
   return {
     label: "광고",
@@ -14894,13 +14933,14 @@ const SERVICE_ORDER_TEMPLATE_FALLBACKS = {
   special: [],
   children: ["사도신경", "찬양", "예배의 부름", "성경봉독", "설교", "결단기도", "봉헌", "봉헌찬양", "봉헌기도", "나래파송", "주기도문", "광고", "교제"],
   youth: youthWorshipTemplate(),
-  "young-adult": ["사도신경", "대표기도", "찬양", "통성기도", "성경봉독", "설교", responseSectionTemplate(), "봉헌", "봉헌찬양", "봉헌기도", "광고", "찬양", "축도", "교제"],
+  "young-adult": youngAdultWorshipTemplate(),
 };
 
 const SERVICE_ORDER_TEMPLATE_OPTIONS = {
   friday: { appendClosing: false },
   children: { appendClosing: false },
   youth: { appendClosing: false },
+  "young-adult": { appendClosing: false },
 };
 
 function normalizeServiceItem(item = {}, index = 0) {
@@ -18475,6 +18515,9 @@ function normalizeServiceItemReferenceSpacing(value) {
   const text = String(value || "").trim();
   if (!text) return "";
 
+  const references = normalizeServiceScriptureReferenceList(text);
+  if (references.length > 1) return formatServiceScriptureReferenceList(references);
+
   const wholeReference = parseBibleReference(text);
   if (wholeReference) return formatServiceBibleReference(wholeReference, text);
 
@@ -18491,20 +18534,25 @@ function normalizeServiceScriptureReferenceList(value) {
 
 function formatServiceScriptureReferenceList(value) {
   const references = normalizeServiceScriptureReferenceList(value);
-  return references.map((referenceText, index) => {
+  return references.reduce((formatted, referenceText, index) => {
     const reference = parseBibleReference(referenceText);
     const previous = index > 0 ? parseBibleReference(references[index - 1]) : null;
-    if (!reference) return referenceText;
+    if (!reference) {
+      const separator = index ? "; " : "";
+      return `${formatted}${separator}${referenceText}`;
+    }
     const versePart = reference.verse
       ? `${reference.chapter}:${reference.verse}${reference.verseEnd ? `–${reference.verseEnd}` : ""}`
       : String(reference.chapter);
     const sameBookAndChapter = previous
       && previous.book?.code === reference.book?.code
       && previous.chapter === reference.chapter;
-    return sameBookAndChapter
+    const display = sameBookAndChapter
       ? versePart.replace(`${reference.chapter}:`, "")
       : formatServiceBibleReference(reference, referenceText);
-  }).join(", ");
+    const separator = index ? (sameBookAndChapter ? ", " : "; ") : "";
+    return `${formatted}${separator}${display}`;
+  }, "");
 }
 
 function expandServiceScriptureReferenceText(value = "") {

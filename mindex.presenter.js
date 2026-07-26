@@ -3590,9 +3590,6 @@ function renderPresenterScriptureReadingSlide(slide) {
 }
 
 function presenterScriptureReadingHeaderReference(slide = {}, verseNumber = "") {
-  if (String(slide?.scriptureContext || "").startsWith("citation")) {
-    return String(slide?.title || slide?.marker || "").trim();
-  }
   const referenceBook = presenterScriptureReadingBookName(slide?.referenceBook);
   const referenceRange = String(slide?.referenceRange || "").trim();
   const chapter = referenceRange.match(/^(\d+)/)?.[1] || "";

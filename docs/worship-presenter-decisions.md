@@ -256,7 +256,7 @@ Small visual polish that does not alter behavior does not need an entry.
   `｢제목｣`로 감싼다. 입력에 기존 따옴표가 있어도 출력에서는 중첩하지 않는다.
 
 ## Service Auto-Schedule Rules
-- 어린이부 예배와 청소년부 예배는 주일 자동 생성 대상이다.
+- 어린이부 예배, 청소년부 예배, 청년부 예배는 주일 자동 생성 대상이다.
 - 단, 해당 주일의 교회력/일정/예배 태그에 `온세대` 또는 `찬양예배`가
-  있으면 어린이부와 청소년부 예배를 별도로 생성하지 않는다. 그날은
-  3부 예배(`sunday-main`)가 통합 예배의 source of truth다.
+  있으면 어린이부, 청소년부, 청년부 예배를 별도로 생성하지 않는다.
+  그날은 3부 예배(`sunday-main`)가 통합 예배의 source of truth다.
