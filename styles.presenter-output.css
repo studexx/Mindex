@@ -848,19 +848,19 @@
 .presenter-slide--image > .presenter-slide-meta { display: none; }
 .presenter-slide--file { justify-content: center; align-items: center; }
 .presenter-slide--blank { padding: 0; }
-.presenter-output-root.is-blank .presenter-slide--blank {
+.presenter-output-root.no-chromakey.is-blank .presenter-slide--blank {
   --presenter-blank-cross-stroke: calc(6 * var(--presenter-stage-unit));
   position: relative;
 }
-.presenter-output-root.is-blank .presenter-slide--blank::before,
-.presenter-output-root.is-blank .presenter-slide--blank::after {
+.presenter-output-root.no-chromakey.is-blank .presenter-slide--blank::before,
+.presenter-output-root.no-chromakey.is-blank .presenter-slide--blank::after {
   position: absolute;
   display: block;
   content: "";
   background: #fff;
   pointer-events: none;
 }
-.presenter-output-root.is-blank .presenter-slide--blank::before {
+.presenter-output-root.no-chromakey.is-blank .presenter-slide--blank::before {
   top: calc(50% - (227 * var(--presenter-stage-unit)));
   left: 50%;
   width: var(--presenter-blank-cross-stroke);
@@ -869,7 +869,7 @@
   transform-origin: center top;
   animation: presenter-blank-cross-vertical .55s ease-out forwards;
 }
-.presenter-output-root.is-blank .presenter-slide--blank::after {
+.presenter-output-root.no-chromakey.is-blank .presenter-slide--blank::after {
   top: calc(50% - (87 * var(--presenter-stage-unit)));
   left: calc(50% - (140 * var(--presenter-stage-unit)));
   width: calc(280 * var(--presenter-stage-unit));
@@ -885,14 +885,14 @@
   to { transform: translateY(-50%) scaleX(1); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .presenter-output-root.is-blank .presenter-slide--blank::before,
-  .presenter-output-root.is-blank .presenter-slide--blank::after {
+  .presenter-output-root.no-chromakey.is-blank .presenter-slide--blank::before,
+  .presenter-output-root.no-chromakey.is-blank .presenter-slide--blank::after {
     animation: none;
   }
-  .presenter-output-root.is-blank .presenter-slide--blank::before {
+  .presenter-output-root.no-chromakey.is-blank .presenter-slide--blank::before {
     transform: translateX(-50%) scaleY(1);
   }
-  .presenter-output-root.is-blank .presenter-slide--blank::after {
+  .presenter-output-root.no-chromakey.is-blank .presenter-slide--blank::after {
     transform: translateY(-50%) scaleX(1);
   }
 }
