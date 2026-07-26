@@ -209,6 +209,18 @@ const PRESENTER_PUBLIC_COMMUNITY_CONFESSION_TEXT = `우리는 세상으로부터
 그리하여 우리 모두 하나님을 영화롭게 하는
 검단우리교회 공동체가 되겠습니다.`;
 
+const PRESENTER_PUBLIC_COMMUNITY_CONFESSION_CHROMAKEY_SLIDES = Object.freeze([
+  "우리는 세상으로부터 부름 받은\n하나님의 거룩한 백성입니다.",
+  "또한 세상으로 보냄 받은\n그리스도의 제자입니다.",
+  "하나님을 기쁘게 찬양하는\n성령 충만한 예배자가 되겠습니다.",
+  "진리를 배우고 수호하는\n은혜에 빚진 훈련자가 되겠습니다.",
+  "땅 끝까지 복음을 전파하는\n전도자가 되겠습니다.",
+  "이웃의 아픔을 함께하는\n치유자가 되겠습니다.",
+  "온 성도가 하나 되는\n화해자가 되겠습니다.",
+  "사회적 책임을 다하는\n소명자가 되겠습니다.",
+  "그리하여 우리 모두 하나님을 영화롭게 하는\n검단우리교회 공동체가 되겠습니다.",
+]);
+
 function serviceItemOutputMode(item = {}, memo = parseServiceItemMemo(item?.memo)) {
   const mode = normalizeServiceOutputMode(
     memo.outputMode
@@ -1049,7 +1061,7 @@ function buildPresenterLiturgicalBodySlides(item, section, index, service, memo,
   const chromakeyText = title === "사도신경" && text === PRESENTER_PUBLIC_APOSTLES_CREED_TEXT
     ? PRESENTER_PUBLIC_APOSTLES_CREED_CHROMAKEY_TEXT
     : text;
-  return splitPresenterLyricChunks(chromakeyText, presenterLiturgicalChromakeyLinesPerSlide(title)).map((chunk, chunkIndex) => ({
+  return presenterLiturgicalChromakeyChunks(title, chromakeyText).map((chunk, chunkIndex) => ({
     id: `${item.id || index}:liturgical:${chunkIndex}`,
     ...base,
     layout: PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT,
@@ -1062,8 +1074,12 @@ function buildPresenterLiturgicalBodySlides(item, section, index, service, memo,
   }));
 }
 
-function presenterLiturgicalChromakeyLinesPerSlide(title = "") {
-  return liturgicalBodyTitle({ label: title }) === "공동체고백" ? 1 : 2;
+function presenterLiturgicalChromakeyChunks(title = "", text = "") {
+  if (liturgicalBodyTitle({ label: title }) === "공동체고백"
+    && text === PRESENTER_PUBLIC_COMMUNITY_CONFESSION_TEXT) {
+    return PRESENTER_PUBLIC_COMMUNITY_CONFESSION_CHROMAKEY_SLIDES;
+  }
+  return splitPresenterLyricChunks(text);
 }
 
 function presenterPreparationSlide(service, item, index) {

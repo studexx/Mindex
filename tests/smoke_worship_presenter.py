@@ -2301,16 +2301,15 @@ def main() -> int:
                     and all(slide["outputContext"] == "clean" for slide in title_and_liturgical_state["lordsPrayerFullscreen"])
                     and len([slide for slide in title_and_liturgical_state["lordsPrayerFullscreen"] if slide["type"] == "liturgical-body"]) == 1
                     and [slide["text"] for slide in title_and_liturgical_state["communityScaffold"] if slide["type"] == "lyrics"] == [
-                        "우리는 세상으로부터 부름 받은 하나님의 거룩한 백성입니다.",
-                        "또한 세상으로 보냄 받은 그리스도의 제자입니다.",
-                        "하나님을 기쁘게 찬양하는 성령 충만한 예배자가 되겠습니다.",
-                        "진리를 배우고 수호하는 은혜에 빚진 훈련자가 되겠습니다.",
-                        "땅 끝까지 복음을 전파하는 전도자가 되겠습니다.",
-                        "이웃의 아픔을 함께하는 치유자가 되겠습니다.",
-                        "온 성도가 하나 되는 화해자가 되겠습니다.",
-                        "사회적 책임을 다하는 소명자가 되겠습니다.",
-                        "그리하여 우리 모두 하나님을 영화롭게 하는",
-                        "검단우리교회 공동체가 되겠습니다.",
+                        "우리는 세상으로부터 부름 받은\n하나님의 거룩한 백성입니다.",
+                        "또한 세상으로 보냄 받은\n그리스도의 제자입니다.",
+                        "하나님을 기쁘게 찬양하는\n성령 충만한 예배자가 되겠습니다.",
+                        "진리를 배우고 수호하는\n은혜에 빚진 훈련자가 되겠습니다.",
+                        "땅 끝까지 복음을 전파하는\n전도자가 되겠습니다.",
+                        "이웃의 아픔을 함께하는\n치유자가 되겠습니다.",
+                        "온 성도가 하나 되는\n화해자가 되겠습니다.",
+                        "사회적 책임을 다하는\n소명자가 되겠습니다.",
+                        "그리하여 우리 모두 하나님을 영화롭게 하는\n검단우리교회 공동체가 되겠습니다.",
                     ]
                     and [slide["text"] for slide in title_and_liturgical_state["communityFullscreen"] if slide["type"] == "liturgical-body"] == [
                         "우리는 세상으로부터 부름 받은 하나님의 거룩한 백성입니다.\n"
