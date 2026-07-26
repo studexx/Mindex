@@ -630,7 +630,7 @@
 .presenter-output-root.no-chromakey .presenter-slide--song-title .presenter-slide-text,
 .presenter-output-root.no-chromakey .presenter-slide--scripture .presenter-slide-text,
 .presenter-output-root.no-chromakey .presenter-slide--title-assignee .presenter-slide-text {
-  width: auto;
+  width: 100%;
   height: auto;
   min-height: 0;
   max-width: 96cqw;
