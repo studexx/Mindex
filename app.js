@@ -22209,6 +22209,7 @@ function presenterSlideIsTitleContent(slide) {
 function presenterFixedTitleText(item = {}) {
   const label = compactSearchValue(item?.label || item?.raw_title || "");
   const sectionKey = String(item?._worshipSectionKey || item?.sectionKey || item?.section_key || "").trim();
+  if (sectionKey === "confession" && label === "사죄의선언") return "사죄의 선언";
   if (sectionKey === "announcements" && ["교회소식", "광고"].includes(label)) return "교회소식";
   if (sectionKey === "announcements" && label === "새가족환영") return "새가족환영";
   if (sectionKey === "response_song" && label === "결단기도") return "결단기도";
