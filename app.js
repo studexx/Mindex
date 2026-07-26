@@ -18685,10 +18685,8 @@ function serviceScriptureReadingReferencesForService(service = null) {
 
 function serviceItemScriptureReferences(item = {}, memo = parseServiceItemMemo(item.memo), service = null) {
   const effectiveItem = serviceItemWithSharedSundayContent(item, service);
-  if (effectiveItem !== item) {
-    return serviceItemDirectScriptureReferences(effectiveItem, parseServiceItemMemo(effectiveItem.memo));
-  }
-  const direct = serviceItemDirectScriptureReferences(item, memo);
+  const effectiveMemo = effectiveItem !== item ? parseServiceItemMemo(effectiveItem.memo) : memo;
+  const direct = serviceItemDirectScriptureReferences(effectiveItem, effectiveMemo);
   if (!direct.length && isSermonScriptureBodyServiceItem(item)) {
     return serviceScriptureReadingReferencesForService(service);
   }
@@ -20879,7 +20877,6 @@ function renderPresenterBoardSubgroup(subgroup, activeIndex, serviceId, options 
 function renderPresenterBoardSubgroupInputControls(serviceId, subgroup = {}) {
   const context = presenterBoardSubgroupInputContext(serviceId, subgroup);
   if (!context) return "";
-  if (state.selectedServiceId !== serviceId || state.selectedServiceItemIndex !== context.index) return "";
   const controls = presenterServiceInputControls(context.item, context.index, context.service);
   if (!controls) return "";
   return `
