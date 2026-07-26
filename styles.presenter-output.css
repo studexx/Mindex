@@ -588,6 +588,10 @@
 :is(.svc-slide-mini-output, .presenter-output-root):not(.no-chromakey) .presenter-section-song-title-heading {
   font-size: var(--presenter-size-meta);
 }
+:is(.svc-slide-mini-output, .presenter-output-root):not(.no-chromakey) .presenter-slide--song-title:is([data-section-key="offering"], [data-section-key="doxology"], [data-section-key="sending"]) .presenter-section-song-title-heading {
+  font-size: var(--presenter-size-body);
+  font-weight: var(--presenter-weight-display);
+}
 :is(.svc-slide-mini-output, .presenter-output-root):not(.no-chromakey) .presenter-slide--song-title:is([data-section-key="praise"], [data-section-key="pre_scripture_praise"], [data-section-key="prayer_meeting_praise"]) .presenter-section-song-title-name {
   font-size: var(--presenter-size-song-title);
   font-weight: var(--presenter-weight-display);
