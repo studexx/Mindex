@@ -1823,6 +1823,92 @@ def main() -> int:
 	                        parseServiceItemMemo(sharedScriptureReadingItem.memo),
 	                        sharedScriptureService
 	                      );
+                      const sharedSundaySecondService = {
+                        id: '__smoke_shared_sunday_second__',
+                        type_id: 'sunday-second',
+                        date: '2126-07-26',
+                        service_date: '2126-07-26',
+                      };
+                      const sharedSundayThirdService = {
+                        id: '__smoke_shared_sunday_third__',
+                        type_id: 'sunday-main',
+                        date: '2126-07-26',
+                        service_date: '2126-07-26',
+                      };
+                      const sharedSundaySecondSermonBody = {
+                        id: '__smoke_shared_sunday_second_sermon_body__',
+                        service_id: sharedSundaySecondService.id,
+                        label: '설교 본문',
+                        raw_title: '마 13:31–33, 44–50',
+                        memo: serializeServiceItemMemo({
+                          elementType: 'scripture_body',
+                          inputMode: 'scripture',
+                          scriptureReference: '마 13:31–33',
+                          scriptureReferences: ['마 13:31–33'],
+                        }),
+                        _worshipSectionKey: 'sermon',
+                      };
+                      const sharedSundayThirdSermonBody = {
+                        id: '__smoke_shared_sunday_third_sermon_body__',
+                        service_id: sharedSundayThirdService.id,
+                        label: '설교 본문',
+                        raw_title: '',
+                        memo: serializeServiceItemMemo({ elementType: 'scripture_body', inputMode: 'scripture' }),
+                        _worshipSectionKey: 'sermon',
+                      };
+                      const sharedSundaySecondCitation = {
+                        id: '__smoke_shared_sunday_second_citation__',
+                        service_id: sharedSundaySecondService.id,
+                        label: '인용 구절',
+                        raw_title: '요 15:9; 롬 5:7–8',
+                        memo: serializeServiceItemMemo({
+                          elementType: 'scripture_body',
+                          inputMode: 'scripture',
+                          scriptureReference: '요 15:9',
+                          scriptureReferences: ['요 15:9', '롬 5:7–8'],
+                        }),
+                        _worshipSectionKey: 'sermon',
+                      };
+                      const sharedSundayThirdCitation = {
+                        id: '__smoke_shared_sunday_third_citation__',
+                        service_id: sharedSundayThirdService.id,
+                        label: '인용 구절',
+                        raw_title: '',
+                        memo: serializeServiceItemMemo({ elementType: 'scripture_body', inputMode: 'scripture' }),
+                        _worshipSectionKey: 'sermon',
+                      };
+                      state.services = state.services.filter((service) =>
+                        ![sharedSundaySecondService.id, sharedSundayThirdService.id].includes(service.id)
+                      );
+                      state.services.push(sharedSundaySecondService, sharedSundayThirdService);
+                      state.serviceItems[sharedSundaySecondService.id] = [
+                        sharedSundaySecondSermonBody,
+                        sharedSundaySecondCitation,
+                      ];
+                      state.serviceItems[sharedSundayThirdService.id] = [
+                        sharedSundayThirdSermonBody,
+                        sharedSundayThirdCitation,
+                      ];
+                      const sharedSundayThirdSermonBodyEffective = serviceItemWithSharedSundayContent(
+                        sharedSundayThirdSermonBody,
+                        sharedSundayThirdService
+                      );
+                      const sharedSundayThirdCitationEffective = serviceItemWithSharedSundayContent(
+                        sharedSundayThirdCitation,
+                        sharedSundayThirdService
+                      );
+                      const sharedSundayThirdSermonBodyEffectiveMemo = parseServiceItemMemo(sharedSundayThirdSermonBodyEffective.memo);
+                      const sharedSundayThirdCitationEffectiveMemo = parseServiceItemMemo(sharedSundayThirdCitationEffective.memo);
+                      const sharedSundayThirdSermonBodySlides = buildPresenterSlidesForServiceItem(
+                        sharedSundayThirdSermonBody,
+                        sharedSundayThirdService,
+                        104
+                      );
+                      const sharedSundayThirdCitationSlides = buildPresenterSlidesForServiceItem(
+                        sharedSundayThirdCitation,
+                        sharedSundayThirdService,
+                        105
+                      );
 	                      const lordsPrayerSlides = normalizePresenterSlidesForServiceOutput(buildPresenterSlidesForServiceItem(
 	                        lordsPrayerItem,
 	                        { id: '__smoke_lords_prayer_chromakey_service__', type_id: 'sunday-main', date: '2026-07-05' },
@@ -1983,6 +2069,56 @@ def main() -> int:
 	                          })),
 	                          targetLabel: presenterPreparationTargetLabel('성경봉독'),
 	                        },
+                        sharedSundaySermon: {
+                          sermonBodyInputReferences: normalizeServiceScriptureReferenceList('마 13:31–33, 44–50'),
+                          sermonBodySecondReferences: serviceItemScriptureReferences(
+                            sharedSundaySecondSermonBody,
+                            parseServiceItemMemo(sharedSundaySecondSermonBody.memo),
+                            sharedSundaySecondService
+                          ),
+                          sermonBodyThirdReferences: serviceItemScriptureReferences(
+                            sharedSundayThirdSermonBody,
+                            parseServiceItemMemo(sharedSundayThirdSermonBody.memo),
+                            sharedSundayThirdService
+                          ),
+                          sermonBodyThirdEffectiveReferences: serviceItemDirectScriptureReferences(
+                            sharedSundayThirdSermonBodyEffective,
+                            sharedSundayThirdSermonBodyEffectiveMemo
+                          ),
+                          sermonBodyThirdRaw: sharedSundayThirdSermonBodyEffective.raw_title || '',
+                          sermonBodyThirdMemo: sharedSundayThirdSermonBodyEffectiveMemo,
+                          sermonBodyThirdSlideCount: sharedSundayThirdSermonBodySlides.length,
+                          citationInputReferences: normalizeServiceScriptureReferenceList('요 15:9; 롬 5:7–8'),
+                          citationSecondReferences: serviceItemScriptureReferences(
+                            sharedSundaySecondCitation,
+                            parseServiceItemMemo(sharedSundaySecondCitation.memo),
+                            sharedSundaySecondService
+                          ),
+                          citationThirdReferences: serviceItemScriptureReferences(
+                            sharedSundayThirdCitation,
+                            parseServiceItemMemo(sharedSundayThirdCitation.memo),
+                            sharedSundayThirdService
+                          ),
+                          citationThirdEffectiveReferences: serviceItemDirectScriptureReferences(
+                            sharedSundayThirdCitationEffective,
+                            sharedSundayThirdCitationEffectiveMemo
+                          ),
+                          citationThirdRaw: sharedSundayThirdCitationEffective.raw_title || '',
+                          citationThirdMemo: sharedSundayThirdCitationEffectiveMemo,
+                          citationThirdSlideCount: sharedSundayThirdCitationSlides.length,
+                          sermonBodyThirdState: resolvePresenterServiceItemContentState(
+                            sharedSundayThirdSermonBodyEffective,
+                            sharedSundayThirdSermonBodyEffectiveMemo,
+                            null,
+                            sharedSundayThirdService
+                          ),
+                          citationThirdState: resolvePresenterServiceItemContentState(
+                            sharedSundayThirdCitationEffective,
+                            sharedSundayThirdCitationEffectiveMemo,
+                            null,
+                            sharedSundayThirdService
+                          ),
+                        },
 	                        communityScaffold: communitySlides,
 	                        communityFullscreen: communityFullscreenSlides,
 	                        scaffoldClosing: scaffoldClosingSlides,
@@ -2067,6 +2203,18 @@ def main() -> int:
 	                        "isLiveScriptureElement": True,
 	                    }]
 		                    and title_and_liturgical_state["sharedScripture"]["targetLabel"] == "성경봉독"
+                    and title_and_liturgical_state["sharedSundaySermon"]["sermonBodyInputReferences"] == ["마 13:31–33", "마 13:44–50"]
+                    and title_and_liturgical_state["sharedSundaySermon"]["sermonBodySecondReferences"] == ["마 13:31–33", "마 13:44–50"]
+                    and title_and_liturgical_state["sharedSundaySermon"]["sermonBodyThirdEffectiveReferences"] == ["마 13:31–33", "마 13:44–50"]
+                    and title_and_liturgical_state["sharedSundaySermon"]["sermonBodyThirdRaw"] == "마 13:31–33, 44–50"
+                    and title_and_liturgical_state["sharedSundaySermon"]["sermonBodyThirdMemo"]["scriptureReferences"] == ["마 13:31–33", "마 13:44–50"]
+                    and title_and_liturgical_state["sharedSundaySermon"]["citationInputReferences"] == ["요 15:9", "롬 5:7–8"]
+                    and title_and_liturgical_state["sharedSundaySermon"]["citationSecondReferences"] == ["요 15:9", "롬 5:7–8"]
+                    and title_and_liturgical_state["sharedSundaySermon"]["citationThirdEffectiveReferences"] == ["요 15:9", "롬 5:7–8"]
+                    and title_and_liturgical_state["sharedSundaySermon"]["citationThirdRaw"] == "요 15:9, 롬 5:7–8"
+                    and title_and_liturgical_state["sharedSundaySermon"]["citationThirdMemo"]["scriptureReferences"] == ["요 15:9", "롬 5:7–8"]
+                    and title_and_liturgical_state["sharedSundaySermon"]["sermonBodyThirdState"]["state"] == "filled"
+                    and title_and_liturgical_state["sharedSundaySermon"]["citationThirdState"]["state"] == "filled"
                     and "presenter-title-assignee" in title_and_liturgical_state["confession"]["html"]
                     and 'presenter-slide--title"' not in title_and_liturgical_state["confession"]["html"]
                     and len(title_and_liturgical_state["chromakey"]) >= 3
