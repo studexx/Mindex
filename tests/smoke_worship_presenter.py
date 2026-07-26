@@ -3299,16 +3299,13 @@ def main() -> int:
                         date: '2026-07-05',
                         service_date: '2026-07-05',
                       });
-                      const slide = {
-                        id: '__smoke_section_song_title_fit_slide__',
-                        elementType: PRESENTER_ELEMENT_TYPES.PRAISE,
-                        layout: PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT,
-                        type: 'song-title',
-                        title: '이 천지간 만물들아',
-                        text: '♪ 5 이 천지간 만물들아',
-                        sectionHeading: '송영',
-                        sectionKey: 'doxology',
-                      };
+                      const slide = presenterOrderContentTitleSlide(
+                        { id: '__smoke_section_song_title_fit_slide__', label: '송영' },
+                        { sectionKey: 'doxology', sectionLabel: '송영', sectionTitle: '송영' },
+                        0,
+                        '송영',
+                        '♪ 5 이 천지간 만물들아',
+                      );
                       const mount = document.createElement('div');
                       mount.style.cssText = 'position:fixed;left:16px;top:16px;width:368px;height:207px;z-index:99999;pointer-events:none';
                       mount.innerHTML = renderPresenterSlideMiniPreview(slide, serviceId);
@@ -3316,12 +3313,14 @@ def main() -> int:
                       const host = mount.querySelector('.svc-slide-mini-output');
                       const bar = mount.querySelector('.presenter-slide-text');
                       const songLayout = mount.querySelector('.presenter-section-song-title');
-                      const heading = mount.querySelector('.presenter-section-song-title-heading');
-                      const name = mount.querySelector('.presenter-section-song-title-name');
+                      const orderContent = mount.querySelector('.presenter-title-assignee--order-content');
+                      const heading = mount.querySelector('.presenter-title-assignee-order');
+                      const name = mount.querySelector('.presenter-title-assignee-content');
                       const result = {
                         noChromakey: Boolean(host?.classList.contains('no-chromakey')),
                         hasBackground: Boolean(host?.classList.contains('has-background')),
                         hasSongLayout: Boolean(songLayout),
+                        hasOrderContent: Boolean(orderContent),
                         display: '',
                         columns: '',
                         headingInsideBar: false,
@@ -3330,11 +3329,11 @@ def main() -> int:
                         headingWidth: 0,
                         nameWidth: 0,
                       };
-                      if (bar && songLayout && heading && name) {
+                      if (bar && orderContent && heading && name) {
                         const barRect = bar.getBoundingClientRect();
                         const headingRect = heading.getBoundingClientRect();
                         const nameRect = name.getBoundingClientRect();
-                        const style = getComputedStyle(songLayout);
+                        const style = getComputedStyle(orderContent);
                         result.display = style.display;
                         result.columns = style.gridTemplateColumns;
                         result.headingInsideBar = headingRect.left >= barRect.left - 1 && headingRect.right <= barRect.right + 1;
@@ -3352,7 +3351,8 @@ def main() -> int:
                 if (
 	                    section_song_title_fit_state["noChromakey"]
 	                    and section_song_title_fit_state["hasBackground"]
-	                    and section_song_title_fit_state["hasSongLayout"]
+	                    and not section_song_title_fit_state["hasSongLayout"]
+	                    and section_song_title_fit_state["hasOrderContent"]
 	                    and section_song_title_fit_state["display"] == "grid"
 	                    and section_song_title_fit_state["headingInsideBar"]
 	                    and section_song_title_fit_state["nameInsideBar"]
@@ -3519,28 +3519,27 @@ def main() -> int:
                         chromakey: false,
                         outputTheme: 'formal',
                         backgroundImage: '',
-                        slides: [{
-                          id: '__smoke_offering_song_title_output_font_slide__',
-                          elementType: PRESENTER_ELEMENT_TYPES.PRAISE,
-                          layout: PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT,
-                          type: 'song-title',
-                          title: '내 주 되신 주를 참 사랑하고',
-                          text: '♪ 내 주 되신 주를 참 사랑하고',
-                          sectionHeading: '봉헌찬송',
-                          sectionKey: 'offering',
-                        }],
+                        slides: [presenterOrderContentTitleSlide(
+                          { id: '__smoke_offering_song_title_output_font_slide__', label: '봉헌찬송' },
+                          { sectionKey: 'offering', sectionLabel: '봉헌', sectionTitle: '봉헌' },
+                          0,
+                          '봉헌찬송',
+                          '♪ 내 주 되신 주를 참 사랑하고',
+                        )],
                         index: 0,
                         safetyBlank: false,
                       });
                       const root = document.getElementById('presenterOutputRoot');
-                      const slide = root?.querySelector('.presenter-slide--song-title');
+                      const slide = root?.querySelector('.presenter-slide--title-assignee');
 	                      const songLayout = root?.querySelector('.presenter-section-song-title');
-	                      const heading = root?.querySelector('.presenter-section-song-title-heading');
-	                      const name = root?.querySelector('.presenter-section-song-title-name');
+	                      const orderContent = root?.querySelector('.presenter-title-assignee--order-content');
+	                      const heading = root?.querySelector('.presenter-title-assignee-order');
+	                      const name = root?.querySelector('.presenter-title-assignee-content');
 	                      const size = (node) => node ? Number.parseFloat(getComputedStyle(node).fontSize) : 0;
 	                      const result = {
 	                        hasRoot: Boolean(root),
 	                        hasSongLayout: Boolean(songLayout),
+	                        hasOrderContent: Boolean(orderContent),
 	                        sectionKey: slide?.dataset.sectionKey || '',
 	                        text: root?.innerText || '',
 	                        headingFontSize: size(heading),
@@ -3554,11 +3553,12 @@ def main() -> int:
                 )
                 if (
 	                    offering_song_title_output_font_state["sectionKey"] == "offering"
-	                    and offering_song_title_output_font_state["hasSongLayout"]
+	                    and not offering_song_title_output_font_state["hasSongLayout"]
+	                    and offering_song_title_output_font_state["hasOrderContent"]
 	                    and "내 주 되신 주를 참 사랑하고" in offering_song_title_output_font_state["text"]
-	                    and offering_song_title_output_font_state["headingFontSize"] >= 72
-	                    and offering_song_title_output_font_state["headingFontWeight"] == "700"
-	                    and offering_song_title_output_font_state["nameFontSize"] >= 72
+	                    and offering_song_title_output_font_state["headingFontSize"] >= 96
+	                    and offering_song_title_output_font_state["headingFontWeight"] == "800"
+	                    and offering_song_title_output_font_state["nameFontSize"] >= 96
 	                ):
                     pass_("presenter-offering-song-title-output-font", json.dumps(offering_song_title_output_font_state, ensure_ascii=False))
                 else:

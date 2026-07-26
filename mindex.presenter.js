@@ -1743,6 +1743,9 @@ function presenterSongTitleSlide(item, section, song, version, displayText, inde
   const titleText = formatPresenterSongTitleText(displayTitle);
   const responseSong = String(section.sectionKey || item?._worshipSectionKey || "").trim() === "response_song";
   const responseTitle = String(item?.label || "결단찬양").trim();
+  if (sectionHeading && !responseSong) {
+    return presenterOrderContentTitleSlide(item, section, index, sectionHeading, titleText);
+  }
   return {
     id: `${item.id || index}:song-title`,
     ...section,
@@ -1756,6 +1759,26 @@ function presenterSongTitleSlide(item, section, song, version, displayText, inde
     sectionHeading,
     bodyText: responseSong ? titleText : "",
     text: responseSong ? cleanList([responseTitle, titleText]).join("\n") : titleText,
+    sort: index - 0.001,
+  };
+}
+
+function presenterOrderContentTitleSlide(item, section, index, orderTitle = "", contentTitle = "") {
+  const safeOrderTitle = String(orderTitle || "").trim();
+  const safeContentTitle = String(contentTitle || "").trim();
+  return {
+    id: `${item.id || index}:title-assignee`,
+    ...section,
+    elementType: PRESENTER_ELEMENT_TYPES.TITLE_ASSIGNEE,
+    layout: PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT,
+    type: "title-assignee",
+    label: item.label || "",
+    title: safeOrderTitle,
+    assignee: "",
+    orderTitle: safeOrderTitle,
+    contentTitle: safeContentTitle,
+    marker: "",
+    text: cleanList([safeOrderTitle, safeContentTitle]).join("\n"),
     sort: index - 0.001,
   };
 }
@@ -3615,6 +3638,14 @@ function renderPresenterTitleAssigneeSlide(slide) {
       <div class="presenter-slide-text presenter-title-assignee presenter-title-assignee--sermon">
         <span class="presenter-title-assignee-content" style="--line-chars: ${escapeAttr(contentChars)}">${escapeHtml(contentTitle)}</span>
         <span class="presenter-title-assignee-person" style="--line-chars: ${escapeAttr(assigneeChars)}">${escapeHtml(assignee)}</span>
+      </div>
+    `;
+  }
+  if (orderTitle && contentTitle && !assignee) {
+    return `
+      <div class="presenter-slide-text presenter-title-assignee presenter-title-assignee--order-content">
+        <span class="presenter-title-assignee-order" style="--line-chars: ${escapeAttr(orderChars)}">${escapeHtml(orderTitle)}</span>
+        <span class="presenter-title-assignee-content" style="--line-chars: ${escapeAttr(contentChars)}">${escapeHtml(contentTitle)}</span>
       </div>
     `;
   }
