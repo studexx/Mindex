@@ -501,31 +501,6 @@
 .presenter-slide--song-title .presenter-section-song-title-name {
   font-size: var(--presenter-size-body);
 }
-/* Keep service-song title slides stacked and readable; main praise has its own large one-line rule. */
-.presenter-slide--song-title:is(
-  [data-section-key="offering"],
-  [data-section-key="doxology"],
-  [data-section-key="sending"],
-  [data-section-key="closing_song"],
-  [data-section-key="closing_hymn"],
-  [data-section-key="closing_visual"]
-) .presenter-section-song-title-heading {
-  font-size: var(--presenter-size-display);
-  font-weight: var(--presenter-weight-display);
-  line-height: 1;
-}
-.presenter-slide--song-title:is(
-  [data-section-key="offering"],
-  [data-section-key="doxology"],
-  [data-section-key="sending"],
-  [data-section-key="closing_song"],
-  [data-section-key="closing_hymn"],
-  [data-section-key="closing_visual"]
-) .presenter-section-song-title-name {
-  font-size: var(--presenter-size-body);
-  font-weight: var(--presenter-weight-body);
-  line-height: 1.04;
-}
 .presenter-slide--title-assignee .presenter-slide-text {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 44cqw);
@@ -613,15 +588,8 @@
 :is(.svc-slide-mini-output, .presenter-output-root):not(.no-chromakey) .presenter-section-song-title-heading {
   font-size: var(--presenter-size-meta);
 }
-:is(.svc-slide-mini-output, .presenter-output-root):not(.no-chromakey) .presenter-slide--song-title:is(
-  [data-section-key="offering"],
-  [data-section-key="doxology"],
-  [data-section-key="sending"],
-  [data-section-key="closing_song"],
-  [data-section-key="closing_hymn"],
-  [data-section-key="closing_visual"]
-) .presenter-section-song-title-heading {
-  font-size: var(--presenter-size-display);
+:is(.svc-slide-mini-output, .presenter-output-root):not(.no-chromakey) .presenter-slide--song-title:is([data-section-key="offering"], [data-section-key="doxology"], [data-section-key="sending"]) .presenter-section-song-title-heading {
+  font-size: var(--presenter-size-body);
   font-weight: var(--presenter-weight-display);
 }
 :is(.svc-slide-mini-output, .presenter-output-root):not(.no-chromakey) .presenter-slide--song-title:is([data-section-key="praise"], [data-section-key="pre_scripture_praise"], [data-section-key="prayer_meeting_praise"], [data-section-key="special_song"]) .presenter-section-song-title-name {
@@ -706,16 +674,9 @@
 .presenter-output-root.no-chromakey .presenter-section-song-title-heading {
   font-size: var(--presenter-size-meta);
 }
-.presenter-output-root.no-chromakey .presenter-slide--song-title:is(
-  [data-section-key="offering"],
-  [data-section-key="doxology"],
-  [data-section-key="sending"],
-  [data-section-key="closing_song"],
-  [data-section-key="closing_hymn"],
-  [data-section-key="closing_visual"]
-) .presenter-section-song-title-heading {
-  font-size: var(--presenter-size-display);
-  font-weight: var(--presenter-weight-display);
+.presenter-output-root.no-chromakey .presenter-slide--song-title:is([data-section-key="offering"], [data-section-key="doxology"], [data-section-key="sending"]) .presenter-section-song-title-heading {
+  font-size: var(--presenter-size-body);
+  font-weight: var(--presenter-weight-body);
 }
 .presenter-output-root.no-chromakey .presenter-slide--song-title:is([data-section-key="praise"], [data-section-key="pre_scripture_praise"], [data-section-key="prayer_meeting_praise"], [data-section-key="special_song"]) .presenter-section-song-title-name {
   font-size: var(--presenter-size-song-title);
