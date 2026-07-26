@@ -675,18 +675,22 @@
   text-align: center;
 }
 .presenter-output-root.no-chromakey .presenter-title-assignee--sermon {
-  grid-template-columns: minmax(0, 1fr);
-  position: relative;
-  justify-items: center;
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25cqh;
+  text-align: center;
 }
 .presenter-output-root.no-chromakey .presenter-title-assignee--sermon .presenter-title-assignee-content {
-  justify-self: center;
+  width: 100%;
   text-align: center;
 }
 .presenter-output-root.no-chromakey .presenter-title-assignee--sermon .presenter-title-assignee-person {
-  position: absolute;
-  right: 0;
-  text-align: right;
+  position: static;
+  width: 100%;
+  text-align: center;
 }
 .presenter-output-root.no-chromakey .presenter-slide--lyrics .presenter-slide-text span {
   font-size: inherit;
@@ -844,6 +848,54 @@
 .presenter-slide--image > .presenter-slide-meta { display: none; }
 .presenter-slide--file { justify-content: center; align-items: center; }
 .presenter-slide--blank { padding: 0; }
+.presenter-output-root.is-blank .presenter-slide--blank {
+  --presenter-blank-cross-stroke: calc(6 * var(--presenter-stage-unit));
+  position: relative;
+}
+.presenter-output-root.is-blank .presenter-slide--blank::before,
+.presenter-output-root.is-blank .presenter-slide--blank::after {
+  position: absolute;
+  display: block;
+  content: "";
+  background: #fff;
+  pointer-events: none;
+}
+.presenter-output-root.is-blank .presenter-slide--blank::before {
+  top: calc(50% - (227 * var(--presenter-stage-unit)));
+  left: 50%;
+  width: var(--presenter-blank-cross-stroke);
+  height: calc(454 * var(--presenter-stage-unit));
+  transform: translateX(-50%) scaleY(0);
+  transform-origin: center top;
+  animation: presenter-blank-cross-vertical .55s ease-out forwards;
+}
+.presenter-output-root.is-blank .presenter-slide--blank::after {
+  top: calc(50% - (87 * var(--presenter-stage-unit)));
+  left: calc(50% - (140 * var(--presenter-stage-unit)));
+  width: calc(280 * var(--presenter-stage-unit));
+  height: var(--presenter-blank-cross-stroke);
+  transform: translateY(-50%) scaleX(0);
+  transform-origin: left center;
+  animation: presenter-blank-cross-horizontal .45s ease-out .55s forwards;
+}
+@keyframes presenter-blank-cross-vertical {
+  to { transform: translateX(-50%) scaleY(1); }
+}
+@keyframes presenter-blank-cross-horizontal {
+  to { transform: translateY(-50%) scaleX(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .presenter-output-root.is-blank .presenter-slide--blank::before,
+  .presenter-output-root.is-blank .presenter-slide--blank::after {
+    animation: none;
+  }
+  .presenter-output-root.is-blank .presenter-slide--blank::before {
+    transform: translateX(-50%) scaleY(1);
+  }
+  .presenter-output-root.is-blank .presenter-slide--blank::after {
+    transform: translateY(-50%) scaleX(1);
+  }
+}
 .presenter-video { display: block; width: 100%; height: 100%; object-fit: cover; background: #000; }
 .presenter-output-root:not(.no-chromakey) .presenter-video,
 .presenter-output-root:not(.no-chromakey) .presenter-image { background: var(--presenter-chromakey); }
