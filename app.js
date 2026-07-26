@@ -18663,8 +18663,14 @@ function isSharedScriptureReadingServiceItem(item = {}) {
 }
 
 function isSermonScriptureBodyServiceItem(item = {}) {
-  return String(item?._worshipSectionKey || "").trim() === "sermon"
-    && ["설교본문", "본문", "성경본문"].includes(compactSearchValue(item?.label || ""));
+  const sectionKey = String(item?._worshipSectionKey || item?.sectionKey || item?.section_key || "").trim();
+  const label = compactSearchValue(item?.label || "");
+  const memo = parseServiceItemMemo(item?.memo);
+  const elementType = serviceMemoElementType(memo);
+  // A projected or newly pasted item can briefly lack its section metadata.
+  // Its explicit sermon-body label must still retain the scripture workflow.
+  return ["설교본문", "성경본문", "말씀본문"].includes(label)
+    || (sectionKey === "sermon" && (elementType === "scripture_body" || label === "본문"));
 }
 
 function isOptionalCitationScriptureServiceItem(item = {}) {
