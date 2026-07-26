@@ -242,8 +242,8 @@
 }
 .presenter-ready-screen-logo {
   display: block;
-  width: min(48cqw, 920px);
-  max-height: 14cqh;
+  width: min(42cqw, 806px);
+  max-height: 12cqh;
   object-fit: contain;
 }
 .presenter-ready-screen-message {
