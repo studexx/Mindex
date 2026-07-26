@@ -1188,7 +1188,7 @@ function handleServiceOutlineSlideClick(serviceOutlineItem) {
   openPresenterSectionEditorForSlide(target.serviceId, target.slideIndex);
   syncServiceOutlineSelection(serviceOutlineItem);
   if (selectionChanged) renderServiceList();
-  scrollPresenterBoardToIndex(target.serviceId, target.slideIndex);
+  scrollPresenterBoardToIndex(target.serviceId, target.slideIndex, { force: true });
 }
 
 function syncServiceOutlineSelection(serviceOutlineItem) {
@@ -5712,7 +5712,7 @@ function handlePresenterDetailClick(event) {
       syncSelectedServiceItemToPresenterSlide(serviceId, index);
       renderPresenterControlState(serviceId);
     }
-    scrollPresenterBoardToIndex(serviceId, index);
+    scrollPresenterBoardToIndex(serviceId, index, { force: true });
     return true;
   }
 
@@ -21146,7 +21146,7 @@ function commitPresenterJumpDraft(serviceId = state.presenter.serviceId) {
   const index = requested - 1;
   runPresenterAction("jump", serviceId, { index });
   if (isValidPresenterIndex(index, state.presenter.slides.length)) {
-    scrollPresenterBoardToIndex(serviceId, index);
+    scrollPresenterBoardToIndex(serviceId, index, { force: true });
   }
 }
 
@@ -21281,7 +21281,7 @@ function scrollPresenterBoardToIndex(serviceId, index, options = {}) {
       && thumbRect.bottom <= viewportRect.bottom
       && thumbRect.left >= viewportRect.left
       && thumbRect.right <= viewportRect.right;
-    if (fullyVisible) return true;
+    if (fullyVisible && !options.force) return true;
     thumb.scrollIntoView({
       block: options.block || "center",
       inline: "nearest",
@@ -21390,7 +21390,7 @@ function jumpPresenterToSlideInput(input) {
     ? state.presenter.slides.length
     : buildServicePresenterSlides(serviceId).length;
   if (isValidPresenterIndex(index, count)) {
-    scrollPresenterBoardToIndex(serviceId, index);
+    scrollPresenterBoardToIndex(serviceId, index, { force: true });
   }
 }
 
