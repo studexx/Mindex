@@ -1664,12 +1664,8 @@ function isPresenterCitationScriptureItem(item = {}) {
 }
 
 function presenterCitationScriptureText(verse = {}, payload = {}) {
-  const referenceBook = String(verse.referenceBook || payload.referenceBook || "").trim();
-  const referenceRange = String(verse.referenceRange || payload.referenceRange || "").trim();
   const number = presenterScriptureVerseNumber(verse);
-  const chapter = referenceRange.match(/^(\d+)/)?.[1] || "";
-  const verseReference = [referenceBook, chapter && number ? `${chapter}:${number}` : referenceRange].filter(Boolean).join(" ");
-  return [verseReference, verse.text].filter(Boolean).join("   ");
+  return number ? [number, verse.text].filter(Boolean).join("   ") : verse.text;
 }
 
 function presenterScriptureBodyContext(item = {}, section = {}, service = null) {
@@ -3594,6 +3590,9 @@ function renderPresenterScriptureReadingSlide(slide) {
 }
 
 function presenterScriptureReadingHeaderReference(slide = {}, verseNumber = "") {
+  if (String(slide?.scriptureContext || "").startsWith("citation")) {
+    return String(slide?.title || slide?.marker || "").trim();
+  }
   const referenceBook = presenterScriptureReadingBookName(slide?.referenceBook);
   const referenceRange = String(slide?.referenceRange || "").trim();
   const chapter = referenceRange.match(/^(\d+)/)?.[1] || "";

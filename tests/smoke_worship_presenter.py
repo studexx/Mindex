@@ -3902,6 +3902,8 @@ def main() -> int:
                       document.body.appendChild(citationMount);
                       const fullscreenCitationOutput = citationMount.querySelector('.svc-slide-mini-output');
                       const fullscreenCitationSlide = citationMount.querySelector('.presenter-slide');
+                      const fullscreenCitationReference = citationMount.querySelector('.presenter-scripture-reading-ref');
+                      const fullscreenCitationText = citationMount.querySelector('.presenter-scripture-reading-text');
                       const result = {
                         readingTypes: readingSlides.map((slide) => slide.type),
                         readingTitleText: readingTitleSlide.text || '',
@@ -3975,6 +3977,8 @@ def main() -> int:
                         fullscreenCitationNoChromakey: fullscreenCitationOutput?.classList.contains('no-chromakey') || false,
                         fullscreenCitationHasReadingClass: fullscreenCitationSlide?.classList.contains('presenter-slide--scripture-reading') || false,
                         fullscreenCitationHasReadingBody: Boolean(citationMount.querySelector('.presenter-scripture-reading')),
+                        fullscreenCitationReference: fullscreenCitationReference?.textContent?.trim() || '',
+                        fullscreenCitationText: fullscreenCitationText?.textContent?.trim() || '',
                       };
                       citationMount.remove();
                       mount.remove();
@@ -4044,6 +4048,8 @@ def main() -> int:
                     and scripture_context_state["fullscreenCitationNoChromakey"]
                     and scripture_context_state["fullscreenCitationHasReadingClass"]
                     and scripture_context_state["fullscreenCitationHasReadingBody"]
+                    and scripture_context_state["fullscreenCitationReference"] == "출애굽기 24:1–2"
+                    and scripture_context_state["fullscreenCitationText"].startswith("또 모세에게")
                 ):
                     pass_("presenter-scripture-context-layouts", json.dumps(scripture_context_state, ensure_ascii=False))
                 else:
