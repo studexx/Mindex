@@ -7574,6 +7574,9 @@ function serviceItemEditorModel(item = {}, options = {}) {
       )
     );
   const scripturePayload = scriptureBody ? serviceScriptureTextPayload(item, parsed) : null;
+  const scriptureTitleValue = scripture
+    ? serviceItemEditorScriptureTitleValue(item, parsed, service, scripturePayload)
+    : "";
   return {
     service,
     parsed,
@@ -7589,9 +7592,17 @@ function serviceItemEditorModel(item = {}, options = {}) {
     showAssignee: editableAssignee,
     showTitle: editableTitle,
     assigneeValue: serviceItemEditableAssigneeValue(item, service),
-    titleValue: strictSong && linkedSong ? songServiceOptionLabel(linkedSong) : scripturePayload?.reference || "",
+    titleValue: strictSong && linkedSong ? songServiceOptionLabel(linkedSong) : scriptureTitleValue,
     titlePlaceholder: strictSong ? "찬양 DB 곡 검색 후 선택" : song ? "곡 검색" : scripture ? "성경 구절" : isDefault ? "기본 내용" : "내용",
   };
+}
+
+function serviceItemEditorScriptureTitleValue(item = {}, parsed = parseServiceItemMemo(item.memo), service = null, scripturePayload = null) {
+  if (isScriptureBodyServiceItem(item)) {
+    const references = serviceItemScriptureReferences(item, parsed, service);
+    if (references.length) return formatServiceScriptureReferenceList(references);
+  }
+  return scripturePayload?.reference || normalizeServiceItemReferenceSpacing(parsed.scriptureReference || item.raw_title || "");
 }
 
 function serviceItemScriptureInputInvalid(item = {}) {
