@@ -2488,8 +2488,10 @@ def main() -> int:
                             "찬송",
                             "대표기도",
                             "성경봉독",
+                            "특송",
                             "설교",
                             "결단",
+                            "봉헌",
                             "광고",
                             "파송",
                             "폐회",
@@ -2517,6 +2519,10 @@ def main() -> int:
                             {"type": "scripture_body", "label": "설교 본문", "outputMode": ""},
                             {"type": "scripture_body", "label": "인용 구절", "outputMode": ""},
                         ]
+                        and template_terms["sundayPublicScaffold"]["afternoon"]["offeringElements"] == [
+                            {"type": "praise", "label": "봉헌찬송", "outputMode": "score"},
+                            {"type": "title_person", "label": "봉헌기도", "outputMode": ""},
+                        ]
                         and template_terms["sundayPublicScaffold"]["afternoon"]["sendingElements"] == [
                             {"type": "praise", "label": "송영", "outputMode": "score"},
                             {"type": "title_person", "label": "축도", "person": "김남영 목사", "outputMode": ""},
@@ -2526,6 +2532,7 @@ def main() -> int:
                         ]
                         and set(template_terms["sundayPublicScaffold"]["afternoon"]["scoreSlots"]) == {
                             "hymn_praise:찬송",
+                            "offering:봉헌찬송",
                             "sending:송영",
                         }
                         and "사죄의선언" not in template_terms["sundayPublicScaffold"]["third"]["titles"]
@@ -2603,6 +2610,7 @@ def main() -> int:
                         and "hymn_praise" in template_terms["sundayPublicScaffold"]["afternoon"]["keys"]
                         and set(template_terms["sundayPublicScaffold"]["afternoon"]["scoreSlots"]) == {
                             "hymn_praise:찬송",
+                            "offering:봉헌찬송",
                             "sending:송영",
                         }
                         and all(item["lastLabel"] == "마무리" for item in template_terms["commonClosingTemplates"])

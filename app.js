@@ -14748,7 +14748,6 @@ function serviceIsDedicationWorship(service = null) {
 
 function publicSundayAfternoonTemplate(options = {}) {
   const typeId = "sunday-afternoon";
-  const dedication = serviceIsDedicationWorship(options.service);
   return [
     publicWorshipReadyStep(),
     publicWorshipPraiseStep({ count: 4, required: true }),
@@ -14756,10 +14755,10 @@ function publicSundayAfternoonTemplate(options = {}) {
     { label: "찬송", name: "찬송", required: true, flex: false, sectionKey: "hymn_praise", elementType: "praise", ...scoreOutputMode() },
     publicWorshipPrayerStep(),
     publicWorshipScriptureReadingStep(),
-    ...(dedication ? [publicWorshipSpecialSongStep({ score: false })] : []),
+    publicWorshipSpecialSongStep({ score: false }),
     publicWorshipSermonStep({ typeId }),
     publicWorshipResponseStep(),
-    ...(dedication ? [publicWorshipOfferingStep({ score: true, praiseLabel: "봉헌찬송" })] : []),
+    publicWorshipOfferingStep({ score: true, praiseLabel: "봉헌찬송" }),
     publicWorshipAnnouncementsStep(),
     publicWorshipSendingStep({
       score: true,

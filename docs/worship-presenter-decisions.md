@@ -152,6 +152,10 @@ Small visual polish that does not alter behavior does not need an entry.
   input rail, block saving, or produce an `입력 필요` warning.
 - Sunday afternoon worship starts with four main-praise slots:
   `찬양 1` through `찬양 4`.
+- Sunday afternoon worship uses the dedication-service order by default because
+  most afternoon services are dedication services. `특송` and `봉헌`
+  (`봉헌찬송`, `봉헌기도`) stay in the base template; non-dedication days should
+  skip/hide those slots instead of removing them from the scaffold.
 - Sunday third service uses the same `신앙고백 → 사도신경` title-slide rule as
   the first and second services. `공동체고백` and `주기도문` also retain their
   own title slides before their body text.
@@ -248,7 +252,10 @@ Small visual polish that does not alter behavior does not need an entry.
   `docs/thread-worship-presenter.md`.
 
 ## Presenter Output Rules
-- `주일오후 헌신예배`는 일반 오후예배 순서에 `특송`과 `봉헌`을 추가한다. `특송`은 악보(score)가 아니라 일반 praise/lyrics 입력이며, 추가되는 `봉헌찬송`만 score output을 사용한다.
+- `주일오후예배`는 기본적으로 헌신예배 순서를 따른다. `특송`은
+  악보(score)가 아니라 일반 praise/lyrics 입력이며, `봉헌찬송`만 score
+  output을 사용한다. 헌신예배가 아닌 날에는 `특송`/`봉헌` slot을
+  skip/hide한다.
 - 크로마키 찬양 제목 slide는 본문 가사 크기와 별도로 더 큰 제목 scale을
   사용한다. 설교 제목 lower bar는 왼쪽 `설교` label을 출력하지 않고
   설교 제목을 왼쪽, 담당자를 오른쪽에 둔다.
