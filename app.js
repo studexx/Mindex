@@ -22462,7 +22462,7 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
 
   const scriptureTextSlides = buildPresenterScriptureTextSlides(item, section, index, service);
   if (scriptureTextSlides.length) {
-    return withIntroAndSpecialTitle(presenterSlidesWithScriptureReadingTitle(item, section, scriptureTextSlides, index));
+    return withIntroAndSpecialTitle(presenterSlidesWithScriptureReadingTitle(item, section, scriptureTextSlides, index, service));
   }
   if (isScriptureBodyServiceItem(item)) return [];
 

@@ -61,14 +61,19 @@ function presenterSlidesWithSpecialSongTitle(item = {}, section = {}, slides = [
   ], item, section, service);
 }
 
-function presenterSlidesWithScriptureReadingTitle(item = {}, section = {}, slides = [], index = 0) {
+function presenterSlidesWithScriptureReadingTitle(item = {}, section = {}, slides = [], index = 0, service = null) {
   const list = Array.isArray(slides) ? slides.filter(Boolean) : [];
   if (!list.length || presenterScriptureBodyContext(item, section) !== "reading") return list;
   const existingTitle = list.some((slide) =>
     slide?.type === "title-assignee"
     && compactSearchValue(slide.title || slide.label || "") === "성경봉독");
   if (existingTitle) return list;
-  const reference = String(list[0]?.title || list[0]?.marker || item.raw_title || "").trim();
+  const references = typeof serviceItemScriptureReferences === "function"
+    ? serviceItemScriptureReferences(item, parseServiceItemMemo(item.memo), service)
+    : [];
+  const reference = references.length && typeof formatServiceScriptureReferenceList === "function"
+    ? formatServiceScriptureReferenceList(references)
+    : String(list[0]?.title || list[0]?.marker || item.raw_title || "").trim();
   return [presenterScriptureReadingTitleSlide(item, section, index, reference), ...list];
 }
 
