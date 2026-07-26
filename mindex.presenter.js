@@ -1049,7 +1049,7 @@ function buildPresenterLiturgicalBodySlides(item, section, index, service, memo,
   const chromakeyText = title === "사도신경" && text === PRESENTER_PUBLIC_APOSTLES_CREED_TEXT
     ? PRESENTER_PUBLIC_APOSTLES_CREED_CHROMAKEY_TEXT
     : text;
-  return splitPresenterLyricChunks(chromakeyText).map((chunk, chunkIndex) => ({
+  return splitPresenterLyricChunks(chromakeyText, presenterLiturgicalChromakeyLinesPerSlide(title)).map((chunk, chunkIndex) => ({
     id: `${item.id || index}:liturgical:${chunkIndex}`,
     ...base,
     layout: PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT,
@@ -1060,6 +1060,10 @@ function buildPresenterLiturgicalBodySlides(item, section, index, service, memo,
     bodyText: text,
     sort: index + chunkIndex / 100,
   }));
+}
+
+function presenterLiturgicalChromakeyLinesPerSlide(title = "") {
+  return liturgicalBodyTitle({ label: title }) === "공동체고백" ? 1 : 2;
 }
 
 function presenterPreparationSlide(service, item, index) {
