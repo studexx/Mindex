@@ -233,11 +233,11 @@
 .presenter-slide--component .presenter-slide-text,
 .presenter-slide--ready .presenter-slide-text { align-items: center; font-size: var(--presenter-size-display); font-weight: var(--presenter-weight-display); text-align: center; }
 .presenter-ready-screen {
-  display: grid;
+  display: flex;
   width: min(74cqw, 1420px);
-  height: 100%;
-  grid-template-rows: 1fr auto .72fr auto .58fr;
-  place-items: center;
+  flex-direction: column;
+  gap: 4cqh;
+  align-items: center;
   text-align: center;
 }
 .presenter-ready-screen-logo {
