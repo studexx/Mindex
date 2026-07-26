@@ -2977,7 +2977,10 @@ function serviceElementScriptureReference(element = {}, section = {}, sourceRef 
 function serviceElementScriptureReferences(element = {}, section = {}, sourceRef = {}, config = {}) {
   const configured = config.scriptureReferences || config.scripture_references
     || sourceRef.scriptureReferences || sourceRef.scripture_references;
-  const references = normalizeServiceScriptureReferenceList(configured);
+  const references = preferCompleteServiceScriptureReferenceList(
+    normalizeServiceScriptureReferenceList(configured),
+    normalizeServiceScriptureReferenceList(element.title),
+  );
   if (references.length) return references;
   const reference = serviceElementScriptureReference(element, section, sourceRef, config);
   return reference ? [reference] : [];
@@ -18659,8 +18662,17 @@ function isOptionalCitationScriptureServiceItem(item = {}) {
 
 function serviceItemDirectScriptureReferences(item = {}, memo = parseServiceItemMemo(item.memo)) {
   const configured = normalizeServiceScriptureReferenceList(memo.scriptureReferences);
-  if (configured.length) return configured;
-  return normalizeServiceScriptureReferenceList(memo.scriptureReference || item.raw_title || "");
+  const titleReferences = normalizeServiceScriptureReferenceList(item.raw_title);
+  const references = preferCompleteServiceScriptureReferenceList(configured, titleReferences);
+  if (references.length) return references;
+  return normalizeServiceScriptureReferenceList(memo.scriptureReference);
+}
+
+function preferCompleteServiceScriptureReferenceList(configured = [], displayed = []) {
+  if (!displayed.length) return configured;
+  if (!configured.length || displayed.length > configured.length) return displayed;
+  if (displayed.length < configured.length) return configured;
+  return displayed.every((reference, index) => reference === configured[index]) ? configured : displayed;
 }
 
 function serviceScriptureReadingReferencesForService(service = null) {
