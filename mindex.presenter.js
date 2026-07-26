@@ -3518,8 +3518,8 @@ function renderPresenterFullscreenReadySlide(slide) {
     || "예배";
   return `
     <div class="presenter-ready-screen">
-      <img class="presenter-ready-screen-logo" src="${escapeAttr(PRESENTER_CHURCH_LOGO)}" alt="기형 검단우리교회" decoding="sync" loading="eager" fetchpriority="high" draggable="false" />
       <p class="presenter-ready-screen-message">잠시 후 ${escapeHtml(serviceName)}가 시작됩니다</p>
+      <img class="presenter-ready-screen-logo" src="${escapeAttr(PRESENTER_CHURCH_LOGO)}" alt="기형 검단우리교회" decoding="sync" loading="eager" fetchpriority="high" draggable="false" />
     </div>
   `;
 }

@@ -235,7 +235,8 @@
 .presenter-ready-screen {
   display: grid;
   width: min(74cqw, 1420px);
-  gap: 7cqh;
+  height: 100%;
+  grid-template-rows: 1fr auto .72fr auto .58fr;
   place-items: center;
   text-align: center;
 }
@@ -248,7 +249,7 @@
 .presenter-ready-screen-message {
   margin: 0;
   color: var(--presenter-output-fg);
-  font-size: var(--presenter-size-section);
+  font-size: var(--presenter-size-body);
   font-weight: var(--presenter-weight-display);
   line-height: 1.16;
   text-shadow: 0 1px 9px rgba(255, 255, 255, .17);
