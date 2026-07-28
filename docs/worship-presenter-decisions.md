@@ -142,9 +142,11 @@ Small visual polish that does not alter behavior does not need an entry.
 - Sunday second and third service share scripture reading and the whole sermon
   section content: `성경봉독`, `설교 제목`, `설교 본문`, and `인용 구절`.
 - Sunday first, second, and third service share `봉헌찬송`.
-- These are same-date content sharing rules. Direct input in a service always
-  wins; an empty shared slot may fall back to another same-date service in its
-  sharing group.
+- These are same-date linked content rules, not presenter-only fallback.
+  When a linked slot is filled, edited, or cleared in one service, saving writes
+  the same content to the other same-date services in its sharing group.
+  Presenter fallback may remain only as legacy recovery for older rows that have
+  not been normalized yet.
 - Sunday first and second service doxology is fixed to hymn 5,
   `이 천지간 만물들아`.
 - Sunday afternoon doxology is fixed to hymn 1, `만복의 근원 하나님`.

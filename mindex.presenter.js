@@ -2902,11 +2902,12 @@ function presenterOutputFrameStateForSlide(slide, payload = {}) {
   const cleanOutput = !slideChromakey;
   const blankSlide = presenterSlideLayout(slide) === PRESENTER_SLIDE_LAYOUTS.BLANK;
   const suppressBackground = Boolean(slide?.suppressBackgroundImage || slide?.noBackgroundImage);
-  const showBackground = Boolean(backgroundImages.length && cleanOutput && !payload?.safetyBlank && !suppressBackground);
+  // A regular clean-output blank is the transition slide: render its cross on a plain frame.
+  const showBackground = Boolean(backgroundImages.length && cleanOutput && !blankSlide && !payload?.safetyBlank && !suppressBackground);
   return {
     cleanOutput,
     showBackground,
-    blankOutput: Boolean(blankSlide && !showBackground),
+    blankOutput: Boolean(blankSlide && !showBackground && !payload?.safetyBlank),
     backgroundImage: backgroundImages[0] || "",
     backgroundImages,
     serviceType: payload?.serviceType || "",

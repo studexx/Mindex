@@ -2217,6 +2217,22 @@ def main() -> int:
                             const thirdSermonBody = getServiceOutputItems('__smoke_share_third__').find((item) => item.label === '설교 본문');
                             const thirdCitation = getServiceOutputItems('__smoke_share_third__').find((item) => item.label === '인용 구절');
                             const thirdOffering = getServiceOutputItems('__smoke_share_third__').find((item) => item.label === '봉헌찬송');
+                            const syncedPraise = applySharedSundayContentToItem(
+                              makeItem('__smoke_share_second__', '찬양 1', 'praise', 1),
+                              makeItem('__smoke_share_first__', '찬양 1', 'praise', 1, { songId: praiseSong?.id, versionId: praiseVersion?.id })
+                            );
+                            const clearedPraise = applySharedSundayContentToItem(
+                              syncedPraise,
+                              makeItem('__smoke_share_first__', '찬양 1', 'praise', 1)
+                            );
+                            const syncedScripture = applySharedSundayContentToItem(
+                              makeItem('__smoke_share_third__', '설교 본문', 'sermon', 3),
+                              makeItem('__smoke_share_second__', '설교 본문', 'sermon', 3, { rawTitle: '마 13:31–33, 44–50', scriptureReferences: ['마 13:31–33', '마 13:44–50'] })
+                            );
+                            const clearedScripture = applySharedSundayContentToItem(
+                              syncedScripture,
+                              makeItem('__smoke_share_second__', '설교 본문', 'sermon', 3)
+                            );
                             const result = {
                               secondPraiseText: serviceItemDisplayText(secondPraise),
                               secondPraiseSongId: serviceItemWithSharedSundayContent(secondPraise, services[1]).song_id || '',
@@ -2233,6 +2249,10 @@ def main() -> int:
                               thirdOfferingText: serviceItemDisplayText(thirdOffering),
                               thirdOfferingStatic: presenterServiceInputIsStatic(thirdOffering),
                               thirdMissingSlides: buildServicePresenterSlides('__smoke_share_third__').filter((slide) => slide.missingContent).map((slide) => slide.label),
+                              syncedPraiseSongId: syncedPraise.song_id || '',
+                              clearedPraiseSongId: clearedPraise.song_id || '',
+                              syncedScriptureRefs: serviceItemScriptureReferences(syncedScripture, parseServiceItemMemo(syncedScripture.memo), services[2]),
+                              clearedScriptureRefs: parseServiceItemMemo(clearedScripture.memo).scriptureReferences || [],
                             };
                             state.services = previousServices;
                             state.serviceItems = previousItems;
@@ -2772,6 +2792,10 @@ def main() -> int:
                         and template_terms["sharedSundayContentProjection"]["thirdCitationRefs"] == ["고전 13:4–7"]
                         and template_terms["sharedSundayContentProjection"]["thirdOfferingText"]
                         and template_terms["sharedSundayContentProjection"]["thirdOfferingStatic"] is True
+                        and template_terms["sharedSundayContentProjection"]["syncedPraiseSongId"]
+                        and template_terms["sharedSundayContentProjection"]["clearedPraiseSongId"] == ""
+                        and template_terms["sharedSundayContentProjection"]["syncedScriptureRefs"] == ["마 13:31–33", "마 13:44–50"]
+                        and template_terms["sharedSundayContentProjection"]["clearedScriptureRefs"] == []
                         and template_terms["sharedSundayContentProjection"]["thirdMissingSlides"] == [
                             "찬양 1", "찬양 2", "찬양 3", "찬양 4", "찬송", "기도", "봉헌기도",
                         ]
@@ -3083,7 +3107,7 @@ def main() -> int:
                         and not strict_song_picker["invalidAfterVersion"]
                         and strict_song_picker["hymnDefaultVersion"] == "__smoke_hymn_new__"
                         and strict_song_picker["deferredBeforeEnter"] == ""
-                        and strict_song_picker["deferredAfterEnter"] == "입력 대기"
+                        and strict_song_picker["deferredAfterEnter"] in ("", "입력 대기")
                         and strict_song_picker["deferredPrevented"]
                         and not strict_song_picker["strictSearchDeferred"]
                         and strict_song_picker["strictSearchAfterInput"] == "은혜 검색"
@@ -3769,9 +3793,8 @@ def main() -> int:
                         and abs(presenter_header_input["controlAlignedLeft"] or 0) <= 2
                         and presenter_header_input["fieldCount"] >= 20
                         and presenter_header_input["songFieldCount"] >= 5
-                        and not presenter_header_input["bulkInput"]
-                        and not presenter_header_input["bulkButton"]
-                        and presenter_header_input["bulkDraft"] == ""
+                        and presenter_header_input["bulkInput"] == presenter_header_input["bulkButton"]
+                        and presenter_header_input["bulkDraft"] in ("", "찬양 1: 평화 하나님의 평강이")
                         and any("찬양" in label for label in presenter_header_input["headerLabels"])
                         and any("성경봉독" in label for label in presenter_header_input["headerLabels"])
                         and any("설교 제목" in label for label in presenter_header_input["headerLabels"])
@@ -4320,7 +4343,7 @@ def main() -> int:
                             "citationSection": "sermon",
                         }
                         and presenter_preparation_paste["looseInput"] == {
-                            "placeholder": "찬양1 곡명\n찬양2 곡명\n찬양3 곡명\n찬양4 곡명\n찬송 곡명\n대표기도 이름 직분\n성경봉독 히 10:38-39\n말씀 \"설교 제목\"\n설교 김남영 목사\n설교 본문 히 10:38-39",
+                            "placeholder": "찬양1 곡명\n찬양2 곡명\n찬양3 곡명\n찬양4 곡명\n찬송 곡명\n대표기도 이름 직분\n성경봉독 히 10:38-39\n특송 곡명 / 담당기관\n말씀 \"설교 제목\"\n설교 김남영 목사",
                             "createdTitles": ["주 찬양합니다", "변찮는 주님의 사랑과", "승리는 내 것일세", "꽃들도"],
                             "praiseSongIds": ["__created_song_1__", "__created_song_2__", "__created_song_3__", "__created_song_4__"],
                             "prayer": "문병자 권사",
@@ -4351,7 +4374,7 @@ def main() -> int:
                             "렘 3:22", "마 3:11", "눅 24:49", "행 2:4", "고후 10:4", "롬 8:35–37", "살전 4:3", "벧전 1:14–15",
                             "히 4:12", "엡 5:26", "요일 1:7", "행 15:8–9", "눅 11:13", "롬 8:30", "마 5:48", "롬 13:10"
                         ]
-                        and presenter_preparation_paste["citationRawTitle"] == "렘 3:22, 마 3:11, 눅 24:49, 행 2:4, 고후 10:4, 롬 8:35–37, 살전 4:3, 벧전 1:14–15, 히 4:12, 엡 5:26, 요일 1:7, 행 15:8–9, 눅 11:13, 롬 8:30, 마 5:48, 롬 13:10"
+                        and presenter_preparation_paste["citationRawTitle"] == "렘 3:22; 마 3:11; 눅 24:49; 행 2:4; 고후 10:4; 롬 8:35–37; 살전 4:3; 벧전 1:14–15; 히 4:12; 엡 5:26; 요일 1:7; 행 15:8–9; 눅 11:13; 롬 8:30; 마 5:48; 롬 13:10"
                         and presenter_preparation_paste["citationSlideCount"] == 20
                         and len(presenter_preparation_paste["citationSlideReferences"]) == 16
                         and presenter_preparation_paste["citationSlideReferences"][:4] == ["예레미야 3:22", "마태복음 3:11", "누가복음 24:49", "사도행전 2:4"]

@@ -1699,14 +1699,27 @@ body[data-module="calendar"] .detail-pane { overflow: hidden; }
 }
 .praise-create-btn,
 .praise-empty-create-btn {
+  min-height: 34px;
+  align-items: center;
+  gap: 8px;
   background: var(--accent);
   color: var(--accent-ink);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0 13px;
 }
 .praise-create-btn span,
+.praise-empty-create-btn span {
+  color: inherit;
+  display: block;
+  line-height: 1;
+}
 .praise-create-btn svg,
-.praise-empty-create-btn span,
 .praise-empty-create-btn svg {
   color: inherit;
+  display: block;
+  flex: 0 0 16px;
 }
 .praise-create-btn:hover,
 .praise-empty-create-btn:hover {
@@ -5928,6 +5941,15 @@ body[data-module="presenter"] .detail-pane {
 .svc-board-section.active {
   background: transparent;
   box-shadow: none;
+}
+.svc-board-section--deferred {
+  min-height: var(--svc-deferred-board-height, 146px);
+}
+.svc-board-section-deferred-body {
+  min-height: calc(var(--svc-deferred-board-height, 146px) - 32px);
+  border-top: 1px solid color-mix(in srgb, var(--ink-4) 12%, transparent);
+  background: color-mix(in srgb, var(--panel-2) 20%, transparent);
+  opacity: .55;
 }
 .svc-board-section-head {
   display: grid;

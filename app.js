@@ -1044,10 +1044,19 @@ function bindStaticEvents() {
 
   // Calendar inline-edit
   refs.detailPane.addEventListener("focusin", (e) => {
+    const serviceTextField = e.target.closest("input[data-service-item-field]");
+    if (isDeferredServiceTextInput(serviceTextField)) {
+      serviceTextField.dataset.initialValue = serviceTextField.value;
+    }
     const cell = e.target.closest(".cal-cell");
     if (cell) cell.dataset.initialValue = cell.textContent;
   });
   refs.detailPane.addEventListener("focusout", (e) => {
+    const serviceTextField = e.target.closest("input[data-service-item-field]");
+    if (isDeferredServiceTextInput(serviceTextField)) {
+      commitDeferredServiceTextInput(serviceTextField, { save: true });
+      return;
+    }
     const cell = e.target.closest(".cal-cell");
     if (!cell) return;
     const id = cell.dataset.calId;
@@ -4368,7 +4377,7 @@ async function saveScripture() {
   }
 }
 
-async function saveService(serviceId = state.selectedServiceId) {
+async function saveService(serviceId = state.selectedServiceId, options = {}) {
   if (!requireClient() || state.saving) return;
   commitActiveDeferredServiceTextInput(serviceId);
 
@@ -4387,8 +4396,11 @@ async function saveService(serviceId = state.selectedServiceId) {
       await saveWorshipServiceInstance(service);
     }
     state.dirty.service = false;
-    showToast("예배를 저장했습니다.");
-    render();
+    if (!options.silent) showToast("예배를 저장했습니다.");
+    // Field-level commits already refreshed the affected presenter content. Avoid
+    // rebuilding the whole application after a small inline edit.
+    if (options.renderAfterSave !== false) render();
+    else renderServiceList();
   } catch (error) {
     showToast(error.message || "예배를 저장하지 못했습니다.", "error");
   } finally {
@@ -4559,6 +4571,148 @@ async function saveWorshipServiceInstance(service) {
     groupWorshipElements(rows.sections, rows.elements)[serviceId] || [],
   );
   suppressedItems.forEach((item) => suppressedIds.delete(item.id));
+  await syncSharedSundayContentAfterSave(service, items, { elementTypedStateColumns });
+  refreshPresenterForService(serviceId);
+}
+
+async function syncSharedSundayContentAfterSave(sourceService, sourceItems = [], options = {}) {
+  if (!state.client || !sourceService?.id) return;
+  const serviceDate = String(sourceService.date || "").trim();
+  if (!serviceDate) return;
+  const changedSharedItems = sourceItems
+    .filter((item) => Boolean(item?._worshipSharedContentDirty))
+    .filter((item) => sundaySharedContentKey(item) && sundaySharedContentTypesForItem(item, sourceService).length);
+  if (!changedSharedItems.length) return;
+
+  for (const sourceItem of changedSharedItems) {
+    const key = sundaySharedContentKey(sourceItem);
+    const targetTypeIds = sundaySharedContentTypesForItem(sourceItem, sourceService)
+      .filter((typeId) => typeId !== worshipAppServiceTypeId(sourceService.type_id));
+    const targetServices = state.services.filter((service) =>
+      service.id !== sourceService.id
+      && String(service.date || "").trim() === serviceDate
+      && targetTypeIds.includes(worshipAppServiceTypeId(service.type_id)));
+    for (const targetService of targetServices) {
+      await syncSharedSundayContentToService(targetService, key, sourceItem, options);
+    }
+  }
+}
+
+async function syncSharedSundayContentToService(targetService, key, sourceItem, options = {}) {
+  const targetItems = normalizeServiceItemsForTemplateHierarchy(
+    targetService,
+    normalizeServiceItemsInCurrentOrder(getServiceItems(targetService.id)),
+  );
+  const targetIndex = targetItems.findIndex((item) => sundaySharedContentKey(item) === key);
+  if (targetIndex < 0) return;
+  targetItems[targetIndex] = applySharedSundayContentToItem(targetItems[targetIndex], sourceItem);
+  await persistSharedSundayServiceItems(targetService, targetItems, options);
+}
+
+function applySharedSundayContentToItem(targetItem = {}, sourceItem = {}) {
+  const key = sundaySharedContentKey(targetItem) || sundaySharedContentKey(sourceItem);
+  const next = {
+    ...targetItem,
+    _worshipElementTemplateModified: true,
+    _worshipTemplatePlaceholder: false,
+  };
+  delete next._worshipSharedContentDirty;
+
+  if (key === "scripture-reading" || key === "sermon-scripture" || key.startsWith("sermon-citation:")) {
+    const targetMemo = parseServiceItemMemo(targetItem.memo);
+    const sourceMemo = parseServiceItemMemo(sourceItem.memo);
+    const references = serviceItemDirectScriptureReferences(sourceItem, sourceMemo);
+    next.song_id = null;
+    next.version_id = null;
+    next.song_version_id = null;
+    next.raw_title = formatServiceScriptureReferenceList(references);
+    next.memo = serializeServiceItemMemo({
+      ...targetMemo,
+      elementType: "scripture_body",
+      componentType: "scripture_body",
+      inputMode: "scripture",
+      scriptureReference: references[0] || "",
+      scriptureReferences: references,
+      slides: [],
+    });
+    return next;
+  }
+
+  if (key === "sermon-title") {
+    next.raw_title = String(sourceItem.raw_title || "").trim();
+    next.assignee = cleanServiceAssignee(sourceItem.assignee);
+    next.song_id = null;
+    next.version_id = null;
+    next.song_version_id = null;
+    return next;
+  }
+
+  if (key.startsWith("main-praise:") || key === "offering-hymn") {
+    const versionId = sourceItem.version_id || sourceItem.song_version_id || null;
+    const sourceMemo = parseServiceItemMemo(sourceItem.memo);
+    const targetMemo = parseServiceItemMemo(targetItem.memo);
+    next.song_id = sourceItem.song_id || null;
+    next.version_id = versionId;
+    next.song_version_id = versionId;
+    next.raw_title = sourceItem.song_id ? "" : String(sourceItem.raw_title || "").trim();
+    next.memo = serializeServiceItemMemo({
+      ...targetMemo,
+      formHint: sourceMemo.formHint || "",
+      formPreset: sourceMemo.formPreset || null,
+      formPresetDisabled: Boolean(sourceMemo.formPresetDisabled),
+      formPresetRules: sourceMemo.formPresetRules || [],
+      outputMode: sourceMemo.outputMode || targetMemo.outputMode || "",
+      slides: sourceItem.song_id ? [] : [...(sourceMemo.slides || [])],
+    });
+  }
+
+  return next;
+}
+
+async function persistSharedSundayServiceItems(service, items = [], options = {}) {
+  if (!state.client || !service?.id) return;
+  const serviceId = service.id;
+  const existingSections = state.worshipSections.filter((section) => section.service_id === serviceId);
+  const existingElements = state.worshipElements.filter((element) =>
+    existingSections.some((section) => section.id === element.section_id));
+  const existingSectionById = Object.fromEntries(existingSections.map((section) => [section.id, section]));
+  const existingElementById = Object.fromEntries(existingElements.map((element) => [element.id, element]));
+  const rows = buildWorshipPersistenceRows(
+    service,
+    items.filter((item) => !isUnmodifiedTemplatePlaceholder(item)),
+    existingSectionById,
+    existingElementById,
+    options,
+  );
+  if (rows.sections.length) {
+    const { error } = await state.client
+      .from("mindex_worship_sections")
+      .upsert(rows.sections, { onConflict: "id" });
+    if (error) throw error;
+  }
+  if (rows.elements.length) {
+    const { error } = await state.client
+      .from("mindex_worship_elements")
+      .upsert(rows.elements, { onConflict: "id" });
+    if (error) throw error;
+  }
+
+  const replaceSectionIds = new Set([
+    ...existingSections.map((section) => section.id),
+    ...rows.sections.map((section) => section.id),
+  ]);
+  state.worshipSections = [
+    ...state.worshipSections.filter((section) => section.service_id !== serviceId),
+    ...rows.sections,
+  ];
+  state.worshipElements = [
+    ...state.worshipElements.filter((element) => !replaceSectionIds.has(element.section_id)),
+    ...rows.elements,
+  ];
+  state.serviceItems[serviceId] = projectWorshipServiceItemsFromTemplate(
+    service,
+    groupWorshipElements(rows.sections, rows.elements)[serviceId] || [],
+  );
   refreshPresenterForService(serviceId);
 }
 
@@ -5813,8 +5967,12 @@ function handleDetailKeydown(event) {
   const serviceTextField = event.target.closest("input[data-service-item-field]");
   if (serviceTextField && event.key === "Enter") {
     event.preventDefault();
-    updateServiceItemField(serviceTextField);
-    saveCommittedServiceItem(serviceTextField.dataset.serviceItemIndex, serviceTextField.dataset.serviceId || state.selectedServiceId);
+    if (isDeferredServiceTextInput(serviceTextField)) {
+      commitDeferredServiceTextInput(serviceTextField, { save: true });
+    } else {
+      updateServiceItemField(serviceTextField);
+      saveCommittedServiceItem(serviceTextField.dataset.serviceItemIndex, serviceTextField.dataset.serviceId || state.selectedServiceId);
+    }
     return;
   }
   if (event.key !== "Enter" && event.key !== " ") return;
@@ -6629,31 +6787,46 @@ function isDeferredServiceTextInput(field) {
   return !field.hasAttribute("data-service-song-required");
 }
 
+function commitDeferredServiceTextInput(field, options = {}) {
+  if (!isDeferredServiceTextInput(field)) return false;
+  const initialValue = String(field.dataset.initialValue ?? field.value);
+  if (field.value === initialValue) return false;
+  const serviceId = field.dataset.serviceId || state.selectedServiceId;
+  updateServiceItemField(field, { deferPresenterRefresh: true });
+  field.dataset.initialValue = field.value;
+  if (options.save) {
+    saveCommittedServiceItem(field.dataset.serviceItemIndex, serviceId, {
+      renderAfterSave: false,
+      silent: true,
+    });
+  }
+  return true;
+}
+
 function commitActiveDeferredServiceTextInput(serviceId = state.selectedServiceId) {
   const field = document.activeElement?.closest?.("input[data-service-item-field]");
   if (!field || !isDeferredServiceTextInput(field)) return false;
   const fieldServiceId = field.dataset.serviceId || state.selectedServiceId;
   if (serviceId && fieldServiceId !== serviceId) return false;
-  updateServiceItemField(field);
-  return true;
+  return commitDeferredServiceTextInput(field);
 }
 
-function saveCommittedServiceItem(index, serviceId = state.selectedServiceId) {
+function saveCommittedServiceItem(index, serviceId = state.selectedServiceId, options = {}) {
   const item = getServiceItems(serviceId)[Number(index)];
   const service = state.services.find((candidate) => candidate.id === serviceId);
   if (!item || !service || serviceItemSongSelectionInvalid(item, service) || serviceItemScriptureInputInvalid(item)) return;
-  void resolveAndSaveCommittedServiceItem(serviceId, Number(index));
+  void resolveAndSaveCommittedServiceItem(serviceId, Number(index), options);
 }
 
-async function resolveAndSaveCommittedServiceItem(serviceId, index) {
+async function resolveAndSaveCommittedServiceItem(serviceId, index, options = {}) {
   await resolveServiceScriptureBeforeSave(serviceId, index);
   const item = getServiceItems(serviceId)[index];
   const service = state.services.find((candidate) => candidate.id === serviceId);
   if (!item || !service || serviceItemSongSelectionInvalid(item, service) || serviceItemScriptureInputInvalid(item)) return;
-  await saveService(serviceId);
+  await saveService(serviceId, options);
 }
 
-function updateServiceItemField(field) {
+function updateServiceItemField(field, options = {}) {
   const serviceId = field.dataset.serviceId || state.selectedServiceId;
   const items = getServiceItems(serviceId);
   const index = Number(field.dataset.serviceItemIndex);
@@ -6663,6 +6836,7 @@ function updateServiceItemField(field) {
   const key = field.dataset.serviceItemField;
   const service = state.services.find((candidate) => candidate.id === serviceId) || selectedServiceForEditor();
   item._worshipElementTemplateModified = true;
+  markServiceItemSharedContentDirty(item, service);
   item._worshipTemplatePlaceholder = false;
   const strictSongInput = key === "raw_title" && serviceItemRequiresSongSelection(item, service);
   if (key === "label" || key === "assignee" || key === "raw_title") {
@@ -6758,7 +6932,11 @@ function updateServiceItemField(field) {
   applyServicePreparationDefaults(item, serviceId);
   state.serviceItems[serviceId] = normalizeServiceItemsInCurrentOrder(items);
   state.dirty.service = true;
-  refreshPresenterForService(serviceId);
+  if (options.deferPresenterRefresh) {
+    requestAnimationFrame(() => refreshPresenterForService(serviceId));
+  } else {
+    refreshPresenterForService(serviceId);
+  }
   updateSaveState();
 }
 
@@ -8056,6 +8234,7 @@ function runServiceItemAction(action, index, label = "", title = "") {
       label,
       raw_title: title,
     }, items.length);
+    markServiceItemSharedContentDirty(nextItem, state.services.find((service) => service.id === serviceId));
     applyServiceSongSelection(nextItem);
     insertServiceItemInTemplateOrder(items, nextItem, typeId);
     nextSelectedIndex = items.findIndex((candidate) => candidate.id === nextItem.id);
@@ -8083,6 +8262,7 @@ function runServiceItemAction(action, index, label = "", title = "") {
     nextSelectedIndex = index + 1;
   }
   if (action === "delete" && item) {
+    markServiceItemSharedContentDirty(item, state.services.find((service) => service.id === serviceId));
     items.splice(index, 1);
     nextSelectedIndex = Math.min(index, items.length - 1);
   }
@@ -14963,6 +15143,7 @@ function normalizeServiceItem(item = {}, index = 0) {
     _worshipElementTemplateModified: Boolean(item._worshipElementTemplateModified),
     _worshipTemplateProjected: Boolean(item._worshipTemplateProjected),
     _worshipTemplatePlaceholder: Boolean(item._worshipTemplatePlaceholder),
+    _worshipSharedContentDirty: Boolean(item._worshipSharedContentDirty),
   };
   return applyServicePreparationDefaults(normalized, normalized.service_id);
 }
@@ -15300,6 +15481,7 @@ function mergeTemplateProjectionItem(templateItem = {}, existingItem = {}) {
     _worshipSectionId: existingItem._worshipSectionId || templateItem._worshipSectionId,
     _worshipSectionTemplateModified: sectionModified,
     _worshipElementTemplateModified: elementModified,
+    _worshipSharedContentDirty: Boolean(existingItem._worshipSharedContentDirty || templateItem._worshipSharedContentDirty),
   };
   if (sectionModified) {
     merged._worshipSectionKey = existingItem._worshipSectionKey || templateItem._worshipSectionKey;
@@ -17307,6 +17489,7 @@ function renderPresenterDetail() {
       ${renderServiceScriptureDatalist()}
     </div>`;
   refreshIcons();
+  mountDeferredPresenterBoardSections(document.getElementById("servicePresenterControls"), serviceId, presenterSlides);
   updateSaveState();
   requestAnimationFrame(() => {
     fitPresenterChromakeyScripturePreviews(refs.detailPane);
@@ -18590,6 +18773,11 @@ function serviceItemSupportsScriptureReferenceList(item = {}) {
     || isSharedScriptureReadingServiceItem(item);
 }
 
+function markServiceItemSharedContentDirty(item = {}, service = null) {
+  if (!item || !sundaySharedContentKey(item) || !sundaySharedContentTypesForItem(item, service).length) return;
+  item._worshipSharedContentDirty = true;
+}
+
 function sundaySharedContentKey(item = {}) {
   const sectionKey = String(item?._worshipSectionKey || item?.sectionKey || item?.section_key || "").trim();
   const label = compactSearchValue(item?.label || item?.raw_title || "");
@@ -19406,6 +19594,7 @@ function materializePresenterPreparationItem(service, items, projectedItem) {
     _worshipTemplateProjected: false,
     _worshipTemplatePlaceholder: false,
     _worshipElementTemplateModified: true,
+    _worshipSharedContentDirty: true,
   }, items.length));
   return items.length - 1;
 }
@@ -19574,6 +19763,7 @@ function presenterPreparationCitationItems(service, items, references) {
     _worshipSectionOrder: Number(anchor._worshipSectionOrder) || 0,
     _worshipElementOrder: baseOrder + 0.01,
     _worshipElementTemplateModified: true,
+    _worshipSharedContentDirty: true,
     _worshipTemplateProjected: false,
     _worshipTemplatePlaceholder: false,
   }, insertionIndex);
@@ -19654,6 +19844,7 @@ async function applyPresenterPreparationInput(serviceId = state.selectedServiceI
         item.raw_title = "";
         if (assignee) item.assignee = assignee;
         item._worshipElementTemplateModified = true;
+        markServiceItemSharedContentDirty(item, service);
         item._worshipTemplatePlaceholder = false;
         const versions = serviceSelectableSongVersions(song, item, service);
         const preferredVersion = preferredNewHymnalVersion(song, versions);
@@ -19665,19 +19856,21 @@ async function applyPresenterPreparationInput(serviceId = state.selectedServiceI
       }
 
       if (mode === "scripture" || isScriptureBodyServiceItem(item)) {
-        const reference = normalizeServiceItemReferenceSpacing(content);
-        if (!parseBibleReference(reference)) {
+        const references = normalizeServiceScriptureReferenceList(content);
+        if (!references.length || references.some((reference) => !parseBibleReference(reference))) {
           errors.push(`${entry.label}의 성경 주소를 확인해 주세요.`);
           continue;
         }
-        item.raw_title = reference;
+        item.raw_title = formatServiceScriptureReferenceList(references);
         item._worshipElementTemplateModified = true;
+        markServiceItemSharedContentDirty(item, service);
         item._worshipTemplatePlaceholder = false;
         item.memo = serializeServiceItemMemo({
           ...memo,
           elementType: "scripture_body",
           inputMode: "scripture",
-          scriptureReference: reference,
+          scriptureReference: references[0] || "",
+          scriptureReferences: references,
           slides: [],
         });
         scriptureItemIds.add(item.id);
@@ -19695,6 +19888,7 @@ async function applyPresenterPreparationInput(serviceId = state.selectedServiceI
         item.raw_title = normalizeServiceItemRawTitleForItem(item, content);
       }
       item._worshipElementTemplateModified = true;
+      markServiceItemSharedContentDirty(item, service);
       item._worshipTemplatePlaceholder = false;
     }
 
@@ -20329,12 +20523,99 @@ function renderPresenterSlideBoard(slides, index, serviceId) {
   const nextTarget = nextPreparationTarget(service);
   const theme = presenterOutputTheme(service?.type_id);
   const chromakey = presenterServiceUsesChromakey(service);
+  const deferredGroups = presenterDeferredBoardGroupIndexes(groups, index, slides.length);
   return `
     <div class="svc-slide-board svc-slide-board--${escapeAttr(theme)}${chromakey ? "" : " svc-slide-board--clean"}" role="list" aria-label="Presenter slide board">
-      ${groups.map((group, groupIndex) => renderPresenterBoardSection(group, index, serviceId, {
-        nextService: groupIndex === groups.length - 1 ? nextTarget : null,
-      })).join("")}
+      ${groups.map((group, groupIndex) => {
+        const options = { nextService: groupIndex === groups.length - 1 ? nextTarget : null };
+        return deferredGroups.has(groupIndex)
+          ? renderDeferredPresenterBoardSection(group, serviceId, groupIndex)
+          : renderPresenterBoardSection(group, index, serviceId, options);
+      }).join("")}
     </div>`;
+}
+
+function presenterDeferredBoardGroupIndexes(groups = [], activeIndex = -1, slideCount = 0) {
+  // The normal board is more useful when fully expanded. Defer only unusually
+  // large services, where hundreds of miniature slide trees delay the editor.
+  if (slideCount < 180 || groups.length < 5) return new Set();
+  const immediate = new Set([0, 1]);
+  const activeGroupIndex = groups.findIndex((group) =>
+    group.slides.some(({ slideIndex }) => slideIndex === activeIndex));
+  if (activeGroupIndex >= 0) immediate.add(activeGroupIndex);
+  return new Set(groups.map((_, index) => index).filter((index) => !immediate.has(index)));
+}
+
+function renderDeferredPresenterBoardSection(group, serviceId, groupIndex) {
+  const firstIndex = group.slides[0]?.slideIndex ?? 0;
+  const visibleTitle = group.title || group.label || group.name;
+  const interactionLabel = presenterSlideInteractionHint(serviceId, group.name || visibleTitle);
+  const estimatedRows = Math.max(1, Math.ceil(group.slides.length / 5));
+  const estimatedHeight = 52 + estimatedRows * 146;
+  return `
+    <section class="svc-board-section svc-board-section--deferred" role="listitem"
+      data-presenter-deferred-board-section
+      data-service-id="${escapeAttr(serviceId)}"
+      data-presenter-board-group-index="${groupIndex}"
+      aria-label="${escapeAttr(group.name)}"
+      style="--svc-deferred-board-height:${estimatedHeight}px">
+      <div class="svc-board-section-head-row">
+        <button class="svc-board-section-head" type="button"
+          data-presenter-action="jump"
+          data-presenter-index="${firstIndex}"
+          data-service-id="${escapeAttr(serviceId)}"
+          aria-label="${escapeAttr(interactionLabel)}"
+          title="${escapeAttr(interactionLabel)}">
+          <span class="svc-board-section-title${visibleTitle ? "" : " is-empty"}">
+            ${visibleTitle ? `<strong>${escapeHtml(visibleTitle)}</strong>` : ""}
+            ${group.meta ? `<small>${escapeHtml(group.meta)}</small>` : ""}
+          </span>
+        </button>
+      </div>
+      <div class="svc-board-section-deferred-body" aria-hidden="true"></div>
+    </section>`;
+}
+
+function mountDeferredPresenterBoardSections(root, serviceId, slides) {
+  if (!root?.isConnected || !serviceId || typeof IntersectionObserver === "undefined") return;
+  const deferredSections = [...root.querySelectorAll("[data-presenter-deferred-board-section]")];
+  if (!deferredSections.length) return;
+  root._presenterBoardObserver?.disconnect?.();
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (!entry.isIntersecting) return;
+      observer.unobserve(entry.target);
+      hydrateDeferredPresenterBoardSection(root, serviceId, slides, Number(entry.target.dataset.presenterBoardGroupIndex));
+    });
+  }, { rootMargin: "720px 0px" });
+  root._presenterBoardObserver = observer;
+  deferredSections.forEach((section) => observer.observe(section));
+}
+
+function hydrateDeferredPresenterBoardSection(root, serviceId, slides, groupIndex) {
+  if (!root?.isConnected || !Number.isInteger(groupIndex)) return false;
+  const placeholder = root.querySelector(`[data-presenter-deferred-board-section][data-presenter-board-group-index="${groupIndex}"]`);
+  if (!placeholder) return false;
+  const groups = groupPresenterSlidesBySection(slides, serviceId);
+  const group = groups[groupIndex];
+  if (!group) return false;
+  const service = state.services.find((candidate) => candidate.id === serviceId);
+  const nextService = groupIndex === groups.length - 1 ? nextPreparationTarget(service) : null;
+  const activeIndex = presenterBoardActiveIndex(slides, state.presenter.serviceId === serviceId, state.presenter.index);
+  const template = document.createElement("template");
+  template.innerHTML = renderPresenterBoardSection(group, activeIndex, serviceId, { nextService }).trim();
+  placeholder.replaceWith(template.content.firstElementChild);
+  syncPresenterBoardSelectionClasses(root);
+  refreshIcons();
+  return true;
+}
+
+function hydrateDeferredPresenterBoardSectionForSlide(root, serviceId, slideIndex) {
+  const slides = presenterSlidesForService(serviceId);
+  const groupIndex = groupPresenterSlidesBySection(slides, serviceId)
+    .findIndex((group) => group.slides.some((entry) => entry.slideIndex === slideIndex));
+  if (groupIndex < 0) return false;
+  return hydrateDeferredPresenterBoardSection(root, serviceId, slides, groupIndex);
 }
 
 function presenterSlideElementKey(serviceId, slideIndex) {
@@ -21325,8 +21606,12 @@ function scrollPresenterBoardToIndex(serviceId, index, options = {}) {
     const root = document.getElementById("servicePresenterControls");
     if (!root?.isConnected) return false;
     const serviceIds = [...new Set([serviceId, state.selectedServiceId].filter(Boolean))];
-    const thumb = [...root.querySelectorAll(".svc-slide-thumb[data-presenter-index][data-service-id]")]
+    let thumb = [...root.querySelectorAll(".svc-slide-thumb[data-presenter-index][data-service-id]")]
       .find((node) => serviceIds.includes(node.dataset.serviceId) && Number(node.dataset.presenterIndex) === targetIndex);
+    if (!thumb && hydrateDeferredPresenterBoardSectionForSlide(root, serviceId, targetIndex)) {
+      thumb = [...root.querySelectorAll(".svc-slide-thumb[data-presenter-index][data-service-id]")]
+        .find((node) => serviceIds.includes(node.dataset.serviceId) && Number(node.dataset.presenterIndex) === targetIndex);
+    }
     if (!thumb) return false;
     const viewportRect = root.getBoundingClientRect();
     const thumbRect = thumb.getBoundingClientRect();
@@ -21622,6 +21907,7 @@ function renderPresenterControlState(serviceId = state.selectedServiceId) {
       clearPresenterTransientBoardActiveMarks(nextRoot, serviceId);
       restorePresenterFocusedInput(nextRoot, focusedInput);
       refreshIcons();
+      mountDeferredPresenterBoardSections(nextRoot, serviceId, slides);
       updateSaveState();
       renderServiceList();
       return;
@@ -21638,6 +21924,8 @@ function capturePresenterFocusedInput(root) {
   return {
     key: field.dataset.serviceItemField || "",
     index: field.dataset.serviceItemIndex || "",
+    value: field.value,
+    initialValue: field.dataset.initialValue,
     selectionStart: typeof field.selectionStart === "number" ? field.selectionStart : null,
     selectionEnd: typeof field.selectionEnd === "number" ? field.selectionEnd : null,
   };
@@ -21647,6 +21935,8 @@ function restorePresenterFocusedInput(root, snapshot) {
   if (!root || !snapshot?.key) return;
   const field = root.querySelector(`[data-service-item-field="${CSS.escape(snapshot.key)}"][data-service-item-index="${CSS.escape(snapshot.index)}"]`);
   if (!field) return;
+  if (typeof snapshot.value === "string") field.value = snapshot.value;
+  if (snapshot.initialValue !== undefined) field.dataset.initialValue = snapshot.initialValue;
   field.focus({ preventScroll: true });
   if (snapshot.selectionStart === null || typeof field.setSelectionRange !== "function") return;
   const end = snapshot.selectionEnd ?? snapshot.selectionStart;
@@ -22014,8 +22304,6 @@ function presenterSlideElementGroupKey(slide) {
 function presenterElementTrailingBlankSlide(slide, index, service = null) {
   const idBase = slide.id || slide.elementId || slide.sectionId || `slide:${index}`;
   const serviceChromakey = presenterServiceUsesChromakey(service);
-  const scoreLike = slide?.sourceType === "score" || slide?.componentType === "score" || slide?.scoreBackground;
-  const scriptureReadingBlank = slide?.sectionKey === "scripture_reading";
   return {
     ...slide,
     id: `${idBase}:after-blank`,
@@ -22046,7 +22334,7 @@ function presenterElementTrailingBlankSlide(slide, index, service = null) {
     sourceType: "",
     componentType: "",
     scoreBackground: false,
-    // A reading's closing blank should be the output mode's plain blank.
+    // Do not carry scripture-reading metadata into a transition blank.
     scriptureContext: "",
     scriptureReadingFinal: false,
     referenceBook: "",
@@ -22054,9 +22342,10 @@ function presenterElementTrailingBlankSlide(slide, index, service = null) {
     translationLabel: "",
     suppressBackgroundImage: false,
     noBackgroundImage: false,
-    outputContext: scriptureReadingBlank
-      ? (serviceChromakey ? "chromakey" : "clean")
-      : (scoreLike && serviceChromakey ? "chromakey" : presenterSlideOutputContext(slide, serviceChromakey)),
+    // A transition blank belongs to the service output, never to the preceding element.
+    // This keeps fullscreen services clean even when the preceding item has an explicit
+    // chromakey context (for example a special-song element).
+    outputContext: serviceChromakey ? "chromakey" : "clean",
     autoTrailingBlank: true,
     sort: (Number(slide.sort) || index) + 0.009,
   };

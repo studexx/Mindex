@@ -16,6 +16,21 @@ For Worship/Presenter work, also read
 that decision log in the same change so a later task does not silently restore
 an older rule.
 
+## Thread Ownership
+
+- **UX thread** owns the user-facing experience: interaction flow, controller
+  and presenter behavior, layout, visual states, accessibility, and UI-side
+  validation. It may read the data contract to integrate existing fields, but
+  must not change the Supabase schema, run data migrations, or rewrite curated
+  production records.
+- **Data thread** owns the internal data layer: Supabase schema, migrations,
+  import/backfill jobs, data repair, canonical record rules, and production
+  data integrity.
+- Cross-boundary work starts with a handoff: UX records the user-facing
+  requirement and expected fields; Data records the schema/data decision and
+  reports the stable contract back. Neither thread silently broadens the other
+  thread's scope.
+
 ## Repository And Runtime
 
 - Repository: this repo root
