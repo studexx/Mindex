@@ -1644,7 +1644,7 @@ function buildPresenterScriptureTextSlides(item, section, index, service = null)
       referenceBook,
       referenceRange: verse.referenceRange || payload.referenceRange || "",
       translationLabel: verse.translationLabel || payload.translationLabel || "",
-      text: citation ? presenterCitationScriptureText(verse, payload) : verseText,
+      text: citation ? presenterCitationScriptureText(verse, payload, context) : verseText,
       scriptureReadingFinal: readingFinal,
       ...(readingForm ? { outputContext: "clean" } : {}),
       sort: index + verseIndex / 100,
@@ -1663,9 +1663,22 @@ function isPresenterCitationScriptureItem(item = {}) {
   return compactSearchValue(item?.label || "") === "인용구절";
 }
 
-function presenterCitationScriptureText(verse = {}, payload = {}) {
+function presenterCitationScriptureText(verse = {}, payload = {}, context = "") {
   const number = presenterScriptureVerseNumber(verse);
+  if (context === "citation-chromakey") {
+    const reference = presenterCitationVerseReference(verse, payload, number);
+    return reference ? [reference, verse.text].filter(Boolean).join("   ") : verse.text;
+  }
   return number ? [number, verse.text].filter(Boolean).join("   ") : verse.text;
+}
+
+function presenterCitationVerseReference(verse = {}, payload = {}, verseNumber = "") {
+  const book = String(verse.referenceBook || payload.referenceBook || "").trim();
+  const range = String(verse.referenceRange || payload.referenceRange || "").trim();
+  const chapter = range.match(/^(\d+)/)?.[1] || "";
+  const number = String(verseNumber || "").trim();
+  if (book && chapter && number) return `${book} ${chapter}:${number}`;
+  return String(verse.reference || payload.reference || "").trim();
 }
 
 function presenterScriptureBodyContext(item = {}, section = {}, service = null) {
@@ -3511,7 +3524,7 @@ function presenterSlideExtraClasses(slide) {
   if (slide?.sourceType === "score" || slide?.componentType === "score" || slide?.scoreBackground) classes.push("presenter-slide--score");
   if (layout !== PRESENTER_SLIDE_LAYOUTS.BLANK && presenterScriptureContextUsesReadingForm(slide?.scriptureContext)) classes.push("presenter-slide--scripture-reading");
   if (layout !== PRESENTER_SLIDE_LAYOUTS.BLANK && slide?.scriptureContext === "sermon") classes.push("presenter-slide--scripture-sermon");
-  if (layout !== PRESENTER_SLIDE_LAYOUTS.BLANK && (slide?.scriptureContext === "citation" || slide?.scriptureContext === "citation-chromakey")) classes.push("presenter-slide--scripture-citation");
+  if (layout !== PRESENTER_SLIDE_LAYOUTS.BLANK && slide?.scriptureContext === "citation") classes.push("presenter-slide--scripture-citation");
   return classes.join(" ");
 }
 
@@ -3761,24 +3774,13 @@ function renderPresenterFileSlide(slide) {
 function renderPresenterSlideText(slide) {
   const verseNumber = presenterLyricVerseNumber(slide);
   let verseNumberUsed = false;
-  const citationPrefix = presenterChromakeyCitationPrefix(slide);
   return presenterDisplayLines(slide)
     .map((line) => {
       const showVerseNumber = verseNumber && !verseNumberUsed && String(line || "").trim();
       if (showVerseNumber) verseNumberUsed = true;
-      const prefix = citationPrefix && !verseNumberUsed && !showVerseNumber ? citationPrefix : "";
-      if (prefix) verseNumberUsed = true;
-      return `<span${showVerseNumber ? ` class="presenter-lyric-line presenter-lyric-line--numbered" data-verse-no="${escapeAttr(verseNumber)}"` : ""} style="--line-chars: ${presenterLineCharEstimate([prefix, line].filter(Boolean).join(" ")) + (showVerseNumber ? 1 : 0)}">${prefix ? `<span class="presenter-scripture-citation-prefix">${escapeHtml(prefix)}</span>` : ""}${escapePresenterSlideLine(line, slide)}</span>`;
+      return `<span${showVerseNumber ? ` class="presenter-lyric-line presenter-lyric-line--numbered" data-verse-no="${escapeAttr(verseNumber)}"` : ""} style="--line-chars: ${presenterLineCharEstimate(line) + (showVerseNumber ? 1 : 0)}">${escapePresenterSlideLine(line, slide)}</span>`;
     })
     .join("");
-}
-
-function presenterChromakeyCitationPrefix(slide = {}) {
-  if (slide?.scriptureContext !== "citation-chromakey") return "";
-  const referenceBook = presenterScriptureReadingBookName(slide?.referenceBook);
-  const referenceRange = String(slide?.referenceRange || "").trim();
-  const chapter = referenceRange.match(/^(\d+)/)?.[1] || "";
-  return [referenceBook, chapter ? `${chapter}장:` : ""].filter(Boolean).join(" ").trim();
 }
 
 function presenterLyricVerseNumber(slide) {
