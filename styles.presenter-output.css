@@ -457,6 +457,15 @@
   overflow-wrap: anywhere;
   white-space: normal;
 }
+.presenter-slide--scripture .presenter-slide-text .presenter-scripture-citation-prefix {
+  display: inline;
+  width: auto;
+  margin-right: .34em;
+  font: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  white-space: nowrap;
+}
 .presenter-output-root:not(.no-chromakey) .presenter-slide--scripture-sermon {
   --presenter-scripture-bar-size: var(--presenter-size-lyrics);
 }
