@@ -243,6 +243,7 @@ const PRESENTER_OUTPUT_IMAGE_PRELOAD_LIMIT = 360;
 const PRESENTER_OUTPUT_WARMUP_EAGER_COUNT = 24;
 const PRESENTER_OUTPUT_WARMUP_BATCH_SIZE = 2;
 const PRESENTER_OUTPUT_WARMUP_IDLE_TIMEOUT_MS = 900;
+const PRESENTER_CONTROLLER_RESTORE_MAX_AGE_MS = 12 * 60 * 60 * 1000;
 const presenterOutputImagePreloadCache = new Map();
 const presenterOutputRenderState = { token: 0, commitToken: 0, autoAdvanceTimer: null };
 const presenterOutputImageWarmupState = {
@@ -636,6 +637,7 @@ const state = {
       songId: "",
       versionId: "",
     },
+    restorePayload: null,
   },
   serviceMusic: {
     audio: null,
@@ -699,6 +701,7 @@ async function init() {
   state.worshipBackgroundRegistry = readWorshipBackgroundRegistry();
   applyLinkState(linkParams);
   readPageTabsState();
+  primePresenterControllerRestore();
   bindStaticEvents();
   bindElectronDesktopEvents();
   bindPresenterChannel();
@@ -1506,9 +1509,11 @@ function toggleTheme() {
 }
 
 function readUiState() {
+  const storedSidebarState = safeStorageGet("local", STORAGE.sidebarCollapsed);
+  const useCompactSidebar = window.matchMedia?.("(max-width: 560px)")?.matches;
   document.body.classList.toggle(
     "sidebar-collapsed",
-    safeStorageGet("local", STORAGE.sidebarCollapsed) === "true",
+    storedSidebarState === "true" || (!storedSidebarState && useCompactSidebar),
   );
   const moduleName = safeStorageGet("session", STORAGE.module);
   const praiseFilter = safeStorageGet("session", STORAGE.praiseFilter);
@@ -2523,6 +2528,7 @@ async function loadServiceDataOnce({ silent = false } = {}) {
       loadHymnScoreManifest({ silent }),
       loadWorshipData(),
     ]);
+    restorePresenterControllerSession();
     if (state.module === "presenter") await loadWorshipPresenterSlides();
     state.dirtyServiceTypeIds.clear();
     state.dirty.service = false;
@@ -16751,6 +16757,15 @@ function getRecentServiceShortcuts(limit = 8) {
   return sortServicesByDate(state.services, "desc").slice(0, limit);
 }
 
+function getUpcomingServiceShortcuts(limit = 8, baseDate = new Date()) {
+  const today = new Date(baseDate);
+  today.setHours(0, 0, 0, 0);
+  return sortServicesByDate(state.services.filter((service) => {
+    const serviceDate = parseLocalDate(service?.date);
+    return !Number.isNaN(serviceDate.getTime()) && serviceDate >= today;
+  })).slice(0, limit);
+}
+
 function renderServiceList() {
   if (!state.client) {
     refs.songCount.textContent = "";
@@ -16806,7 +16821,7 @@ function renderServiceList() {
         </div>
         ${sidebarPrimary}
       </section>
-      ${q ? "" : renderRecentServiceShortcuts()}
+      ${q ? "" : renderUpcomingServiceShortcuts()}
     </div>`;
 
   finishListRender();
@@ -16828,7 +16843,7 @@ function renderPresenterSidebar(query, services, selectedService) {
     <div class="service-sidebar service-sidebar--presenter">
       ${searchSection}
       ${selectedService ? renderPresenterSidebarPreparationInput(selectedService) : ""}
-      ${selectedService ? renderServiceCurrentSidebar(selectedService) : renderRecentServiceShortcuts()}
+      ${selectedService ? renderServiceCurrentSidebar(selectedService) : renderUpcomingServiceShortcuts()}
     </div>`;
 }
 
@@ -16857,13 +16872,13 @@ function renderPresenterSidebarPreparationInput(service) {
     </section>`;
 }
 
-function renderRecentServiceShortcuts() {
-  const services = getRecentServiceShortcuts();
+function renderUpcomingServiceShortcuts() {
+  const services = getUpcomingServiceShortcuts();
   if (!services.length) return "";
   return `
     <section class="service-sidebar-section service-sidebar-section--recent">
       <div class="service-sidebar-head">
-        <span>최근 예배</span>
+        <span>다가오는 예배</span>
         <small>${services.length}</small>
       </div>
       ${renderServiceSidebarDateGroups(services)}
@@ -20219,17 +20234,11 @@ function presenterServiceInputHasEditableField(item, service) {
 }
 
 function renderPresenterServicePraiseInput(item, index, model) {
-  const formControls = renderServiceEditorFormControls(item, index, model, { compact: true, placeholder: "송폼" });
   return `
     <label class="svc-presenter-input-field svc-presenter-input-field--song">
       <span>곡</span>
-      ${renderServiceEditorTitleControl(item, index, { service: model.service, hideFormControls: true }, model)}
+      ${renderServiceEditorTitleControl(item, index, { service: model.service }, model)}
     </label>
-    ${formControls ? `
-      <label class="svc-presenter-input-field svc-presenter-input-field--form">
-        <span>송폼</span>
-        <span class="svc-presenter-form-control">${formControls}</span>
-      </label>` : ""}
     ${model.showAssignee ? `
       <label class="svc-presenter-input-field svc-presenter-input-field--assignee">
         <span>담당</span>
@@ -21898,6 +21907,7 @@ function stopPresenterOutput(serviceId = state.presenter.serviceId) {
   const closeDesktopOutput = window.mindexElectron?.closePresenterOutput;
   if (closeDesktopOutput) closeDesktopOutput().catch?.(() => {});
   state.presenter.jumpDraft = "";
+  state.presenter.restorePayload = null;
   state.presenter.exitArmedAt = 0;
   state.presenter.safetyBlank = false;
   state.presenter.liveScripture = {
@@ -22253,6 +22263,7 @@ function preparePresenterService(serviceId = state.selectedServiceId) {
   schedulePendingServiceScriptureResolves(serviceId);
   const slides = buildServicePresenterSlides(serviceId);
   if (state.presenter.serviceId !== serviceId) {
+    state.presenter.restorePayload = null;
     stopServiceMusicPlayback({ clearSource: true, mode: "manual", render: false });
     state.presenter.index = 0;
     state.presenter.safetyBlank = false;

@@ -22,6 +22,41 @@ Small visual polish that does not alter behavior does not need an entry.
 
 ## Current Decisions
 
+### Controller Reload Recovery
+
+- Reloading the controller must not stop an already-open Presenter output.
+  The output keeps its last rendered frame while the controller reconnects.
+- After the output answers the controller's `ready` / heartbeat signal, the
+  controller restores the last active service, slide index, blank state, and
+  live scripture state from the persisted presenter payload, then republishes
+  freshly built slides from the current service data.
+- Restoration is only allowed while an output is actually connected and only
+  for a payload newer than 12 hours. A stale local payload must never start a
+  presentation by itself when the app is opened later.
+
+### Presenter Typography Scale
+
+- Presenter typography is controlled by role tokens, not by individual slide
+  exceptions: `Title` (weight 800), `Main song` (800), `Section` (800),
+  `Content` / `Lyrics` (700), `Support` (600), and scripture-reading text.
+- At the fixed 1920x1080 presenter stage, the reviewed scale is:
+
+  | Role | Chromakey | Fullscreen |
+  | --- | ---: | ---: |
+  | Title | 92px | 168px |
+  | Main song title | 96px | 152px |
+  | Section title | 72px | 144px |
+  | Content | 72px | 96px |
+  | Lyrics | 72px | 104px |
+  | Support | 52px | 104px |
+  | Formal scripture verse body | 88px | 88px |
+
+- The formal scripture reading deliberately keeps the same 88px verse body
+  across output modes. It is a shared reading form rather than a fullscreen
+  display variant. This table is the source of truth for future typography
+  adjustments; change the role token first, then review the representative
+  slides before adding a local override.
+
 ### Scripture Input And Reading
 
 - `성경봉독` and `설교 본문` are separate visible service elements in chromakey

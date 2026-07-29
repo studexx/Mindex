@@ -2236,6 +2236,62 @@ function presenterStatePayload(serviceId = state.presenter.serviceId) {
   };
 }
 
+function readPresenterControllerRestorePayload() {
+  try {
+    const raw = safeStorageGet("local", PRESENTER_STORAGE_KEY, "");
+    const payload = raw ? normalizePresenterPayload(JSON.parse(raw)) : null;
+    if (!payload?.serviceId || !payload.slides.length) return null;
+    if (Date.now() - payload.updatedAt > PRESENTER_CONTROLLER_RESTORE_MAX_AGE_MS) return null;
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
+function primePresenterControllerRestore() {
+  state.presenter.restorePayload = readPresenterControllerRestorePayload();
+}
+
+function restorePresenterControllerSession() {
+  // Only reattach when an output has actually answered the controller. This
+  // prevents an old local payload from reviving a presentation on app launch.
+  if (state.presenter.serviceId || !isPresenterOutputHeartbeatOpen()) return "none";
+
+  const payload = state.presenter.restorePayload || readPresenterControllerRestorePayload();
+  if (!payload) return "none";
+
+  const service = state.services.find((candidate) => candidate.id === payload.serviceId);
+  if (!service || !state.serviceItems[service.id]) return "pending";
+
+  const slides = buildServicePresenterSlides(service.id);
+  if (!slides.length) return "pending";
+
+  state.presenter.serviceId = service.id;
+  state.presenter.slides = slides;
+  state.presenter.index = clampPresenterIndex(payload.index, slides.length);
+  state.presenter.safetyBlank = Boolean(payload.safetyBlank);
+  state.presenter.jumpDraft = "";
+  state.presenter.liveScripture = payload.liveScripture?.active
+    ? {
+      reference: payload.liveScripture.reference || "",
+      draft: "",
+      active: true,
+      slide: payload.liveScripture.slide || null,
+    }
+    : { reference: "", draft: "", active: false, slide: null };
+  state.presenter.livePraise = emptyLivePraiseState();
+  state.presenter.restorePayload = null;
+
+  if (state.module === "presenter") {
+    state.selectedServiceId = service.id;
+    state.selectedServiceTypeId = service.type_id;
+  }
+
+  publishPresenterState({ force: true });
+  refreshPresenterOutputConnectionState();
+  return "restored";
+}
+
 function bindPresenterChannel() {
   window.addEventListener("storage", handlePresenterStorageSignal);
   if (!("BroadcastChannel" in window)) return;
@@ -2244,11 +2300,13 @@ function bindPresenterChannel() {
     const message = event.data || {};
     if (message.type === "presenter-ready") {
       markPresenterOutputConnected(message.clientId);
-      publishPresenterState();
+      const restoreState = restorePresenterControllerSession();
+      if (restoreState === "none") publishPresenterState();
       return;
     }
     if (message.type === "presenter-heartbeat") {
       markPresenterOutputConnected(message.clientId, message.warmup);
+      restorePresenterControllerSession();
       return;
     }
     if (message.type === "presenter-output-disconnect") {
@@ -2915,12 +2973,13 @@ function presenterOutputFrameStateForSlide(slide, payload = {}) {
   const cleanOutput = !slideChromakey;
   const blankSlide = presenterSlideLayout(slide) === PRESENTER_SLIDE_LAYOUTS.BLANK;
   const suppressBackground = Boolean(slide?.suppressBackgroundImage || slide?.noBackgroundImage);
-  // A regular clean-output blank is the transition slide: render its cross on a plain frame.
-  const showBackground = Boolean(backgroundImages.length && cleanOutput && !blankSlide && !payload?.safetyBlank && !suppressBackground);
+  // A fullscreen blank stays inside the service visual system: retain the same
+  // background while the cross draws over it. Chromakey remains background-free.
+  const showBackground = Boolean(backgroundImages.length && cleanOutput && !suppressBackground);
   return {
     cleanOutput,
     showBackground,
-    blankOutput: Boolean(blankSlide && !showBackground && !payload?.safetyBlank),
+    blankOutput: Boolean(blankSlide && cleanOutput),
     backgroundImage: backgroundImages[0] || "",
     backgroundImages,
     serviceType: payload?.serviceType || "",

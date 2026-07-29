@@ -3505,10 +3505,10 @@ body[data-module="presenter"] .detail-pane {
   display: grid;
   width: 100%;
   grid-template-columns: minmax(0, 1fr);
-  gap: var(--s5);
+  gap: var(--s4);
   padding: 0;
 }
-.service-dashboard-section { display: flex; flex-direction: column; gap: var(--s4); }
+.service-dashboard-section { display: flex; flex-direction: column; gap: var(--s3); }
 .service-section-head { display: flex; min-height: 28px; align-items: baseline; justify-content: space-between; gap: var(--s3); }
 .service-week-range {
   margin-top: 3px;
@@ -3656,11 +3656,12 @@ body[data-module="presenter"] .detail-pane {
 .service-week-board {
   display: grid;
   grid-template-columns: repeat(7, minmax(120px, 1fr));
+  align-items: start;
   gap: 6px;
 }
 .service-week-day {
   display: flex;
-  min-height: 360px;
+  min-height: 0;
   flex-direction: column;
   gap: var(--s2);
   border-radius: var(--r);
@@ -3689,7 +3690,6 @@ body[data-module="presenter"] .detail-pane {
 }
 .service-week-stack {
   display: flex;
-  flex: 1;
   flex-direction: column;
   gap: 5px;
 }
@@ -3737,9 +3737,11 @@ body[data-module="presenter"] .detail-pane {
   -webkit-line-clamp: 1;
 }
 .service-week-empty {
-  min-height: 34px;
+  min-height: 28px;
   display: grid;
   place-items: center;
+  border: 1px dashed color-mix(in srgb, var(--ink-4) 26%, transparent);
+  background: transparent;
   color: var(--ink-4);
   font-size: 11px;
   font-weight: 600;

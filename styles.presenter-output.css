@@ -38,15 +38,27 @@
   --presenter-output-bar-edge: #000A32;
   --presenter-output-stroke: #000;
   --presenter-scripture-font: var(--font-presenter);
-  --presenter-size-display: calc(92 * var(--presenter-stage-unit));
-  --presenter-size-section: calc(72 * var(--presenter-stage-unit));
-  --presenter-size-body: calc(72 * var(--presenter-stage-unit));
-  --presenter-size-lyrics: calc(72 * var(--presenter-stage-unit));
-  --presenter-size-song-title: calc(96 * var(--presenter-stage-unit));
-  --presenter-size-meta: calc(52 * var(--presenter-stage-unit));
-  --presenter-size-liturgical-body: var(--presenter-size-meta);
-  --presenter-size-liturgical-heading: var(--presenter-size-section);
-  --presenter-size-caption: calc(40 * var(--presenter-stage-unit));
+  /* Typography scale, ordered by presenter role. Keep output rules on these
+     semantic tokens; the size aliases below preserve the existing selectors. */
+  --presenter-type-title: calc(92 * var(--presenter-stage-unit));
+  --presenter-type-main-song: calc(96 * var(--presenter-stage-unit));
+  --presenter-type-section: calc(72 * var(--presenter-stage-unit));
+  --presenter-type-content: calc(72 * var(--presenter-stage-unit));
+  --presenter-type-lyrics: calc(72 * var(--presenter-stage-unit));
+  --presenter-type-support: calc(52 * var(--presenter-stage-unit));
+  --presenter-type-liturgical-heading: var(--presenter-type-section);
+  --presenter-type-liturgical-body: var(--presenter-type-support);
+  --presenter-type-caption: calc(40 * var(--presenter-stage-unit));
+  --presenter-type-scripture-text: calc(88 * var(--presenter-stage-unit));
+  --presenter-size-display: var(--presenter-type-title);
+  --presenter-size-section: var(--presenter-type-section);
+  --presenter-size-body: var(--presenter-type-content);
+  --presenter-size-lyrics: var(--presenter-type-lyrics);
+  --presenter-size-song-title: var(--presenter-type-main-song);
+  --presenter-size-meta: var(--presenter-type-support);
+  --presenter-size-liturgical-body: var(--presenter-type-liturgical-body);
+  --presenter-size-liturgical-heading: var(--presenter-type-liturgical-heading);
+  --presenter-size-caption: var(--presenter-type-caption);
   --presenter-size-thumbnail: calc(44 * var(--presenter-stage-unit));
   --presenter-scripture-thumbnail-size: calc(44 * var(--presenter-stage-unit));
   --presenter-size-file-caption: calc(40 * var(--presenter-stage-unit));
@@ -61,7 +73,7 @@
   --presenter-scripture-clean-size: calc(72 * var(--presenter-stage-unit));
   --presenter-scripture-reading-ref-size: var(--presenter-size-section);
   --presenter-scripture-reading-version-size: var(--presenter-size-meta);
-  --presenter-scripture-reading-text-size: calc(88 * var(--presenter-stage-unit));
+  --presenter-scripture-reading-text-size: var(--presenter-type-scripture-text);
   display: grid;
   width: var(--presenter-stage-width);
   height: var(--presenter-stage-height);
@@ -83,15 +95,15 @@
 }
 .presenter-output-root.no-chromakey {
   /* Fullscreen output is read from a distance; chromakey keeps its lower-bar scale. */
-  --presenter-size-display: calc(168 * var(--presenter-stage-unit));
-  --presenter-size-section: calc(144 * var(--presenter-stage-unit));
-  --presenter-size-body: calc(96 * var(--presenter-stage-unit));
-  --presenter-size-lyrics: calc(104 * var(--presenter-stage-unit));
-  --presenter-size-song-title: calc(152 * var(--presenter-stage-unit));
-  --presenter-size-meta: calc(104 * var(--presenter-stage-unit));
-  --presenter-size-liturgical-body: calc(56 * var(--presenter-stage-unit));
-  --presenter-size-liturgical-heading: calc(96 * var(--presenter-stage-unit));
-  --presenter-size-caption: calc(80 * var(--presenter-stage-unit));
+  --presenter-type-title: calc(168 * var(--presenter-stage-unit));
+  --presenter-type-main-song: calc(152 * var(--presenter-stage-unit));
+  --presenter-type-section: calc(144 * var(--presenter-stage-unit));
+  --presenter-type-content: calc(96 * var(--presenter-stage-unit));
+  --presenter-type-lyrics: calc(104 * var(--presenter-stage-unit));
+  --presenter-type-support: calc(104 * var(--presenter-stage-unit));
+  --presenter-type-liturgical-heading: calc(96 * var(--presenter-stage-unit));
+  --presenter-type-liturgical-body: calc(56 * var(--presenter-stage-unit));
+  --presenter-type-caption: calc(80 * var(--presenter-stage-unit));
   --presenter-size-thumbnail: calc(88 * var(--presenter-stage-unit));
   --presenter-size-file-caption: calc(80 * var(--presenter-stage-unit));
   /* Scripture reading is shared service content, not a fullscreen display variant. */
@@ -184,8 +196,8 @@
   background-repeat: no-repeat;
   background-size: 100% auto;
 }
-.presenter-output-body.presenter-output-body--clean.is-blank,
-.presenter-output-root.no-chromakey.is-blank {
+.presenter-output-body.presenter-output-body--clean.is-blank:not(.has-background),
+.presenter-output-root.no-chromakey.is-blank:not(.has-background) {
   background: #000;
 }
 .presenter-output-root.no-chromakey .presenter-output-empty,
@@ -242,7 +254,7 @@
 }
 .presenter-ready-screen-logo {
   display: block;
-  width: min(42cqw, 806px);
+  width: min(36cqw, 692px);
   max-height: 12cqh;
   object-fit: contain;
 }
@@ -434,7 +446,7 @@
   font-size: var(--presenter-size-body);
   font-weight: var(--presenter-weight-body);
   line-height: 1.12;
-  padding: 2.25cqh 5.8cqw;
+  padding: 2.25cqh 2.8cqw;
   -webkit-text-stroke: 0;
   overflow-wrap: normal;
   text-shadow: none;
@@ -454,8 +466,10 @@
   display: block;
   width: 100%;
   font-size: var(--presenter-scripture-fitted-size, var(--presenter-scripture-bar-size));
+  line-break: anywhere;
   overflow-wrap: anywhere;
   white-space: normal;
+  word-break: break-all;
 }
 .presenter-output-root:not(.no-chromakey) .presenter-slide--scripture-sermon {
   --presenter-scripture-bar-size: var(--presenter-size-lyrics);
@@ -505,7 +519,7 @@
 .presenter-slide--title-assignee .presenter-slide-text {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 44cqw);
-  gap: 4.2cqw;
+  gap: 0;
   align-content: center;
   text-align: left;
 }
@@ -572,7 +586,7 @@
 }
 .presenter-output-root:not(.no-chromakey) .presenter-title-assignee--sermon {
   grid-template-columns: minmax(0, 1fr) minmax(0, max-content);
-  gap: 4.2cqw;
+  gap: 0;
 }
 .presenter-output-root:not(.no-chromakey) .presenter-title-assignee--sermon .presenter-title-assignee-content {
   text-align: left;
@@ -877,6 +891,16 @@
   transform: translateY(-50%) scaleX(0);
   transform-origin: left center;
   animation: presenter-blank-cross-horizontal .45s ease-out .55s forwards;
+}
+/* Controller thumbnails show the finished transition frame without spending
+   compositor work on an animation that only matters on the output display. */
+.svc-slide-mini-canvas.presenter-output-root.no-chromakey.is-blank .presenter-slide--blank::before {
+  animation: none;
+  transform: translateX(-50%) scaleY(1);
+}
+.svc-slide-mini-canvas.presenter-output-root.no-chromakey.is-blank .presenter-slide--blank::after {
+  animation: none;
+  transform: translateY(-50%) scaleX(1);
 }
 @keyframes presenter-blank-cross-vertical {
   to { transform: translateX(-50%) scaleY(1); }

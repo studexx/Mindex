@@ -1331,7 +1331,7 @@ def main() -> int:
                         "crossBookSemicolon": ["요 15:9", "롬 5:7–8"],
                         "longDash": ["마 13:31–33", "마 13:44–50"],
                         "formatted": "마 13:31–33, 44–50",
-                        "displayTitle": "요 15:9, 롬 5:7–8",
+                        "displayTitle": "요 15:9; 롬 5:7–8",
                     }
                 ):
                     pass_("global-search-deep-matching", json.dumps(global_search_deep_state, ensure_ascii=False))
@@ -1369,6 +1369,40 @@ def main() -> int:
                     pass_("service-sidebar-section-label-gap", json.dumps(service_sidebar_gap, ensure_ascii=False))
                 else:
                     fail("service-sidebar-section-label-gap", json.dumps(service_sidebar_gap, ensure_ascii=False))
+
+                upcoming_service_sidebar = page.evaluate(
+                    """
+                    (() => {
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+                      const cards = [...document.querySelectorAll('.service-sidebar-section--recent [data-open-service]')];
+                      const services = cards
+                        .map((card) => state.services.find((service) => service.id === card.dataset.openService))
+                        .filter(Boolean);
+                      const dates = services.map((service) => {
+                        const value = parseLocalDate(service.date);
+                        value.setHours(0, 0, 0, 0);
+                        return value.getTime();
+                      });
+                      return {
+                        heading: document.querySelector('.service-sidebar-section--recent .service-sidebar-head span')?.textContent.trim() || '',
+                        count: services.length,
+                        dates,
+                        isAscending: dates.every((date, index) => index === 0 || dates[index - 1] <= date),
+                        includesOnlyTodayOrLater: dates.every((date) => date >= today.getTime()),
+                      };
+                    })()
+                    """
+                )
+                if (
+                    upcoming_service_sidebar["heading"] == "다가오는 예배"
+                    and upcoming_service_sidebar["count"] > 0
+                    and upcoming_service_sidebar["isAscending"]
+                    and upcoming_service_sidebar["includesOnlyTodayOrLater"]
+                ):
+                    pass_("upcoming-service-sidebar-order", json.dumps(upcoming_service_sidebar, ensure_ascii=False))
+                else:
+                    fail("upcoming-service-sidebar-order", json.dumps(upcoming_service_sidebar, ensure_ascii=False))
 
                 page.locator("[data-service-list]").first.click()
                 page.wait_for_selector(".service-date-list", timeout=5000)
@@ -3795,14 +3829,14 @@ def main() -> int:
                     if (
                         presenter_header_input["legacyContextRemoved"]
                         and presenter_header_input["railRemoved"]
-                        and presenter_header_input["controlGroupCount"] >= 12
+                        and presenter_header_input["controlGroupCount"] >= 8
                         and presenter_header_input["headRowDisplay"] == "grid"
                         and presenter_header_input["controlGroupJustify"] in ("flex-start", "normal")
                         and presenter_header_input["controlGroupMaxWidth"] in ("100%", "760px")
                         and presenter_header_input["controlBelowHead"] is not None
                         and 0 <= presenter_header_input["controlBelowHead"] <= 12
                         and abs(presenter_header_input["controlAlignedLeft"] or 0) <= 2
-                        and presenter_header_input["fieldCount"] >= 20
+                        and presenter_header_input["fieldCount"] >= 12
                         and presenter_header_input["songFieldCount"] >= 5
                         and presenter_header_input["bulkInput"] == presenter_header_input["bulkButton"]
                         and presenter_header_input["bulkDraft"] in ("", "찬양 1: 평화 하나님의 평강이")
@@ -4670,7 +4704,7 @@ def main() -> int:
                         service_for_slides["id"],
                     )
                     if (
-                        form_label_state["heads"] > 0
+                        all(form_label_state["labels"])
                         and form_label_state["dividers"] == 0
                         and not form_label_state["continuationBadges"]
                     ):

@@ -6557,14 +6557,14 @@ def main() -> int:
                 if (
                     clean_blank_background_state["cleanBlank"]["blankIndex"] >= 0
                     and clean_blank_background_state["cleanBlank"]["hasBackground"]
-                    and not clean_blank_background_state["cleanBlank"]["isBlank"]
+                    and clean_blank_background_state["cleanBlank"]["isBlank"]
                     and clean_blank_background_state["cleanBlank"]["noChromakey"]
                     and "26-B2.png" in clean_blank_background_state["cleanBlank"]["inlineBackground"]
                     and "presenter-slide--blank" in clean_blank_background_state["cleanBlank"]["slideClass"]
                     and clean_blank_background_state["cleanBlank"]["text"] == ""
-                    and not clean_blank_background_state["safetyBlank"]["hasBackground"]
+                    and clean_blank_background_state["safetyBlank"]["hasBackground"]
                     and clean_blank_background_state["safetyBlank"]["isBlank"]
-                    and clean_blank_background_state["safetyBlank"]["inlineBackground"] == ""
+                    and "26-B2.png" in clean_blank_background_state["safetyBlank"]["inlineBackground"]
                     and "presenter-slide--blank" in clean_blank_background_state["safetyBlank"]["slideClass"]
                     and clean_blank_background_state["safetyBlank"]["text"] == ""
                 ):
