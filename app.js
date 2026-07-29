@@ -7979,10 +7979,11 @@ function scheduleServiceScriptureBodyResolve(serviceId = state.selectedServiceId
   const references = serviceItemScriptureReferences(item);
   if (!references.length || !state.client) return;
   const key = `${serviceId}:${index}`;
+  const itemId = String(item.id || "").trim();
   clearScheduledServiceScriptureResolve(serviceId, index);
   serviceScriptureResolveTimers.set(key, window.setTimeout(() => {
     serviceScriptureResolveTimers.delete(key);
-    void resolveServiceScriptureBodyReference(serviceId, index);
+    void resolveServiceScriptureBodyReference(serviceId, index, { itemId });
   }, 420));
 }
 
@@ -7990,12 +7991,15 @@ async function resolveServiceScriptureBeforeSave(serviceId = state.selectedServi
   const item = getServiceItems(serviceId)[index];
   if (!item || !isScriptureBodyServiceItem(item)) return;
   clearScheduledServiceScriptureResolve(serviceId, index);
-  await resolveServiceScriptureBodyReference(serviceId, index);
+  await resolveServiceScriptureBodyReference(serviceId, index, { itemId: item.id });
 }
 
-async function resolveServiceScriptureBodyReference(serviceId, index) {
+async function resolveServiceScriptureBodyReference(serviceId, index, options = {}) {
   const items = getServiceItems(serviceId);
-  const item = items[index];
+  const targetId = String(options.itemId || "").trim();
+  const targetIndex = targetId ? items.findIndex((candidate) => String(candidate.id || "").trim() === targetId) : -1;
+  const safeIndex = targetIndex >= 0 ? targetIndex : index;
+  const item = items[safeIndex];
   if (!item || !isScriptureBodyServiceItem(item)) return;
   if (parseServiceItemMemo(item.memo).manualScripture) return;
   const memo = parseServiceItemMemo(item.memo);
