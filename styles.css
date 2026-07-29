@@ -5451,6 +5451,67 @@ body[data-module="presenter"] .detail-pane {
   background: color-mix(in srgb, var(--accent-soft) 24%, transparent);
   color: var(--accent);
 }
+.svc-presenter-input-field--scripture-parts {
+  grid-column: 1 / -1;
+}
+.svc-presenter-scripture-parts {
+  display: grid;
+  gap: 6px;
+}
+.svc-presenter-scripture-part {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(92px, .72fr) minmax(120px, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+}
+.svc-presenter-scripture-part > strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink-2);
+  font-size: 12px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.svc-presenter-scripture-manual {
+  min-width: 0;
+}
+.svc-presenter-scripture-manual > summary {
+  display: inline-flex;
+  height: 26px;
+  align-items: center;
+  border-radius: calc(var(--r) - 2px);
+  background: color-mix(in srgb, var(--panel-2) 36%, transparent);
+  color: var(--ink-3);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 800;
+  list-style: none;
+  padding: 0 8px;
+  white-space: nowrap;
+}
+.svc-presenter-scripture-manual > summary::-webkit-details-marker {
+  display: none;
+}
+.svc-presenter-scripture-manual[open] {
+  grid-column: 1 / -1;
+}
+.svc-presenter-scripture-manual[open] > summary {
+  margin-bottom: 6px;
+  color: var(--accent);
+}
+.svc-presenter-scripture-manual > div {
+  display: grid;
+  grid-template-columns: minmax(120px, .32fr) minmax(220px, 1fr);
+  gap: 6px;
+}
+.svc-presenter-scripture-manual textarea.svc-presenter-input-control {
+  height: 52px;
+  min-height: 52px;
+  padding-top: 7px;
+  resize: vertical;
+}
 .svc-presenter-input-field--song .svc-edit-title-wrap {
   width: 100%;
   gap: 6px;
@@ -6159,6 +6220,21 @@ body[data-module="presenter"] .detail-pane {
 .svc-board-subgroup-controls .svc-edit-title,
 .svc-board-subgroup-controls .svc-presenter-input-control {
   flex: 1 1 150px;
+}
+.svc-board-subgroup-controls .svc-presenter-input-field--scripture-parts {
+  grid-column: 1 / -1;
+}
+.svc-board-subgroup-controls .svc-presenter-scripture-part {
+  grid-template-columns: minmax(92px, .72fr) minmax(120px, 1fr) auto;
+}
+.svc-board-subgroup-controls .svc-presenter-scripture-manual[open] {
+  grid-column: 1 / -1;
+}
+.svc-board-subgroup-controls .svc-presenter-scripture-manual textarea.svc-presenter-input-control {
+  height: 52px;
+  min-height: 52px;
+  padding-top: 7px;
+  resize: vertical;
 }
 .svc-presenter-form-control {
   display: inline-flex;

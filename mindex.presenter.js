@@ -1678,7 +1678,7 @@ function presenterScriptureBodyContext(item = {}, section = {}, service = null) 
 }
 
 function presenterScriptureContextUsesReadingForm(context = "") {
-  return context === "reading" || context === "sermon" || context === "citation";
+  return context === "reading" || context === "sermon" || context === "citation" || context === "citation-chromakey";
 }
 
 function serviceScriptureTextPayload(item, memo = parseServiceItemMemo(item?.memo)) {

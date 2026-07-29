@@ -20256,6 +20256,7 @@ function renderPresenterServiceScriptureInput(item, index, memo) {
           const payload = payloadByReference.get(normalizeServiceScriptureReferenceKey(reference)) || {};
           const manual = normalizeServiceManualScripture(payload.manualScripture);
           const selectedId = payload.scriptureTranslationId || selectedTranslationId;
+          const hasManual = Boolean(manual?.verses?.length || payload.manualTranslationLabel);
           return `
             <div class="svc-presenter-scripture-part">
               <strong>${escapeHtml(reference)}</strong>
@@ -20266,10 +20267,15 @@ function renderPresenterServiceScriptureInput(item, index, memo) {
                       ${escapeHtml(serviceBibleTranslationDisplayLabel(translation))}
                     </option>`).join("")}
                 </select>` : ""}
-              <input class="svc-presenter-input-control" type="text" data-service-item-field="manual_scripture_translation_label" data-service-item-index="${index}" data-scripture-reference-index="${referenceIndex}"
-                value="${escapeAttr(manual?.translationLabel || payload.manualTranslationLabel || "")}" placeholder="수동 역본명" aria-label="${escapeAttr(`${reference} 수동 역본명`)}" />
-              <textarea class="svc-presenter-input-control" data-service-item-field="manual_scripture_text" data-service-item-index="${index}" data-scripture-reference-index="${referenceIndex}"
-                rows="2" placeholder="7 본문&#10;8 본문" aria-label="${escapeAttr(`${reference} 수동 본문`)}">${escapeHtml(formatServiceManualScriptureInput(manual))}</textarea>
+              <details class="svc-presenter-scripture-manual"${hasManual ? " open" : ""}>
+                <summary>수동 입력</summary>
+                <div>
+                  <input class="svc-presenter-input-control" type="text" data-service-item-field="manual_scripture_translation_label" data-service-item-index="${index}" data-scripture-reference-index="${referenceIndex}"
+                    value="${escapeAttr(manual?.translationLabel || payload.manualTranslationLabel || "")}" placeholder="수동 역본명" aria-label="${escapeAttr(`${reference} 수동 역본명`)}" />
+                  <textarea class="svc-presenter-input-control" data-service-item-field="manual_scripture_text" data-service-item-index="${index}" data-scripture-reference-index="${referenceIndex}"
+                    rows="2" placeholder="7 본문&#10;8 본문" aria-label="${escapeAttr(`${reference} 수동 본문`)}">${escapeHtml(formatServiceManualScriptureInput(manual))}</textarea>
+                </div>
+              </details>
             </div>`;
         }).join("")}
       </div>
