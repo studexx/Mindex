@@ -1304,6 +1304,12 @@ def main() -> int:
                         crossBookSemicolon: normalizeServiceScriptureReferenceList("요 15:9; 롬 5:7–8"),
                         longDash: normalizeServiceScriptureReferenceList("마 13:31—33, 44—50"),
                         formatted: formatServiceScriptureReferenceList("마 13:31–33, 44–50"),
+                        displayTitle: worshipElementDisplayTitle(
+                          { element_type: "scripture_body", title: "요 15:9, 롬 5:7–8", scripture_reference: "요 15:9" },
+                          { section_key: "sermon", title: "설교" },
+                          { label: "설교 본문" },
+                          { scriptureReferences: ["요 15:9", "롬 5:7–8"] },
+                        ),
                       };
                       state.songs = originalSongs;
                       state.search = originalSearch;
@@ -1325,6 +1331,7 @@ def main() -> int:
                         "crossBookSemicolon": ["요 15:9", "롬 5:7–8"],
                         "longDash": ["마 13:31–33", "마 13:44–50"],
                         "formatted": "마 13:31–33, 44–50",
+                        "displayTitle": "요 15:9, 롬 5:7–8",
                     }
                 ):
                     pass_("global-search-deep-matching", json.dumps(global_search_deep_state, ensure_ascii=False))

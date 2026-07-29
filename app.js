@@ -2944,6 +2944,8 @@ function serviceFormHintFromConfig(config = {}) {
 
 function worshipElementDisplayTitle(element = {}, section = {}, sourceRef = {}, config = {}) {
   if (isScriptureBodyWorshipElement(element, section, sourceRef)) {
+    const references = serviceElementScriptureReferences(element, section, sourceRef, config);
+    if (references.length) return formatServiceScriptureReferenceList(references);
     return serviceElementScriptureReference(element, section, sourceRef, config);
   }
   const title = String(element.title || "").trim();
