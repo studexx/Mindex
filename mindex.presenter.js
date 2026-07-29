@@ -1643,7 +1643,7 @@ function buildPresenterScriptureTextSlides(item, section, index, service = null)
       marker: verseReference,
       referenceBook,
       referenceRange: verse.referenceRange || payload.referenceRange || "",
-      translationLabel: payload.translationLabel || "",
+      translationLabel: verse.translationLabel || payload.translationLabel || "",
       text: citation ? presenterCitationScriptureText(verse, payload) : verseText,
       scriptureReadingFinal: readingFinal,
       ...(readingForm ? { outputContext: "clean" } : {}),
