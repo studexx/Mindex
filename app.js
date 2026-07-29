@@ -18711,7 +18711,7 @@ function normalizeServiceItemReferenceSpacing(value) {
 
 function normalizeServiceScriptureReferenceList(value) {
   const source = Array.isArray(value) ? value : String(value || "").split(/[\n;；]/);
-  return uniqueList(source.flatMap(expandServiceScriptureReferenceText));
+  return uniqueList(mergeConsecutiveServiceScriptureReferences(source.flatMap(expandServiceScriptureReferenceText)));
 }
 
 function formatServiceScriptureReferenceList(value) {
@@ -18735,6 +18735,30 @@ function formatServiceScriptureReferenceList(value) {
     const separator = index ? (sameBookAndChapter ? ", " : "; ") : "";
     return `${formatted}${separator}${display}`;
   }, "");
+}
+
+function mergeConsecutiveServiceScriptureReferences(references = []) {
+  return references.reduce((merged, referenceText) => {
+    const reference = parseBibleReference(referenceText);
+    const previousText = merged.at(-1);
+    const previous = previousText ? parseBibleReference(previousText) : null;
+    if (
+      reference?.book?.code
+      && previous?.book?.code === reference.book.code
+      && previous.chapter === reference.chapter
+      && previous.verse
+      && reference.verse
+      && reference.verse === ((previous.verseEnd || previous.verse) + 1)
+    ) {
+      merged[merged.length - 1] = formatServiceBibleReference({
+        ...previous,
+        verseEnd: reference.verseEnd || reference.verse,
+      }, previousText);
+      return merged;
+    }
+    merged.push(referenceText);
+    return merged;
+  }, []);
 }
 
 function expandServiceScriptureReferenceText(value = "") {

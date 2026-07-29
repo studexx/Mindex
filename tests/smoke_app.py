@@ -1299,6 +1299,8 @@ def main() -> int:
                       const scriptureReferences = normalizeServiceScriptureReferenceList("요3:16~17, 18");
                       const complexScriptureReferences = {
                         sameChapterComma: normalizeServiceScriptureReferenceList("마 13:31–33, 44–50"),
+                        consecutiveComma: normalizeServiceScriptureReferenceList("롬 8:22,23"),
+                        consecutiveCommaFormatted: formatServiceScriptureReferenceList("롬 8:22,23"),
                         crossBookSemicolon: normalizeServiceScriptureReferenceList("요 15:9; 롬 5:7–8"),
                         longDash: normalizeServiceScriptureReferenceList("마 13:31—33, 44—50"),
                         formatted: formatServiceScriptureReferenceList("마 13:31–33, 44–50"),
@@ -1318,6 +1320,8 @@ def main() -> int:
                     and global_search_deep_state["scriptureReferences"] == ["요 3:16–17", "요 3:18"]
                     and global_search_deep_state["complexScriptureReferences"] == {
                         "sameChapterComma": ["마 13:31–33", "마 13:44–50"],
+                        "consecutiveComma": ["롬 8:22–23"],
+                        "consecutiveCommaFormatted": "롬 8:22–23",
                         "crossBookSemicolon": ["요 15:9", "롬 5:7–8"],
                         "longDash": ["마 13:31–33", "마 13:44–50"],
                         "formatted": "마 13:31–33, 44–50",
