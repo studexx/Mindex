@@ -20261,9 +20261,16 @@ function renderPresenterServiceScriptureInput(item, index, memo) {
   const perReferencePayloads = normalizeServiceScriptureReferencePayloads(memo.scriptureReferencePayloads, references);
   const payloadByReference = new Map(perReferencePayloads.map((payload) => [normalizeServiceScriptureReferenceKey(payload.reference), payload]));
   const translationControl = "";
+  const hasPerReferenceManual = perReferencePayloads.some((payload) => {
+    const manual = normalizeServiceManualScripture(payload.manualScripture);
+    return Boolean(manual?.verses?.length || payload.manualTranslationLabel);
+  });
   const perReferenceControls = citation && references.length ? `
-    <div class="svc-presenter-input-field svc-presenter-input-field--scripture-parts">
-      <span>인용별 역본</span>
+    <details class="svc-presenter-input-field svc-presenter-input-field--scripture-parts"${hasPerReferenceManual ? " open" : ""}>
+      <summary>
+        <span>인용별 역본</span>
+        <small>${escapeHtml(`${references.length}개${hasPerReferenceManual ? " · 수동 입력 있음" : ""}`)}</small>
+      </summary>
       <div class="svc-presenter-scripture-parts">
         ${references.map((reference, referenceIndex) => {
           const payload = payloadByReference.get(normalizeServiceScriptureReferenceKey(reference)) || {};
@@ -20292,7 +20299,7 @@ function renderPresenterServiceScriptureInput(item, index, memo) {
             </div>`;
         }).join("")}
       </div>
-    </div>` : "";
+    </details>` : "";
   return `
     <label class="svc-presenter-input-field">
       <span>구절</span>

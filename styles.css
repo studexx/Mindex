@@ -5456,6 +5456,46 @@ body[data-module="presenter"] .detail-pane {
 .svc-presenter-input-field--scripture-parts {
   grid-column: 1 / -1;
 }
+.svc-presenter-input-field--scripture-parts > summary {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: calc(var(--r) - 2px);
+  background: color-mix(in srgb, var(--panel-2) 30%, transparent);
+  color: var(--ink-2);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+  gap: 10px;
+  list-style: none;
+  padding: 8px 10px;
+}
+.svc-presenter-input-field--scripture-parts > summary::-webkit-details-marker {
+  display: none;
+}
+.svc-presenter-input-field--scripture-parts > summary::after {
+  color: var(--ink-3);
+  content: "펼치기";
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-weight: 800;
+}
+.svc-presenter-input-field--scripture-parts[open] > summary {
+  margin-bottom: 8px;
+}
+.svc-presenter-input-field--scripture-parts[open] > summary::after {
+  content: "접기";
+}
+.svc-presenter-input-field--scripture-parts > summary small {
+  min-width: 0;
+  color: var(--ink-3);
+  font-size: 11px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .svc-presenter-scripture-parts {
   display: grid;
   gap: 6px;
