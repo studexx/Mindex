@@ -20266,7 +20266,7 @@ function renderPresenterServiceScriptureInput(item, index, memo) {
     return Boolean(manual?.verses?.length || payload.manualTranslationLabel);
   });
   const perReferenceControls = citation && references.length ? `
-    <details class="svc-presenter-input-field svc-presenter-input-field--scripture-parts"${hasPerReferenceManual ? " open" : ""}>
+    <details class="svc-presenter-input-field svc-presenter-input-field--scripture-parts">
       <summary>
         <span>인용별 역본</span>
         <small>${escapeHtml(`${references.length}개${hasPerReferenceManual ? " · 수동 입력 있음" : ""}`)}</small>
