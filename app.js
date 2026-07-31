@@ -17959,6 +17959,7 @@ function renderPresenterDetail() {
   updateSaveState();
   requestAnimationFrame(() => {
     fitPresenterChromakeyScripturePreviews(refs.detailPane);
+    fitPresenterSongTitlePreviews(refs.detailPane);
   });
   if (state.module === "presenter") renderServiceList();
 }

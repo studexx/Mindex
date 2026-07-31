@@ -3055,6 +3055,7 @@ function commitPresenterOutputFrame(root, payload, slide, frameState, token, opt
       nextLayer.dataset.presenterFrameToken = String(token);
     }
     fitPresenterChromakeyScriptureText(nextLayer, frameState);
+    fitPresenterSongTitleText(nextLayer);
     nextLayer.classList.add("is-next");
     applyPresenterOutputFrameState(root, frameState);
     layers.active.classList.remove("is-active");
@@ -3110,6 +3111,33 @@ function fitPresenterChromakeyScripturePreviews(host) {
   host
     .querySelectorAll(".svc-slide-mini-canvas.presenter-output-root:not(.no-chromakey)")
     .forEach((preview) => fitPresenterChromakeyScriptureText(preview));
+}
+
+function fitPresenterSongTitleText(host) {
+  if (!host) return;
+  const outputRoot = host.closest?.(".presenter-output-root") || host;
+  const fullscreen = outputRoot.classList?.contains("no-chromakey");
+  const minimumSize = fullscreen ? 72 : 56;
+  host
+    .querySelectorAll(".presenter-slide--song-title > .presenter-slide-text, .presenter-slide--song-title .presenter-section-song-title-name")
+    .forEach((textBox) => {
+      textBox.style.removeProperty("font-size");
+      const baseSize = Number.parseFloat(window.getComputedStyle(textBox).fontSize);
+      if (!Number.isFinite(baseSize) || baseSize <= 0) return;
+
+      const floor = Math.min(minimumSize, baseSize);
+      for (let size = baseSize; size >= floor; size -= 2) {
+        textBox.style.fontSize = `${size}px`;
+        if (textBox.scrollWidth <= textBox.clientWidth + 1) return;
+      }
+    });
+}
+
+function fitPresenterSongTitlePreviews(host) {
+  if (!host) return;
+  host
+    .querySelectorAll(".svc-slide-mini-canvas.presenter-output-root")
+    .forEach((preview) => fitPresenterSongTitleText(preview));
 }
 
 function bindPresenterOutputAutoAdvance(root, payload, slide, options = {}, token = presenterOutputRenderState.token) {
