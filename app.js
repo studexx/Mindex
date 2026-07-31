@@ -17352,6 +17352,7 @@ function isServiceSidebarSectionMarkerItem(item, group = {}) {
 
 function serviceSidebarChildItemTitle(item) {
   const label = String(item?.label || "").trim();
+  if (serviceSidebarUsesLabelOnly(item)) return label || "항목";
   const title = serviceItemDisplayText(item);
   if (!label) return title || "항목";
   if (!title) return label;
@@ -17359,6 +17360,13 @@ function serviceSidebarChildItemTitle(item) {
   const titleCompact = compactSearchValue(title);
   if (labelCompact === titleCompact) return label;
   return `${label} · ${title}`;
+}
+
+function serviceSidebarUsesLabelOnly(item = {}) {
+  const label = compactSearchValue(item.label || "");
+  return isCreedServiceItem(item)
+    || label === "주기도문"
+    || label === "공동체고백";
 }
 
 function serviceSidebarItemTitle(item) {
