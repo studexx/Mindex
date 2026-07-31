@@ -213,6 +213,9 @@ Small visual polish that does not alter behavior does not need an entry.
   `결단기도`, `주기도문`, `광고`, and `반별 모임`.
 - `통성기도` and `결단찬양` are not part of the regular youth template unless
   a user deliberately adds them for that service.
+- In every service template, the child element of the `대표기도` section is also
+  labeled `대표기도`. Legacy projected items labeled `기도` are normalized for
+  display without changing their leader or entered content.
 - The regular `봉헌찬양` default is `대단한 믿음 없어도` with the `V1-C` song
   form. It is prefilled for each weekly service rather than copied from the
   previous week.

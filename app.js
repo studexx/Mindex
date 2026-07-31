@@ -14907,7 +14907,7 @@ function publicWorshipPrayerStep() {
     flex: false,
     sectionKey: "prayer",
     elements: [
-      { label: "기도", name: "기도", elementType: "title_person" },
+      { label: "대표기도", name: "대표기도", elementType: "title_person" },
     ],
   };
 }
@@ -15290,7 +15290,7 @@ function publicSundayThirdTemplate(options = {}) {
     publicSundayThirdConfessionStep(),
     { label: "찬송", name: "찬송", required: false, flex: true, sectionKey: "hymn_praise", elementType: "praise", ...scoreOutputMode() },
     { label: "대표기도", name: "대표기도", required: true, flex: false, sectionKey: "prayer", elements: [
-      { label: "기도", name: "기도", elementType: "title_person" },
+      { label: "대표기도", name: "대표기도", elementType: "title_person" },
     ] },
     publicWorshipScriptureReadingStep(),
     publicWorshipSpecialSongStep(specialSong ? {
@@ -16143,7 +16143,14 @@ function canonicalizeServiceItemForTemplateHierarchy(item = {}, meta = null, sec
     && (!existingLabel
       || compactSearchValue(existingLabel) === compactSearchValue(meta.title || "")
       || compactSearchValue(existingLabel) === "광고");
-  const canonicalElementLabel = shouldUseAnnouncementDefaultLabel ? (metaLabel || "교회소식") : item.label;
+  const shouldUsePrayerDefaultLabel = meta.key === "prayer"
+    && !item._worshipElementTemplateModified
+    && ["기도", "대표기도"].includes(compactSearchValue(existingLabel));
+  const canonicalElementLabel = shouldUseAnnouncementDefaultLabel
+    ? (metaLabel || "교회소식")
+    : shouldUsePrayerDefaultLabel
+      ? (metaLabel || "대표기도")
+      : item.label;
   return {
     ...item,
     label: canonicalElementLabel || item.label,
