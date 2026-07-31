@@ -571,8 +571,8 @@ def main() -> int:
                     and ready_thumb_state["numberBadges"] >= 2
 	                    and ready_thumb_state["firstNumber"] == "1"
 	                    and ready_thumb_state["secondNumber"] == "2"
-	                    and ready_thumb_state["firstLabel"].startswith("1번 슬라이드 선택:")
-	                    and ready_thumb_state["secondLabel"].startswith("2번 슬라이드 선택:")
+	                    and ready_thumb_state["firstLabel"].startswith("1번 슬라이드 송출 위치로 이동:")
+	                    and ready_thumb_state["secondLabel"].startswith("2번 슬라이드 송출 위치로 이동:")
 	                    and ready_thumb_state["numberOutsidePreview"]
 	                ):
                     pass_("presenter-ready-thumb-chrome", json.dumps(ready_thumb_state, ensure_ascii=False))
@@ -5148,13 +5148,13 @@ def main() -> int:
                     and title_assignee_bounds["personOverflow"] == "clip"
                     and title_assignee_bounds["titleFontSize"] == 92
                     and title_assignee_bounds["titleFontWeight"] == "800"
-                    and title_assignee_bounds["personFontSize"] == 92
+                    and title_assignee_bounds["personFontSize"] == 72
                     and title_assignee_bounds["personFontWeight"] == "700"
                     and title_assignee_bounds["orderFontSize"] == 92
                     and title_assignee_bounds["orderFontWeight"] == "800"
                     and title_assignee_bounds["contentFontSize"] == 92
                     and title_assignee_bounds["contentFontWeight"] == "700"
-                    and title_assignee_bounds["threePartPersonFontSize"] == 92
+                    and title_assignee_bounds["threePartPersonFontSize"] == 72
                     and title_assignee_bounds["threePartPersonFontWeight"] == "700"
                     and title_assignee_bounds["titleInside"]
                     and title_assignee_bounds["personInside"]
@@ -5215,7 +5215,7 @@ def main() -> int:
                     and not sermon_title_font_state["hasOrder"]
                     and sermon_title_font_state["contentBeforePerson"]
                     and sermon_title_font_state["contentFontSize"] == 92
-                    and sermon_title_font_state["personFontSize"] == 92
+                    and sermon_title_font_state["personFontSize"] == 72
                 ):
                     pass_("presenter-sermon-title-content-font", json.dumps(sermon_title_font_state, ensure_ascii=False))
                 else:
