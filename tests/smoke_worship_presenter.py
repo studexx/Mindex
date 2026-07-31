@@ -3631,7 +3631,7 @@ def main() -> int:
                       outputRoot.id = 'presenterOutputRoot';
                       outputRoot.className = 'presenter-output-root no-chromakey';
                       document.body.appendChild(outputRoot);
-                      const result = ['praise', 'pre_scripture_praise', 'entrance_praise', 'prayer_meeting_praise'].map((sectionKey) => {
+                      const result = ['praise', 'pre_scripture_praise', 'entrance_praise', 'response_song', 'prayer_meeting_praise'].map((sectionKey) => {
                         renderPresenterOutput({
                           serviceId: '__smoke_fullscreen_song_title_output_font__',
                           serviceType: 'sunday2', chromakey: false, outputTheme: 'formal', backgroundImage: '',

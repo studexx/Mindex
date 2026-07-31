@@ -1776,24 +1776,22 @@ function presenterSongTitleSlide(item, section, song, version, displayText, inde
   const sectionHeading = presenterSongTitleSectionHeading(item, section);
   const displayTitle = presenterSongTitleDisplayTitle(song, version, displayText, sectionHeading);
   const titleText = formatPresenterSongTitleText(displayTitle);
-  const responseSong = String(section.sectionKey || item?._worshipSectionKey || "").trim() === "response_song";
-  const responseTitle = String(item?.label || "결단찬양").trim();
-  if (sectionHeading && !responseSong) {
+  if (sectionHeading) {
     return presenterOrderContentTitleSlide(item, section, index, sectionHeading, titleText);
   }
   return {
     id: `${item.id || index}:song-title`,
     ...section,
-    elementType: responseSong ? PRESENTER_ELEMENT_TYPES.TITLE_CONTENT : PRESENTER_ELEMENT_TYPES.PRAISE,
-    layout: responseSong ? PRESENTER_SLIDE_LAYOUTS.CENTER_TEXT : PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT,
-    type: responseSong ? "title-content" : "song-title",
+    elementType: PRESENTER_ELEMENT_TYPES.PRAISE,
+    layout: PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT,
+    type: "song-title",
     label: item.label || "",
-    title: responseSong ? responseTitle : displayTitle,
+    title: displayTitle,
     subtitle: versionDisplayName(song, version),
     marker,
     sectionHeading,
-    bodyText: responseSong ? titleText : "",
-    text: responseSong ? cleanList([responseTitle, titleText]).join("\n") : titleText,
+    bodyText: "",
+    text: titleText,
     sort: index - 0.001,
   };
 }
@@ -1869,21 +1867,23 @@ function presenterSongTitleNormalizedHeading(heading = "", sectionKey = "") {
     offering: "봉헌",
     doxology: "송영",
     sending: "파송",
+    response_song: "결단",
+    prayer_meeting_praise: "기도회",
     closing_hymn: "폐회",
     closing_visual: "폐회",
     closing_song: "폐회",
     hymn_praise: "찬송",
-    response_song: "결단",
   };
   const canonicalBySection = {
     offering: "봉헌찬송",
     doxology: "송영",
     sending: "송영",
+    response_song: "결단찬양",
+    prayer_meeting_praise: "기도 찬양",
     closing_hymn: "폐회찬송",
     closing_visual: "폐회찬송",
     closing_song: "폐회찬송",
     hymn_praise: "찬송",
-    response_song: "결단찬송",
   };
   if (compact === genericBySection[compactSectionKey]) return canonicalBySection[compactSectionKey] || raw;
   return raw;
@@ -1894,17 +1894,18 @@ function presenterSongTitleUsesSectionHeading(item = {}, section = {}) {
   const sectionKey = String(section.sectionKey || item?._worshipSectionKey || "").trim();
   if ([
     "hymn_praise",
-    "response_song",
     "offering",
     "doxology",
     "sending",
+    "response_song",
+    "prayer_meeting_praise",
     "closing_song",
     "closing_hymn",
     "closing_visual",
   ].includes(sectionKey)) return true;
   const compact = compactSearchValue(item?.label || section.elementLabel || section.sectionLabel || "");
   if (!compact) return false;
-  return /^(송영|파송|봉헌|봉헌찬송|봉헌찬양|파송찬송|폐회|폐회찬송|결단찬송|결단찬양)$/.test(compact);
+  return /^(송영|파송|봉헌|봉헌찬송|봉헌찬양|파송찬송|결단|결단찬송|결단찬양|기도찬양|기도회찬양|폐회|폐회찬송)$/.test(compact);
 }
 
 function formatPresenterSongTitleText(title) {
