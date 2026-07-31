@@ -1414,7 +1414,7 @@ def main() -> int:
                       const today = new Date();
                       today.setHours(0, 0, 0, 0);
                       const end = new Date(today);
-                      end.setDate(today.getDate() + ((2 - today.getDay() + 7) % 7));
+                      end.setDate(today.getDate() + 6);
                       const cards = [...document.querySelectorAll('.service-sidebar-section--recent [data-open-service]')];
                       const services = cards
                         .map((card) => state.services.find((service) => service.id === card.dataset.openService))
@@ -1429,7 +1429,7 @@ def main() -> int:
                         count: services.length,
                         dates,
                         isAscending: dates.every((date, index) => index === 0 || dates[index - 1] <= date),
-                        staysWithinCurrentChurchWeek: dates.every((date) => date >= today.getTime() && date <= end.getTime()),
+                        staysWithinUpcomingWeek: dates.every((date) => date >= today.getTime() && date <= end.getTime()),
                       };
                     })()
                     """
@@ -1438,11 +1438,11 @@ def main() -> int:
                     home_recent_service_sidebar["heading"] == "최근 예배"
                     and home_recent_service_sidebar["count"] > 0
                     and home_recent_service_sidebar["isAscending"]
-                    and home_recent_service_sidebar["staysWithinCurrentChurchWeek"]
+                    and home_recent_service_sidebar["staysWithinUpcomingWeek"]
                 ):
-                    pass_("home-sidebar-current-week-services", json.dumps(home_recent_service_sidebar, ensure_ascii=False))
+                    pass_("home-sidebar-upcoming-week-services", json.dumps(home_recent_service_sidebar, ensure_ascii=False))
                 else:
-                    fail("home-sidebar-current-week-services", json.dumps(home_recent_service_sidebar, ensure_ascii=False))
+                    fail("home-sidebar-upcoming-week-services", json.dumps(home_recent_service_sidebar, ensure_ascii=False))
 
                 page.locator("[data-service-list]").first.click()
                 page.wait_for_selector(".service-date-list", timeout=5000)

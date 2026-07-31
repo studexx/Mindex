@@ -16843,8 +16843,7 @@ function homeSidebarServiceWeekRange(baseDate = new Date()) {
   const start = new Date(baseDate);
   start.setHours(0, 0, 0, 0);
   const end = new Date(start);
-  const daysUntilTuesday = (2 - start.getDay() + 7) % 7;
-  end.setDate(start.getDate() + daysUntilTuesday);
+  end.setDate(start.getDate() + 6);
   return { start, end };
 }
 
