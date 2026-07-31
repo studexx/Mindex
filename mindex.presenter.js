@@ -1775,7 +1775,7 @@ function presenterSongTitleSlide(item, section, song, version, displayText, inde
   const marker = presenterPraiseMarker(song, displayText);
   const sectionHeading = presenterSongTitleSectionHeading(item, section);
   const displayTitle = presenterSongTitleDisplayTitle(song, version, displayText, sectionHeading);
-  const titleText = formatPresenterSongTitleText(displayTitle);
+  const titleText = presenterSongTitleContentText(displayTitle, sectionHeading);
   if (sectionHeading) {
     return presenterOrderContentTitleSlide(item, section, index, sectionHeading, titleText);
   }
@@ -1794,6 +1794,13 @@ function presenterSongTitleSlide(item, section, song, version, displayText, inde
     text: titleText,
     sort: index - 0.001,
   };
+}
+
+function presenterSongTitleContentText(displayTitle = "", sectionHeading = "") {
+  const titleKey = compactSearchValue(String(displayTitle || "").replace(/^♪\s*/, ""));
+  const headingKey = compactSearchValue(sectionHeading);
+  if (!titleKey || (headingKey && titleKey === headingKey)) return "입력 필요";
+  return formatPresenterSongTitleText(displayTitle);
 }
 
 function presenterOrderContentTitleSlide(item, section, index, orderTitle = "", contentTitle = "") {
