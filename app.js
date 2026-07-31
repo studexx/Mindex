@@ -15652,7 +15652,9 @@ function migrateLegacyFridayTemplateItems(service = null, items = []) {
       item?.raw_title,
       item?._worshipSectionTitle,
     ].filter(Boolean).join(" "));
-    const isLegacyEntrancePraise = ["praise", "pre_scripture_praise"].includes(sectionKey)
+    // Older Friday records placed entrance praise under several section keys.
+    // Its explicit label is authoritative: always project it as its own section.
+    const isLegacyEntrancePraise = sectionKey !== "entrance_praise"
       && /(성경봉독전찬양|입례찬양)/.test(entrancePraiseText);
     const isLegacyPrayerMeeting = sectionKey === "prayer_meeting_praise"
       && compactSearchValue(item?._worshipSectionTitle || "") === "기도찬양";
