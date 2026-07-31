@@ -146,6 +146,22 @@ def looks_like_embedded_scripture_body(value: Any) -> bool:
     return bool(re.search(r"(?:^|\n)\s*\d{1,3}\s{2,}\S", text))
 
 
+def normalize_title_key(value: Any) -> str:
+    if not isinstance(value, str):
+        return ""
+    return re.sub(r"[\s\W_]+", "", value, flags=re.UNICODE).casefold()
+
+
+def praise_type_signature(value: Any) -> tuple[str, ...]:
+    if isinstance(value, list):
+        values = value
+    elif isinstance(value, str):
+        values = re.split(r"[,/|]", value)
+    else:
+        values = []
+    return tuple(sorted({str(item).strip().casefold() for item in values if str(item).strip()}))
+
+
 def audit(
     supa_url: str,
     supa_key: str,
@@ -153,6 +169,9 @@ def audit(
     strict_schema: bool = False,
 ) -> tuple[dict[str, int], list[dict[str, Any]], list[dict[str, Any]]]:
     songs = fetch_rows(supa_url, supa_key, "mindex_songs")
+    canonical_songs = fetch_rows(supa_url, supa_key, "mindex_canonical_songs")
+    song_versions = fetch_rows(supa_url, supa_key, "mindex_song_versions")
+    version_units = fetch_rows(supa_url, supa_key, "mindex_version_units")
     scriptures = fetch_rows(supa_url, supa_key, "mindex_scriptures")
     books = fetch_rows(supa_url, supa_key, "mindex_scripture_books")
     worship_service_types = fetch_rows(supa_url, supa_key, "mindex_worship_service_types")
@@ -166,6 +185,8 @@ def audit(
     issues: list[dict[str, Any]] = []
     warnings: list[dict[str, Any]] = []
     song_ids = {row["id"] for row in songs}
+    canonical_song_ids = {row["id"] for row in canonical_songs}
+    song_version_ids = {row["id"] for row in song_versions}
     scripture_ids = {row["id"] for row in scriptures}
     worship_service_ids = {row["id"] for row in worship_services}
     worship_service_type_ids = {row["id"] for row in worship_service_types}
@@ -206,6 +227,9 @@ def audit(
             hymn_numbers = [(row.get("hymn_no") or "").strip() for row in rows]
             if all(hymn_numbers) and len(set(hymn_numbers)) == len(hymn_numbers):
                 continue
+            praise_type_signatures = {praise_type_signature(row.get("praise_types")) for row in rows}
+            if len(praise_type_signatures) > 1:
+                continue
             ids = [row["id"] for row in rows]
             warnings.append({
                 "type": "duplicate-song-identity",
@@ -215,6 +239,59 @@ def audit(
                 "ids": ids,
                 "count": len(ids),
             })
+
+    normalized_canonical_keys: dict[str, list[dict[str, Any]]] = {}
+    for row in canonical_songs:
+        row_id = row["id"]
+        title = row.get("title") or ""
+        normalized_title = row.get("normalized_title") or ""
+        normalized_canonical_keys.setdefault(normalized_title, []).append(row)
+        if not title:
+            issues.append({"type": "canonical-song-title-missing", "id": row_id})
+        if not normalized_title:
+            issues.append({"type": "canonical-song-normalized-title-missing", "id": row_id, "title": title})
+        elif "::" not in normalized_title and normalized_title != normalize_title_key(title):
+            warnings.append({
+                "type": "canonical-normalized-title-differs-from-title",
+                "id": row_id,
+                "title": title,
+                "normalized_title": normalized_title,
+                "expected": normalize_title_key(title),
+            })
+        if "::" in normalized_title:
+            base, variant = normalized_title.split("::", 1)
+            if not base or not variant:
+                issues.append({"type": "canonical-variant-key-malformed", "id": row_id, "normalized_title": normalized_title})
+        issues.extend(edge_text_issues(row, row_id, ("title", "subtitle", "original_title", "hymn_no", "normalized_title")))
+
+    for normalized_title, rows in normalized_canonical_keys.items():
+        if normalized_title and len(rows) > 1:
+            issues.append({
+                "type": "duplicate-canonical-normalized-title",
+                "normalized_title": normalized_title,
+                "ids": [row["id"] for row in rows],
+            })
+
+    for row in song_versions:
+        row_id = row["id"]
+        canonical_id = row.get("canonical_song_id")
+        source_id = row.get("source_song_id")
+        if canonical_id not in canonical_song_ids:
+            issues.append({"type": "song-version-missing-canonical-song", "id": row_id, "canonical_song_id": canonical_id})
+        if source_id and source_id not in song_ids:
+            issues.append({"type": "song-version-missing-source-song", "id": row_id, "source_song_id": source_id})
+        issues.extend(edge_text_issues(row, row_id, ("version_label", "subtitle", "original_title", "lyric_signature")))
+
+    for row in version_units:
+        row_id = row["id"]
+        version_id = row.get("version_id")
+        canonical_id = row.get("canonical_song_id")
+        if version_id not in song_version_ids:
+            issues.append({"type": "version-unit-missing-version", "id": row_id, "version_id": version_id})
+        if canonical_id and canonical_id not in canonical_song_ids:
+            issues.append({"type": "version-unit-missing-canonical-song", "id": row_id, "canonical_song_id": canonical_id})
+        issues.extend(edge_text_issues(row, row_id, ("unit_label", "unit_kind")))
+        warnings.extend(block_text_issues(row, row_id, ("text",)))
 
     for row in scriptures:
         row_id = row["id"]
@@ -248,6 +325,19 @@ def audit(
             issues.append({"type": "worship-element-missing-section", "id": row_id, "section_id": row.get("section_id")})
         if row.get("song_id") and row.get("song_id") not in song_ids:
             issues.append({"type": "worship-element-missing-song", "id": row_id, "song_id": row.get("song_id"), "title": row.get("title")})
+        if row.get("song_version_id") and row.get("song_version_id") not in song_version_ids:
+            issues.append({"type": "worship-element-missing-song-version", "id": row_id, "song_version_id": row.get("song_version_id"), "title": row.get("title")})
+        if row.get("song_id") and row.get("song_version_id"):
+            version = next((candidate for candidate in song_versions if candidate.get("id") == row.get("song_version_id")), None)
+            if version and version.get("source_song_id") and version.get("source_song_id") != row.get("song_id"):
+                warnings.append({
+                    "type": "worship-element-song-version-source-mismatch",
+                    "id": row_id,
+                    "song_id": row.get("song_id"),
+                    "song_version_id": row.get("song_version_id"),
+                    "version_source_song_id": version.get("source_song_id"),
+                    "title": row.get("title"),
+                })
         if row.get("scripture_id") and row.get("scripture_id") not in scripture_ids:
             issues.append({"type": "worship-element-missing-scripture", "id": row_id, "scripture_id": row.get("scripture_id"), "title": row.get("title")})
         if row.get("element_type") == "scripture_body":
@@ -277,6 +367,9 @@ def audit(
 
     counts = {
         "songs": len(songs),
+        "canonical_songs": len(canonical_songs),
+        "song_versions": len(song_versions),
+        "version_units": len(version_units),
         "scriptures": len(scriptures),
         "scripture_books": len(books),
         "worship_service_types": len(worship_service_types),
