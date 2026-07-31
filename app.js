@@ -21775,7 +21775,7 @@ function renderPresenterSlideThumb(slide, slideIndex, activeIndex, serviceId, fo
           data-presenter-citation-reference-input
           data-service-id="${escapeAttr(serviceId)}"
           data-presenter-citation-element-id="${escapeAttr(slide.elementId || "")}"
-          placeholder="권 장:절"
+          placeholder="예: 롬 5:7~8; 요 15:9"
           aria-label="인용 구절 바로 추가" />` : "";
   return `
     <span class="svc-slide-thumb-wrap${active ? " active" : ""}${selected ? " selected" : ""}${hidden ? " hidden" : ""}${visibleFormLabel ? " has-form-label" : ""}">
