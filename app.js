@@ -4747,9 +4747,19 @@ function buildWorshipPersistenceRows(service, items, existingSectionById = {}, e
   items.forEach((item, index) => {
     const existingElement = isUuid(item.id) ? existingElementById[item.id] : null;
     const targetSection = isUuid(item._worshipSectionId) ? existingSectionById[item._worshipSectionId] : null;
-    const existingSection = targetSection || (existingElement
+    const existingElementSection = existingElement
       ? existingSectionById[existingElement.section_id]
-      : null);
+      : null;
+    const requestedSectionKey = String(item._worshipSectionKey || "").trim();
+    // An item can be reclassified into a different template section. In that
+    // case, retaining the element's old section silently moves the new label
+    // back into the old group on every save.
+    const existingSection = targetSection || (
+      existingElementSection
+      && (!requestedSectionKey || existingElementSection.section_key === requestedSectionKey)
+        ? existingElementSection
+        : null
+    );
     const projectedSectionKey = [
       item._worshipSectionId,
       item._worshipSectionKey,
@@ -15604,11 +15614,18 @@ function projectWorshipServiceItemsFromTemplate(service, items = []) {
     return normalizeServiceItemsForTemplateHierarchy(service, items);
   }
 
-  const existing = migrateLegacyFridayTemplateItems(service, collapseLegacyPresenterCitationItems(
+  // Migrate legacy section ownership before hierarchy normalization. Otherwise
+  // normalization recognizes the entrance-praise label but preserves its old
+  // main-praise section ID, making the error impossible to repair on save.
+  const existing = collapseLegacyPresenterCitationItems(
     collapseLegacyScriptureReadingItems(
-      normalizeServiceItemsForTemplateHierarchy(service, items, { preserveSourceIndex: true }),
+      normalizeServiceItemsForTemplateHierarchy(
+        service,
+        migrateLegacyFridayTemplateItems(service, items),
+        { preserveSourceIndex: true },
+      ),
     ),
-  ));
+  );
   const suppressedTemplateKeys = new Set(existing
     .filter(isTemplateSuppressedServiceItem)
     .map((item) => serviceItemTemplateProjectionKey(item, { includeLabel: true })));
@@ -15666,6 +15683,7 @@ function migrateLegacyFridayTemplateItems(service = null, items = []) {
       ...item,
       ...(isLegacyEntrancePraise ? {
         label: "입례찬양",
+        _worshipSectionId: "",
         _worshipSectionKey: "entrance_praise",
         _worshipSectionTitle: "입례찬양",
         _worshipElementOrder: 1,
