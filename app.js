@@ -15643,9 +15643,13 @@ function migrateLegacyFridayTemplateItems(service = null, items = []) {
   if (worshipAppServiceTypeId(service?.type_id || "") !== "friday") return items;
   return items.map((item) => {
     const sectionKey = String(item?._worshipSectionKey || "").trim();
-    const entrancePraiseLabelKey = compactSearchValue(item?.label || "");
+    const entrancePraiseText = compactSearchValue([
+      item?.label,
+      item?.raw_title,
+      item?._worshipSectionTitle,
+    ].filter(Boolean).join(" "));
     const isLegacyEntrancePraise = ["praise", "pre_scripture_praise"].includes(sectionKey)
-      && ["성경봉독전찬양", "입례찬양"].includes(entrancePraiseLabelKey);
+      && /(성경봉독전찬양|입례찬양)/.test(entrancePraiseText);
     const isLegacyPrayerMeeting = sectionKey === "prayer_meeting_praise"
       && compactSearchValue(item?._worshipSectionTitle || "") === "기도찬양";
     const isLegacyFreePrayer = sectionKey === "free_prayer"
@@ -21592,6 +21596,7 @@ function groupPresenterSlidesBySection(slides, serviceId = state.selectedService
 }
 
 function isPresenterMainPraiseSlide(slide = {}) {
+  if (isPresenterEntrancePraiseSlide(slide)) return false;
   const sectionKey = String(slide.sectionKey || "").trim();
   if (sectionKey) return sectionKey === "praise";
   if (slide.sectionRole === "main-praise") return true;
@@ -21604,6 +21609,18 @@ function isPresenterMainPraiseSlide(slide = {}) {
   ].filter(Boolean).join(" "));
   if (/(특송|송영|결단|봉헌|파송|폐회)/.test(context)) return false;
   return isMainPraiseLabel(slide.sectionLabel);
+}
+
+function isPresenterEntrancePraiseSlide(slide = {}) {
+  const context = compactSearchValue([
+    slide.sectionKey,
+    slide.sectionTitle,
+    slide.sectionName,
+    slide.sectionHeading,
+    slide.elementLabel,
+    slide.label,
+  ].filter(Boolean).join(" "));
+  return /입례찬양|성경봉독전찬양/.test(context);
 }
 
 function presenterBoardSectionGroupId(slide = {}, slideIndex = 0) {
