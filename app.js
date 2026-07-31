@@ -602,6 +602,7 @@ const state = {
   presenterPreparationDrafts: {},
   presenterPreparationApplyingServiceIds: new Set(),
   presenterSectionEditor: null,
+  presenterBulletinServiceId: null,
   serviceFilter: "all",
   serviceError: "",
   newServiceForm: null,
@@ -5660,6 +5661,15 @@ function handleDetailClick(event) {
     return;
   }
 
+  const serviceBulletinAction = event.target.closest("[data-service-bulletin-action]");
+  if (serviceBulletinAction) {
+    void runServiceBulletinAction(
+      serviceBulletinAction.dataset.serviceBulletinAction,
+      serviceBulletinAction.dataset.serviceId || state.selectedServiceId,
+    );
+    return;
+  }
+
   if (handlePresenterDetailClick(event)) return;
 
   const serviceMusicAction = event.target.closest("[data-service-music-action]");
@@ -9670,6 +9680,37 @@ function renderWorshipModeTabs(serviceId, activeMode = state.module === "present
       <i data-lucide="screen-share"></i>
       <span>송출</span>
     </button>`;
+}
+
+function serviceSupportsBulletin(service = null) {
+  return worshipAppServiceTypeId(service?.type_id) === "young-adult";
+}
+
+async function runServiceBulletinAction(action = "", serviceId = "") {
+  const service = state.services.find((candidate) => candidate.id === serviceId);
+  if (!service || !serviceSupportsBulletin(service)) return;
+  if (action === "close") {
+    state.presenterBulletinServiceId = null;
+    renderCurrentServiceModuleDetail();
+    return;
+  }
+  if (action === "print") {
+    document.body.classList.add("printing-service-bulletin");
+    const clearPrintMode = () => document.body.classList.remove("printing-service-bulletin");
+    window.addEventListener("afterprint", clearPrintMode, { once: true });
+    window.setTimeout(clearPrintMode, 1000);
+    window.print();
+    return;
+  }
+  if (action !== "open") return;
+  state.presenterBulletinServiceId = service.id;
+  renderCurrentServiceModuleDetail();
+  if (!state.calendarLoaded && !state.calendarLoading) {
+    await loadCalendarData({ silent: true });
+    if (state.module === "presenter" && state.presenterBulletinServiceId === service.id) {
+      renderCurrentServiceModuleDetail();
+    }
+  }
 }
 
 function canCreatePraiseSong() {
@@ -17869,6 +17910,13 @@ function renderPresenterDetail() {
     return;
   }
 
+  if (state.presenterBulletinServiceId === serviceId && serviceSupportsBulletin(svc)) {
+    refs.detailPane.innerHTML = renderServiceBulletinWorkbench(svc);
+    refreshIcons();
+    updateSaveState();
+    return;
+  }
+
   const dateStr = formatServiceIsoDate(svc);
   const presenterActive = state.presenter.serviceId === serviceId;
   const presenterSlides = presenterSlidesForService(serviceId);
@@ -17881,6 +17929,11 @@ function renderPresenterDetail() {
           <span class="svc-date-text">${escapeHtml(dateStr)}</span>
         </div>
         <div class="svc-header-actions">
+          ${serviceSupportsBulletin(svc) ? `
+            <button class="svc-output-action svc-output-action--quiet" type="button" data-service-bulletin-action="open" data-service-id="${escapeAttr(serviceId)}" aria-label="청년부 주보 열기">
+              <i data-lucide="newspaper"></i>
+              <span>주보</span>
+            </button>` : ""}
           ${renderWorshipModeTabs(serviceId, "presenter")}
         </div>
       </div>
@@ -17896,6 +17949,113 @@ function renderPresenterDetail() {
     fitPresenterChromakeyScripturePreviews(refs.detailPane);
   });
   if (state.module === "presenter") renderServiceList();
+}
+
+function serviceBulletinSectionTitle(item = {}) {
+  return String(item._worshipSectionTitle || item._worshipSectionKey || item.label || "").trim();
+}
+
+function serviceBulletinItemText(item = {}, service = null) {
+  const model = serviceItemEditorModel(item, { service });
+  if (model.scripture) return serviceItemEditorScriptureTitleValue(item, model.parsed, service) || "";
+  const label = String(item.label || "").trim();
+  const labelKey = compactSearchValue(label);
+  if (labelKey === "사도신경" || labelKey === "주기도문" || labelKey === "공동체고백") return label;
+  const text = serviceItemDisplayText(item);
+  const assignee = serviceItemEditableAssigneeValue(item, service);
+  if (!text || compactSearchValue(text) === labelKey) return assignee;
+  return assignee && !text.includes(assignee) ? `${text} · ${assignee}` : text;
+}
+
+function serviceBulletinOrderRows(service) {
+  const groups = new Map();
+  getServiceItems(service.id).forEach((item) => {
+    if (item._isDefault || parseServiceItemMemo(item.memo).hiddenInPresentation) return;
+    const title = serviceBulletinSectionTitle(item);
+    if (!title || title === "준비" || title === "폐회") return;
+    const key = String(item._worshipSectionId || item._worshipSectionKey || title);
+    if (!groups.has(key)) groups.set(key, { title, entries: [] });
+    const text = serviceBulletinItemText(item, service);
+    if (text) groups.get(key).entries.push(text);
+  });
+  return [...groups.values()]
+    .map((group) => ({
+      ...group,
+      entries: [...new Set(group.entries)],
+    }))
+    .filter((group) => group.title && group.entries.length);
+}
+
+function serviceBulletinCalendarRow(service) {
+  return (state.calendarData || []).find((row) => String(row.date || "") === String(service.date || "")) || null;
+}
+
+function serviceBulletinPrayerLeader(service, rows = serviceBulletinOrderRows(service)) {
+  const calendarValue = String(serviceBulletinCalendarRow(service)?.young_adult_prayer || "").trim();
+  if (calendarValue) return calendarValue;
+  const prayerRow = rows.find((row) => compactSearchValue(row.title).includes("대표기도"));
+  return prayerRow?.entries.join(" · ") || "-";
+}
+
+function serviceBulletinSermonSummary(rows = []) {
+  const sermon = rows.find((row) => compactSearchValue(row.title) === "설교");
+  return sermon?.entries.join(" · ") || "설교 내용을 입력해 주세요.";
+}
+
+function renderServiceBulletinWorkbench(service) {
+  const rows = serviceBulletinOrderRows(service);
+  const dateLabel = formatServiceDate(service);
+  const prayerLeader = serviceBulletinPrayerLeader(service, rows);
+  const sermonSummary = serviceBulletinSermonSummary(rows);
+  return `
+    <div class="service-bulletin-workbench">
+      <header class="service-bulletin-toolbar">
+        <div>
+          <span class="service-bulletin-eyebrow">청년부 예배</span>
+          <h2>주보 미리보기</h2>
+        </div>
+        <div class="service-bulletin-toolbar-actions">
+          <button class="icon-btn" type="button" data-service-bulletin-action="close" data-service-id="${escapeAttr(service.id)}" aria-label="프레젠터로 돌아가기"><i data-lucide="arrow-left"></i></button>
+          <button class="svc-output-action" type="button" data-service-bulletin-action="print" data-service-id="${escapeAttr(service.id)}"><i data-lucide="printer"></i><span>인쇄</span></button>
+        </div>
+      </header>
+      <p class="service-bulletin-source-note">예배 순서와 대표기도자는 현재 예배·교회력 데이터를 그대로 사용합니다.</p>
+      <div class="service-bulletin-pages" aria-label="청년부 양면 주보 미리보기">
+        <article class="service-bulletin-page service-bulletin-page--front">
+          <div class="service-bulletin-front-top">
+            <span>${escapeHtml(dateLabel)}</span>
+            <span>${escapeHtml(serviceDisplayTypeName(service))}</span>
+          </div>
+          <div class="service-bulletin-front-welcome">
+            <p>오늘도 청년부 예배에 오신 여러분을 환영하고 축복합니다.</p>
+            <h3>청년부 주보</h3>
+          </div>
+          <div class="service-bulletin-front-footer">
+            <div>
+              <span>이번 주 예배 위원</span>
+              <strong>대표기도 ${escapeHtml(prayerLeader)}</strong>
+            </div>
+            <strong class="service-bulletin-mark">RIA</strong>
+          </div>
+        </article>
+        <article class="service-bulletin-page service-bulletin-page--back">
+          <header class="service-bulletin-back-head">
+            <div><span>WORSHIP ORDER</span><h3>${escapeHtml(dateLabel)}</h3></div>
+            <div><span>예배 위원</span><strong>대표기도 ${escapeHtml(prayerLeader)}</strong></div>
+          </header>
+          <div class="service-bulletin-back-body">
+            <ol class="service-bulletin-order">
+              ${rows.map((row) => `<li><strong>${escapeHtml(row.title)}</strong><span>${escapeHtml(row.entries.join(" · "))}</span></li>`).join("") || `<li><strong>예배 순서</strong><span>순서를 준비해 주세요.</span></li>`}
+            </ol>
+            <section class="service-bulletin-sermon-note">
+              <span>말씀</span>
+              <strong>${escapeHtml(sermonSummary)}</strong>
+              <div class="service-bulletin-note-lines" aria-hidden="true"></div>
+            </section>
+          </div>
+        </article>
+      </div>
+    </div>`;
 }
 
 function renderPresenterDashboard() {
