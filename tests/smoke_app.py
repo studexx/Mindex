@@ -1428,7 +1428,7 @@ def main() -> int:
                         heading: document.querySelector('.service-sidebar-section--recent .service-sidebar-head span')?.textContent.trim() || '',
                         count: services.length,
                         dates,
-                        isDescending: dates.every((date, index) => index === 0 || dates[index - 1] >= date),
+                        isAscending: dates.every((date, index) => index === 0 || dates[index - 1] <= date),
                         staysWithinCurrentChurchWeek: dates.every((date) => date >= today.getTime() && date <= end.getTime()),
                       };
                     })()
@@ -1437,7 +1437,7 @@ def main() -> int:
                 if (
                     home_recent_service_sidebar["heading"] == "최근 예배"
                     and home_recent_service_sidebar["count"] > 0
-                    and home_recent_service_sidebar["isDescending"]
+                    and home_recent_service_sidebar["isAscending"]
                     and home_recent_service_sidebar["staysWithinCurrentChurchWeek"]
                 ):
                     pass_("home-sidebar-current-week-services", json.dumps(home_recent_service_sidebar, ensure_ascii=False))

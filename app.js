@@ -16853,7 +16853,7 @@ function getHomeSidebarRecentServiceShortcuts(limit = 8, baseDate = new Date()) 
   return sortServicesByDate(state.services.filter((service) => {
     const serviceDate = parseLocalDate(service?.date);
     return !Number.isNaN(serviceDate.getTime()) && serviceDate >= start && serviceDate <= end;
-  }), "desc").slice(0, limit);
+  })).slice(0, limit);
 }
 
 function renderServiceList() {
