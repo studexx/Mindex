@@ -617,6 +617,7 @@ const state = {
     outputWarmup: null,
     serviceId: null,
     slides: [],
+    sourceItems: null,
     index: 0,
     safetyBlank: false,
     jumpDraft: "",
@@ -22766,6 +22767,9 @@ function preparePresenterService(serviceId = state.selectedServiceId) {
   }
   state.presenter.serviceId = serviceId;
   state.presenter.slides = slides;
+  // Building the output can normalize projected items into a new array.
+  // Keep the post-build source reference so cached slides never outlive it.
+  state.presenter.sourceItems = state.serviceItems[serviceId] || null;
   state.presenter.index = clampPresenterIndex(state.presenter.index, slides.length);
   if (!slides.length) state.presenter.safetyBlank = false;
   syncServiceMusicWithPresenterContext(serviceId, { render: false });
@@ -22790,6 +22794,7 @@ function refreshPresenterForService(serviceId, options = {}) {
     return;
   }
   state.presenter.slides = buildServicePresenterSlides(serviceId);
+  state.presenter.sourceItems = state.serviceItems[serviceId] || null;
   state.presenter.index = clampPresenterIndex(state.presenter.index, state.presenter.slides.length);
   if (!state.presenter.slides.length) state.presenter.safetyBlank = false;
   syncServiceMusicWithPresenterContext(serviceId, { render: false });
@@ -22833,13 +22838,18 @@ function clampPresenterIndex(index, count) {
 }
 
 function presenterSlidesForService(serviceId) {
-  if (state.presenter.serviceId === serviceId && Array.isArray(state.presenter.slides) && state.presenter.slides.length) {
+  const sourceItems = state.serviceItems[serviceId] || null;
+  if (state.presenter.serviceId === serviceId
+    && state.presenter.sourceItems === sourceItems
+    && Array.isArray(state.presenter.slides)
+    && state.presenter.slides.length) {
     state.presenter.index = clampPresenterIndex(state.presenter.index, state.presenter.slides.length);
     return state.presenter.slides;
   }
   const slides = buildServicePresenterSlides(serviceId);
   if (state.presenter.serviceId === serviceId) {
     state.presenter.slides = slides;
+    state.presenter.sourceItems = state.serviceItems[serviceId] || null;
     state.presenter.index = clampPresenterIndex(state.presenter.index, slides.length);
   }
   return slides;
