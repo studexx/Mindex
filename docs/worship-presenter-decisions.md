@@ -117,11 +117,11 @@ Small visual polish that does not alter behavior does not need an entry.
   보여준다. Fixed/default/shared output은 예시에 넣지 않는다.
 - 금요기도회 메인 찬양은 `찬양 1`부터 `찬양 5`까지 독립 슬롯이다.
   `찬양 1 곡명` 형식은 같은 번호 슬롯에 연결하고, 성경봉독 직전 찬양은
-  별도 `입례찬양` 항목으로 유지한다. 붙여넣기 입력의 `[팀명.날짜]` 같은
+  성경봉독과 설교 사이의 독립 `입례찬양` section/element로 유지한다. 붙여넣기 입력의 `[팀명.날짜]` 같은
   머리말과 `금요기도회입니다!` 같은 마무리말은 무시하며, 곡명 뒤의 조성
   표기(`G`, `D`, `F#m` 등)는 연주 참고용으로만 보고 곡 검색에서 제외한다.
-- 기존 금요 예배의 `성경봉독 전 찬양` 항목은 열 때 `입례찬양`으로
-  정규화한다. `자율기도`는 입력이 필요 없는 고정 순서이므로 missing 상태나
+- 기존 금요 예배의 메인 `찬양` 또는 `성경봉독 전 찬양` 안에 있던 입례찬양은 열 때
+  독립 `입례찬양` section으로 정규화한다. `자율기도`는 입력이 필요 없는 고정 순서이므로 missing 상태나
   입력 필드를 만들지 않는다.
 - 금요기도회의 `기도회` 섹션에는 `기도 찬양 1·2`와 마지막 `자율기도`를
   둔다. `교회소식`은 독립 `광고` 섹션에만 둔다. 기존 데이터의 위치를
@@ -289,6 +289,11 @@ Small visual polish that does not alter behavior does not need an entry.
   `docs/thread-worship-presenter.md`.
 
 ## Presenter Output Rules
+- `참고 화면`은 전역 presenter toolbar가 아니라 `설교` 섹션에만 추가한다.
+  `참고 화면 추가`는 설교 섹션의 마지막에 image element를 만들며, 이름과
+  파일/링크를 채우면 기존 media contract로 clean fullscreen output에 송출한다.
+  따라서 크로마키 예배에서도 참고 이미지는 green background나 lower bar를
+  물려받지 않는다. 영상은 동일한 asset element contract를 확장해 추가한다.
 - `주일오후예배`는 기본적으로 헌신예배 순서를 따른다. `특송`은
   악보(score)가 아니라 일반 praise/lyrics 입력이며, `봉헌찬송`만 score
   output을 사용한다. 헌신예배가 아닌 날에는 `특송`/`봉헌` slot을

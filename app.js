@@ -5847,6 +5847,12 @@ function handlePresenterDetailClick(event) {
     return true;
   }
 
+  const sermonReferenceMediaAdd = event.target.closest("[data-presenter-sermon-reference-media-add]");
+  if (sermonReferenceMediaAdd) {
+    addPresenterSermonReferenceMedia(sermonReferenceMediaAdd.dataset.serviceId || state.selectedServiceId);
+    return true;
+  }
+
   const presenterAction = event.target.closest("[data-presenter-action]");
   if (!presenterAction) return false;
 
@@ -5953,6 +5959,16 @@ function handleDetailKeydown(event) {
     } else if (event.key === "Escape") {
       event.preventDefault();
       void runLiveScriptureAction("clear", liveScriptureInput.dataset.serviceId);
+    }
+    return;
+  }
+
+  const citationReferenceInput = event.target.closest("[data-presenter-citation-reference-input]");
+  if (citationReferenceInput) {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      event.stopPropagation();
+      void appendPresenterCitationReference(citationReferenceInput);
     }
     return;
   }
@@ -8547,6 +8563,52 @@ function runPresenterSectionItemAction(action, index) {
   renderCurrentServiceModuleDetail();
   renderServiceList();
   updateSaveState();
+}
+
+function addPresenterSermonReferenceMedia(serviceId = state.selectedServiceId) {
+  if (!serviceId) return;
+  const items = normalizeServiceItemsInCurrentOrder(getServiceItems(serviceId));
+  const sermonIndexes = items
+    .map((item, index) => ({ item, index }))
+    .filter(({ item }) => String(item?._worshipSectionKey || "").trim() === "sermon");
+  const lastSermon = sermonIndexes.at(-1);
+  if (!lastSermon) {
+    showToast("설교 섹션에서만 참고 화면을 추가할 수 있습니다.", "info");
+    return;
+  }
+
+  const source = lastSermon.item;
+  const insertAt = lastSermon.index + 1;
+  const item = normalizeServiceItem({
+    service_id: serviceId,
+    sort_order: insertAt + 1,
+    label: "참고 화면",
+    raw_title: "",
+    memo: serializeServiceItemMemo({
+      elementType: "image",
+      componentType: "image",
+      inputMode: "asset",
+      asset: { kind: "image", name: "", url: "" },
+    }),
+    _worshipSectionId: source._worshipSectionId || "",
+    _worshipSectionKey: "sermon",
+    _worshipSectionTitle: source._worshipSectionTitle || "설교",
+    _worshipSectionTemplateModified: Boolean(source._worshipSectionTemplateModified),
+    _worshipSectionOrder: source._worshipSectionOrder || 0,
+    _worshipElementOrder: (Number(source._worshipElementOrder) || sermonIndexes.length) + 1,
+    _worshipElementTemplateModified: true,
+  }, insertAt);
+  items.splice(insertAt, 0, item);
+  state.serviceItems[serviceId] = normalizeServiceItemsInCurrentOrder(items);
+  state.selectedServiceItemIndex = insertAt;
+  state.dirty.service = true;
+  refreshPresenterForService(serviceId);
+  renderCurrentServiceModuleDetail();
+  renderServiceList();
+  updateSaveState();
+  requestAnimationFrame(() => {
+    refs.detailPane?.querySelector(`[data-service-item-index="${insertAt}"][data-service-item-field="asset_name"]`)?.focus();
+  });
 }
 
 function updatePresenterSectionField(field) {
@@ -15267,14 +15329,21 @@ function publicFridayTemplate() {
     publicWorshipPraiseStep({
       count: 5,
       required: true,
-      extraElements: [
-        { label: "입례찬양", name: "입례찬양", elementType: "praise" },
-      ],
     }),
     publicWorshipPrayerStep(),
     publicWorshipSpecialSongStep(),
     publicWorshipAnnouncementsStep(),
     publicWorshipScriptureReadingStep(),
+    {
+      label: "입례찬양",
+      name: "입례찬양",
+      required: true,
+      flex: false,
+      sectionKey: "entrance_praise",
+      elements: [
+        { label: "입례찬양", name: "입례찬양", elementType: "praise" },
+      ],
+    },
     publicWorshipSermonStep({ typeId: "friday" }),
     responseSectionTemplate(),
     {
@@ -15435,7 +15504,7 @@ function migrateLegacyFridayTemplateItems(service = null, items = []) {
   return items.map((item) => {
     const sectionKey = String(item?._worshipSectionKey || "").trim();
     const entrancePraiseLabelKey = compactSearchValue(item?.label || "");
-    const isLegacyEntrancePraise = sectionKey === "pre_scripture_praise"
+    const isLegacyEntrancePraise = ["praise", "pre_scripture_praise"].includes(sectionKey)
       && ["성경봉독전찬양", "입례찬양"].includes(entrancePraiseLabelKey);
     const isLegacyPrayerMeeting = sectionKey === "prayer_meeting_praise"
       && compactSearchValue(item?._worshipSectionTitle || "") === "기도찬양";
@@ -15445,9 +15514,9 @@ function migrateLegacyFridayTemplateItems(service = null, items = []) {
       ...item,
       ...(isLegacyEntrancePraise ? {
         label: "입례찬양",
-        _worshipSectionKey: "praise",
-        _worshipSectionTitle: "찬양",
-        _worshipElementOrder: 6,
+        _worshipSectionKey: "entrance_praise",
+        _worshipSectionTitle: "입례찬양",
+        _worshipElementOrder: 1,
       } : {}),
       ...(isLegacyPrayerMeeting ? { _worshipSectionTitle: "기도회" } : {}),
       ...(isLegacyFreePrayer ? {
@@ -16770,6 +16839,23 @@ function getUpcomingServiceShortcuts(limit = 8, baseDate = new Date()) {
   })).slice(0, limit);
 }
 
+function homeSidebarServiceWeekRange(baseDate = new Date()) {
+  const start = new Date(baseDate);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  const daysUntilTuesday = (2 - start.getDay() + 7) % 7;
+  end.setDate(start.getDate() + daysUntilTuesday);
+  return { start, end };
+}
+
+function getHomeSidebarRecentServiceShortcuts(limit = 8, baseDate = new Date()) {
+  const { start, end } = homeSidebarServiceWeekRange(baseDate);
+  return sortServicesByDate(state.services.filter((service) => {
+    const serviceDate = parseLocalDate(service?.date);
+    return !Number.isNaN(serviceDate.getTime()) && serviceDate >= start && serviceDate <= end;
+  }), "desc").slice(0, limit);
+}
+
 function renderServiceList() {
   if (!state.client) {
     refs.songCount.textContent = "";
@@ -16825,7 +16911,9 @@ function renderServiceList() {
         </div>
         ${sidebarPrimary}
       </section>
-      ${q ? "" : renderUpcomingServiceShortcuts()}
+      ${q ? "" : (state.module === "home"
+        ? renderHomeSidebarRecentServiceShortcuts()
+        : renderUpcomingServiceShortcuts())}
     </div>`;
 
   finishListRender();
@@ -16883,6 +16971,19 @@ function renderUpcomingServiceShortcuts() {
     <section class="service-sidebar-section service-sidebar-section--recent">
       <div class="service-sidebar-head">
         <span>다가오는 예배</span>
+        <small>${services.length}</small>
+      </div>
+      ${renderServiceSidebarDateGroups(services)}
+    </section>`;
+}
+
+function renderHomeSidebarRecentServiceShortcuts() {
+  const services = getHomeSidebarRecentServiceShortcuts();
+  if (!services.length) return "";
+  return `
+    <section class="service-sidebar-section service-sidebar-section--recent">
+      <div class="service-sidebar-head">
+        <span>최근 예배</span>
         <small>${services.length}</small>
       </div>
       ${renderServiceSidebarDateGroups(services)}
@@ -20638,6 +20739,71 @@ function updateLiveScriptureDraft(value) {
   state.presenter.liveScripture.draft = String(value || "");
 }
 
+async function appendPresenterCitationReference(input) {
+  const serviceId = String(input?.dataset?.serviceId || state.selectedServiceId || "").trim();
+  const elementId = String(input?.dataset?.presenterCitationElementId || "").trim();
+  const rawValue = String(input?.value || "").trim();
+  if (!serviceId || !elementId || !rawValue) return;
+
+  const service = state.services.find((candidate) => candidate.id === serviceId);
+  const items = getServiceItems(serviceId);
+  const index = items.findIndex((item) => String(item?.id || "").trim() === elementId);
+  const item = items[index];
+  if (!service || !item || !isOptionalCitationScriptureServiceItem(item)) {
+    showToast("인용 구절 항목을 찾지 못했습니다.", "error");
+    return;
+  }
+
+  const addedReferences = normalizeServiceScriptureReferenceList(rawValue);
+  if (!addedReferences.length) {
+    showToast("성경 주소를 확인해 주세요.", "error");
+    return;
+  }
+
+  const memo = clearGeneratedServiceScriptureSlides(item);
+  const existingReferences = serviceItemScriptureReferences(item, memo, service);
+  const references = uniqueList([...existingReferences, ...addedReferences]);
+  memo.scriptureReferences = references;
+  memo.scriptureReference = references[0] || "";
+  memo.scriptureReferencePayloads = normalizeServiceScriptureReferencePayloads(memo.scriptureReferencePayloads, references);
+  memo.slides = [];
+  item.raw_title = formatServiceScriptureReferenceList(references);
+  item.memo = serializeServiceItemMemo(memo);
+  item._worshipElementTemplateModified = true;
+  item._worshipTemplatePlaceholder = false;
+  state.serviceItems[serviceId] = normalizeServiceItemsInCurrentOrder(items);
+  state.dirty.service = true;
+
+  try {
+    await resolveServiceScriptureBeforeSave(serviceId, index);
+    const targetReference = parseBibleReference(addedReferences[0]);
+    const targetIndex = presenterSlidesForService(serviceId).findIndex((slide) => (
+      String(slide?.elementId || "") === elementId
+      && slide?.type === "scripture"
+      && presenterSlideMatchesScriptureReference(slide, targetReference)
+    ));
+    if (targetIndex < 0) {
+      showToast("해당 성구를 찾지 못했습니다.", "error");
+      return;
+    }
+    input.value = "";
+    runPresenterAction("jump", serviceId, { index: targetIndex });
+    scrollPresenterBoardToIndex(serviceId, targetIndex, { force: true });
+    void saveService(serviceId, { renderAfterSave: false, silent: true });
+  } catch (error) {
+    showToast(error.message || "성구를 불러오지 못했습니다.", "error");
+  }
+}
+
+function presenterSlideMatchesScriptureReference(slide = {}, targetReference = null) {
+  if (!targetReference?.book?.code) return false;
+  const slideReference = parseBibleReference(slide?.title || slide?.marker || "");
+  return slideReference?.book?.code === targetReference.book.code
+    && slideReference.chapter === targetReference.chapter
+    && slideReference.verse === targetReference.verse
+    && (slideReference.verseEnd || slideReference.verse) === (targetReference.verseEnd || targetReference.verse);
+}
+
 function emptyLivePraiseState(draft = "") {
   return {
     query: "",
@@ -21221,6 +21387,7 @@ function serviceCanonicalSectionTitle(sectionKey = "") {
     sermon: "설교",
     response_song: "결단",
     pre_scripture_praise: "찬양",
+    entrance_praise: "입례찬양",
     prayer_meeting_praise: "기도회",
     offering: "봉헌",
     announcements: "광고",
@@ -21370,6 +21537,14 @@ function renderPresenterBoardSection(group, activeIndex, serviceId, options = {}
   const firstIndex = group.slides[0]?.slideIndex ?? 0;
   const visibleTitle = group.title || group.label || group.name;
   const interactionLabel = presenterSlideInteractionHint(serviceId, group.name || visibleTitle);
+  const sermonReferenceMediaAction = presenterBoardSectionIsSermon(group) ? `
+        <button class="svc-board-section-add-media" type="button"
+          data-presenter-sermon-reference-media-add
+          data-service-id="${escapeAttr(serviceId)}"
+          aria-label="설교 참고 화면 추가">
+          <i data-lucide="image-plus"></i>
+          <span>참고 화면 추가</span>
+        </button>` : "";
   let previousFormKey = "";
   const subgroupsHtml = group.subgroups.map((subgroup) => {
     const annotated = annotatePresenterFormStarts(subgroup.slides, previousFormKey);
@@ -21393,12 +21568,17 @@ function renderPresenterBoardSection(group, activeIndex, serviceId, options = {}
             ${group.meta ? `<small>${escapeHtml(group.meta)}</small>` : ""}
           </span>
         </button>
+        ${sermonReferenceMediaAction}
       </div>
       <div class="svc-board-subgroups">
         ${subgroupsHtml}
       </div>
       ${renderPresenterNextPreparationButton(serviceId, options.nextService)}
     </section>`;
+}
+
+function presenterBoardSectionIsSermon(group = {}) {
+  return (group?.slides || []).some(({ slide }) => String(slide?.sectionKey || "").trim() === "sermon");
 }
 
 function presenterBoardSectionEditKey(group = {}) {
@@ -21591,10 +21771,18 @@ function renderPresenterSlideThumb(slide, slideIndex, activeIndex, serviceId, fo
         aria-label="${escapeAttr(visibleFormLabel)}">
         ${escapeHtml(visibleFormLabel)}
       </button>` : "";
+  const citationReferenceInput = (slide?.liveScriptureControl || (slide?.autoTrailingBlank && slide?.citationQuickInsert)) ? `
+        <input class="svc-slide-citation-reference-input" type="text"
+          data-presenter-citation-reference-input
+          data-service-id="${escapeAttr(serviceId)}"
+          data-presenter-citation-element-id="${escapeAttr(slide.elementId || "")}"
+          placeholder="권 장:절"
+          aria-label="인용 구절 바로 추가" />` : "";
   return `
     <span class="svc-slide-thumb-wrap${active ? " active" : ""}${selected ? " selected" : ""}${hidden ? " hidden" : ""}${visibleFormLabel ? " has-form-label" : ""}">
       <span class="svc-slide-thumb-meta">
         <span class="svc-slide-thumb-no" aria-hidden="true">${slideNumber}</span>
+        ${citationReferenceInput}
         ${hidden ? `<span class="svc-slide-hidden-badge">숨김</span>` : ""}
         ${formBadge}
       </span>
@@ -22969,6 +23157,7 @@ function presenterOptionalCitationLiveControlSlide(item = {}, section = {}, inde
     marker: "",
     text: "",
     liveScriptureControl: true,
+    citationQuickInsert: true,
     skipTrailingBlank: true,
     sort: index,
   };

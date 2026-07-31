@@ -1370,6 +1370,8 @@ def main() -> int:
                 else:
                     fail("service-sidebar-section-label-gap", json.dumps(service_sidebar_gap, ensure_ascii=False))
 
+                page.evaluate("switchModule('service')")
+                page.wait_for_function("() => document.body.dataset.module === 'service'", timeout=5000)
                 upcoming_service_sidebar = page.evaluate(
                     """
                     (() => {
@@ -1403,6 +1405,44 @@ def main() -> int:
                     pass_("upcoming-service-sidebar-order", json.dumps(upcoming_service_sidebar, ensure_ascii=False))
                 else:
                     fail("upcoming-service-sidebar-order", json.dumps(upcoming_service_sidebar, ensure_ascii=False))
+
+                page.evaluate("goHome()")
+                page.wait_for_function("() => document.body.dataset.module === 'home'", timeout=5000)
+                home_recent_service_sidebar = page.evaluate(
+                    """
+                    (() => {
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+                      const end = new Date(today);
+                      end.setDate(today.getDate() + ((2 - today.getDay() + 7) % 7));
+                      const cards = [...document.querySelectorAll('.service-sidebar-section--recent [data-open-service]')];
+                      const services = cards
+                        .map((card) => state.services.find((service) => service.id === card.dataset.openService))
+                        .filter(Boolean);
+                      const dates = services.map((service) => {
+                        const value = parseLocalDate(service.date);
+                        value.setHours(0, 0, 0, 0);
+                        return value.getTime();
+                      });
+                      return {
+                        heading: document.querySelector('.service-sidebar-section--recent .service-sidebar-head span')?.textContent.trim() || '',
+                        count: services.length,
+                        dates,
+                        isDescending: dates.every((date, index) => index === 0 || dates[index - 1] >= date),
+                        staysWithinCurrentChurchWeek: dates.every((date) => date >= today.getTime() && date <= end.getTime()),
+                      };
+                    })()
+                    """
+                )
+                if (
+                    home_recent_service_sidebar["heading"] == "최근 예배"
+                    and home_recent_service_sidebar["count"] > 0
+                    and home_recent_service_sidebar["isDescending"]
+                    and home_recent_service_sidebar["staysWithinCurrentChurchWeek"]
+                ):
+                    pass_("home-sidebar-current-week-services", json.dumps(home_recent_service_sidebar, ensure_ascii=False))
+                else:
+                    fail("home-sidebar-current-week-services", json.dumps(home_recent_service_sidebar, ensure_ascii=False))
 
                 page.locator("[data-service-list]").first.click()
                 page.wait_for_selector(".service-date-list", timeout=5000)
@@ -2710,10 +2750,12 @@ def main() -> int:
                             "monthlyDefaultLeader": "",
                         }
                         and template_terms["fridayScaffold"]["sections"][-2:] == ["결단", "기도회"]
-                        and "입례찬양" not in template_terms["fridayScaffold"]["sections"]
+                        and template_terms["fridayScaffold"]["sections"].index("성경봉독")
+                            < template_terms["fridayScaffold"]["sections"].index("입례찬양")
+                            < template_terms["fridayScaffold"]["sections"].index("설교")
                         and any(
                             item["label"] == "입례찬양"
-                            and item["sectionKey"] == "praise"
+                            and item["sectionKey"] == "entrance_praise"
                             for item in template_terms["fridayScaffold"]["rawTitles"]
                         )
                         and [item for item in template_terms["fridayScaffold"]["labels"] if item.startswith("찬양 ")] == [
@@ -4325,6 +4367,7 @@ def main() -> int:
                               citationRawTitle: citation.raw_title || '',
                               citationSlideCount: citationSlides.length,
                               citationSlideReferences: [...new Set(citationSlides.map((slide) => slide.title))],
+                              citationQuickInsert: citationSlides.every((slide) => slide.citationQuickInsert === true),
                               citationMemoRoundTrip: citationMemoRoundTrip.scriptureReferences || [],
                               citationConfigReferences: citationConfig.scriptureReferences || [],
                               draftCleared: !state.presenterPreparationDrafts[service.id],
@@ -4408,7 +4451,7 @@ def main() -> int:
                             "주 내 소망은 주 더 알기 원합니다", "오직 주의 사랑에 매여", "내 삶의 이유라"
                         ]
                         and presenter_preparation_paste["fridayInput"]["legacyEntranceLabel"] == "입례찬양"
-                        and presenter_preparation_paste["fridayInput"]["legacyEntranceSection"] == "praise"
+                        and presenter_preparation_paste["fridayInput"]["legacyEntranceSection"] == "entrance_praise"
                         and presenter_preparation_paste["fridayInput"]["legacyPrayerMeetingTitle"] == "기도회"
                         and presenter_preparation_paste["fridayInput"]["freePrayerSection"] == "prayer_meeting_praise"
                         and presenter_preparation_paste["fridayInput"]["freePrayerEditable"] is False
@@ -4421,6 +4464,7 @@ def main() -> int:
                         ]
                         and presenter_preparation_paste["citationRawTitle"] == "렘 3:22; 마 3:11; 눅 24:49; 행 2:4; 고후 10:4; 롬 8:35–37; 살전 4:3; 벧전 1:14–15; 히 4:12; 엡 5:26; 요일 1:7; 행 15:8–9; 눅 11:13; 롬 8:30; 마 5:48; 롬 13:10"
                         and presenter_preparation_paste["citationSlideCount"] == 20
+                        and presenter_preparation_paste["citationQuickInsert"] is True
                         and len(presenter_preparation_paste["citationSlideReferences"]) == 16
                         and presenter_preparation_paste["citationSlideReferences"][:4] == ["예레미야 3:22", "마태복음 3:11", "누가복음 24:49", "사도행전 2:4"]
                         and presenter_preparation_paste["citationMemoRoundTrip"] == presenter_preparation_paste["citationReferences"]

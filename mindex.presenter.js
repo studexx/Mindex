@@ -1645,6 +1645,7 @@ function buildPresenterScriptureTextSlides(item, section, index, service = null)
       referenceRange: verse.referenceRange || payload.referenceRange || "",
       translationLabel: verse.translationLabel || payload.translationLabel || "",
       text: citation ? presenterCitationScriptureText(verse, payload, context) : verseText,
+      citationQuickInsert: citation,
       scriptureReadingFinal: readingFinal,
       ...(readingForm ? { outputContext: "clean" } : {}),
       sort: index + verseIndex / 100,

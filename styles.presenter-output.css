@@ -613,7 +613,7 @@
   line-height: 1.08;
   padding-block: 1.35cqh;
 }
-:is(.svc-slide-mini-output, .presenter-output-root):not(.no-chromakey) .presenter-slide--song-title:is([data-section-key="praise"], [data-section-key="pre_scripture_praise"], [data-section-key="prayer_meeting_praise"], [data-section-key="special_song"]) > .presenter-slide-text {
+:is(.svc-slide-mini-output, .presenter-output-root):not(.no-chromakey) .presenter-slide--song-title:is([data-section-key="praise"], [data-section-key="pre_scripture_praise"], [data-section-key="entrance_praise"], [data-section-key="prayer_meeting_praise"], [data-section-key="special_song"]) > .presenter-slide-text {
   font-size: var(--presenter-size-song-title);
   font-weight: var(--presenter-weight-display);
   line-height: 1.04;
@@ -626,7 +626,7 @@
   font-size: var(--presenter-size-body);
   font-weight: var(--presenter-weight-display);
 }
-:is(.svc-slide-mini-output, .presenter-output-root):not(.no-chromakey) .presenter-slide--song-title:is([data-section-key="praise"], [data-section-key="pre_scripture_praise"], [data-section-key="prayer_meeting_praise"], [data-section-key="special_song"]) .presenter-section-song-title-name {
+:is(.svc-slide-mini-output, .presenter-output-root):not(.no-chromakey) .presenter-slide--song-title:is([data-section-key="praise"], [data-section-key="pre_scripture_praise"], [data-section-key="entrance_praise"], [data-section-key="prayer_meeting_praise"], [data-section-key="special_song"]) .presenter-section-song-title-name {
   font-size: var(--presenter-size-song-title);
   font-weight: var(--presenter-weight-display);
 }
@@ -675,7 +675,7 @@
 .presenter-output-root.no-chromakey .presenter-slide--lyrics[data-element-type="praise"] .presenter-slide-text {
   font-size: var(--presenter-size-lyrics);
 }
-.presenter-output-root.no-chromakey .presenter-slide--song-title:is([data-section-key="praise"], [data-section-key="pre_scripture_praise"], [data-section-key="prayer_meeting_praise"], [data-section-key="special_song"]) .presenter-slide-text {
+.presenter-output-root.no-chromakey .presenter-slide--song-title:is([data-section-key="praise"], [data-section-key="pre_scripture_praise"], [data-section-key="entrance_praise"], [data-section-key="prayer_meeting_praise"], [data-section-key="special_song"]) .presenter-slide-text {
   font-size: var(--presenter-size-song-title);
   font-weight: var(--presenter-weight-display);
 }
@@ -716,9 +716,20 @@
   font-size: var(--presenter-size-body);
   font-weight: var(--presenter-weight-body);
 }
-.presenter-output-root.no-chromakey .presenter-slide--song-title:is([data-section-key="praise"], [data-section-key="pre_scripture_praise"], [data-section-key="prayer_meeting_praise"], [data-section-key="special_song"]) .presenter-section-song-title-name {
+.presenter-output-root.no-chromakey .presenter-slide--song-title:is([data-section-key="praise"], [data-section-key="pre_scripture_praise"], [data-section-key="entrance_praise"], [data-section-key="prayer_meeting_praise"], [data-section-key="special_song"]) .presenter-section-song-title-name {
   font-size: var(--presenter-size-song-title);
   font-weight: var(--presenter-weight-display);
+}
+/* Song titles stay centered as their length grows. The character estimate is
+   rendered with each title, so ordinary titles retain the display scale. */
+.presenter-output-root.no-chromakey .presenter-slide--song-title .presenter-section-song-title-name {
+  font-size: clamp(
+    calc(72 * var(--presenter-stage-unit)),
+    calc(90cqw / var(--line-chars, 1)),
+    var(--presenter-size-song-title)
+  );
+  text-align: center;
+  transform: translateZ(0);
 }
 .presenter-output-root.no-chromakey .presenter-slide--scripture .presenter-slide-text span {
   font-size: var(--presenter-scripture-clean-size);

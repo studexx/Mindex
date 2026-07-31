@@ -3631,7 +3631,7 @@ def main() -> int:
                       outputRoot.id = 'presenterOutputRoot';
                       outputRoot.className = 'presenter-output-root no-chromakey';
                       document.body.appendChild(outputRoot);
-                      const result = ['praise', 'pre_scripture_praise', 'prayer_meeting_praise'].map((sectionKey) => {
+                      const result = ['praise', 'pre_scripture_praise', 'entrance_praise', 'prayer_meeting_praise'].map((sectionKey) => {
                         renderPresenterOutput({
                           serviceId: '__smoke_fullscreen_song_title_output_font__',
                           serviceType: 'sunday2', chromakey: false, outputTheme: 'formal', backgroundImage: '',
@@ -3656,6 +3656,45 @@ def main() -> int:
                     pass_("presenter-fullscreen-song-title-output-font", json.dumps(fullscreen_song_title_output_font_state, ensure_ascii=False))
                 else:
                     fail("presenter-fullscreen-song-title-output-font", json.dumps(fullscreen_song_title_output_font_state, ensure_ascii=False))
+
+                fullscreen_long_song_title_fit_state = page.evaluate(
+                    """
+                    () => {
+                      document.getElementById('presenterOutputRoot')?.remove();
+                      const outputRoot = document.createElement('main');
+                      outputRoot.id = 'presenterOutputRoot';
+                      outputRoot.className = 'presenter-output-root no-chromakey';
+                      document.body.appendChild(outputRoot);
+                      renderPresenterOutput({
+                        serviceId: '__smoke_fullscreen_long_song_title__',
+                        serviceType: 'friday', chromakey: false, outputTheme: 'formal', backgroundImage: '',
+                        slides: [{ id: '__smoke_fullscreen_long_song_title_slide__', elementType: PRESENTER_ELEMENT_TYPES.PRAISE,
+                          layout: PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT, type: 'song-title',
+                          title: '주 내 소망은 주 더 알기 원합니다',
+                          text: '♪ 주 내 소망은 주 더 알기 원합니다', sectionKey: 'praise' }],
+                        index: 0, safetyBlank: false,
+                      });
+                      const name = outputRoot.querySelector('.presenter-section-song-title-name');
+                      const style = name ? getComputedStyle(name) : null;
+                      const result = {
+                        fontSize: style ? Number.parseFloat(style.fontSize) : 0,
+                        scrollWidth: name?.scrollWidth || 0,
+                        clientWidth: name?.clientWidth || 0,
+                        textAlign: style?.textAlign || '',
+                      };
+                      outputRoot.remove();
+                      return result;
+                    }
+                    """
+                )
+                if (
+                    72 <= fullscreen_long_song_title_fit_state["fontSize"] < 152
+                    and fullscreen_long_song_title_fit_state["scrollWidth"] <= fullscreen_long_song_title_fit_state["clientWidth"]
+                    and fullscreen_long_song_title_fit_state["textAlign"] == "center"
+                ):
+                    pass_("presenter-fullscreen-long-song-title-fit", json.dumps(fullscreen_long_song_title_fit_state, ensure_ascii=False))
+                else:
+                    fail("presenter-fullscreen-long-song-title-fit", json.dumps(fullscreen_long_song_title_fit_state, ensure_ascii=False))
 
                 offering_song_title_output_font_state = page.evaluate(
                     """
