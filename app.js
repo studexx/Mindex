@@ -6151,7 +6151,12 @@ function handleDetailInput(event) {
 
   const serviceField = event.target.closest("[data-service-item-field]");
   if (serviceField) {
-    if (isDeferredServiceTextInput(serviceField)) return;
+    if (isDeferredServiceTextInput(serviceField)) {
+      if (isDeferredServiceScriptureReferenceInput(serviceField)) {
+        scheduleDeferredServiceScriptureReferenceCommit(serviceField);
+      }
+      return;
+    }
     updateServiceItemField(serviceField);
     if (serviceField.matches("select")) saveCommittedServiceItem(serviceField.dataset.serviceItemIndex, serviceField.dataset.serviceId || state.selectedServiceId);
     return;
@@ -6817,6 +6822,35 @@ function updateNewServiceFormField(field) {
 function isDeferredServiceTextInput(field) {
   if (!field?.matches?.('input[type="text"][data-service-item-field], input:not([type])[data-service-item-field]')) return false;
   return !field.hasAttribute("data-service-song-required");
+}
+
+function isDeferredServiceScriptureReferenceInput(field) {
+  if (!isDeferredServiceTextInput(field) || field.dataset.serviceItemField !== "raw_title") return false;
+  const serviceId = field.dataset.serviceId || state.selectedServiceId;
+  const item = getServiceItems(serviceId)[Number(field.dataset.serviceItemIndex)];
+  return Boolean(item && isScriptureBodyServiceItem(item));
+}
+
+const deferredServiceScriptureReferenceTimers = new Map();
+
+function scheduleDeferredServiceScriptureReferenceCommit(field) {
+  const serviceId = field.dataset.serviceId || state.selectedServiceId;
+  const index = Number(field.dataset.serviceItemIndex);
+  if (!serviceId || !Number.isFinite(index)) return;
+  const key = `${serviceId}:${index}`;
+  const existingTimer = deferredServiceScriptureReferenceTimers.get(key);
+  if (existingTimer) window.clearTimeout(existingTimer);
+
+  const commit = () => {
+    deferredServiceScriptureReferenceTimers.delete(key);
+    if (!field.isConnected) return;
+    commitDeferredServiceTextInput(field, { save: true });
+  };
+  if (!String(field.value || "").trim()) {
+    commit();
+    return;
+  }
+  deferredServiceScriptureReferenceTimers.set(key, window.setTimeout(commit, 520));
 }
 
 function commitDeferredServiceTextInput(field, options = {}) {
