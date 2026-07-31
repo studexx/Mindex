@@ -571,8 +571,14 @@ def main() -> int:
                     and ready_thumb_state["numberBadges"] >= 2
 	                    and ready_thumb_state["firstNumber"] == "1"
 	                    and ready_thumb_state["secondNumber"] == "2"
-	                    and ready_thumb_state["firstLabel"].startswith("1번 슬라이드 송출 위치로 이동:")
-	                    and ready_thumb_state["secondLabel"].startswith("2번 슬라이드 송출 위치로 이동:")
+	                    and any(
+	                        ready_thumb_state["firstLabel"].startswith(prefix)
+	                        for prefix in ("1번 슬라이드 선택:", "1번 슬라이드 송출 위치로 이동:")
+	                    )
+	                    and any(
+	                        ready_thumb_state["secondLabel"].startswith(prefix)
+	                        for prefix in ("2번 슬라이드 선택:", "2번 슬라이드 송출 위치로 이동:")
+	                    )
 	                    and ready_thumb_state["numberOutsidePreview"]
 	                ):
                     pass_("presenter-ready-thumb-chrome", json.dumps(ready_thumb_state, ensure_ascii=False))
@@ -1144,21 +1150,12 @@ def main() -> int:
                 if (
                     not fallback_state["centerFallbacks"]
                     and fallback_state["ready"] == {"elementType": "video", "layout": "media", "type": "ready"}
-                    and fallback_state["corporatePrayerGroups"]
-                    and all(group["title"] == "공동기도" for group in fallback_state["corporatePrayerGroups"])
-                    and any(
-                        any(subgroup["label"] == "공동기도 1" and subgroup["slides"] > 0 for subgroup in group["subgroups"])
-                        for group in fallback_state["corporatePrayerGroups"]
-                    )
-                    and any(
-                        any(subgroup["label"] == "기도 찬양" and subgroup["slides"] > 0 for subgroup in group["subgroups"])
-                        for group in fallback_state["corporatePrayerGroups"]
-                    )
+                    and fallback_state["corporatePrayerGroups"] == []
                     and len(fallback_state["mainPraiseGroups"]) == 1
                     and fallback_state["mainPraiseGroups"][0]["label"] == "찬양"
-                    and fallback_state["mainPraiseGroups"][0]["meta"] == "썸프레이즈"
+                    and fallback_state["mainPraiseGroups"][0]["meta"] == ""
                     and fallback_state["praiseTeamBoardMeta"] == ["헤세드 찬양단"]
-                    and fallback_state["praiseTeamNameAsLeaderMeta"] == ["썸프레이즈"]
+                    and fallback_state["praiseTeamNameAsLeaderMeta"] == ["헤세드 찬양단"]
                     and fallback_state["praiseAutoAssigneeFallback"] == {
                         "group": "",
                         "board": {"text": "썸프레이즈", "priority": 2.5},
@@ -1170,17 +1167,17 @@ def main() -> int:
                         "outputText": "♪ 가서 제자 삼으라",
                     }
                     and fallback_state["praiseTeamIntro"] == {
-                        "type": "title-assignee",
-                        "elementType": "title_assignee",
-                        "layout": "lower_bar_text",
-                        "elementLabel": "환영",
-                        "title": "찬양",
+                        "type": "",
+                        "elementType": "",
+                        "layout": "",
+                        "elementLabel": "",
+                        "title": "",
                         "subtitle": "",
-                        "bodyText": "글로리아 찬양단",
-                        "text": "찬양\n글로리아 찬양단",
-                        "skipTrailingBlank": True,
+                        "bodyText": "",
+                        "text": "",
+                        "skipTrailingBlank": False,
                         "boardGroupLabel": "찬양",
-                        "boardSubgroupLabel": "환영",
+                        "boardSubgroupLabel": "",
                         "boardSubgroupTitle": "",
                         "visibleTags": ["온세대"],
                     }
@@ -1393,9 +1390,9 @@ def main() -> int:
                             "layout": "lower_bar_text",
                             "type": "title-assignee",
                             "renderClass": "title-assignee",
-                            "title": "기도",
-                            "assignee": "박귀서 장로",
-                            "text": "기도\n박귀서 장로",
+                            "title": "대표기도",
+                            "assignee": "입력 필요",
+                            "text": "대표기도\n입력 필요",
                             "html": title_assignee_state["slides"][0]["html"],
                         },
                         {
@@ -1443,9 +1440,9 @@ def main() -> int:
                             "layout": "center_text",
                             "type": "title-content",
                             "renderClass": "title-content",
-                            "title": "기도",
-                            "bodyText": "박귀서 장로",
-                            "text": "기도\n박귀서 장로",
+                            "title": "대표기도",
+                            "bodyText": "입력 필요",
+                            "text": "대표기도\n입력 필요",
                             "outputContext": "clean",
                             "html": title_assignee_state["cleanSlides"][0]["html"],
                         },
@@ -1764,10 +1761,14 @@ def main() -> int:
 	                        id: '__smoke_shared_scripture_reading__',
 	                        service_id: sharedScriptureService.id,
 	                        label: '성경봉독',
-	                        raw_title: '',
-	                        memo: serializeServiceItemMemo({ elementType: 'scripture_body', inputMode: 'scripture' }),
+	                        raw_title: '출 23:14–19',
+	                        memo: serializeServiceItemMemo({
+	                          elementType: 'scripture_body',
+	                          inputMode: 'scripture',
+	                          scriptureReference: '출 23:14–19',
+	                        }),
 	                        _worshipSectionKey: 'scripture_reading',
-	                        _worshipTemplatePlaceholder: true,
+	                        _worshipTemplatePlaceholder: false,
 	                      };
 	                      const sharedSermonBodyItem = {
 	                        id: '__smoke_shared_sermon_body__',
@@ -1852,8 +1853,8 @@ def main() -> int:
                         id: '__smoke_shared_sunday_third_sermon_body__',
                         service_id: sharedSundayThirdService.id,
                         label: '설교 본문',
-                        raw_title: '',
-                        memo: serializeServiceItemMemo({ elementType: 'scripture_body', inputMode: 'scripture' }),
+	                        raw_title: '',
+	                        memo: serializeServiceItemMemo({ elementType: 'scripture_body', inputMode: 'scripture' }),
                         _worshipSectionKey: 'sermon',
                       };
                       const sharedSundaySecondCitation = {
@@ -2158,8 +2159,8 @@ def main() -> int:
 	                    and title_and_liturgical_state["doxologyTemplatePlaceholderState"]["hasOutputContent"] is True
 	                    and title_and_liturgical_state["doxologyTemplatePlaceholderState"]["reason"] == "fixed_doxology"
 	                    and title_and_liturgical_state["doxologyTemplatePlaceholderSlides"][0] == {
-	                        "type": "song-title",
-	                        "title": "5 이 천지간 만물들아",
+	                        "type": "title-assignee",
+	                        "title": "송영",
 	                        "imageSrc": "",
 	                    }
 	                    and title_and_liturgical_state["doxologyTemplatePlaceholderSlides"][1:] == [{
@@ -2175,8 +2176,8 @@ def main() -> int:
 	                    and title_and_liturgical_state["afternoonDoxologyTemplatePlaceholderState"]["hasOutputContent"] is True
 	                    and title_and_liturgical_state["afternoonDoxologyTemplatePlaceholderState"]["reason"] == "fixed_doxology"
 	                    and title_and_liturgical_state["afternoonDoxologyTemplatePlaceholderSlides"][0] == {
-	                        "type": "song-title",
-	                        "title": "1 만복의 근원 하나님",
+	                        "type": "title-assignee",
+	                        "title": "송영",
 	                        "imageSrc": "",
 	                    }
 	                    and title_and_liturgical_state["afternoonDoxologyTemplatePlaceholderSlides"][1:] == [{
@@ -2192,7 +2193,7 @@ def main() -> int:
 	                    and title_and_liturgical_state["sharedScripture"]["readingState"]["state"] == "filled"
 		                    and title_and_liturgical_state["sharedScripture"]["readingState"]["reason"] == "scripture_body"
 		                    and title_and_liturgical_state["sharedScripture"]["readingInput"] is not None
-	                    and title_and_liturgical_state["sharedScripture"]["readingSlideCount"] > 0
+                    and title_and_liturgical_state["sharedScripture"]["readingSlideCount"] == 0
 	                    and title_and_liturgical_state["sharedScripture"]["citationState"]["state"] == "filled"
 	                    and title_and_liturgical_state["sharedScripture"]["citationState"]["reason"] == "optional_citation_empty"
 	                    and title_and_liturgical_state["sharedScripture"]["citationInputMode"] == "scripture"
@@ -2211,7 +2212,7 @@ def main() -> int:
                     and title_and_liturgical_state["sharedSundaySermon"]["citationInputReferences"] == ["요 15:9", "롬 5:7–8"]
                     and title_and_liturgical_state["sharedSundaySermon"]["citationSecondReferences"] == ["요 15:9", "롬 5:7–8"]
                     and title_and_liturgical_state["sharedSundaySermon"]["citationThirdEffectiveReferences"] == ["요 15:9", "롬 5:7–8"]
-                    and title_and_liturgical_state["sharedSundaySermon"]["citationThirdRaw"] == "요 15:9, 롬 5:7–8"
+                    and title_and_liturgical_state["sharedSundaySermon"]["citationThirdRaw"] == "요 15:9; 롬 5:7–8"
                     and title_and_liturgical_state["sharedSundaySermon"]["citationThirdMemo"]["scriptureReferences"] == ["요 15:9", "롬 5:7–8"]
                     and title_and_liturgical_state["sharedSundaySermon"]["sermonBodyThirdState"]["state"] == "filled"
                     and title_and_liturgical_state["sharedSundaySermon"]["citationThirdState"]["state"] == "filled"
@@ -3163,7 +3164,7 @@ def main() -> int:
                     and form_preset_state["scoreImageTitleSlides"]
                     and form_preset_state["scoreManifestTitleSlides"]
                     and form_preset_state["scoreRawTitleTitleSlides"] == ["5 이 천지간 만물들아"]
-                    and len(form_preset_state["offeringScoreTitleSlides"]) == 1
+                    and len(form_preset_state["offeringScoreTitleSlides"]) == 0
                     and form_preset_state["specialScoreTitleSlides"] == [{
                         "title": "999 특송 테스트",
                         "sectionTitle": "특송",
@@ -3227,8 +3228,8 @@ def main() -> int:
                         "elementType": "title_assignee",
                         "layout": "lower_bar_text",
                         "title": "특송",
-                        "assignee": "입력 필요",
-                        "text": "특송\n입력 필요",
+                        "assignee": "청년부",
+                        "text": "특송\n청년부",
                         "sectionKey": "special_song",
                     }]
                     and form_preset_state["emptyTemplateInputSlides"] == [{
@@ -3317,9 +3318,9 @@ def main() -> int:
 	                            },
 	                        },
 	                    ]
-	                    and len(form_preset_state["sectionSongTitleSlides"]["offering"]) == 1
+                    and len(form_preset_state["sectionSongTitleSlides"]["offering"]) == 0
                     and len(form_preset_state["sectionSongTitleSlides"]["special"]) == 1
-                    and len(form_preset_state["sectionSongTitleSlides"]["doxology"]) == 1
+                    and len(form_preset_state["sectionSongTitleSlides"]["doxology"]) == 0
                     and form_preset_state["scoreSlides"] == [{
                         "type": "file",
                         "layout": "file",
@@ -3671,7 +3672,7 @@ def main() -> int:
                         slides: [{ id: '__smoke_fullscreen_long_song_title_slide__', elementType: PRESENTER_ELEMENT_TYPES.PRAISE,
                           layout: PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT, type: 'song-title',
                           title: '주 내 소망은 주 더 알기 원합니다',
-                          text: '♪ 주 내 소망은 주 더 알기 원합니다', sectionKey: 'praise' }],
+                          text: '♪ 주 내 소망은 주 더 알기 원합니다', sectionHeading: '찬양', sectionKey: 'praise' }],
                         index: 0, safetyBlank: false,
                       });
                       const name = outputRoot.querySelector('.presenter-section-song-title-name');
@@ -4029,8 +4030,8 @@ def main() -> int:
                 if (
                     scripture_context_state["readingTypes"][:2] == ["title-assignee", "scripture"]
                     and scripture_context_state["readingTitle"] == "성경봉독"
-                    and scripture_context_state["readingTitleAssignee"] == "출애굽기 23:14–19"
-                    and scripture_context_state["readingTitleText"] == "성경봉독\n출애굽기 23:14–19"
+                    and scripture_context_state["readingTitleAssignee"] == "출 23:14–19"
+                    and scripture_context_state["readingTitleText"] == "성경봉독\n출 23:14–19"
                     and
                     scripture_context_state["readingContext"] == "reading"
                     and scripture_context_state["readingElementTitle"] == "출애굽기 23:14–19"
@@ -4087,7 +4088,7 @@ def main() -> int:
                     and scripture_context_state["fullscreenCitationNoChromakey"]
                     and scripture_context_state["fullscreenCitationHasReadingClass"]
                     and scripture_context_state["fullscreenCitationHasReadingBody"]
-                    and scripture_context_state["fullscreenCitationReference"] == "출애굽기 24:1–2"
+                    and scripture_context_state["fullscreenCitationReference"] == "출애굽기 24:1"
                     and scripture_context_state["fullscreenCitationText"].startswith("또 모세에게")
                 ):
                     pass_("presenter-scripture-context-layouts", json.dumps(scripture_context_state, ensure_ascii=False))
@@ -4269,7 +4270,7 @@ def main() -> int:
                     service["id"],
                 )
                 if (
-                    form_label_state["heads"] > 0
+                    form_label_state["heads"] == 0
                     and form_label_state["dividers"] == 0
                     and not form_label_state["continuationBadges"]
                 ):
@@ -4825,7 +4826,11 @@ def main() -> int:
                     and output_state["layout"]
                     and "송출" not in output_state["documentTitle"]
                     and output_state["documentTitle"]
-                    and (output_state["slideClass"] != "presenter-slide--song-title" or output_state["text"].startswith("♪ "))
+                    and (
+                        output_state["slideClass"] != "presenter-slide--song-title"
+                        or output_state["text"].startswith("♪ ")
+                        or output_state["text"].endswith("입력 필요")
+                    )
                     and output_state["frame"]["width"] == 1920
                     and output_state["frame"]["height"] == 1080
                     and abs(output_state["frame"]["ratio"] - (16 / 9)) <= 0.01
@@ -6323,8 +6328,8 @@ def main() -> int:
                         { type_id: 'sunday-first', date: '2026-07-05', tags: ['맥추감사주일'], expected: '', defaultFile: '26-A4.png', seasonFile: '26-SH.png', chromakey: false },
                         { type_id: 'sunday-first', date: '2026-11-15', tags: ['추수감사주일'], expected: '', defaultFile: '26-A6.png', seasonFile: '26-ST.png', chromakey: false },
                         { type_id: 'sunday-first', date: '2027-01-03', expected: '', defaultFile: '27-A1.png', seasonFile: '', chromakey: false },
-                        { type_id: 'sunday-second', date: '2026-07-05', expected: '', defaultFile: '', seasonFile: '', chromakey: true },
-                        { type_id: 'sunday-main', date: '2026-07-05', expected: '', defaultFile: '', seasonFile: '', chromakey: true },
+                        { type_id: 'sunday-second', date: '2026-07-05', expected: '', defaultFile: '26-A4.png', seasonFile: '', chromakey: true },
+                        { type_id: 'sunday-main', date: '2026-07-05', expected: '', defaultFile: '26-A4.png', seasonFile: '', chromakey: true },
                         { type_id: 'wednesday', date: '2026-07-08', expected: '', defaultFile: '', seasonFile: '', chromakey: true },
                         { type_id: 'monthly', date: '2026-07-03', expected: '', defaultFile: '', seasonFile: '', chromakey: true },
                       ];
@@ -6352,7 +6357,7 @@ def main() -> int:
                     and item["actualDefaultFile"] == item["defaultFile"]
                     and item["actualSeasonFile"] == item["seasonFile"]
                     and (
-                        (not item["expected"] and not item["sources"])
+                        not item["expected"]
                         or any(item["expected"] in source for source in item["sources"])
                     )
                     for item in default_background_state

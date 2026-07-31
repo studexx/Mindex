@@ -19536,10 +19536,11 @@ function isSermonScriptureBodyServiceItem(item = {}) {
   const label = compactSearchValue(item?.label || "");
   const memo = parseServiceItemMemo(item?.memo);
   const elementType = serviceMemoElementType(memo);
+  const citation = isOptionalCitationScriptureServiceItem(item);
   // A projected or newly pasted item can briefly lack its section metadata.
   // Its explicit sermon-body label must still retain the scripture workflow.
   return ["설교본문", "성경본문", "말씀본문"].includes(label)
-    || (sectionKey === "sermon" && (elementType === "scripture_body" || label === "본문"));
+    || (sectionKey === "sermon" && !citation && (elementType === "scripture_body" || label === "본문"));
 }
 
 function isOptionalCitationScriptureServiceItem(item = {}) {
