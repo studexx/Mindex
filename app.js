@@ -5212,7 +5212,7 @@ async function saveSongVersions(song) {
 
 async function ensureCanonicalSongRow(song) {
   const title = cleanSongTitleForSave(song) || "제목 없는 찬양";
-  const normalizedTitle = normalizeCanonicalTitle(title);
+  const normalizedTitle = await resolveCanonicalNormalizedTitle(song, title);
   const payload = {
     id: song.id,
     title,
@@ -5248,15 +5248,80 @@ async function ensureCanonicalSongRow(song) {
   return song._canonicalSongId;
 }
 
+async function resolveCanonicalNormalizedTitle(song, title) {
+  const baseTitle = normalizeCanonicalTitle(title);
+  const candidateVariant = canonicalSongVariantKey(song);
+  const candidateTitle = candidateVariant ? canonicalVariantTitle(baseTitle, candidateVariant) : baseTitle;
+  const candidates = [candidateTitle, baseTitle].filter(Boolean);
+  const existingRows = await fetchCanonicalSongsByNormalizedTitles(candidates);
+  const exactVariant = existingRows.find((row) => row.normalized_title === candidateTitle);
+  if (exactVariant && isCompatibleCanonicalSong(rowMetadataForCanonicalCompare(exactVariant), song)) {
+    return candidateTitle;
+  }
+  const exactBase = existingRows.find((row) => row.normalized_title === baseTitle);
+  if (!exactBase) return candidateTitle;
+  if (isCompatibleCanonicalSong(rowMetadataForCanonicalCompare(exactBase), song)) return baseTitle;
+  return candidateTitle;
+}
+
+function canonicalSongVariantKey(song) {
+  const title = cleanSongTitleForSave(song);
+  const types = normalizePraiseTypes(song?.praise_types || aggregateSongPraiseTypes(song));
+  if (types.includes("children")) return "children";
+  const subtitle = nullIfBlank(song?.subtitle);
+  if (subtitle && normalizeCanonicalTitle(subtitle) !== normalizeCanonicalTitle(title)) {
+    return normalizeCanonicalTitle(subtitle);
+  }
+  return "";
+}
+
+function canonicalVariantTitle(baseTitle, variantKey) {
+  const base = String(baseTitle || "").trim();
+  const variant = normalizeCanonicalTitle(variantKey);
+  return base && variant ? `${base}::${variant}` : base;
+}
+
+function rowMetadataForCanonicalCompare(row = {}) {
+  return {
+    title: row.title,
+    subtitle: row.subtitle,
+    hymn_no: row.hymn_no,
+    original_title: row.original_title,
+  };
+}
+
+function isCompatibleCanonicalSong(existing, song) {
+  const existingSubtitle = normalizeCanonicalTitle(existing?.subtitle || "");
+  const songSubtitle = normalizeCanonicalTitle(song?.subtitle || "");
+  if (existingSubtitle && songSubtitle && existingSubtitle !== songSubtitle) return false;
+
+  const existingTypes = normalizePraiseTypes(existing?.praise_types || []);
+  const songTypes = normalizePraiseTypes(song?.praise_types || aggregateSongPraiseTypes(song));
+  if (existingTypes.includes("children") !== songTypes.includes("children")) return false;
+
+  return true;
+}
+
 async function fetchCanonicalSongByNormalizedTitle(normalizedTitle) {
   if (!normalizedTitle) return null;
   const { data, error } = await state.client
     .from("mindex_canonical_songs")
-    .select("id,title,normalized_title")
+    .select("id,title,subtitle,original_title,hymn_no,normalized_title")
     .eq("normalized_title", normalizedTitle)
     .maybeSingle();
   if (error) throw error;
   return data || null;
+}
+
+async function fetchCanonicalSongsByNormalizedTitles(normalizedTitles = []) {
+  const titles = [...new Set(normalizedTitles.filter(Boolean))];
+  if (!titles.length) return [];
+  const rows = [];
+  for (const title of titles) {
+    const row = await fetchCanonicalSongByNormalizedTitle(title);
+    if (row) rows.push(row);
+  }
+  return rows;
 }
 
 async function fetchExistingSongVersions(songId) {

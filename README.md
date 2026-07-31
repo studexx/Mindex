@@ -165,6 +165,22 @@ Currently supported promoted fields are:
 When `lyricist` and `composer` are identical, the app displays them as
 `Words/Music`.
 
+### Canonical Praise Titles
+
+`mindex_canonical_songs.normalized_title` is a matching key, not display text.
+Keep the public title in `title`, aliases or alternate first lines in
+`subtitle`, and formal English names in `original_title`.
+
+Most canonical rows use the normalized main title only. When two genuinely
+different songs share the same main title, the app derives a variant key instead
+of adding one-off song exceptions:
+
+- children songs: `normalizedTitle::children`
+- same-title songs distinguished by subtitle: `normalizedTitle::normalizedSubtitle`
+
+This keeps official title spelling clean while allowing rough user input,
+spacing mistakes, subtitles, and aliases to match through normalization.
+
 Run `scripts/db-maintenance-2026-06-23.sql` when the Supabase schema needs the
 current app columns, indexes, and ordered table-browsing views. The legacy
 `mindex_songs.memo.versions` payload can be copied into relational

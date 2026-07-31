@@ -5259,7 +5259,7 @@ def main() -> int:
                     and canonical_state["raceId"] == canonical_state["directId"]
                     and canonical_state["raceCached"] == canonical_state["raceId"]
                     and canonical_state["raceMaybeCalls"] == 2
-                    and canonical_state["raceUpsertCalled"]
+                    and not canonical_state["raceUpsertCalled"]
                 ):
                     pass_("praise-canonical-normalized-title-reuse", json.dumps(canonical_state, ensure_ascii=False))
                 else:
