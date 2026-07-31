@@ -8016,7 +8016,8 @@ function serviceItemEditorModel(item = {}, options = {}) {
   const parsed = parseServiceItemMemo(item.memo);
   const preparation = isServicePreparationItem(item, parsed);
   const compactLabel = compactSearchValue(item.label || "");
-  const song = isSongServiceLabel(item.label) || isSpecialSongServiceItem(item);
+  const specialSong = isSpecialSongServiceItem(item);
+  const song = isSongServiceLabel(item.label) || specialSong;
   const scriptureBody = isScriptureBodyServiceItem(item);
   const scripture = isScriptureBodyServiceItem(item) || isScriptureServiceLabel(item.label);
   const worshipLeaderItem = presenterTitleAssigneeUsesWorshipLeader(compactLabel);
@@ -8028,10 +8029,11 @@ function serviceItemEditorModel(item = {}, options = {}) {
   const editableAssignee =
     !isDefault
     && !preparation
-    && (!song || compactLabel === "특송")
+    && (!song || compactLabel === "특송" || specialSong)
     && (
       worshipLeaderItem
       || ["대표기도", "기도", "성경봉독", "특송", "설교", "축도"].includes(compactLabel)
+      || specialSong
       || Boolean(String(item.assignee || "").trim())
     );
   const editableTitle =
@@ -20625,12 +20627,16 @@ function presenterServiceInputControls(item, index, service) {
 function presenterServiceTextInputSpec(item, model, memo) {
   const elementType = serviceMemoElementType(memo);
   const label = compactSearchValue(item.label || "");
+  const specialSong = isSpecialSongServiceItem(item);
   const genericTitle = presenterTitleAssigneeTitleIsGeneric(item.raw_title || "", item.label || "");
   const needsTitle = /설교제목|특송|공동기도/.test(label)
+    || specialSong
     || label === "청소년부광고"
     || (Boolean(String(item.raw_title || "").trim()) && !genericTitle && elementType !== "title_person");
-  const needsAssignee = elementType === "title_person"
-    && /설교|기도|특송|축도/.test(label);
+  const needsAssignee = (
+    elementType === "title_person"
+    && /설교|기도|특송|축도/.test(label)
+  ) || specialSong;
   return { needsTitle, needsAssignee };
 }
 
@@ -20643,6 +20649,7 @@ function presenterServiceInputHasEditableField(item, service) {
 }
 
 function renderPresenterServicePraiseInput(item, index, model) {
+  const assigneeLabel = serviceItemAssigneeInputLabel(item);
   return `
     <label class="svc-presenter-input-field svc-presenter-input-field--song">
       <span>곡</span>
@@ -20650,7 +20657,7 @@ function renderPresenterServicePraiseInput(item, index, model) {
     </label>
     ${model.showAssignee ? `
       <label class="svc-presenter-input-field svc-presenter-input-field--assignee">
-        <span>담당</span>
+        <span>${escapeHtml(assigneeLabel)}</span>
         <input class="svc-presenter-input-control" type="text" data-service-item-field="assignee" data-service-item-index="${index}"
           value="${escapeAttr(model.assigneeValue || "")}" placeholder="${escapeAttr(inferServiceItemAssignee(item))}" aria-label="${escapeAttr(`${item.label || "항목"} 담당`)}" />
       </label>` : ""}`;
@@ -20737,19 +20744,26 @@ function renderPresenterServiceAssetInput(item, index, memo) {
 function renderPresenterServiceTextInputs(item, index, model, memo) {
   const { needsTitle, needsAssignee } = presenterServiceTextInputSpec(item, model, memo);
   if (!needsTitle && !needsAssignee) return "";
+  const specialSong = isSpecialSongServiceItem(item);
+  const titleLabel = specialSong ? "곡" : "내용";
+  const assigneeLabel = serviceItemAssigneeInputLabel(item);
   return `
     ${needsTitle ? `
       <label class="svc-presenter-input-field">
-        <span>내용</span>
+        <span>${escapeHtml(titleLabel)}</span>
         <input class="svc-presenter-input-control" type="text" data-service-item-field="raw_title" data-service-item-index="${index}"
-          value="${escapeAttr(item.raw_title || "")}" placeholder="${escapeAttr(item.label || "내용")}" aria-label="${escapeAttr(`${item.label || "항목"} 내용`)}" />
+          value="${escapeAttr(item.raw_title || "")}" placeholder="${escapeAttr(specialSong ? "곡명" : item.label || "내용")}" aria-label="${escapeAttr(`${item.label || "항목"} ${titleLabel}`)}" />
       </label>` : ""}
     ${needsAssignee ? `
       <label class="svc-presenter-input-field">
-        <span>담당</span>
+        <span>${escapeHtml(assigneeLabel)}</span>
         <input class="svc-presenter-input-control" type="text" data-service-item-field="assignee" data-service-item-index="${index}"
           value="${escapeAttr(model.assigneeValue || "")}" placeholder="${escapeAttr(inferServiceItemAssignee(item))}" aria-label="${escapeAttr(`${item.label || "항목"} 담당`)}" />
       </label>` : ""}`;
+}
+
+function serviceItemAssigneeInputLabel(item = {}) {
+  return isSpecialSongServiceItem(item) ? "담당기관" : "담당";
 }
 
 function renderPresenterControlsTop(service, slides, active, index) {
