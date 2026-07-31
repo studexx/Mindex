@@ -4,11 +4,13 @@ import sys
 import unittest
 from datetime import date, datetime, timezone
 from pathlib import Path
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from scripts.youtube_live_schedule import (
     KST,
+    create_or_find_live,
     find_playlist_by_title,
     find_existing_broadcast,
     is_same_service_date,
@@ -142,6 +144,49 @@ class YoutubeLiveScheduleTests(unittest.TestCase):
 
         playlist = find_playlist_by_title(FakeYoutube(), "주일예배 LIVE 2026")
         self.assertEqual(playlist["id"], "new-playlist")
+
+    def test_playlist_lookup_failure_does_not_block_live_creation_by_default(self) -> None:
+        class FakeInsert:
+            def execute(self):
+                return {"id": "video-1"}
+
+        class FakeLiveBroadcasts:
+            def list(self, **kwargs):
+                return self
+
+            def list_next(self, request, response):
+                return None
+
+            def insert(self, **kwargs):
+                return FakeInsert()
+
+            def execute(self):
+                return {"items": []}
+
+        class FakePlaylists:
+            def list(self, **kwargs):
+                return self
+
+            def list_next(self, request, response):
+                return None
+
+            def execute(self):
+                return {"items": []}
+
+        class FakeYoutube:
+            def liveBroadcasts(self):
+                return FakeLiveBroadcasts()
+
+            def playlists(self):
+                return FakePlaylists()
+
+        with patch.dict("os.environ", {}, clear=True):
+            result = create_or_find_live(FakeYoutube(), SOURCE, True)
+
+        self.assertEqual(result["status"], "created")
+        self.assertEqual(result["videoId"], "video-1")
+        self.assertTrue(result["playlistSkipped"])
+        self.assertIn("주일예배 LIVE 2026", result["playlistError"])
 
 
 if __name__ == "__main__":

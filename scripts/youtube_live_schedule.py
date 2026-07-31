@@ -24,6 +24,13 @@ def clean_text(value: Any) -> str:
     return " ".join(str(value or "").split())
 
 
+def env_bool(name: str, default: bool = False) -> bool:
+    raw = os.environ.get(name, "")
+    if not raw:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
 def parse_date(raw: str) -> date:
     return datetime.strptime(raw, "%Y-%m-%d").date()
 
@@ -261,6 +268,18 @@ def add_to_live_playlist(youtube, video_id: str, source: dict[str, Any]) -> dict
     }
 
 
+def try_add_to_live_playlist(youtube, video_id: str, source: dict[str, Any]) -> dict[str, Any]:
+    try:
+        return add_to_live_playlist(youtube, video_id, source)
+    except Exception as error:
+        if env_bool("YOUTUBE_LIVE_REQUIRE_PLAYLIST", False):
+            raise
+        return {
+            "playlistSkipped": True,
+            "playlistError": str(error),
+        }
+
+
 def bind_stream(youtube, broadcast_id: str, stream_id: str) -> None:
     youtube.liveBroadcasts().bind(
         part="id,contentDetails",
@@ -291,11 +310,10 @@ def create_or_find_live(youtube, source: dict[str, Any], apply: bool) -> dict[st
     if not apply:
         return {"status": "dry_run", **plan}
 
-    resolve_playlist_id(youtube, source)
     existing = find_existing_broadcast(youtube, source["date"])
     if existing:
         video_id = existing["id"]
-        playlist_result = add_to_live_playlist(youtube, video_id, source)
+        playlist_result = try_add_to_live_playlist(youtube, video_id, source)
         return {
             "status": "exists",
             **plan,
@@ -312,7 +330,7 @@ def create_or_find_live(youtube, source: dict[str, Any], apply: bool) -> dict[st
 
     if stream_id:
         bind_stream(youtube, video_id, stream_id)
-    playlist_result = add_to_live_playlist(youtube, video_id, source)
+    playlist_result = try_add_to_live_playlist(youtube, video_id, source)
 
     return {
         "status": "created",

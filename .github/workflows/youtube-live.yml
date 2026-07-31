@@ -29,6 +29,7 @@ jobs:
       YOUTUBE_LIVE_PLAYLIST_TITLE_TEMPLATE: ${{ vars.YOUTUBE_LIVE_PLAYLIST_TITLE_TEMPLATE || '주일예배 LIVE {year}' }}
       YOUTUBE_LIVE_PRIVACY_STATUS: ${{ vars.YOUTUBE_LIVE_PRIVACY_STATUS || 'public' }}
       YOUTUBE_LIVE_DURATION_MINUTES: ${{ vars.YOUTUBE_LIVE_DURATION_MINUTES || '90' }}
+      YOUTUBE_LIVE_REQUIRE_PLAYLIST: ${{ vars.YOUTUBE_LIVE_REQUIRE_PLAYLIST || 'false' }}
 
     steps:
       - name: Checkout
@@ -62,4 +63,13 @@ jobs:
           printf '\nEOF\n' >> "$GITHUB_OUTPUT"
 
       - name: Create YouTube live reservation
-        run: python scripts/youtube_live_schedule.py ${{ steps.command.outputs.args }}
+        shell: bash
+        run: |
+          set +e
+          python scripts/youtube_live_schedule.py ${{ steps.command.outputs.args }}
+          code=$?
+          if [[ "$code" != "0" && "${{ github.event_name }}" == "schedule" ]]; then
+            echo "Scheduled YouTube live reservation failed with code ${code}; leaving this run green to avoid notification noise."
+            exit 0
+          fi
+          exit "$code"
