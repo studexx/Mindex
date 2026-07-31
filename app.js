@@ -4808,6 +4808,9 @@ function buildWorshipPersistenceRows(service, items, existingSectionById = {}, e
     const elementRow = {
       id: elementId,
       section_id: sectionId,
+      // The table does not supply a database default. New projected elements
+      // therefore need their creation timestamp in the client payload.
+      created_at: existingElement?.created_at || new Date().toISOString(),
       sort_order: sectionElementCounts.get(sectionId),
       element_type: worshipDbElementTypeForSave(elementType) || "plain_text",
       title: scriptureBody ? formatServiceScriptureReferenceList(scriptureReferences) || scriptureReference : (manualBody ? String(item.raw_title || "").trim() : serviceElementTitleForSave(item, elementType)),
