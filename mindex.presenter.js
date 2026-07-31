@@ -3842,7 +3842,10 @@ function renderPresenterSectionSongTitleSlide(slide) {
     String(slide.sectionHeading || slide.label || slide.sectionLabel || "").trim(),
     String(slide.sectionKey || slide._worshipSectionKey || "").trim(),
   );
-  const title = String(slide.text || formatPresenterSongTitleText(slide.title || "")).trim();
+  const title = presenterSongTitleContentText(
+    String(slide.text || formatPresenterSongTitleText(slide.title || "")).trim(),
+    heading,
+  );
   const headingChars = presenterLineCharEstimate(heading);
   const titleChars = presenterLineCharEstimate(title);
   return `
