@@ -17995,6 +17995,7 @@ function renderPresenterDetail() {
   requestAnimationFrame(() => {
     fitPresenterChromakeyScripturePreviews(refs.detailPane);
     fitPresenterSongTitlePreviews(refs.detailPane);
+    fitPresenterSermonTitlePreviews(refs.detailPane);
   });
   if (state.module === "presenter") renderServiceList();
 }
