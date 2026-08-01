@@ -202,6 +202,10 @@ Small visual polish that does not alter behavior does not need an entry.
   군병들아) when their catalog records are available.
 - These are template rules, not copied weekly content. A service instance may
   override them only through a deliberate template-modified edit.
+- 주일예배 [3부] 특송 is allowed to be a one-off manual choir item. When the
+  element carries manual slides/body, it must not auto-link to Praise DB even
+  if the title matches a hymn, because choir arrangements often reuse hymn
+  titles with custom lyrics.
 
 ### Youth Worship Template
 

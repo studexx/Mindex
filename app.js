@@ -8875,6 +8875,15 @@ function applyServiceSongSelectionWithService(item, service = null) {
     }
     return;
   }
+  const memo = parseServiceItemMemo(item.memo);
+  const manualSpecialSong = isSpecialSongServiceItem(item)
+    && (memo.slides.length || memo.note || item.config?.manualSong || item.config?.disableAutoSongMatch);
+  if (manualSpecialSong) {
+    item.song_id = null;
+    item.version_id = null;
+    item.song_version_id = null;
+    return;
+  }
   const song = resolvePresenterPreparationSong(item.raw_title, item, service || selectedServiceForEditor())
     || findServicePraiseSong(item.raw_title);
   if (!song) {
