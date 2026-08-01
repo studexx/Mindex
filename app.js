@@ -22818,7 +22818,6 @@ function renderPresenterBoardSubgroup(subgroup, activeIndex, serviceId, options 
   const interactionLabel = presenterSlideInteractionHint(serviceId, subgroup.name || visibleLabel);
   const warnings = presenterWarningsForEntries(subgroup.slides);
   const inputControls = renderPresenterBoardSubgroupInputControls(serviceId, subgroup);
-  const audioControls = renderPresenterBoardSubgroupAudioControls(serviceId, subgroup);
   return `
     <div class="svc-board-subgroup${active ? " active" : ""}${options.showHead ? "" : " collapsed-head"}">
       ${options.showHead ? `
@@ -22833,7 +22832,6 @@ function renderPresenterBoardSubgroup(subgroup, activeIndex, serviceId, options 
             ${visibleTitle ? `<strong>${escapeHtml(visibleTitle)}</strong>` : ""}
             ${renderPresenterWarnings(warnings)}
           </button>
-          ${audioControls}
         </header>` : ""}
       ${inputControls}
       <div class="svc-board-grid">
@@ -22872,9 +22870,11 @@ function renderPresenterBoardSubgroupInputControls(serviceId, subgroup = {}) {
   if (!context) return "";
   const controls = presenterServiceInputControls(context.item, context.index, context.service);
   if (!controls) return "";
+  const audioControls = renderPresenterBoardSubgroupAudioControls(serviceId, subgroup);
   return `
     <div class="svc-board-subgroup-controls" aria-label="${escapeAttr(`${context.item.label || "항목"} 입력`)}">
       ${controls}
+      ${audioControls}
     </div>`;
 }
 

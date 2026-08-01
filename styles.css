@@ -6520,12 +6520,12 @@ textarea.svc-presenter-input-control--multiline {
 }
 .svc-board-subgroup-head-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
   width: 100%;
   min-width: 0;
   align-items: start;
   justify-content: stretch;
-  gap: 6px 8px;
+  gap: 5px;
 }
 .svc-board-subgroup-head {
   display: inline-flex;
@@ -6591,24 +6591,26 @@ textarea.svc-presenter-input-control--multiline {
   white-space: nowrap;
 }
 .svc-board-subgroup-audio {
-  display: inline-grid;
+  display: grid;
+  grid-column: 1 / -1;
   grid-template-columns: auto auto;
   width: max-content;
-  max-width: min(360px, 100%);
-  min-height: 24px;
+  max-width: 100%;
+  min-height: 28px;
   align-items: center;
-  justify-self: end;
-  gap: 5px;
+  justify-self: start;
+  gap: 6px;
   color: var(--ink-4);
   font-size: 10px;
   font-weight: 800;
 }
 .svc-board-subgroup-audio.has-audio {
-  grid-template-columns: minmax(120px, 220px) minmax(0, 112px) auto auto;
+  width: min(100%, 520px);
+  grid-template-columns: minmax(160px, 1fr) minmax(0, 150px) auto auto;
 }
 .svc-board-subgroup-audio audio {
   width: 100%;
-  height: 24px;
+  height: 28px;
 }
 .svc-board-subgroup-audio strong {
   min-width: 0;
@@ -6620,14 +6622,14 @@ textarea.svc-presenter-input-control--multiline {
 .svc-board-subgroup-audio > span,
 .svc-board-subgroup-audio-upload {
   display: inline-flex;
-  height: 24px;
+  height: 28px;
   align-items: center;
   gap: 4px;
   border-radius: calc(var(--r) - 2px);
   background: color-mix(in srgb, var(--panel-2) 42%, transparent);
   color: var(--ink-4);
-  line-height: 24px;
-  padding: 0 7px;
+  line-height: 28px;
+  padding: 0 8px;
   white-space: nowrap;
 }
 .svc-board-subgroup-audio-upload {
@@ -6652,9 +6654,9 @@ textarea.svc-presenter-input-control--multiline {
   stroke-width: 2;
 }
 .svc-board-subgroup-audio .icon-btn {
-  width: 24px;
-  height: 24px;
-  min-height: 24px;
+  width: 28px;
+  height: 28px;
+  min-height: 28px;
 }
 .svc-board-subgroup-controls {
   display: grid;
