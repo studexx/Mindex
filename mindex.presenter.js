@@ -1663,7 +1663,7 @@ function normalizePresenterCustomMarker(value) {
 
 function buildPresenterScriptureTextSlides(item, section, index, service = null) {
   if (!isScriptureBodyServiceItem(item)) return [];
-  const payload = serviceScriptureTextPayload(item);
+  const payload = serviceScriptureTextPayload(item, undefined, service);
   if (!payload.verses.length) return [];
   const context = presenterScriptureBodyContext(item, section, service);
   const readingForm = presenterScriptureContextUsesReadingForm(context);
@@ -1746,9 +1746,9 @@ function presenterScriptureContextUsesReadingForm(context = "") {
   return context === "reading" || context === "sermon" || context === "citation";
 }
 
-function serviceScriptureTextPayload(item, memo = parseServiceItemMemo(item?.memo)) {
+function serviceScriptureTextPayload(item, memo = parseServiceItemMemo(item?.memo), service = null) {
   if (typeof serviceScriptureTextPayloadFromBible === "function") {
-    const resolved = serviceScriptureTextPayloadFromBible(item, memo);
+    const resolved = serviceScriptureTextPayloadFromBible(item, memo, service);
     if (resolved?.reference || resolved?.verses?.length) return resolved;
   }
   const reference = String(memo.scriptureReference || item?.raw_title || "").trim();

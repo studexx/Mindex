@@ -8295,7 +8295,7 @@ function serviceItemEditorModel(item = {}, options = {}) {
         || (!worshipLeaderItem && !genericRawTitle && Boolean(String(item.raw_title || "").trim()))
       )
     );
-  const scripturePayload = scriptureBody ? serviceScriptureTextPayload(item, parsed) : null;
+  const scripturePayload = scriptureBody ? serviceScriptureTextPayload(item, parsed, service) : null;
   const scriptureTitleValue = scripture
     ? serviceItemEditorScriptureTitleValue(item, parsed, service, scripturePayload)
     : "";
@@ -8500,10 +8500,10 @@ async function preloadWorshipScriptureReferences(sections = [], elements = [], o
   }
 }
 
-function serviceScriptureTextPayloadFromBible(item = {}, memo = parseServiceItemMemo(item?.memo)) {
+function serviceScriptureTextPayloadFromBible(item = {}, memo = parseServiceItemMemo(item?.memo), service = null) {
   const manualScripture = normalizeServiceManualScripture(memo.manualScripture);
   if (manualScripture) {
-    const referenceText = manualScripture.reference || serviceItemScriptureReferences(item, memo)[0] || item.raw_title || "";
+    const referenceText = manualScripture.reference || serviceItemScriptureReferences(item, memo, service)[0] || item.raw_title || "";
     const reference = parseBibleReference(referenceText);
     const normalizedReference = reference ? formatServiceBibleReference(reference, referenceText) : referenceText;
     const parts = serviceScriptureReferenceParts(reference, normalizedReference);
@@ -8525,7 +8525,7 @@ function serviceScriptureTextPayloadFromBible(item = {}, memo = parseServiceItem
       })),
     };
   }
-  const references = serviceItemScriptureReferences(item, memo);
+  const references = serviceItemScriptureReferences(item, memo, service);
   if (!references.length) return { reference: "", verses: [] };
   const resolved = references.map((referenceText) => {
     const reference = parseBibleReference(referenceText);
@@ -19518,7 +19518,9 @@ function isOneOffSpecialPraiseItem(item = {}, service = selectedServiceForEditor
 function renderServiceScriptureLinkControl(item) {
   if (!isScriptureBodyServiceItem(item) && !isScriptureServiceLabel(item?.label)) return "";
   const parsed = parseServiceItemMemo(item?.memo);
-  const payload = isScriptureBodyServiceItem(item) ? serviceScriptureTextPayload(item, parsed) : null;
+  const payload = isScriptureBodyServiceItem(item)
+    ? serviceScriptureTextPayload(item, parsed, selectedServiceForEditor())
+    : null;
   const reference = normalizeServiceItemReferenceSpacing(payload?.reference || item?.raw_title);
   if (!parseBibleReference(reference)) return "";
   return `<button class="svc-item-link" type="button" data-open-scripture-reference="${escapeAttr(reference)}" aria-label="말씀에서 열기">말씀</button>`;
@@ -23367,12 +23369,13 @@ function preparePresenterService(serviceId = state.selectedServiceId) {
 }
 
 function schedulePendingServiceScriptureResolves(serviceId) {
+  const service = state.services.find((entry) => entry.id === serviceId) || null;
   const items = getServiceItems(serviceId);
   items.forEach((item, index) => {
     if (!isScriptureBodyServiceItem(item)) return;
     const memo = parseServiceItemMemo(item.memo);
-    if (!serviceItemScriptureReferences(item, memo).length) return;
-    if (serviceScriptureTextPayload(item, memo).verses.length) return;
+    if (!serviceItemScriptureReferences(item, memo, service).length) return;
+    if (serviceScriptureTextPayload(item, memo, service).verses.length) return;
     scheduleServiceScriptureBodyResolve(serviceId, index);
   });
 }
@@ -23968,7 +23971,7 @@ function resolvePresenterServiceItemContentState(item = {}, memo = emptyServiceI
   }
   if (item?._worshipTemplatePlaceholder) return missing("template_placeholder");
   if (isScriptureBodyServiceItem(item)) {
-    return serviceItemScriptureReferences(item, memo, service).length || serviceScriptureTextPayload(item, memo).verses.length
+    return serviceItemScriptureReferences(item, memo, service).length || serviceScriptureTextPayload(item, memo, service).verses.length
       ? filled("scripture_body")
       : missing(rawText ? "scripture_reference_invalid" : "scripture_body_empty");
   }
@@ -23987,7 +23990,7 @@ function resolvePresenterServiceItemContentState(item = {}, memo = emptyServiceI
     return rawText || hasCustomSlideText ? filled("manual_praise") : missing("manual_praise_empty");
   }
   if (inputMode === "scripture") {
-    return serviceItemScriptureReferences(item, memo, service).length || serviceScriptureTextPayload(item, memo).verses.length
+    return serviceItemScriptureReferences(item, memo, service).length || serviceScriptureTextPayload(item, memo, service).verses.length
       ? filled("scripture_reference")
       : missing(rawText ? "scripture_reference_invalid" : "scripture_empty");
   }
@@ -24107,7 +24110,7 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
   if (fixedTitle) return [presenterTitleOnlySlide(item, section, index, fixedTitle)];
   if (isOptionalCitationScriptureServiceItem(item)
     && !serviceItemScriptureReferences(item, memo, service).length
-    && !serviceScriptureTextPayload(item, memo).verses.length) {
+    && !serviceScriptureTextPayload(item, memo, service).verses.length) {
     return [presenterOptionalCitationLiveControlSlide(item, section, index)];
   }
   if (!confessionPrayer && !contentState.hasOutputContent) {

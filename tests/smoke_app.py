@@ -2330,6 +2330,7 @@ def main() -> int:
                               thirdSermonTitleAssignee: serviceItemWithSharedSundayContent(thirdSermonTitle, services[2]).assignee || '',
                               thirdSermonTitleStatic: presenterServiceInputIsStatic(thirdSermonTitle),
                               thirdSermonBodyRefs: serviceItemScriptureReferences(thirdSermonBody, parseServiceItemMemo(thirdSermonBody.memo), services[2]),
+                              thirdSermonBodyPayloadReference: serviceScriptureTextPayload(thirdSermonBody, parseServiceItemMemo(thirdSermonBody.memo), services[2]).reference,
                               thirdCitationRefs: serviceItemScriptureReferences(thirdCitation, parseServiceItemMemo(thirdCitation.memo), services[2]),
                               thirdOfferingText: serviceItemDisplayText(thirdOffering),
                               thirdOfferingStatic: presenterServiceInputIsStatic(thirdOffering),
@@ -2876,6 +2877,7 @@ def main() -> int:
                         and template_terms["sharedSundayContentProjection"]["thirdSermonTitleAssignee"] == "김남영 목사"
                         and template_terms["sharedSundayContentProjection"]["thirdSermonTitleStatic"] is True
                         and template_terms["sharedSundayContentProjection"]["thirdSermonBodyRefs"] == ["마 13:31–33", "마 13:44–50"]
+                        and template_terms["sharedSundayContentProjection"]["thirdSermonBodyPayloadReference"] == "마 13:31–33"
                         and template_terms["sharedSundayContentProjection"]["thirdCitationRefs"] == ["고전 13:4–7"]
                         and template_terms["sharedSundayContentProjection"]["thirdOfferingText"]
                         and template_terms["sharedSundayContentProjection"]["thirdOfferingStatic"] is True
