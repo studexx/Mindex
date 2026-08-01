@@ -15320,7 +15320,16 @@ function youngAdultWorshipTemplate() {
       flex: false,
       sectionKey: "offering",
       elements: [
-        { label: "봉헌찬양", name: "봉헌찬양", elementType: "praise" },
+        {
+          label: "봉헌찬양",
+          name: "봉헌찬양",
+          elementType: "praise",
+          default_text: "임재",
+          defaultSong: { title: "임재" },
+          formHint: "V-C",
+          formPreset: { forms: ["V", "C"], strength: "default" },
+          defaultStrength: "default",
+        },
         { label: "봉헌기도", name: "봉헌기도", elementType: "title", default_text: "봉헌기도" },
       ],
     },
