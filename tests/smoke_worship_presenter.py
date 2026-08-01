@@ -3658,6 +3658,51 @@ def main() -> int:
                 else:
                     fail("presenter-fullscreen-song-title-output-font", json.dumps(fullscreen_song_title_output_font_state, ensure_ascii=False))
 
+                fullscreen_sermon_title_center_state = page.evaluate(
+                    """
+                    () => {
+                      document.getElementById('presenterOutputRoot')?.remove();
+                      const outputRoot = document.createElement('main');
+                      outputRoot.id = 'presenterOutputRoot';
+                      outputRoot.className = 'presenter-output-root no-chromakey';
+                      document.body.appendChild(outputRoot);
+                      renderPresenterOutput({
+                        serviceId: '__smoke_fullscreen_sermon_title_center__',
+                        serviceType: 'sunday1', chromakey: false, outputTheme: 'formal', backgroundImage: '',
+                        slides: [{ id: '__smoke_fullscreen_sermon_title_center_slide__',
+                          elementType: PRESENTER_ELEMENT_TYPES.TITLE_ASSIGNEE,
+                          layout: PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT, type: 'title-assignee',
+                          titlePresentation: 'sermon', contentTitle: '하나님의 나라를 함께 살아내는 믿음',
+                          assignee: '김석범 목사' }], index: 0, safetyBlank: false,
+                      });
+                      const layout = outputRoot.querySelector('.presenter-title-assignee--sermon');
+                      const title = outputRoot.querySelector('.presenter-title-assignee-content');
+                      const person = outputRoot.querySelector('.presenter-title-assignee-person');
+                      const rootRect = outputRoot.getBoundingClientRect();
+                      const centerOffset = (element) => {
+                        const rect = element?.getBoundingClientRect();
+                        return rect ? Math.round(Math.abs((rect.left + rect.right) / 2 - (rootRect.left + rootRect.right) / 2)) : -1;
+                      };
+                      const style = layout ? getComputedStyle(layout) : null;
+                      const result = {
+                        display: style?.display || '',
+                        titleCentered: centerOffset(title),
+                        personCentered: centerOffset(person),
+                      };
+                      outputRoot.remove();
+                      return result;
+                    }
+                    """
+                )
+                if (
+                    fullscreen_sermon_title_center_state["display"] == "flex"
+                    and fullscreen_sermon_title_center_state["titleCentered"] <= 1
+                    and fullscreen_sermon_title_center_state["personCentered"] <= 1
+                ):
+                    pass_("presenter-fullscreen-sermon-title-center", json.dumps(fullscreen_sermon_title_center_state, ensure_ascii=False))
+                else:
+                    fail("presenter-fullscreen-sermon-title-center", json.dumps(fullscreen_sermon_title_center_state, ensure_ascii=False))
+
                 fullscreen_long_song_title_fit_state = page.evaluate(
                     """
                     () => {

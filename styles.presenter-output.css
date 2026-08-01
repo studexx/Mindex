@@ -634,24 +634,24 @@
 :is(.svc-slide-mini-output, .presenter-output-root):not(.no-chromakey) .presenter-title-assignee-order {
   font-weight: var(--presenter-weight-display);
 }
-.presenter-output-root.no-chromakey .presenter-slide--lyrics,
-.presenter-output-root.no-chromakey .presenter-slide--song-title,
-.presenter-output-root.no-chromakey .presenter-slide--scripture,
-.presenter-output-root.no-chromakey .presenter-slide--title-assignee {
+:is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-slide--lyrics,
+:is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-slide--song-title,
+:is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-slide--scripture,
+:is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-slide--title-assignee {
   justify-content: center;
   align-items: center;
   padding: 9cqh 9cqw;
 }
-.presenter-output-root.no-chromakey .presenter-slide--lyrics::before,
-.presenter-output-root.no-chromakey .presenter-slide--song-title::before,
-.presenter-output-root.no-chromakey .presenter-slide--scripture::before,
-.presenter-output-root.no-chromakey .presenter-slide--title-assignee::before {
+:is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-slide--lyrics::before,
+:is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-slide--song-title::before,
+:is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-slide--scripture::before,
+:is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-slide--title-assignee::before {
   content: none;
 }
-.presenter-output-root.no-chromakey .presenter-slide--lyrics .presenter-slide-text,
-.presenter-output-root.no-chromakey .presenter-slide--song-title .presenter-slide-text,
-.presenter-output-root.no-chromakey .presenter-slide--scripture .presenter-slide-text,
-.presenter-output-root.no-chromakey .presenter-slide--title-assignee .presenter-slide-text {
+:is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-slide--lyrics .presenter-slide-text,
+:is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-slide--song-title .presenter-slide-text,
+:is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-slide--scripture .presenter-slide-text,
+:is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-slide--title-assignee .presenter-slide-text {
   width: 100%;
   height: auto;
   min-height: 0;
@@ -666,29 +666,29 @@
   text-align: center;
   text-shadow: 0 1px 9px rgba(255, 255, 255, .14);
 }
-.presenter-output-root.no-chromakey .presenter-slide--scripture .presenter-slide-text {
+:is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-slide--scripture .presenter-slide-text {
   font-family: var(--presenter-scripture-font);
   font-size: var(--presenter-scripture-clean-size);
   font-weight: var(--presenter-scripture-weight);
   line-height: var(--presenter-scripture-line-height);
 }
-.presenter-output-root.no-chromakey .presenter-slide--lyrics[data-element-type="praise"] .presenter-slide-text {
+:is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-slide--lyrics[data-element-type="praise"] .presenter-slide-text {
   font-size: var(--presenter-size-lyrics);
 }
-.presenter-output-root.no-chromakey .presenter-slide--song-title:is([data-section-key="praise"], [data-section-key="pre_scripture_praise"], [data-section-key="entrance_praise"], [data-section-key="response_song"], [data-section-key="prayer_meeting_praise"], [data-section-key="special_song"]) .presenter-slide-text {
+:is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-slide--song-title:is([data-section-key="praise"], [data-section-key="pre_scripture_praise"], [data-section-key="entrance_praise"], [data-section-key="response_song"], [data-section-key="prayer_meeting_praise"], [data-section-key="special_song"]) .presenter-slide-text {
   font-size: var(--presenter-size-song-title);
   font-weight: var(--presenter-weight-display);
 }
-.presenter-output-root.no-chromakey .presenter-slide--song-title .presenter-section-song-title {
+:is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-slide--song-title .presenter-section-song-title {
   grid-template-columns: minmax(0, 1fr);
   justify-items: center;
   text-align: center;
 }
-.presenter-output-root.no-chromakey .presenter-slide--song-title .presenter-section-song-title-name {
+:is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-slide--song-title .presenter-section-song-title-name {
   justify-self: center;
   text-align: center;
 }
-.presenter-output-root.no-chromakey .presenter-title-assignee--sermon {
+:is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-title-assignee--sermon {
   display: flex;
   width: 100%;
   flex-direction: column;
@@ -697,32 +697,32 @@
   gap: 1.25cqh;
   text-align: center;
 }
-.presenter-output-root.no-chromakey .presenter-title-assignee--sermon .presenter-title-assignee-content {
+:is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-title-assignee--sermon .presenter-title-assignee-content {
   width: 100%;
   text-align: center;
 }
-.presenter-output-root.no-chromakey .presenter-title-assignee--sermon .presenter-title-assignee-person {
+:is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-title-assignee--sermon .presenter-title-assignee-person {
   position: static;
   width: 100%;
   text-align: center;
 }
-.presenter-output-root.no-chromakey .presenter-slide--lyrics .presenter-slide-text span {
+:is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-slide--lyrics .presenter-slide-text span {
   font-size: inherit;
 }
-.presenter-output-root.no-chromakey .presenter-section-song-title-heading {
+:is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-section-song-title-heading {
   font-size: var(--presenter-size-meta);
 }
-.presenter-output-root.no-chromakey .presenter-slide--song-title:is([data-section-key="offering"], [data-section-key="doxology"], [data-section-key="sending"]) .presenter-section-song-title-heading {
+:is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-slide--song-title:is([data-section-key="offering"], [data-section-key="doxology"], [data-section-key="sending"]) .presenter-section-song-title-heading {
   font-size: var(--presenter-size-body);
   font-weight: var(--presenter-weight-body);
 }
-.presenter-output-root.no-chromakey .presenter-slide--song-title:is([data-section-key="praise"], [data-section-key="pre_scripture_praise"], [data-section-key="entrance_praise"], [data-section-key="response_song"], [data-section-key="prayer_meeting_praise"], [data-section-key="special_song"]) .presenter-section-song-title-name {
+:is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-slide--song-title:is([data-section-key="praise"], [data-section-key="pre_scripture_praise"], [data-section-key="entrance_praise"], [data-section-key="response_song"], [data-section-key="prayer_meeting_praise"], [data-section-key="special_song"]) .presenter-section-song-title-name {
   font-size: var(--presenter-size-song-title);
   font-weight: var(--presenter-weight-display);
 }
 /* Song titles stay centered as their length grows. The character estimate is
    rendered with each title, so ordinary titles retain the display scale. */
-.presenter-output-root.no-chromakey .presenter-slide--song-title .presenter-section-song-title-name {
+:is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-slide--song-title .presenter-section-song-title-name {
   font-size: clamp(
     calc(72 * var(--presenter-stage-unit)),
     calc(90cqw / var(--line-chars, 1)),
@@ -731,7 +731,7 @@
   text-align: center;
   transform: translateZ(0);
 }
-.presenter-output-root.no-chromakey .presenter-slide--scripture .presenter-slide-text span {
+:is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-slide--scripture .presenter-slide-text span {
   font-size: var(--presenter-scripture-clean-size);
 }
 

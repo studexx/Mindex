@@ -1264,6 +1264,9 @@ function presenterElementSlideFromMemoCore(item, section, index, memo, displayTe
       assignee: hasThreeParts ? threePartAssignee : assigneeText,
       orderTitle: hasThreeParts ? orderTitle : "",
       contentTitle: hasThreeParts ? contentTitle : "",
+      // Keep the presentation role on the slide. Re-inferring this from a
+      // section label later can route a sermon title through a split layout.
+      titlePresentation: sermonTitle ? "sermon" : "",
       marker: "",
       text: hasThreeParts
         ? cleanList([orderTitle, contentTitle, threePartAssignee]).join("\n")
@@ -3827,6 +3830,7 @@ function renderPresenterTitleAssigneeSlide(slide) {
 }
 
 function presenterTitleAssigneeIsSermon(slide = {}) {
+  if (String(slide?.titlePresentation || "").trim() === "sermon") return true;
   const values = [
     slide.sectionKey,
     slide.sectionLabel,
