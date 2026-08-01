@@ -6409,6 +6409,29 @@ textarea.svc-presenter-input-control--multiline {
   padding: 0 9px;
   white-space: nowrap;
 }
+.svc-reference-media-add {
+  display: inline-flex;
+  height: 26px;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid color-mix(in srgb, var(--accent) 42%, transparent);
+  border-radius: calc(var(--r) - 2px);
+  background: transparent;
+  color: var(--ink-2);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 24px;
+  padding: 0 9px;
+  white-space: nowrap;
+}
+.svc-reference-media-add:hover,
+.svc-reference-media-add:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent);
+  outline: none;
+}
+.svc-reference-media-add i { width: 14px; height: 14px; stroke-width: 2; }
 .svc-reference-media-upload:hover,
 .svc-reference-media-upload:focus-within {
   background: color-mix(in srgb, var(--accent) 22%, var(--panel-2));

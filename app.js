@@ -21992,6 +21992,10 @@ function renderDeferredPresenterBoardSection(group, serviceId, groupIndex) {
   const firstIndex = group.slides[0]?.slideIndex ?? 0;
   const visibleTitle = group.title || group.label || group.name;
   const interactionLabel = presenterSlideInteractionHint(serviceId, group.name || visibleTitle);
+  const referenceMediaSectionKey = presenterBoardReferenceMediaSectionKey(group, serviceId);
+  const referenceMediaQuickAdd = referenceMediaSectionKey
+    ? renderPresenterReferenceMediaQuickAdd(referenceMediaSectionKey, serviceId)
+    : "";
   const estimatedRows = Math.max(1, Math.ceil(group.slides.length / 5));
   const estimatedHeight = 52 + estimatedRows * 146;
   return `
@@ -22014,6 +22018,7 @@ function renderDeferredPresenterBoardSection(group, serviceId, groupIndex) {
           </span>
         </button>
       </div>
+      ${referenceMediaQuickAdd}
       <div class="svc-board-section-deferred-body" aria-hidden="true"></div>
     </section>`;
 }
@@ -22394,6 +22399,7 @@ function createPresenterSlideGroup(slide, slideIndex, options = {}) {
   return {
     id: options.id || slide.sectionId || `section:${slideIndex}`,
     kind: options.kind || "item",
+    sectionKey: String(slide.sectionKey || "").trim(),
     index: slide.sectionIndex || slideIndex + 1,
     label,
     title,
@@ -22573,7 +22579,7 @@ function renderPresenterBoardSection(group, activeIndex, serviceId, options = {}
   const firstIndex = group.slides[0]?.slideIndex ?? 0;
   const visibleTitle = group.title || group.label || group.name;
   const interactionLabel = presenterSlideInteractionHint(serviceId, group.name || visibleTitle);
-  const referenceMediaSectionKey = presenterBoardReferenceMediaSectionKey(group);
+  const referenceMediaSectionKey = presenterBoardReferenceMediaSectionKey(group, serviceId);
   const referenceMediaQuickAdd = referenceMediaSectionKey
     ? renderPresenterReferenceMediaQuickAdd(referenceMediaSectionKey, serviceId)
     : "";
@@ -22617,6 +22623,10 @@ function renderPresenterReferenceMediaQuickAdd(sectionKey, serviceId) {
         <strong>참고 화면</strong>
         <span>${escapeHtml(`${sectionLabel} 중 띄울 이미지, 영상 또는 음원`)}</span>
       </div>
+      <button class="svc-reference-media-add" type="button" data-presenter-reference-media-add
+        data-presenter-reference-media-section="${escapeAttr(sectionKey)}" data-service-id="${escapeAttr(serviceId)}">
+        <i data-lucide="plus"></i><span>화면 추가</span>
+      </button>
       <label class="svc-reference-media-upload">
         <input type="file" accept="${PRESENTER_REFERENCE_MEDIA_ACCEPT}" data-presenter-reference-media-direct-file
           data-presenter-reference-media-section="${escapeAttr(sectionKey)}" data-service-id="${escapeAttr(serviceId)}" />
@@ -22625,11 +22635,19 @@ function renderPresenterReferenceMediaQuickAdd(sectionKey, serviceId) {
     </div>`;
 }
 
-function presenterBoardReferenceMediaSectionKey(group = {}) {
-  const sectionKey = (group?.slides || [])
+function presenterBoardReferenceMediaSectionKey(group = {}, serviceId = state.selectedServiceId) {
+  const directSectionKey = String(group?.sectionKey || "").trim();
+  if (PRESENTER_REFERENCE_MEDIA_SECTION_KEYS.has(directSectionKey)) return directSectionKey;
+  const slideSectionKey = (group?.slides || [])
     .map(({ slide }) => String(slide?.sectionKey || "").trim())
     .find((key) => PRESENTER_REFERENCE_MEDIA_SECTION_KEYS.has(key));
-  return sectionKey || "";
+  if (slideSectionKey) return slideSectionKey;
+  const groupTitle = compactSearchValue(group?.title || group?.label || "");
+  const candidates = getServiceItems(serviceId);
+  return candidates
+    .map((item) => presenterReferenceMediaItemSectionKey(item))
+    .find((sectionKey) => PRESENTER_REFERENCE_MEDIA_SECTION_KEYS.has(sectionKey)
+      && compactSearchValue(presenterReferenceMediaSectionLabel(sectionKey)) === groupTitle) || "";
 }
 
 function presenterBoardSectionEditKey(group = {}) {
