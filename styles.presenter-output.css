@@ -158,9 +158,15 @@
 }
 .presenter-output-root[data-output-theme="children"] {
   --presenter-output-bg: #f4ead9;
-  --presenter-output-fg: #553300;
-  --presenter-output-muted: rgba(85, 51, 0, .68);
-  --presenter-output-bar: rgba(85, 51, 0, .08);
+  --presenter-output-fg: #1f3444;
+  --presenter-output-muted: rgba(31, 52, 68, .68);
+  --presenter-output-bar: rgba(31, 52, 68, .08);
+  background:
+    radial-gradient(circle at 50% 38%, rgba(255, 255, 255, .72), transparent 34%),
+    var(--presenter-output-bg);
+}
+.presenter-output-root.no-chromakey[data-output-theme="children"]:not(.has-background) {
+  --presenter-output-bg: #f4ead9;
   background:
     radial-gradient(circle at 50% 38%, rgba(255, 255, 255, .72), transparent 34%),
     var(--presenter-output-bg);
@@ -861,11 +867,11 @@
 .presenter-output-root[data-output-theme="children"] .presenter-slide--liturgical-body .presenter-slide-text,
 .presenter-output-root[data-output-theme="children"] .presenter-liturgical-body,
 .presenter-output-root[data-output-theme="children"] .presenter-title-content {
-  color: #553300;
+  color: var(--presenter-output-fg);
   text-shadow: none;
 }
 .presenter-output-root[data-output-theme="children"] .presenter-title-content-title {
-  color: color-mix(in srgb, #553300 72%, transparent);
+  color: color-mix(in srgb, var(--presenter-output-fg) 72%, transparent);
 }
 .presenter-output-root[data-output-theme="children"] .presenter-slide--song-title .presenter-slide-text {
   font-size: var(--presenter-size-section);
