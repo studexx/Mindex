@@ -158,9 +158,9 @@
 }
 .presenter-output-root[data-output-theme="children"] {
   --presenter-output-bg: #f4ead9;
-  --presenter-output-fg: #1f3444;
-  --presenter-output-muted: rgba(31, 52, 68, .68);
-  --presenter-output-bar: rgba(31, 52, 68, .08);
+  --presenter-output-fg: #1d1d1b;
+  --presenter-output-muted: rgba(29, 29, 27, .68);
+  --presenter-output-bar: rgba(29, 29, 27, .08);
   background:
     radial-gradient(circle at 50% 38%, rgba(255, 255, 255, .72), transparent 34%),
     var(--presenter-output-bg);

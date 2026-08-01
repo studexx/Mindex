@@ -6943,9 +6943,9 @@ body[data-module="presenter"] .detail-pane {
 }
 .svc-slide-mini-output[data-output-theme="children"] {
   --presenter-output-bg: #f4ead9;
-  --presenter-output-fg: #1f3444;
-  --presenter-output-muted: rgba(31, 52, 68, .68);
-  --presenter-output-bar: rgba(31, 52, 68, .08);
+  --presenter-output-fg: #1d1d1b;
+  --presenter-output-muted: rgba(29, 29, 27, .68);
+  --presenter-output-bar: rgba(29, 29, 27, .08);
   background:
     radial-gradient(circle at 50% 38%, rgba(255, 255, 255, .72), transparent 34%),
     var(--presenter-output-bg);
@@ -7011,7 +7011,7 @@ body[data-module="presenter"] .detail-pane {
   background:
     radial-gradient(circle at 50% 38%, rgba(255, 255, 255, .7), transparent 38%),
     #f4ead9;
-  color: #1f3444;
+  color: #1d1d1b;
 }
 .svc-slide-board--youth .svc-slide-thumb-frame {
   background:
