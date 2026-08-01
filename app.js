@@ -407,6 +407,33 @@ const SERVICE_PRAISE_INPUT_MODES = [
   ["lyrics_db", "가사 불러오기"],
   ["manual_praise", "직접 입력하기"],
 ];
+const WORSHIP_DB_ELEMENT_INPUT_MODES = new Set([
+  "",
+  "praise_db",
+  "score_db",
+  "lyrics_db",
+  "manual_praise",
+  "text",
+  "scripture",
+  "asset",
+  "config",
+  "none",
+]);
+const WORSHIP_DB_ELEMENT_TYPES = new Set([
+  "blank",
+  "plain_text",
+  "title_person",
+  "body",
+  "praise",
+  "scripture_reading",
+  "scripture_body",
+  "image",
+  "video",
+  "score",
+  "editable",
+  "ppt",
+  "pdf",
+]);
 const PRESENTER_ELEMENT_TYPES = {
   BLANK: "blank",
   TITLE: "title",
@@ -24165,7 +24192,14 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
   if (scriptureTextSlides.length) {
     return withIntroAndSpecialTitle(presenterSlidesWithScriptureReadingTitle(item, section, scriptureTextSlides, index, service));
   }
-  if (isScriptureBodyServiceItem(item)) return [];
+  if (isScriptureBodyServiceItem(item)) {
+    // Keep the element present while the async Bible lookup hydrates its verses.
+    // The same item is rebuilt in place as soon as the lookup completes.
+    const pendingSlide = presenterPendingScriptureSlide(item, section, index, service);
+    return pendingSlide
+      ? withIntroAndSpecialTitle(presenterSlidesWithScriptureReadingTitle(item, section, [pendingSlide], index, service))
+      : [];
+  }
 
   const specialSongItem = isSpecialSongServiceItem(item);
   const songLikeItem = isSongServiceLabel(label) || specialSongItem;

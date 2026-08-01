@@ -1704,6 +1704,36 @@ function buildPresenterScriptureTextSlides(item, section, index, service = null)
   });
 }
 
+function presenterPendingScriptureSlide(item, section, index, service = null) {
+  const memo = typeof parseServiceItemMemo === "function"
+    ? parseServiceItemMemo(item?.memo)
+    : {};
+  const references = typeof serviceItemScriptureReferences === "function"
+    ? serviceItemScriptureReferences(item, memo, service)
+    : [];
+  if (!references.length) return null;
+  const reference = typeof formatServiceScriptureReferenceList === "function"
+    ? formatServiceScriptureReferenceList(references)
+    : references.join("; ");
+  const context = presenterScriptureBodyContext(item, section, service);
+  return {
+    id: `${item.id || index}:scripture-pending`,
+    ...section,
+    elementTitle: reference,
+    sectionName: presenterNameParts(section.sectionLabel, reference).join(" / ") || reference,
+    elementType: PRESENTER_ELEMENT_TYPES.SCRIPTURE_TEXT,
+    layout: PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT,
+    type: "scripture-pending",
+    scriptureContext: context,
+    scripturePending: true,
+    label: item.label || "본문",
+    title: reference,
+    marker: reference,
+    text: "말씀을 불러오는 중",
+    sort: index,
+  };
+}
+
 function presenterScriptureVerseNumber(verse = {}) {
   const start = Number(verse.number || verse.verse) || 0;
   const end = Number(verse.verseEnd || verse.verse_end) || 0;
