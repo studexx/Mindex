@@ -1144,6 +1144,9 @@ function bindStaticEvents() {
   });
 
   window.addEventListener("beforeunload", (event) => {
+    // Presenter changes are persisted through its own save flow. A browser-native
+    // prompt here is both misleading and unable to trigger that save operation.
+    if (state.module === "presenter") return;
     if (!hasDirtyChanges()) return;
     event.preventDefault();
     event.returnValue = "";
@@ -7111,6 +7114,19 @@ async function resolveAndSaveCommittedServiceItem(serviceId, index, options = {}
   await saveService(serviceId, options);
 }
 
+function serviceItemPersistenceSignature(item = {}) {
+  return JSON.stringify({
+    label: item.label || "",
+    rawTitle: item.raw_title || "",
+    assignee: item.assignee || "",
+    songId: item.song_id || "",
+    versionId: item.version_id || "",
+    songVersionId: item.song_version_id || "",
+    memo: item.memo || "",
+    config: item.config || null,
+  });
+}
+
 function updateServiceItemField(field, options = {}) {
   const serviceId = field.dataset.serviceId || state.selectedServiceId;
   const items = getServiceItems(serviceId);
@@ -7120,6 +7136,7 @@ function updateServiceItemField(field, options = {}) {
 
   const key = field.dataset.serviceItemField;
   const service = state.services.find((candidate) => candidate.id === serviceId) || selectedServiceForEditor();
+  const persistenceBefore = serviceItemPersistenceSignature(item);
   item._worshipElementTemplateModified = true;
   markServiceItemSharedContentDirty(item, service);
   item._worshipTemplatePlaceholder = false;
@@ -7248,6 +7265,9 @@ function updateServiceItemField(field, options = {}) {
     scheduleServiceScriptureBodyResolve(serviceId, index);
   }
   applyServicePreparationDefaults(item, serviceId);
+  if (persistenceBefore === serviceItemPersistenceSignature(item)) {
+    return;
+  }
   state.serviceItems[serviceId] = normalizeServiceItemsInCurrentOrder(items);
   state.dirty.service = true;
   if (options.deferPresenterRefresh) {
