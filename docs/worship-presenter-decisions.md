@@ -296,8 +296,8 @@ Small visual polish that does not alter behavior does not need an entry.
   `docs/thread-worship-presenter.md`.
 
 ## Presenter Output Rules
-- `참고 화면`은 전역 presenter toolbar가 아니라 `설교` 섹션에만 추가한다.
-  `참고 화면 추가`는 설교 섹션의 마지막에 image element를 만들며, 이름과
+- `참고 화면`은 전역 presenter toolbar가 아니라 `설교` 또는 `광고` 섹션에 추가한다.
+  `참고 화면 추가`는 해당 섹션의 마지막에 image element를 만들며, 이름과
   파일/링크를 채우면 기존 media contract로 clean fullscreen output에 송출한다.
   따라서 크로마키 예배에서도 참고 이미지는 green background나 lower bar를
   물려받지 않는다. 영상은 동일한 asset element contract를 확장해 추가한다.

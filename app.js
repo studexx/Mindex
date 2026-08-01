@@ -8709,8 +8709,12 @@ function presenterReferenceMediaSectionLabel(sectionKey = "") {
   return String(sectionKey || "").trim() === "announcements" ? "광고" : "설교";
 }
 
+function presenterReferenceMediaItemSectionKey(item = {}) {
+  return String(item?._worshipSectionKey || item?.sectionKey || item?.section_key || "").trim();
+}
+
 function isPresenterReferenceMediaItem(item = {}, memo = parseServiceItemMemo(item.memo)) {
-  const sectionKey = String(item?._worshipSectionKey || "").trim();
+  const sectionKey = presenterReferenceMediaItemSectionKey(item);
   return PRESENTER_REFERENCE_MEDIA_SECTION_KEYS.has(sectionKey)
     && compactSearchValue(item?.label || "") === "참고화면"
     && serviceMemoInputMode(memo, item) === "asset";
@@ -8796,7 +8800,7 @@ function addPresenterReferenceMedia(serviceId = state.selectedServiceId, request
     : "sermon";
   const sectionIndexes = items
     .map((item, index) => ({ item, index }))
-    .filter(({ item }) => String(item?._worshipSectionKey || "").trim() === sectionKey);
+    .filter(({ item }) => presenterReferenceMediaItemSectionKey(item) === sectionKey);
   const lastSectionItem = sectionIndexes.at(-1);
   if (!lastSectionItem) {
     showToast(`${presenterReferenceMediaSectionLabel(sectionKey)} 섹션을 찾지 못했습니다.`, "info");
