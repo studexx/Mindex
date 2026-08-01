@@ -1211,6 +1211,29 @@ function presenterElementSlideFromMemoCore(item, section, index, memo, displayTe
     const titleText = lines[0] || item?.label || section.sectionTitle || "제목";
     const rawBodyText = lines.slice(1).join("\n") || memo.note || item?.assignee || "";
     const mainPraiseIntro = isMainPraiseTitleContentItem(item, section, titleText);
+    const sermonTitle = section.sectionKey === "sermon"
+      || ["설교", "설교제목"].includes(compactSearchValue(safeLabel));
+    if (sermonTitle) {
+      const contentTitle = presenterSermonContentTitle(titleText);
+      const assignee = cleanPresenterAssignee(rawBodyText);
+      return {
+        id: `${item.id || index}:title-assignee`,
+        ...section,
+        elementLabel: safeLabel || "설교 제목",
+        elementTitle: contentTitle,
+        elementType: PRESENTER_ELEMENT_TYPES.TITLE_ASSIGNEE,
+        layout: PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT,
+        type: "title-assignee",
+        label: safeLabel || "설교 제목",
+        title: contentTitle,
+        assignee,
+        contentTitle,
+        titlePresentation: "sermon",
+        marker: "",
+        text: cleanList([contentTitle, assignee]).join("\n"),
+        sort: index,
+      };
+    }
     const displayTitle = mainPraiseIntro ? "찬양" : titleText;
     const bodyText = mainPraiseIntro
       ? resolveMainPraiseIntroBodyText(service, rawBodyText)
