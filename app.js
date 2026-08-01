@@ -1060,6 +1060,7 @@ function bindStaticEvents() {
     const serviceTextField = e.target.closest("input[data-service-item-field]");
     if (isDeferredServiceTextInput(serviceTextField)) {
       serviceTextField.dataset.initialValue = serviceTextField.value;
+      serviceTextField.dataset.presenterPreviewValue = serviceTextField.value;
     }
     const cell = e.target.closest(".cal-cell");
     if (cell) cell.dataset.initialValue = cell.textContent;
@@ -1067,6 +1068,7 @@ function bindStaticEvents() {
   refs.detailPane.addEventListener("focusout", (e) => {
     const serviceTextField = e.target.closest("input[data-service-item-field]");
     if (isDeferredServiceTextInput(serviceTextField)) {
+      clearDeferredServiceTextPreview(serviceTextField);
       commitDeferredServiceTextInput(serviceTextField, { save: true });
       return;
     }
@@ -6364,6 +6366,8 @@ function handleDetailInput(event) {
     if (isDeferredServiceTextInput(serviceField)) {
       if (isDeferredServiceScriptureReferenceInput(serviceField)) {
         scheduleDeferredServiceScriptureReferenceCommit(serviceField);
+      } else {
+        scheduleDeferredServiceTextPreview(serviceField);
       }
       return;
     }
@@ -7054,6 +7058,31 @@ function isDeferredServiceScriptureReferenceInput(field) {
 }
 
 const deferredServiceScriptureReferenceTimers = new Map();
+const deferredServiceTextPreviewTimers = new Map();
+
+function deferredServiceTextPreviewKey(field) {
+  return `${field.dataset.serviceId || state.selectedServiceId}:${field.dataset.serviceItemIndex || ""}:${field.dataset.serviceItemField || ""}`;
+}
+
+function clearDeferredServiceTextPreview(field) {
+  if (!field) return;
+  const key = deferredServiceTextPreviewKey(field);
+  const timer = deferredServiceTextPreviewTimers.get(key);
+  if (timer) window.clearTimeout(timer);
+  deferredServiceTextPreviewTimers.delete(key);
+}
+
+function scheduleDeferredServiceTextPreview(field) {
+  if (!field?.isConnected || isDeferredServiceScriptureReferenceInput(field)) return;
+  const key = deferredServiceTextPreviewKey(field);
+  clearDeferredServiceTextPreview(field);
+  deferredServiceTextPreviewTimers.set(key, window.setTimeout(() => {
+    deferredServiceTextPreviewTimers.delete(key);
+    if (!field.isConnected || field.dataset.presenterPreviewValue === field.value) return;
+    updateServiceItemField(field, { deferPresenterRefresh: true, livePreview: true });
+    field.dataset.presenterPreviewValue = field.value;
+  }, 150));
+}
 
 function scheduleDeferredServiceScriptureReferenceCommit(field) {
   const serviceId = field.dataset.serviceId || state.selectedServiceId;
@@ -7271,9 +7300,9 @@ function updateServiceItemField(field, options = {}) {
   state.serviceItems[serviceId] = normalizeServiceItemsInCurrentOrder(items);
   state.dirty.service = true;
   if (options.deferPresenterRefresh) {
-    requestAnimationFrame(() => refreshPresenterForService(serviceId));
+    requestAnimationFrame(() => refreshPresenterForService(serviceId, { renderControls: !options.livePreview }));
   } else {
-    refreshPresenterForService(serviceId);
+    refreshPresenterForService(serviceId, { renderControls: !options.livePreview });
   }
   updateSaveState();
 }
@@ -19415,10 +19444,6 @@ function renderServiceDashboard() {
             <h2 class="service-date-list-title">${q ? "검색 결과" : "이번 주 예배"}</h2>
             ${!q ? `<p class="service-week-range">${escapeHtml(formatServiceWeekRange(start, end))}</p>` : ""}
           </div>
-          <button class="reference-new-btn" type="button" data-service-templates aria-label="템플릿 열기">
-            <i data-lucide="layout-template"></i>
-            <span>템플릿</span>
-          </button>
         </div>
         ${q ? (services.length ? `<div class="service-date-grid service-date-grid--dashboard">
           ${services.map((service) => renderServiceDateCard(service, { showType: true })).join("")}
@@ -19461,7 +19486,7 @@ function renderServiceWeekDay(date, services) {
       <div class="service-week-stack">
         ${services.length
           ? services.map((service) => renderServiceWeekCard(service)).join("")
-          : `<button class="service-week-empty" type="button" data-service-templates>템플릿</button>`}
+          : ""}
       </div>
     </section>`;
 }
@@ -23219,7 +23244,7 @@ function refreshPresenterForService(serviceId, options = {}) {
   if (!state.presenter.slides.length) state.presenter.safetyBlank = false;
   syncServiceMusicWithPresenterContext(serviceId, { render: false });
   if (options.publish !== false) publishPresenterState();
-  if (state.module === "presenter" && state.selectedServiceId === serviceId) renderPresenterControlState(serviceId);
+  if (options.renderControls !== false && state.module === "presenter" && state.selectedServiceId === serviceId) renderPresenterControlState(serviceId);
 }
 
 function refreshPresenterForServiceType(typeId, options = {}) {
