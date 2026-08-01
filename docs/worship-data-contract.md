@@ -39,6 +39,7 @@ mindex_worship_services (특정 날짜 예배)
 
 mindex_worship_sections (예배 순서 묶음)
 ├─ id / service_id / sort_order
+├─ created_at / updated_at (required when creating a projected section)
 ├─ section_key
 ├─ title / person
 ├─ template_id / template_modified
@@ -46,7 +47,7 @@ mindex_worship_sections (예배 순서 묶음)
 
 mindex_worship_elements (순서 안의 콘텐츠 단위)
 ├─ id / section_id / sort_order
-├─ created_at (required when creating a projected element)
+├─ created_at / updated_at (required when creating a projected element)
 ├─ element_type
 ├─ title / person / body / scripture_reference
 ├─ song_id / song_version_id

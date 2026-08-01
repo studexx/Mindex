@@ -4918,6 +4918,8 @@ function buildWorshipPersistenceRows(service, items, existingSectionById = {}, e
       sectionRows.push({
         id: sectionId,
         service_id: service.id,
+        created_at: existingSection?.created_at || persistedAt,
+        updated_at: persistedAt,
         sort_order: sectionSort.get(sectionId),
         section_key: sectionModified ? (existingSection?.section_key || item._worshipSectionKey || "") : (item._worshipSectionKey || existingSection?.section_key || ""),
         title: sectionLabel,
