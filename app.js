@@ -3116,14 +3116,18 @@ function groupWorshipPresenterSlides(rows = [], hiddenElementIds = new Set()) {
 function normalizeWorshipPresenterSlide(row = {}, index = 0, options = {}) {
   const elementType = worshipPresenterElementType(row.element_type, row.slide_type);
   const layout = worshipPresenterLayout(row.slide_type, elementType);
+  const representativePrayer = elementType === PRESENTER_ELEMENT_TYPES.TITLE_ASSIGNEE
+    && String(row.section_key || "").trim() === "prayer";
   const scriptureReading = isPresenterScriptureReadingSource({
     elementType: row.element_type,
     sectionKey: row.section_key,
     label: row.section_title,
   });
-  const title = scriptureReading
-    ? (row.slide_title || row.section_title || "성경봉독")
-    : (row.slide_title || row.element_title || row.section_title || "");
+  const title = representativePrayer
+    ? "대표기도"
+    : scriptureReading
+      ? (row.slide_title || row.section_title || "성경봉독")
+      : (row.slide_title || row.element_title || row.section_title || "");
   const assignee = scriptureReading
     ? cleanPresenterAssignee(row.element_title || row.slide_body || "")
     : cleanPresenterAssignee(row.element_person || row.section_person || "");
@@ -19500,7 +19504,7 @@ function renderServiceWeekCard(service) {
       data-service-id="${escapeAttr(service.id)}"
     >
       <strong>${escapeHtml(serviceDisplayTypeName(service))}</strong>
-      <span class="service-week-card-preview">${escapeHtml(preview || "순서 확인")}</span>
+      ${preview ? `<span class="service-week-card-preview">${escapeHtml(preview)}</span>` : ""}
     </button>`;
 }
 
@@ -19521,7 +19525,7 @@ function renderServiceDateCard(service, options = {}) {
       </span>
       ${options.showType ? `<span class="service-date-card-type">${escapeHtml(serviceName)}</span>` : ""}
       ${note ? `<span class="service-date-card-note">${escapeHtml(note)}</span>` : ""}
-      ${preview ? `<span class="service-date-card-preview">${escapeHtml(preview)}</span>` : `<span class="service-date-card-preview">순서 확인</span>`}
+      ${preview ? `<span class="service-date-card-preview">${escapeHtml(preview)}</span>` : ""}
     </button>`;
 }
 
@@ -19573,19 +19577,7 @@ function serviceItemPreview(serviceId) {
     : [];
   const sermonReference = formatServiceScriptureReferenceList(sermonReferences);
   if (sermonTitle) return sermonReference ? `${sermonTitle} (${sermonReference})` : sermonTitle;
-  if (sermonReference) return `본문 ${sermonReference}`;
-
-  const songCount = items.filter((item) => isMainPraisePreviewItem(item)).length;
-  const markers = [];
-  for (const item of items) {
-    const marker = servicePreviewMarker(item);
-    if (marker && !markers.includes(marker)) markers.push(marker);
-  }
-  const parts = [];
-  if (songCount) parts.push(`찬양 ${songCount}곡`);
-  parts.push(...markers.filter((marker) => marker !== "찬양").slice(0, 4));
-  if (parts.length) return parts.join(" · ");
-  return `${items.length}개 순서`;
+  return "";
 }
 
 function homeServicePrepSummary(serviceId) {
@@ -20514,8 +20506,8 @@ function presenterPreparationTargetLabel(key = "", service = null, content = "")
     return "설교 제목";
   }
   return {
-    대표기도: "기도",
-    기도: "기도",
+    대표기도: "대표기도",
+    기도: "대표기도",
     성경: "성경봉독",
     성경봉독: "성경봉독",
     성경본문: "성경봉독",

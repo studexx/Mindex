@@ -1488,7 +1488,7 @@ function presenterTitleAssigneeTitle(item = {}, label = "", displayText = "", el
   const compact = compactSearchValue(label);
   const text = String(displayText || "").trim();
   if (isCreedPresenterItem(item, label, displayText)) return "신앙고백";
-  if (compact === "대표기도" || compact === "기도") return "기도";
+  if (compact === "대표기도" || compact === "기도") return "대표기도";
   if (compact === "성경봉독") return "성경봉독";
   if (compact === "특송") return "특송";
   if (compact === "봉헌기도") return "봉헌기도";

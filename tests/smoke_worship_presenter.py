@@ -1526,9 +1526,9 @@ def main() -> int:
                     and db_title_assignee_state["layout"] == "lower_bar_text"
                     and db_title_assignee_state["type"] == "title-assignee"
                     and db_title_assignee_state["renderClass"] == "title-assignee"
-                    and db_title_assignee_state["title"] == "기도"
+                    and db_title_assignee_state["title"] == "대표기도"
                     and db_title_assignee_state["assignee"] == "박귀서 장로"
-                    and db_title_assignee_state["text"] == "기도\n박귀서 장로"
+                    and db_title_assignee_state["text"] == "대표기도\n박귀서 장로"
                     and "presenter-title-assignee" in db_title_assignee_state["html"]
                 ):
                     pass_("presenter-db-title-assignee-slide", json.dumps(db_title_assignee_state, ensure_ascii=False))
