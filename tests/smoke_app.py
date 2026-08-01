@@ -3936,6 +3936,51 @@ def main() -> int:
                     else:
                         fail("presenter-input-completion-guard", json.dumps(presenter_input_completion_guard, ensure_ascii=False))
 
+                    presenter_praise_input_mode_persistence = page.evaluate(
+                        """
+                        (() => {
+                          const service = { id: '__smoke_praise_input_modes__', type_id: 'sunday-first', date: '2026-08-02' };
+                          const makeItem = (label, inputMode, index) => normalizeServiceItem({
+                            service_id: service.id,
+                            label,
+                            raw_title: inputMode === 'manual_praise' ? `${label} 직접 입력` : '',
+                            song_id: inputMode === 'manual_praise' ? null : `__smoke_song_${index}__`,
+                            memo: serializeServiceItemMemo({
+                              elementType: 'praise',
+                              inputMode,
+                              outputMode: servicePraiseInputModeOutputMode(inputMode),
+                              slides: inputMode === 'manual_praise' ? ['가사 한 줄'] : [],
+                            }),
+                            _worshipSectionKey: 'praise',
+                            _worshipSectionTitle: '찬양',
+                            _worshipElementTemplateModified: true,
+                            _worshipTemplatePlaceholder: false,
+                          }, index);
+                          const rows = buildWorshipPersistenceRows(service, [
+                            makeItem('찬양 1', 'score_db', 0),
+                            makeItem('찬양 2', 'lyrics_db', 1),
+                            makeItem('찬양 3', 'manual_praise', 2),
+                          ], {}, {}, { elementTypedStateColumns: { inputMode: true, contentState: true } });
+                          return rows.elements.map((row) => ({
+                            label: row.source_ref?.label || '',
+                            inputMode: row.input_mode || '',
+                            contentInputMode: row.content_state?.inputMode || '',
+                            configInputMode: row.config?.inputMode || '',
+                            songId: row.song_id || '',
+                            body: row.body || '',
+                          }));
+                        })()
+                        """
+                    )
+                    if presenter_praise_input_mode_persistence == [
+                        {"label": "찬양 1", "inputMode": "score_db", "contentInputMode": "score_db", "configInputMode": "score_db", "songId": "__smoke_song_0__", "body": ""},
+                        {"label": "찬양 2", "inputMode": "lyrics_db", "contentInputMode": "lyrics_db", "configInputMode": "lyrics_db", "songId": "__smoke_song_1__", "body": ""},
+                        {"label": "찬양 3", "inputMode": "manual_praise", "contentInputMode": "manual_praise", "configInputMode": "manual_praise", "songId": "", "body": "가사 한 줄"},
+                    ]:
+                        pass_("presenter-praise-input-mode-persistence", json.dumps(presenter_praise_input_mode_persistence, ensure_ascii=False))
+                    else:
+                        fail("presenter-praise-input-mode-persistence", json.dumps(presenter_praise_input_mode_persistence, ensure_ascii=False))
+
                     presenter_response_prayer_input_guard = page.evaluate(
                         """
                         (() => {

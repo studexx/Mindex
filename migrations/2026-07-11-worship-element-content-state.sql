@@ -10,7 +10,7 @@ alter table public.mindex_worship_elements
 
 alter table public.mindex_worship_elements
   add constraint mindex_worship_elements_input_mode_check
-  check (input_mode in ('', 'praise_db', 'text', 'scripture', 'asset', 'config', 'none'));
+  check (input_mode in ('', 'praise_db', 'score_db', 'lyrics_db', 'manual_praise', 'text', 'scripture', 'asset', 'config', 'none'));
 
 update public.mindex_worship_elements
 set
@@ -21,7 +21,7 @@ set
       nullif(config->'contentState'->>'inputMode', ''),
       nullif(config->'content_state'->>'input_mode', ''),
       ''
-    ) in ('', 'praise_db', 'text', 'scripture', 'asset', 'config', 'none')
+    ) in ('', 'praise_db', 'score_db', 'lyrics_db', 'manual_praise', 'text', 'scripture', 'asset', 'config', 'none')
       then coalesce(
         nullif(config->>'inputMode', ''),
         nullif(config->>'input_mode', ''),

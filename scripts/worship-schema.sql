@@ -227,7 +227,7 @@ create table if not exists public.mindex_worship_elements (
   scripture_reference text not null default '',
   asset jsonb not null default '{}'::jsonb,
   input_mode text not null default ''
-    check (input_mode in ('', 'praise_db', 'text', 'scripture', 'asset', 'config', 'none')),
+    check (input_mode in ('', 'praise_db', 'score_db', 'lyrics_db', 'manual_praise', 'text', 'scripture', 'asset', 'config', 'none')),
   content_state jsonb not null default '{}'::jsonb,
   template_id uuid references public.mindex_worship_templates(id) on delete set null,
   template_modified boolean not null default false,

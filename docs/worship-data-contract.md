@@ -347,6 +347,9 @@ Current data basis:
   - `lyrics_db`: "가사 불러오기" loads a Praise DB song and renders lyric output.
   - `manual_praise`: "직접 입력하기" stores the title and manual lyric slides on
     the worship element, without requiring `song_id` or `song_version_id`.
+- `mindex_worship_elements.input_mode` must allow:
+  `''`, `praise_db`, `score_db`, `lyrics_db`, `manual_praise`, `text`,
+  `scripture`, `asset`, `config`, and `none`.
 
 ```text
 Element Type (템플릿/저장 타입)
