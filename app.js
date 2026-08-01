@@ -564,11 +564,13 @@ const state = {
   serviceItems: {},
   worshipSections: [],
   worshipElements: [],
+  loadedWorshipServiceIds: new Set(),
   templateElementSuppressions: new Map(),
   worshipTemplates: [],
   worshipTemplateItems: [],
   worshipPresenterSlides: {},
   worshipPresenterSlidesLoaded: false,
+  loadedWorshipPresenterServiceIds: new Set(),
   hymnScoreManifest: {},
   hymnScoreManifestLoaded: false,
   selectedWorshipBackgroundFile: "",
@@ -758,16 +760,18 @@ function bindElectronDesktopEvents() {
 }
 
 function loadInitialData() {
-  if (state.module === "praise" || state.module === "presenter" || state.selectedSongId) {
+  if (state.module === "praise" || state.selectedSongId) {
     loadSongs();
-  } else {
+  } else if (!isServiceDataModule()) {
     scheduleBackgroundSongLoad();
   }
-  loadScriptureBooks({ silent: true });
-  loadScriptures({ silent: true });
-  loadBibleTranslations({ silent: true });
+  if (state.module === "scripture" || state.selectedScriptureId || state.selectedBookCode) {
+    loadScriptureBooks({ silent: true });
+    loadScriptures({ silent: true });
+    loadBibleTranslations({ silent: true });
+  }
   if (isServiceDataModule()) loadServiceData({ silent: true });
-  loadReferenceLinks({ silent: true });
+  if (state.module === "references") loadReferenceLinks({ silent: true });
   if (state.module === "calendar") loadCalendarData({ silent: true });
 }
 
@@ -1706,14 +1710,14 @@ async function applyBrowserHistorySnapshot(snapshot) {
       if (!state.scriptureBooks.length) await loadScriptureBooks({ silent: true });
       await loadScriptures({ silent: true });
     }
-    if ((state.module === "praise" || state.module === "presenter") && !songCatalogLoaded && !state.connectionError) {
+    if (state.module === "praise" && !songCatalogLoaded && !state.connectionError) {
       await loadSongs();
     }
     if (isServiceDataModule() && !state.serviceTypes.length && !state.serviceError) {
       await loadServiceData({ silent: true });
     }
-    if (state.module === "presenter" && !state.worshipPresenterSlidesLoaded && !state.serviceError) {
-      await loadWorshipPresenterSlides();
+    if (state.module === "presenter" && !state.serviceError) {
+      await loadWorshipPresenterSlides(state.selectedServiceId || state.presenter.serviceId);
     }
     if (state.module === "calendar" && !state.calendarLoaded && !state.calendarLoading && !state.calendarError) {
       await loadCalendarData({ silent: true });
@@ -2081,7 +2085,7 @@ async function switchModule(moduleName, options = {}) {
     await loadForms(state.selectedVersionId);
   }
 
-  if ((moduleName === "praise" || moduleName === "presenter") && !songCatalogLoaded && !state.connectionError) {
+  if (moduleName === "praise" && !songCatalogLoaded && !state.connectionError) {
     await loadSongs();
   }
 
@@ -2089,8 +2093,8 @@ async function switchModule(moduleName, options = {}) {
     await loadServiceData();
   }
 
-  if (moduleName === "presenter" && !state.worshipPresenterSlidesLoaded && !state.serviceError) {
-    await loadWorshipPresenterSlides();
+  if (moduleName === "presenter" && !state.serviceError) {
+    await loadWorshipPresenterSlides(state.selectedServiceId || state.presenter.serviceId);
   }
 
   if (moduleName === "calendar" && !state.calendarLoaded && !state.calendarLoading && !state.calendarError) {
@@ -2535,7 +2539,7 @@ async function loadServiceDataOnce({ silent = false } = {}) {
       loadWorshipData(),
     ]);
     restorePresenterControllerSession();
-    if (state.module === "presenter") await loadWorshipPresenterSlides();
+    if (state.module === "presenter") await loadWorshipPresenterSlides(state.selectedServiceId || state.presenter.serviceId);
     state.dirtyServiceTypeIds.clear();
     state.dirty.service = false;
     state.serviceError = "";
@@ -2559,6 +2563,67 @@ async function fetchSupabasePaged(table, select = "*", buildQuery = (query) => q
     rows.push(...(data || []));
     if (!data || data.length < pageSize) return rows;
   }
+}
+
+const WORSHIP_INITIAL_ELEMENT_PAST_DAYS = 45;
+const WORSHIP_INITIAL_ELEMENT_FUTURE_DAYS = 120;
+
+function localDateStringFromDate(date) {
+  const target = date instanceof Date ? date : new Date(date);
+  if (Number.isNaN(target.getTime())) return "";
+  const year = target.getFullYear();
+  const month = String(target.getMonth() + 1).padStart(2, "0");
+  const day = String(target.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function localDateStringWithOffset(baseDate = new Date(), offsetDays = 0) {
+  const date = parseLocalDate(baseDate);
+  if (Number.isNaN(date.getTime())) return "";
+  date.setDate(date.getDate() + offsetDays);
+  return localDateStringFromDate(date);
+}
+
+function initialWorshipElementServiceIds(services = []) {
+  const from = localDateStringWithOffset(new Date(), -WORSHIP_INITIAL_ELEMENT_PAST_DAYS);
+  const to = localDateStringWithOffset(new Date(), WORSHIP_INITIAL_ELEMENT_FUTURE_DAYS);
+  const pinned = new Set([state.selectedServiceId, state.presenter.serviceId].filter(Boolean));
+  return services
+    .filter((service) => {
+      if (!service?.id) return false;
+      if (pinned.has(service.id)) return true;
+      const date = String(service.date || service.service_date || "").trim();
+      return date && (!from || date >= from) && (!to || date <= to);
+    })
+    .map((service) => service.id);
+}
+
+async function fetchWorshipRowsForServiceIds(serviceIds = []) {
+  const ids = [...new Set(serviceIds.map((id) => String(id || "").trim()).filter(Boolean))];
+  if (!ids.length) return { sections: [], elements: [] };
+
+  const sections = [];
+  for (const batch of chunkArray(ids, 80)) {
+    const rows = await fetchSupabasePaged("mindex_worship_sections", "*", (query) =>
+      query
+        .in("service_id", batch)
+        .order("service_id", { ascending: true })
+        .order("sort_order", { ascending: true }));
+    sections.push(...rows);
+  }
+
+  const sectionIds = sections.map((section) => section.id).filter(Boolean);
+  const elements = [];
+  for (const batch of chunkArray(sectionIds, 80)) {
+    const rows = await fetchSupabasePaged("mindex_worship_elements", "*", (query) =>
+      query
+        .in("section_id", batch)
+        .order("section_id", { ascending: true })
+        .order("sort_order", { ascending: true }));
+    elements.push(...rows);
+  }
+
+  return { sections, elements };
 }
 
 function autoUpcomingPublicServiceTargets(baseDate = new Date()) {
@@ -2705,14 +2770,10 @@ function worshipAppServiceTypeId(typeId) {
 }
 
 async function loadWorshipData() {
-  const [types, services, sections, elements, templates, templateItems] = await Promise.all([
+  const [types, services, templates, templateItems] = await Promise.all([
     fetchSupabasePaged("mindex_worship_service_types", "*", (query) => query.order("sort_order", { ascending: true })),
     fetchSupabasePaged("mindex_worship_services", "*", (query) =>
       query.order("service_date", { ascending: true }).order("service_type_id", { ascending: true })),
-    fetchSupabasePaged("mindex_worship_sections", "*", (query) =>
-      query.order("service_id", { ascending: true }).order("sort_order", { ascending: true })),
-    fetchSupabasePaged("mindex_worship_elements", "*", (query) =>
-      query.order("section_id", { ascending: true }).order("sort_order", { ascending: true })),
     fetchSupabasePaged("mindex_worship_templates", "*", (query) =>
       query.order("template_level", { ascending: true }).order("name", { ascending: true })),
     fetchSupabasePaged("mindex_worship_template_items", "*", (query) =>
@@ -2724,14 +2785,18 @@ async function loadWorshipData() {
   state.services = services.map(normalizeWorshipService);
   const autoServices = await ensureUpcomingPublicWorshipServices();
   if (autoServices.length) state.services = sortServicesByDate([...state.services, ...autoServices]);
+  const preloadServiceIds = initialWorshipElementServiceIds(state.services);
+  const { sections, elements } = await fetchWorshipRowsForServiceIds(preloadServiceIds);
   state.worshipSections = sections;
   state.worshipElements = elements;
+  state.loadedWorshipServiceIds = new Set(preloadServiceIds);
   state.templateElementSuppressions.clear();
   state.worshipTemplates = templates;
   state.worshipTemplateItems = templateItems;
   state.serviceItems = projectGroupedWorshipItemsFromTemplates(groupWorshipElements(sections, elements));
   state.worshipPresenterSlides = {};
   state.worshipPresenterSlidesLoaded = false;
+  state.loadedWorshipPresenterServiceIds = new Set();
   state.serviceItemAssigneeSupported = true;
   state.serviceItemVersionSupported = true;
   state.serviceItemMemoSupported = true;
@@ -2741,10 +2806,13 @@ async function loadWorshipData() {
   warmWorshipScriptureReferencesForService(state.selectedServiceId);
 }
 
-async function loadWorshipPresenterSlides() {
-  if (state.worshipPresenterSlidesLoaded || !state.client) return;
+async function loadWorshipPresenterSlides(serviceId = "") {
+  if (!state.client) return;
+  const targetServiceId = String(serviceId || "").trim();
+  if (targetServiceId && state.loadedWorshipPresenterServiceIds.has(targetServiceId)) return;
+  if (!targetServiceId && state.worshipPresenterSlidesLoaded) return;
   const presenterRows = await fetchSupabasePaged("mindex_worship_presenter_slides", "*", (query) =>
-    query
+    (targetServiceId ? query.eq("service_id", targetServiceId) : query)
       .order("service_date", { ascending: true })
       .order("section_order", { ascending: true })
       .order("element_order", { ascending: true })
@@ -2758,8 +2826,18 @@ async function loadWorshipPresenterSlides() {
       .map((element) => element.id)
       .filter(Boolean),
   );
-  state.worshipPresenterSlides = groupWorshipPresenterSlides(presenterRows, hiddenElementIds);
-  state.worshipPresenterSlidesLoaded = true;
+  const groupedSlides = groupWorshipPresenterSlides(presenterRows, hiddenElementIds);
+  if (targetServiceId) {
+    state.worshipPresenterSlides = {
+      ...state.worshipPresenterSlides,
+      [targetServiceId]: groupedSlides[targetServiceId] || [],
+    };
+    state.loadedWorshipPresenterServiceIds.add(targetServiceId);
+    refreshPresenterForService(targetServiceId, { publish: false });
+  } else {
+    state.worshipPresenterSlides = groupedSlides;
+    state.worshipPresenterSlidesLoaded = true;
+  }
 }
 
 function defaultWorshipServiceTypes() {
@@ -3564,8 +3642,39 @@ function calendarCellClassForField(field) {
 }
 
 async function loadServiceItems(serviceId) {
-  if (!serviceId || state.serviceItems[serviceId]) return;
-  state.serviceItems[serviceId] = [];
+  if (!serviceId || state.loadedWorshipServiceIds.has(serviceId)) return;
+  if (!state.client) {
+    state.serviceItems[serviceId] = state.serviceItems[serviceId] || [];
+    return;
+  }
+  const service = state.services.find((svc) => svc.id === serviceId);
+  if (!service) return;
+  const previousSectionIds = new Set(
+    state.worshipSections
+      .filter((section) => section.service_id === serviceId)
+      .map((section) => section.id)
+      .filter(Boolean),
+  );
+  const { sections, elements } = await fetchWorshipRowsForServiceIds([serviceId]);
+  const loadedSectionIds = new Set([
+    ...previousSectionIds,
+    ...sections.map((section) => section.id).filter(Boolean),
+  ]);
+  state.worshipSections = [
+    ...state.worshipSections.filter((section) => section.service_id !== serviceId),
+    ...sections,
+  ];
+  state.worshipElements = [
+    ...state.worshipElements.filter((element) => !loadedSectionIds.has(element.section_id)),
+    ...elements,
+  ];
+  state.loadedWorshipServiceIds.add(serviceId);
+  state.serviceItems[serviceId] = projectWorshipServiceItemsFromTemplate(
+    service,
+    groupWorshipElements(sections, elements)[serviceId] || [],
+  );
+  await loadSongsForIds(elements.map((item) => item.song_id));
+  warmWorshipScriptureReferencesForService(serviceId);
   renderCurrentServiceModuleDetail();
 }
 
@@ -23003,6 +23112,13 @@ function preparePresenterService(serviceId = state.selectedServiceId) {
   if (!serviceId) return;
   if (!songCatalogLoaded && !songLoadPromise && canUseClientData()) {
     void loadSongs().then(() => refreshPresenterForService(serviceId));
+  }
+  if (
+    canUseClientData()
+    && !state.loadedWorshipPresenterServiceIds.has(serviceId)
+    && !getServiceOutputItems(serviceId).length
+  ) {
+    void loadWorshipPresenterSlides(serviceId);
   }
   warmWorshipScriptureReferencesForService(serviceId);
   schedulePendingServiceScriptureResolves(serviceId);
