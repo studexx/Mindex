@@ -3695,7 +3695,7 @@ def main() -> int:
                     """
                 )
                 if (
-                    fullscreen_sermon_title_center_state["display"] == "flex"
+                    fullscreen_sermon_title_center_state["display"] == "grid"
                     and fullscreen_sermon_title_center_state["titleCentered"] <= 1
                     and fullscreen_sermon_title_center_state["personCentered"] <= 1
                 ):

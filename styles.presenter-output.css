@@ -689,22 +689,25 @@
   text-align: center;
 }
 :is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-title-assignee--sermon {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-auto-rows: max-content;
   width: 100%;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  justify-items: center;
+  align-content: center;
   gap: 1.25cqh;
   text-align: center;
 }
-:is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-title-assignee--sermon .presenter-title-assignee-content {
+:is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-title-assignee--sermon > :is(.presenter-title-assignee-content, .presenter-title-assignee-person) {
+  display: block;
+  box-sizing: border-box;
   width: 100%;
+  max-width: 100%;
+  justify-self: center;
   text-align: center;
 }
 :is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-title-assignee--sermon .presenter-title-assignee-person {
   position: static;
-  width: 100%;
-  text-align: center;
 }
 :is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-slide--lyrics .presenter-slide-text span {
   font-size: inherit;
