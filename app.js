@@ -8564,6 +8564,52 @@ function warmWorshipScriptureReferencesForService(serviceId = state.selectedServ
   void preloadWorshipScriptureReferences(state.worshipSections, state.worshipElements, { serviceId });
 }
 
+function warmServiceItemScriptureReferencesForService(serviceId = state.selectedServiceId) {
+  if (!serviceId || !state.client) return;
+  void preloadServiceItemScriptureReferences(serviceId).then((loaded) => {
+    if (loaded) refreshPresenterForService(serviceId);
+  });
+}
+
+async function preloadServiceItemScriptureReferences(serviceId = state.selectedServiceId) {
+  const service = state.services.find((candidate) => candidate.id === serviceId) || null;
+  const items = getServiceItems(serviceId);
+  if (!state.client || !service || !items.length) return false;
+  let loaded = false;
+  try {
+    await ensureBibleBookLookups();
+    if (!state.bibleTranslations.length && !state.bibleReaderError) await loadBibleTranslations({ silent: true });
+    if (!selectedPresenterBibleTranslation()?.id) return false;
+    const requests = [];
+    const seen = new Set();
+    items.forEach((item) => {
+      if (!isScriptureBodyServiceItem(item)) return;
+      const memo = parseServiceItemMemo(item.memo);
+      if (memo.manualScripture) return;
+      serviceItemScriptureReferences(item, memo, service).forEach((referenceText) => {
+        const reference = parseBibleReference(referenceText);
+        if (!reference) return;
+        const translation = serviceItemBibleTranslationForReference(item, memo, referenceText);
+        if (!translation?.id) return;
+        const cacheKey = bibleVerseCacheKey(translation.id, reference.book.code, reference.chapter);
+        if (state.bibleVerseCache.has(cacheKey)) return;
+        const requestKey = `${translation.id}:${reference.book.code}:${reference.chapter}`;
+        if (seen.has(requestKey)) return;
+        seen.add(requestKey);
+        requests.push(fetchServiceScriptureVerses(reference, translation).then((verses) => {
+          if (verses.length) loaded = true;
+        }));
+      });
+    });
+    if (!requests.length) return false;
+    await Promise.all(requests);
+    return loaded;
+  } catch (error) {
+    console.warn("Service scripture preload failed", error);
+    return false;
+  }
+}
+
 async function preloadWorshipScriptureReferences(sections = [], elements = [], options = {}) {
   if (!state.client || !elements.length) return;
   try {
@@ -23510,6 +23556,7 @@ function preparePresenterService(serviceId = state.selectedServiceId) {
     void loadWorshipPresenterSlides(serviceId);
   }
   warmWorshipScriptureReferencesForService(serviceId);
+  warmServiceItemScriptureReferencesForService(serviceId);
   schedulePendingServiceScriptureResolves(serviceId);
   const slides = buildServicePresenterSlides(serviceId);
   if (state.presenter.serviceId !== serviceId) {
