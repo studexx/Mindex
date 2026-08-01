@@ -426,6 +426,10 @@ const PRESENTER_SLIDE_LAYOUTS = {
   FILE: "file",
 };
 const PRESENTER_CHROMAKEY_VIDEO_POSTER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 9'%3E%3Crect width='16' height='9' fill='%2300ff00'/%3E%3C/svg%3E";
+const PRESENTER_MEDIA_STORAGE_BUCKET = "mindex-worship-media";
+const PRESENTER_REFERENCE_MEDIA_SECTION_KEYS = new Set(["sermon", "announcements"]);
+const PRESENTER_REFERENCE_MEDIA_ACCEPT = "image/*,video/*,audio/*";
+const PRESENTER_REFERENCE_MEDIA_MAX_BYTES = 50 * 1024 * 1024;
 const SERVICE_FUTURE_LOOKAHEAD_DAYS = 7;
 const SERVICE_LIST_PANEL_ID = "__list";
 const SERVICE_TEMPLATES_PANEL_ID = "__templates";
@@ -5938,9 +5942,12 @@ function handlePresenterDetailClick(event) {
     return true;
   }
 
-  const sermonReferenceMediaAdd = event.target.closest("[data-presenter-sermon-reference-media-add]");
-  if (sermonReferenceMediaAdd) {
-    addPresenterSermonReferenceMedia(sermonReferenceMediaAdd.dataset.serviceId || state.selectedServiceId);
+  const referenceMediaAdd = event.target.closest("[data-presenter-reference-media-add]");
+  if (referenceMediaAdd) {
+    addPresenterReferenceMedia(
+      referenceMediaAdd.dataset.serviceId || state.selectedServiceId,
+      referenceMediaAdd.dataset.presenterReferenceMediaSection,
+    );
     return true;
   }
 
@@ -6336,6 +6343,12 @@ function handleDetailChange(event) {
   const serviceMusicVolume = event.target.closest("[data-service-music-volume]");
   if (serviceMusicVolume) {
     setServiceMusicVolume(serviceMusicVolume.value);
+    return;
+  }
+
+  const referenceMediaFile = event.target.closest("[data-presenter-reference-media-file]");
+  if (referenceMediaFile) {
+    void uploadPresenterReferenceMediaFile(referenceMediaFile);
     return;
   }
 
@@ -8692,20 +8705,106 @@ function runPresenterSectionItemAction(action, index) {
   updateSaveState();
 }
 
-function addPresenterSermonReferenceMedia(serviceId = state.selectedServiceId) {
-  if (!serviceId) return;
-  const items = normalizeServiceItemsInCurrentOrder(getServiceItems(serviceId));
-  const sermonIndexes = items
-    .map((item, index) => ({ item, index }))
-    .filter(({ item }) => String(item?._worshipSectionKey || "").trim() === "sermon");
-  const lastSermon = sermonIndexes.at(-1);
-  if (!lastSermon) {
-    showToast("설교 섹션에서만 참고 화면을 추가할 수 있습니다.", "info");
+function presenterReferenceMediaSectionLabel(sectionKey = "") {
+  return String(sectionKey || "").trim() === "announcements" ? "광고" : "설교";
+}
+
+function isPresenterReferenceMediaItem(item = {}, memo = parseServiceItemMemo(item.memo)) {
+  const sectionKey = String(item?._worshipSectionKey || "").trim();
+  return PRESENTER_REFERENCE_MEDIA_SECTION_KEYS.has(sectionKey)
+    && compactSearchValue(item?.label || "") === "참고화면"
+    && serviceMemoInputMode(memo, item) === "asset";
+}
+
+function presenterReferenceMediaKindForFile(file) {
+  const type = String(file?.type || "").toLowerCase();
+  const name = String(file?.name || "").toLowerCase();
+  if (type.startsWith("image/") || /\.(avif|bmp|gif|jpe?g|png|svg|webp)$/.test(name)) return "image";
+  if (type.startsWith("video/") || /\.(m4v|mov|mp4|webm)$/.test(name)) return "video";
+  if (type.startsWith("audio/") || /\.(aac|flac|m4a|mp3|ogg|wav)$/.test(name)) return "audio";
+  return "";
+}
+
+function presenterReferenceMediaUploadPath(serviceId, item, file) {
+  const safeName = String(file?.name || "media")
+    .normalize("NFKD")
+    .replace(/[^a-zA-Z0-9._-]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "media";
+  const itemId = String(item?.id || item?._localId || createLocalId()).replace(/[^a-zA-Z0-9_-]/g, "");
+  return `services/${String(serviceId || "draft").replace(/[^a-zA-Z0-9_-]/g, "")}/${itemId}/${Date.now()}-${safeName}`;
+}
+
+async function uploadPresenterReferenceMediaFile(input) {
+  const file = input?.files?.[0];
+  const serviceId = input?.dataset?.serviceId || state.selectedServiceId;
+  const index = Number(input?.dataset?.serviceItemIndex);
+  const item = getServiceItems(serviceId)[index];
+  const kind = presenterReferenceMediaKindForFile(file);
+  if (!file || !item || !isPresenterReferenceMediaItem(item) || !kind) {
+    showToast("이미지, 영상, 음원 파일만 참고 화면에 넣을 수 있습니다.", "error");
+    if (input) input.value = "";
+    return;
+  }
+  if (Number(file.size) > PRESENTER_REFERENCE_MEDIA_MAX_BYTES) {
+    showToast("참고 화면 파일은 50MB 이하로 올려 주세요.", "error");
+    input.value = "";
+    return;
+  }
+  if (!state.client?.storage) {
+    showToast("미디어 저장소에 연결되지 않았습니다. 연결 상태를 확인해 주세요.", "error");
+    input.value = "";
     return;
   }
 
-  const source = lastSermon.item;
-  const insertAt = lastSermon.index + 1;
+  input.disabled = true;
+  try {
+    const path = presenterReferenceMediaUploadPath(serviceId, item, file);
+    const { error } = await state.client.storage
+      .from(PRESENTER_MEDIA_STORAGE_BUCKET)
+      .upload(path, file, { cacheControl: "3600", contentType: file.type || undefined, upsert: false });
+    if (error) throw error;
+    const { data } = state.client.storage.from(PRESENTER_MEDIA_STORAGE_BUCKET).getPublicUrl(path);
+    const url = String(data?.publicUrl || "").trim();
+    if (!url) throw new Error("업로드한 파일의 공개 주소를 만들지 못했습니다.");
+
+    const memo = parseServiceItemMemo(item.memo);
+    memo.elementType = kind;
+    memo.componentType = kind;
+    memo.inputMode = "asset";
+    memo.asset = { kind, name: file.name, url };
+    item.memo = serializeServiceItemMemo(memo);
+    item._worshipElementTemplateModified = true;
+    state.dirty.service = true;
+    refreshPresenterForService(serviceId);
+    await saveService(serviceId, { silent: true, renderAfterSave: false });
+    renderCurrentServiceModuleDetail();
+    renderServiceList();
+    showToast(`${kind === "image" ? "이미지" : kind === "video" ? "영상" : "음원"}을 참고 화면에 추가했습니다.`);
+  } catch (error) {
+    showToast(error?.message || "참고 화면 파일을 올리지 못했습니다.", "error");
+  } finally {
+    input.disabled = false;
+    input.value = "";
+  }
+}
+
+function addPresenterReferenceMedia(serviceId = state.selectedServiceId, requestedSectionKey = "") {
+  if (!serviceId) return;
+  const items = normalizeServiceItemsInCurrentOrder(getServiceItems(serviceId));
+  const sectionKey = PRESENTER_REFERENCE_MEDIA_SECTION_KEYS.has(String(requestedSectionKey || "").trim())
+    ? String(requestedSectionKey).trim()
+    : "sermon";
+  const sectionIndexes = items
+    .map((item, index) => ({ item, index }))
+    .filter(({ item }) => String(item?._worshipSectionKey || "").trim() === sectionKey);
+  const lastSectionItem = sectionIndexes.at(-1);
+  if (!lastSectionItem) {
+    showToast(`${presenterReferenceMediaSectionLabel(sectionKey)} 섹션을 찾지 못했습니다.`, "info");
+    return;
+  }
+
+  const source = lastSectionItem.item;
+  const insertAt = lastSectionItem.index + 1;
   const item = normalizeServiceItem({
     service_id: serviceId,
     sort_order: insertAt + 1,
@@ -8718,11 +8817,11 @@ function addPresenterSermonReferenceMedia(serviceId = state.selectedServiceId) {
       asset: { kind: "image", name: "", url: "" },
     }),
     _worshipSectionId: source._worshipSectionId || "",
-    _worshipSectionKey: "sermon",
-    _worshipSectionTitle: source._worshipSectionTitle || "설교",
+    _worshipSectionKey: sectionKey,
+    _worshipSectionTitle: source._worshipSectionTitle || presenterReferenceMediaSectionLabel(sectionKey),
     _worshipSectionTemplateModified: Boolean(source._worshipSectionTemplateModified),
     _worshipSectionOrder: source._worshipSectionOrder || 0,
-    _worshipElementOrder: (Number(source._worshipElementOrder) || sermonIndexes.length) + 1,
+    _worshipElementOrder: (Number(source._worshipElementOrder) || sectionIndexes.length) + 1,
     _worshipElementTemplateModified: true,
   }, insertAt);
   items.splice(insertAt, 0, item);
@@ -20595,7 +20694,7 @@ function presenterServiceInputIsStatic(item = {}, memo = parseServiceItemMemo(it
   const sectionKey = String(item._worshipSectionKey || "").trim();
   const service = state.services.find((service) => service.id === item?.service_id) || null;
   const usesSharedSundayContent = Boolean(sharedSundayContentSourceItem(item, service));
-  return isServicePreparationItem(item, memo)
+  return !isPresenterReferenceMediaItem(item, memo) && (isServicePreparationItem(item, memo)
     || Boolean(presenterFixedTitleText(item))
     || isPublicFixedDoxologyServiceItem(
       item,
@@ -20607,7 +20706,7 @@ function presenterServiceInputIsStatic(item = {}, memo = parseServiceItemMemo(it
     || usesSharedSundayContent
     || label === "환영"
     || (sectionKey === "announcements" && compactSearchValue(item?.label || "") !== "청소년부광고")
-    || sectionKey === "closing_visual";
+    || sectionKey === "closing_visual");
 }
 
 function presenterServiceInputControls(item, index, service) {
@@ -20730,6 +20829,39 @@ function renderPresenterServiceScriptureInput(item, index, memo) {
 
 function renderPresenterServiceAssetInput(item, index, memo) {
   const asset = normalizeServiceAsset(memo.asset);
+  if (isPresenterReferenceMediaItem(item, memo)) {
+    const elementType = serviceMemoElementType(memo);
+    const kind = ["image", "video", "audio"].includes(elementType) ? elementType : "image";
+    const serviceId = item.service_id || state.selectedServiceId;
+    return `
+      <div class="svc-reference-media-input">
+        <div class="svc-reference-media-toolbar">
+          <label class="svc-presenter-input-field">
+            <span>종류</span>
+            <select class="svc-presenter-input-control" data-service-item-field="element_type" data-service-item-index="${index}" data-service-id="${escapeAttr(serviceId)}" aria-label="참고 화면 종류">
+              <option value="image"${kind === "image" ? " selected" : ""}>이미지</option>
+              <option value="video"${kind === "video" ? " selected" : ""}>영상</option>
+              <option value="audio"${kind === "audio" ? " selected" : ""}>음원</option>
+            </select>
+          </label>
+          <label class="svc-reference-media-upload">
+            <input type="file" accept="${PRESENTER_REFERENCE_MEDIA_ACCEPT}" data-presenter-reference-media-file data-service-id="${escapeAttr(serviceId)}" data-service-item-index="${index}" />
+            <i data-lucide="upload"></i><span>파일 선택</span>
+          </label>
+        </div>
+        <label class="svc-presenter-input-field">
+          <span>제목</span>
+          <input class="svc-presenter-input-control" type="text" data-service-item-field="asset_name" data-service-item-index="${index}" data-service-id="${escapeAttr(serviceId)}"
+            value="${escapeAttr(asset.name)}" placeholder="참고 화면 제목" aria-label="참고 화면 제목" />
+        </label>
+        <label class="svc-presenter-input-field">
+          <span>공개 링크</span>
+          <input class="svc-presenter-input-control" type="text" data-service-item-field="asset_url" data-service-item-index="${index}" data-service-id="${escapeAttr(serviceId)}"
+            value="${escapeAttr(asset.url)}" placeholder="파일을 선택하거나 공개 URL 입력" aria-label="참고 화면 공개 링크" />
+        </label>
+        ${renderPresenterReferenceMediaPreview(asset, kind)}
+      </div>`;
+  }
   return `
     <label class="svc-presenter-input-field">
       <span>이름</span>
@@ -20741,6 +20873,14 @@ function renderPresenterServiceAssetInput(item, index, memo) {
       <input class="svc-presenter-input-control" type="text" data-service-item-field="asset_url" data-service-item-index="${index}"
         value="${escapeAttr(asset.url)}" placeholder="assets/... 또는 YouTube 링크" aria-label="${escapeAttr(`${item.label || "파일"} 링크`)}" />
     </label>`;
+}
+
+function renderPresenterReferenceMediaPreview(asset, kind) {
+  const source = String(asset?.url || "").trim();
+  if (!source) return `<div class="svc-reference-media-preview is-empty"><i data-lucide="image-plus"></i><span>파일을 선택하면 이 예배의 참고 화면으로 바로 송출됩니다.</span></div>`;
+  if (kind === "video") return `<div class="svc-reference-media-preview"><video src="${escapeAttr(source)}" muted playsinline preload="metadata"></video></div>`;
+  if (kind === "audio") return `<div class="svc-reference-media-preview svc-reference-media-preview--audio"><i data-lucide="audio-lines"></i><strong>${escapeHtml(asset.name || "음원")}</strong><audio controls preload="metadata" src="${escapeAttr(source)}"></audio></div>`;
+  return `<div class="svc-reference-media-preview"><img src="${escapeAttr(source)}" alt="${escapeAttr(asset.name || "참고 화면")}" loading="lazy" /></div>`;
 }
 
 function renderPresenterServiceTextInputs(item, index, model, memo) {
@@ -21870,11 +22010,13 @@ function renderPresenterBoardSection(group, activeIndex, serviceId, options = {}
   const firstIndex = group.slides[0]?.slideIndex ?? 0;
   const visibleTitle = group.title || group.label || group.name;
   const interactionLabel = presenterSlideInteractionHint(serviceId, group.name || visibleTitle);
-  const sermonReferenceMediaAction = presenterBoardSectionIsSermon(group) ? `
+  const referenceMediaSectionKey = presenterBoardReferenceMediaSectionKey(group);
+  const referenceMediaAction = referenceMediaSectionKey ? `
         <button class="svc-board-section-add-media" type="button"
-          data-presenter-sermon-reference-media-add
+          data-presenter-reference-media-add
+          data-presenter-reference-media-section="${escapeAttr(referenceMediaSectionKey)}"
           data-service-id="${escapeAttr(serviceId)}"
-          aria-label="설교 참고 화면 추가">
+          aria-label="${escapeAttr(`${presenterReferenceMediaSectionLabel(referenceMediaSectionKey)} 참고 화면 추가`)}">
           <i data-lucide="image-plus"></i>
           <span>참고 화면 추가</span>
         </button>` : "";
@@ -21901,7 +22043,7 @@ function renderPresenterBoardSection(group, activeIndex, serviceId, options = {}
             ${group.meta ? `<small>${escapeHtml(group.meta)}</small>` : ""}
           </span>
         </button>
-        ${sermonReferenceMediaAction}
+        ${referenceMediaAction}
       </div>
       <div class="svc-board-subgroups">
         ${subgroupsHtml}
@@ -21910,8 +22052,11 @@ function renderPresenterBoardSection(group, activeIndex, serviceId, options = {}
     </section>`;
 }
 
-function presenterBoardSectionIsSermon(group = {}) {
-  return (group?.slides || []).some(({ slide }) => String(slide?.sectionKey || "").trim() === "sermon");
+function presenterBoardReferenceMediaSectionKey(group = {}) {
+  const sectionKey = (group?.slides || [])
+    .map(({ slide }) => String(slide?.sectionKey || "").trim())
+    .find((key) => PRESENTER_REFERENCE_MEDIA_SECTION_KEYS.has(key));
+  return sectionKey || "";
 }
 
 function presenterBoardSectionEditKey(group = {}) {

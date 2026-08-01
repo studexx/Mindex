@@ -278,3 +278,10 @@ Manual checks when changing live presenter behavior:
   when a service title/tag/source marks `헌신예배`, the afternoon template must
   include `특송` after `성경봉독` and `봉헌` after `결단`, so the input screen and
   presenter board expose those editable slots in the right order.
+- `참고 화면` is a real presenter-media element, not a note or a placeholder.
+  The 설교 and 광고 section headers can add one; it accepts image, video, or audio.
+  Uploaded files are stored in the public `mindex-worship-media` Supabase Storage
+  bucket (currently 50 MB per file) and the persisted public URL is the same source used by controller
+  preview and presenter output. Image/video render as media slides. Audio uses
+  the existing controller `음악` player when its slide is selected, so playback
+  remains under the operator's explicit control.
