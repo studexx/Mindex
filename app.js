@@ -1068,7 +1068,7 @@ function bindStaticEvents() {
 
   // Calendar inline-edit
   refs.detailPane.addEventListener("focusin", (e) => {
-    const serviceTextField = e.target.closest("input[data-service-item-field]");
+    const serviceTextField = e.target.closest("input[data-service-item-field], textarea[data-service-item-field]");
     if (isDeferredServiceTextInput(serviceTextField)) {
       serviceTextField.dataset.initialValue = serviceTextField.value;
       serviceTextField.dataset.presenterPreviewValue = serviceTextField.value;
@@ -1077,7 +1077,7 @@ function bindStaticEvents() {
     if (cell) cell.dataset.initialValue = cell.textContent;
   });
   refs.detailPane.addEventListener("focusout", (e) => {
-    const serviceTextField = e.target.closest("input[data-service-item-field]");
+    const serviceTextField = e.target.closest("input[data-service-item-field], textarea[data-service-item-field]");
     if (isDeferredServiceTextInput(serviceTextField)) {
       clearDeferredServiceTextPreview(serviceTextField);
       commitDeferredServiceTextInput(serviceTextField, { save: true });
@@ -6223,8 +6223,9 @@ function handleDetailKeydown(event) {
     saveAll();
     return;
   }
-  const serviceTextField = event.target.closest("input[data-service-item-field]");
+  const serviceTextField = event.target.closest("input[data-service-item-field], textarea[data-service-item-field]");
   if (serviceTextField && event.key === "Enter") {
+    if (serviceTextField.matches("textarea")) return;
     event.preventDefault();
     if (isDeferredServiceTextInput(serviceTextField)) {
       commitDeferredServiceTextInput(serviceTextField, { save: true });
@@ -7061,7 +7062,7 @@ function updateNewServiceFormField(field) {
 }
 
 function isDeferredServiceTextInput(field) {
-  if (!field?.matches?.('input[type="text"][data-service-item-field], input:not([type])[data-service-item-field]')) return false;
+  if (!field?.matches?.('input[type="text"][data-service-item-field], input:not([type])[data-service-item-field], textarea[data-service-item-field]')) return false;
   return !field.hasAttribute("data-service-song-required");
 }
 
@@ -7136,7 +7137,7 @@ function commitDeferredServiceTextInput(field, options = {}) {
 }
 
 function commitActiveDeferredServiceTextInput(serviceId = state.selectedServiceId) {
-  const field = document.activeElement?.closest?.("input[data-service-item-field]");
+  const field = document.activeElement?.closest?.("input[data-service-item-field], textarea[data-service-item-field]");
   if (!field || !isDeferredServiceTextInput(field)) return false;
   const fieldServiceId = field.dataset.serviceId || state.selectedServiceId;
   if (serviceId && fieldServiceId !== serviceId) return false;
@@ -21099,6 +21100,10 @@ function presenterServiceTextInputSpec(item, model, memo) {
   return { needsTitle, needsAssignee };
 }
 
+function isAnnouncementTextInputItem(item = {}) {
+  return compactSearchValue(item?.label || "") === "청소년부광고";
+}
+
 function presenterServiceInputHasEditableField(item, service) {
   const context = presenterServiceInputItem(item, service);
   if (!context) return false;
@@ -21246,14 +21251,19 @@ function renderPresenterServiceTextInputs(item, index, model, memo) {
   const { needsTitle, needsAssignee } = presenterServiceTextInputSpec(item, model, memo);
   if (!needsTitle && !needsAssignee) return "";
   const specialSong = isSpecialSongServiceItem(item);
+  const announcementText = isAnnouncementTextInputItem(item);
   const titleLabel = specialSong ? "곡" : "내용";
   const assigneeLabel = serviceItemAssigneeInputLabel(item);
   return `
     ${needsTitle ? `
       <label class="svc-presenter-input-field">
         <span>${escapeHtml(titleLabel)}</span>
-        <input class="svc-presenter-input-control" type="text" data-service-item-field="raw_title" data-service-item-index="${index}"
-          value="${escapeAttr(item.raw_title || "")}" placeholder="${escapeAttr(specialSong ? "곡명" : item.label || "내용")}" aria-label="${escapeAttr(`${item.label || "항목"} ${titleLabel}`)}" />
+        ${announcementText ? `
+          <textarea class="svc-presenter-input-control svc-presenter-input-control--multiline" data-service-item-field="raw_title" data-service-item-index="${index}"
+            rows="4" placeholder="수련회 준비 모임&#10;반별 사진 제출&#10;다음 주 생일 축하" aria-label="${escapeAttr(`${item.label || "항목"} ${titleLabel}`)}">${escapeHtml(item.raw_title || "")}</textarea>
+          <small class="svc-presenter-input-hint">줄마다 ①, ②, ③으로 자동 표시됩니다.</small>` : `
+          <input class="svc-presenter-input-control" type="text" data-service-item-field="raw_title" data-service-item-index="${index}"
+            value="${escapeAttr(item.raw_title || "")}" placeholder="${escapeAttr(specialSong ? "곡명" : item.label || "내용")}" aria-label="${escapeAttr(`${item.label || "항목"} ${titleLabel}`)}" />`}
       </label>` : ""}
     ${needsAssignee ? `
       <label class="svc-presenter-input-field">

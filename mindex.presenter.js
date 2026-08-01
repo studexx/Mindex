@@ -999,14 +999,38 @@ function liturgicalBodyTitle(item = {}) {
   return "사도신경";
 }
 
+function presenterCircledNumber(index) {
+  const circledNumbers = ["①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧", "⑨", "⑩", "⑪", "⑫", "⑬", "⑭", "⑮", "⑯", "⑰", "⑱", "⑲", "⑳"];
+  return circledNumbers[index] || `${index + 1}.`;
+}
+
+function presenterAnnouncementBodyText(text = "") {
+  const lines = String(text || "")
+    .replace(/\r\n?/g, "\n")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (lines.length <= 1) return lines[0] || "";
+  return lines
+    .map((line, index) => {
+      if (/^(?:[①-⑳]|\d+[.)]|[-*•ㆍ])\s*/u.test(line)) return line;
+      return `${presenterCircledNumber(index)} ${line}`;
+    })
+    .join("\n");
+}
+
 function liturgicalBodyText(item = {}, memo = parseServiceItemMemo(item?.memo), displayText = "") {
   const title = liturgicalBodyTitle(item);
   const canonical = presenterCanonicalLiturgicalBodyText(title);
   if (canonical && !item?.template_modified && !item?.templateModified) return canonical;
-  if (memo.slides?.length) return memo.slides.join("\n\n").trim();
+  const announcement = compactSearchValue(item?.label || "") === "청소년부광고";
+  if (memo.slides?.length) {
+    const memoText = memo.slides.join("\n\n").trim();
+    return announcement ? presenterAnnouncementBodyText(memoText) : memoText;
+  }
   const text = String(item?.raw_title || displayText || "").trim();
   if (!text || compactSearchValue(text) === compactSearchValue(title)) return "";
-  return canonical || text;
+  return announcement ? presenterAnnouncementBodyText(text) : canonical || text;
 }
 
 function presenterCanonicalLiturgicalBodyText(title = "") {
