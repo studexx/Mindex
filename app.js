@@ -6352,6 +6352,12 @@ function handleDetailChange(event) {
     return;
   }
 
+  const referenceMediaDirectFile = event.target.closest("[data-presenter-reference-media-direct-file]");
+  if (referenceMediaDirectFile) {
+    void addAndUploadPresenterReferenceMedia(referenceMediaDirectFile);
+    return;
+  }
+
   const presenterJumpInput = event.target.closest("[data-presenter-jump-input]");
   if (presenterJumpInput) {
     return;
@@ -8742,7 +8748,15 @@ async function uploadPresenterReferenceMediaFile(input) {
   const file = input?.files?.[0];
   const serviceId = input?.dataset?.serviceId || state.selectedServiceId;
   const index = Number(input?.dataset?.serviceItemIndex);
-  const item = getServiceItems(serviceId)[index];
+  return uploadPresenterReferenceMediaAsset({
+    file,
+    serviceId,
+    item: getServiceItems(serviceId)[index],
+    input,
+  });
+}
+
+async function uploadPresenterReferenceMediaAsset({ file, serviceId, item, input = null } = {}) {
   const kind = presenterReferenceMediaKindForFile(file);
   if (!file || !item || !isPresenterReferenceMediaItem(item) || !kind) {
     showToast("이미지, 영상, 음원 파일만 참고 화면에 넣을 수 있습니다.", "error");
@@ -8792,7 +8806,33 @@ async function uploadPresenterReferenceMediaFile(input) {
   }
 }
 
-function addPresenterReferenceMedia(serviceId = state.selectedServiceId, requestedSectionKey = "") {
+async function addAndUploadPresenterReferenceMedia(input) {
+  const file = input?.files?.[0];
+  const serviceId = input?.dataset?.serviceId || state.selectedServiceId;
+  const sectionKey = input?.dataset?.presenterReferenceMediaSection || "sermon";
+  if (!file) return;
+  const kind = presenterReferenceMediaKindForFile(file);
+  if (!kind) {
+    showToast("이미지, 영상, 음원 파일만 참고 화면에 넣을 수 있습니다.", "error");
+    input.value = "";
+    return;
+  }
+  if (Number(file.size) > PRESENTER_REFERENCE_MEDIA_MAX_BYTES) {
+    showToast("참고 화면 파일은 50MB 이하로 올려 주세요.", "error");
+    input.value = "";
+    return;
+  }
+  input.disabled = true;
+  const item = addPresenterReferenceMedia(serviceId, sectionKey, { focus: false });
+  if (!item) {
+    input.disabled = false;
+    input.value = "";
+    return;
+  }
+  await uploadPresenterReferenceMediaAsset({ file, serviceId, item, input });
+}
+
+function addPresenterReferenceMedia(serviceId = state.selectedServiceId, requestedSectionKey = "", options = {}) {
   if (!serviceId) return;
   const items = normalizeServiceItemsInCurrentOrder(getServiceItems(serviceId));
   const sectionKey = PRESENTER_REFERENCE_MEDIA_SECTION_KEYS.has(String(requestedSectionKey || "").trim())
@@ -8830,15 +8870,20 @@ function addPresenterReferenceMedia(serviceId = state.selectedServiceId, request
   }, insertAt);
   items.splice(insertAt, 0, item);
   state.serviceItems[serviceId] = normalizeServiceItemsInCurrentOrder(items);
-  state.selectedServiceItemIndex = insertAt;
+  const createdItem = state.serviceItems[serviceId].find((candidate) => candidate.id === item.id) || null;
+  const createdIndex = state.serviceItems[serviceId].findIndex((candidate) => candidate.id === item.id);
+  state.selectedServiceItemIndex = createdIndex;
   state.dirty.service = true;
   refreshPresenterForService(serviceId);
   renderCurrentServiceModuleDetail();
   renderServiceList();
   updateSaveState();
-  requestAnimationFrame(() => {
-    refs.detailPane?.querySelector(`[data-service-item-index="${insertAt}"][data-service-item-field="asset_name"]`)?.focus();
-  });
+  if (options.focus !== false) {
+    requestAnimationFrame(() => {
+      refs.detailPane?.querySelector(`[data-service-item-index="${createdIndex}"][data-service-item-field="asset_name"]`)?.focus();
+    });
+  }
+  return createdItem;
 }
 
 function updatePresenterSectionField(field) {
@@ -22024,15 +22069,9 @@ function renderPresenterBoardSection(group, activeIndex, serviceId, options = {}
   const visibleTitle = group.title || group.label || group.name;
   const interactionLabel = presenterSlideInteractionHint(serviceId, group.name || visibleTitle);
   const referenceMediaSectionKey = presenterBoardReferenceMediaSectionKey(group);
-  const referenceMediaAction = referenceMediaSectionKey ? `
-        <button class="svc-board-section-add-media" type="button"
-          data-presenter-reference-media-add
-          data-presenter-reference-media-section="${escapeAttr(referenceMediaSectionKey)}"
-          data-service-id="${escapeAttr(serviceId)}"
-          aria-label="${escapeAttr(`${presenterReferenceMediaSectionLabel(referenceMediaSectionKey)} 참고 화면 추가`)}">
-          <i data-lucide="image-plus"></i>
-          <span>참고 화면 추가</span>
-        </button>` : "";
+  const referenceMediaQuickAdd = referenceMediaSectionKey
+    ? renderPresenterReferenceMediaQuickAdd(referenceMediaSectionKey, serviceId)
+    : "";
   let previousFormKey = "";
   const subgroupsHtml = group.subgroups.map((subgroup) => {
     const annotated = annotatePresenterFormStarts(subgroup.slides, previousFormKey);
@@ -22056,13 +22095,29 @@ function renderPresenterBoardSection(group, activeIndex, serviceId, options = {}
             ${group.meta ? `<small>${escapeHtml(group.meta)}</small>` : ""}
           </span>
         </button>
-        ${referenceMediaAction}
       </div>
+      ${referenceMediaQuickAdd}
       <div class="svc-board-subgroups">
         ${subgroupsHtml}
       </div>
       ${renderPresenterNextPreparationButton(serviceId, options.nextService)}
     </section>`;
+}
+
+function renderPresenterReferenceMediaQuickAdd(sectionKey, serviceId) {
+  const sectionLabel = presenterReferenceMediaSectionLabel(sectionKey);
+  return `
+    <div class="svc-reference-media-quick-add">
+      <div class="svc-reference-media-quick-add-copy">
+        <strong>참고 화면</strong>
+        <span>${escapeHtml(`${sectionLabel} 중 띄울 이미지, 영상 또는 음원`)}</span>
+      </div>
+      <label class="svc-reference-media-upload">
+        <input type="file" accept="${PRESENTER_REFERENCE_MEDIA_ACCEPT}" data-presenter-reference-media-direct-file
+          data-presenter-reference-media-section="${escapeAttr(sectionKey)}" data-service-id="${escapeAttr(serviceId)}" />
+        <i data-lucide="upload"></i><span>파일 추가</span>
+      </label>
+    </div>`;
 }
 
 function presenterBoardReferenceMediaSectionKey(group = {}) {
