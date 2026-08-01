@@ -4155,6 +4155,13 @@ def main() -> int:
                               rawTitleScoreItem.label,
                               hymnService,
                             );
+                            state.hymnScoreManifest = {
+                              9: {
+                                title: '하늘에 가득 찬 영광의',
+                                slides: [{ src: 'assets/hymn-scores/9/slide-01.webp', scoreFormLabel: 'Verse 1' }],
+                              },
+                            };
+                            state.hymnScoreManifestLoaded = true;
                             const rawTitleScoreState = resolvePresenterServiceItemContentState(
                               rawTitleScoreItem,
                               parseServiceItemMemo(rawTitleScoreItem.memo),
@@ -4402,7 +4409,7 @@ def main() -> int:
                         and presenter_preparation_paste["rawTitleScore"]["songId"] == "__batch_hymn_9__"
                         and presenter_preparation_paste["rawTitleScore"]["reason"] == "song"
                         and presenter_preparation_paste["rawTitleScore"]["missingCount"] == 0
-                        and presenter_preparation_paste["rawTitleScore"]["slideTypes"]
+                        and presenter_preparation_paste["rawTitleScore"]["slideTypes"] == ["image"]
                         and presenter_preparation_paste["prayer"] == "정선분 권사"
                         and presenter_preparation_paste["reading"] == "히 10:38–39"
                         and presenter_preparation_paste["sermonTitle"] == "믿음을 잃어버릴 수도 있어요?"

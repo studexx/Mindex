@@ -256,6 +256,7 @@ function presenterScoreSlidesForServiceItem(
   const imageSlides = presenterScoreImageSlidesFromAsset(asset, item, section, index, title, label, song, version, displayText, forms, formWarnings);
   if (imageSlides.length) return imageSlides;
   const scoreAsset = { ...asset, kind: asset.kind || "score" };
+  if (!String(scoreAsset.url || "").trim()) return [];
   const fileTitle = presenterFileDisplayTitle({ title, asset: scoreAsset }, "악보");
   const scoreForms = presenterScoreFormsFromImageSources([{ formLabel: asset.formLabel || asset.form_label || asset.scoreFormLabel || asset.score_form_label }]);
   return [{

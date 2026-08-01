@@ -81,6 +81,17 @@ in sync when the church changes a regular meeting time.
 Special and department services do not have a universal time window. Until a
 time field is modeled for them, Home falls back to their service date.
 
+Bulletin authoring UI is currently hidden. Keep the code path available for
+later work, but do not expose the button/workbench in the app yet.
+
+## Minister Defaults
+
+Default ministers are materialized into generated worship elements, not inferred
+at render time. Current operational defaults:
+
+- `sunday-second` and `sunday-main`: offering prayer person is `김남영 목사`.
+- `young-adult`: sermon person and offering prayer person are `김석범 목사`.
+
 ## Runtime Projection Tree
 
 This is the structure the app should keep in mind when turning a recurring
@@ -291,24 +302,51 @@ monthly
 
 ## Element Type Structure
 
+The editor should expose the element types that are actually used by current
+worship data and service config. Do not add speculative types to ordinary
+worship templates.
+
+Active editor options:
+
+```text
+찬양
+성경봉독
+성경 본문
+제목
+제목 / 담당자
+제목 / 내용
+본문
+일반 텍스트
+이미지
+동영상
+오디오
+악보
+파일
+실시간 성구
+빈 화면
+```
+
+Current data basis:
+
+- `praise`, `title_person`, `scripture_body`, `plain_text`, `image`, `body`,
+  `video`, and `scripture_reading` exist in `mindex_worship_elements.element_type`.
+- `title`, `title_content`, and `live_scripture` are used through service
+  config/memo and presenter generation.
+- `audio`, `score`, and `file` are active operational types even when they are
+  sparse in weekly data. They must keep their existing presenter/preview output.
+- Do not expose unused legacy/scratch types such as `template`, `live_praise`,
+  or `editable` in ordinary worship editing.
+- Do not expose `auto` as an element type. Template defaults must be materialized
+  into concrete element types and output modes when a worship service is created.
+- Praise elements expose three input methods, independent from fullscreen or
+  chromakey rendering:
+  - `score_db`: "악보 불러오기" loads a Praise DB song and renders score output.
+  - `lyrics_db`: "가사 불러오기" loads a Praise DB song and renders lyric output.
+  - `manual_praise`: "직접 입력하기" stores the title and manual lyric slides on
+    the worship element, without requiring `song_id` or `song_version_id`.
+
 ```text
 Element Type (템플릿/저장 타입)
-├─ blank (빈 화면)
-│  ├─ input: none
-│  ├─ storage: element_type=blank
-│  └─ presenter: blank / blank layout
-├─ title (제목)
-│  ├─ input: text title
-│  ├─ storage: title or raw_title/default_text
-│  └─ presenter: title-assignee or title slide
-├─ title_content (제목 + 내용)
-│  ├─ input: first line title, following lines body
-│  ├─ storage: title/body-like text in raw_title or memo note
-│  └─ presenter: title-content / center text
-├─ title_person (제목 + 담당자)
-│  ├─ input: assignee/person text
-│  ├─ storage: person/assignee plus optional title
-│  └─ presenter: title-assignee / lower bar
 ├─ praise (찬양)
 │  ├─ input: Praise DB search, version, optional manual title
 │  ├─ storage: song_id / song_version_id / raw_title / formPreset
@@ -321,7 +359,19 @@ Element Type (템플릿/저장 타입)
 ├─ scripture_body (성경 본문)
 │  ├─ input: scripture reference + resolved Bible text
 │  ├─ storage: scripture_reference/body payload
-│  └─ presenter: scripture lower bar or body slides
+│  └─ presenter: scripture lower bar, reading form, sermon body, or citation
+├─ title (제목)
+│  ├─ input: text title
+│  ├─ storage: title or raw_title/default_text
+│  └─ presenter: title-assignee or title slide
+├─ title_person (제목 + 담당자)
+│  ├─ input: assignee/person text
+│  ├─ storage: person/assignee plus optional title
+│  └─ presenter: title-assignee / lower bar
+├─ title_content (제목 + 내용)
+│  ├─ input: first line title, following lines body
+│  ├─ storage: title/body-like text in raw_title or memo note
+│  └─ presenter: title-content / center text
 ├─ body (본문)
 │  ├─ input: fixed/manual body text
 │  ├─ storage: body/default_text/memo slides
@@ -354,10 +404,10 @@ Element Type (템플릿/저장 타입)
 │  ├─ input: live scripture config
 │  ├─ storage: memo/config
 │  └─ presenter: live scripture bridge
-└─ template (슬라이드 템플릿)
-   ├─ input: reusable template asset/config
-   ├─ storage: asset/config
-   └─ presenter: freeform/file-like slide until specialized
+└─ blank (빈 화면)
+   ├─ input: none
+   ├─ storage: element_type=blank
+   └─ presenter: blank / blank layout
 ```
 
 ## Presenter Slide Model Contract
