@@ -7120,10 +7120,30 @@ function updateServiceMetaField(field) {
     const praiseTeam = servicePraiseTeamName(service);
     service.tags = field.value.split(",").map((t) => t.trim()).filter(Boolean);
     setServicePraiseTeamName(service, praiseTeam);
+  } else if (key === "dedication") {
+    const enabled = Boolean(field.checked);
+    const tags = (Array.isArray(service.tags) ? service.tags : [])
+      .filter((tag) => compactSearchValue(tag) !== "헌신예배");
+    service.tags = enabled ? [...tags, "헌신예배"] : tags;
+    syncSundayAfternoonDedicationSlots(service.id, enabled);
   }
   state.dirty.service = true;
   refreshPresenterForService(service.id);
   updateSaveState();
+}
+
+function syncSundayAfternoonDedicationSlots(serviceId, enabled) {
+  const service = state.services.find((candidate) => candidate.id === serviceId);
+  if (worshipAppServiceTypeId(service?.type_id) !== "sunday-afternoon") return;
+  const dedicationSections = new Set(["special_song", "offering"]);
+  const items = getServiceItems(serviceId);
+  items.forEach((item) => {
+    if (!dedicationSections.has(String(item._worshipSectionKey || "").trim())) return;
+    const memo = parseServiceItemMemo(item.memo);
+    memo.hiddenInPresentation = !enabled;
+    item.memo = serializeServiceItemMemo(memo);
+  });
+  state.serviceItems[serviceId] = normalizeServiceItemsInCurrentOrder(items);
 }
 
 function updateNewServiceFormField(field) {
@@ -8955,6 +8975,12 @@ function runPresenterSectionItemAction(action, index) {
     .map((item) => Number(item._origIndex))
     .filter((itemIndex) => Number.isInteger(itemIndex) && items[itemIndex]);
   const position = sectionIndexes.indexOf(index);
+  if (action === "toggle-visibility" && position >= 0) {
+    const item = items[index];
+    const memo = parseServiceItemMemo(item?.memo);
+    memo.hiddenInPresentation = !memo.hiddenInPresentation;
+    item.memo = serializeServiceItemMemo(memo);
+  }
   if (action === "up" && position > 0) {
     const previousIndex = sectionIndexes[position - 1];
     [items[previousIndex], items[index]] = [items[index], items[previousIndex]];
@@ -15327,6 +15353,7 @@ function scoreOutputMode(enabled = true) {
 
 function publicWorshipOfferingStep(options = {}) {
   const score = Boolean(options.score);
+  const hiddenInPresentation = Boolean(options.hiddenInPresentation || options.hidden_in_presentation);
   const praiseLabel = options.praiseLabel || "봉헌찬송";
   const prayerPerson = cleanServiceAssignee(
     options.prayerPerson || options.person || defaultServiceOfferingPrayerLeader(options.typeId || options.type_id),
@@ -15338,8 +15365,8 @@ function publicWorshipOfferingStep(options = {}) {
     flex: false,
     sectionKey: "offering",
     elements: [
-      { label: praiseLabel, name: praiseLabel, elementType: "praise", ...scoreOutputMode(score) },
-      { label: "봉헌기도", name: "봉헌기도", elementType: "title_person", person: prayerPerson },
+      { label: praiseLabel, name: praiseLabel, elementType: "praise", ...scoreOutputMode(score), ...(hiddenInPresentation ? { hiddenInPresentation: true } : {}) },
+      { label: "봉헌기도", name: "봉헌기도", elementType: "title_person", person: prayerPerson, ...(hiddenInPresentation ? { hiddenInPresentation: true } : {}) },
     ],
   };
 }
@@ -15358,6 +15385,7 @@ function publicWorshipSpecialSongStep(options = {}) {
     default_text: defaultText,
     assignee: defaultAssignee,
     formPresetRules: [PUBLIC_SPECIAL_HYMN_FORM_PRESET_RULE],
+    ...(options.hiddenInPresentation || options.hidden_in_presentation ? { hiddenInPresentation: true } : {}),
     ...scoreOutputMode(score),
   };
 }
@@ -15866,6 +15894,7 @@ function serviceIsDedicationWorship(service = null) {
 
 function publicSundayAfternoonTemplate(options = {}) {
   const typeId = "sunday-afternoon";
+  const dedication = serviceIsDedicationWorship(options.service);
   return [
     publicWorshipReadyStep(),
     publicWorshipPraiseStep({ count: 4, required: true }),
@@ -15873,10 +15902,10 @@ function publicSundayAfternoonTemplate(options = {}) {
     { label: "찬송", name: "찬송", required: true, flex: false, sectionKey: "hymn_praise", elementType: "praise", ...scoreOutputMode() },
     publicWorshipPrayerStep(),
     publicWorshipScriptureReadingStep(),
-    publicWorshipSpecialSongStep({ score: false }),
+    publicWorshipSpecialSongStep({ score: false, hiddenInPresentation: !dedication }),
     publicWorshipSermonStep({ typeId }),
     publicWorshipResponseStep(),
-    publicWorshipOfferingStep({ score: true, praiseLabel: "봉헌찬송" }),
+    publicWorshipOfferingStep({ score: true, praiseLabel: "봉헌찬송", hiddenInPresentation: !dedication }),
     publicWorshipAnnouncementsStep(),
     publicWorshipSendingStep({
       score: true,
@@ -17600,9 +17629,11 @@ function renderServiceList() {
       <span>전체 예배</span>
       <small>${state.services.length}</small>
     </button>
-    <button class="service-type-row service-type-row--templates${state.selectedServiceTypeId === SERVICE_TEMPLATES_PANEL_ID && !state.selectedServiceId ? " active" : ""}" type="button" data-service-templates>
-      <span>템플릿</span>
-    </button>
+    ${state.module === "home" ? "" : `
+      <button class="service-type-row service-type-row--templates${state.selectedServiceTypeId === SERVICE_TEMPLATES_PANEL_ID && !state.selectedServiceId ? " active" : ""}" type="button" data-service-templates>
+        <span>템플릿</span>
+      </button>
+    `}
   `;
 
   refs.songList.innerHTML = `
@@ -18761,6 +18792,7 @@ function renderPresenterSectionEditorLayer(service) {
 function renderPresenterSectionEditorItem(item, localIndex, context) {
   const origIndex = item._origIndex;
   const model = serviceItemEditorModel(item, { service: context.service });
+  const hidden = Boolean(model.parsed?.hiddenInPresentation);
   const first = localIndex === 0;
   const last = localIndex === context.sectionItems.length - 1;
   return `
@@ -18773,6 +18805,7 @@ function renderPresenterSectionEditorItem(item, localIndex, context) {
         ${renderServiceElementTypeOptions(serviceMemoElementType(model.parsed))}
       </select>
       <div class="svc-edit-actions">
+        <button class="icon-btn" type="button" data-presenter-section-item-action="toggle-visibility" data-service-item-index="${origIndex}" aria-label="${hidden ? "송출에 표시" : "송출에서 숨기기"}" title="${hidden ? "송출에 표시" : "송출에서 숨기기"}"><i data-lucide="${hidden ? "eye-off" : "eye"}"></i></button>
         <button class="icon-btn" type="button" data-presenter-section-item-action="up" data-service-item-index="${origIndex}" ${first ? "disabled" : ""} aria-label="엘리멘트 위로 이동"><i data-lucide="arrow-up"></i></button>
         <button class="icon-btn" type="button" data-presenter-section-item-action="down" data-service-item-index="${origIndex}" ${last ? "disabled" : ""} aria-label="엘리멘트 아래로 이동"><i data-lucide="arrow-down"></i></button>
         <button class="icon-btn danger" type="button" data-presenter-section-item-action="delete" data-service-item-index="${origIndex}" aria-label="엘리멘트 삭제"><i data-lucide="trash-2"></i></button>
@@ -19064,6 +19097,11 @@ function renderServiceMetaEditor(service) {
           placeholder="OOO 찬양단"
           aria-label="찬양팀" />
       </label>
+      ${worshipAppServiceTypeId(service.type_id) === "sunday-afternoon" ? `
+      <label class="svc-meta-toggle">
+        <input type="checkbox" data-service-meta-field="dedication" ${serviceIsDedicationWorship(service) ? "checked" : ""} />
+        <span>헌신예배</span>
+      </label>` : ""}
       <label>
         <span>비고</span>
         <input class="svc-meta-input" type="text" data-service-meta-field="tags"
@@ -22732,6 +22770,15 @@ function renderPresenterSlideThumb(slide, slideIndex, activeIndex, serviceId, fo
         aria-label="${escapeAttr(visibleFormLabel)}">
         ${escapeHtml(visibleFormLabel)}
       </button>` : "";
+  const scriptureReference = presenterSlideScriptureReferenceBadge(slide);
+  const scriptureReferenceBadge = !visibleFormLabel && scriptureReference ? `
+      <button class="svc-slide-form-badge svc-slide-scripture-reference" type="button"
+        data-presenter-action="jump"
+        data-presenter-index="${slideIndex}"
+        data-service-id="${escapeAttr(serviceId)}"
+        aria-label="${escapeAttr(scriptureReference)}">
+        ${escapeHtml(scriptureReference)}
+      </button>` : "";
   const citationReferenceInput = (slide?.liveScriptureControl || (slide?.autoTrailingBlank && slide?.citationQuickInsert)) ? `
         <input class="svc-slide-citation-reference-input" type="text"
           data-presenter-citation-reference-input
@@ -22745,7 +22792,7 @@ function renderPresenterSlideThumb(slide, slideIndex, activeIndex, serviceId, fo
         <span class="svc-slide-thumb-no" aria-hidden="true">${slideNumber}</span>
         ${citationReferenceInput}
         ${hidden ? `<span class="svc-slide-hidden-badge">숨김</span>` : ""}
-        ${formBadge}
+        ${formBadge || scriptureReferenceBadge}
       </span>
       <button class="svc-slide-thumb${active ? " active" : ""}${selected ? " selected" : ""}" type="button"
         data-presenter-action="jump"
@@ -22759,6 +22806,22 @@ function renderPresenterSlideThumb(slide, slideIndex, activeIndex, serviceId, fo
         </span>
       </button>
     </span>`;
+}
+
+function presenterSlideScriptureReferenceBadge(slide = {}) {
+  if (presenterSlideElementType(slide) !== PRESENTER_ELEMENT_TYPES.SCRIPTURE_TEXT) return "";
+  if (presenterSlideLayout(slide) === PRESENTER_SLIDE_LAYOUTS.BLANK || slide.scripturePending) return "";
+  const parts = typeof presenterScriptureVerseParts === "function"
+    ? presenterScriptureVerseParts(slide.text || "")
+    : { number: "" };
+  const number = String(parts.number || "").trim();
+  const chapter = String(slide.referenceRange || "").match(/^(\d+)/)?.[1] || "";
+  if (!number || !chapter) return "";
+  const rawBook = String(slide.referenceBook || "").trim();
+  const book = typeof findBibleBookByReferenceName === "function"
+    ? (findBibleBookByReferenceName(rawBook)?.shortName || rawBook)
+    : rawBook;
+  return [book, `${chapter}:${number}`].filter(Boolean).join(" ").trim();
 }
 
 function renderPresenterSlideMiniPreview(slide, serviceId = state.presenter.serviceId) {

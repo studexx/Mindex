@@ -3641,18 +3641,18 @@ body[data-module="presenter"] .detail-pane {
 }
 .service-date-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(176px, 1fr)); gap: 8px; }
 .service-date-grid--dashboard { grid-template-columns: repeat(auto-fill, minmax(184px, 1fr)); }
-.service-date-card { display: flex; min-height: 80px; flex-direction: column; gap: 3px; align-items: stretch; padding: 12px; border: 1px solid transparent; border-radius: var(--r); background: color-mix(in srgb, var(--panel-2) 24%, transparent); cursor: pointer; text-align: left; }
+.service-date-card { display: flex; min-height: 88px; flex-direction: column; gap: 5px; align-items: stretch; padding: 12px; border: 1px solid transparent; border-radius: var(--r); background: color-mix(in srgb, var(--panel-2) 30%, transparent); cursor: pointer; text-align: left; }
 .service-date-card:hover,
 .service-date-card:focus-visible { border-color: color-mix(in srgb, var(--accent) 44%, transparent); background: color-mix(in srgb, var(--panel-2) 72%, transparent); outline: none; }
 .service-date-card.is-expected { background: color-mix(in srgb, var(--warn-bg) 18%, transparent); }
 .service-date-card.is-expected:hover { background: color-mix(in srgb, var(--warn-bg) 34%, transparent); }
 .service-date-card-top { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: var(--s2); }
-.service-date-card-date { font-size: 14px; font-weight: 500; color: var(--ink); }
+.service-date-card-date { font-size: 14px; font-weight: 700; color: var(--ink); }
 .service-date-card-open { color: var(--ink-4); font-size: 10px; font-weight: 700; opacity: 0; transition: opacity .1s, color .1s; }
 .service-date-card:hover .service-date-card-open,
 .service-date-card:focus-visible .service-date-card-open { color: var(--accent); opacity: 1; }
-.service-date-card-type { color: var(--accent); font-size: 10px; font-weight: 500; letter-spacing: .04em; text-transform: uppercase; }
-.service-date-card-preview { display: -webkit-box; overflow: hidden; color: var(--ink-4); font-size: 11px; line-height: 15px; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.service-date-card-type { color: var(--accent); font-size: 11px; font-weight: 700; letter-spacing: 0; }
+.service-date-card-preview { display: -webkit-box; overflow: hidden; color: var(--ink-3); font-size: 12px; font-weight: 600; line-height: 17px; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .service-week-board {
   display: grid;
   grid-template-columns: repeat(7, minmax(120px, 1fr));
@@ -4337,6 +4337,29 @@ body[data-module="presenter"] .detail-pane {
 }
 .svc-meta-editor .svc-meta-input {
   width: 100%;
+}
+.svc-meta-editor .svc-meta-toggle {
+  display: inline-flex;
+  min-height: 30px;
+  align-items: center;
+  align-self: end;
+  gap: 8px;
+  border-radius: var(--r);
+  background: color-mix(in srgb, var(--panel-2) 30%, transparent);
+  cursor: pointer;
+  padding: 0 10px;
+}
+.svc-meta-editor .svc-meta-toggle input {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+.svc-meta-editor .svc-meta-toggle span {
+  color: var(--ink-2);
+  font-size: 11px;
+  letter-spacing: 0;
+  text-transform: none;
 }
 .svc-items { display: flex; flex-direction: column; }
 .svc-worship-structure {
@@ -7146,7 +7169,7 @@ textarea.svc-presenter-input-control--multiline {
 }
 .presenter-section-editor-item {
   display: grid;
-  grid-template-columns: 30px minmax(88px, 120px) minmax(96px, 140px) minmax(180px, 1fr) minmax(112px, 140px) 84px;
+  grid-template-columns: 30px minmax(88px, 120px) minmax(96px, 140px) minmax(180px, 1fr) minmax(112px, 140px) 120px;
   min-width: 0;
   align-items: center;
   gap: 8px;
