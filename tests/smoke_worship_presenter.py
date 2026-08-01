@@ -5306,7 +5306,7 @@ def main() -> int:
                     and sermon_title_font_state["hasSermonClass"]
                     and not sermon_title_font_state["hasOrder"]
                     and sermon_title_font_state["contentBeforePerson"]
-                    and sermon_title_font_state["contentFontSize"] == 92
+                    and sermon_title_font_state["contentFontSize"] == 102
                     and sermon_title_font_state["personFontSize"] == 72
                 ):
                     pass_("presenter-sermon-title-content-font", json.dumps(sermon_title_font_state, ensure_ascii=False))

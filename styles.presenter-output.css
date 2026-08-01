@@ -697,6 +697,10 @@
   justify-self: center;
   text-align: center;
 }
+:is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-title-assignee--sermon .presenter-title-assignee-content {
+  font-size: var(--presenter-size-song-title);
+  font-weight: var(--presenter-weight-display);
+}
 :is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-title-assignee--sermon .presenter-title-assignee-person {
   position: static;
 }
