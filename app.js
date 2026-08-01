@@ -19533,9 +19533,23 @@ function formatServiceIsoDatePart(value) {
 }
 
 function serviceItemPreview(serviceId) {
+  const service = state.services.find((candidate) => candidate.id === serviceId) || null;
   const items = getServiceOutputItems(serviceId)
     .filter((item) => serviceItemDisplayText(item) && serviceItemDisplayText(item) !== "-")
   if (!items.length) return "";
+  const sermonTitleItem = items.find((item) => isPresenterPreparationSermonTitleItem(item));
+  const sermonBodyItem = items.find((item) => isSermonScriptureBodyServiceItem(item));
+  const sermonTitle = sermonTitleItem
+    && !presenterTitleAssigneeTitleIsGeneric(String(sermonTitleItem.raw_title || "").trim(), sermonTitleItem.label || "")
+    ? serviceItemDisplayText(sermonTitleItem)
+    : "";
+  const sermonReferences = sermonBodyItem
+    ? serviceItemScriptureReferences(sermonBodyItem, parseServiceItemMemo(sermonBodyItem.memo), service)
+    : [];
+  const sermonReference = formatServiceScriptureReferenceList(sermonReferences);
+  if (sermonTitle) return sermonReference ? `${sermonTitle} (${sermonReference})` : sermonTitle;
+  if (sermonReference) return `본문 ${sermonReference}`;
+
   const songCount = items.filter((item) => isMainPraisePreviewItem(item)).length;
   const markers = [];
   for (const item of items) {
