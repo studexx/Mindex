@@ -3973,9 +3973,9 @@ def main() -> int:
                         """
                     )
                     if presenter_praise_input_mode_persistence == [
-                        {"label": "찬양 1", "inputMode": "score_db", "contentInputMode": "score_db", "configInputMode": "score_db", "songId": "__smoke_song_0__", "body": ""},
-                        {"label": "찬양 2", "inputMode": "lyrics_db", "contentInputMode": "lyrics_db", "configInputMode": "lyrics_db", "songId": "__smoke_song_1__", "body": ""},
-                        {"label": "찬양 3", "inputMode": "manual_praise", "contentInputMode": "manual_praise", "configInputMode": "manual_praise", "songId": "", "body": "가사 한 줄"},
+                        {"label": "찬양 1", "inputMode": "praise_db", "contentInputMode": "score_db", "configInputMode": "score_db", "songId": "__smoke_song_0__", "body": ""},
+                        {"label": "찬양 2", "inputMode": "praise_db", "contentInputMode": "lyrics_db", "configInputMode": "lyrics_db", "songId": "__smoke_song_1__", "body": ""},
+                        {"label": "찬양 3", "inputMode": "praise_db", "contentInputMode": "manual_praise", "configInputMode": "manual_praise", "songId": "", "body": "가사 한 줄"},
                     ]:
                         pass_("presenter-praise-input-mode-persistence", json.dumps(presenter_praise_input_mode_persistence, ensure_ascii=False))
                     else:

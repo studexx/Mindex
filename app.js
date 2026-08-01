@@ -5051,7 +5051,7 @@ function buildWorshipPersistenceRows(service, items, existingSectionById = {}, e
       review_status: existingElement?.review_status || (manualBody ? "needs_review" : "draft"),
       config,
     };
-    if (options.elementTypedStateColumns?.inputMode) elementRow.input_mode = contentState.inputMode || "";
+    if (options.elementTypedStateColumns?.inputMode) elementRow.input_mode = worshipDbInputModeForSave(contentState.inputMode);
     if (options.elementTypedStateColumns?.contentState) elementRow.content_state = contentState;
     elementRows.push(elementRow);
   });
@@ -7573,6 +7573,12 @@ function normalizeServiceInputMode(value) {
     none: "none",
   };
   return aliases[mode] || "";
+}
+
+function worshipDbInputModeForSave(value) {
+  const inputMode = normalizeServiceInputMode(value);
+  if (["score_db", "lyrics_db", "manual_praise"].includes(inputMode)) return "praise_db";
+  return WORSHIP_DB_ELEMENT_INPUT_MODES.has(inputMode) ? inputMode : "";
 }
 
 function serviceInputModeForElementType(elementType = "") {
