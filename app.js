@@ -15327,7 +15327,16 @@ function youngAdultWorshipTemplate() {
     publicWorshipAnnouncementsStep(),
     publicWorshipSendingStep({
       doxology: false,
-      extraElements: [{ label: "파송찬양", name: "파송찬양", elementType: "praise" }],
+      extraElements: [{
+        label: "파송찬양",
+        name: "파송찬양",
+        elementType: "praise",
+        default_text: "피난처 되시는 주 예수",
+        defaultSong: { title: "피난처 되시는 주 예수" },
+        formHint: "V-C1-C2",
+        formPreset: { forms: ["V", "C1", "C2"], strength: "default" },
+        defaultStrength: "default",
+      }],
     }),
     {
       label: "교제",
