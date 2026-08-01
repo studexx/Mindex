@@ -4576,7 +4576,8 @@ async function saveService(serviceId = state.selectedServiceId, options = {}) {
     if (options.renderAfterSave !== false) render();
     else renderServiceList();
   } catch (error) {
-    showToast(error.message || "예배를 저장하지 못했습니다.", "error");
+    if (!options.silent) showToast(error.message || "예배를 저장하지 못했습니다.", "error");
+    if (options.throwOnError) throw error;
   } finally {
     state.saving = false;
     updateSaveState();
@@ -4698,6 +4699,7 @@ async function saveWorshipServiceInstance(service) {
     });
   }
 
+  validateWorshipPersistenceRows(rows, { serviceId });
   if (rows.sections.length) {
     const { error } = await state.client
       .from("mindex_worship_sections")
@@ -4858,6 +4860,7 @@ async function persistSharedSundayServiceItems(service, items = [], options = {}
     existingElementById,
     options,
   );
+  validateWorshipPersistenceRows(rows, { serviceId });
   if (rows.sections.length) {
     const { error } = await state.client
       .from("mindex_worship_sections")
@@ -4888,6 +4891,48 @@ async function persistSharedSundayServiceItems(service, items = [], options = {}
     groupWorshipElements(rows.sections, rows.elements)[serviceId] || [],
   );
   refreshPresenterForService(serviceId);
+}
+
+function validateWorshipPersistenceRows(rows = {}, context = {}) {
+  const errors = [];
+  const serviceId = String(context.serviceId || "").trim();
+  (rows.sections || []).forEach((section, index) => {
+    if (!section?.id) errors.push(`section[${index}] id missing`);
+    if (!section?.service_id) errors.push(`section[${index}] service_id missing`);
+    if (!section?.created_at) errors.push(`section[${index}] created_at missing`);
+    if (!section?.updated_at) errors.push(`section[${index}] updated_at missing`);
+  });
+  (rows.elements || []).forEach((element, index) => {
+    const label = element?.source_ref?.label || element?.title || element?.id || `element[${index}]`;
+    if (!element?.id) errors.push(`${label} id missing`);
+    if (!element?.section_id) errors.push(`${label} section_id missing`);
+    if (!element?.created_at) errors.push(`${label} created_at missing`);
+    if (!element?.updated_at) errors.push(`${label} updated_at missing`);
+    if (!WORSHIP_DB_ELEMENT_TYPES.has(String(element?.element_type || ""))) {
+      errors.push(`${label} unsupported element_type: ${element?.element_type || "(empty)"}`);
+    }
+    if (Object.prototype.hasOwnProperty.call(element || {}, "input_mode")) {
+      const inputMode = normalizeServiceInputMode(element.input_mode) || String(element.input_mode || "").trim();
+      if (!WORSHIP_DB_ELEMENT_INPUT_MODES.has(inputMode)) {
+        errors.push(`${label} unsupported input_mode: ${element.input_mode || "(empty)"}`);
+      }
+    }
+    const contentInputMode = normalizeServiceInputMode(element?.content_state?.inputMode || element?.content_state?.input_mode);
+    if (contentInputMode && !WORSHIP_DB_ELEMENT_INPUT_MODES.has(contentInputMode)) {
+      errors.push(`${label} unsupported content_state.inputMode: ${contentInputMode}`);
+    }
+    const configInputMode = normalizeServiceInputMode(element?.config?.inputMode || element?.config?.input_mode);
+    if (configInputMode && !WORSHIP_DB_ELEMENT_INPUT_MODES.has(configInputMode)) {
+      errors.push(`${label} unsupported config.inputMode: ${configInputMode}`);
+    }
+    const asset = normalizeServiceAsset(element?.asset || element?.config?.asset);
+    if (hasServiceAsset(asset) && !SERVICE_ASSET_KINDS.has(asset.kind || "")) {
+      errors.push(`${label} unsupported asset.kind: ${asset.kind || "(empty)"}`);
+    }
+  });
+  if (!errors.length) return;
+  const prefix = serviceId ? `예배 ${serviceId} 저장 데이터가 DB 규칙과 맞지 않습니다.` : "예배 저장 데이터가 DB 규칙과 맞지 않습니다.";
+  throw new Error(`${prefix} ${errors.slice(0, 4).join(" / ")}`);
 }
 
 function isUnmodifiedTemplatePlaceholder(item = {}) {
@@ -9028,22 +9073,24 @@ async function uploadPresenterReferenceMediaAsset({ file, serviceId, item, input
   if (!file || !item || !isPresenterReferenceMediaItem(item) || !kind) {
     showToast("이미지, 영상, 음원 파일만 참고 화면에 넣을 수 있습니다.", "error");
     if (input) input.value = "";
-    return;
+    return false;
   }
   if (Number(file.size) > PRESENTER_REFERENCE_MEDIA_MAX_BYTES) {
     showToast("참고 화면 파일은 50MB 이하로 올려 주세요.", "error");
-    input.value = "";
-    return;
+    if (input) input.value = "";
+    return false;
   }
   if (!state.client?.storage) {
     showToast("미디어 저장소에 연결되지 않았습니다. 연결 상태를 확인해 주세요.", "error");
-    input.value = "";
-    return;
+    if (input) input.value = "";
+    return false;
   }
 
-  input.disabled = true;
+  if (input) input.disabled = true;
+  let uploadedPath = "";
   try {
     const path = presenterReferenceMediaUploadPath(serviceId, item, file);
+    uploadedPath = path;
     const { error } = await state.client.storage
       .from(PRESENTER_MEDIA_STORAGE_BUCKET)
       .upload(path, file, { cacheControl: "3600", contentType: file.type || undefined, upsert: false });
@@ -9061,15 +9108,26 @@ async function uploadPresenterReferenceMediaAsset({ file, serviceId, item, input
     item._worshipElementTemplateModified = true;
     state.dirty.service = true;
     refreshPresenterForService(serviceId);
-    await saveService(serviceId, { silent: true, renderAfterSave: false });
+    await saveService(serviceId, { silent: true, renderAfterSave: false, throwOnError: true });
     renderCurrentServiceModuleDetail();
     renderServiceList();
     showToast(`${kind === "image" ? "이미지" : kind === "video" ? "영상" : "음원"}을 참고 화면에 추가했습니다.`);
+    return true;
   } catch (error) {
+    if (uploadedPath && state.client?.storage?.from) {
+      try {
+        await state.client.storage.from(PRESENTER_MEDIA_STORAGE_BUCKET).remove([uploadedPath]);
+      } catch (cleanupError) {
+        console.warn("Failed to clean up uploaded reference media after save failure.", cleanupError);
+      }
+    }
     showToast(error?.message || "참고 화면 파일을 올리지 못했습니다.", "error");
+    return false;
   } finally {
-    input.disabled = false;
-    input.value = "";
+    if (input) {
+      input.disabled = false;
+      input.value = "";
+    }
   }
 }
 
@@ -9090,13 +9148,25 @@ async function addAndUploadPresenterReferenceMedia(input) {
     return;
   }
   input.disabled = true;
+  const previousItems = getServiceItems(serviceId).map((item) => ({ ...item }));
+  const previousSelectedIndex = state.selectedServiceItemIndex;
+  const previousDirtyService = state.dirty.service;
   const item = addPresenterReferenceMedia(serviceId, sectionKey, { focus: false });
   if (!item) {
     input.disabled = false;
     input.value = "";
     return;
   }
-  await uploadPresenterReferenceMediaAsset({ file, serviceId, item, input });
+  const uploaded = await uploadPresenterReferenceMediaAsset({ file, serviceId, item, input });
+  if (!uploaded) {
+    state.serviceItems[serviceId] = previousItems;
+    state.selectedServiceItemIndex = previousSelectedIndex;
+    state.dirty.service = previousDirtyService;
+    refreshPresenterForService(serviceId);
+    renderCurrentServiceModuleDetail();
+    renderServiceList();
+    updateSaveState();
+  }
 }
 
 function addPresenterReferenceMedia(serviceId = state.selectedServiceId, requestedSectionKey = "", options = {}) {

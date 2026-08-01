@@ -3981,6 +3981,88 @@ def main() -> int:
                     else:
                         fail("presenter-praise-input-mode-persistence", json.dumps(presenter_praise_input_mode_persistence, ensure_ascii=False))
 
+                    presenter_media_persistence_guard = page.evaluate(
+                        """
+                        (() => {
+                          const service = { id: '__smoke_media_guard__', type_id: 'sunday-first', date: '2026-08-02' };
+                          const item = normalizeServiceItem({
+                            service_id: service.id,
+                            label: '참고 화면',
+                            raw_title: '',
+                            memo: serializeServiceItemMemo({
+                              elementType: 'audio',
+                              componentType: 'audio',
+                              inputMode: 'asset',
+                              asset: { kind: 'audio', name: '성가대 MR', url: 'https://example.test/choir.m4a' },
+                            }),
+                            _worshipSectionKey: 'sermon',
+                            _worshipSectionTitle: '설교',
+                            _worshipElementTemplateModified: true,
+                            _worshipTemplatePlaceholder: false,
+                          }, 0);
+                          const rows = buildWorshipPersistenceRows(service, [item], {}, {}, { elementTypedStateColumns: { inputMode: true, contentState: true } });
+                          let validationError = '';
+                          try {
+                            validateWorshipPersistenceRows(rows, { serviceId: service.id });
+                          } catch (error) {
+                            validationError = error?.message || String(error);
+                          }
+                          let invalidModeError = '';
+                          try {
+                            validateWorshipPersistenceRows({
+                              sections: [{
+                                id: 'section',
+                                service_id: service.id,
+                                created_at: new Date().toISOString(),
+                                updated_at: new Date().toISOString(),
+                              }],
+                              elements: [{
+                                id: 'element',
+                                section_id: 'section',
+                                created_at: new Date().toISOString(),
+                                updated_at: new Date().toISOString(),
+                                element_type: 'plain_text',
+                                input_mode: 'future_mode',
+                                source_ref: { label: '미래 모드' },
+                                config: {},
+                                asset: {},
+                              }],
+                            }, { serviceId: service.id });
+                          } catch (error) {
+                            invalidModeError = error?.message || String(error);
+                          }
+                          const row = rows.elements[0] || {};
+                          return {
+                            validationError,
+                            invalidModeBlocked: invalidModeError.includes('future_mode'),
+                            elementType: row.element_type || '',
+                            inputMode: row.input_mode || '',
+                            contentInputMode: row.content_state?.inputMode || '',
+                            configElementType: row.config?.elementType || '',
+                            configInputMode: row.config?.inputMode || '',
+                            asset: row.asset || {},
+                          };
+                        })()
+                        """
+                    )
+                    if (
+                        presenter_media_persistence_guard["validationError"] == ""
+                        and presenter_media_persistence_guard["invalidModeBlocked"]
+                        and presenter_media_persistence_guard["elementType"] == "plain_text"
+                        and presenter_media_persistence_guard["inputMode"] == "asset"
+                        and presenter_media_persistence_guard["contentInputMode"] == "asset"
+                        and presenter_media_persistence_guard["configElementType"] == "audio"
+                        and presenter_media_persistence_guard["configInputMode"] == "asset"
+                        and presenter_media_persistence_guard["asset"] == {
+                            "kind": "audio",
+                            "name": "성가대 MR",
+                            "url": "https://example.test/choir.m4a",
+                        }
+                    ):
+                        pass_("presenter-media-persistence-guard", json.dumps(presenter_media_persistence_guard, ensure_ascii=False))
+                    else:
+                        fail("presenter-media-persistence-guard", json.dumps(presenter_media_persistence_guard, ensure_ascii=False))
+
                     presenter_response_prayer_input_guard = page.evaluate(
                         """
                         (() => {

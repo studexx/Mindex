@@ -396,7 +396,8 @@ Element Type (템플릿/저장 타입)
 │  └─ presenter: video / media layout
 ├─ audio (오디오)
 │  ├─ input: asset picker/url
-│  ├─ storage: asset.url + playback config
+│  ├─ storage: DB element_type=plain_text, config.elementType=audio,
+│  │  asset.url + playback config
 │  └─ presenter: audio/file preview
 ├─ score (악보)
 │  ├─ input: score asset or hymn score manifest
@@ -506,6 +507,10 @@ These are the problems exposed by the projection tree above.
   derived from loose fields: `raw_title`, `assignee`, `song_id`, `asset`, and
   `memo` feed the resolver before save. A later schema should promote this from
   JSON config into typed instance fields.
+- Save code must validate generated section/element rows before Supabase
+  upsert. When adding a new element type, input mode, or media kind, update the
+  DB schema/migrations, `validateWorshipPersistenceRows`, and smoke coverage
+  together so users do not see raw database constraint errors.
 - Placeholder lifecycle is subtle: an unfilled template slot, a filled instance
   item, and a one-service deletion must never collapse into the same state.
 - Presenter currently resolves too much: slide generation is doing content
