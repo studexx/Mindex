@@ -24454,6 +24454,30 @@ function presenterOptionalCitationLiveControlSlide(item = {}, section = {}, inde
   };
 }
 
+function presenterReferenceMediaPendingSlide(item = {}, section = {}, index = 0) {
+  // Keep a newly added reference screen reachable in the controller before its
+  // first file is attached. It remains hidden from the live output until then.
+  const label = String(item.label || "참고 화면").trim() || "참고 화면";
+  return {
+    id: `${item.id || index}:reference-media-pending`,
+    ...section,
+    elementId: item.id || section.elementId || "",
+    elementLabel: label,
+    elementTitle: label,
+    elementType: PRESENTER_ELEMENT_TYPES.BLANK,
+    layout: PRESENTER_SLIDE_LAYOUTS.BLANK,
+    type: "blank",
+    label,
+    title: label,
+    marker: "",
+    text: "",
+    referenceMediaPending: true,
+    hiddenInPresentation: true,
+    skipTrailingBlank: true,
+    sort: index,
+  };
+}
+
 function buildPresenterSlidesForServiceItem(item, service, index) {
   item = serviceItemWithSharedSundayContent(item, service);
   const initialMemo = parseServiceItemMemo(item?.memo);
@@ -24499,6 +24523,9 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
     return [presenterOptionalCitationLiveControlSlide(item, section, index)];
   }
   if (!confessionPrayer && !contentState.hasOutputContent) {
+    if (isPresenterReferenceMediaItem(item, memo)) {
+      return [presenterReferenceMediaPendingSlide(item, section, index)];
+    }
     return withIntroAndSpecialTitle([presenterMissingContentSlide(item, section, index, contentState)]);
   }
   if (confessionPrayer) return [presenterConfessionPrayerSlide(item, section, index)];
@@ -24558,6 +24585,14 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
 
   const specialSongItem = isSpecialSongServiceItem(item);
   const songLikeItem = isSongServiceLabel(label) || specialSongItem;
+  const explicitSpecialSongAsset = specialSongItem ? normalizeServiceAsset(memo.asset || item.asset) : null;
+  if (specialSongItem && hasServiceAsset(explicitSpecialSongAsset)) {
+    const assetSlides = presenterScoreSlidesForServiceItem(item, section, index, song, version, displayText, memo, forms, formWarnings);
+    if (assetSlides.length) {
+      // Fully designed special-song image decks already include their title/text.
+      return withIntro(assetSlides);
+    }
+  }
   const scoreOutput = !specialSongItem && (outputMode === "score" || requestedOutputMode === "score");
   if (scoreOutput && !linkedSongId && !song && !templateOwnedScoreSong) {
     return [];

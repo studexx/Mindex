@@ -211,6 +211,10 @@ Small visual polish that does not alter behavior does not need an entry.
   element carries manual slides/body, it must not auto-link to Praise DB even
   if the title matches a hymn, because choir arrangements often reuse hymn
   titles with custom lyrics.
+- 특송 elements may carry a deliberate image deck in `asset.slides`. In that
+  case the presenter outputs those images as-is and does not add an extra
+  generated title slide, because the supplied deck is already designed for
+  projection.
 
 ### Youth Worship Template
 
