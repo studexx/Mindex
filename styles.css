@@ -6520,12 +6520,12 @@ textarea.svc-presenter-input-control--multiline {
 }
 .svc-board-subgroup-head-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) auto;
   width: 100%;
   min-width: 0;
   align-items: start;
   justify-content: stretch;
-  gap: 5px;
+  gap: 6px 8px;
 }
 .svc-board-subgroup-head {
   display: inline-flex;
@@ -6589,6 +6589,72 @@ textarea.svc-presenter-input-control--multiline {
   padding: 0 8px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.svc-board-subgroup-audio {
+  display: inline-grid;
+  grid-template-columns: auto auto;
+  width: max-content;
+  max-width: min(360px, 100%);
+  min-height: 24px;
+  align-items: center;
+  justify-self: end;
+  gap: 5px;
+  color: var(--ink-4);
+  font-size: 10px;
+  font-weight: 800;
+}
+.svc-board-subgroup-audio.has-audio {
+  grid-template-columns: minmax(120px, 220px) minmax(0, 112px) auto auto;
+}
+.svc-board-subgroup-audio audio {
+  width: 100%;
+  height: 24px;
+}
+.svc-board-subgroup-audio strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink-3);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.svc-board-subgroup-audio > span,
+.svc-board-subgroup-audio-upload {
+  display: inline-flex;
+  height: 24px;
+  align-items: center;
+  gap: 4px;
+  border-radius: calc(var(--r) - 2px);
+  background: color-mix(in srgb, var(--panel-2) 42%, transparent);
+  color: var(--ink-4);
+  line-height: 24px;
+  padding: 0 7px;
+  white-space: nowrap;
+}
+.svc-board-subgroup-audio-upload {
+  color: var(--accent);
+  cursor: pointer;
+}
+.svc-board-subgroup-audio-upload:hover,
+.svc-board-subgroup-audio-upload:focus-within {
+  background: color-mix(in srgb, var(--accent) 18%, var(--panel-2));
+}
+.svc-board-subgroup-audio input[type="file"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.svc-board-subgroup-audio i,
+.svc-board-subgroup-audio-upload i {
+  width: 13px;
+  height: 13px;
+  stroke-width: 2;
+}
+.svc-board-subgroup-audio .icon-btn {
+  width: 24px;
+  height: 24px;
+  min-height: 24px;
 }
 .svc-board-subgroup-controls {
   display: grid;

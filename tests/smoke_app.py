@@ -4063,6 +4063,56 @@ def main() -> int:
                     else:
                         fail("presenter-media-persistence-guard", json.dumps(presenter_media_persistence_guard, ensure_ascii=False))
 
+                    presenter_praise_header_audio_guard = page.evaluate(
+                        """
+                        (() => {
+                          const service = { id: '__smoke_praise_header_audio__', type_id: 'sunday-second', date: '2026-08-02' };
+                          const item = normalizeServiceItem({
+                            service_id: service.id,
+                            label: '특송',
+                            raw_title: '어린이부 특송',
+                            assignee: '어린이부',
+                            memo: serializeServiceItemMemo({
+                              elementType: 'praise',
+                              inputMode: 'manual_praise',
+                              slides: ['자막 1', '자막 2'],
+                              audioAsset: { kind: 'audio', name: '특송 MR', url: 'https://example.test/special.mp3' },
+                            }),
+                            _worshipSectionKey: 'special_song',
+                            _worshipSectionTitle: '특송',
+                            _worshipElementTemplateModified: true,
+                            _worshipTemplatePlaceholder: false,
+                          }, 0);
+                          const parsed = parseServiceItemMemo(item.memo);
+                          const rows = buildWorshipPersistenceRows(service, [item], {}, {}, { elementTypedStateColumns: { inputMode: true, contentState: true } });
+                          const row = rows.elements[0] || {};
+                          return {
+                            parsedAudio: parsed.audioAsset || {},
+                            dbElementType: row.element_type || '',
+                            dbInputMode: row.input_mode || '',
+                            configElementType: row.config?.elementType || '',
+                            configInputMode: row.config?.inputMode || '',
+                            configAudio: row.config?.audioAsset || {},
+                            configAsset: row.config?.asset || {},
+                            body: row.body || '',
+                          };
+                        })()
+                        """
+                    )
+                    if presenter_praise_header_audio_guard == {
+                        "parsedAudio": {"kind": "audio", "name": "특송 MR", "url": "https://example.test/special.mp3"},
+                        "dbElementType": "praise",
+                        "dbInputMode": "praise_db",
+                        "configElementType": "praise",
+                        "configInputMode": "manual_praise",
+                        "configAudio": {"kind": "audio", "name": "특송 MR", "url": "https://example.test/special.mp3"},
+                        "configAsset": {"kind": "", "name": "", "url": ""},
+                        "body": "자막 1\\n---\\n자막 2",
+                    }:
+                        pass_("presenter-praise-header-audio-guard", json.dumps(presenter_praise_header_audio_guard, ensure_ascii=False))
+                    else:
+                        fail("presenter-praise-header-audio-guard", json.dumps(presenter_praise_header_audio_guard, ensure_ascii=False))
+
                     presenter_response_prayer_input_guard = page.evaluate(
                         """
                         (() => {

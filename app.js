@@ -461,6 +461,7 @@ const PRESENTER_CHROMAKEY_VIDEO_POSTER = "data:image/svg+xml,%3Csvg xmlns='http:
 const PRESENTER_MEDIA_STORAGE_BUCKET = "mindex-worship-media";
 const PRESENTER_REFERENCE_MEDIA_SECTION_KEYS = new Set(["sermon", "announcements"]);
 const PRESENTER_REFERENCE_MEDIA_ACCEPT = "image/*,video/*,audio/*";
+const SERVICE_ITEM_AUDIO_ACCEPT = "audio/*";
 const PRESENTER_REFERENCE_MEDIA_MAX_BYTES = 50 * 1024 * 1024;
 const SERVICE_FUTURE_LOOKAHEAD_DAYS = 7;
 const SERVICE_LIST_PANEL_ID = "__list";
@@ -2984,6 +2985,7 @@ function groupWorshipElements(sections = [], elements = []) {
       || config.content_state?.input_mode,
     );
     const asset = normalizeServiceAsset(config.asset || config.media || element.asset || sourceRef.asset);
+    const audioAsset = normalizeServiceAudioAsset(config.audioAsset || config.audio_asset || sourceRef.audioAsset || sourceRef.audio_asset);
     const playback = normalizeServicePlaybackConfig(config.playback, elementType);
     const presenterRole = normalizeServicePresenterRole(
       config.presenterRole || config.presenter_role || config.role || sourceRef.presenterRole || sourceRef.presenter_role || sourceRef.role,
@@ -3034,6 +3036,7 @@ function groupWorshipElements(sections = [], elements = []) {
         introSlide,
         slides: manualSlides,
         asset,
+        audioAsset,
         playback,
         presenterRole,
         hiddenInPresentation: Boolean(config.hiddenInPresentation || config.hidden_in_presentation),
@@ -5225,6 +5228,11 @@ function serviceElementConfigForSave(existingConfig = {}, parsed = emptyServiceI
   }
   if (hasServiceAsset(parsed.asset)) config.asset = parsed.asset;
   else delete config.asset;
+  if (hasServiceAsset(parsed.audioAsset)) config.audioAsset = parsed.audioAsset;
+  else {
+    delete config.audioAsset;
+    delete config.audio_asset;
+  }
   if (hasServicePlaybackConfig(parsed.playback)) config.playback = parsed.playback;
   else delete config.playback;
   if (parsed.presenterRole) config.presenterRole = parsed.presenterRole;
@@ -6111,6 +6119,15 @@ function handleDetailClick(event) {
 }
 
 function handlePresenterDetailClick(event) {
+  const serviceAudioClear = event.target.closest("[data-service-item-audio-clear]");
+  if (serviceAudioClear) {
+    void clearServiceItemAudioAsset(
+      serviceAudioClear.dataset.serviceId || state.selectedServiceId,
+      Number(serviceAudioClear.dataset.serviceItemIndex),
+    );
+    return true;
+  }
+
   const preparationApply = event.target.closest("[data-presenter-preparation-apply]");
   if (preparationApply) {
     applyPresenterPreparationInput(preparationApply.dataset.serviceId || state.selectedServiceId);
@@ -6564,6 +6581,12 @@ function handleDetailChange(event) {
   const referenceMediaDirectFile = event.target.closest("[data-presenter-reference-media-direct-file]");
   if (referenceMediaDirectFile) {
     void addAndUploadPresenterReferenceMedia(referenceMediaDirectFile);
+    return;
+  }
+
+  const serviceItemAudioFile = event.target.closest("[data-service-item-audio-file]");
+  if (serviceItemAudioFile) {
+    void uploadServiceItemAudioAsset(serviceItemAudioFile);
     return;
   }
 
@@ -7627,6 +7650,12 @@ function normalizeServiceAsset(value) {
   };
 }
 
+function normalizeServiceAudioAsset(value) {
+  const asset = normalizeServiceAsset(value);
+  if (!hasServiceAsset(asset)) return { kind: "", name: "", url: "" };
+  return { ...asset, kind: "audio" };
+}
+
 function normalizeServiceAssetSlides(value) {
   if (!Array.isArray(value)) return [];
   return value
@@ -7901,6 +7930,7 @@ function emptyServiceItemMemo(rawNote = "") {
     inputMode: "",
     textHighlights: [],
     asset: { kind: "", name: "", url: "" },
+    audioAsset: { kind: "", name: "", url: "" },
     playback: null,
     presenterRole: "",
     hiddenInPresentation: false,
@@ -7916,6 +7946,7 @@ function parseServiceItemMemo(value) {
     if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
       const elementType = serviceMemoElementType({ ...parsed, elementType: parsed.elementType || parsed.element_type || parsed.type });
       const asset = normalizeServiceAsset(parsed.asset || parsed.file || parsed.media);
+      const audioAsset = normalizeServiceAudioAsset(parsed.audioAsset || parsed.audio_asset || parsed.audio || parsed.mr);
       const presenterRole = normalizeServicePresenterRole(parsed.presenterRole || parsed.presenter_role || parsed.role);
       const introSlide = normalizeServiceIntroSlide(parsed.introSlide || parsed.intro_slide || parsed.titleSlide || parsed.title_slide);
       return {
@@ -7941,6 +7972,7 @@ function parseServiceItemMemo(value) {
         inputMode: normalizeServiceInputMode(parsed.inputMode || parsed.input_mode),
         textHighlights: normalizeServiceTextHighlights(parsed.textHighlights || parsed.text_highlights || parsed.highlights),
         asset,
+        audioAsset,
         playback: normalizeServicePlaybackConfig(parsed.playback, elementType),
         presenterRole,
         hiddenInPresentation: Boolean(parsed.hiddenInPresentation || parsed.hidden_in_presentation || parsed.hidden),
@@ -8160,13 +8192,14 @@ function serializeServiceItemMemo(value = {}) {
   const inputMode = normalizeServiceInputMode(value.inputMode || value.input_mode);
   const textHighlights = normalizeServiceTextHighlights(value.textHighlights || value.text_highlights || value.highlights);
   const asset = normalizeServiceAsset(value.asset);
+  const audioAsset = normalizeServiceAudioAsset(value.audioAsset || value.audio_asset || value.audio || value.mr);
   const playback = normalizeServicePlaybackConfig(value.playback, elementType);
   const presenterRole = normalizeServicePresenterRole(value.presenterRole || value.presenter_role || value.role);
   const hiddenInPresentation = Boolean(value.hiddenInPresentation || value.hidden_in_presentation || value.hidden);
   const templateSuppressed = Boolean(value.templateSuppressed || value.template_suppressed);
   const defaultAssetKind = serviceAssetKindForElementType(elementType);
   if (!asset.kind && defaultAssetKind && hasServiceAsset(asset)) asset.kind = defaultAssetKind;
-  if (!slides.length && !scriptureReference && !scriptureReferences.length && !scriptureTranslationId && !scriptureReferencePayloads.length && !manualScripture && !hasServiceIntroSlide(introSlide) && !formHint && !formPreset && !formPresetDisabled && !formPresetRules.length && !templateKey && !templateVariant && !elementType && !outputMode && !inputMode && !textHighlights.length && !hasServiceAsset(asset) && !hasServicePlaybackConfig(playback) && !presenterRole && !hiddenInPresentation && !templateSuppressed) return note;
+  if (!slides.length && !scriptureReference && !scriptureReferences.length && !scriptureTranslationId && !scriptureReferencePayloads.length && !manualScripture && !hasServiceIntroSlide(introSlide) && !formHint && !formPreset && !formPresetDisabled && !formPresetRules.length && !templateKey && !templateVariant && !elementType && !outputMode && !inputMode && !textHighlights.length && !hasServiceAsset(asset) && !hasServiceAsset(audioAsset) && !hasServicePlaybackConfig(playback) && !presenterRole && !hiddenInPresentation && !templateSuppressed) return note;
   const payload = { note };
   if (scriptureReference) payload.scriptureReference = scriptureReference;
   if (scriptureReferences.length) payload.scriptureReferences = scriptureReferences;
@@ -8188,6 +8221,7 @@ function serializeServiceItemMemo(value = {}) {
   if (hiddenInPresentation) payload.hiddenInPresentation = true;
   if (templateSuppressed) payload.templateSuppressed = true;
   if (hasServiceAsset(asset)) payload.asset = asset;
+  if (hasServiceAsset(audioAsset)) payload.audioAsset = audioAsset;
   if (hasServicePlaybackConfig(playback)) payload.playback = playback;
   if (slides.length) payload.slides = slides;
   return JSON.stringify(payload);
@@ -9245,6 +9279,92 @@ async function addAndUploadPresenterReferenceMedia(input) {
     renderServiceList();
     updateSaveState();
   }
+}
+
+function serviceItemSupportsHeaderAudio(item = {}) {
+  return isSongServiceLabel(item?.label) || isSpecialSongServiceItem(item);
+}
+
+async function uploadServiceItemAudioAsset(input) {
+  const file = input?.files?.[0];
+  const serviceId = input?.dataset?.serviceId || state.selectedServiceId;
+  const index = Number(input?.dataset?.serviceItemIndex);
+  const item = getServiceItems(serviceId)[index];
+  if (!file || !item || !serviceItemSupportsHeaderAudio(item)) {
+    showToast("찬양/특송 항목에만 음원을 붙일 수 있습니다.", "error");
+    if (input) input.value = "";
+    return false;
+  }
+  if (presenterReferenceMediaKindForFile(file) !== "audio") {
+    showToast("음원 파일만 선택해 주세요.", "error");
+    input.value = "";
+    return false;
+  }
+  if (Number(file.size) > PRESENTER_REFERENCE_MEDIA_MAX_BYTES) {
+    showToast("음원 파일은 50MB 이하로 올려 주세요.", "error");
+    input.value = "";
+    return false;
+  }
+  if (!state.client?.storage) {
+    showToast("미디어 저장소에 연결되지 않았습니다. 연결 상태를 확인해 주세요.", "error");
+    input.value = "";
+    return false;
+  }
+
+  input.disabled = true;
+  let uploadedPath = "";
+  try {
+    const path = presenterReferenceMediaUploadPath(serviceId, item, file);
+    uploadedPath = path;
+    const { error } = await state.client.storage
+      .from(PRESENTER_MEDIA_STORAGE_BUCKET)
+      .upload(path, file, { cacheControl: "3600", contentType: file.type || undefined, upsert: false });
+    if (error) throw error;
+    const { data } = state.client.storage.from(PRESENTER_MEDIA_STORAGE_BUCKET).getPublicUrl(path);
+    const url = String(data?.publicUrl || "").trim();
+    if (!url) throw new Error("업로드한 음원의 공개 주소를 만들지 못했습니다.");
+
+    const memo = parseServiceItemMemo(item.memo);
+    memo.audioAsset = { kind: "audio", name: file.name, url };
+    item.memo = serializeServiceItemMemo(memo);
+    item._worshipElementTemplateModified = true;
+    state.dirty.service = true;
+    refreshPresenterForService(serviceId);
+    await saveService(serviceId, { silent: true, renderAfterSave: false, throwOnError: true });
+    renderCurrentServiceModuleDetail();
+    renderServiceList();
+    showToast("찬양 헤더에 음원을 연결했습니다.");
+    return true;
+  } catch (error) {
+    if (uploadedPath && state.client?.storage?.from) {
+      try {
+        await state.client.storage.from(PRESENTER_MEDIA_STORAGE_BUCKET).remove([uploadedPath]);
+      } catch (cleanupError) {
+        console.warn("Failed to clean up uploaded service audio after save failure.", cleanupError);
+      }
+    }
+    showToast(error?.message || "음원 파일을 올리지 못했습니다.", "error");
+    return false;
+  } finally {
+    input.disabled = false;
+    input.value = "";
+  }
+}
+
+async function clearServiceItemAudioAsset(serviceId = state.selectedServiceId, index = -1) {
+  const items = getServiceItems(serviceId);
+  const item = items[index];
+  if (!item || !serviceItemSupportsHeaderAudio(item)) return;
+  const memo = parseServiceItemMemo(item.memo);
+  memo.audioAsset = { kind: "", name: "", url: "" };
+  item.memo = serializeServiceItemMemo(memo);
+  item._worshipElementTemplateModified = true;
+  state.dirty.service = true;
+  refreshPresenterForService(serviceId);
+  await saveService(serviceId, { silent: true, renderAfterSave: false, throwOnError: true });
+  renderCurrentServiceModuleDetail();
+  renderServiceList();
+  showToast("찬양 헤더 음원을 제거했습니다.");
 }
 
 function addPresenterReferenceMedia(serviceId = state.selectedServiceId, requestedSectionKey = "", options = {}) {
@@ -22698,6 +22818,7 @@ function renderPresenterBoardSubgroup(subgroup, activeIndex, serviceId, options 
   const interactionLabel = presenterSlideInteractionHint(serviceId, subgroup.name || visibleLabel);
   const warnings = presenterWarningsForEntries(subgroup.slides);
   const inputControls = renderPresenterBoardSubgroupInputControls(serviceId, subgroup);
+  const audioControls = renderPresenterBoardSubgroupAudioControls(serviceId, subgroup);
   return `
     <div class="svc-board-subgroup${active ? " active" : ""}${options.showHead ? "" : " collapsed-head"}">
       ${options.showHead ? `
@@ -22712,12 +22833,37 @@ function renderPresenterBoardSubgroup(subgroup, activeIndex, serviceId, options 
             ${visibleTitle ? `<strong>${escapeHtml(visibleTitle)}</strong>` : ""}
             ${renderPresenterWarnings(warnings)}
           </button>
+          ${audioControls}
         </header>` : ""}
       ${inputControls}
       <div class="svc-board-grid">
         ${slides.map(({ slide, slideIndex, formLabel }) =>
           renderPresenterSlideThumb(slide, slideIndex, activeIndex, serviceId, formLabel)).join("")}
       </div>
+    </div>`;
+}
+
+function renderPresenterBoardSubgroupAudioControls(serviceId, subgroup = {}) {
+  const context = presenterBoardSubgroupItemContext(serviceId, subgroup);
+  if (!context || !serviceItemSupportsHeaderAudio(context.item)) return "";
+  const memo = parseServiceItemMemo(context.item.memo);
+  const audioAsset = normalizeServiceAudioAsset(memo.audioAsset);
+  const source = String(audioAsset.url || "").trim();
+  const label = audioAsset.name || "연결된 음원";
+  return `
+    <div class="svc-board-subgroup-audio${source ? " has-audio" : ""}" aria-label="${escapeAttr(`${context.item.label || "찬양"} 음원`)}">
+      ${source ? `
+        <audio controls preload="metadata" src="${escapeAttr(source)}"></audio>
+        <strong title="${escapeAttr(label)}">${escapeHtml(label)}</strong>
+        <button class="icon-btn" type="button" data-service-item-audio-clear
+          data-service-id="${escapeAttr(serviceId)}" data-service-item-index="${context.index}"
+          aria-label="음원 연결 해제" title="음원 연결 해제"><i data-lucide="x"></i></button>` : `
+        <span><i data-lucide="audio-lines"></i>음원</span>`}
+      <label class="svc-board-subgroup-audio-upload" title="${source ? "음원 교체" : "음원 추가"}">
+        <input type="file" accept="${SERVICE_ITEM_AUDIO_ACCEPT}" data-service-item-audio-file
+          data-service-id="${escapeAttr(serviceId)}" data-service-item-index="${context.index}" />
+        <i data-lucide="${source ? "refresh-cw" : "upload"}"></i><span>${source ? "교체" : "추가"}</span>
+      </label>
     </div>`;
 }
 
@@ -22732,7 +22878,7 @@ function renderPresenterBoardSubgroupInputControls(serviceId, subgroup = {}) {
     </div>`;
 }
 
-function presenterBoardSubgroupInputContext(serviceId, subgroup = {}) {
+function presenterBoardSubgroupItemContext(serviceId, subgroup = {}) {
   const service = state.services.find((svc) => svc.id === serviceId);
   if (!service) return null;
   const elementId = String(subgroup.id || subgroup.slides?.[0]?.slide?.elementId || "").trim();
@@ -22741,12 +22887,17 @@ function presenterBoardSubgroupInputContext(serviceId, subgroup = {}) {
   const itemIndex = items.findIndex((item) => String(item.id || "") === elementId);
   if (itemIndex < 0) return null;
   const item = items[itemIndex];
-  if (!presenterServiceInputHasEditableField(item, service)) return null;
   return {
     service,
     item,
     index: Number.isInteger(item._origIndex) ? item._origIndex : itemIndex,
   };
+}
+
+function presenterBoardSubgroupInputContext(serviceId, subgroup = {}) {
+  const context = presenterBoardSubgroupItemContext(serviceId, subgroup);
+  if (!context || !presenterServiceInputHasEditableField(context.item, context.service)) return null;
+  return context;
 }
 
 function presenterWarningsForEntries(entries = []) {

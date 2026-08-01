@@ -285,3 +285,7 @@ Manual checks when changing live presenter behavior:
   preview and presenter output. Image/video render as media slides. Audio uses
   the existing controller `음악` player when its slide is selected, so playback
   remains under the operator's explicit control.
+- Praise-like elements (`찬양`, `특송`, `결단찬양`, etc.) may carry a controller-only
+  header audio attachment in `memo.audioAsset`. This is for quick MR/BGM playback
+  beside the element header and must not change presenter slide rendering,
+  score/lyrics input mode, or `memo.asset` media-element behavior.
