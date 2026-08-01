@@ -32,6 +32,7 @@ mindex_worship_service_types (예배 타입)
 
 mindex_worship_services (특정 날짜 예배)
 ├─ id / service_type_id / service_date
+├─ created_at / updated_at
 ├─ title / status / tags
 ├─ worship_leader / praise_leader
 ├─ template link / source lineage
@@ -58,6 +59,7 @@ mindex_worship_elements (순서 안의 콘텐츠 단위)
 
 mindex_worship_slides (인스턴스 출력 프레임)
 ├─ id / element_id / sort_order
+├─ created_at / updated_at
 ├─ layout / elementType / text / media
 └─ instance-level slide override, not canonical Praise/Scripture data
 ```

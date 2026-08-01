@@ -2103,6 +2103,8 @@ def main() -> int:
                               elementCount: rows.elements.length,
                               sortOrders: rows.sections.map((section) => section.sort_order),
                               sharedSection: new Set(rows.elements.map((element) => element.section_id)).size === 1,
+                              sectionTimestamps: rows.sections.every((section) => Boolean(section.created_at && section.updated_at)),
+                              elementTimestamps: rows.elements.every((element) => Boolean(element.created_at && element.updated_at)),
                             };
                           })(),
                           templateSuppressionProjection: (() => {
@@ -2799,6 +2801,8 @@ def main() -> int:
                             "elementCount": 2,
                             "sortOrders": [1],
                             "sharedSection": True,
+                            "sectionTimestamps": True,
+                            "elementTimestamps": True,
                         }
 	                        and template_terms["templateSuppressionProjection"] == {
 	                            "sourceFound": True,

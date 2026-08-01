@@ -2716,10 +2716,13 @@ function worshipServiceExistsForTarget(target = {}) {
 
 function autoWorshipServicePayload(target = {}) {
   const typeId = worshipAppServiceTypeId(target.typeId);
+  const persistedAt = new Date().toISOString();
   return {
     id: createUuid(),
     service_type_id: canonicalWorshipServiceTypeId(typeId),
     service_date: target.date,
+    created_at: persistedAt,
+    updated_at: persistedAt,
     title: "",
     status: "draft",
     worship_leader: defaultServiceWorshipLeader(typeId),
@@ -24284,6 +24287,7 @@ async function createService() {
   }
 
   const serviceId = createUuid();
+  const persistedAt = new Date().toISOString();
   const tags = String(form.tags || "")
     .split(",")
     .map((tag) => tag.trim())
@@ -24294,6 +24298,8 @@ async function createService() {
     id: serviceId,
     service_type_id: canonicalWorshipServiceTypeId(typeId),
     service_date: date,
+    created_at: persistedAt,
+    updated_at: persistedAt,
     title: String(form.title || "").trim(),
     status: "draft",
     worship_leader: defaultServiceWorshipLeader(typeId),
