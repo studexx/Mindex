@@ -3703,6 +3703,48 @@ def main() -> int:
                 else:
                     fail("presenter-fullscreen-sermon-title-center", json.dumps(fullscreen_sermon_title_center_state, ensure_ascii=False))
 
+                preview_long_sermon_title_fit_state = page.evaluate(
+                    """
+                    () => {
+                      const serviceId = '__smoke_preview_long_sermon_title__';
+                      state.services = state.services.filter((item) => item.id !== serviceId);
+                      state.services.push({ id: serviceId, type_id: 'sunday-first', date: '2026-07-05', service_date: '2026-07-05' });
+                      const mount = document.createElement('div');
+                      mount.style.cssText = 'position:fixed;left:16px;top:16px;width:423px;height:238px;z-index:99999;pointer-events:none';
+                      mount.innerHTML = renderPresenterSlideMiniPreview({
+                        id: '__smoke_preview_long_sermon_title_slide__',
+                        elementType: PRESENTER_ELEMENT_TYPES.TITLE_ASSIGNEE,
+                        layout: PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT,
+                        type: 'title-assignee', titlePresentation: 'sermon',
+                        contentTitle: '｢하나님의 나라를 함께 살아내는 믿음의 길 ②｣', assignee: '김석범 목사',
+                      }, serviceId);
+                      document.body.appendChild(mount);
+                      const host = mount.querySelector('.svc-slide-mini-output');
+                      fitPresenterSermonTitleText(host);
+                      const title = mount.querySelector('.presenter-title-assignee-content');
+                      const hostRect = host?.getBoundingClientRect();
+                      const titleRect = title?.getBoundingClientRect();
+                      const result = {
+                        fontSize: title ? Number.parseFloat(getComputedStyle(title).fontSize) : 0,
+                        scrollWidth: title?.scrollWidth || 0,
+                        clientWidth: title?.clientWidth || 0,
+                        centerOffset: hostRect && titleRect ? Math.round(Math.abs((titleRect.left + titleRect.right - hostRect.left - hostRect.right) / 2)) : -1,
+                      };
+                      mount.remove();
+                      state.services = state.services.filter((item) => item.id !== serviceId);
+                      return result;
+                    }
+                    """
+                )
+                if (
+                    preview_long_sermon_title_fit_state["fontSize"] >= 18
+                    and preview_long_sermon_title_fit_state["scrollWidth"] <= preview_long_sermon_title_fit_state["clientWidth"]
+                    and preview_long_sermon_title_fit_state["centerOffset"] <= 1
+                ):
+                    pass_("presenter-preview-long-sermon-title-fit", json.dumps(preview_long_sermon_title_fit_state, ensure_ascii=False))
+                else:
+                    fail("presenter-preview-long-sermon-title-fit", json.dumps(preview_long_sermon_title_fit_state, ensure_ascii=False))
+
                 fullscreen_long_song_title_fit_state = page.evaluate(
                     """
                     () => {

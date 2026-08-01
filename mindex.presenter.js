@@ -3129,7 +3129,8 @@ function fitPresenterSongTitleText(host) {
   if (!host) return;
   const outputRoot = host.closest?.(".presenter-output-root") || host;
   const fullscreen = outputRoot.classList?.contains("no-chromakey");
-  const minimumSize = fullscreen ? 72 : 56;
+  const preview = Boolean(host.closest?.(".svc-slide-mini-canvas") || outputRoot.classList?.contains("svc-slide-mini-output"));
+  const minimumSize = preview ? 18 : fullscreen ? 72 : 56;
   host
     .querySelectorAll(".presenter-slide--song-title > .presenter-slide-text, .presenter-slide--song-title .presenter-section-song-title-name")
     .forEach((textBox) => {
@@ -3156,7 +3157,8 @@ function fitPresenterSermonTitleText(host) {
   if (!host) return;
   const outputRoot = host.closest?.(".presenter-output-root") || host;
   const fullscreen = outputRoot.classList?.contains("no-chromakey");
-  const minimumSize = fullscreen ? 72 : 56;
+  const preview = Boolean(host.closest?.(".svc-slide-mini-canvas") || outputRoot.classList?.contains("svc-slide-mini-output"));
+  const minimumSize = preview ? 18 : fullscreen ? 72 : 56;
   host
     .querySelectorAll(".presenter-title-assignee--sermon .presenter-title-assignee-content")
     .forEach((textBox) => {
