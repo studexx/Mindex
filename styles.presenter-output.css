@@ -156,22 +156,6 @@
   --presenter-output-fg: #f8f8f3;
   --presenter-output-muted: rgba(248, 248, 243, .66);
 }
-.presenter-output-root[data-output-theme="children"] {
-  --presenter-output-bg: #f4ead9;
-  --presenter-output-fg: #1d1d1b;
-  --presenter-output-muted: rgba(29, 29, 27, .68);
-  --presenter-output-bar: rgba(29, 29, 27, .08);
-  background:
-    radial-gradient(circle at 50% 38%, rgba(255, 255, 255, .72), transparent 34%),
-    var(--presenter-output-bg);
-}
-.presenter-output-root.no-chromakey[data-output-theme="children"]:not(.has-background) {
-  --presenter-output-bg: #f4ead9;
-  background:
-    radial-gradient(circle at 50% 38%, rgba(255, 255, 255, .72), transparent 34%),
-    var(--presenter-output-bg);
-}
-.presenter-output-root[data-output-theme="children"],
 .presenter-output-root[data-output-theme="youth"],
 .presenter-output-root[data-output-theme="young-adult"] {
   font-family: var(--font-presenter);
@@ -858,20 +842,6 @@
   font-weight: var(--presenter-weight-meta);
   line-height: 1;
   opacity: 1;
-}
-.presenter-output-root[data-output-theme="children"] .presenter-slide--lyrics .presenter-slide-text,
-.presenter-output-root[data-output-theme="children"] .presenter-slide--song-title .presenter-slide-text,
-.presenter-output-root[data-output-theme="children"] .presenter-slide--component .presenter-slide-text,
-.presenter-output-root[data-output-theme="children"] .presenter-slide--ready .presenter-slide-text,
-.presenter-output-root[data-output-theme="children"] .presenter-slide--title .presenter-slide-text,
-.presenter-output-root[data-output-theme="children"] .presenter-slide--liturgical-body .presenter-slide-text,
-.presenter-output-root[data-output-theme="children"] .presenter-liturgical-body,
-.presenter-output-root[data-output-theme="children"] .presenter-title-content {
-  color: var(--presenter-output-fg);
-  text-shadow: none;
-}
-.presenter-output-root[data-output-theme="children"] .presenter-title-content-title {
-  color: color-mix(in srgb, var(--presenter-output-fg) 72%, transparent);
 }
 .presenter-output-root[data-output-theme="children"] .presenter-slide--song-title .presenter-slide-text {
   font-size: var(--presenter-size-section);
