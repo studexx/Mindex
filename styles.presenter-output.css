@@ -40,16 +40,17 @@
   --presenter-scripture-font: var(--font-presenter);
   /* Typography scale, ordered by presenter role. Keep output rules on these
      semantic tokens; the size aliases below preserve the existing selectors. */
-  --presenter-type-title: calc(92 * var(--presenter-stage-unit));
-  --presenter-type-main-song: calc(96 * var(--presenter-stage-unit));
-  --presenter-type-section: calc(72 * var(--presenter-stage-unit));
-  --presenter-type-content: calc(72 * var(--presenter-stage-unit));
-  --presenter-type-lyrics: calc(72 * var(--presenter-stage-unit));
-  --presenter-type-support: calc(52 * var(--presenter-stage-unit));
+  /* Fixed stage measurements use the 5px grid. Ratios stay semantic. */
+  --presenter-type-title: calc(90 * var(--presenter-stage-unit));
+  --presenter-type-main-song: calc(100 * var(--presenter-stage-unit));
+  --presenter-type-section: calc(70 * var(--presenter-stage-unit));
+  --presenter-type-content: calc(70 * var(--presenter-stage-unit));
+  --presenter-type-lyrics: calc(70 * var(--presenter-stage-unit));
+  --presenter-type-support: calc(50 * var(--presenter-stage-unit));
   --presenter-type-liturgical-heading: var(--presenter-type-section);
   --presenter-type-liturgical-body: var(--presenter-type-support);
   --presenter-type-caption: calc(40 * var(--presenter-stage-unit));
-  --presenter-type-scripture-text: calc(88 * var(--presenter-stage-unit));
+  --presenter-type-scripture-text: calc(90 * var(--presenter-stage-unit));
   --presenter-size-display: var(--presenter-type-title);
   --presenter-size-section: var(--presenter-type-section);
   --presenter-size-body: var(--presenter-type-content);
@@ -59,8 +60,8 @@
   --presenter-size-liturgical-body: var(--presenter-type-liturgical-body);
   --presenter-size-liturgical-heading: var(--presenter-type-liturgical-heading);
   --presenter-size-caption: var(--presenter-type-caption);
-  --presenter-size-thumbnail: calc(44 * var(--presenter-stage-unit));
-  --presenter-scripture-thumbnail-size: calc(44 * var(--presenter-stage-unit));
+  --presenter-size-thumbnail: calc(45 * var(--presenter-stage-unit));
+  --presenter-scripture-thumbnail-size: calc(45 * var(--presenter-stage-unit));
   --presenter-size-file-caption: calc(40 * var(--presenter-stage-unit));
   --presenter-weight-display: 800;
   --presenter-weight-body: 700;
@@ -70,7 +71,7 @@
   --presenter-scripture-fit-width: 64cqw;
   --presenter-scripture-fit-ratio: .74;
   --presenter-scripture-bar-size: var(--presenter-size-lyrics);
-  --presenter-scripture-clean-size: calc(72 * var(--presenter-stage-unit));
+  --presenter-scripture-clean-size: calc(70 * var(--presenter-stage-unit));
   --presenter-scripture-reading-ref-size: var(--presenter-size-section);
   --presenter-scripture-reading-version-size: var(--presenter-size-meta);
   --presenter-scripture-reading-text-size: var(--presenter-type-scripture-text);
@@ -95,23 +96,23 @@
 }
 .presenter-output-root.no-chromakey {
   /* Fullscreen output is read from a distance; chromakey keeps its lower-bar scale. */
-  --presenter-type-title: calc(168 * var(--presenter-stage-unit));
-  --presenter-type-main-song: calc(152 * var(--presenter-stage-unit));
-  --presenter-type-section: calc(144 * var(--presenter-stage-unit));
-  --presenter-type-content: calc(96 * var(--presenter-stage-unit));
-  --presenter-type-lyrics: calc(104 * var(--presenter-stage-unit));
-  --presenter-type-support: calc(104 * var(--presenter-stage-unit));
-  --presenter-type-liturgical-heading: calc(96 * var(--presenter-stage-unit));
-  --presenter-type-liturgical-body: calc(56 * var(--presenter-stage-unit));
+  --presenter-type-title: calc(170 * var(--presenter-stage-unit));
+  --presenter-type-main-song: calc(150 * var(--presenter-stage-unit));
+  --presenter-type-section: calc(140 * var(--presenter-stage-unit));
+  --presenter-type-content: calc(100 * var(--presenter-stage-unit));
+  --presenter-type-lyrics: calc(100 * var(--presenter-stage-unit));
+  --presenter-type-support: calc(100 * var(--presenter-stage-unit));
+  --presenter-type-liturgical-heading: calc(100 * var(--presenter-stage-unit));
+  --presenter-type-liturgical-body: calc(55 * var(--presenter-stage-unit));
   --presenter-type-caption: calc(80 * var(--presenter-stage-unit));
-  --presenter-size-thumbnail: calc(88 * var(--presenter-stage-unit));
+  --presenter-size-thumbnail: calc(90 * var(--presenter-stage-unit));
   --presenter-size-file-caption: calc(80 * var(--presenter-stage-unit));
   /* Scripture reading is shared service content, not a fullscreen display variant. */
-  --presenter-scripture-bar-size: calc(72 * var(--presenter-stage-unit));
-  --presenter-scripture-clean-size: calc(72 * var(--presenter-stage-unit));
-  --presenter-scripture-reading-ref-size: calc(72 * var(--presenter-stage-unit));
-  --presenter-scripture-reading-version-size: calc(52 * var(--presenter-stage-unit));
-  --presenter-scripture-reading-text-size: calc(88 * var(--presenter-stage-unit));
+  --presenter-scripture-bar-size: calc(70 * var(--presenter-stage-unit));
+  --presenter-scripture-clean-size: calc(70 * var(--presenter-stage-unit));
+  --presenter-scripture-reading-ref-size: calc(70 * var(--presenter-stage-unit));
+  --presenter-scripture-reading-version-size: calc(50 * var(--presenter-stage-unit));
+  --presenter-scripture-reading-text-size: calc(90 * var(--presenter-stage-unit));
 }
 .svc-slide-mini-canvas.presenter-output-root {
   position: absolute;
@@ -717,7 +718,7 @@
    rendered with each title, so ordinary titles retain the display scale. */
 :is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-slide--song-title .presenter-section-song-title-name {
   font-size: clamp(
-    calc(72 * var(--presenter-stage-unit)),
+    calc(70 * var(--presenter-stage-unit)),
     calc(90cqw / var(--line-chars, 1)),
     var(--presenter-size-song-title)
   );
@@ -853,7 +854,7 @@
 .presenter-slide--file { justify-content: center; align-items: center; }
 .presenter-slide--blank { padding: 0; }
 .presenter-output-root.no-chromakey.is-blank .presenter-slide--blank {
-  --presenter-blank-cross-stroke: calc(6 * var(--presenter-stage-unit));
+  --presenter-blank-cross-stroke: calc(5 * var(--presenter-stage-unit));
   position: relative;
 }
 .presenter-output-root.no-chromakey.is-blank .presenter-slide--blank::before,
@@ -865,22 +866,22 @@
   pointer-events: none;
 }
 .presenter-output-root.no-chromakey.is-blank .presenter-slide--blank::before {
-  top: calc(50% - (227 * var(--presenter-stage-unit)));
+  top: calc(50% - (225 * var(--presenter-stage-unit)));
   left: 50%;
   width: var(--presenter-blank-cross-stroke);
-  height: calc(454 * var(--presenter-stage-unit));
+  height: calc(450 * var(--presenter-stage-unit));
   transform: translateX(-50%) scaleY(0);
   transform-origin: center top;
-  animation: presenter-blank-cross-vertical .55s ease-out forwards;
+  animation: presenter-blank-cross-vertical 550ms ease-out forwards;
 }
 .presenter-output-root.no-chromakey.is-blank .presenter-slide--blank::after {
-  top: calc(50% - (87 * var(--presenter-stage-unit)));
+  top: calc(50% - (85 * var(--presenter-stage-unit)));
   left: calc(50% - (140 * var(--presenter-stage-unit)));
   width: calc(280 * var(--presenter-stage-unit));
   height: var(--presenter-blank-cross-stroke);
   transform: translateY(-50%) scaleX(0);
   transform-origin: left center;
-  animation: presenter-blank-cross-horizontal .45s ease-out .55s forwards;
+  animation: presenter-blank-cross-horizontal 450ms ease-out 550ms forwards;
 }
 /* Controller thumbnails show the finished transition frame without spending
    compositor work on an animation that only matters on the output display. */

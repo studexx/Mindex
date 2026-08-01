@@ -39,19 +39,24 @@ Small visual polish that does not alter behavior does not need an entry.
 - Presenter typography is controlled by role tokens, not by individual slide
   exceptions: `Title` (weight 800), `Main song` (800), `Section` (800),
   `Content` / `Lyrics` (700), `Support` (600), and scripture-reading text.
+- Fixed measurements on the 1920x1080 stage use a **5px grid**. Timing uses a
+  **50ms grid**. Use the closest grid value when adjusting a fixed font size,
+  thumbnail size, blank-cross dimension, or animation duration. Percentages,
+  container ratios, and typographic ratios (for example the reviewed scripture
+  `letter-spacing: -0.06em`) retain their semantic values and are not rounded.
 - At the fixed 1920x1080 presenter stage, the reviewed scale is:
 
   | Role | Chromakey | Fullscreen |
   | --- | ---: | ---: |
-  | Title | 92px | 168px |
-  | Main song title | 96px | 152px |
-  | Section title | 72px | 144px |
-  | Content | 72px | 96px |
-  | Lyrics | 72px | 104px |
-  | Support | 52px | 104px |
-  | Formal scripture verse body | 88px | 88px |
+  | Title | 90px | 170px |
+  | Main song title | 100px | 150px |
+  | Section title | 70px | 140px |
+  | Content | 70px | 100px |
+  | Lyrics | 70px | 100px |
+  | Support | 50px | 100px |
+  | Formal scripture verse body | 90px | 90px |
 
-- The formal scripture reading deliberately keeps the same 88px verse body
+- The formal scripture reading deliberately keeps the same 90px verse body
   across output modes. It is a shared reading form rather than a fullscreen
   display variant. This table is the source of truth for future typography
   adjustments; change the role token first, then review the representative
