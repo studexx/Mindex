@@ -23110,13 +23110,14 @@ function startPresenterAtSlide(serviceId, index) {
 
 function preparePresenterService(serviceId = state.selectedServiceId) {
   if (!serviceId) return;
+  const outputItems = getServiceOutputItems(serviceId);
   if (!songCatalogLoaded && !songLoadPromise && canUseClientData()) {
-    void loadSongs().then(() => refreshPresenterForService(serviceId));
+    void loadSongsForIds(outputItems.map((item) => item.song_id)).then(() => refreshPresenterForService(serviceId));
   }
   if (
     canUseClientData()
     && !state.loadedWorshipPresenterServiceIds.has(serviceId)
-    && !getServiceOutputItems(serviceId).length
+    && !outputItems.length
   ) {
     void loadWorshipPresenterSlides(serviceId);
   }
