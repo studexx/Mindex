@@ -24565,6 +24565,17 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
     }]);
   }
 
+  const specialSongItem = isSpecialSongServiceItem(item);
+  const songLikeItem = isSongServiceLabel(label) || specialSongItem;
+  const explicitSpecialSongAsset = specialSongItem ? normalizeServiceAsset(memo.asset || item.asset) : null;
+  if (specialSongItem && hasServiceAsset(explicitSpecialSongAsset)) {
+    const assetSlides = presenterScoreSlidesForServiceItem(item, section, index, song, version, displayText, memo, forms, formWarnings);
+    if (assetSlides.length) {
+      // Fully designed special-song image decks already include their title/text.
+      return withIntro(assetSlides);
+    }
+  }
+
   if (serviceItemRequiresSongSelection(item, service) && (!song || serviceItemSongSelectionInvalid(item, service, song))) return [];
 
   const customSlides = buildPresenterCustomSlides(item, section, index);
@@ -24583,16 +24594,6 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
       : [];
   }
 
-  const specialSongItem = isSpecialSongServiceItem(item);
-  const songLikeItem = isSongServiceLabel(label) || specialSongItem;
-  const explicitSpecialSongAsset = specialSongItem ? normalizeServiceAsset(memo.asset || item.asset) : null;
-  if (specialSongItem && hasServiceAsset(explicitSpecialSongAsset)) {
-    const assetSlides = presenterScoreSlidesForServiceItem(item, section, index, song, version, displayText, memo, forms, formWarnings);
-    if (assetSlides.length) {
-      // Fully designed special-song image decks already include their title/text.
-      return withIntro(assetSlides);
-    }
-  }
   const scoreOutput = !specialSongItem && (outputMode === "score" || requestedOutputMode === "score");
   if (scoreOutput && !linkedSongId && !song && !templateOwnedScoreSong) {
     return [];
