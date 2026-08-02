@@ -2935,6 +2935,7 @@ def main() -> int:
                             const offering = projected.find((item) => item.label === '봉헌찬양');
                             const fellowship = projected.find((item) => item.label === '반별 모임');
                             const announcement = projected.find((item) => item.label === '청소년부 광고');
+                            const youngAdultAnnouncement = youngAdultProjected.find((item) => item.label === '청년부 광고');
                             const offeringSong = presenterSongForServiceItem(
                               offering,
                               serviceItemDisplayText(offering),
@@ -2965,6 +2966,7 @@ def main() -> int:
                               fellowshipStatic: presenterServiceInputItem({ ...fellowship, raw_title: '' }, service) === null,
                               fellowshipContent: fellowshipContent.reason,
                               announcementEditable: presenterServiceInputItem(announcement, service)?.mode === 'text',
+                              youngAdultAnnouncementEditable: presenterServiceInputItem(youngAdultAnnouncement, youngAdultService)?.mode === 'text',
                               youngAdultSections: youngAdultTemplate.map((step) => step.sectionKey || step.label),
                               youngAdultLabels: youngAdultProjected.map((item) => item.label || ''),
                               childrenLastSection: serviceOrderTemplate('children', { service: childrenService }).at(-1)?.label || '',
@@ -2994,6 +2996,7 @@ def main() -> int:
                         "fellowshipStatic": True,
                         "fellowshipContent": "fixed_title",
                         "announcementEditable": True,
+                        "youngAdultAnnouncementEditable": True,
                         "youngAdultSections": [
                             "ready", "creed", "prayer", "praise", "scripture_reading",
                             "sermon", "response_song", "offering", "announcements", "sending", "fellowship",
@@ -3001,7 +3004,7 @@ def main() -> int:
                         "youngAdultLabels": [
                             "대기 영상", "사도신경", "기도", "찬양 1", "찬양 2", "찬양 3", "찬양 4",
                             "성경봉독", "설교 제목", "설교 본문", "인용 구절", "결단찬양", "결단기도",
-                            "봉헌찬양", "봉헌기도", "교회소식", "파송찬양", "축도", "셀 모임",
+                            "봉헌찬양", "봉헌기도", "청년부 광고", "파송찬양", "축도", "셀 모임",
                         ],
                         "childrenLastSection": "교제",
                         "scheduledOnIntegratedSunday": False,

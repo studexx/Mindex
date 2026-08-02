@@ -2984,9 +2984,9 @@ function groupWorshipElements(sections = [], elements = []) {
       componentType: config.componentType || config.component_type,
     }) || normalizeWorshipElementType(element.element_type);
     if (configuredElementType === "live_scripture" && compactSearchValue(elementLabel) === "실시간성구송출") return grouped;
-    const youthAnnouncementBody = sectionKey === "announcements"
-      && compactSearchValue(elementLabel) === "청소년부광고";
-    const elementType = sectionKey === "announcements" && !youthAnnouncementBody
+    const departmentAnnouncementBody = sectionKey === "announcements"
+      && ["청소년부광고", "청년부광고"].includes(compactSearchValue(elementLabel));
+    const elementType = sectionKey === "announcements" && !departmentAnnouncementBody
       ? "title"
       : configuredElementType;
     const inputMode = normalizeServiceInputMode(
@@ -15810,7 +15810,7 @@ function youngAdultWorshipTemplate() {
         { label: "봉헌기도", name: "봉헌기도", elementType: "title_person", person: defaultServiceOfferingPrayerLeader("young-adult") },
       ],
     },
-    publicWorshipAnnouncementsStep(),
+    youngAdultWorshipAnnouncementsStep(),
     publicWorshipSendingStep({
       doxology: false,
       extraElements: [{
@@ -15854,6 +15854,17 @@ function youthWorshipAnnouncementsStep() {
     flex: true,
     sectionKey: "announcements",
     elements: [{ label: "청소년부 광고", name: "청소년부 광고", elementType: "body" }],
+  };
+}
+
+function youngAdultWorshipAnnouncementsStep() {
+  return {
+    label: "광고",
+    name: "광고",
+    required: false,
+    flex: true,
+    sectionKey: "announcements",
+    elements: [{ label: "청년부 광고", name: "청년부 광고", elementType: "body" }],
   };
 }
 
@@ -16698,7 +16709,7 @@ function templateProjectionRawTitle(templateItem = {}, existingItem = {}, elemen
   const sectionKey = templateProjectionSectionKey(templateItem);
   const existingTitle = String(existingItem.raw_title || "").trim();
   const templateLabel = String(templateItem.label || "").trim();
-  if (compactSearchValue(templateLabel) === "청소년부광고"
+  if (["청소년부광고", "청년부광고"].includes(compactSearchValue(templateLabel))
     && ["교회소식", "광고"].includes(compactSearchValue(existingTitle))) return "";
   // A generated slot name such as "찬양 1" is not a song query. Keep real
   // template defaults (for example a hymn title), but clear this placeholder.
@@ -21408,11 +21419,11 @@ function presenterServiceInputIsStatic(item = {}, memo = parseServiceItemMemo(it
       memo,
       state.services.find((candidate) => candidate.id === item?.service_id) || null,
     )
-    || (isLiturgicalBodyServiceItem(item) && compactSearchValue(item?.label || "") !== "청소년부광고")
+    || (isLiturgicalBodyServiceItem(item) && !isAnnouncementTextInputItem(item))
     || isConfessionPrayerServiceItem(item)
     || usesSharedSundayContent
     || label === "환영"
-    || (sectionKey === "announcements" && compactSearchValue(item?.label || "") !== "청소년부광고")
+    || (sectionKey === "announcements" && !isAnnouncementTextInputItem(item))
     || sectionKey === "closing_visual");
 }
 
@@ -21441,7 +21452,7 @@ function presenterServiceTextInputSpec(item, model, memo) {
   const needsTitle = manualPraise
     || /설교제목|특송|공동기도/.test(label)
     || specialSong
-    || label === "청소년부광고"
+    || ["청소년부광고", "청년부광고"].includes(label)
     || (Boolean(String(item.raw_title || "").trim()) && !genericTitle && elementType !== "title_person");
   const needsAssignee = (
     elementType === "title_person"
@@ -21451,7 +21462,7 @@ function presenterServiceTextInputSpec(item, model, memo) {
 }
 
 function isAnnouncementTextInputItem(item = {}) {
-  return compactSearchValue(item?.label || "") === "청소년부광고";
+  return ["청소년부광고", "청년부광고"].includes(compactSearchValue(item?.label || ""));
 }
 
 function presenterServiceInputHasEditableField(item, service) {
@@ -21610,7 +21621,7 @@ function renderPresenterServiceTextInputs(item, index, model, memo) {
         <span>${escapeHtml(titleLabel)}</span>
         ${announcementText ? `
           <textarea class="svc-presenter-input-control svc-presenter-input-control--multiline" data-service-item-field="raw_title" data-service-item-index="${index}"
-            rows="4" placeholder="수련회 준비 모임&#10;반별 사진 제출&#10;다음 주 생일 축하" aria-label="${escapeAttr(`${item.label || "항목"} ${titleLabel}`)}">${escapeHtml(item.raw_title || "")}</textarea>
+            rows="4" placeholder="다음 주 모임 안내&#10;새가족 환영&#10;생일 축하" aria-label="${escapeAttr(`${item.label || "항목"} ${titleLabel}`)}">${escapeHtml(item.raw_title || "")}</textarea>
           <small class="svc-presenter-input-hint">줄마다 ①, ②, ③으로 자동 표시됩니다.</small>` : `
           <input class="svc-presenter-input-control" type="text" data-service-item-field="raw_title" data-service-item-index="${index}"
             value="${escapeAttr(item.raw_title || "")}" placeholder="${escapeAttr(specialSong ? "곡명" : item.label || "내용")}" aria-label="${escapeAttr(`${item.label || "항목"} ${titleLabel}`)}" />`}
@@ -22479,10 +22490,10 @@ function groupPresenterSlidesBySection(slides, serviceId = state.selectedService
     const praiseMeta = mainPraise
       ? servicePraiseBoardMetaCandidate(service, [{ assignee: mainPraiseAssignee, praiseIntro: mainPraiseMarker }])
       : { text: "", priority: 0 };
-    const id = mainPraise ? `main-praise:${groups.length}` : presenterBoardSectionGroupId(slide, slideIndex);
+    const id = mainPraise ? presenterMainPraiseGroupId(slide) : presenterBoardSectionGroupId(slide, slideIndex);
     const previous = groups[groups.length - 1];
-    let group = mainPraise && previous?.kind === "main-praise"
-      ? previous
+    let group = mainPraise
+      ? groups.find((candidate) => candidate.kind === "main-praise" && candidate.id === id)
       : !mainPraise && previous?.id === id
         ? previous
         : null;
@@ -22510,9 +22521,9 @@ function groupPresenterSlidesBySection(slides, serviceId = state.selectedService
 }
 
 function isPresenterMainPraiseSlide(slide = {}) {
-  if (isPresenterEntrancePraiseSlide(slide)) return false;
   const sectionKey = String(slide.sectionKey || "").trim();
   if (sectionKey) return sectionKey === "praise";
+  if (isPresenterEntrancePraiseSlide(slide)) return false;
   if (slide.sectionRole === "main-praise") return true;
   const context = compactSearchValue([
     slide.sectionTitle,
@@ -22523,6 +22534,11 @@ function isPresenterMainPraiseSlide(slide = {}) {
   ].filter(Boolean).join(" "));
   if (/(특송|송영|결단|봉헌|파송|폐회)/.test(context)) return false;
   return isMainPraiseLabel(slide.sectionLabel);
+}
+
+function presenterMainPraiseGroupId(slide = {}) {
+  const sectionId = String(slide.sectionId || "").trim();
+  return `main-praise:${sectionId || "praise"}`;
 }
 
 function isPresenterEntrancePraiseSlide(slide = {}) {

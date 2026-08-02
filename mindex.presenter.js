@@ -980,7 +980,7 @@ function isLiturgicalBodyServiceItem(item = {}) {
   const sectionKey = String(item?._worshipSectionKey || "").trim();
   if (sectionKey === "creed" || sectionKey === "lords_prayer" || sectionKey === "community_confession") return true;
   return isLiturgicalBodyLabel(item?.label, item?.raw_title, item?._worshipSectionTitle)
-    || compactSearchValue(item?.label || "") === "청소년부광고";
+    || ["청소년부광고", "청년부광고"].includes(compactSearchValue(item?.label || ""));
 }
 
 function isLiturgicalBodyLabel(...values) {
@@ -994,6 +994,7 @@ function liturgicalBodyTitle(item = {}) {
   const label = compactSearchValue(item?.label || "");
   const title = compactSearchValue(item?.raw_title || "");
   if (label === "청소년부광고") return "청소년부 광고";
+  if (label === "청년부광고") return "청년부 광고";
   if (label === "주기도문" || title === "주기도문" || String(item?._worshipSectionKey || "") === "lords_prayer") return "주기도문";
   if (label === "공동체고백" || title === "공동체고백" || String(item?._worshipSectionKey || "") === "community_confession") return "공동체고백";
   return "사도신경";
@@ -1023,7 +1024,7 @@ function liturgicalBodyText(item = {}, memo = parseServiceItemMemo(item?.memo), 
   const title = liturgicalBodyTitle(item);
   const canonical = presenterCanonicalLiturgicalBodyText(title);
   if (canonical && !item?.template_modified && !item?.templateModified) return canonical;
-  const announcement = compactSearchValue(item?.label || "") === "청소년부광고";
+  const announcement = ["청소년부광고", "청년부광고"].includes(compactSearchValue(item?.label || ""));
   if (memo.slides?.length) {
     const memoText = memo.slides.join("\n\n").trim();
     return announcement ? presenterAnnouncementBodyText(memoText) : memoText;
