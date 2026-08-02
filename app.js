@@ -4777,6 +4777,7 @@ async function syncSharedSundayContentAfterSave(sourceService, sourceItems = [],
     .filter((item) => sundaySharedContentKey(item) && sundaySharedContentTypesForItem(item, sourceService).length);
   if (!changedSharedItems.length) return;
 
+  const targetUpdates = new Map();
   for (const sourceItem of changedSharedItems) {
     const key = sundaySharedContentKey(sourceItem);
     const targetTypeIds = sundaySharedContentTypesForItem(sourceItem, sourceService)
@@ -4786,9 +4787,28 @@ async function syncSharedSundayContentAfterSave(sourceService, sourceItems = [],
       && String(service.date || "").trim() === serviceDate
       && targetTypeIds.includes(worshipAppServiceTypeId(service.type_id)));
     for (const targetService of targetServices) {
-      await syncSharedSundayContentToService(targetService, key, sourceItem, options);
+      const update = targetUpdates.get(targetService.id) || {
+        service: targetService,
+        items: normalizeServiceItemsForTemplateHierarchy(
+          targetService,
+          normalizeServiceItemsInCurrentOrder(getServiceItems(targetService.id)),
+        ),
+        changed: false,
+      };
+      const targetIndex = update.items.findIndex((item) => sundaySharedContentKey(item) === key);
+      if (targetIndex < 0) {
+        targetUpdates.set(targetService.id, update);
+        continue;
+      }
+      update.items[targetIndex] = applySharedSundayContentToItem(update.items[targetIndex], sourceItem);
+      update.changed = true;
+      targetUpdates.set(targetService.id, update);
     }
   }
+
+  await Promise.all([...targetUpdates.values()]
+    .filter((update) => update.changed)
+    .map((update) => persistSharedSundayServiceItems(update.service, update.items, options)));
 }
 
 async function syncSharedSundayContentToService(targetService, key, sourceItem, options = {}) {
@@ -4815,6 +4835,7 @@ function applySharedSundayContentToItem(targetItem = {}, sourceItem = {}) {
     const targetMemo = parseServiceItemMemo(targetItem.memo);
     const sourceMemo = parseServiceItemMemo(sourceItem.memo);
     const references = serviceItemDirectScriptureReferences(sourceItem, sourceMemo);
+    const referencePayloads = normalizeServiceScriptureReferencePayloads(sourceMemo.scriptureReferencePayloads, references);
     next.song_id = null;
     next.version_id = null;
     next.song_version_id = null;
@@ -4826,6 +4847,7 @@ function applySharedSundayContentToItem(targetItem = {}, sourceItem = {}) {
       inputMode: "scripture",
       scriptureReference: references[0] || "",
       scriptureReferences: references,
+      scriptureReferencePayloads: referencePayloads,
       slides: [],
     });
     return next;
@@ -7275,6 +7297,7 @@ function commitDeferredServiceTextInput(field, options = {}) {
   if (options.save) {
     saveCommittedServiceItem(field.dataset.serviceItemIndex, serviceId, {
       renderAfterSave: false,
+      resolveScriptureBeforeSave: false,
       silent: true,
     });
   }
@@ -7297,7 +7320,9 @@ function saveCommittedServiceItem(index, serviceId = state.selectedServiceId, op
 }
 
 async function resolveAndSaveCommittedServiceItem(serviceId, index, options = {}) {
-  await resolveServiceScriptureBeforeSave(serviceId, index);
+  if (options.resolveScriptureBeforeSave !== false) {
+    await resolveServiceScriptureBeforeSave(serviceId, index);
+  }
   const item = getServiceItems(serviceId)[index];
   const service = state.services.find((candidate) => candidate.id === serviceId);
   if (!item || !service || serviceItemSongSelectionInvalid(item, service) || serviceItemScriptureInputInvalid(item)) return;
@@ -20293,6 +20318,8 @@ function serviceItemWithSharedSundayContent(item = {}, service = null) {
     const memo = parseServiceItemMemo(item.memo);
     const references = serviceItemDirectScriptureReferences(sourceItem, parseServiceItemMemo(sourceItem.memo));
     if (references.length) {
+      const sourceMemo = parseServiceItemMemo(sourceItem.memo);
+      const referencePayloads = normalizeServiceScriptureReferencePayloads(sourceMemo.scriptureReferencePayloads, references);
       next.raw_title = formatServiceScriptureReferenceList(references);
       next.memo = serializeServiceItemMemo({
         ...memo,
@@ -20300,6 +20327,7 @@ function serviceItemWithSharedSundayContent(item = {}, service = null) {
         inputMode: memo.inputMode || "scripture",
         scriptureReference: references[0],
         scriptureReferences: references,
+        scriptureReferencePayloads: referencePayloads,
         slides: [],
       });
     }
@@ -21370,7 +21398,7 @@ async function applyPresenterPreparationInput(serviceId = state.selectedServiceI
     const scriptureIndexes = [...scriptureItemIds]
       .map((itemId) => state.serviceItems[serviceId].findIndex((item) => item.id === itemId))
       .filter((index) => index >= 0);
-    await Promise.all(scriptureIndexes.map((index) => resolveServiceScriptureBeforeSave(serviceId, index)));
+    scriptureIndexes.forEach((index) => scheduleServiceScriptureBodyResolve(serviceId, index));
 
     if (versionWarnings.length) {
       renderCurrentServiceModuleDetail();
