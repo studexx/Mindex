@@ -5021,7 +5021,7 @@ function buildWorshipPersistenceRows(service, items, existingSectionById = {}, e
       service,
       omitSlides: Boolean(manualBody) || scriptureBody,
     });
-    const asset = normalizeServiceAsset(parsed.asset || existingElement?.asset);
+    const asset = normalizeServiceAsset(parsed.asset || existingElement?.asset || existingConfig.asset);
     const sourceRef = serviceElementSourceRefForSave(existingSourceRef, item, parsed, Boolean(manualBody));
     const contentState = serviceElementContentStateForSave(item, parsed, service);
     const scriptureReferences = scriptureBody
@@ -5226,8 +5226,13 @@ function serviceElementConfigForSave(existingConfig = {}, parsed = emptyServiceI
     delete config.componentType;
     delete config.component_type;
   }
-  if (hasServiceAsset(parsed.asset)) config.asset = parsed.asset;
-  else delete config.asset;
+  if (hasServiceAsset(parsed.asset)) {
+    config.asset = parsed.asset;
+  } else if (hasServiceAsset(config.asset)) {
+    config.asset = normalizeServiceAsset(config.asset);
+  } else {
+    delete config.asset;
+  }
   if (hasServiceAsset(parsed.audioAsset)) config.audioAsset = parsed.audioAsset;
   else {
     delete config.audioAsset;
