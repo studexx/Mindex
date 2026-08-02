@@ -1390,6 +1390,8 @@ function presenterElementSlideFromMemoCore(item, section, index, memo, displayTe
   if (elementType === "image") {
     const source = normalizePresenterMediaSource(asset.url || displayText);
     if (!source) return null;
+    const referenceMedia = compactSearchValue(label) === "참고화면"
+      && String(memo?.inputMode || "").trim() === "asset";
     return {
       id: `${item.id || index}:image`,
       ...section,
@@ -1405,6 +1407,7 @@ function presenterElementSlideFromMemoCore(item, section, index, memo, displayTe
       text: title,
       imageSrc: source,
       asset,
+      referenceMedia,
       sort: index,
     };
   }
@@ -3911,7 +3914,8 @@ function renderPresenterVideoSlide(slide, options = {}) {
 function renderPresenterImageSlide(slide) {
   const source = normalizePresenterMediaSource(slide.imageSrc || slide.asset?.url || slide.text);
   if (!source) return "";
-  return `<img class="presenter-image" src="${escapeAttr(source)}" alt="" decoding="sync" loading="eager" fetchpriority="high" draggable="false" />`;
+  const referenceClass = slide?.referenceMedia ? " presenter-image--reference" : "";
+  return `<img class="presenter-image${referenceClass}" src="${escapeAttr(source)}" alt="" decoding="sync" loading="eager" fetchpriority="high" draggable="false" />`;
 }
 
 function renderPresenterTitleAssigneeSlide(slide) {
