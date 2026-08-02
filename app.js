@@ -23738,8 +23738,11 @@ function preparePresenterService(serviceId = state.selectedServiceId) {
   warmWorshipScriptureReferencesForService(serviceId);
   warmServiceItemScriptureReferencesForService(serviceId);
   schedulePendingServiceScriptureResolves(serviceId);
+  const previousServiceId = state.presenter.serviceId;
+  const previousSlides = state.presenter.slides;
+  const previousIndex = state.presenter.index;
   const slides = buildServicePresenterSlides(serviceId);
-  if (state.presenter.serviceId !== serviceId) {
+  if (previousServiceId !== serviceId) {
     state.presenter.restorePayload = null;
     stopServiceMusicPlayback({ clearSource: true, mode: "manual", render: false });
     state.presenter.index = 0;
@@ -23753,7 +23756,9 @@ function preparePresenterService(serviceId = state.selectedServiceId) {
   // Building the output can normalize projected items into a new array.
   // Keep the post-build source reference so cached slides never outlive it.
   state.presenter.sourceItems = state.serviceItems[serviceId] || null;
-  state.presenter.index = clampPresenterIndex(state.presenter.index, slides.length);
+  state.presenter.index = previousServiceId === serviceId
+    ? reconcilePresenterIndexForSlides(previousSlides, previousIndex, slides)
+    : clampPresenterIndex(state.presenter.index, slides.length);
   if (!slides.length) state.presenter.safetyBlank = false;
   syncServiceMusicWithPresenterContext(serviceId, { render: false });
 }
@@ -23777,9 +23782,11 @@ function refreshPresenterForService(serviceId, options = {}) {
     if (state.module === "presenter" && state.selectedServiceId === serviceId) renderPresenterControlState(serviceId);
     return;
   }
+  const previousSlides = state.presenter.slides;
+  const previousIndex = state.presenter.index;
   state.presenter.slides = buildServicePresenterSlides(serviceId);
   state.presenter.sourceItems = state.serviceItems[serviceId] || null;
-  state.presenter.index = clampPresenterIndex(state.presenter.index, state.presenter.slides.length);
+  state.presenter.index = reconcilePresenterIndexForSlides(previousSlides, previousIndex, state.presenter.slides);
   if (!state.presenter.slides.length) state.presenter.safetyBlank = false;
   syncServiceMusicWithPresenterContext(serviceId, { render: false });
   if (options.publish !== false) publishPresenterState();
@@ -23821,6 +23828,50 @@ function clampPresenterIndex(index, count) {
   return Math.min(Math.max(Number(index) || 0, 0), count - 1);
 }
 
+function presenterSlideAnchor(slide = null) {
+  if (!slide) return null;
+  const groupKey = presenterSlideElementGroupKey(slide);
+  return {
+    id: String(slide.id || "").trim(),
+    groupKey,
+    type: String(slide.type || "").trim(),
+    layout: presenterSlideLayout(slide),
+    elementType: presenterSlideElementType(slide),
+    title: String(slide.title || slide.elementTitle || slide.marker || "").trim(),
+    hidden: Boolean(slide.hiddenInPresentation),
+  };
+}
+
+function presenterSlideIndexForAnchor(slides = [], anchor = null, fallbackIndex = 0) {
+  if (!Array.isArray(slides) || !slides.length) return 0;
+  if (!anchor) return clampPresenterIndex(fallbackIndex, slides.length);
+  if (anchor.id) {
+    const exactIndex = slides.findIndex((slide) => String(slide?.id || "").trim() === anchor.id);
+    if (exactIndex >= 0) return exactIndex;
+  }
+  if (anchor.groupKey) {
+    const sameTypeIndex = slides.findIndex((slide) =>
+      presenterSlideElementGroupKey(slide) === anchor.groupKey
+      && String(slide?.type || "").trim() === anchor.type
+      && !slide?.hiddenInPresentation);
+    if (sameTypeIndex >= 0) return sameTypeIndex;
+    const visibleGroupIndex = slides.findIndex((slide) =>
+      presenterSlideElementGroupKey(slide) === anchor.groupKey
+      && !slide?.hiddenInPresentation);
+    if (visibleGroupIndex >= 0) return visibleGroupIndex;
+    const groupIndex = slides.findIndex((slide) => presenterSlideElementGroupKey(slide) === anchor.groupKey);
+    if (groupIndex >= 0) return groupIndex;
+  }
+  return clampPresenterIndex(fallbackIndex, slides.length);
+}
+
+function reconcilePresenterIndexForSlides(previousSlides = [], previousIndex = 0, nextSlides = [], fallbackIndex = previousIndex) {
+  const previousSlide = Array.isArray(previousSlides)
+    ? previousSlides[clampPresenterIndex(previousIndex, previousSlides.length)]
+    : null;
+  return presenterSlideIndexForAnchor(nextSlides, presenterSlideAnchor(previousSlide), fallbackIndex);
+}
+
 function presenterSlidesForService(serviceId) {
   const sourceItems = state.serviceItems[serviceId] || null;
   if (state.presenter.serviceId === serviceId
@@ -23832,9 +23883,11 @@ function presenterSlidesForService(serviceId) {
   }
   const slides = buildServicePresenterSlides(serviceId);
   if (state.presenter.serviceId === serviceId) {
+    const previousSlides = state.presenter.slides;
+    const previousIndex = state.presenter.index;
     state.presenter.slides = slides;
     state.presenter.sourceItems = state.serviceItems[serviceId] || null;
-    state.presenter.index = clampPresenterIndex(state.presenter.index, slides.length);
+    state.presenter.index = reconcilePresenterIndexForSlides(previousSlides, previousIndex, slides);
   }
   return slides;
 }

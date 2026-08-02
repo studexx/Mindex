@@ -2299,6 +2299,47 @@ function isSongServiceLabel(label) {
   return /^(결단|봉헌|파송)(찬양|찬송)$/.test(compact);
 }
 
+function presenterSlideElementGroupKey(slide) {
+  if (!slide) return "";
+  return String(slide.elementId || slide.sectionId || slide.id || "").trim();
+}
+
+function presenterSlideAnchor(slide = null) {
+  if (!slide) return null;
+  return {
+    id: String(slide.id || "").trim(),
+    groupKey: presenterSlideElementGroupKey(slide),
+    type: String(slide.type || "").trim(),
+    layout: String(slide.layout || slide.slideLayout || "").trim(),
+    elementType: String(slide.elementType || slide.element_type || "").trim(),
+    title: String(slide.title || slide.elementTitle || slide.marker || "").trim(),
+    hidden: Boolean(slide.hiddenInPresentation),
+  };
+}
+
+function presenterSlideIndexForAnchor(slides = [], anchor = null, fallbackIndex = 0) {
+  if (!Array.isArray(slides) || !slides.length) return 0;
+  if (!anchor) return clampPresenterIndex(fallbackIndex, slides.length);
+  if (anchor.id) {
+    const exactIndex = slides.findIndex((slide) => String(slide?.id || "").trim() === anchor.id);
+    if (exactIndex >= 0) return exactIndex;
+  }
+  if (anchor.groupKey) {
+    const sameTypeIndex = slides.findIndex((slide) =>
+      presenterSlideElementGroupKey(slide) === anchor.groupKey
+      && String(slide?.type || "").trim() === anchor.type
+      && !slide?.hiddenInPresentation);
+    if (sameTypeIndex >= 0) return sameTypeIndex;
+    const visibleGroupIndex = slides.findIndex((slide) =>
+      presenterSlideElementGroupKey(slide) === anchor.groupKey
+      && !slide?.hiddenInPresentation);
+    if (visibleGroupIndex >= 0) return visibleGroupIndex;
+    const groupIndex = slides.findIndex((slide) => presenterSlideElementGroupKey(slide) === anchor.groupKey);
+    if (groupIndex >= 0) return groupIndex;
+  }
+  return clampPresenterIndex(fallbackIndex, slides.length);
+}
+
 function presenterStatePayload(serviceId = state.presenter.serviceId) {
   const service = state.services.find((svc) => svc.id === serviceId);
   const slides = presenterSlidesForService(serviceId);
@@ -2319,6 +2360,7 @@ function presenterStatePayload(serviceId = state.presenter.serviceId) {
     backgroundImages,
     slides,
     index: clampPresenterIndex(state.presenter.index, slides.length),
+    slideAnchor: presenterSlideAnchor(slides[clampPresenterIndex(state.presenter.index, slides.length)]),
     safetyBlank: Boolean(state.presenter.safetyBlank),
     liveScripture: state.presenter.liveScripture?.active ? state.presenter.liveScripture : null,
     livePraise: null,
@@ -2358,7 +2400,11 @@ function restorePresenterControllerSession() {
 
   state.presenter.serviceId = service.id;
   state.presenter.slides = slides;
-  state.presenter.index = clampPresenterIndex(payload.index, slides.length);
+  state.presenter.index = presenterSlideIndexForAnchor(
+    slides,
+    payload.slideAnchor || presenterSlideAnchor(payload.slides?.[payload.index]),
+    payload.index,
+  );
   state.presenter.safetyBlank = Boolean(payload.safetyBlank);
   state.presenter.jumpDraft = "";
   state.presenter.liveScripture = payload.liveScripture?.active
@@ -2954,6 +3000,7 @@ function normalizePresenterPayload(payload) {
       : [payload?.backgroundImage].filter(Boolean),
     slides,
     index: clampPresenterIndex(payload?.index, slides.length),
+    slideAnchor: payload?.slideAnchor || presenterSlideAnchor(slides[clampPresenterIndex(payload?.index, slides.length)]),
     safetyBlank: Boolean(payload?.safetyBlank),
     liveScripture: normalizeLiveScripturePayload(payload?.liveScripture),
     livePraise: null,
@@ -3003,6 +3050,7 @@ function applyPresenterActionToPayload(payload, action, options = {}) {
       next.safetyBlank = false;
     }
   }
+  next.slideAnchor = presenterSlideAnchor(next.slides[clampPresenterIndex(next.index, next.slides.length)]);
   next.updatedAt = Date.now();
   return next;
 }
