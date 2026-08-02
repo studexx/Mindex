@@ -666,3 +666,38 @@ The app can later read this view directly once Worship data is populated.
 
 Use `worship service` for the top-level instance name. The product area is
 Worship, and `worship service` is the intended church-domain term.
+
+## Bible Data Weight
+
+The practical weight in Bible data is `mindex_bible_verses`, especially its text
+search indexes. Hiding translations with `is_active = false` is not enough when
+the goal is actual database size reduction.
+
+As of 2026-08-02, KJV, NIV, and RSV must be preserved by user request. Korean
+translations should also remain. The reviewed first prune target is limited to
+unused foreign translations:
+
+```text
+asv
+darby
+nas
+nkjv
+nrs
+rewebst
+shinkaiyaku_3rd
+webster
+```
+
+Those rows were backed up locally before pruning work:
+
+```text
+/Users/parkjihun/Code/Mindex/backups/bible-translation-prune-full-20260802-102547
+```
+
+The browser anon key only has read policy on `mindex_bible_translations` and
+`mindex_bible_verses`, so actual pruning must run from Supabase SQL Editor or a
+service-role/database connection. Use:
+
+```text
+scripts/migrations/prune-unused-bible-translations-2026-08-02.sql
+```
