@@ -1005,18 +1005,42 @@ function presenterCircledNumber(index) {
   return circledNumbers[index] || `${index + 1}.`;
 }
 
-function presenterAnnouncementBodyText(text = "") {
-  const lines = String(text || "")
+function presenterAnnouncementItems(text = "") {
+  const circledNumbers = ["①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧", "⑨", "⑩", "⑪", "⑫", "⑬", "⑭", "⑮", "⑯", "⑰", "⑱", "⑲", "⑳"];
+  const circledIndex = new Map(circledNumbers.map((marker, index) => [marker, index]));
+  const items = [];
+  let current = null;
+
+  String(text || "")
     .replace(/\r\n?/g, "\n")
     .split("\n")
     .map((line) => line.trim())
-    .filter(Boolean);
-  if (lines.length <= 1) return lines[0] || "";
-  return lines
-    .map((line, index) => {
-      if (/^(?:[①-⑳]|\d+[.)]|[-*•ㆍ])\s*/u.test(line)) return line;
-      return `${presenterCircledNumber(index)} ${line}`;
-    })
+    .filter(Boolean)
+    .forEach((line) => {
+      const match = line.match(/^(?:(\d+)[.)]|([①-⑳]))\s*(.*)$/u);
+      if (match) {
+        const numericIndex = match[1] ? Number(match[1]) - 1 : circledIndex.get(match[2]);
+        current = {
+          marker: Number.isInteger(numericIndex) && numericIndex >= 0 ? presenterCircledNumber(numericIndex) : match[2] || "",
+          lines: [String(match[3] || "").trim()].filter(Boolean),
+        };
+        items.push(current);
+        return;
+      }
+      if (current) {
+        current.lines.push(line);
+        return;
+      }
+      current = { marker: "", lines: [line] };
+      items.push(current);
+    });
+
+  return items.filter((item) => item.lines.length);
+}
+
+function presenterAnnouncementBodyText(text = "") {
+  return presenterAnnouncementItems(text)
+    .flatMap((item) => item.lines.map((line, index) => (index === 0 && item.marker ? `${item.marker} ${line}` : line)))
     .join("\n");
 }
 
@@ -1066,6 +1090,9 @@ function buildPresenterLiturgicalBodySlides(item, section, index, service, memo,
   const text = liturgicalBodyText(item, memo, displayText);
   if (!text) return [];
   const title = liturgicalBodyTitle(item);
+  const announcementItems = ["청소년부광고", "청년부광고"].includes(compactSearchValue(item?.label || ""))
+    ? presenterAnnouncementItems(text)
+    : [];
   const textHighlights = liturgicalBodyTextHighlights(item, memo);
   const base = {
     ...section,
@@ -1077,6 +1104,7 @@ function buildPresenterLiturgicalBodySlides(item, section, index, service, memo,
     title,
     marker: "",
     textHighlights,
+    announcementItems,
   };
   if (!presenterServiceUsesChromakey(service)) {
     return [{
@@ -4011,11 +4039,22 @@ function renderPresenterLiturgicalBodySlide(slide) {
   const title = String(slide.title || slide.sectionTitle || "").trim();
   const lines = presenterLiturgicalBodyLines(slide);
   const titleChars = presenterLineCharEstimate(title);
+  const announcementItems = Array.isArray(slide?.announcementItems) ? slide.announcementItems.filter((item) => item?.lines?.length) : [];
+  const body = announcementItems.length
+    ? `<div class="presenter-announcement-items">${announcementItems.map((item) => {
+      const marker = String(item.marker || "").trim();
+      const itemLines = item.lines.map((line) => String(line || "").trim()).filter(Boolean);
+      return `<div class="presenter-announcement-item${marker ? "" : " presenter-announcement-item--plain"}">
+        ${marker ? `<span class="presenter-announcement-marker">${escapeHtml(marker)}</span>` : ""}
+        <span class="presenter-announcement-copy">${itemLines.map((line) => `<span style="--line-chars: ${presenterLineCharEstimate(line)}">${escapePresenterSlideLine(line, slide)}</span>`).join("")}</span>
+      </div>`;
+    }).join("")}</div>`
+    : `<div class="presenter-liturgical-body-lines">
+        ${lines.map((line) => `<span style="--line-chars: ${presenterLineCharEstimate(line)}">${escapePresenterSlideLine(line, slide)}</span>`).join("")}
+      </div>`;
   return `
     <div class="presenter-liturgical-body">
-      <div class="presenter-liturgical-body-lines">
-        ${lines.map((line) => `<span style="--line-chars: ${presenterLineCharEstimate(line)}">${escapePresenterSlideLine(line, slide)}</span>`).join("")}
-      </div>
+      ${body}
       <div class="presenter-liturgical-body-heading">
         <span style="--line-chars: ${escapeAttr(titleChars)}">${escapeHtml(title)}</span>
       </div>

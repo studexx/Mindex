@@ -4184,7 +4184,7 @@ def main() -> int:
                             const announcementIndex = items.indexOf(announcement);
                             updateServiceItemField({
                               dataset: { serviceId: service.id, serviceItemIndex: String(announcementIndex), serviceItemField: 'raw_title' },
-                              value: '다음 주 토요일 여름수련회 준비 모임\\n반별 사진 제출',
+                              value: '1. 다음 주 토요일 여름수련회 준비 모임\\n준비물은 개인 물병입니다\\n2. 반별 사진 제출',
                             });
                             const preparedSlides = buildServicePresenterSlides(service.id);
                             const preparedReading = state.serviceItems[service.id].find((entry) => entry.label === '성경봉독');
@@ -4216,7 +4216,11 @@ def main() -> int:
                         and youth_missing_input_guard["readingSlides"] == ["title-content", "scripture"]
                         and youth_missing_input_guard["announcement"].get("type") == "liturgical-body"
                         and youth_missing_input_guard["announcement"].get("title") == "청소년부 광고"
-                        and youth_missing_input_guard["announcement"].get("text", "") == "① 다음 주 토요일 여름수련회 준비 모임\n② 반별 사진 제출"
+                        and youth_missing_input_guard["announcement"].get("text", "") == "① 다음 주 토요일 여름수련회 준비 모임\n준비물은 개인 물병입니다\n② 반별 사진 제출"
+                        and youth_missing_input_guard["announcement"].get("announcementItems") == [
+                            {"marker": "①", "lines": ["다음 주 토요일 여름수련회 준비 모임", "준비물은 개인 물병입니다"]},
+                            {"marker": "②", "lines": ["반별 사진 제출"]},
+                        ]
                         and "<textarea" in youth_missing_input_guard["announcementInputHtml"]
                     ):
                         pass_("youth-missing-input-guard", json.dumps(youth_missing_input_guard, ensure_ascii=False))
