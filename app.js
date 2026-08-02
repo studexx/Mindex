@@ -24519,6 +24519,16 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
   const withIntro = (slides) => presenterSlidesWithIntroSlide(item, section, index, memo, slides);
   const withSpecialTitle = (slides) => presenterSlidesWithSpecialSongTitle(item, section, slides, index, service);
   const withIntroAndSpecialTitle = (slides) => withIntro(withSpecialTitle(slides));
+  const specialSongItem = isSpecialSongServiceItem(item);
+  const songLikeItem = isSongServiceLabel(label) || specialSongItem;
+  const explicitSpecialSongAsset = specialSongItem ? normalizeServiceAsset(memo.asset || item.asset) : null;
+  if (specialSongItem && hasServiceAsset(explicitSpecialSongAsset)) {
+    const assetSlides = presenterScoreSlidesForServiceItem(item, section, index, song, version, displayText, memo, forms, formWarnings);
+    if (assetSlides.length) {
+      // Fully designed special-song image decks already include their title/text.
+      return withIntro(assetSlides);
+    }
+  }
   const contentState = resolvePresenterServiceItemContentState(item, memo, song, service);
   const fixedTitle = presenterFixedTitleText(item);
   if (fixedTitle) return [presenterTitleOnlySlide(item, section, index, fixedTitle)];
@@ -24568,17 +24578,6 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
       componentType: "video",
       sort: index,
     }]);
-  }
-
-  const specialSongItem = isSpecialSongServiceItem(item);
-  const songLikeItem = isSongServiceLabel(label) || specialSongItem;
-  const explicitSpecialSongAsset = specialSongItem ? normalizeServiceAsset(memo.asset || item.asset) : null;
-  if (specialSongItem && hasServiceAsset(explicitSpecialSongAsset)) {
-    const assetSlides = presenterScoreSlidesForServiceItem(item, section, index, song, version, displayText, memo, forms, formWarnings);
-    if (assetSlides.length) {
-      // Fully designed special-song image decks already include their title/text.
-      return withIntro(assetSlides);
-    }
   }
 
   if (serviceItemRequiresSongSelection(item, service) && (!song || serviceItemSongSelectionInvalid(item, service, song))) return [];
