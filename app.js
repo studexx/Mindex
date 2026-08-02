@@ -6486,7 +6486,13 @@ function handleDetailInput(event) {
       }
       return;
     }
-    updateServiceItemField(serviceField);
+    const serviceId = serviceField.dataset.serviceId || state.selectedServiceId;
+    const item = getServiceItems(serviceId)[Number(serviceField.dataset.serviceItemIndex)];
+    const isSongTitleDraft = serviceField.dataset.serviceItemField === "raw_title"
+      && serviceItemRequiresSongSelection(item, state.services.find((service) => service.id === serviceId));
+    // Matching a praise item expands its lyric/form slides. Keep that expensive
+    // work out of every keystroke; Enter and focusout perform the committed match.
+    updateServiceItemField(serviceField, isSongTitleDraft ? { resolveSongSelection: false } : {});
     if (serviceField.matches("select")) saveCommittedServiceItem(serviceField.dataset.serviceItemIndex, serviceField.dataset.serviceId || state.selectedServiceId);
     return;
   }
@@ -7335,7 +7341,7 @@ function updateServiceItemField(field, options = {}) {
       }
       if (serviceItemUsesFlexibleOfferingSlot(item)) parsed.outputMode = "";
       item.memo = serializeServiceItemMemo(parsed);
-      applyServiceSongSelectionWithService(item, service);
+      if (options.resolveSongSelection !== false) applyServiceSongSelectionWithService(item, service);
       scheduleServiceScriptureBodyResolve(serviceId, index);
     }
   }
