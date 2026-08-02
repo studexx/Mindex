@@ -6529,7 +6529,9 @@ function handleDetailInput(event) {
     // Matching a praise item expands its lyric/form slides. Keep that expensive
     // work out of every keystroke; Enter and focusout perform the committed match.
     updateServiceItemField(serviceField, isSongTitleDraft ? { resolveSongSelection: false } : {});
-    if (serviceField.matches("select")) saveCommittedServiceItem(serviceField.dataset.serviceItemIndex, serviceField.dataset.serviceId || state.selectedServiceId);
+    if (serviceField.matches("select")) {
+      saveCommittedServiceItem(serviceField.dataset.serviceItemIndex, serviceField.dataset.serviceId || state.selectedServiceId, serviceItemSelectSaveOptions(serviceField));
+    }
     return;
   }
 
@@ -6664,7 +6666,9 @@ function handleDetailChange(event) {
   if (serviceField) {
     if (isDeferredServiceTextInput(serviceField)) return;
     updateServiceItemField(serviceField);
-    if (serviceField.matches("select")) saveCommittedServiceItem(serviceField.dataset.serviceItemIndex, serviceField.dataset.serviceId || state.selectedServiceId);
+    if (serviceField.matches("select")) {
+      saveCommittedServiceItem(serviceField.dataset.serviceItemIndex, serviceField.dataset.serviceId || state.selectedServiceId, serviceItemSelectSaveOptions(serviceField));
+    }
     return;
   }
 
@@ -7317,6 +7321,18 @@ function saveCommittedServiceItem(index, serviceId = state.selectedServiceId, op
   const service = state.services.find((candidate) => candidate.id === serviceId);
   if (!item || !service || serviceItemSongSelectionInvalid(item, service) || serviceItemScriptureInputInvalid(item)) return;
   void resolveAndSaveCommittedServiceItem(serviceId, Number(index), options);
+}
+
+function serviceItemSelectSaveOptions(field) {
+  const key = String(field?.dataset?.serviceItemField || "").trim();
+  if (key === "scripture_reference_translation_id") {
+    return {
+      renderAfterSave: false,
+      resolveScriptureBeforeSave: false,
+      silent: true,
+    };
+  }
+  return {};
 }
 
 async function resolveAndSaveCommittedServiceItem(serviceId, index, options = {}) {
@@ -8555,6 +8571,12 @@ function clearScheduledServiceScriptureResolve(serviceId, index) {
 }
 
 function scheduleServiceScriptureBodyResolve(serviceId = state.selectedServiceId, index = -1) {
+  const item = getServiceItems(serviceId)[index];
+  const quiet = item && serviceItemScriptureResolveShouldStayInPlace(item);
+  scheduleServiceScriptureBodyResolveWithOptions(serviceId, index, { renderDetail: !quiet });
+}
+
+function scheduleServiceScriptureBodyResolveWithOptions(serviceId = state.selectedServiceId, index = -1, options = {}) {
   if (!serviceId || !Number.isFinite(index)) return;
   const items = getServiceItems(serviceId);
   const item = items[index];
@@ -8567,8 +8589,12 @@ function scheduleServiceScriptureBodyResolve(serviceId = state.selectedServiceId
   clearScheduledServiceScriptureResolve(serviceId, index);
   serviceScriptureResolveTimers.set(key, window.setTimeout(() => {
     serviceScriptureResolveTimers.delete(key);
-    void resolveServiceScriptureBodyReference(serviceId, index, { itemId });
+    void resolveServiceScriptureBodyReference(serviceId, index, { itemId, ...options });
   }, 420));
+}
+
+function serviceItemScriptureResolveShouldStayInPlace(item = {}) {
+  return isOptionalCitationScriptureServiceItem(item);
 }
 
 async function resolveServiceScriptureBeforeSave(serviceId = state.selectedServiceId, index = -1) {
@@ -8607,8 +8633,9 @@ async function resolveServiceScriptureBodyReference(serviceId, index, options = 
     item.memo = serializeServiceItemMemo(parsed);
     state.serviceItems[serviceId] = normalizeServiceItemsInCurrentOrder(items);
     state.dirty.service = true;
-    refreshPresenterForService(serviceId);
-    renderCurrentServiceModuleDetail();
+    refreshPresenterForService(serviceId, { renderControls: options.renderControls !== false });
+    if (options.renderDetail !== false) renderCurrentServiceModuleDetail();
+    else renderPresenterControlState(serviceId);
     updateSaveState();
   } catch (error) {
     showToast(error.message || "성구를 불러오지 못했습니다.", "error");
@@ -23687,7 +23714,7 @@ function renderPresenterControlState(serviceId = state.selectedServiceId) {
 
 function capturePresenterFocusedInput(root) {
   const field = document.activeElement;
-  if (!root?.contains(field) || !field?.matches?.("input[data-service-item-field], textarea[data-service-item-field]")) return null;
+  if (!root?.contains(field) || !field?.matches?.("input[data-service-item-field], textarea[data-service-item-field], select[data-service-item-field]")) return null;
   return {
     key: field.dataset.serviceItemField || "",
     index: field.dataset.serviceItemIndex || "",
