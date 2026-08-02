@@ -2609,8 +2609,10 @@ async function fetchSupabasePaged(table, select = "*", buildQuery = (query) => q
   }
 }
 
-const WORSHIP_INITIAL_ELEMENT_PAST_DAYS = 45;
-const WORSHIP_INITIAL_ELEMENT_FUTURE_DAYS = 120;
+// The service list only needs projected template data until a service is opened.
+// Loading every recent and future service's elements made the first screen wait
+// on hundreds of rows (and their linked praise records).
+const WORSHIP_INITIAL_ELEMENT_HOME_DAYS = 6;
 
 function localDateStringFromDate(date) {
   const target = date instanceof Date ? date : new Date(date);
@@ -2629,13 +2631,15 @@ function localDateStringWithOffset(baseDate = new Date(), offsetDays = 0) {
 }
 
 function initialWorshipElementServiceIds(services = []) {
-  const from = localDateStringWithOffset(new Date(), -WORSHIP_INITIAL_ELEMENT_PAST_DAYS);
-  const to = localDateStringWithOffset(new Date(), WORSHIP_INITIAL_ELEMENT_FUTURE_DAYS);
   const pinned = new Set([state.selectedServiceId, state.presenter.serviceId].filter(Boolean));
+  const loadHomeWeek = state.module === "home";
+  const from = loadHomeWeek ? localDateStringWithOffset(new Date(), 0) : "";
+  const to = loadHomeWeek ? localDateStringWithOffset(new Date(), WORSHIP_INITIAL_ELEMENT_HOME_DAYS) : "";
   return services
     .filter((service) => {
       if (!service?.id) return false;
       if (pinned.has(service.id)) return true;
+      if (!loadHomeWeek) return false;
       const date = String(service.date || service.service_date || "").trim();
       return date && (!from || date >= from) && (!to || date <= to);
     })
@@ -2832,18 +2836,28 @@ async function loadWorshipData() {
   state.services = services.map(normalizeWorshipService);
   const autoServices = await ensureUpcomingPublicWorshipServices();
   if (autoServices.length) state.services = sortServicesByDate([...state.services, ...autoServices]);
+  state.templateElementSuppressions.clear();
+  state.worshipTemplates = templates;
+  state.worshipTemplateItems = templateItems;
+
+  // Render the navigation and weekly board before fetching detail rows. The
+  // template projection keeps those cards useful while actual service content
+  // arrives in the background.
+  state.worshipSections = [];
+  state.worshipElements = [];
+  state.loadedWorshipServiceIds = new Set();
+  state.serviceItems = projectGroupedWorshipItemsFromTemplates({});
+  state.worshipPresenterSlides = {};
+  state.worshipPresenterSlidesLoaded = false;
+  state.loadedWorshipPresenterServiceIds = new Set();
+  render();
+
   const preloadServiceIds = initialWorshipElementServiceIds(state.services);
   const { sections, elements } = await fetchWorshipRowsForServiceIds(preloadServiceIds);
   state.worshipSections = sections;
   state.worshipElements = elements;
   state.loadedWorshipServiceIds = new Set(preloadServiceIds);
-  state.templateElementSuppressions.clear();
-  state.worshipTemplates = templates;
-  state.worshipTemplateItems = templateItems;
   state.serviceItems = projectGroupedWorshipItemsFromTemplates(groupWorshipElements(sections, elements));
-  state.worshipPresenterSlides = {};
-  state.worshipPresenterSlidesLoaded = false;
-  state.loadedWorshipPresenterServiceIds = new Set();
   state.serviceItemAssigneeSupported = true;
   state.serviceItemVersionSupported = true;
   state.serviceItemMemoSupported = true;
