@@ -9185,9 +9185,17 @@ async function uploadPresenterReferenceMediaFile(input) {
   });
 }
 
+function currentServiceItemForMutation(serviceId, item) {
+  if (!item) return null;
+  const itemId = String(item.id || "").trim();
+  if (!itemId) return item;
+  return getServiceItems(serviceId).find((candidate) => candidate.id === itemId) || item;
+}
+
 async function uploadPresenterReferenceMediaAsset({ file, serviceId, item, input = null } = {}) {
+  const targetItem = currentServiceItemForMutation(serviceId, item);
   const kind = presenterReferenceMediaKindForFile(file);
-  if (!file || !item || !isPresenterReferenceMediaItem(item) || !kind) {
+  if (!file || !targetItem || !isPresenterReferenceMediaItem(targetItem) || !kind) {
     showToast("이미지, 영상, 음원 파일만 참고 화면에 넣을 수 있습니다.", "error");
     if (input) input.value = "";
     return false;
@@ -9206,7 +9214,7 @@ async function uploadPresenterReferenceMediaAsset({ file, serviceId, item, input
   if (input) input.disabled = true;
   let uploadedPath = "";
   try {
-    const path = presenterReferenceMediaUploadPath(serviceId, item, file);
+    const path = presenterReferenceMediaUploadPath(serviceId, targetItem, file);
     uploadedPath = path;
     const { error } = await state.client.storage
       .from(PRESENTER_MEDIA_STORAGE_BUCKET)
@@ -9216,15 +9224,17 @@ async function uploadPresenterReferenceMediaAsset({ file, serviceId, item, input
     const url = String(data?.publicUrl || "").trim();
     if (!url) throw new Error("업로드한 파일의 공개 주소를 만들지 못했습니다.");
 
-    const memo = parseServiceItemMemo(item.memo);
+    const memo = parseServiceItemMemo(targetItem.memo);
     memo.elementType = kind;
     memo.componentType = kind;
     memo.inputMode = "asset";
     memo.asset = { kind, name: file.name, url };
-    item.memo = serializeServiceItemMemo(memo);
-    item._worshipElementTemplateModified = true;
+    targetItem.memo = serializeServiceItemMemo(memo);
+    targetItem._worshipElementTemplateModified = true;
     state.dirty.service = true;
-    refreshPresenterForService(serviceId);
+    // Saving rebuilds and publishes the presenter from the persisted element rows.
+    // Refreshing first can rebuild a newly inserted reference item from stale state
+    // and discard its just-uploaded asset before the persistence payload is built.
     await saveService(serviceId, { silent: true, renderAfterSave: false, throwOnError: true });
     renderCurrentServiceModuleDetail();
     renderServiceList();
@@ -9329,12 +9339,13 @@ async function uploadServiceItemAudioAsset(input) {
     const url = String(data?.publicUrl || "").trim();
     if (!url) throw new Error("업로드한 음원의 공개 주소를 만들지 못했습니다.");
 
-    const memo = parseServiceItemMemo(item.memo);
+    const targetItem = currentServiceItemForMutation(serviceId, item);
+    if (!targetItem) throw new Error("찬양 항목을 다시 찾지 못했습니다.");
+    const memo = parseServiceItemMemo(targetItem.memo);
     memo.audioAsset = { kind: "audio", name: file.name, url };
-    item.memo = serializeServiceItemMemo(memo);
-    item._worshipElementTemplateModified = true;
+    targetItem.memo = serializeServiceItemMemo(memo);
+    targetItem._worshipElementTemplateModified = true;
     state.dirty.service = true;
-    refreshPresenterForService(serviceId);
     await saveService(serviceId, { silent: true, renderAfterSave: false, throwOnError: true });
     renderCurrentServiceModuleDetail();
     renderServiceList();
