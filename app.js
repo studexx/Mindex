@@ -2865,6 +2865,7 @@ async function loadWorshipData() {
 
   await loadSongsForIds(elements.map((item) => item.song_id));
   warmWorshipScriptureReferencesForService(state.selectedServiceId);
+  warmServiceItemScriptureReferencesForService(state.selectedServiceId);
 }
 
 async function loadWorshipPresenterSlides(serviceId = "") {
@@ -3742,6 +3743,7 @@ async function loadServiceItems(serviceId) {
   );
   await loadSongsForIds(elements.map((item) => item.song_id));
   warmWorshipScriptureReferencesForService(serviceId);
+  warmServiceItemScriptureReferencesForService(serviceId);
   renderCurrentServiceModuleDetail();
 }
 
@@ -23939,9 +23941,27 @@ function presenterSlideAnchor(slide = null) {
     type: String(slide.type || "").trim(),
     layout: presenterSlideLayout(slide),
     elementType: presenterSlideElementType(slide),
+    scriptureContext: String(slide.scriptureContext || "").trim(),
+    scripturePending: Boolean(slide.scripturePending),
     title: String(slide.title || slide.elementTitle || slide.marker || "").trim(),
     hidden: Boolean(slide.hiddenInPresentation),
   };
+}
+
+function presenterSlideTypeMatchesAnchor(slide, anchor) {
+  const slideType = String(slide?.type || "").trim();
+  const anchorType = String(anchor?.type || "").trim();
+  if (slideType === anchorType) return true;
+  return (
+    (anchorType === "scripture-pending" && slideType === "scripture")
+    || (anchorType === "scripture" && slideType === "scripture-pending")
+  );
+}
+
+function presenterSlideContextMatchesAnchor(slide, anchor) {
+  const anchorContext = String(anchor?.scriptureContext || "").trim();
+  if (!anchorContext) return true;
+  return String(slide?.scriptureContext || "").trim() === anchorContext;
 }
 
 function presenterSlideIndexForAnchor(slides = [], anchor = null, fallbackIndex = 0) {
@@ -23954,7 +23974,8 @@ function presenterSlideIndexForAnchor(slides = [], anchor = null, fallbackIndex 
   if (anchor.groupKey) {
     const sameTypeIndex = slides.findIndex((slide) =>
       presenterSlideElementGroupKey(slide) === anchor.groupKey
-      && String(slide?.type || "").trim() === anchor.type
+      && presenterSlideTypeMatchesAnchor(slide, anchor)
+      && presenterSlideContextMatchesAnchor(slide, anchor)
       && !slide?.hiddenInPresentation);
     if (sameTypeIndex >= 0) return sameTypeIndex;
     const visibleGroupIndex = slides.findIndex((slide) =>

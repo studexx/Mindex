@@ -2344,9 +2344,27 @@ function presenterSlideAnchor(slide = null) {
     type: String(slide.type || "").trim(),
     layout: String(slide.layout || slide.slideLayout || "").trim(),
     elementType: String(slide.elementType || slide.element_type || "").trim(),
+    scriptureContext: String(slide.scriptureContext || "").trim(),
+    scripturePending: Boolean(slide.scripturePending),
     title: String(slide.title || slide.elementTitle || slide.marker || "").trim(),
     hidden: Boolean(slide.hiddenInPresentation),
   };
+}
+
+function presenterSlideTypeMatchesAnchor(slide, anchor) {
+  const slideType = String(slide?.type || "").trim();
+  const anchorType = String(anchor?.type || "").trim();
+  if (slideType === anchorType) return true;
+  return (
+    (anchorType === "scripture-pending" && slideType === "scripture")
+    || (anchorType === "scripture" && slideType === "scripture-pending")
+  );
+}
+
+function presenterSlideContextMatchesAnchor(slide, anchor) {
+  const anchorContext = String(anchor?.scriptureContext || "").trim();
+  if (!anchorContext) return true;
+  return String(slide?.scriptureContext || "").trim() === anchorContext;
 }
 
 function presenterSlideIndexForAnchor(slides = [], anchor = null, fallbackIndex = 0) {
@@ -2359,7 +2377,8 @@ function presenterSlideIndexForAnchor(slides = [], anchor = null, fallbackIndex 
   if (anchor.groupKey) {
     const sameTypeIndex = slides.findIndex((slide) =>
       presenterSlideElementGroupKey(slide) === anchor.groupKey
-      && String(slide?.type || "").trim() === anchor.type
+      && presenterSlideTypeMatchesAnchor(slide, anchor)
+      && presenterSlideContextMatchesAnchor(slide, anchor)
       && !slide?.hiddenInPresentation);
     if (sameTypeIndex >= 0) return sameTypeIndex;
     const visibleGroupIndex = slides.findIndex((slide) =>
