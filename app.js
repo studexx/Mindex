@@ -2609,6 +2609,70 @@ async function fetchSupabasePaged(table, select = "*", buildQuery = (query) => q
   }
 }
 
+const SUPABASE_STATIC_CACHE_TTL_MS = 10 * 60 * 1000;
+const SUPABASE_STATIC_CACHE_PREFIX = "mindex.supabase.static.v1.";
+const WORSHIP_SERVICE_TYPE_SELECT = [
+  "id",
+  "display_name",
+  "short_name",
+  "sort_order",
+  "group_key",
+  "default_output_context",
+  "chromakey_enabled",
+  "config",
+].join(",");
+const WORSHIP_SERVICE_LIST_SELECT = [
+  "id",
+  "service_type_id",
+  "service_date",
+  "service_date_end",
+  "title",
+  "worship_leader",
+  "praise_leader",
+  "tags",
+  "notes",
+  "created_at",
+  "status",
+  "source_ref",
+].join(",");
+
+function staticSupabaseCacheKey(table, select = "*") {
+  return `${SUPABASE_STATIC_CACHE_PREFIX}${table}:${select}`;
+}
+
+function readStaticSupabaseCache(table, select = "*") {
+  try {
+    const raw = safeStorageGet("local", staticSupabaseCacheKey(table, select), "");
+    if (!raw) return null;
+    const cached = JSON.parse(raw);
+    if (!Array.isArray(cached?.rows) || Date.now() - Number(cached.cachedAt || 0) > SUPABASE_STATIC_CACHE_TTL_MS) {
+      return null;
+    }
+    return cached.rows;
+  } catch {
+    return null;
+  }
+}
+
+function writeStaticSupabaseCache(table, select = "*", rows = []) {
+  try {
+    safeStorageSet("local", staticSupabaseCacheKey(table, select), JSON.stringify({
+      cachedAt: Date.now(),
+      rows: Array.isArray(rows) ? rows : [],
+    }));
+  } catch {
+    // Storage quota or private mode should not block loading live data.
+  }
+}
+
+async function fetchCachedSupabasePaged(table, select = "*", buildQuery = (query) => query, options = {}) {
+  const cached = readStaticSupabaseCache(table, select);
+  if (cached) return cached;
+  const rows = await fetchSupabasePaged(table, select, buildQuery, options.pageSize || SUPABASE_PAGE_SIZE);
+  writeStaticSupabaseCache(table, select, rows);
+  return rows;
+}
+
 // The service list only needs projected template data until a service is opened.
 // Loading every recent and future service's elements made the first screen wait
 // on hundreds of rows (and their linked praise records).
@@ -2822,12 +2886,13 @@ function worshipAppServiceTypeId(typeId) {
 
 async function loadWorshipData() {
   const [types, services, templates, templateItems] = await Promise.all([
-    fetchSupabasePaged("mindex_worship_service_types", "*", (query) => query.order("sort_order", { ascending: true })),
-    fetchSupabasePaged("mindex_worship_services", "*", (query) =>
+    fetchCachedSupabasePaged("mindex_worship_service_types", WORSHIP_SERVICE_TYPE_SELECT, (query) =>
+      query.order("sort_order", { ascending: true })),
+    fetchSupabasePaged("mindex_worship_services", WORSHIP_SERVICE_LIST_SELECT, (query) =>
       query.order("service_date", { ascending: true }).order("service_type_id", { ascending: true })),
-    fetchSupabasePaged("mindex_worship_templates", "*", (query) =>
+    fetchCachedSupabasePaged("mindex_worship_templates", "*", (query) =>
       query.order("template_level", { ascending: true }).order("name", { ascending: true })),
-    fetchSupabasePaged("mindex_worship_template_items", "*", (query) =>
+    fetchCachedSupabasePaged("mindex_worship_template_items", "*", (query) =>
       query.order("template_id", { ascending: true }).order("sort_order", { ascending: true })),
   ]);
 
@@ -8704,15 +8769,28 @@ async function fetchServiceScriptureVerses(reference, requestedTranslation = nul
 }
 
 function warmWorshipScriptureReferencesForService(serviceId = state.selectedServiceId) {
-  if (!serviceId || !state.worshipSections.length || !state.worshipElements.length) return;
-  void preloadWorshipScriptureReferences(state.worshipSections, state.worshipElements, { serviceId });
+  if (!serviceId || !state.worshipSections.length || !state.worshipElements.length) return Promise.resolve(false);
+  return preloadWorshipScriptureReferences(state.worshipSections, state.worshipElements, { serviceId }).then((loaded) => {
+    if (loaded) refreshPresenterForService(serviceId);
+    return loaded;
+  });
 }
 
 function warmServiceItemScriptureReferencesForService(serviceId = state.selectedServiceId) {
-  if (!serviceId || !state.client) return;
-  void preloadServiceItemScriptureReferences(serviceId).then((loaded) => {
+  if (!serviceId || !state.client) return Promise.resolve(false);
+  return preloadServiceItemScriptureReferences(serviceId).then((loaded) => {
     if (loaded) refreshPresenterForService(serviceId);
+    return loaded;
   });
+}
+
+async function preloadPresenterServiceScripturesBeforeOutput(serviceId = state.selectedServiceId) {
+  if (!serviceId || !state.client) return false;
+  const results = await Promise.all([
+    warmWorshipScriptureReferencesForService(serviceId),
+    warmServiceItemScriptureReferencesForService(serviceId),
+  ]);
+  return results.some(Boolean);
 }
 
 async function preloadServiceItemScriptureReferences(serviceId = state.selectedServiceId) {
@@ -8755,11 +8833,12 @@ async function preloadServiceItemScriptureReferences(serviceId = state.selectedS
 }
 
 async function preloadWorshipScriptureReferences(sections = [], elements = [], options = {}) {
-  if (!state.client || !elements.length) return;
+  if (!state.client || !elements.length) return false;
+  let loaded = false;
   try {
     await ensureBibleBookLookups();
     if (!state.bibleTranslations.length && !state.bibleReaderError) await loadBibleTranslations({ silent: true });
-    if (!selectedPresenterBibleTranslation()?.id) return;
+    if (!selectedPresenterBibleTranslation()?.id) return false;
     const serviceId = String(options.serviceId || "").trim();
     const matchingSections = serviceId
       ? sections.filter((section) => String(section.service_id || "") === serviceId)
@@ -8778,10 +8857,13 @@ async function preloadWorshipScriptureReferences(sections = [], elements = [], o
     await Promise.all(references.map(async (referenceText) => {
       const reference = parseBibleReference(referenceText);
       if (!reference || getCachedServiceScriptureVerses(reference).length) return;
-      await fetchServiceScriptureVerses(reference);
+      const verses = await fetchServiceScriptureVerses(reference);
+      if (verses.length) loaded = true;
     }));
+    return loaded;
   } catch (error) {
     console.warn("Worship scripture preload failed", error);
+    return false;
   }
 }
 
@@ -23209,12 +23291,26 @@ function presenterSlideScriptureReferenceBadge(slide = {}) {
     : { number: "" };
   const number = String(parts.number || "").trim();
   const chapter = String(slide.referenceRange || "").match(/^(\d+)/)?.[1] || "";
-  if (!number || !chapter) return "";
   const rawBook = String(slide.referenceBook || "").trim();
   const book = typeof findBibleBookByReferenceName === "function"
     ? (findBibleBookByReferenceName(rawBook)?.shortName || rawBook)
     : rawBook;
-  return [book, `${chapter}:${number}`].filter(Boolean).join(" ").trim();
+  if (book && chapter && number) return [book, `${chapter}:${number}`].filter(Boolean).join(" ").trim();
+  const inlineReference = String(slide.text || "").trim().match(/^([^\s\d:;,.]+)\s+(\d+):(\d+(?:[–~-]\d+)?)/);
+  if (inlineReference) return `${inlineReference[1]} ${inlineReference[2]}:${inlineReference[3]}`.trim();
+  const referenceRange = String(slide.referenceRange || "").trim();
+  if (book && referenceRange) return [book, referenceRange].filter(Boolean).join(" ").trim();
+  const parsed = typeof parseBibleReference === "function"
+    ? parseBibleReference(slide.title || slide.marker || slide.elementTitle || "")
+    : null;
+  if (parsed?.book && parsed?.chapter) {
+    const parsedBook = parsed.book.shortName || parsed.book.koreanName || parsed.book.code || "";
+    const parsedVerse = parsed.verse
+      ? `${parsed.chapter}:${parsed.verse}${parsed.verseEnd ? `–${parsed.verseEnd}` : ""}`
+      : `${parsed.chapter}장`;
+    return [parsedBook, parsedVerse].filter(Boolean).join(" ").trim();
+  }
+  return "";
 }
 
 function renderPresenterSlideMiniPreview(slide, serviceId = state.presenter.serviceId) {
@@ -23595,6 +23691,7 @@ async function openPresenterOutput(serviceId = state.selectedServiceId) {
   if (!serviceId) return;
   state.presenter.outputStopAt = 0;
   state.presenter.outputStoppingClientId = "";
+  await preloadPresenterServiceScripturesBeforeOutput(serviceId);
   preparePresenterService(serviceId);
   publishPresenterState();
 

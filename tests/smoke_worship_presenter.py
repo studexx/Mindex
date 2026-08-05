@@ -3983,13 +3983,28 @@ def main() -> int:
                         buildPresenterSlidesForServiceItem(sermonItem, service, 1),
                         service
                       )[0] || {};
-                      const citationSlides = normalizePresenterSlidesForServiceOutput(
-                        buildPresenterSlidesForServiceItem(citationItem, service, 2),
-                        service
-                      );
-                      const fullscreenCitationService = {
-                        ...service,
-                        id: '__smoke_fullscreen_citation_context__',
+	                      const citationSlides = normalizePresenterSlidesForServiceOutput(
+	                        buildPresenterSlidesForServiceItem(citationItem, service, 2),
+	                        service
+	                      );
+	                      const pendingItem = {
+	                        id: '__smoke_scripture_pending_body__',
+	                        label: '인용 구절',
+	                        raw_title: '',
+	                        memo: serializeServiceItemMemo({
+	                          elementType: 'scripture_body',
+	                          scriptureReference: '마 24:3–14',
+	                        }),
+	                        _worshipSectionKey: 'sermon',
+	                        _worshipSectionTitle: '설교',
+	                      };
+	                      const pendingSlides = normalizePresenterSlidesForServiceOutput(
+	                        buildPresenterSlidesForServiceItem(pendingItem, service, 4),
+	                        service
+	                      );
+	                      const fullscreenCitationService = {
+	                        ...service,
+	                        id: '__smoke_fullscreen_citation_context__',
                         type_id: 'sunday-first',
                       };
                       const fullscreenCitationSlides = normalizePresenterSlidesForServiceOutput(
@@ -4098,15 +4113,29 @@ def main() -> int:
                           probe.remove();
                           return value;
                         })(),
-                        citationTexts: citationSlides.map((slide) => slide.text || ''),
-                        fullscreenCitationContext: fullscreenCitationSlides[0]?.scriptureContext || '',
-                        fullscreenCitationOutputContext: presenterSlideOutputContext(fullscreenCitationSlides[0], true),
-                        fullscreenCitationNoChromakey: fullscreenCitationOutput?.classList.contains('no-chromakey') || false,
-                        fullscreenCitationHasReadingClass: fullscreenCitationSlide?.classList.contains('presenter-slide--scripture-reading') || false,
-                        fullscreenCitationHasReadingBody: Boolean(citationMount.querySelector('.presenter-scripture-reading')),
-                        fullscreenCitationReference: fullscreenCitationReference?.textContent?.trim() || '',
-                        fullscreenCitationText: fullscreenCitationText?.textContent?.trim() || '',
-                      };
+	                        citationTexts: citationSlides.map((slide) => slide.text || ''),
+	                        fullscreenCitationContext: fullscreenCitationSlides[0]?.scriptureContext || '',
+	                        fullscreenCitationOutputContext: presenterSlideOutputContext(fullscreenCitationSlides[0], true),
+	                        fullscreenCitationNoChromakey: fullscreenCitationOutput?.classList.contains('no-chromakey') || false,
+	                        fullscreenCitationHasReadingClass: fullscreenCitationSlide?.classList.contains('presenter-slide--scripture-reading') || false,
+	                        fullscreenCitationHasReadingBody: Boolean(citationMount.querySelector('.presenter-scripture-reading')),
+	                        fullscreenCitationReference: fullscreenCitationReference?.textContent?.trim() || '',
+	                        fullscreenCitationText: fullscreenCitationText?.textContent?.trim() || '',
+	                        citationBadge: presenterSlideScriptureReferenceBadge(citationSlides[0]),
+                        citationNoNumberBadge: presenterSlideScriptureReferenceBadge({
+                          ...citationSlides[0],
+                          text: '또 모세에게 이르시되',
+                          referenceBook: '출애굽기',
+	                          referenceRange: '24:1–2',
+	                          title: '출애굽기 24:1–2',
+	                        }),
+	                        pendingType: pendingSlides[0]?.type || '',
+	                        pendingElementType: pendingSlides[0]?.elementType || '',
+	                        pendingLayout: pendingSlides[0]?.layout || '',
+	                        pendingText: pendingSlides[0]?.text || '',
+	                        pendingMarker: pendingSlides[0]?.marker || '',
+	                        pendingSkipTrailingBlank: Boolean(pendingSlides[0]?.skipTrailingBlank),
+	                      };
                       citationMount.remove();
                       mount.remove();
                       state.services = state.services.filter((item) => item.id !== service.id);
@@ -4170,7 +4199,15 @@ def main() -> int:
                         "출 24:1   또 모세에게 이르시되",
                         "출 24:2   너 모세만 여호와께 가까이 나아오고",
                     ]
-                    and scripture_context_state["fullscreenCitationContext"] == "citation"
+	                    and scripture_context_state["citationBadge"] == "출 24:1"
+	                    and scripture_context_state["citationNoNumberBadge"] == "출 24:1–2"
+	                    and scripture_context_state["pendingType"] == "scripture-pending"
+	                    and scripture_context_state["pendingElementType"] == "blank"
+	                    and scripture_context_state["pendingLayout"] == "blank"
+	                    and scripture_context_state["pendingText"] == ""
+	                    and scripture_context_state["pendingMarker"] == ""
+	                    and scripture_context_state["pendingSkipTrailingBlank"]
+	                    and scripture_context_state["fullscreenCitationContext"] == "citation"
                     and scripture_context_state["fullscreenCitationOutputContext"] == "clean"
                     and scripture_context_state["fullscreenCitationNoChromakey"]
                     and scripture_context_state["fullscreenCitationHasReadingClass"]
