@@ -20898,7 +20898,9 @@ function isPresenterPreparationContextLine(text = "") {
 }
 
 function cleanPresenterPreparationContent(value = "") {
-  let text = String(value || "").trim();
+  let text = String(value || "")
+    .replace(/^\s*[:：·ㆍ•.-]\s*/, "")
+    .trim();
   const quotePairs = [
     ['"', '"'],
     ["'", "'"],
@@ -20980,12 +20982,13 @@ function presenterPreparationDuplicateKey(key = "", rawKey = "") {
 function parseKnownPresenterPreparationLine(text = "") {
   const raw = String(text || "").trim();
   if (!raw) return null;
+  const separator = "[:：·ㆍ•.-]";
   const patterns = [
-    /^(찬양)\s*(\d+)\s*(?:[:：.-]\s*)?(.+)$/,
-    /^(기도\s*찬양)\s*(\d+)\s*(?:[:：.-]\s*)?(.+)$/,
-    /^(공동기도)\s*(\d+)\s*(?:[:：.-]\s*)?(.+)$/,
-    /^(찬송가|찬송)\s*(?:[:：.-]\s*)?(.+)$/,
-    /^((?:대표\s*)?기도|성경\s*봉독\s*본문|성경\s*봉독|성경\s*본문|설교\s*본문|설교\s*제목|인용\s*구절|특송|입례\s*찬양|봉헌\s*찬송|봉헌\s*기도|결단\s*찬양|결단\s*기도|말씀|본문|설교)\s*(?:[:：.-]\s*)?(.+)$/,
+    new RegExp(`^(찬양)\\s*(\\d+)\\s*(?:${separator}\\s*)?(.+)$`),
+    new RegExp(`^(기도\\s*찬양)\\s*(\\d+)\\s*(?:${separator}\\s*)?(.+)$`),
+    new RegExp(`^(공동기도)\\s*(\\d+)\\s*(?:${separator}\\s*)?(.+)$`),
+    new RegExp(`^(찬송가|찬송)\\s*(?:${separator}\\s*)?(.+)$`),
+    new RegExp(`^((?:대표\\s*)?기도|성경\\s*봉독\\s*본문|성경\\s*봉독|성경\\s*본문|설교\\s*본문|설교\\s*제목|인용\\s*구절|특송|입례\\s*찬양|봉헌\\s*찬송|봉헌\\s*기도|결단\\s*찬양|결단\\s*기도|말씀|본문|설교)\\s*(?:${separator}\\s*)?(.+)$`),
   ];
   for (const pattern of patterns) {
     const match = raw.match(pattern);

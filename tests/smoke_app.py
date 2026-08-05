@@ -4345,6 +4345,34 @@ def main() -> int:
                     else:
                         fail("presenter-preparation-real-song-match", json.dumps(presenter_preparation_real_song_match, ensure_ascii=False))
 
+                    presenter_preparation_middle_dot_separator = page.evaluate(
+                        """
+                        (() => {
+                          const parsed = parsePresenterPreparationInput(`찬양 1 · 목마른 사슴 시냇물
+찬양 2 · 지금은 엘리야때처럼
+찬양 3 · 꽃들도`);
+                          return {
+                            errors: parsed.errors,
+                            entries: parsed.entries.map((entry) => ({
+                              label: entry.label,
+                              content: entry.content,
+                            })),
+                          };
+                        })()
+                        """
+                    )
+                    if (
+                        presenter_preparation_middle_dot_separator.get("errors") == []
+                        and presenter_preparation_middle_dot_separator.get("entries") == [
+                            {"label": "찬양 1", "content": "목마른 사슴 시냇물"},
+                            {"label": "찬양 2", "content": "지금은 엘리야때처럼"},
+                            {"label": "찬양 3", "content": "꽃들도"},
+                        ]
+                    ):
+                        pass_("presenter-preparation-middle-dot-separator", json.dumps(presenter_preparation_middle_dot_separator, ensure_ascii=False))
+                    else:
+                        fail("presenter-preparation-middle-dot-separator", json.dumps(presenter_preparation_middle_dot_separator, ensure_ascii=False))
+
                     presenter_preparation_existing_song_guard = page.evaluate(
                         """
                         (async () => {
