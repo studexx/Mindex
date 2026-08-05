@@ -2270,6 +2270,17 @@ async function loadSongsForIds(songIds = []) {
   await attachRelationalSongVersionsForSongs(linkedSongs.map((song) => song.id));
 }
 
+function loadSongsForIdsInBackground(songIds = [], options = {}) {
+  const ids = [...new Set(songIds.map((id) => String(id || "").trim()).filter(Boolean))];
+  if (!ids.length) return;
+  void loadSongsForIds(ids).then(() => {
+    if (options.render) render();
+    if (options.serviceId) refreshPresenterForService(options.serviceId);
+  }).catch((error) => {
+    console.warn("Could not hydrate linked songs in background.", error);
+  });
+}
+
 async function attachRelationalSongVersionsForSongs(songIds = []) {
   const ids = [...new Set(songIds.map((id) => String(id || "").trim()).filter(Boolean))];
   if (!ids.length) return;
@@ -2928,7 +2939,11 @@ async function loadWorshipData() {
   state.serviceItemMemoSupported = true;
   state.serviceTitleSupported = true;
 
-  await loadSongsForIds(elements.map((item) => item.song_id));
+  render();
+  loadSongsForIdsInBackground(elements.map((item) => item.song_id), {
+    render: true,
+    serviceId: state.selectedServiceId,
+  });
   warmWorshipScriptureReferencesForService(state.selectedServiceId);
   warmServiceItemScriptureReferencesForService(state.selectedServiceId);
 }
