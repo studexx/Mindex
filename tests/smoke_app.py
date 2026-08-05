@@ -4345,6 +4345,86 @@ def main() -> int:
                     else:
                         fail("presenter-preparation-real-song-match", json.dumps(presenter_preparation_real_song_match, ensure_ascii=False))
 
+                    presenter_preparation_existing_song_guard = page.evaluate(
+                        """
+                        (async () => {
+                          const originalSongs = state.songs;
+                          const originalClient = state.client;
+                          const service = { id: '__smoke_existing_song_service__', type_id: 'friday', date: '2026-07-31' };
+                          const item = normalizeServiceItem({
+                            service_id: service.id,
+                            label: '찬양 1',
+                            memo: serializeServiceItemMemo({ elementType: 'praise', inputMode: 'lyrics_db' }),
+                          });
+                          let insertCalled = false;
+                          try {
+                            state.songs = [
+                              normalizeServerSong({
+                                id: '__smoke_existing_song__',
+                                title: '주 내 소망은 주 더 알기 원합니다',
+                                original_title: 'To Know You More',
+                                memo: serializeSongMemo({ versions: [{
+                                  id: '__smoke_existing_song_version__',
+                                  name: '기본',
+                                  is_primary: true,
+                                  forms: [{ id: '__smoke_existing_song_form__', label: 'Verse 1', lyrics: '오 주님 채우소서\\n나의 마음 깊은 곳' }],
+                                }] }),
+                              }),
+                              normalizeServerSong({
+                                id: '__smoke_other_song__',
+                                title: '주님 내 소망',
+                                memo: serializeSongMemo({ versions: [{
+                                  id: '__smoke_other_song_version__',
+                                  name: '기본',
+                                  forms: [{ id: '__smoke_other_song_form__', label: 'Verse 1', lyrics: '다른 가사' }],
+                                }] }),
+                              }),
+                            ];
+                            state.client = {
+                              from() {
+                                insertCalled = true;
+                                return {
+                                  insert() {
+                                    return {
+                                      select() {
+                                        return {
+                                          single: async () => ({ data: null, error: new Error('insert should not run') }),
+                                        };
+                                      },
+                                    };
+                                  },
+                                };
+                              },
+                            };
+                            const byTitleWithKey = resolvePresenterPreparationSong('주 내 소망은 주 더 알기 원합니다 G', item, service)?.id || '';
+                            const byOriginalTitle = resolvePresenterPreparationSong('To Know You More', item, service)?.id || '';
+                            const byLyric = resolvePresenterPreparationSong('오 주님 채우소서', item, service)?.id || '';
+                            const viaBlankFallback = await createBlankPraiseSongForServiceInput('주 내 소망은 주 더 알기 원합니다 G', service);
+                            return {
+                              byTitleWithKey,
+                              byOriginalTitle,
+                              byLyric,
+                              viaBlankFallback: viaBlankFallback?.id || '',
+                              insertCalled,
+                            };
+                          } finally {
+                            state.songs = originalSongs;
+                            state.client = originalClient;
+                          }
+                        })()
+                        """
+                    )
+                    if (
+                        presenter_preparation_existing_song_guard.get("byTitleWithKey") == "__smoke_existing_song__"
+                        and presenter_preparation_existing_song_guard.get("byOriginalTitle") == "__smoke_existing_song__"
+                        and presenter_preparation_existing_song_guard.get("byLyric") == "__smoke_existing_song__"
+                        and presenter_preparation_existing_song_guard.get("viaBlankFallback") == "__smoke_existing_song__"
+                        and presenter_preparation_existing_song_guard.get("insertCalled") is False
+                    ):
+                        pass_("presenter-preparation-existing-song-guard", json.dumps(presenter_preparation_existing_song_guard, ensure_ascii=False))
+                    else:
+                        fail("presenter-preparation-existing-song-guard", json.dumps(presenter_preparation_existing_song_guard, ensure_ascii=False))
+
                     presenter_preparation_paste = page.evaluate(
                         """
                         (async () => {

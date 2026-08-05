@@ -8969,10 +8969,10 @@ async function createPraiseSongFromServiceItem(index) {
   const items = getServiceItems(serviceId);
   const item = items[index];
   if (!service || !item) return;
-  const title = stripHymnNo(String(item.raw_title || "").trim()).title.trim();
+  const title = stripHymnNo(presenterPreparationSongContent(item.raw_title)).title.trim();
   if (!title) return;
 
-  const existing = findServicePraiseSong(title);
+  const existing = findServicePraiseSong(title) || findConfidentServicePraiseSong(title, item, service);
   if (existing) {
     item.song_id = existing.id;
     item.version_id = preferredServiceSongVersion(existing, item, service)?.id || null;
@@ -20512,7 +20512,7 @@ function songServiceOptionLabel(song) {
 var SERVICE_PRAISE_TITLE_ALIASES;
 
 function servicePraiseLookupCandidates(value) {
-  const raw = String(value || "").trim();
+  const raw = stripServicePraiseTrailingMusicKey(value);
   if (!raw) return [];
   const hymnless = stripHymnNo(raw).title || raw;
   const withoutPrefix = hymnless
@@ -20549,6 +20549,16 @@ function servicePraiseLookupCandidates(value) {
     if (alias) expanded.push(alias);
   }
   return [...new Set(expanded)];
+}
+
+function stripServicePraiseTrailingMusicKey(value = "") {
+  return String(value || "")
+    .normalize("NFKC")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\s*[(\[]\s*[A-G](?:#|b)?(?:m|M|maj7|sus[24]|add\d+|\d+)?\s*[)\]]\s*$/u, "")
+    .replace(/\s+[A-G](?:#|b)?(?:m|M|maj7|sus[24]|add\d+|\d+)?$/u, "")
+    .trim();
 }
 
 function findServicePraiseSong(value) {
@@ -21171,21 +21181,45 @@ function resolvePresenterPreparationSong(value, item, service) {
   if (exact.length === 1) return exact[0];
   const titleExact = state.songs.filter((song) => compactSearchValue(stripHymnNumber(song.title || "")) === query);
   if (titleExact.length === 1) return titleExact[0];
-  const results = serviceSongPickerResults(songInput, item, service, 2);
-  return results.length === 1 ? results[0] : null;
+  return findConfidentServicePraiseSong(songInput, item, service);
 }
 
 function presenterPreparationSongContent(value = "") {
   const text = cleanPresenterPreparationContent(value);
   // Keys such as G or D are notes for the instrumental team, not part of a song title.
-  return text.replace(/\s+[A-G](?:#|b)?(?:m|M|maj7|sus[24]|add\d+|\d+)?$/u, "").trim();
+  return stripServicePraiseTrailingMusicKey(text);
+}
+
+function findConfidentServicePraiseSong(value, item = {}, service = selectedServiceForEditor()) {
+  const songInput = presenterPreparationSongContent(value);
+  const tokens = getSearchTokens(songInput);
+  if (!tokens.length) return null;
+
+  const requiresNewHymnal = serviceItemRequiresNewHymnalScoreSong(item);
+  const query = compactSearchValue(songInput);
+  const ranked = state.songs
+    .filter((song) => !requiresNewHymnal || isNewHymnalScoreSong(song))
+    .map((song) => ({ song, match: getSongSearchMatch(song, tokens) }))
+    .filter((entry) => entry.match)
+    .sort((a, b) => b.match.score - a.match.score || sortSongsForCurrentList(a.song, b.song));
+  if (!ranked.length) return null;
+
+  const exact = ranked.filter((entry) => presenterPreparationSongLabels(entry.song)
+    .some((label) => compactSearchValue(label) === query));
+  if (exact.length === 1) return exact[0].song;
+  if (exact.length > 1) return exact[0].song;
+
+  const [best, second] = ranked;
+  const gap = best.match.score - (second?.match.score || 0);
+  if (best.match.phraseMatched && (gap >= 20 || ranked.length === 1)) return best.song;
+  return null;
 }
 
 async function createBlankPraiseSongForServiceInput(value, service = selectedServiceForEditor()) {
   if (!state.client) return null;
   const title = stripHymnNo(presenterPreparationSongContent(value)).title.trim();
   if (!title) return null;
-  const existing = findServicePraiseSong(title);
+  const existing = findServicePraiseSong(title) || findConfidentServicePraiseSong(title, {}, service);
   if (existing) return existing;
 
   const praiseType = service?.type_id === "children" ? "children" : "ccm";
