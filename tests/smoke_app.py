@@ -438,7 +438,14 @@ def main() -> int:
                 })();
                 """
             )
-            page.on("pageerror", lambda error: page_errors.append(str(error)))
+            def capture_page_error(error) -> None:
+                page_errors.append(json.dumps({
+                    "name": getattr(error, "name", ""),
+                    "message": getattr(error, "message", str(error)),
+                    "stack": getattr(error, "stack", ""),
+                }, ensure_ascii=False, default=str))
+
+            page.on("pageerror", capture_page_error)
             page.on(
                 "console",
                 lambda msg: console_messages.append(f"{msg.type}: {msg.text}")
@@ -3983,6 +3990,95 @@ def main() -> int:
                         pass_("presenter-praise-input-mode-persistence", json.dumps(presenter_praise_input_mode_persistence, ensure_ascii=False))
                     else:
                         fail("presenter-praise-input-mode-persistence", json.dumps(presenter_praise_input_mode_persistence, ensure_ascii=False))
+
+                    presenter_lyrics_db_version_resolution = page.evaluate(
+                        """
+                        (() => {
+                          const originalSongs = state.songs;
+                          const service = { id: '__smoke_lyrics_db_service__', type_id: 'sunday-third', date: '2026-08-02' };
+                          const song = {
+                            id: '__smoke_lyrics_song__',
+                            title: '가사 불러오기 테스트',
+                            versions: [
+                              {
+                                id: '__smoke_lyrics_score__',
+                                name: '악보',
+                                is_primary: true,
+                                _worshipVersionPersisted: true,
+                                praise_types: ['hymn'],
+                                forms: [],
+                              },
+                              {
+                                id: '__smoke_lyrics_text__',
+                                name: '가사',
+                                _worshipVersionPersisted: true,
+                                praise_types: ['ccm'],
+                                forms: [
+                                  { id: '__smoke_lyrics_text_f1__', part_type: 'Verse', lyrics: '가사 A\\n가사 B', sort_order: 1 },
+                                ],
+                              },
+                            ],
+                          };
+                          try {
+                            state.songs = [song, ...originalSongs];
+                            const item = normalizeServiceItem({
+                              service_id: service.id,
+                              label: '찬양 1',
+                              raw_title: '',
+                              song_id: song.id,
+                              memo: serializeServiceItemMemo({
+                                elementType: 'praise',
+                                inputMode: 'lyrics_db',
+                                outputMode: 'lyrics',
+                              }),
+                              _worshipSectionKey: 'praise',
+                              _worshipSectionTitle: '찬양',
+                              _worshipElementTemplateModified: true,
+                              _worshipTemplatePlaceholder: false,
+                            }, 0);
+                            const model = serviceItemEditorModel(item, { service });
+                            const pickerHtml = renderServiceSongVersionPicker(item, 0, model);
+                            const rows = buildWorshipPersistenceRows(service, [item], {}, {}, { elementTypedStateColumns: { inputMode: true, contentState: true } });
+                            const slides = buildPresenterSlidesForServiceItem(item, service, 0);
+                            const switchedItem = normalizeServiceItem({
+                              ...item,
+                              version_id: '__smoke_lyrics_score__',
+                              song_version_id: '__smoke_lyrics_score__',
+                              raw_title: '',
+                              memo: serializeServiceItemMemo({
+                                elementType: 'praise',
+                                inputMode: 'lyrics_db',
+                                outputMode: 'lyrics',
+                              }),
+                            }, 1);
+                            applyServiceSongSelectionWithService(switchedItem, service);
+                            return {
+                              invalid: serviceItemSongSelectionInvalid(item, service),
+                              preferredVersionId: preferredServiceSongVersion(song, item, service)?.id || '',
+                              persistedVersionId: rows.elements[0]?.song_version_id || '',
+                              pickerInvalid: pickerHtml.includes('is-invalid') || pickerHtml.includes('aria-invalid="true"'),
+                              lyricTexts: slides.filter((slide) => slide.type === 'lyrics').map((slide) => slide.text),
+                              switchedSongId: switchedItem.song_id || '',
+                              switchedVersionId: switchedItem.version_id || '',
+                            };
+                          } finally {
+                            state.songs = originalSongs;
+                          }
+                        })()
+                        """
+                    )
+                    if presenter_lyrics_db_version_resolution == {
+                        "invalid": False,
+                        "preferredVersionId": "__smoke_lyrics_text__",
+                        "persistedVersionId": "__smoke_lyrics_text__",
+                        "pickerInvalid": False,
+                        "lyricTexts": ["가사 A\n가사 B"],
+                        "switchedSongId": "__smoke_lyrics_song__",
+                        "switchedVersionId": "__smoke_lyrics_text__",
+                    }:
+                        pass_("presenter-lyrics-db-version-resolution", json.dumps(presenter_lyrics_db_version_resolution, ensure_ascii=False))
+                    else:
+                        fail("presenter-lyrics-db-version-resolution", json.dumps(presenter_lyrics_db_version_resolution, ensure_ascii=False))
 
                     presenter_media_persistence_guard = page.evaluate(
                         """

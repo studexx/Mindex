@@ -8371,13 +8371,19 @@ function serviceItemVersionSelectionInvalid(item = {}, service = selectedService
   const selectedId = item.version_id || item.song_version_id || "";
   if (selectedId && !versions.some((version) => version.id === selectedId)) return true;
   if (versions.length <= 1) return false;
+  if (!selectedId && preferredServiceSongVersion(song, item, service)) return false;
   return !versions.some((version) => version.id === selectedId);
 }
 
 function serviceItemSongVersionIdForSave(item = {}, service = selectedServiceForEditor()) {
   const song = serviceItemLinkedSong(item);
   if (!song) return null;
-  const selectedId = String(item.version_id || item.song_version_id || "").trim();
+  const selectedId = String(
+    item.version_id
+    || item.song_version_id
+    || preferredServiceSongVersion(song, item, service)?.id
+    || "",
+  ).trim();
   if (!selectedId) return null;
   const version = serviceSelectableSongVersions(song, item, service)
     .find((candidate) => candidate.id === selectedId);
@@ -8450,6 +8456,25 @@ function serviceVersionIsNewHymnalScoreVersion(song = null, version = null) {
 function preferredNewHymnalVersion(song = null, versions = song?.versions || []) {
   if (!song?.hymn_no || !songHasPraiseType(song, "hymn")) return null;
   return versions.find((version) => serviceVersionIsNewHymnalScoreVersion(song, version)) || null;
+}
+
+function preferredServiceSongVersion(song = null, item = {}, service = selectedServiceForEditor()) {
+  const versions = serviceSelectableSongVersions(song, item, service);
+  if (!versions.length) return null;
+  const memo = parseServiceItemMemo(item?.memo);
+  const inputMode = servicePraiseInputMode(item, memo);
+  if (inputMode === "score_db") {
+    return preferredNewHymnalVersion(song, versions) || (versions.length === 1 ? versions[0] : null);
+  }
+  if (inputMode === "lyrics_db" || inputMode === "praise_db") {
+    const defaultVersionId = getDefaultVersionId(song);
+    return versions.find((version) => version.id === defaultVersionId && versionHasLyrics(version))
+      || versions.find(versionHasLyrics)
+      || (versions.length === 1 ? versions[0] : null);
+  }
+  return versions.find((version) => version.id === getDefaultVersionId(song))
+    || preferredNewHymnalVersion(song, versions)
+    || (versions.length === 1 ? versions[0] : null);
 }
 
 function serviceItemEditableAssigneeValue(item = {}, service = selectedServiceForEditor()) {
@@ -8950,9 +8975,7 @@ async function createPraiseSongFromServiceItem(index) {
   const existing = findServicePraiseSong(title);
   if (existing) {
     item.song_id = existing.id;
-    const versions = serviceSelectableSongVersions(existing, item, service);
-    item.version_id = preferredNewHymnalVersion(existing, versions)?.id
-      || (versions.length === 1 ? versions[0].id : null);
+    item.version_id = preferredServiceSongVersion(existing, item, service)?.id || null;
     item.song_version_id = item.version_id;
     state.serviceItems[serviceId] = normalizeServiceItemsInCurrentOrder(items);
     state.dirty.service = true;
@@ -9025,9 +9048,7 @@ function selectServiceSongForItem(index, songId) {
   }
   item.song_id = song.id;
   item.raw_title = "";
-  const versions = serviceSelectableSongVersions(song, item, service);
-  item.version_id = preferredNewHymnalVersion(song, versions)?.id
-    || (versions.length === 1 ? versions[0].id : null);
+  item.version_id = preferredServiceSongVersion(song, item, service)?.id || null;
   item.song_version_id = item.version_id;
   state.serviceItems[serviceId] = normalizeServiceItemsInCurrentOrder(items);
   state.dirty.service = true;
@@ -9564,7 +9585,8 @@ function applyServiceSongSelectionWithService(item, service = null) {
     item.song_version_id = null;
     return;
   }
-  const song = resolvePresenterPreparationSong(item.raw_title, item, service || selectedServiceForEditor())
+  const song = serviceItemLinkedSong(item)
+    || resolvePresenterPreparationSong(item.raw_title, item, service || selectedServiceForEditor())
     || findServicePraiseSong(item.raw_title);
   if (!song) {
     item.song_id = null;
@@ -9574,9 +9596,11 @@ function applyServiceSongSelectionWithService(item, service = null) {
   }
   item.song_id = song.id;
   item.raw_title = "";
-  const versions = serviceSelectableSongVersions(song, item, service || state.services.find((svc) => svc.id === state.selectedServiceId));
-  item.version_id = preferredNewHymnalVersion(song, versions)?.id
-    || (versions.length === 1 ? versions[0].id : null);
+  item.version_id = preferredServiceSongVersion(
+    song,
+    item,
+    service || state.services.find((svc) => svc.id === state.selectedServiceId),
+  )?.id || null;
   item.song_version_id = item.version_id;
 }
 
@@ -19659,7 +19683,10 @@ function renderServiceSongPicker(item, index, model = serviceItemEditorModel(ite
 function renderServiceSongVersionPicker(item, index, model = serviceItemEditorModel(item)) {
   const versions = model.songVersions || [];
   if (versions.length <= 1) return "";
-  const selectedId = item.version_id || item.song_version_id || "";
+  const selectedId = item.version_id
+    || item.song_version_id
+    || preferredServiceSongVersion(model.linkedSong, item, model.service)?.id
+    || "";
   return `
     <select
       class="svc-song-version-select${selectedId ? "" : " is-invalid"}"
@@ -21338,9 +21365,8 @@ async function applyPresenterPreparationInput(serviceId = state.selectedServiceI
         markServiceItemSharedContentDirty(item, service);
         item._worshipTemplatePlaceholder = false;
         const versions = serviceSelectableSongVersions(song, item, service);
-        const preferredVersion = preferredNewHymnalVersion(song, versions);
+        const preferredVersion = preferredServiceSongVersion(song, item, service);
         if (preferredVersion) item.version_id = preferredVersion.id;
-        else if (versions.length === 1) item.version_id = versions[0].id;
         else if (versions.length > 1) versionWarnings.push(entry.label);
         item.song_version_id = item.version_id;
         continue;
