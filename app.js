@@ -20658,6 +20658,32 @@ function stripServicePraiseTrailingMusicKey(value = "") {
     .trim();
 }
 
+function servicePraiseExactTitlePriority(song = {}) {
+  if (song?.hymn_no || songHasPraiseType(song, "hymn")) return 0;
+  if (songHasPraiseType(song, "ccm")) return 1;
+  if (songHasPraiseType(song, "children")) return 2;
+  return 3;
+}
+
+function servicePraiseSongMatchesLookupName(song = {}, lookups = [], options = {}) {
+  const names = options.titleOnly
+    ? [song.title, stripHymnNumber(song.title || "")]
+    : [
+      songServiceOptionLabel(song),
+      song.title,
+      stripHymnNumber(song.title || ""),
+      song.subtitle,
+      song.original_title,
+      ...(song.versions || []).map((version) => versionDisplayName(song, version)),
+    ];
+  return names.some((name) => {
+    const stripped = stripTitleDecorations(stripHymnNo(name).title || name);
+    const normalized = normalizeTitle(stripped);
+    const compact = compactSearchValue(stripped);
+    return lookups.some((candidate) => normalized === candidate.lookup || compact === candidate.compact);
+  });
+}
+
 function findServicePraiseSong(value) {
   const lookups = servicePraiseLookupCandidates(value)
     .map((candidate) => ({
@@ -20666,22 +20692,12 @@ function findServicePraiseSong(value) {
     }))
     .filter((candidate) => candidate.lookup || candidate.compact);
   if (!lookups.length) return null;
-  return state.songs.find((song) => {
-    const names = [
-      songServiceOptionLabel(song),
-      song.title,
-      stripHymnNumber(song.title || ""),
-      song.subtitle,
-      song.original_title,
-      ...(song.versions || []).map((version) => versionDisplayName(song, version)),
-    ];
-    return names.some((name) => {
-      const stripped = stripTitleDecorations(stripHymnNo(name).title || name);
-      const normalized = normalizeTitle(stripped);
-      const compact = compactSearchValue(stripped);
-      return lookups.some((candidate) => normalized === candidate.lookup || compact === candidate.compact);
-    });
-  }) || null;
+  const exactTitleMatches = state.songs.filter((song) => servicePraiseSongMatchesLookupName(song, lookups, { titleOnly: true }));
+  if (exactTitleMatches.length) {
+    return exactTitleMatches
+      .sort((a, b) => servicePraiseExactTitlePriority(a) - servicePraiseExactTitlePriority(b) || sortSongsForCurrentList(a, b))[0];
+  }
+  return state.songs.find((song) => servicePraiseSongMatchesLookupName(song, lookups)) || null;
 }
 
 function splitHymnNo(raw) {

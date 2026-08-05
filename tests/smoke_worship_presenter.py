@@ -231,6 +231,50 @@ def main() -> int:
                 else:
                     fail("presenter-ccm-repeats-chorus", json.dumps(ccm_form_order_state, ensure_ascii=False))
 
+                praise_exact_title_priority_state = page.evaluate(
+                    """
+                    (() => {
+                      const previousSongs = state.songs;
+                      const makeSong = (id, title, praiseTypes, hymnNo = '') => ({
+                        id,
+                        title,
+                        hymn_no: hymnNo,
+                        praise_types: praiseTypes,
+                        versions: [{
+                          id: `${id}:v1`,
+                          name: '기본',
+                          is_primary: true,
+                          praise_types: praiseTypes,
+                          forms: [{ id: `${id}:f1`, lyrics: '가사' }],
+                        }],
+                      });
+                      try {
+                        state.songs = [
+                          makeSong('__smoke_dup_children__', '완전 같은 제목', ['children']),
+                          makeSong('__smoke_dup_ccm__', '완전 같은 제목', ['ccm']),
+                          makeSong('__smoke_dup_hymn__', '완전 같은 제목', ['hymn'], '321'),
+                          makeSong('__smoke_dup_children_only__', '찬송가 없는 제목', ['children']),
+                          makeSong('__smoke_dup_ccm_only__', '찬송가 없는 제목', ['ccm']),
+                        ];
+                        return {
+                          withHymn: findServicePraiseSong('완전 같은 제목')?.id || '',
+                          withoutHymn: findServicePraiseSong('찬송가 없는 제목')?.id || '',
+                        };
+                      } finally {
+                        state.songs = previousSongs;
+                        state.songLookupSource = null;
+                      }
+                    })()
+                    """
+                )
+                if praise_exact_title_priority_state == {
+                    "withHymn": "__smoke_dup_hymn__",
+                    "withoutHymn": "__smoke_dup_ccm_only__",
+                }:
+                    pass_("presenter-praise-exact-title-priority", json.dumps(praise_exact_title_priority_state, ensure_ascii=False))
+                else:
+                    fail("presenter-praise-exact-title-priority", json.dumps(praise_exact_title_priority_state, ensure_ascii=False))
+
                 sticky_title_state: dict[str, Any] = page.evaluate(
                     """
                     async () => {
