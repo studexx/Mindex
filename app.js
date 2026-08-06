@@ -2771,11 +2771,12 @@ function autoUpcomingPublicServiceTargets(baseDate = new Date()) {
 
   const wednesday = nextDateForWeekday(3);
   const friday = nextDateForWeekday(5);
+  const fridayTarget = autoFridayServiceTarget(friday);
   const sunday = nextDateForWeekday(0);
   const integratedSunday = isAllGenerationsWorshipDate(sunday);
   return [
     { typeId: "wednesday", date: wednesday },
-    { typeId: "friday", date: friday },
+    fridayTarget,
     { typeId: "sunday-first", date: sunday },
     { typeId: "sunday-second", date: sunday },
     { typeId: "sunday-main", date: sunday },
@@ -2784,9 +2785,83 @@ function autoUpcomingPublicServiceTargets(baseDate = new Date()) {
     { typeId: "young-adult", date: sunday },
     { typeId: "sunday-afternoon", date: sunday },
   ].filter((target) =>
-    AUTO_UPCOMING_PUBLIC_SERVICE_TYPES.includes(target.typeId)
+    target
+    && AUTO_UPCOMING_PUBLIC_SERVICE_TYPES.includes(target.typeId)
     && target.date
     && !(integratedSunday && SUNDAY_MINISTRY_SERVICE_TYPES.has(target.typeId)));
+}
+
+const FRIDAY_SERVICE_VARIANT_START_DATE = "2026-08-01";
+
+const FRIDAY_SERVICE_VARIANTS = {
+  1: {
+    key: "monthly",
+    typeId: "monthly",
+    title: "",
+    tags: ["월삭예배"],
+    displayName: "월삭예배",
+    templateNote: "monthly",
+  },
+  2: {
+    key: "culture",
+    typeId: "friday",
+    title: "문화예배",
+    tags: ["문화예배", "집회 없음"],
+    displayName: "문화예배",
+    templateNote: "no_gathering",
+    noGathering: true,
+  },
+  3: {
+    key: "3355",
+    typeId: "friday",
+    title: "",
+    tags: ["삼삼오오예배"],
+    displayName: "삼삼오오예배",
+    templateNote: "friday_prayer",
+  },
+  4: {
+    key: "district-union",
+    typeId: "friday",
+    title: "",
+    tags: ["구역연합예배"],
+    displayName: "구역연합예배",
+    templateNote: "friday_prayer",
+  },
+};
+
+function fridayWeekOfMonth(dateValue = "") {
+  const target = parseLocalDate(dateValue);
+  if (Number.isNaN(target.getTime()) || target.getDay() !== 5) return 0;
+  let count = 0;
+  for (let day = 1; day <= target.getDate(); day += 1) {
+    const date = new Date(target);
+    date.setDate(day);
+    if (date.getDay() === 5) count += 1;
+  }
+  return count;
+}
+
+function fridayServiceVariantForDate(dateValue = "") {
+  const date = String(dateValue || "").trim().slice(0, 10);
+  if (!date || date < FRIDAY_SERVICE_VARIANT_START_DATE) return null;
+  return FRIDAY_SERVICE_VARIANTS[fridayWeekOfMonth(date)] || null;
+}
+
+function autoFridayServiceTarget(date = "") {
+  const variant = fridayServiceVariantForDate(date);
+  if (!variant) return { typeId: "friday", date };
+  return {
+    typeId: variant.typeId,
+    date,
+    title: variant.title,
+    tags: [...variant.tags],
+    sourceRef: {
+      friday_variant: variant.key,
+      friday_variant_name: variant.displayName,
+      friday_template: variant.templateNote,
+      ...(variant.noGathering ? { no_gathering: true } : {}),
+    },
+  };
 }
 
 function isAllGenerationsWorshipDate(date) {
@@ -2827,22 +2902,24 @@ function worshipServiceExistsForTarget(target = {}) {
 function autoWorshipServicePayload(target = {}) {
   const typeId = worshipAppServiceTypeId(target.typeId);
   const persistedAt = new Date().toISOString();
+  const sourceRef = target.sourceRef && typeof target.sourceRef === "object" ? target.sourceRef : {};
   return {
     id: createUuid(),
     service_type_id: canonicalWorshipServiceTypeId(typeId),
     service_date: target.date,
     created_at: persistedAt,
     updated_at: persistedAt,
-    title: "",
+    title: String(target.title || "").trim(),
     status: "draft",
     worship_leader: defaultServiceWorshipLeader(typeId),
     praise_leader: serviceUsesPraiseLeader(typeId) ? defaultServicePraiseLeader(typeId) : "",
-    tags: [],
+    tags: Array.isArray(target.tags) ? target.tags : [],
     source_kind: "mindex",
     source_ref: {
       created_from: "mindex_auto_schedule",
       app_service_type_id: typeId,
       auto_generated: true,
+      ...sourceRef,
     },
     notes: "",
   };
@@ -11183,6 +11260,7 @@ const SUNDAY_MINISTRY_SERVICE_TYPES = new Set(["children", "youth", "young-adult
 const AUTO_UPCOMING_PUBLIC_SERVICE_TYPES = [
   "wednesday",
   "friday",
+  "monthly",
   "sunday-first",
   "sunday-second",
   "sunday-main",
@@ -17288,6 +17366,11 @@ function serviceDisplayTypeName(service) {
   if (service.type_id === "sunday-main" && tags.some((tag) => String(tag).includes("2·3부 통합"))) {
     return "주일예배 [2·3부 통합]";
   }
+  const sourceRef = service?._worshipSourceRef && typeof service._worshipSourceRef === "object" ? service._worshipSourceRef : {};
+  if (worshipAppServiceTypeId(service.type_id) === "friday") {
+    const fridayName = String(sourceRef.friday_variant_name || "").trim();
+    if (fridayName) return fridayName;
+  }
   if (serviceTypeUsesCanonicalTitle(service.type_id)) return serviceTypeDisplayName(service.type_id);
   const customTitle = serviceCustomTitle(service);
   if (customTitle) return normalizeWorshipServiceTitle(customTitle, service);
@@ -17299,8 +17382,21 @@ function serviceTypeById(typeId) {
   return state.serviceTypes.find((type) => type.id === appTypeId) || null;
 }
 
+function serviceIsNoGathering(service = null) {
+  const sourceRef = service?._worshipSourceRef && typeof service._worshipSourceRef === "object" ? service._worshipSourceRef : {};
+  const tags = Array.isArray(service?.tags) ? service.tags : [];
+  const text = compactSearchValue([
+    sourceRef.friday_template,
+    sourceRef.no_gathering ? "집회 없음" : "",
+    service?.title,
+    ...tags,
+  ].filter(Boolean).join(" "));
+  return Boolean(sourceRef.no_gathering || text.includes("집회없음"));
+}
+
 function serviceOrderTemplate(typeId, options = {}) {
   const appTypeId = worshipAppServiceTypeId(typeId);
+  if (serviceIsNoGathering(options.service)) return [];
   const fallbackTemplate = serviceOrderTemplateFallback(appTypeId, options);
   const hasReadyStep = fallbackTemplate.some((step) => {
     const value = step && typeof step === "object" ? step : { label: String(step || ""), name: String(step || "") };
