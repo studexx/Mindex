@@ -6,6 +6,10 @@ Read `HANDOFF.md` first. This file is the short UI contract for Codex threads so
 
 - Detail pane page padding: `24px` on all sides on desktop and narrow layouts,
   unless a feature has an explicit fullscreen/presenter reason to override it.
+- New app-layout spacing should prefer clean `5px`/`10px` rhythm values. Existing
+  shell tokens may stay on the older `4px` scale until that area is deliberately
+  retuned; when touching a dense page, choose the nearest stable `5px` or `10px`
+  value instead of adding one-off numbers.
 - Sidebar open or closed must not change the detail pane gutter.
 - Topbar icon buttons are square, `40px` by `40px`.
 - Sidebar toggle, home, theme, and save controls should share the same button geometry.
