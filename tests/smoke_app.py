@@ -871,7 +871,7 @@ def main() -> int:
                     })()
                     """
                 )
-                expected_home_order = ["예배", "전체 예배", "템플릿", "최근 예배"]
+                expected_home_order = ["예배", "전체 예배", "최근 예배"]
                 if (
                     home_order == expected_home_order
                     and not home_visibility_state["hasActivities"]
@@ -1384,9 +1384,9 @@ def main() -> int:
                     (() => {
                       const today = new Date();
                       today.setHours(0, 0, 0, 0);
-                      const cards = [...document.querySelectorAll('.service-sidebar-section--recent [data-open-service]')];
+                      const cards = [...document.querySelectorAll('.service-sidebar-section--recent [data-service-id]')];
                       const services = cards
-                        .map((card) => state.services.find((service) => service.id === card.dataset.openService))
+                        .map((card) => state.services.find((service) => service.id === card.dataset.serviceId))
                         .filter(Boolean);
                       const dates = services.map((service) => {
                         const value = parseLocalDate(service.date);
@@ -1422,9 +1422,9 @@ def main() -> int:
                       today.setHours(0, 0, 0, 0);
                       const end = new Date(today);
                       end.setDate(today.getDate() + 6);
-                      const cards = [...document.querySelectorAll('.service-sidebar-section--recent [data-open-service]')];
+                      const cards = [...document.querySelectorAll('.service-sidebar-section--recent [data-service-id]')];
                       const services = cards
-                        .map((card) => state.services.find((service) => service.id === card.dataset.openService))
+                        .map((card) => state.services.find((service) => service.id === card.dataset.serviceId))
                         .filter(Boolean);
                       const dates = services.map((service) => {
                         const value = parseLocalDate(service.date);
