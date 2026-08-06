@@ -699,6 +699,11 @@ const state = {
   calendarDetailTab: "departments",
   calendarCellSaves: new Map(),
   listScroll: {},
+  searchCache: {
+    global: new Map(),
+    songPicker: new Map(),
+    renderTimer: 0,
+  },
   forms: [],
   search: "",
   loading: false,
@@ -887,11 +892,7 @@ function bindStaticEvents() {
     if (shouldClearBibleTextSearchOnInput()) {
       clearBibleTextSearch();
     }
-    renderSongList();
-    if (state.module === "home") renderDetail();
-    if (state.module === "scripture") renderDetail();
-    if (state.module === "references") renderDetail();
-    if (isServiceDataModule()) renderCurrentServiceModuleDetail();
+    scheduleSearchRender();
   });
   refs.searchInput.addEventListener("keydown", handleSearchKeydown);
   refs.listFilter.addEventListener("click", (event) => {
@@ -2206,6 +2207,7 @@ async function loadSongsOnce() {
 
   state.connectionError = "";
   state.songs = (data || []).map(normalizeServerSong).sort(sortSongs);
+  clearSearchCaches();
   await attachRelationalSongVersions();
   if (!state.songs.some((song) => cleanList(song.related_song_ids).length)) {
     await attachSongRelations();
@@ -2267,6 +2269,7 @@ async function loadSongsForIds(songIds = []) {
   const linkedSongs = songRows.map(normalizeServerSong);
   for (const song of linkedSongs) songMap.set(song.id, song);
   state.songs = [...songMap.values()].sort(sortSongs);
+  clearSearchCaches();
   await attachRelationalSongVersionsForSongs(linkedSongs.map((song) => song.id));
 }
 
@@ -4240,6 +4243,7 @@ async function createPraiseSong(options = {}) {
     }
 
     state.songs = [song, ...state.songs.filter((item) => item.id !== song.id)].sort(sortSongs);
+    clearSearchCaches();
     state.selectedSongId = song.id;
     state.selectedVersionId = getDefaultVersionId(song);
     state.forms = normalizeForms((getSelectedVersion()?.forms || []).map((form) => withLocalId({ ...form, song_id: state.selectedVersionId })));
@@ -4324,6 +4328,7 @@ async function deleteSelectedSong() {
     }
 
     state.songs = state.songs.filter((item) => item.id !== song.id);
+    clearSearchCaches();
     state.selectedSongId = null;
     state.selectedVersionId = null;
     state.forms = [];
@@ -4371,6 +4376,7 @@ async function saveAll() {
     writeFormsToSelectedVersion();
     await saveSongMeta(song);
     state.songs = state.songs.sort(sortSongs);
+    clearSearchCaches();
     state.dirty.song = false;
     state.dirty.forms = false;
     showToast("저장했습니다.");
@@ -5432,6 +5438,7 @@ async function saveSongMeta(song) {
 
   const versions = song.versions || [];
   Object.assign(song, normalizeServerSong(data));
+  clearSearchCaches();
   if (useVersionTables) {
     song.versions = normalizeSongVersions(song, versions);
     song._memoHasVersions = false;
@@ -9119,6 +9126,7 @@ async function createPraiseSongFromServiceItem(index) {
       }
     }
     state.songs = [song, ...state.songs].sort(sortSongs);
+    clearSearchCaches();
     item.song_id = song.id;
     item.version_id = getDefaultVersionId(song);
     item.song_version_id = item.version_id;
@@ -11260,6 +11268,27 @@ function renderConnectionStatus() {
   setStatusIcon("database", "connected", "연결됨");
 }
 
+function clearSearchCaches(options = {}) {
+  state.searchCache.global.clear();
+  if (options.songs !== false) state.searchCache.songPicker.clear();
+}
+
+function scheduleSearchRender(delay = 120) {
+  window.clearTimeout(state.searchCache.renderTimer);
+  state.searchCache.renderTimer = window.setTimeout(() => {
+    state.searchCache.renderTimer = 0;
+    renderSearchResultsForCurrentModule();
+  }, delay);
+}
+
+function renderSearchResultsForCurrentModule() {
+  renderSongList();
+  if (state.module === "home") renderDetail();
+  if (state.module === "scripture") renderDetail();
+  if (state.module === "references") renderDetail();
+  if (isServiceDataModule()) renderCurrentServiceModuleDetail();
+}
+
 function renderSongList() {
   if (isAuthRequired() && !state.auth.session) {
     refs.songCount.textContent = "";
@@ -11393,12 +11422,24 @@ function renderGlobalSearchSection(title, itemsHtml) {
 
 function getGlobalSearchResults() {
   const query = normalizeSearchValue(state.search);
+  const cacheKey = [
+    state.module,
+    query,
+    state.songs.length,
+    getBibleBooks().length,
+    state.services.length,
+    state.loadedWorshipServiceIds.size,
+  ].join("::");
+  if (state.searchCache.global.has(cacheKey)) return state.searchCache.global.get(cacheKey);
   const tokens = getSearchTokens(query);
-  return {
+  const results = {
     praise: getGlobalPraiseResults(tokens),
     scripture: getGlobalScriptureResults(query, tokens),
     service: getGlobalServiceResults(query),
   };
+  state.searchCache.global.clear();
+  state.searchCache.global.set(cacheKey, results);
+  return results;
 }
 
 function getGlobalPraiseResults(tokens) {
@@ -19805,16 +19846,27 @@ function serviceSongPickerResults(query, item = {}, service = selectedServiceFor
   const tokens = getSearchTokens(query);
   if (!tokens.length) return [];
   const requiresNewHymnal = serviceItemRequiresNewHymnalScoreSong(item);
+  const cacheKey = [
+    normalizeSearchValue(query),
+    requiresNewHymnal ? "hymn" : "all",
+    service?.id || "",
+    state.songs.length,
+    limit,
+  ].join("::");
+  if (state.searchCache.songPicker.has(cacheKey)) return state.searchCache.songPicker.get(cacheKey);
   const candidates = state.songs
     .filter((song) => !requiresNewHymnal || isNewHymnalScoreSong(song))
     .map((song) => ({ song, match: getSongSearchMatch(song, tokens) }))
     .filter((entry) => entry.match);
   const phraseMatches = candidates.filter((entry) => entry.match.phraseMatched);
   const results = phraseMatches.length ? phraseMatches : candidates;
-  return results
+  const songs = results
     .sort((a, b) => b.match.score - a.match.score || sortSongsForCurrentList(a.song, b.song))
     .slice(0, limit)
     .map((entry) => entry.song);
+  if (state.searchCache.songPicker.size > 80) state.searchCache.songPicker.clear();
+  state.searchCache.songPicker.set(cacheKey, songs);
+  return songs;
 }
 
 function renderServiceSongPickerResult(song, index) {
@@ -21376,6 +21428,7 @@ async function createBlankPraiseSongForServiceInput(value, service = selectedSer
     }
   }
   state.songs = [song, ...state.songs.filter((candidate) => candidate.id !== song.id)].sort(sortSongs);
+  clearSearchCaches();
   return song;
 }
 
