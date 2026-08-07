@@ -4782,7 +4782,7 @@ def main() -> int:
 
 금요기도회입니다!
 입례찬양 주 예수 나의 산 소망 G
-기도찬양1 마지막 날에 D
+기도 찬양 마지막 날에 D
 기도찬양2 부흥 G`;
                             await applyPresenterPreparationInput(fridayService.id);
                             const fridayItems = state.serviceItems[fridayService.id] || [];
@@ -4836,6 +4836,8 @@ def main() -> int:
                                 labels: ['찬양 1', '찬양 2', '찬양 3', '찬양 4', '찬양 5'].map((label) => fridayByLabel(label).label || ''),
                                 praiseSongIds: ['찬양 1', '찬양 2', '찬양 3', '찬양 4', '찬양 5'].map((label) => fridayByLabel(label).song_id || ''),
                                 entryPraiseSongIds: ['입례찬양', '기도 찬양 1', '기도 찬양 2'].map((label) => fridayByLabel(label).song_id || ''),
+                                prayerPraiseOneRawTitle: fridayByLabel('기도 찬양 1').raw_title || '',
+                                prayerAssignee: fridayByLabel('대표기도').assignee || fridayByLabel('기도').assignee || '',
                                 songInputs: ['주 내 소망은 주 더 알기 원합니다 G', '오직 주의 사랑에 매여 D', '내 삶의 이유라 D'].map(presenterPreparationSongContent),
                                 legacyEntranceLabel: fridayLegacyItems.find((entry) => entry.label === '입례찬양')?.label || '',
                                 legacyEntranceSection: fridayLegacyItems.find((entry) => entry.label === '입례찬양')?._worshipSectionKey || '',
@@ -4930,6 +4932,8 @@ def main() -> int:
                         ]
                         and all(presenter_preparation_paste["fridayInput"]["praiseSongIds"])
                         and all(presenter_preparation_paste["fridayInput"]["entryPraiseSongIds"])
+                        and presenter_preparation_paste["fridayInput"]["prayerPraiseOneRawTitle"] == ""
+                        and presenter_preparation_paste["fridayInput"]["prayerAssignee"] == ""
                         and presenter_preparation_paste["fridayInput"]["songInputs"] == [
                             "주 내 소망은 주 더 알기 원합니다", "오직 주의 사랑에 매여", "내 삶의 이유라"
                         ]
