@@ -669,6 +669,26 @@ service, section, element, and slide instance data in display order.
 
 The app can later read this view directly once Worship data is populated.
 
+## Song Form Defaults
+
+Presenter song defaults should follow a verse/chorus cycle first, then tail
+sections:
+
+```text
+V1-C-V2-C-...-B-Coda
+```
+
+Older metadata may still contain shapes such as `V1-V2-C-V3-Coda`. Treat those
+as legacy default metadata and normalize them at read time to the cycle above.
+Do not apply this rewrite to manual worship-item overrides; explicit manual
+forms are operator intent.
+
+Public special-song hymns keep their separate public preset:
+
+```text
+1절-후렴-2절-후렴-간주-마지막 절-후렴
+```
+
 ## Naming Decision
 
 Use `worship service` for the top-level instance name. The product area is

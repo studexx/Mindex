@@ -450,7 +450,7 @@ function presenterFormPlanForServiceItem(version = {}, item, song = null) {
       || null;
   const effectivePreset = presenterFormPresetWithAvailableForms(preset, forms);
   if (!effectivePreset?.forms?.length) return { forms, warnings: [] };
-  const resolved = resolvePresenterFormPresetSequence(forms, effectivePreset.forms);
+  const resolved = resolvePresenterFormPresetSequence(forms, effectivePreset);
   const warnings = resolved.missing.map((label) => `${label} 없음`);
   const omitUnlisted = presenterFormPresetShouldOmitUnlisted(effectivePreset);
   return {
@@ -670,9 +670,10 @@ function serviceItemFormPresetRuleMatches(rule = {}, item = {}, song = null, ver
   return true;
 }
 
-function resolvePresenterFormPresetSequence(forms = [], presetForms = []) {
+function resolvePresenterFormPresetSequence(forms = [], preset = []) {
+  const presetForms = Array.isArray(preset) ? preset : cleanList(preset?.forms);
   if (presenterFormsAreUnsplitLyrics(forms)) {
-    const lyricsResolved = resolvePresenterLyricsFormPresetSequence(forms, presetForms);
+    const lyricsResolved = resolvePresenterLyricsFormPresetSequence(forms, presetForms, Array.isArray(preset) ? [] : preset?.sourceForms);
     if (lyricsResolved.items.length) return lyricsResolved;
   }
   const items = [];
@@ -690,8 +691,19 @@ function presenterFormsAreUnsplitLyrics(forms = []) {
   return Boolean(normalizedForms.length) && normalizedForms.every((form) => normalizePresenterFormPresetLabel(presenterFormDisplayLabel(form)).type === "lyrics");
 }
 
-function resolvePresenterLyricsFormPresetSequence(forms = [], presetForms = []) {
+function resolvePresenterLyricsFormPresetSequence(forms = [], presetForms = [], sourceForms = []) {
   const blocks = presenterLyricsBlocksFromForms(forms);
+  const blockBySourceKey = new Map();
+  const sourceBlockIndexes = new Set();
+  cleanList(sourceForms).forEach((label, index) => {
+    const target = normalizePresenterFormPresetLabel(label);
+    if (!target.key || target.blank || blockBySourceKey.has(target.key)) return;
+    const block = blocks[index];
+    if (block) {
+      blockBySourceKey.set(target.key, block);
+      sourceBlockIndexes.add(index);
+    }
+  });
   const items = [];
   const missing = [];
   const assigned = new Map();
@@ -708,12 +720,16 @@ function resolvePresenterLyricsFormPresetSequence(forms = [], presetForms = []) 
       items.push({ ...assignedForm, id: `${assignedForm.id}:repeat:${index}` });
       return;
     }
-    const block = blocks[blockIndex];
+    const sourceBlock = blockBySourceKey.get(target.key);
+    while (!sourceBlock && sourceBlockIndexes.has(blockIndex)) blockIndex += 1;
+    const block = sourceBlock || blocks[blockIndex];
     if (!block) {
       missing.push(normalizePresenterMissingFormLabel(label));
       return;
     }
-    blockIndex += 1;
+    if (!sourceBlock) {
+      blockIndex += 1;
+    }
     const form = presenterVirtualFormPresetItem(label, target, block, index);
     assigned.set(target.key, form);
     items.push(form);

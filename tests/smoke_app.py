@@ -1900,7 +1900,7 @@ def main() -> int:
                             const song = {
                               id: '__form_meta_song__',
                               title: '송폼 메타 찬양',
-                              metadata: { presenter_form: { forms: ['V1', 'C', 'V2', 'C'], hint: 'V1-C-V2-C' } },
+                              metadata: { presenter_form: { forms: ['V1', 'V2', 'C', 'B', 'Coda'], hint: 'V1-V2-C-B-Coda' } },
                               versions: [{ id: '__form_meta_version__', forms: [] }]
                             };
                             const item = normalizeServiceItem({
@@ -2794,8 +2794,8 @@ def main() -> int:
                             "formHint": "V2-C",
                             "forms": ["V2", "C"],
                             "strength": "manual",
-                            "metadataValue": "V1-C-V2-C",
-                            "inputValue": "V1-C-V2-C",
+                            "metadataValue": "V1-C-V2-C-B-Coda",
+                            "inputValue": "V1-C-V2-C-B-Coda",
                             "disabledMemoKeepsOverride": True,
                             "disabledValue": "",
                             "savedOverride": True,

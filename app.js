@@ -8123,6 +8123,72 @@ function normalizeServiceFormPresetForms(value) {
     .filter(Boolean);
 }
 
+function normalizeSongDefaultFormPreset(preset) {
+  const normalized = normalizeServiceFormPreset(preset, "", "song-default");
+  if (!normalized?.forms?.length) return normalized;
+  const forms = cleanList(normalized.forms);
+  const entries = forms.map((label) => ({ label, target: normalizeSongFormPresetLabel(label) }));
+  const verseEntries = entries.filter(({ target }) => target.type === "verse");
+  const chorusEntry = entries.find(({ target }) => target.type === "chorus");
+  if (!verseEntries.length || !chorusEntry) return normalized;
+
+  const cycleForms = [];
+  const seenVerses = new Set();
+  verseEntries.forEach(({ label, target }, index) => {
+    const key = target.key || `verse:${index + 1}`;
+    if (seenVerses.has(key)) return;
+    seenVerses.add(key);
+    cycleForms.push(label);
+    cycleForms.push(chorusEntry.label);
+  });
+
+  const tailForms = [];
+  const codaForms = [];
+  const seenTail = new Set();
+  entries.forEach(({ label, target }) => {
+    if (target.type === "verse" || target.type === "chorus") return;
+    const key = target.key || compactSearchValue(label);
+    if (!key || seenTail.has(key)) return;
+    seenTail.add(key);
+    if (target.type === "coda") codaForms.push(label);
+    else tailForms.push(label);
+  });
+
+  const nextForms = [...cycleForms, ...tailForms, ...codaForms];
+  if (!nextForms.length || (nextForms.length === forms.length && nextForms.every((label, index) => label === forms[index]))) {
+    return normalized;
+  }
+  return {
+    ...normalized,
+    forms: nextForms,
+    sourceForms: forms,
+    hint: nextForms.join("-"),
+    strength: normalized.strength || "song-default",
+  };
+}
+
+function normalizeSongFormPresetLabel(value = "") {
+  const raw = String(value || "").trim();
+  const compact = compactSearchValue(raw);
+  const verse = raw.match(/^(?:v|verse)\s*(\d*)([a-z])?$/i) || raw.match(/^(\d+)\s*절$/u);
+  if (verse) {
+    const number = Number(verse[1]) || 0;
+    const group = String(verse[2] || "").toLowerCase();
+    const baseKey = number ? `verse:${number}` : "verse";
+    return { key: group ? `${baseKey}:${group}` : baseKey, type: "verse", number };
+  }
+  const chorus = raw.match(/^(?:c|chorus|후렴|코러스)\s*(\d*)$/i);
+  if (chorus) {
+    const number = Number(chorus[1]) || 0;
+    return { key: number ? `chorus:${number}` : "chorus", type: "chorus", number };
+  }
+  if (/^(b|bridge|브릿지)$/i.test(compact)) return { key: "bridge", type: "bridge" };
+  if (/^(pc|prechorus|pre-chorus|프리코러스)$/i.test(compact)) return { key: "pre-chorus", type: "pre-chorus" };
+  if (/^(coda|코다|ending|엔딩)$/i.test(compact)) return { key: "coda", type: "coda" };
+  if (/^(간주|interlude|instrumental)$/i.test(compact)) return { key: "instrumental", type: "instrumental" };
+  return { key: compact, type: compact };
+}
+
 function normalizeServiceFormPresetRules(value) {
   const source = Array.isArray(value) ? value : parseObjectPayload(value);
   if (!Array.isArray(source)) return [];
@@ -15501,7 +15567,7 @@ function normalizeSongMetadata(value) {
     source.default_form,
   );
   const presenterForm = presenterFormSource
-    ? normalizeServiceFormPreset(presenterFormSource, "", "song-default")
+    ? normalizeSongDefaultFormPreset(presenterFormSource)
     : null;
   const metadata = {
     artist: nullIfBlank(source.artist || source.performer),
