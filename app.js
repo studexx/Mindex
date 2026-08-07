@@ -985,6 +985,8 @@ function bindStaticEvents() {
   refs.songList.addEventListener("change", handleDetailChange);
 
   refs.songList.addEventListener("click", async (event) => {
+    if (handleServiceOutlineSlideEvent(event)) return;
+
     const preparationApply = event.target.closest("[data-presenter-preparation-apply]");
     if (preparationApply) {
       applyPresenterPreparationInput(preparationApply.dataset.serviceId || state.selectedServiceId);
