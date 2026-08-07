@@ -15625,7 +15625,7 @@ function confirmUnsavedChangesAction() {
         cleanup("cancel");
         return;
       }
-      const button = event.target.closest("[data-unsaved-action]");
+      const button = event.target instanceof Element ? event.target.closest("[data-unsaved-action]") : null;
       if (!button) return;
       cleanup(button.dataset.unsavedAction);
     });

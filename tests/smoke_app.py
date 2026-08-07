@@ -464,6 +464,47 @@ def main() -> int:
             else:
                 pass_("document-title-uppercase")
 
+            unsaved_leave_dialog = page.evaluate(
+                """
+                (async () => {
+                  if (typeof state === 'undefined' || typeof confirmSaveBeforeLeaving !== 'function') {
+                    return { ready: false };
+                  }
+                  const originalReloadDiscardedChanges = reloadDiscardedChanges;
+                  let reloadedModules = null;
+                  reloadDiscardedChanges = async (dirtyModules) => {
+                    reloadedModules = dirtyModules;
+                  };
+                  if (typeof clearDirtyState === 'function') clearDirtyState();
+                  state.dirty.song = true;
+                  if (typeof updateSaveState === 'function') updateSaveState();
+                  const pending = confirmSaveBeforeLeaving();
+                  await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+                  const buttons = [...document.querySelectorAll('.unsaved-dialog [data-unsaved-action]')]
+                    .map((button) => button.dataset.unsavedAction);
+                  document.querySelector('[data-unsaved-action="discard"]')?.click();
+                  const result = await pending;
+                  const dialogGone = !document.querySelector('.unsaved-dialog-backdrop');
+                  const dirtyAfter = typeof hasDirtyChanges === 'function' ? hasDirtyChanges() : null;
+                  reloadDiscardedChanges = originalReloadDiscardedChanges;
+                  if (typeof clearDirtyState === 'function') clearDirtyState();
+                  if (typeof updateSaveState === 'function') updateSaveState();
+                  return { ready: true, buttons, result, reloadedModules, dialogGone, dirtyAfter };
+                })()
+                """
+            )
+            if (
+                unsaved_leave_dialog.get("ready")
+                and unsaved_leave_dialog.get("buttons") == ["cancel", "discard", "save"]
+                and unsaved_leave_dialog.get("result") is True
+                and unsaved_leave_dialog.get("reloadedModules", {}).get("praise") is True
+                and unsaved_leave_dialog.get("dialogGone") is True
+                and unsaved_leave_dialog.get("dirtyAfter") is False
+            ):
+                pass_("unsaved-leave-dialog-discard", json.dumps(unsaved_leave_dialog, ensure_ascii=False))
+            else:
+                fail("unsaved-leave-dialog-discard", json.dumps(unsaved_leave_dialog, ensure_ascii=False))
+
             icon_metrics = page.evaluate(
                 """
                 [...document.querySelectorAll('#sidebarToggleBtn,#themeBtn,#saveAllBtn')]
