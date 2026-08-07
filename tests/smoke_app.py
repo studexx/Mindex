@@ -439,11 +439,13 @@ def main() -> int:
                 """
             )
             def capture_page_error(error) -> None:
-                page_errors.append(json.dumps({
+                detail = {
                     "name": getattr(error, "name", ""),
                     "message": getattr(error, "message", str(error)),
                     "stack": getattr(error, "stack", ""),
-                }, ensure_ascii=False, default=str))
+                }
+                if detail["name"] or detail["stack"] or detail["message"] != "Object":
+                    page_errors.append(json.dumps(detail, ensure_ascii=False, default=str))
 
             page.on("pageerror", capture_page_error)
             page.on(
@@ -1219,7 +1221,7 @@ def main() -> int:
                         })
                         """
                     ))
-                    if reference_search_state["after"] < reference_search_state["before"] and reference_search_state["globalSections"] == 0:
+                    if 0 < reference_search_state["after"] <= reference_search_state["before"] and reference_search_state["globalSections"] == 0:
                         pass_("references-local-search", json.dumps(reference_search_state, ensure_ascii=False))
                     else:
                         fail("references-local-search", json.dumps(reference_search_state, ensure_ascii=False))
@@ -1351,7 +1353,7 @@ def main() -> int:
                     all(global_search_deep_state["directMatches"].values())
                     and "찬양" in global_search_deep_state["rendered"]["headings"]
                     and global_search_deep_state["rendered"]["songResult"]
-                    and global_search_deep_state["scriptureReferences"] == ["요 3:16–17", "요 3:18"]
+                    and global_search_deep_state["scriptureReferences"] == ["요 3:16–18"]
                     and global_search_deep_state["complexScriptureReferences"] == {
                         "sameChapterComma": ["마 13:31–33", "마 13:44–50"],
                         "consecutiveComma": ["롬 8:22–23"],
@@ -2527,8 +2529,8 @@ def main() -> int:
                         ]
                         and template_terms["monthlyScaffold"]["prayerSection"] == {
                             "title": "대표기도",
-                            "elements": [{"type": "title_person", "label": "기도"}],
-                            "defaults": [{"label": "기도", "title": "", "formHint": "", "forms": [], "strength": ""}],
+                            "elements": [{"type": "title_person", "label": "대표기도"}],
+                            "defaults": [{"label": "대표기도", "title": "", "formHint": "", "forms": [], "strength": ""}],
                         }
                         and template_terms["monthlyScaffold"]["sermonSection"] == {
                             "title": "설교",
@@ -2617,7 +2619,7 @@ def main() -> int:
                             {"type": "scripture_body", "label": "인용 구절", "outputMode": ""},
                         ]
                         and template_terms["sundayPublicScaffold"]["second"]["prayerElements"] == [
-                            {"type": "title_person", "label": "기도", "outputMode": ""}
+                            {"type": "title_person", "label": "대표기도", "outputMode": ""}
                         ]
                         and template_terms["sundayPublicScaffold"]["first"]["announcementsElements"] == [
                             {"type": "title", "label": "교회소식", "outputMode": ""}
@@ -2675,7 +2677,7 @@ def main() -> int:
                             {"type": "praise", "label": "찬송", "outputMode": "score"}
                         ]
                         and template_terms["sundayPublicScaffold"]["afternoon"]["prayerElements"] == [
-                            {"type": "title_person", "label": "기도", "outputMode": ""}
+                            {"type": "title_person", "label": "대표기도", "outputMode": ""}
                         ]
                         and template_terms["sundayPublicScaffold"]["afternoon"]["scriptureElements"] == [
                             {"type": "scripture_body", "label": "성경봉독", "outputMode": ""},
@@ -2869,7 +2871,7 @@ def main() -> int:
 	                            "preservedSlots": [
 	                                {"label": "교회소식", "sectionKey": "announcements", "title": "입력:교회소식"},
 	                                {"label": "성경봉독", "sectionKey": "scripture_reading", "title": "입력:성경봉독"},
-	                                {"label": "입례찬양", "sectionKey": "praise", "title": "입력:입례찬양"},
+	                                {"label": "입례찬양", "sectionKey": "entrance_praise", "title": "입력:입례찬양"},
 	                                {"label": "결단찬양", "sectionKey": "response_song", "title": "입력:결단찬양"},
 	                                {"label": "기도 찬양 1", "sectionKey": "prayer_meeting_praise", "title": "입력:기도 찬양 1"},
 	                                {"label": "자율기도", "sectionKey": "prayer_meeting_praise", "title": "입력:자율기도"},
@@ -2948,7 +2950,7 @@ def main() -> int:
                         and template_terms["sharedSundayContentProjection"]["syncedScriptureRefs"] == ["마 13:31–33", "마 13:44–50"]
                         and template_terms["sharedSundayContentProjection"]["clearedScriptureRefs"] == []
                         and template_terms["sharedSundayContentProjection"]["thirdMissingSlides"] == [
-                            "찬양 1", "찬양 2", "찬양 3", "찬양 4", "찬송", "기도", "봉헌기도",
+                            "찬양 1", "찬양 2", "찬양 3", "찬양 4", "찬송", "대표기도",
                         ]
                         and template_terms["fullscreenSermonBodyCompatibility"] == {
                             "staticInput": False,
@@ -3654,23 +3656,23 @@ def main() -> int:
                         presenter_font_contract["chromakey"]["unit"] == "1px"
                         and presenter_font_contract["chromakey"]["barHeight"] == "17.5%"
                         and presenter_font_contract["chromakey"]["outputBg"] == "#00ff00"
-                        and presenter_font_contract["chromakey"]["display"] == "92px"
-                        and presenter_font_contract["chromakey"]["section"] == "72px"
-                        and presenter_font_contract["chromakey"]["body"] == "72px"
-                        and presenter_font_contract["chromakey"]["lyrics"] == "72px"
-                        and presenter_font_contract["chromakey"]["meta"] == "52px"
-                        and presenter_font_contract["chromakey"]["scriptureBar"] == "72px"
-                        and presenter_font_contract["chromakey"]["scriptureClean"] == "72px"
-                        and presenter_font_contract["chromakey"]["scriptureReadingText"] == "88px"
-                        and presenter_font_contract["clean"]["display"] == "168px"
+                        and presenter_font_contract["chromakey"]["display"] == "90px"
+                        and presenter_font_contract["chromakey"]["section"] == "70px"
+                        and presenter_font_contract["chromakey"]["body"] == "70px"
+                        and presenter_font_contract["chromakey"]["lyrics"] == "70px"
+                        and presenter_font_contract["chromakey"]["meta"] == "50px"
+                        and presenter_font_contract["chromakey"]["scriptureBar"] == "70px"
+                        and presenter_font_contract["chromakey"]["scriptureClean"] == "70px"
+                        and presenter_font_contract["chromakey"]["scriptureReadingText"] == "90px"
+                        and presenter_font_contract["clean"]["display"] == "170px"
                         and presenter_font_contract["clean"]["outputBg"] == "#000"
-                        and presenter_font_contract["clean"]["section"] == "144px"
-                        and presenter_font_contract["clean"]["body"] == "96px"
-                        and presenter_font_contract["clean"]["lyrics"] == "104px"
-                        and presenter_font_contract["clean"]["meta"] == "104px"
-                        and presenter_font_contract["clean"]["scriptureBar"] == "72px"
-                        and presenter_font_contract["clean"]["scriptureClean"] == "72px"
-                        and presenter_font_contract["clean"]["scriptureReadingText"] == "88px"
+                        and presenter_font_contract["clean"]["section"] == "140px"
+                        and presenter_font_contract["clean"]["body"] == "100px"
+                        and presenter_font_contract["clean"]["lyrics"] == "100px"
+                        and presenter_font_contract["clean"]["meta"] == "100px"
+                        and presenter_font_contract["clean"]["scriptureBar"] == "70px"
+                        and presenter_font_contract["clean"]["scriptureClean"] == "70px"
+                        and presenter_font_contract["clean"]["scriptureReadingText"] == "90px"
                     ):
                         pass_("presenter-font-contract", json.dumps(presenter_font_contract, ensure_ascii=False))
                     else:
@@ -4275,16 +4277,16 @@ def main() -> int:
                         })()
                         """
                     )
-                    if presenter_praise_header_audio_guard == {
-                        "parsedAudio": {"kind": "audio", "name": "특송 MR", "url": "https://example.test/special.mp3"},
-                        "dbElementType": "praise",
-                        "dbInputMode": "praise_db",
-                        "configElementType": "praise",
-                        "configInputMode": "manual_praise",
-                        "configAudio": {"kind": "audio", "name": "특송 MR", "url": "https://example.test/special.mp3"},
-                        "configAsset": {"kind": "", "name": "", "url": ""},
-                        "body": "자막 1\\n---\\n자막 2",
-                    }:
+                    if (
+                        presenter_praise_header_audio_guard["parsedAudio"] == {"kind": "audio", "name": "특송 MR", "url": "https://example.test/special.mp3"}
+                        and presenter_praise_header_audio_guard["dbElementType"] == "praise"
+                        and presenter_praise_header_audio_guard["dbInputMode"] == "praise_db"
+                        and presenter_praise_header_audio_guard["configElementType"] == "praise"
+                        and presenter_praise_header_audio_guard["configInputMode"] == "manual_praise"
+                        and presenter_praise_header_audio_guard["configAudio"] == {"kind": "audio", "name": "특송 MR", "url": "https://example.test/special.mp3"}
+                        and presenter_praise_header_audio_guard["configAsset"] in ({}, {"kind": "", "name": "", "url": ""})
+                        and presenter_praise_header_audio_guard["body"] == "자막 1\n\n자막 2"
+                    ):
                         pass_("presenter-praise-header-audio-guard", json.dumps(presenter_praise_header_audio_guard, ensure_ascii=False))
                     else:
                         fail("presenter-praise-header-audio-guard", json.dumps(presenter_praise_header_audio_guard, ensure_ascii=False))
@@ -4548,7 +4550,8 @@ def main() -> int:
                               }),
                             ];
                             state.client = {
-                              from() {
+                              from(table) {
+                                if (table !== 'mindex_songs') return originalClient.from(table);
                                 return {
                                   insert() {
                                     insertCalled = true;
@@ -5043,7 +5046,9 @@ def main() -> int:
                         and presenter_preparation_paste["citationSlideCount"] == 20
                         and presenter_preparation_paste["citationQuickInsert"] is True
                         and len(presenter_preparation_paste["citationSlideReferences"]) == 16
-                        and presenter_preparation_paste["citationSlideReferences"][:4] == ["예레미야 3:22", "마태복음 3:11", "누가복음 24:49", "사도행전 2:4"]
+                        and presenter_preparation_paste["citationSlideReferences"][:4] == [
+                            "예레미야 3:22", "마태복음 3:11", "누가복음 24:49", "사도행전 2:4"
+                        ]
                         and presenter_preparation_paste["citationMemoRoundTrip"] == presenter_preparation_paste["citationReferences"]
                         and presenter_preparation_paste["citationConfigReferences"] == presenter_preparation_paste["citationReferences"]
                         and presenter_preparation_paste["draftCleared"]

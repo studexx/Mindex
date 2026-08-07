@@ -12,6 +12,8 @@ const {
 const TABLE_COLUMN_SUPPORT_CACHE = new Map();
 let songLoadPromise = null;
 let serviceDataLoadPromise = null;
+const serviceItemLoadPromises = new Map();
+const presenterServiceHydrationPromises = new Map();
 let hymnScoreManifestLoadPromise = null;
 let songCatalogLoaded = false;
 let backgroundSongLoadScheduled = false;
@@ -3019,6 +3021,10 @@ async function loadWorshipData() {
   state.serviceItemMemoSupported = true;
   state.serviceTitleSupported = true;
 
+  if (state.selectedServiceId && (state.module === "presenter" || isServiceDataModule())) {
+    await hydratePresenterServiceData(state.selectedServiceId);
+  }
+
   render();
   loadSongsForIdsInBackground(elements.map((item) => item.song_id), {
     render: true,
@@ -3871,40 +3877,49 @@ function calendarCellClassForField(field) {
 
 async function loadServiceItems(serviceId) {
   if (!serviceId || state.loadedWorshipServiceIds.has(serviceId)) return;
+  if (serviceItemLoadPromises.has(serviceId)) return serviceItemLoadPromises.get(serviceId);
   if (!state.client) {
     state.serviceItems[serviceId] = state.serviceItems[serviceId] || [];
     return;
   }
   const service = state.services.find((svc) => svc.id === serviceId);
   if (!service) return;
-  const previousSectionIds = new Set(
-    state.worshipSections
-      .filter((section) => section.service_id === serviceId)
-      .map((section) => section.id)
-      .filter(Boolean),
-  );
-  const { sections, elements } = await fetchWorshipRowsForServiceIds([serviceId]);
-  const loadedSectionIds = new Set([
-    ...previousSectionIds,
-    ...sections.map((section) => section.id).filter(Boolean),
-  ]);
-  state.worshipSections = [
-    ...state.worshipSections.filter((section) => section.service_id !== serviceId),
-    ...sections,
-  ];
-  state.worshipElements = [
-    ...state.worshipElements.filter((element) => !loadedSectionIds.has(element.section_id)),
-    ...elements,
-  ];
-  state.loadedWorshipServiceIds.add(serviceId);
-  state.serviceItems[serviceId] = projectWorshipServiceItemsFromTemplate(
-    service,
-    groupWorshipElements(sections, elements)[serviceId] || [],
-  );
-  await loadSongsForIds(elements.map((item) => item.song_id));
-  warmWorshipScriptureReferencesForService(serviceId);
-  warmServiceItemScriptureReferencesForService(serviceId);
-  renderCurrentServiceModuleDetail();
+  const loadPromise = (async () => {
+    const previousSectionIds = new Set(
+      state.worshipSections
+        .filter((section) => section.service_id === serviceId)
+        .map((section) => section.id)
+        .filter(Boolean),
+    );
+    const { sections, elements } = await fetchWorshipRowsForServiceIds([serviceId]);
+    const loadedSectionIds = new Set([
+      ...previousSectionIds,
+      ...sections.map((section) => section.id).filter(Boolean),
+    ]);
+    state.worshipSections = [
+      ...state.worshipSections.filter((section) => section.service_id !== serviceId),
+      ...sections,
+    ];
+    state.worshipElements = [
+      ...state.worshipElements.filter((element) => !loadedSectionIds.has(element.section_id)),
+      ...elements,
+    ];
+    state.loadedWorshipServiceIds.add(serviceId);
+    state.serviceItems[serviceId] = projectWorshipServiceItemsFromTemplate(
+      service,
+      groupWorshipElements(sections, elements)[serviceId] || [],
+    );
+    await loadSongsForIds(elements.map((item) => item.song_id));
+    warmWorshipScriptureReferencesForService(serviceId);
+    warmServiceItemScriptureReferencesForService(serviceId);
+    renderCurrentServiceModuleDetail();
+  })();
+  serviceItemLoadPromises.set(serviceId, loadPromise);
+  try {
+    await loadPromise;
+  } finally {
+    serviceItemLoadPromises.delete(serviceId);
+  }
 }
 
 async function loadBibleTranslations({ silent = false } = {}) {
@@ -8900,6 +8915,37 @@ async function preloadPresenterServiceScripturesBeforeOutput(serviceId = state.s
     warmServiceItemScriptureReferencesForService(serviceId),
   ]);
   return results.some(Boolean);
+}
+
+async function hydratePresenterServiceData(serviceId = state.selectedServiceId) {
+  const targetServiceId = String(serviceId || "").trim();
+  if (!targetServiceId || !canUseClientData()) return false;
+  if (presenterServiceHydrationPromises.has(targetServiceId)) {
+    return presenterServiceHydrationPromises.get(targetServiceId);
+  }
+  const hydrationPromise = (async () => {
+    await loadServiceItems(targetServiceId);
+    const outputItems = getServiceOutputItems(targetServiceId);
+    const songIds = outputItems.map((item) => item.song_id).filter(Boolean);
+    const tasks = [
+      loadSongsForIds(songIds),
+      preloadPresenterServiceScripturesBeforeOutput(targetServiceId),
+    ];
+    if (
+      !hymnScoreManifestLoadPromise
+      && presenterServiceNeedsHymnScoreManifest(targetServiceId)
+    ) {
+      tasks.push(loadHymnScoreManifest({ silent: true }));
+    }
+    await Promise.all(tasks);
+    return true;
+  })();
+  presenterServiceHydrationPromises.set(targetServiceId, hydrationPromise);
+  try {
+    return await hydrationPromise;
+  } finally {
+    presenterServiceHydrationPromises.delete(targetServiceId);
+  }
 }
 
 async function preloadServiceItemScriptureReferences(serviceId = state.selectedServiceId) {
@@ -17764,7 +17810,13 @@ function serviceItemFormPresetDisabled(item) {
 }
 
 function serviceItemFormPresetRules(item) {
-  return parseServiceItemMemo(item?.memo).formPresetRules || [];
+  const parsed = parseServiceItemMemo(item?.memo);
+  if (parsed.formPresetDisabled) return [];
+  const rules = [...(parsed.formPresetRules || [])];
+  if (isSpecialSongServiceItem(item) && !rules.length) {
+    rules.push(PUBLIC_SPECIAL_HYMN_FORM_PRESET_RULE);
+  }
+  return rules;
 }
 
 function serviceItemMetadataFormPreset(item = {}) {
@@ -20875,7 +20927,7 @@ function stripServicePraiseTrailingMusicKey(value = "") {
 
 function stripServiceSongInputPrefix(value = "") {
   let text = String(value || "").normalize("NFKC").replace(/\s+/g, " ").trim();
-  const prefix = /^(?:response|찬양|찬송|특송|결단찬양|봉헌찬양|봉헌찬송|파송찬양|파송찬송|폐회찬송|입례찬양|기도\s*찬양)\s*\d*\s*(?:[/：:·ㆍ•.-]\s*)?/iu;
+  const prefix = /^(?:response|결단찬양|봉헌찬양|봉헌찬송|파송찬양|파송찬송|폐회찬송|입례찬양|기도\s*찬양|특송|찬양|찬송)(?:\s*\d+)?(?:\s+|[/：:·ㆍ•.-]\s*)/iu;
   for (let i = 0; i < 2; i += 1) {
     const next = text.replace(prefix, "").trim();
     if (next === text) break;
@@ -23770,7 +23822,6 @@ function runPresenterAction(action, serviceId = state.selectedServiceId, options
     return;
   }
   if (action !== "open" && isPresenterOutputWindowOpen() && state.presenter.serviceId && state.presenter.serviceId !== serviceId) return;
-  preparePresenterService(serviceId);
 
   if (action === "open") {
     clearPresenterBoardSelection({ render: false });
@@ -23778,6 +23829,8 @@ function runPresenterAction(action, serviceId = state.selectedServiceId, options
     openPresenterOutput(serviceId);
     return;
   }
+
+  preparePresenterService(serviceId);
 
   state.presenter.jumpDraft = "";
   if (["next", "prev", "first", "last", "jump"].includes(action)) {
@@ -24011,7 +24064,7 @@ async function openPresenterOutput(serviceId = state.selectedServiceId) {
   if (!serviceId) return;
   state.presenter.outputStopAt = 0;
   state.presenter.outputStoppingClientId = "";
-  await preloadPresenterServiceScripturesBeforeOutput(serviceId);
+  await hydratePresenterServiceData(serviceId);
   preparePresenterService(serviceId);
   publishPresenterState();
 
@@ -24266,8 +24319,9 @@ function patchPresenterBoardActiveState(root, serviceId, active, index) {
   syncPresenterBoardSelectionClasses(root);
 }
 
-function startPresenterAtSlide(serviceId, index) {
+async function startPresenterAtSlide(serviceId, index) {
   if (!serviceId || !Number.isFinite(Number(index))) return;
+  await hydratePresenterServiceData(serviceId);
   preparePresenterService(serviceId);
   state.presenter.index = clampPresenterIndex(index, state.presenter.slides.length);
   clearPresenterBoardSelection({ render: false });

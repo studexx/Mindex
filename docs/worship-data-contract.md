@@ -100,6 +100,13 @@ at render time. Current operational defaults:
 This is the structure the app should keep in mind when turning a recurring
 service type into one actual worship instance and then into Presenter output.
 
+Presenter output must be built from hydrated service data. Before
+`preparePresenterService()` opens or jumps the output, the selected service
+items, linked Praise records, linked Scripture payloads, and required score
+manifest must be loaded. Do not render template-only placeholders into the live
+Presenter first and then swap them later; that causes slide-count drift and can
+move the current slide during refresh.
+
 ```text
 Service Type (예배 타입)
 └─ Service Template / Scaffold (예배 구조 템플릿)

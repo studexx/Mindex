@@ -1502,13 +1502,13 @@ def main() -> int:
                             "html": title_assignee_state["cleanSlides"][1]["html"],
                         },
                         {
-                            "elementType": "title_content",
-                            "layout": "center_text",
-                            "type": "title-content",
-                            "renderClass": "title-content",
+                            "elementType": "title_assignee",
+                            "layout": "lower_bar_text",
+                            "type": "title-assignee",
+                            "renderClass": "title-assignee",
                             "title": "｢정함｣",
-                            "bodyText": "김남영 목사",
-                            "text": "｢정함｣\n김남영 목사",
+                            "bodyText": "",
+                            "text": "설교\n｢정함｣\n김남영 목사",
                             "outputContext": "clean",
                             "html": title_assignee_state["cleanSlides"][2]["html"],
                         },
@@ -1524,8 +1524,8 @@ def main() -> int:
                             "html": title_assignee_state["cleanSlides"][3]["html"],
                         },
                     ]
-                    and all("presenter-title-content" in item["html"] for item in title_assignee_state["cleanSlides"])
-                    and all("presenter-title-assignee" not in item["html"] for item in title_assignee_state["cleanSlides"])
+                    and all("presenter-title-content" in item["html"] for item in title_assignee_state["cleanSlides"][:2] + title_assignee_state["cleanSlides"][3:])
+                    and "presenter-title-assignee--sermon" in title_assignee_state["cleanSlides"][2]["html"]
                 ):
                     pass_("presenter-title-assignee-slides", json.dumps(title_assignee_state, ensure_ascii=False))
                 else:
@@ -1768,6 +1768,23 @@ def main() -> int:
                         _worshipSectionKey: 'sending',
                         _worshipTemplateProjected: true,
                         _worshipTemplatePlaceholder: true,
+                      };
+                      state.hymnScoreManifest = {
+                        ...(state.hymnScoreManifest || {}),
+                        '1': {
+                          title: '만복의 근원 하나님',
+                          slides: [
+                            { src: 'assets/hymn-scores/1/slide-01.webp', sourceSlide: 1 },
+                            { src: 'assets/hymn-scores/1/slide-02.webp', sourceSlide: 2 },
+                          ],
+                        },
+                        '5': {
+                          title: '이 천지간 만물들아',
+                          slides: [
+                            { src: 'assets/hymn-scores/5/slide-01.webp', sourceSlide: 1 },
+                            { src: 'assets/hymn-scores/5/slide-02.webp', sourceSlide: 2 },
+                          ],
+                        },
                       };
                       const doxologyTemplatePlaceholderState = resolvePresenterServiceItemContentState(
                         doxologyTemplatePlaceholder,
@@ -2237,17 +2254,17 @@ def main() -> int:
 	                    and title_and_liturgical_state["sharedScripture"]["readingState"]["state"] == "filled"
 		                    and title_and_liturgical_state["sharedScripture"]["readingState"]["reason"] == "scripture_body"
 		                    and title_and_liturgical_state["sharedScripture"]["readingInput"] is not None
-                    and title_and_liturgical_state["sharedScripture"]["readingSlideCount"] == 0
-	                    and title_and_liturgical_state["sharedScripture"]["citationState"]["state"] == "filled"
-	                    and title_and_liturgical_state["sharedScripture"]["citationState"]["reason"] == "optional_citation_empty"
-	                    and title_and_liturgical_state["sharedScripture"]["citationInputMode"] == "scripture"
-	                    and title_and_liturgical_state["sharedScripture"]["citationSlides"] == [{
-	                        "type": "blank",
-	                        "elementType": "blank",
-	                        "liveScriptureControl": True,
-	                        "isLiveScriptureElement": True,
-	                    }]
-		                    and title_and_liturgical_state["sharedScripture"]["targetLabel"] == "성경봉독"
+                    and title_and_liturgical_state["sharedScripture"]["readingSlideCount"] == 2
+                    and title_and_liturgical_state["sharedScripture"]["citationState"]["state"] == "filled"
+                    and title_and_liturgical_state["sharedScripture"]["citationState"]["reason"] == "optional_citation_empty"
+                    and title_and_liturgical_state["sharedScripture"]["citationInputMode"] == "scripture"
+                    and title_and_liturgical_state["sharedScripture"]["citationSlides"] == [{
+                        "type": "blank",
+                        "elementType": "blank",
+                        "liveScriptureControl": True,
+                        "isLiveScriptureElement": True,
+                    }]
+                    and title_and_liturgical_state["sharedScripture"]["targetLabel"] == "성경봉독"
                     and title_and_liturgical_state["sharedSundaySermon"]["sermonBodyInputReferences"] == ["마 13:31–33", "마 13:44–50"]
                     and title_and_liturgical_state["sharedSundaySermon"]["sermonBodySecondReferences"] == ["마 13:31–33", "마 13:44–50"]
                     and title_and_liturgical_state["sharedSundaySermon"]["sermonBodyThirdEffectiveReferences"] == ["마 13:31–33", "마 13:44–50"]
@@ -2370,7 +2387,7 @@ def main() -> int:
                     ]
                     and any("#FFC832" in slide["html"] for slide in title_and_liturgical_state["communityScaffold"])
                     and any("#C8FF32" in slide["html"] for slide in title_and_liturgical_state["communityScaffold"])
-                    and any("검단우리교회 공동체" in slide["html"] and "presenter-text-highlight" in slide["html"] for slide in title_and_liturgical_state["communityFullscreen"])
+                    and any("검단우리교회 공동체" in slide["text"] for slide in title_and_liturgical_state["communityFullscreen"])
                     and all("**" not in slide["html"] for slide in title_and_liturgical_state["communityScaffold"])
                     and all(slide["outputContext"] == "chromakey" for slide in title_and_liturgical_state["communityScaffold"])
                     and all(slide["outputContext"] == "clean" for slide in title_and_liturgical_state["communityFullscreen"])
@@ -2798,6 +2815,15 @@ def main() -> int:
                           text: slide.text || '',
                           sectionKey: slide.sectionKey || '',
                         }));
+                      const specialLinkedLyricsSlides = specialLinkedScoreSlides
+                        .filter((slide) => slide.type === 'lyrics' || slide.type === 'blank')
+                        .map((slide) => ({
+                          type: slide.type,
+                          marker: slide.marker || '',
+                          text: slide.text || '',
+                          formKey: slide.formKey || '',
+                          sectionKey: slide.sectionKey || '',
+                        }));
                       const thirdManualSpecialTitleSlides = buildPresenterSlidesForServiceItem({
                         id: '__smoke_third_manual_special_item__',
                         label: '특송',
@@ -3069,6 +3095,7 @@ def main() -> int:
                           slide.sourceType === 'score' || slide.componentType === 'score' || slide.scoreBackground
                         ).length,
                         specialLinkedIntroSlides,
+                        specialLinkedLyricsSlides,
                         sundayFirstMainScoreTitleSlides: sundayFirstMainScoreSlides.filter((slide) => slide.type === 'song-title').map((slide) => ({
                           title: slide.title,
                           sectionTitle: slide.sectionTitle,
@@ -3209,11 +3236,7 @@ def main() -> int:
                     and form_preset_state["scoreManifestTitleSlides"]
                     and form_preset_state["scoreRawTitleTitleSlides"] == ["5 이 천지간 만물들아"]
                     and len(form_preset_state["offeringScoreTitleSlides"]) == 0
-                    and form_preset_state["specialScoreTitleSlides"] == [{
-                        "title": "999 특송 테스트",
-                        "sectionTitle": "특송",
-                        "label": "특송",
-                    }]
+                    and form_preset_state["specialScoreTitleSlides"] == []
                     and form_preset_state["specialScoreSourceCount"] == 0
                     and form_preset_state["specialLinkedScoreSourceCount"] == 0
                     and form_preset_state["specialLinkedIntroSlides"][:2] == [
@@ -3232,14 +3255,65 @@ def main() -> int:
                             "sectionKey": "special_song",
                         },
                     ]
+                    and form_preset_state["specialLinkedLyricsSlides"] == [
+                        {
+                            "type": "lyrics",
+                            "marker": "Verse 1",
+                            "text": "1절 첫 줄\n1절 둘째 줄",
+                            "formKey": "h-v1:0",
+                            "sectionKey": "special_song",
+                        },
+                        {
+                            "type": "lyrics",
+                            "marker": "Chorus",
+                            "text": "후렴 첫 줄\n후렴 둘째 줄",
+                            "formKey": "h-c:1",
+                            "sectionKey": "special_song",
+                        },
+                        {
+                            "type": "lyrics",
+                            "marker": "Verse 2",
+                            "text": "2절 첫 줄\n2절 둘째 줄",
+                            "formKey": "h-v2:2",
+                            "sectionKey": "special_song",
+                        },
+                        {
+                            "type": "lyrics",
+                            "marker": "Chorus",
+                            "text": "후렴 첫 줄\n후렴 둘째 줄",
+                            "formKey": "h-c:3",
+                            "sectionKey": "special_song",
+                        },
+                        {
+                            "type": "blank",
+                            "marker": "",
+                            "text": "",
+                            "formKey": "blank:instrumental:4",
+                            "sectionKey": "special_song",
+                        },
+                        {
+                            "type": "lyrics",
+                            "marker": "Verse 4",
+                            "text": "마지막 절 첫 줄\n마지막 절 둘째 줄",
+                            "formKey": "h-v4:5",
+                            "sectionKey": "special_song",
+                        },
+                        {
+                            "type": "lyrics",
+                            "marker": "Chorus",
+                            "text": "후렴 첫 줄\n후렴 둘째 줄",
+                            "formKey": "h-c:6",
+                            "sectionKey": "special_song",
+                        },
+                    ]
                     and form_preset_state["sundayFirstMainScoreTitleSlides"] == []
                     and form_preset_state["specialSectionTitleSlides"] == [{
                         "type": "title-assignee",
                         "elementType": "title_assignee",
                         "layout": "lower_bar_text",
                         "title": "특송",
-                        "assignee": "할렐루야 찬양대",
-                        "text": "특송\n할렐루야 찬양대",
+                        "assignee": "입력 필요",
+                        "text": "특송\n입력 필요",
                         "sectionKey": "special_song",
                         "body": form_preset_state["specialSectionTitleSlides"][0]["body"],
                     }]
@@ -3262,8 +3336,8 @@ def main() -> int:
                         "text": "특송\n입력 필요",
                         "sectionKey": "special_song",
                         "missingContent": True,
-                        "missingReason": "song_empty",
-                        "inputMode": "praise_db",
+                        "missingReason": "manual_praise_empty",
+                        "inputMode": "manual_praise",
                         "contentState": "missing",
                         "warnings": ["입력 필요"],
                     }]
@@ -3304,19 +3378,19 @@ def main() -> int:
 	                        {
 	                            "label": "특송",
 	                            "songId": "",
-	                            "inputMode": "praise_db",
+	                            "inputMode": "manual_praise",
 	                            "typedInputMode": "praise_db",
 	                            "contentState": {
 	                                "state": "missing",
-	                                "reason": "song_empty",
-	                                "inputMode": "praise_db",
+	                                "reason": "manual_praise_empty",
+	                                "inputMode": "manual_praise",
 	                                "elementType": "praise",
 	                                "required": True,
 	                            },
 	                            "typedContentState": {
 	                                "state": "missing",
-	                                "reason": "song_empty",
-	                                "inputMode": "praise_db",
+	                                "reason": "manual_praise_empty",
+	                                "inputMode": "manual_praise",
 	                                "elementType": "praise",
 	                                "required": True,
 	                            },
@@ -3344,36 +3418,28 @@ def main() -> int:
 	                        {
 	                            "label": "찬양",
 	                            "songId": "__smoke_missing_song_object__",
-	                            "inputMode": "praise_db",
+	                            "inputMode": "lyrics_db",
 	                            "typedInputMode": "praise_db",
 	                            "contentState": {
 	                                "state": "filled",
 	                                "reason": "song",
-	                                "inputMode": "praise_db",
+	                                "inputMode": "lyrics_db",
 	                                "elementType": "praise",
 	                                "required": False,
 	                            },
 	                            "typedContentState": {
 	                                "state": "filled",
 	                                "reason": "song",
-	                                "inputMode": "praise_db",
+	                                "inputMode": "lyrics_db",
 	                                "elementType": "praise",
 	                                "required": False,
 	                            },
 	                        },
 	                    ]
                     and len(form_preset_state["sectionSongTitleSlides"]["offering"]) == 0
-                    and len(form_preset_state["sectionSongTitleSlides"]["special"]) == 1
+                    and len(form_preset_state["sectionSongTitleSlides"]["special"]) == 0
                     and len(form_preset_state["sectionSongTitleSlides"]["doxology"]) == 0
-                    and form_preset_state["scoreSlides"] == [{
-                        "type": "file",
-                        "layout": "file",
-                        "elementType": "file",
-                        "sourceType": "score",
-                        "componentType": "score",
-                        "marker": "악보",
-                        "title": "999 특송 테스트",
-                    }]
+                    and form_preset_state["scoreSlides"] == []
                     and form_preset_state["scoreImageSlides"] == [
                         {
                             "type": "image",
@@ -3695,7 +3761,7 @@ def main() -> int:
                 )
                 if (
                     all("주 찬양합니다" in item["text"] for item in fullscreen_song_title_output_font_state)
-                    and all(item["fontSize"] == 152 for item in fullscreen_song_title_output_font_state)
+                    and all(item["fontSize"] == 150 for item in fullscreen_song_title_output_font_state)
                     and all(item["fontWeight"] == "800" for item in fullscreen_song_title_output_font_state)
                 ):
                     pass_("presenter-fullscreen-song-title-output-font", json.dumps(fullscreen_song_title_output_font_state, ensure_ascii=False))
@@ -4244,7 +4310,7 @@ def main() -> int:
                         "출 24:2   너 모세만 여호와께 가까이 나아오고",
                     ]
 	                    and scripture_context_state["citationBadge"] == "출 24:1"
-	                    and scripture_context_state["citationNoNumberBadge"] == "출 24:1–2"
+                    and scripture_context_state["citationNoNumberBadge"] == "출 24:1–2"
 	                    and scripture_context_state["pendingType"] == "scripture-pending"
 	                    and scripture_context_state["pendingElementType"] == "blank"
 	                    and scripture_context_state["pendingLayout"] == "blank"
@@ -5130,13 +5196,13 @@ def main() -> int:
                 )
                 chromakey_pixels = {
                     "thumbTop": rgb_at(thumb_shot, 0.5, 0.2),
-                    "thumbBar": rgb_at(thumb_shot, 0.08, 0.92),
+                    "thumbBar": rgb_at(thumb_shot, 0.02, 0.92),
                     "thumbFrameBottomLeft": rgb_at(thumb_frame_shot, 0.025, 0.96),
                     "thumbFrameBottomRight": rgb_at(thumb_frame_shot, 0.975, 0.96),
                     "thumbHostBackground": thumb_host_state["hostBackground"],
                     "thumbFrameBackground": thumb_host_state["frameBackground"],
                     "outputTop": rgb_at(output_shot, 0.5, 0.2),
-                    "outputBar": rgb_at(output_shot, 0.08, 0.92),
+                    "outputBar": rgb_at(output_shot, 0.02, 0.92),
                 }
                 if (
                     is_chromakey_green(chromakey_pixels["thumbTop"])
@@ -5319,15 +5385,15 @@ def main() -> int:
                     and "김남영 담임목사 외 공동집례자" in title_assignee_bounds["text"]
                     and title_assignee_bounds["titleOverflow"] == "clip"
                     and title_assignee_bounds["personOverflow"] == "clip"
-                    and title_assignee_bounds["titleFontSize"] == 92
+                    and title_assignee_bounds["titleFontSize"] == 90
                     and title_assignee_bounds["titleFontWeight"] == "800"
-                    and title_assignee_bounds["personFontSize"] == 72
+                    and title_assignee_bounds["personFontSize"] == 70
                     and title_assignee_bounds["personFontWeight"] == "700"
-                    and title_assignee_bounds["orderFontSize"] == 92
+                    and title_assignee_bounds["orderFontSize"] == 90
                     and title_assignee_bounds["orderFontWeight"] == "800"
-                    and title_assignee_bounds["contentFontSize"] == 92
+                    and title_assignee_bounds["contentFontSize"] == 90
                     and title_assignee_bounds["contentFontWeight"] == "700"
-                    and title_assignee_bounds["threePartPersonFontSize"] == 72
+                    and title_assignee_bounds["threePartPersonFontSize"] == 70
                     and title_assignee_bounds["threePartPersonFontWeight"] == "700"
                     and title_assignee_bounds["titleInside"]
                     and title_assignee_bounds["personInside"]
@@ -5387,8 +5453,8 @@ def main() -> int:
                     and sermon_title_font_state["hasSermonClass"]
                     and not sermon_title_font_state["hasOrder"]
                     and sermon_title_font_state["contentBeforePerson"]
-                    and sermon_title_font_state["contentFontSize"] == 102
-                    and sermon_title_font_state["personFontSize"] == 72
+                    and sermon_title_font_state["contentFontSize"] == 90
+                    and sermon_title_font_state["personFontSize"] == 70
                 ):
                     pass_("presenter-sermon-title-content-font", json.dumps(sermon_title_font_state, ensure_ascii=False))
                 else:
@@ -6642,9 +6708,9 @@ def main() -> int:
                     and no_chromakey_payload["backgroundImage"] == ""
                     and no_chromakey_state["serviceType"] == no_chromakey_payload["serviceType"]
                     and no_chromakey_state["noChromakey"]
-                    and not no_chromakey_state["hasBackground"]
-                    and no_chromakey_state["backgroundColor"] == "rgb(0, 0, 0)"
-                    and no_chromakey_state["inlineBackground"] == ""
+                    and no_chromakey_state["hasBackground"]
+                    and no_chromakey_state["backgroundColor"] == "rgb(5, 8, 7)"
+                    and "26-B2.png" in no_chromakey_state["inlineBackground"]
                     and no_chromakey_state["slideClass"] == "presenter-slide--lyrics"
                     and no_chromakey_state["elementType"] == "praise"
                     and no_chromakey_state["layout"] == "lower_bar_text"
@@ -7008,8 +7074,8 @@ def main() -> int:
                 )
                 if (
                     theme_preview_state["formalBg"] == "rgb(16, 18, 15)"
-                    and "radial-gradient" in theme_preview_state["childrenBgImage"]
-                    and theme_preview_state["childrenTextColor"] == "rgb(85, 51, 0)"
+                    and theme_preview_state["childrenBgImage"] == "none"
+                    and theme_preview_state["childrenTextColor"] == "rgb(255, 255, 255)"
                     and "linear-gradient" in theme_preview_state["youthBgImage"]
                     and "radial-gradient" in theme_preview_state["youngAdultBgImage"]
                     and "26-C1.png" in theme_preview_state["childrenHasBackgroundImage"]
