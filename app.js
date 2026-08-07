@@ -17295,7 +17295,7 @@ function serializeServiceDefaultItems(typeId) {
 
 function confirmDiscardServiceChanges() {
   if (!state.dirty.service) return true;
-  return window.confirm("Discard unsaved service changes?");
+  return window.confirm("저장하지 않은 예배 변경사항이 있습니다. 계속할까요?");
 }
 
 function getFilteredServiceTypes() {
@@ -25285,7 +25285,91 @@ async function createService() {
 }
 
 async function deleteService(serviceId) {
-  void serviceId;
+  if (!serviceId || !requireClient() || state.saving) return;
+  const service = state.services.find((svc) => svc.id === serviceId);
+  if (!service) return;
+  const title = [formatServiceDate(service), serviceDisplayTypeName(service)]
+    .map((part) => String(part || "").trim())
+    .filter(Boolean)
+    .join(" · ") || "이 예배";
+  if (!window.confirm(`${title}을(를) 삭제할까요?`)) return;
+
+  state.saving = true;
+  updateSaveState();
+  try {
+    const cachedSections = state.worshipSections.filter((section) => section.service_id === serviceId);
+    const { data: dbSections, error: sectionsLookupError } = await state.client
+      .from("mindex_worship_sections")
+      .select("id")
+      .eq("service_id", serviceId);
+    if (sectionsLookupError) throw sectionsLookupError;
+    const sectionIds = [...new Set([
+      ...cachedSections.map((section) => section.id),
+      ...(dbSections || []).map((section) => section.id),
+    ].filter(Boolean))];
+    if (sectionIds.length) {
+      const { error: elementsError } = await state.client
+        .from("mindex_worship_elements")
+        .delete()
+        .in("section_id", sectionIds);
+      if (elementsError) throw elementsError;
+    }
+
+    const { error: sectionsError } = await state.client
+      .from("mindex_worship_sections")
+      .delete()
+      .eq("service_id", serviceId);
+    if (sectionsError) throw sectionsError;
+
+    const { error: serviceError } = await state.client
+      .from("mindex_worship_services")
+      .delete()
+      .eq("id", serviceId);
+    if (serviceError) throw serviceError;
+
+    const removedSectionIds = new Set(sectionIds);
+    state.services = state.services.filter((svc) => svc.id !== serviceId);
+    state.worshipSections = state.worshipSections.filter((section) => section.service_id !== serviceId);
+    state.worshipElements = state.worshipElements.filter((element) => !removedSectionIds.has(element.section_id));
+    delete state.serviceItems[serviceId];
+    state.loadedWorshipServiceIds.delete(serviceId);
+    delete state.presenterPreparationDrafts[serviceId];
+    state.presenterPreparationApplyingServiceIds.delete(serviceId);
+    [...state.templateElementSuppressions.keys()].forEach((key) => {
+      if (state.templateElementSuppressions.get(key)?.service_id === serviceId) state.templateElementSuppressions.delete(key);
+    });
+
+    if (state.selectedServiceId === serviceId) {
+      state.selectedServiceId = null;
+      state.selectedServiceItemIndex = null;
+      state.newServiceForm = null;
+      state.dirty.service = false;
+    }
+    if (state.presenter.serviceId === serviceId) {
+      state.presenter.serviceId = null;
+      state.presenter.slides = [];
+      state.presenter.sourceItems = null;
+      state.presenter.index = 0;
+      state.presenter.safetyBlank = false;
+      state.presenter.jumpDraft = "";
+      state.presenter.liveScripture = { reference: "", draft: "", active: false, slide: null };
+      state.presenter.livePraise = emptyLivePraiseState();
+      publishPresenterPayload(presenterStoppedPayload());
+      stopServiceMusicPlayback({ clearSource: true, mode: "manual", render: false });
+    }
+    if (state.presenterBulletinServiceId === serviceId) state.presenterBulletinServiceId = null;
+    if (state.servicePrepEditorOpenId === serviceId) state.servicePrepEditorOpenId = null;
+
+    renderServiceList();
+    renderCurrentServiceModuleDetail();
+    syncBrowserHistory();
+    showToast("예배를 삭제했습니다.");
+  } catch (error) {
+    showToast(error.message || "예배 삭제 실패.", "error");
+  } finally {
+    state.saving = false;
+    updateSaveState();
+  }
 }
 
 function selectService(id) {
