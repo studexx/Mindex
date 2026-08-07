@@ -4416,7 +4416,11 @@ def main() -> int:
 특송 찬 430
 말씀 “신유란 무엇인가요?”
 설교 김남영 목사
-성경봉독 요 15:9; 롬 5:7-8`);
+성경봉독 요 15:9; 롬 5:7-8
+봉헌찬양 임재
+파송찬송 찬 359
+폐회찬송 찬 352
+송영 찬 5`);
                           return {
                             errors: parsed.errors,
                             entries: parsed.entries.map((entry) => ({
@@ -4440,6 +4444,10 @@ def main() -> int:
                             {"rawLabel": "말씀", "label": "설교 본문", "key": "설교본문", "rawKey": "말씀", "content": "신유란 무엇인가요?"},
                             {"rawLabel": "설교", "label": "설교 제목", "key": "설교제목", "rawKey": "설교", "content": "김남영 목사"},
                             {"rawLabel": "성경봉독", "label": "성경봉독", "key": "성경봉독", "rawKey": "성경봉독", "content": "요 15:9; 롬 5:7-8"},
+                            {"rawLabel": "봉헌찬양", "label": "봉헌찬양", "key": "봉헌찬양", "rawKey": "봉헌찬양", "content": "임재"},
+                            {"rawLabel": "파송찬송", "label": "파송찬송", "key": "파송찬송", "rawKey": "파송찬송", "content": "찬 359"},
+                            {"rawLabel": "폐회찬송", "label": "폐회찬송", "key": "폐회찬송", "rawKey": "폐회찬송", "content": "찬 352"},
+                            {"rawLabel": "송영", "label": "송영", "key": "송영", "rawKey": "송영", "content": "찬 5"},
                         ]
                     ):
                         pass_("presenter-preparation-label-priority", json.dumps(presenter_preparation_label_priority, ensure_ascii=False))

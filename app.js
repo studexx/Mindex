@@ -21283,7 +21283,7 @@ function parseKnownPresenterPreparationLine(text = "") {
     new RegExp(`^(기도\\s*찬양)\\s*(?:${separator}\\s*)?(.+)$`),
     new RegExp(`^(공동기도)\\s*(\\d+)\\s*(?:${separator}\\s*)?(.+)$`),
     new RegExp(`^(찬송가|찬송)\\s*(?:${separator}\\s*)?(.+)$`),
-    new RegExp(`^((?:대표\\s*)?기도|성경\\s*봉독\\s*본문|성경\\s*봉독|성경\\s*본문|설교\\s*본문|설교\\s*제목|인용\\s*구절|특송|입례\\s*찬양|봉헌\\s*찬송|봉헌\\s*기도|결단\\s*찬양|결단\\s*기도|말씀|본문|설교)\\s*(?:${separator}\\s*)?(.+)$`),
+    new RegExp(`^((?:대표\\s*)?기도|성경\\s*봉독\\s*본문|성경\\s*봉독|성경\\s*본문|설교\\s*본문|설교\\s*제목|인용\\s*구절|특송|입례\\s*찬양|봉헌\\s*찬양|봉헌\\s*찬송|봉헌\\s*기도|결단\\s*찬양|결단\\s*기도|파송\\s*찬양|파송\\s*찬송|폐회\\s*찬송|송영|말씀|본문|설교)\\s*(?:${separator}\\s*)?(.+)$`),
   ];
   for (const pattern of patterns) {
     const match = raw.match(pattern);
@@ -21320,7 +21320,16 @@ function normalizePresenterPreparationInputLabel(label = "") {
     설교제목: "설교 제목",
     인용구절: "인용 구절",
     봉헌: "봉헌찬송",
+    봉헌찬양: "봉헌찬양",
+    봉헌찬송: "봉헌찬송",
+    봉헌기도: "봉헌기도",
     결단: "결단찬양",
+    결단찬양: "결단찬양",
+    결단기도: "결단기도",
+    입례찬양: "입례찬양",
+    파송찬양: "파송찬양",
+    파송찬송: "파송찬송",
+    폐회찬송: "폐회찬송",
   };
   if (aliases[key]) return aliases[key];
   const numbered = key.match(/^(찬양|기도찬양|공동기도)(\d+)$/);
@@ -21409,6 +21418,11 @@ function findPresenterPreparationProjectedItem(service, label) {
     return items.find((item) =>
       String(item._worshipSectionKey || "") === "prayer_meeting_praise"
       && compactSearchValue(item.label || "").replace(/\d+$/, "") === "기도찬양");
+  }
+  if (labelKey === "봉헌찬송") {
+    return items.find((item) =>
+      String(item._worshipSectionKey || "") === "offering"
+      && ["봉헌찬송", "봉헌찬양"].includes(compactSearchValue(item.label || "")));
   }
   if (labelKey === "설교제목") {
     return items.find((item) =>
