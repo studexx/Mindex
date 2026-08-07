@@ -825,6 +825,54 @@ function renderCurrentServiceModuleDetail() {
   else renderServiceDetail();
 }
 
+function capturePresenterViewportSnapshot(expectedServiceId = state.selectedServiceId) {
+  if (state.module !== "presenter" || !refs.detailPane?.isConnected || !expectedServiceId) return null;
+  const root = document.getElementById("servicePresenterControls");
+  if (!root?.isConnected) return null;
+  const serviceSelector = CSS.escape(String(expectedServiceId));
+  const pane = refs.detailPane;
+  const paneRect = pane.getBoundingClientRect();
+  const scrollTop = pane.scrollTop;
+  const candidates = [...root.querySelectorAll(`.svc-slide-thumb[data-service-id="${serviceSelector}"]`)];
+  const anchor = candidates
+    .map((thumb) => {
+      const target = thumb.closest(".svc-slide-thumb-wrap") || thumb;
+      const rect = target.getBoundingClientRect();
+      return { thumb, target, rect };
+    })
+    .filter(({ rect }) => rect.bottom > paneRect.top + 16 && rect.top < paneRect.bottom - 16)
+    .sort((a, b) => Math.abs(a.rect.top - paneRect.top - 96) - Math.abs(b.rect.top - paneRect.top - 96))[0];
+  if (!anchor) return { serviceId: expectedServiceId, scrollTop, selector: "", offsetTop: 0 };
+  return {
+    serviceId: expectedServiceId,
+    scrollTop,
+    selector: `.svc-slide-thumb[data-service-id="${serviceSelector}"][data-presenter-index="${CSS.escape(anchor.thumb.dataset.presenterIndex || "")}"]`,
+    offsetTop: anchor.rect.top - paneRect.top,
+  };
+}
+
+function restorePresenterViewportSnapshot(snapshot) {
+  if (!snapshot || state.module !== "presenter" || state.selectedServiceId !== snapshot.serviceId) return;
+  window.requestAnimationFrame(() => {
+    const pane = refs.detailPane;
+    if (!pane?.isConnected) return;
+    const root = document.getElementById("servicePresenterControls");
+    let restored = false;
+    if (root?.isConnected && snapshot.selector) {
+      const target = root.querySelector(snapshot.selector)?.closest(".svc-slide-thumb-wrap");
+      if (target) {
+        const paneRect = pane.getBoundingClientRect();
+        const targetRect = target.getBoundingClientRect();
+        pane.scrollTop += targetRect.top - paneRect.top - snapshot.offsetTop;
+        restored = true;
+      }
+    }
+    if (!restored && Number.isFinite(snapshot.scrollTop)) {
+      pane.scrollTop = snapshot.scrollTop;
+    }
+  });
+}
+
 async function loadHymnScoreManifest({ silent = false } = {}) {
   if (state.hymnScoreManifestLoaded) return;
   if (hymnScoreManifestLoadPromise) return hymnScoreManifestLoadPromise;
@@ -2627,6 +2675,8 @@ async function fetchSupabasePaged(table, select = "*", buildQuery = (query) => q
 
 const SUPABASE_STATIC_CACHE_TTL_MS = 10 * 60 * 1000;
 const SUPABASE_STATIC_CACHE_PREFIX = "mindex.supabase.static.v1.";
+const BIBLE_CHAPTER_CACHE_TTL_MS = 12 * 60 * 60 * 1000;
+const BIBLE_CHAPTER_CACHE_PREFIX = "mindex.bible.chapter.v1.";
 const WORSHIP_SERVICE_TYPE_SELECT = [
   "id",
   "display_name",
@@ -2678,6 +2728,35 @@ function writeStaticSupabaseCache(table, select = "*", rows = []) {
     }));
   } catch {
     // Storage quota or private mode should not block loading live data.
+  }
+}
+
+function persistentBibleChapterCacheKey(translationId, bookCode, chapter) {
+  return `${BIBLE_CHAPTER_CACHE_PREFIX}${bibleVerseCacheKey(translationId, bookCode, chapter)}`;
+}
+
+function readPersistentBibleChapterCache(translationId, bookCode, chapter) {
+  try {
+    const raw = safeStorageGet("local", persistentBibleChapterCacheKey(translationId, bookCode, chapter), "");
+    if (!raw) return null;
+    const cached = JSON.parse(raw);
+    if (!Array.isArray(cached?.rows) || Date.now() - Number(cached.cachedAt || 0) > BIBLE_CHAPTER_CACHE_TTL_MS) {
+      return null;
+    }
+    return cached.rows.map(normalizeServerBibleVerse);
+  } catch {
+    return null;
+  }
+}
+
+function writePersistentBibleChapterCache(translationId, bookCode, chapter, rows = []) {
+  try {
+    safeStorageSet("local", persistentBibleChapterCacheKey(translationId, bookCode, chapter), JSON.stringify({
+      cachedAt: Date.now(),
+      rows: Array.isArray(rows) ? rows : [],
+    }));
+  } catch {
+    // Bible chapter cache is an optimization only.
   }
 }
 
@@ -3926,13 +4005,8 @@ async function loadBibleTranslations({ silent = false } = {}) {
   if (!requireClient({ silent })) return;
 
   try {
-    const { data, error } = await state.client
-      .from("mindex_bible_translations")
-      .select("*")
-      .eq("is_active", true)
-      .order("name", { ascending: true });
-
-    if (error) throw error;
+    const data = await fetchCachedSupabasePaged("mindex_bible_translations", "*", (query) =>
+      query.eq("is_active", true).order("name", { ascending: true }));
     state.bibleReaderError = "";
     state.bibleTranslations = (data || []).map(normalizeServerBibleTranslation).sort(sortBibleTranslations);
     if (state.selectedBibleTranslationId && !state.bibleTranslations.some((translation) => translation.id === state.selectedBibleTranslationId)) {
@@ -3979,6 +4053,15 @@ async function loadBibleBookVerses({ silent = false } = {}) {
     if (state.module === "scripture") render();
     return;
   }
+  const persistentCachedRows = readPersistentBibleChapterCache(selectedTranslationId, selectedBookCode, selectedChapter);
+  if (persistentCachedRows) {
+    state.bibleReaderError = "";
+    state.bibleVerseCache.set(cacheKey, persistentCachedRows);
+    state.bibleBookVerses = persistentCachedRows;
+    persistUiState();
+    if (state.module === "scripture") render();
+    return;
+  }
 
   state.bibleReaderLoading = true;
   if (state.module === "scripture") render();
@@ -3994,12 +4077,14 @@ async function loadBibleBookVerses({ silent = false } = {}) {
       .order("verse", { ascending: true });
 
     if (error) throw error;
-    state.bibleVerseCache.set(cacheKey, data || []);
+    const rows = inferBibleVerseEndRanges((data || []).map(normalizeServerBibleVerse));
+    state.bibleVerseCache.set(cacheKey, rows);
+    writePersistentBibleChapterCache(selectedTranslationId, selectedBookCode, selectedChapter, rows);
     if (cacheKey !== bibleVerseCacheKey(state.selectedBibleTranslationId, state.selectedBookCode, state.selectedBibleChapter)) {
       return;
     }
     state.bibleReaderError = "";
-    state.bibleBookVerses = data || [];
+    state.bibleBookVerses = rows;
     persistUiState();
   } catch (error) {
     if (cacheKey !== bibleVerseCacheKey(state.selectedBibleTranslationId, state.selectedBookCode, state.selectedBibleChapter)) {
@@ -8929,9 +9014,14 @@ async function fetchServiceScriptureVerses(reference, requestedTranslation = nul
   await ensureBibleBookLookups();
   if (!state.bibleTranslations.length && !state.bibleReaderError) await loadBibleTranslations({ silent: true });
   const translation = requestedTranslation || selectedPresenterBibleTranslation();
-  if (!isUuid(translation?.id)) return [];
+  if (!translation?.id) return [];
   const cacheKey = bibleVerseCacheKey(translation.id, reference.book.code, reference.chapter);
   if (state.bibleVerseCache.has(cacheKey)) return getCachedServiceScriptureVerses(reference, translation);
+  const persistentCachedRows = readPersistentBibleChapterCache(translation.id, reference.book.code, reference.chapter);
+  if (persistentCachedRows) {
+    state.bibleVerseCache.set(cacheKey, persistentCachedRows);
+    return getCachedServiceScriptureVerses(reference, translation);
+  }
   if (serviceScriptureChapterLoadPromises.has(cacheKey)) {
     await serviceScriptureChapterLoadPromises.get(cacheKey);
     return getCachedServiceScriptureVerses(reference, translation);
@@ -8947,7 +9037,9 @@ async function fetchServiceScriptureVerses(reference, requestedTranslation = nul
       .eq("chapter", reference.chapter)
       .order("verse", { ascending: true });
     if (error) throw error;
-    cacheServiceScriptureVerses(reference, (data || []).map(normalizeServerBibleVerse), translation);
+    const rows = inferBibleVerseEndRanges((data || []).map(normalizeServerBibleVerse));
+    cacheServiceScriptureVerses(reference, rows, translation);
+    writePersistentBibleChapterCache(translation.id, reference.book.code, reference.chapter, rows);
   })();
   serviceScriptureChapterLoadPromises.set(cacheKey, requestPromise);
   try {
@@ -15496,11 +15588,76 @@ function hasDirtyChanges() {
   return state.dirty.song || state.dirty.forms || state.dirty.scripture || state.dirty.service || state.dirty.references;
 }
 
+let unsavedChangesDialogPromise = null;
+
+function confirmUnsavedChangesAction() {
+  if (unsavedChangesDialogPromise) return unsavedChangesDialogPromise;
+
+  unsavedChangesDialogPromise = new Promise((resolve) => {
+    const overlay = document.createElement("div");
+    overlay.className = "unsaved-dialog-backdrop";
+    overlay.innerHTML = `
+      <div class="unsaved-dialog" role="dialog" aria-modal="true" aria-labelledby="unsavedDialogTitle">
+        <div class="unsaved-dialog-copy">
+          <h2 id="unsavedDialogTitle">저장하지 않은 변경이 있어요</h2>
+          <p>나가기 전에 저장하거나, 저장하지 않고 이동할 수 있어요.</p>
+        </div>
+        <div class="unsaved-dialog-actions">
+          <button class="btn subtle" type="button" data-unsaved-action="cancel">계속 편집</button>
+          <button class="btn subtle" type="button" data-unsaved-action="discard">저장 안 함</button>
+          <button class="btn primary" type="button" data-unsaved-action="save">저장하고 이동</button>
+        </div>
+      </div>
+    `;
+
+    const cleanup = (action) => {
+      document.removeEventListener("keydown", handleKeydown);
+      overlay.remove();
+      unsavedChangesDialogPromise = null;
+      resolve(action);
+    };
+    const handleKeydown = (event) => {
+      if (event.key === "Escape") cleanup("cancel");
+    };
+
+    overlay.addEventListener("click", (event) => {
+      if (event.target === overlay) {
+        cleanup("cancel");
+        return;
+      }
+      const button = event.target.closest("[data-unsaved-action]");
+      if (!button) return;
+      cleanup(button.dataset.unsavedAction);
+    });
+    document.addEventListener("keydown", handleKeydown);
+    document.body.append(overlay);
+    overlay.querySelector('[data-unsaved-action="save"]')?.focus();
+  });
+
+  return unsavedChangesDialogPromise;
+}
+
+async function discardUnsavedChanges() {
+  const dirtyModules = getDirtyModules();
+  clearDirtyState();
+  updateSaveState();
+  await reloadDiscardedChanges(dirtyModules);
+  clearDirtyState();
+  updateSaveState();
+}
+
 async function confirmSaveBeforeLeaving() {
   if (!hasDirtyChanges()) return true;
-  if (!confirm("Save changes before leaving?")) return false;
+  const action = await confirmUnsavedChangesAction();
+  if (action === "cancel") return false;
+  if (action === "discard") {
+    await discardUnsavedChanges();
+    return true;
+  }
   await saveAll();
-  return !hasDirtyChanges();
+  if (!hasDirtyChanges()) return true;
+  showToast("저장되지 않은 변경이 남아 있어요. 다시 저장하거나 저장 안 함을 선택해 주세요.", "error");
+  return false;
 }
 
 function updateSaveState() {
@@ -19237,6 +19394,7 @@ function renderPresenterDetail() {
   const presenterActive = state.presenter.serviceId === serviceId;
   const presenterSlides = presenterSlidesForService(serviceId);
   const presenterIndex = presenterActive ? clampPresenterIndex(state.presenter.index, presenterSlides.length) : 0;
+  const viewportSnapshot = capturePresenterViewportSnapshot(serviceId);
   refs.detailPane.innerHTML = `
     <div class="service-viewer presenter-viewer">
       <div class="svc-header">
@@ -19260,6 +19418,7 @@ function renderPresenterDetail() {
     </div>`;
   refreshIcons();
   mountDeferredPresenterBoardSections(document.getElementById("servicePresenterControls"), serviceId, presenterSlides);
+  restorePresenterViewportSnapshot(viewportSnapshot);
   updateSaveState();
   requestAnimationFrame(() => {
     fitPresenterChromakeyScripturePreviews(refs.detailPane);
@@ -22708,24 +22867,7 @@ async function buildLiveScriptureSlide(query) {
     return null;
   }
 
-  let request = state.client
-    .from("mindex_bible_verses")
-    .select("book_code,chapter,verse,text")
-    .eq("is_active", true)
-    .eq("translation_id", translation.id)
-    .eq("book_code", reference.book.code)
-    .eq("chapter", reference.chapter)
-    .order("verse", { ascending: true });
-
-  if (reference.verse !== null) {
-    request = request
-      .gte("verse", reference.verse)
-      .lte("verse", reference.verseEnd || reference.verse);
-  }
-
-  const { data, error } = await request;
-  if (error) throw error;
-  const verses = data || [];
+  const verses = await fetchServiceScriptureVerses(reference, translation);
   if (!verses.length) {
     showToast("해당 성구를 찾지 못했습니다.", "error");
     return null;
@@ -24315,6 +24457,7 @@ function renderPresenterControlState(serviceId = state.selectedServiceId) {
         return;
       }
       const focusedInput = capturePresenterFocusedInput(root);
+      const viewportSnapshot = capturePresenterViewportSnapshot(serviceId);
       const template = document.createElement("template");
       template.innerHTML = renderServicePresenterControls(service, slides, active, index).trim();
       const nextRoot = template.content.firstElementChild;
@@ -24329,6 +24472,7 @@ function renderPresenterControlState(serviceId = state.selectedServiceId) {
       restorePresenterFocusedInput(nextRoot, focusedInput);
       refreshIcons();
       mountDeferredPresenterBoardSections(nextRoot, serviceId, slides);
+      restorePresenterViewportSnapshot(viewportSnapshot);
       updateSaveState();
       renderServiceList();
       return;
