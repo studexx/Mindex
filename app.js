@@ -9880,10 +9880,46 @@ function defaultServiceOfferingPrayerLeader(typeId = "") {
   return serviceMinisterDefaults(typeId).offeringPrayer || "";
 }
 
+function calendarAssigneeValueForService(service = null, fields = []) {
+  const row = serviceBulletinCalendarRow(service);
+  if (!row) return "";
+  for (const field of fields) {
+    const value = String(row?.[field] || "").trim();
+    if (value) return value;
+  }
+  return "";
+}
+
+function defaultServicePrayerLeader(service = null) {
+  const typeId = worshipAppServiceTypeId(service?.type_id);
+  const fieldMap = {
+    children: ["children_prayer", "nursery_prayer"],
+    youth: ["youth_prayer"],
+    "young-adult": ["young_adult_prayer"],
+    "sunday-first": ["sunday_first_prayer", "first_prayer", "representative_prayer", "prayer_leader"],
+    "sunday-second": ["sunday_second_prayer", "second_prayer", "representative_prayer", "prayer_leader"],
+    "sunday-main": ["sunday_main_prayer", "third_prayer", "representative_prayer", "prayer_leader"],
+    "sunday-afternoon": ["sunday_afternoon_prayer", "afternoon_prayer", "representative_prayer", "prayer_leader"],
+    wednesday: ["wednesday_prayer", "representative_prayer", "prayer_leader"],
+    friday: ["friday_prayer", "representative_prayer", "prayer_leader"],
+    monthly: ["monthly_prayer", "representative_prayer", "prayer_leader"],
+  };
+  return calendarAssigneeValueForService(service, fieldMap[typeId] || ["representative_prayer", "prayer_leader"]);
+}
+
+function defaultServiceOfferingPrayerLeaderForService(service = null) {
+  const typeId = worshipAppServiceTypeId(service?.type_id);
+  const calendarValue = calendarAssigneeValueForService(service, {
+    youth: ["youth_offering_prayer"],
+  }[typeId] || []);
+  return calendarValue || defaultServiceOfferingPrayerLeader(typeId);
+}
+
 function serviceItemDefaultAssignee(item = {}, service = selectedServiceForEditor()) {
   const label = compactSearchValue(item?.label || "");
+  if (label === "대표기도" || label === "기도") return defaultServicePrayerLeader(service);
   if (label === "설교" || label === "설교제목") return defaultServiceSermonLeader(service?.type_id);
-  if (label === "봉헌기도") return defaultServiceOfferingPrayerLeader(service?.type_id);
+  if (label === "봉헌기도") return defaultServiceOfferingPrayerLeaderForService(service);
   if (label === "축도") return defaultServiceBenedictionLeader(service?.type_id);
   return "";
 }
@@ -18426,7 +18462,7 @@ function renderServiceOutlineChildRow(service, item, index, selectedIndex, slide
   const slideIndex = firstPresenterSlideIndexForServiceItem(item, slides);
   const activeSlide = state.presenter.serviceId === service.id && slideIndex >= 0 && presenterSlideBelongsToItem(state.presenter.slides[state.presenter.index], item);
   const selected = index === selectedIndex;
-  const title = serviceSidebarChildItemTitle(item);
+  const title = serviceSidebarChildItemTitle(item, service);
   const interactionHint = presenterSlideInteractionHint(service.id, title);
   const missing = serviceOutlineMissingState(item, slides);
   return `
@@ -18484,16 +18520,31 @@ function isServiceSidebarSectionMarkerItem(item, group = {}) {
   return group.sectionKey === "praise" || isMainPraiseLabel(group.sectionTitle);
 }
 
-function serviceSidebarChildItemTitle(item) {
+function serviceSidebarChildItemTitle(item, service = null) {
   const label = String(item?.label || "").trim();
   if (serviceSidebarUsesLabelOnly(item)) return label || "항목";
   const title = serviceItemDisplayText(item);
+  const personSummary = serviceSidebarPersonSummary(item, service);
+  if (personSummary) return personSummary;
   if (!label) return title || "항목";
   if (!title) return label;
   const labelCompact = compactSearchValue(label);
   const titleCompact = compactSearchValue(title);
   if (labelCompact === titleCompact) return label;
   return `${label} · ${title}`;
+}
+
+function serviceSidebarPersonSummary(item = {}, service = null) {
+  const label = String(item?.label || "").trim();
+  const labelCompact = compactSearchValue(label);
+  if (!["대표기도", "기도", "봉헌기도", "축도"].includes(labelCompact)) return "";
+  const assignee = serviceItemEditableAssigneeValue(item, service);
+  if (!assignee) return "";
+  const displayLabel = labelCompact === "기도" ? "대표기도" : label;
+  const title = serviceItemDisplayText(item);
+  const titleCompact = compactSearchValue(title);
+  const titlePart = title && titleCompact !== labelCompact ? `${displayLabel} · ${title}` : displayLabel;
+  return `${titlePart} · ${assignee}`;
 }
 
 function serviceSidebarUsesLabelOnly(item = {}) {

@@ -3307,8 +3307,8 @@ body[data-module="presenter"] .detail-pane {
   width: 100%;
   min-width: 0;
   min-height: 30px;
-  grid-template-columns: 15px minmax(0, 1fr) 22px;
-  gap: 4px;
+  grid-template-columns: 20px minmax(0, 1fr) 30px;
+  gap: 5px;
   align-items: center;
   border: 0;
   border-radius: var(--r);
@@ -3331,7 +3331,7 @@ body[data-module="presenter"] .detail-pane {
 }
 .service-outline-row--ready,
 .service-outline-row--section {
-  min-height: 34px;
+  min-height: 35px;
   padding-block: 5px;
 }
 .service-outline-row--section.active {
@@ -3340,9 +3340,9 @@ body[data-module="presenter"] .detail-pane {
 .service-outline-row--ready .service-outline-main strong,
 .service-outline-row--section .service-outline-main strong {
   color: var(--sidebar-ink);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
-  line-height: 18px;
+  line-height: 20px;
 }
 .service-outline-group {
   display: grid;
@@ -3357,17 +3357,17 @@ body[data-module="presenter"] .detail-pane {
   border-left: 1px solid color-mix(in srgb, var(--sidebar-line, rgba(255, 255, 255, .16)) 48%, transparent);
 }
 .service-outline-row--child {
-  min-height: 28px;
-  grid-template-columns: 0 minmax(0, 1fr) 22px;
-  gap: 4px;
+  min-height: 30px;
+  grid-template-columns: 0 minmax(0, 1fr) 30px;
+  gap: 5px;
   border-radius: 5px;
-  padding: 4px;
+  padding: 5px;
 }
 .service-outline-row--child strong {
   color: var(--sidebar-sub);
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 16px;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 18px;
 }
 .service-outline-row--child.selected:not(.active) {
   background: var(--sidebar-hover-bg);
@@ -3386,14 +3386,14 @@ body[data-module="presenter"] .detail-pane {
 }
 .service-outline-no {
   color: var(--sidebar-label);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   line-height: 1;
   text-align: right;
 }
 .service-outline-start {
   color: var(--sidebar-label);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   line-height: 1;
   text-align: right;
@@ -3406,9 +3406,9 @@ body[data-module="presenter"] .detail-pane {
 .service-outline-main strong {
   overflow: hidden;
   color: currentColor;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
-  line-height: 16px;
+  line-height: 18px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }

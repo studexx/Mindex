@@ -2989,12 +2989,22 @@ def main() -> int:
                           const youngAdultProjected = projectWorshipServiceItemsFromTemplate(youngAdultService, []);
                           try {
                             state.calendarData = [
-                              ...previousCalendarData,
-                              { id: '__smoke_youth_integrated__', date: '2026-07-26', church_schedule: '온세대 찬양예배' },
+                              {
+                                id: '__smoke_youth_integrated__',
+                                date: '2026-07-26',
+                                church_schedule: '온세대 찬양예배',
+                                youth_prayer: '김윤민 청년',
+                                youth_offering_prayer: '박지훈 교사',
+                                young_adult_prayer: '정선분 권사',
+                              },
+                              ...(previousCalendarData || []).filter((row) => row.date !== '2026-07-26'),
                             ];
                             const offering = projected.find((item) => item.label === '봉헌찬양');
+                            const prayer = projected.find((item) => item.label === '대표기도');
+                            const offeringPrayer = projected.find((item) => item.label === '봉헌기도');
                             const fellowship = projected.find((item) => item.label === '반별 모임');
                             const announcement = projected.find((item) => item.label === '청소년부 광고');
+                            const youngAdultPrayer = youngAdultProjected.find((item) => item.label === '대표기도');
                             const youngAdultAnnouncement = youngAdultProjected.find((item) => item.label === '청년부 광고');
                             const offeringSong = presenterSongForServiceItem(
                               offering,
@@ -3022,9 +3032,14 @@ def main() -> int:
                                 offering?.song_id
                                 && offering?.version_id
                               ),
+                              prayerAssignee: serviceItemEditableAssigneeValue(prayer, service),
+                              prayerSidebarTitle: serviceSidebarChildItemTitle(prayer, service),
+                              offeringPrayerAssignee: serviceItemEditableAssigneeValue(offeringPrayer, service),
                               offeringReady: offeringContent.state === 'filled' && offeringContent.reason === 'song',
                               fellowshipStatic: presenterServiceInputItem({ ...fellowship, raw_title: '' }, service) === null,
                               fellowshipContent: fellowshipContent.reason,
+                              youngAdultPrayerAssignee: serviceItemEditableAssigneeValue(youngAdultPrayer, youngAdultService),
+                              youngAdultPrayerSidebarTitle: serviceSidebarChildItemTitle(youngAdultPrayer, youngAdultService),
                               announcementEditable: presenterServiceInputItem(announcement, service)?.mode === 'text',
                               youngAdultAnnouncementEditable: presenterServiceInputItem(youngAdultAnnouncement, youngAdultService)?.mode === 'text',
                               youngAdultSections: youngAdultTemplate.map((step) => step.sectionKey || step.label),
@@ -3047,14 +3062,19 @@ def main() -> int:
                             "sermon", "response_song", "lords_prayer", "announcements", "fellowship",
                         ],
                         "labels": [
-                            "대기 영상", "사도신경", "찬양 1", "찬양 2", "찬양 3", "기도", "봉헌찬양", "봉헌기도",
+                            "대기 영상", "사도신경", "찬양 1", "찬양 2", "찬양 3", "대표기도", "봉헌찬양", "봉헌기도",
                             "성경봉독", "설교 제목", "설교 본문", "인용 구절", "결단기도", "주기도문", "청소년부 광고", "반별 모임",
                         ],
                         "offeringTitle": "",
                         "offeringLinked": True,
+                        "prayerAssignee": "김윤민 청년",
+                        "prayerSidebarTitle": "대표기도 · 김윤민 청년",
+                        "offeringPrayerAssignee": "박지훈 교사",
                         "offeringReady": True,
                         "fellowshipStatic": True,
                         "fellowshipContent": "fixed_title",
+                        "youngAdultPrayerAssignee": "정선분 권사",
+                        "youngAdultPrayerSidebarTitle": "대표기도 · 정선분 권사",
                         "announcementEditable": True,
                         "youngAdultAnnouncementEditable": True,
                         "youngAdultSections": [
@@ -3062,7 +3082,7 @@ def main() -> int:
                             "sermon", "response_song", "offering", "announcements", "sending", "fellowship",
                         ],
                         "youngAdultLabels": [
-                            "대기 영상", "사도신경", "기도", "찬양 1", "찬양 2", "찬양 3", "찬양 4",
+                            "대기 영상", "사도신경", "대표기도", "찬양 1", "찬양 2", "찬양 3", "찬양 4",
                             "성경봉독", "설교 제목", "설교 본문", "인용 구절", "결단찬양", "결단기도",
                             "봉헌찬양", "봉헌기도", "청년부 광고", "파송찬양", "축도", "셀 모임",
                         ],
