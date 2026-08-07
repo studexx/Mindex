@@ -5329,6 +5329,104 @@ def main() -> int:
                             pass_("presenter-thumbnail-grid", json.dumps(thumb_metrics, ensure_ascii=False))
                         else:
                             fail("presenter-thumbnail-grid", json.dumps(thumb_metrics, ensure_ascii=False))
+
+                    thumb_zoom_state = page.evaluate(
+                        """
+                        async () => {
+                          const sample = () => {
+                            const frames = [...document.querySelectorAll('.svc-slide-thumb-frame')].slice(0, 10);
+                            return frames.map((frame) => {
+                              const rect = frame.getBoundingClientRect();
+                              const canvas = frame.querySelector('.svc-slide-mini-canvas');
+                              const canvasStyle = canvas ? getComputedStyle(canvas) : null;
+                              return {
+                                width: Number(rect.width.toFixed(2)),
+                                height: Number(rect.height.toFixed(2)),
+                                transform: canvasStyle?.transform || '',
+                              };
+                            });
+                          };
+                          const before = sample();
+                          document.documentElement.style.zoom = '125%';
+                          await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+                          const zoomed = sample();
+                          await new Promise((resolve) => setTimeout(resolve, 80));
+                          const zoomedLater = sample();
+                          document.documentElement.style.zoom = '';
+                          await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+                          const restored = sample();
+                          return { before, zoomed, zoomedLater, restored };
+                        }
+                        """
+                    )
+                    if thumb_zoom_state["before"]:
+                        zoom_width_drift = max(
+                            abs(item["width"] - thumb_zoom_state["zoomed"][index]["width"])
+                            for index, item in enumerate(thumb_zoom_state["zoomedLater"])
+                        )
+                        restore_width_drift = max(
+                            abs(item["width"] - thumb_zoom_state["restored"][index]["width"])
+                            for index, item in enumerate(thumb_zoom_state["before"])
+                        )
+                        transforms_stable = all(
+                            item["transform"] == thumb_zoom_state["zoomedLater"][index]["transform"]
+                            for index, item in enumerate(thumb_zoom_state["zoomed"])
+                        )
+                        if zoom_width_drift <= 1 and restore_width_drift <= 1 and transforms_stable:
+                            pass_("presenter-thumbnail-zoom-stability", json.dumps(thumb_zoom_state, ensure_ascii=False))
+                        else:
+                            fail("presenter-thumbnail-zoom-stability", json.dumps(thumb_zoom_state, ensure_ascii=False))
+
+                    thumb_hover_state = page.evaluate(
+                        """
+                        () => {
+                          const frame = document.querySelector('.svc-slide-thumb-frame');
+                          const canvas = frame?.querySelector('.svc-slide-mini-canvas');
+                          if (!frame || !canvas) return null;
+                          const rect = frame.getBoundingClientRect();
+                          return {
+                            width: Number(rect.width.toFixed(2)),
+                            height: Number(rect.height.toFixed(2)),
+                            transform: getComputedStyle(canvas).transform || '',
+                          };
+                        }
+                        """
+                    )
+                    if thumb_hover_state:
+                        page.hover(".svc-slide-thumb[data-presenter-index][data-service-id]")
+                        page.wait_for_timeout(80)
+                        thumb_hover_later = page.evaluate(
+                            """
+                            () => {
+                              const frame = document.querySelector('.svc-slide-thumb-frame');
+                              const canvas = frame?.querySelector('.svc-slide-mini-canvas');
+                              if (!frame || !canvas) return null;
+                              const rect = frame.getBoundingClientRect();
+                              return {
+                                width: Number(rect.width.toFixed(2)),
+                                height: Number(rect.height.toFixed(2)),
+                                transform: getComputedStyle(canvas).transform || '',
+                                outline: getComputedStyle(frame).outlineStyle,
+                              };
+                            }
+                            """
+                        )
+                        hover_stable = (
+                            thumb_hover_later
+                            and abs(thumb_hover_state["width"] - thumb_hover_later["width"]) <= 1
+                            and abs(thumb_hover_state["height"] - thumb_hover_later["height"]) <= 1
+                            and thumb_hover_state["transform"] == thumb_hover_later["transform"]
+                        )
+                        if hover_stable:
+                            pass_("presenter-thumbnail-hover-stability", json.dumps({
+                                "before": thumb_hover_state,
+                                "after": thumb_hover_later,
+                            }, ensure_ascii=False))
+                        else:
+                            fail("presenter-thumbnail-hover-stability", json.dumps({
+                                "before": thumb_hover_state,
+                                "after": thumb_hover_later,
+                            }, ensure_ascii=False))
                     page.evaluate(
                         """
                         (serviceId) => {

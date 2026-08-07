@@ -6855,6 +6855,7 @@ textarea.svc-presenter-input-control--multiline {
 .svc-board-grid {
   display: grid;
   --svc-thumb-width: 184px;
+  --svc-thumb-mini-scale: 0.0958333333;
   --svc-thumb-ring-space: 4px;
   --svc-thumb-wrap-width: calc(var(--svc-thumb-width) + (var(--svc-thumb-ring-space) * 2));
   width: 100%;
@@ -6910,10 +6911,12 @@ textarea.svc-presenter-input-control--multiline {
 .svc-slide-thumb-wrap {
   position: relative;
   display: grid;
+  box-sizing: border-box;
   width: min(100%, var(--svc-thumb-wrap-width));
   min-width: 0;
   gap: 4px;
   border-radius: var(--r);
+  contain: layout paint;
   padding: var(--svc-thumb-ring-space);
 }
 .svc-slide-thumb-wrap.active {
@@ -6927,7 +6930,6 @@ textarea.svc-presenter-input-control--multiline {
 .svc-slide-thumb-wrap:has(.svc-slide-thumb:hover),
 .svc-slide-thumb-wrap:has(.svc-slide-thumb:focus-visible) {
   background: color-mix(in srgb, var(--accent) 10%, var(--panel-2) 12%);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, .18);
 }
 .svc-slide-thumb-wrap:has(.svc-slide-thumb:hover) .svc-slide-thumb-no,
 .svc-slide-thumb-wrap:has(.svc-slide-thumb:focus-visible) .svc-slide-thumb-no {
@@ -7005,6 +7007,7 @@ textarea.svc-presenter-input-control--multiline {
   position: relative;
   display: grid;
   width: 100%;
+  inline-size: 100%;
   flex: 0 0 auto;
   min-width: 0;
   gap: 0;
@@ -7018,6 +7021,7 @@ textarea.svc-presenter-input-control--multiline {
 .svc-slide-thumb-frame {
   display: flex;
   width: 100%;
+  min-width: 0;
   aspect-ratio: 16 / 9;
   flex-direction: column;
   justify-content: center;
@@ -7028,10 +7032,12 @@ textarea.svc-presenter-input-control--multiline {
   background: color-mix(in srgb, var(--panel-2) 44%, transparent);
   color: #fff;
   contain: layout size paint;
+  isolation: isolate;
   padding: 0;
   box-shadow:
     inset 0 0 0 1px rgba(255,255,255,.46),
     0 1px 3px rgba(0, 0, 0, .10);
+  transform: translateZ(0);
 }
 .svc-slide-thumb-frame--lyrics,
 .svc-slide-thumb-frame--song-title {
@@ -7039,10 +7045,11 @@ textarea.svc-presenter-input-control--multiline {
   padding: 0;
 }
 .svc-slide-thumb:hover .svc-slide-thumb-frame {
+  outline: 2px solid color-mix(in srgb, var(--accent) 78%, transparent);
+  outline-offset: -2px;
   box-shadow:
-    inset 0 0 0 2px color-mix(in srgb, var(--accent) 78%, transparent),
-    0 0 0 1px color-mix(in srgb, var(--accent) 28%, transparent),
-    0 4px 12px rgba(0, 0, 0, .22);
+    inset 0 0 0 1px rgba(255,255,255,.46),
+    0 1px 3px rgba(0, 0, 0, .10);
 }
 .svc-slide-thumb.active .svc-slide-thumb-frame {
   box-shadow: 0 1px 3px rgba(0, 0, 0, .10);
@@ -7063,6 +7070,7 @@ textarea.svc-presenter-input-control--multiline {
   background: #00ff00;
 }
 .svc-slide-mini-output {
+  --svc-thumb-mini-scale: 0.0958333333;
   --presenter-output-bg: #00ff00;
   --presenter-output-fg: #fff;
   --presenter-output-muted: rgba(255, 255, 255, .72);
@@ -7077,8 +7085,8 @@ textarea.svc-presenter-input-control--multiline {
   overflow: hidden;
   background: var(--presenter-output-bg);
   color: var(--presenter-output-fg);
-  container-type: size;
   font-family: var(--font-presenter);
+  pointer-events: none;
 }
 .svc-slide-mini-output.no-chromakey {
   --presenter-output-bg: #050807;
@@ -7146,11 +7154,14 @@ textarea.svc-presenter-input-control--multiline {
   background-repeat: inherit;
   background-size: inherit;
   color: inherit;
-  container-type: size;
   font-family: inherit;
   place-items: center;
-  transform: translate(-50%, -50%) scale(min(calc(100cqw / 1280px), calc(100cqh / 720px)));
+  transform: translate(-50%, -50%) scale(var(--svc-thumb-mini-scale));
   transform-origin: center center;
+  backface-visibility: hidden;
+  pointer-events: none;
+  transform-style: preserve-3d;
+  will-change: transform;
 }
 .svc-slide-board--clean .svc-slide-thumb-frame {
   background:
@@ -7330,7 +7341,10 @@ textarea.svc-presenter-input-control--multiline {
 
 @media (max-width: 1180px) {
   .service-dashboard { grid-template-columns: 1fr; }
-  .svc-board-grid { --svc-thumb-width: 168px; }
+  .svc-board-grid {
+    --svc-thumb-width: 168px;
+    --svc-thumb-mini-scale: 0.0875;
+  }
   .svc-presenter-workspace { grid-template-columns: minmax(0, 1fr) minmax(280px, 320px); gap: 16px; }
   .svc-presenter-input-rail { padding-left: 12px; }
   .svc-presenter-main {
@@ -7380,7 +7394,10 @@ textarea.svc-presenter-input-control--multiline {
 }
 
 @media (max-width: 760px) {
-  .svc-board-grid { --svc-thumb-width: 148px; }
+  .svc-board-grid {
+    --svc-thumb-width: 148px;
+    --svc-thumb-mini-scale: 0.0770833333;
+  }
   .svc-presenter-main,
   .svc-presenter-action-group {
     border-radius: var(--r);

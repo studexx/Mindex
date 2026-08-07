@@ -482,7 +482,7 @@ def main() -> int:
                     """
                     (serviceId) => {
                       const frame = document.querySelector(`.svc-slide-thumb[data-service-id="${serviceId}"][data-presenter-index="1"] .svc-slide-thumb-frame`);
-                      return Boolean(frame && getComputedStyle(frame).boxShadow.includes('0px 0px 0px 2px'));
+                      return Boolean(frame && getComputedStyle(frame).outlineStyle === 'solid');
                     }
                     """,
                     arg=service["id"],
@@ -494,12 +494,14 @@ def main() -> int:
                       const frame = document.querySelector(`.svc-slide-thumb[data-service-id="${serviceId}"][data-presenter-index="1"] .svc-slide-thumb-frame`);
                       return {
                         shadow: frame ? getComputedStyle(frame).boxShadow : '',
+                        outline: frame ? getComputedStyle(frame).outlineStyle : '',
+                        outlineWidth: frame ? getComputedStyle(frame).outlineWidth : '',
                       };
                     }
                     """,
                     service["id"],
                 )
-                if "0px 0px 0px 2px" in hover_state["shadow"]:
+                if hover_state["outline"] == "solid" and hover_state["outlineWidth"] == "2px":
                     pass_("presenter-thumb-hover-ring", json.dumps(hover_state, ensure_ascii=False))
                 else:
                     fail("presenter-thumb-hover-ring", json.dumps(hover_state, ensure_ascii=False))
