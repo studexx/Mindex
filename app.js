@@ -19942,11 +19942,13 @@ function renderServiceSongVersionPicker(item, index, model = serviceItemEditorMo
 }
 
 function serviceSongPickerResults(query, item = {}, service = selectedServiceForEditor(), limit = 6) {
-  const tokens = getSearchTokens(query);
+  const normalizedQuery = presenterPreparationSongContent(query);
+  const directMatch = resolveExistingPraiseSongForServiceInput(normalizedQuery, item, service);
+  const tokens = getSearchTokens(normalizedQuery);
   if (!tokens.length) return [];
   const requiresNewHymnal = serviceItemRequiresNewHymnalScoreSong(item);
   const cacheKey = [
-    normalizeSearchValue(query),
+    normalizeSearchValue(normalizedQuery),
     requiresNewHymnal ? "hymn" : "all",
     service?.id || "",
     state.songs.length,
@@ -19959,13 +19961,26 @@ function serviceSongPickerResults(query, item = {}, service = selectedServiceFor
     .filter((entry) => entry.match);
   const phraseMatches = candidates.filter((entry) => entry.match.phraseMatched);
   const results = phraseMatches.length ? phraseMatches : candidates;
-  const songs = results
+  const songs = uniqueSongsById([
+    ...(directMatch && (!requiresNewHymnal || isNewHymnalScoreSong(directMatch)) ? [directMatch] : []),
+    ...results
     .sort((a, b) => b.match.score - a.match.score || sortSongsForCurrentList(a.song, b.song))
     .slice(0, limit)
-    .map((entry) => entry.song);
+    .map((entry) => entry.song),
+  ]).slice(0, limit);
   if (state.searchCache.songPicker.size > 80) state.searchCache.songPicker.clear();
   state.searchCache.songPicker.set(cacheKey, songs);
   return songs;
+}
+
+function uniqueSongsById(songs = []) {
+  const seen = new Set();
+  return songs.filter((song) => {
+    const id = String(song?.id || "").trim();
+    if (!id || seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
 }
 
 function renderServiceSongPickerResult(song, index) {
@@ -21429,6 +21444,8 @@ function parsePresenterPreparationHymnHint(value = "") {
   if (leading) return { title: String(leading[2] || "").trim(), hymnNo: String(leading[1] || "").trim() };
   const bareLeading = raw.match(/^(\d{1,4})\s*장\s+(.+)$/);
   if (bareLeading) return { title: String(bareLeading[2] || "").trim(), hymnNo: String(bareLeading[1] || "").trim() };
+  const bareNumberLeading = raw.match(/^(\d{1,4})\s+(.+)$/);
+  if (bareNumberLeading) return { title: String(bareNumberLeading[2] || "").trim(), hymnNo: String(bareNumberLeading[1] || "").trim() };
   const trailing = raw.match(/^(.+?)\s+(?:새\s*)?(?:찬송가|찬)\s*(\d+)\s*장?\s*$/);
   if (trailing) return { title: String(trailing[1] || "").trim(), hymnNo: String(trailing[2] || "").trim() };
   const bareTrailing = raw.match(/^(.+?)\s+(\d{1,4})\s*장\s*$/);

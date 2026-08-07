@@ -4480,12 +4480,14 @@ def main() -> int:
                             const hymnViaBlankFallback = await createBlankPraiseSongForServiceInput('430장 주와 같이 길 가는 것', service);
                             const specialHymnViaBlankFallback = await createBlankPraiseSongForServiceInput('찬 430', service);
                             const specialSongWithRoleViaBlankFallback = await createBlankPraiseSongForServiceInput('특송 찬 430', service);
+                            const bareHymnWithTitleViaBlankFallback = await createBlankPraiseSongForServiceInput('430 주와 같이 길 가는 것', service);
                             const serviceItem = normalizeServiceItem({
                               service_id: service.id,
                               label: '찬양 1',
                               raw_title: '주 내 소망은 주 더 알기 원합니다 G',
                               memo: serializeServiceItemMemo({ elementType: 'praise', inputMode: 'lyrics_db' }),
                             });
+                            const pickerBareHymn = serviceSongPickerResults('430 주와 같이 길 가는 것', serviceItem, service).map((song) => song.id);
                             state.services = [service];
                             state.selectedServiceId = service.id;
                             state.serviceItems = { [service.id]: [serviceItem] };
@@ -4499,6 +4501,8 @@ def main() -> int:
                               hymnViaBlankFallback: hymnViaBlankFallback?.id || '',
                               specialHymnViaBlankFallback: specialHymnViaBlankFallback?.id || '',
                               specialSongWithRoleViaBlankFallback: specialSongWithRoleViaBlankFallback?.id || '',
+                              bareHymnWithTitleViaBlankFallback: bareHymnWithTitleViaBlankFallback?.id || '',
+                              pickerBareHymn,
                               linkedFromInput,
                               insertCalled,
                             };
@@ -4520,6 +4524,8 @@ def main() -> int:
                         and presenter_preparation_existing_song_guard.get("hymnViaBlankFallback") == "__smoke_hymn_430_existing__"
                         and presenter_preparation_existing_song_guard.get("specialHymnViaBlankFallback") == "__smoke_hymn_430_existing__"
                         and presenter_preparation_existing_song_guard.get("specialSongWithRoleViaBlankFallback") == "__smoke_hymn_430_existing__"
+                        and presenter_preparation_existing_song_guard.get("bareHymnWithTitleViaBlankFallback") == "__smoke_hymn_430_existing__"
+                        and presenter_preparation_existing_song_guard.get("pickerBareHymn", [None])[0] == "__smoke_hymn_430_existing__"
                         and presenter_preparation_existing_song_guard.get("linkedFromInput") == "__smoke_existing_song__"
                         and presenter_preparation_existing_song_guard.get("insertCalled") is False
                     ):
