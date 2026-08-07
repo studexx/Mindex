@@ -6688,13 +6688,7 @@ function handleDetailInput(event) {
       }
       return;
     }
-    const serviceId = serviceField.dataset.serviceId || state.selectedServiceId;
-    const item = getServiceItems(serviceId)[Number(serviceField.dataset.serviceItemIndex)];
-    const isSongTitleDraft = serviceField.dataset.serviceItemField === "raw_title"
-      && serviceItemRequiresSongSelection(item, state.services.find((service) => service.id === serviceId));
-    // Matching a praise item expands its lyric/form slides. Keep that expensive
-    // work out of every keystroke; Enter and focusout perform the committed match.
-    updateServiceItemField(serviceField, isSongTitleDraft ? { resolveSongSelection: false } : {});
+    updateServiceItemField(serviceField);
     if (serviceField.matches("select")) {
       saveCommittedServiceItem(serviceField.dataset.serviceItemIndex, serviceField.dataset.serviceId || state.selectedServiceId, serviceItemSelectSaveOptions(serviceField));
     }
@@ -6830,7 +6824,10 @@ function handleDetailChange(event) {
 
   const serviceField = event.target.closest("[data-service-item-field]");
   if (serviceField) {
-    if (isDeferredServiceTextInput(serviceField)) return;
+    if (isDeferredServiceTextInput(serviceField)) {
+      commitDeferredServiceTextInput(serviceField, { save: true });
+      return;
+    }
     updateServiceItemField(serviceField);
     if (serviceField.matches("select")) {
       saveCommittedServiceItem(serviceField.dataset.serviceItemIndex, serviceField.dataset.serviceId || state.selectedServiceId, serviceItemSelectSaveOptions(serviceField));
@@ -7400,7 +7397,15 @@ function updateNewServiceFormField(field) {
 
 function isDeferredServiceTextInput(field) {
   if (!field?.matches?.('input[type="text"][data-service-item-field], input:not([type])[data-service-item-field], textarea[data-service-item-field]')) return false;
-  return !field.hasAttribute("data-service-song-required");
+  return true;
+}
+
+function isServiceSongTitleInputField(field) {
+  if (!field || field.dataset.serviceItemField !== "raw_title") return false;
+  const serviceId = field.dataset.serviceId || state.selectedServiceId;
+  const item = getServiceItems(serviceId)[Number(field.dataset.serviceItemIndex)];
+  const service = state.services.find((candidate) => candidate.id === serviceId) || selectedServiceForEditor();
+  return Boolean(item && serviceItemRequiresSongSelection(item, service));
 }
 
 function isDeferredServiceScriptureReferenceInput(field) {
@@ -7427,6 +7432,11 @@ function clearDeferredServiceTextPreview(field) {
 
 function scheduleDeferredServiceTextPreview(field) {
   if (!field?.isConnected || isDeferredServiceScriptureReferenceInput(field)) return;
+  if (isServiceSongTitleInputField(field)) {
+    state.dirty.service = true;
+    updateSaveState();
+    return;
+  }
   const key = deferredServiceTextPreviewKey(field);
   clearDeferredServiceTextPreview(field);
   deferredServiceTextPreviewTimers.set(key, window.setTimeout(() => {
@@ -9144,15 +9154,12 @@ function formatServiceScriptureBodySlideBlocks(verses = []) {
 }
 
 async function createPraiseSongFromServiceItem(index) {
-  if (!requireClient() || !Number.isFinite(index)) return;
+  if (!Number.isFinite(index)) return;
   const serviceId = state.selectedServiceId;
   const service = state.services.find((svc) => svc.id === serviceId);
   const items = getServiceItems(serviceId);
   const item = items[index];
   if (!service || !item) return;
-  const title = stripHymnNo(presenterPreparationSongContent(item.raw_title)).title.trim();
-  if (!title) return;
-
   const existing = await resolveExistingPraiseSongForServiceInputAfterCatalogLoad(item.raw_title, item, service);
   if (existing) {
     item.song_id = existing.id;
@@ -9165,6 +9172,10 @@ async function createPraiseSongFromServiceItem(index) {
     showToast("기존 찬양 DB 곡에 연결했습니다.");
     return;
   }
+
+  if (!requireClient()) return;
+  const title = stripHymnNo(presenterPreparationSongContent(item.raw_title)).title.trim();
+  if (!title) return;
 
   const praiseType = service?.type_id === "children" ? "children" : "ccm";
   const defaultVersion = {
@@ -18552,7 +18563,7 @@ function renderServiceSidebarItemEditor(service, items, selectedIndex) {
           <input type="text" data-service-item-field="raw_title" data-service-item-index="${selectedIndex}"
             value="${escapeAttr(item.raw_title || "")}"
             placeholder="${isScriptureServiceLabel(item.label) ? "성경 구절" : "내용"}"
-            ${isSongServiceLabel(item.label) || isSpecialSongServiceItem(item) ? `list="servicePraiseOptions"` : ""}
+            ${isSongServiceLabel(item.label) || isSpecialSongServiceItem(item) ? `autocomplete="off" spellcheck="false"` : ""}
             ${isScriptureServiceLabel(item.label) ? `list="serviceScriptureOptions"` : ""} />
         </label>
         <label>
@@ -19741,7 +19752,7 @@ function renderServiceItemGroups(items) {
                 data-service-item-index="${origIndex}"
                 value="${escapeAttr(item.raw_title || "")}"
                 placeholder="${escapeAttr(subModel.titlePlaceholder)}"
-                ${subModel.song && subModel.praiseInputMode !== "manual_praise" && !subModel.strictSong ? `list="servicePraiseOptions"` : ""}
+                ${subModel.song ? `autocomplete="off" spellcheck="false"` : ""}
                 ${subModel.scripture ? `list="serviceScriptureOptions"` : ""}
                 ${subModel.strictSong ? `data-service-song-required="true"` : ""}
                 ${subModel.titleInvalid ? `aria-invalid="true"` : ""}
@@ -19828,11 +19839,10 @@ function renderServiceEditorAssigneeControl(item, origIndex, attrs = {}, model =
 function renderServiceEditorTitleControl(item, origIndex, attrs = {}, model = serviceItemEditorModel(item, attrs)) {
   const fieldAttr = attrs.fieldAttr || "data-service-item-field";
   const indexAttr = attrs.indexAttr || "data-service-item-index";
-  const listAttr = model.song
-    ? (model.praiseInputMode === "manual_praise" || model.strictSong ? "" : `list="servicePraiseOptions"`)
-    : model.scripture
+  const listAttr = model.scripture
       ? `list="serviceScriptureOptions"`
       : "";
+  const songInputAttrs = model.song ? ` autocomplete="off" spellcheck="false"` : "";
   const invalidAttr = model.titleInvalid ? ` aria-invalid="true"` : "";
   const invalidClass = model.titleInvalid ? " is-invalid" : "";
   const strictAttr = model.strictSong ? ` data-service-song-required="true"` : "";
@@ -19850,6 +19860,7 @@ function renderServiceEditorTitleControl(item, origIndex, attrs = {}, model = se
         value="${escapeAttr(model.titleValue || (model.strictSong ? "" : item.raw_title || ""))}"
         placeholder="${escapeAttr(model.titlePlaceholder)}"
         ${listAttr}
+        ${songInputAttrs}
         ${strictAttr}
         ${invalidAttr}
         aria-label="${attrs.isDefault ? "기본 항목 내용" : "항목 내용"}"
@@ -20749,12 +20760,10 @@ function songServiceOptionLabel(song) {
 var SERVICE_PRAISE_TITLE_ALIASES;
 
 function servicePraiseLookupCandidates(value) {
-  const raw = stripServicePraiseTrailingMusicKey(value);
+  const raw = stripServiceSongInputPrefix(stripServicePraiseTrailingMusicKey(value));
   if (!raw) return [];
   const hymnless = stripHymnNo(raw).title || raw;
-  const withoutPrefix = hymnless
-    .replace(/^\s*(?:response|찬양|찬송|특송|결단찬양|봉헌찬양|파송찬양)\s*[/：:-]?\s*/i, "")
-    .trim();
+  const withoutPrefix = stripServiceSongInputPrefix(hymnless);
   const primary = withoutPrefix
     .split(/\s*[+＋]\s*/)[0]
     .replace(/^\s*메들리\s*[(（]\s*/u, "")
@@ -20796,6 +20805,17 @@ function stripServicePraiseTrailingMusicKey(value = "") {
     .replace(/\s*[(\[]\s*[A-G](?:#|b)?(?:m|M|maj7|sus[24]|add\d+|\d+)?\s*[)\]]\s*$/u, "")
     .replace(/\s+[A-G](?:#|b)?(?:m|M|maj7|sus[24]|add\d+|\d+)?$/u, "")
     .trim();
+}
+
+function stripServiceSongInputPrefix(value = "") {
+  let text = String(value || "").normalize("NFKC").replace(/\s+/g, " ").trim();
+  const prefix = /^(?:response|찬양|찬송|특송|결단찬양|봉헌찬양|봉헌찬송|파송찬양|파송찬송|폐회찬송|입례찬양|기도\s*찬양)\s*\d*\s*(?:[/：:·ㆍ•.-]\s*)?/iu;
+  for (let i = 0; i < 2; i += 1) {
+    const next = text.replace(prefix, "").trim();
+    if (next === text) break;
+    text = next;
+  }
+  return text;
 }
 
 function servicePraiseExactTitlePriority(song = {}) {
@@ -21476,7 +21496,7 @@ async function resolveExistingPraiseSongForServiceInputAfterCatalogLoad(value, i
 function presenterPreparationSongContent(value = "") {
   const text = cleanPresenterPreparationContent(value);
   // Keys such as G or D are notes for the instrumental team, not part of a song title.
-  return stripServicePraiseTrailingMusicKey(text);
+  return stripServiceSongInputPrefix(stripServicePraiseTrailingMusicKey(text));
 }
 
 function findConfidentServicePraiseSong(value, item = {}, service = selectedServiceForEditor()) {
@@ -21505,11 +21525,12 @@ function findConfidentServicePraiseSong(value, item = {}, service = selectedServ
 }
 
 async function createBlankPraiseSongForServiceInput(value, service = selectedServiceForEditor()) {
-  if (!state.client) return null;
-  const title = stripHymnNo(presenterPreparationSongContent(value)).title.trim();
-  if (!title) return null;
   const existing = await resolveExistingPraiseSongForServiceInputAfterCatalogLoad(value, {}, service);
   if (existing) return existing;
+  if (!state.client) return null;
+
+  const title = stripHymnNo(presenterPreparationSongContent(value)).title.trim();
+  if (!title) return null;
 
   const praiseType = service?.type_id === "children" ? "children" : "ccm";
   const defaultVersion = {
@@ -22031,7 +22052,7 @@ function renderPresenterServiceTextInputs(item, index, model, memo) {
             rows="4" placeholder="다음 주 모임 안내&#10;새가족 환영&#10;생일 축하" aria-label="${escapeAttr(`${item.label || "항목"} ${titleLabel}`)}">${escapeHtml(item.raw_title || "")}</textarea>
           <small class="svc-presenter-input-hint">줄마다 ①, ②, ③으로 자동 표시됩니다.</small>` : `
           <input class="svc-presenter-input-control" type="text" data-service-item-field="raw_title" data-service-item-index="${index}"
-            value="${escapeAttr(item.raw_title || "")}" placeholder="${escapeAttr(specialSong ? "곡명" : item.label || "내용")}" aria-label="${escapeAttr(`${item.label || "항목"} ${titleLabel}`)}" />`}
+            value="${escapeAttr(item.raw_title || "")}" placeholder="${escapeAttr(specialSong ? "곡명" : item.label || "내용")}" ${specialSong ? `autocomplete="off" spellcheck="false"` : ""} aria-label="${escapeAttr(`${item.label || "항목"} ${titleLabel}`)}" />`}
       </label>` : ""}
     ${needsAssignee ? `
       <label class="svc-presenter-input-field">

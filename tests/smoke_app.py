@@ -3161,6 +3161,8 @@ def main() -> int:
                             strictSearchField.type = 'text';
                             strictSearchField.dataset.serviceItemIndex = '0';
                             strictSearchField.dataset.serviceItemField = 'raw_title';
+                            strictSearchField.dataset.initialValue = '';
+                            strictSearchField.dataset.presenterPreviewValue = '';
                             strictSearchField.setAttribute('data-service-song-required', 'true');
                             strictSearchField.value = '은혜 검색';
                             document.body.append(strictSearchField);
@@ -3199,6 +3201,7 @@ def main() -> int:
                               strictSearchDeferred,
                               strictSearchAfterInput,
                               renderedHasPicker: renderServiceEditorTitleControl(strictItem, 0, { service }, serviceItemEditorModel(strictItem, { service })).includes('svc-song-picker'),
+                              renderedSongControlHasNativeDatalist: renderServiceEditorTitleControl(oneOffThirdSpecial, 2, { service }, serviceItemEditorModel(oneOffThirdSpecial, { service })).includes('servicePraiseOptions'),
                               thirdSpecialManual: serviceItemAllowsManualSongText(oneOffThirdSpecial, { ...service, type_id: 'sunday-main' }),
                               pickerNullMeta: renderServiceSongPickerResult({
                                 id: '__smoke_null_meta__',
@@ -3242,9 +3245,10 @@ def main() -> int:
                         and strict_song_picker["deferredBeforeEnter"] == ""
                         and strict_song_picker["deferredAfterEnter"] in ("", "입력 대기")
                         and strict_song_picker["deferredPrevented"]
-                        and not strict_song_picker["strictSearchDeferred"]
-                        and strict_song_picker["strictSearchAfterInput"] == "은혜 검색"
+                        and strict_song_picker["strictSearchDeferred"]
+                        and strict_song_picker["strictSearchAfterInput"] == ""
                         and strict_song_picker["renderedHasPicker"]
+                        and not strict_song_picker["renderedSongControlHasNativeDatalist"]
                         and strict_song_picker["thirdSpecialManual"]
                         and "null ·" not in strict_song_picker["pickerNullMeta"]
                     ):
@@ -4411,7 +4415,7 @@ def main() -> int:
                           const originalServices = state.services;
                           const originalServiceItems = state.serviceItems;
                           const originalSelectedServiceId = state.selectedServiceId;
-                          const service = { id: '__smoke_existing_song_service__', type_id: 'friday', date: '2026-07-31' };
+                          const service = { id: '__smoke_existing_song_service__', type_id: 'special', date: '2026-07-31' };
                           const item = normalizeServiceItem({
                             service_id: service.id,
                             label: '찬양 1',
@@ -4475,6 +4479,7 @@ def main() -> int:
                             const viaBlankFallback = await createBlankPraiseSongForServiceInput('주 내 소망은 주 더 알기 원합니다 G', service);
                             const hymnViaBlankFallback = await createBlankPraiseSongForServiceInput('430장 주와 같이 길 가는 것', service);
                             const specialHymnViaBlankFallback = await createBlankPraiseSongForServiceInput('찬 430', service);
+                            const specialSongWithRoleViaBlankFallback = await createBlankPraiseSongForServiceInput('특송 찬 430', service);
                             const serviceItem = normalizeServiceItem({
                               service_id: service.id,
                               label: '찬양 1',
@@ -4493,6 +4498,7 @@ def main() -> int:
                               viaBlankFallback: viaBlankFallback?.id || '',
                               hymnViaBlankFallback: hymnViaBlankFallback?.id || '',
                               specialHymnViaBlankFallback: specialHymnViaBlankFallback?.id || '',
+                              specialSongWithRoleViaBlankFallback: specialSongWithRoleViaBlankFallback?.id || '',
                               linkedFromInput,
                               insertCalled,
                             };
@@ -4513,6 +4519,7 @@ def main() -> int:
                         and presenter_preparation_existing_song_guard.get("viaBlankFallback") == "__smoke_existing_song__"
                         and presenter_preparation_existing_song_guard.get("hymnViaBlankFallback") == "__smoke_hymn_430_existing__"
                         and presenter_preparation_existing_song_guard.get("specialHymnViaBlankFallback") == "__smoke_hymn_430_existing__"
+                        and presenter_preparation_existing_song_guard.get("specialSongWithRoleViaBlankFallback") == "__smoke_hymn_430_existing__"
                         and presenter_preparation_existing_song_guard.get("linkedFromInput") == "__smoke_existing_song__"
                         and presenter_preparation_existing_song_guard.get("insertCalled") is False
                     ):
