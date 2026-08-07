@@ -1329,7 +1329,9 @@ def main() -> int:
                       const hymnPreparation = {
                         bareLeading: parsePresenterPreparationHymnHint("430장 주와 같이 길 가는 것"),
                         bareTrailing: parsePresenterPreparationHymnHint("주와 같이 길 가는 것 430장"),
+                        prefixedOnly: parsePresenterPreparationHymnHint("찬 430"),
                         splitBareLeading: stripHymnNo("430장 주와 같이 길 가는 것"),
+                        splitPrefixedOnly: stripHymnNo("찬 430"),
                         resolvedId: resolvePresenterPreparationSong(
                           "430장 주와 같이 길 가는 것",
                           { label: "찬양 1" },
@@ -1362,7 +1364,9 @@ def main() -> int:
                     and global_search_deep_state["hymnPreparation"] == {
                         "bareLeading": {"title": "주와 같이 길 가는 것", "hymnNo": "430"},
                         "bareTrailing": {"title": "주와 같이 길 가는 것", "hymnNo": "430"},
+                        "prefixedOnly": {"title": "", "hymnNo": "430"},
                         "splitBareLeading": {"no": "430", "title": "주와 같이 길 가는 것"},
+                        "splitPrefixedOnly": {"no": "430", "title": ""},
                         "resolvedId": "__smoke_hymn_430__",
                         "fallbackTitle": "없는 찬송 제목",
                     }
@@ -4470,6 +4474,7 @@ def main() -> int:
                             const byLyric = resolvePresenterPreparationSong('오 주님 채우소서', item, service)?.id || '';
                             const viaBlankFallback = await createBlankPraiseSongForServiceInput('주 내 소망은 주 더 알기 원합니다 G', service);
                             const hymnViaBlankFallback = await createBlankPraiseSongForServiceInput('430장 주와 같이 길 가는 것', service);
+                            const specialHymnViaBlankFallback = await createBlankPraiseSongForServiceInput('찬 430', service);
                             const serviceItem = normalizeServiceItem({
                               service_id: service.id,
                               label: '찬양 1',
@@ -4487,6 +4492,7 @@ def main() -> int:
                               byLyric,
                               viaBlankFallback: viaBlankFallback?.id || '',
                               hymnViaBlankFallback: hymnViaBlankFallback?.id || '',
+                              specialHymnViaBlankFallback: specialHymnViaBlankFallback?.id || '',
                               linkedFromInput,
                               insertCalled,
                             };
@@ -4506,6 +4512,7 @@ def main() -> int:
                         and presenter_preparation_existing_song_guard.get("byLyric") == "__smoke_existing_song__"
                         and presenter_preparation_existing_song_guard.get("viaBlankFallback") == "__smoke_existing_song__"
                         and presenter_preparation_existing_song_guard.get("hymnViaBlankFallback") == "__smoke_hymn_430_existing__"
+                        and presenter_preparation_existing_song_guard.get("specialHymnViaBlankFallback") == "__smoke_hymn_430_existing__"
                         and presenter_preparation_existing_song_guard.get("linkedFromInput") == "__smoke_existing_song__"
                         and presenter_preparation_existing_song_guard.get("insertCalled") is False
                     ):
