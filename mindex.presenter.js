@@ -435,8 +435,10 @@ function presenterFormPlanForServiceItem(version = {}, item, song = null) {
   const itemPreset = serviceItemFormPreset(item);
   const matchedRule = matchedServiceItemFormPresetRule(item, song, version);
   const songDefaultPreset = presenterSongDefaultFormPreset(song, version);
+  const specialHymnRulePreset = isHymn && isPresenterSpecialSongItem(item) ? matchedRule?.formPreset || null : null;
   const preset = isHymn
-    ? itemPreset
+    ? specialHymnRulePreset
+      || itemPreset
       || matchedRule?.formPreset
       || songDefaultPreset
       || presenterDefaultVerseChorusFormPreset(forms, song, version)

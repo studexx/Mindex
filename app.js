@@ -17707,10 +17707,17 @@ function serviceTemplateImplicitFormPresetRules(step = {}, typeId = "", label = 
   const rules = normalizeServiceFormPresetRules(step.formPresetRules || step.form_preset_rules);
   const sectionKey = String(step.sectionKey || step.section_key || "").trim();
   const isSpecialSong = sectionKey === "special_song" || compactSearchValue(label || step.label || step.name) === "특송";
-  if (isSpecialSong && !rules.length) {
+  if (isSpecialSong && !serviceFormPresetRulesHaveHymnRule(rules)) {
     rules.push(PUBLIC_SPECIAL_HYMN_FORM_PRESET_RULE);
   }
   return rules;
+}
+
+function serviceFormPresetRulesHaveHymnRule(rules = []) {
+  return normalizeServiceFormPresetRules(rules).some((rule) => {
+    const when = rule.when && typeof rule.when === "object" ? rule.when : {};
+    return normalizePraiseTypes(when.songType || when.song_type || when.praiseType || when.praise_type).includes("hymn");
+  });
 }
 
 function serviceTemplateDefaultElementType(label) {
@@ -17813,7 +17820,7 @@ function serviceItemFormPresetRules(item) {
   const parsed = parseServiceItemMemo(item?.memo);
   if (parsed.formPresetDisabled) return [];
   const rules = [...(parsed.formPresetRules || [])];
-  if (isSpecialSongServiceItem(item) && !rules.length) {
+  if (isSpecialSongServiceItem(item) && !serviceFormPresetRulesHaveHymnRule(rules)) {
     rules.push(PUBLIC_SPECIAL_HYMN_FORM_PRESET_RULE);
   }
   return rules;
