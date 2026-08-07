@@ -5861,10 +5861,10 @@ textarea.svc-presenter-input-control--multiline {
   display: grid;
   min-width: 0;
   grid-template-columns: auto auto minmax(0, max-content) minmax(0, 1fr);
-  gap: 8px;
+  gap: 5px;
   align-items: center;
   background: var(--bg);
-  padding: 4px 0 30px;
+  padding: 0 0 15px;
 }
 .svc-presenter-main {
   display: inline-flex;
@@ -5872,20 +5872,20 @@ textarea.svc-presenter-input-control--multiline {
   width: max-content;
   max-width: 100%;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
   border-radius: var(--r);
   background: color-mix(in srgb, var(--panel-2) 24%, transparent);
-  padding: 3px;
+  padding: 2px;
 }
 .svc-presenter-state-group {
   display: inline-flex;
   min-width: 0;
-  height: 30px;
+  height: 28px;
   align-items: center;
   gap: 6px;
   border-radius: var(--r);
   background: color-mix(in srgb, var(--panel-2) 46%, transparent);
-  padding: 0 8px;
+  padding: 0 6px;
 }
 .svc-presenter-mini-label {
   flex: 0 0 auto;
@@ -5994,14 +5994,14 @@ textarea.svc-presenter-input-control--multiline {
   display: inline-flex;
   width: max-content;
   min-width: 0;
-  height: 30px;
+  height: 28px;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   color: var(--ink-3);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0;
-  padding: 0 4px 0 8px;
+  padding: 0 4px 0 6px;
   border-radius: var(--r);
   background: color-mix(in srgb, var(--panel-2) 46%, transparent);
 }
@@ -6068,7 +6068,7 @@ textarea.svc-presenter-input-control--multiline {
   flex-wrap: nowrap;
   align-items: center;
   justify-content: flex-start;
-  gap: 5px;
+  gap: 4px;
 }
 .svc-presenter-actions .icon-btn { width: var(--ui-icon-btn-inline); height: var(--ui-icon-btn-inline); }
 .svc-presenter-actions .icon-btn.is-active { background: transparent; color: var(--accent); }
@@ -6147,15 +6147,15 @@ textarea.svc-presenter-input-control--multiline {
 .svc-presenter-action-group {
   display: inline-flex;
   min-width: 0;
-  height: 34px;
+  height: 30px;
   align-items: center;
   gap: 4px;
   border-radius: var(--r);
   background: color-mix(in srgb, var(--panel-2) 24%, transparent);
-  padding: 3px;
+  padding: 2px;
 }
 .svc-presenter-action-group--nav {
-  padding: 3px 4px;
+  padding: 2px 3px;
 }
 .svc-music-player,
 .svc-live-scripture {
@@ -6258,7 +6258,7 @@ textarea.svc-presenter-input-control--multiline {
   display: inline-flex;
   height: 30px;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   border: 0;
   border-radius: var(--r);
   background: var(--accent);
@@ -6266,7 +6266,7 @@ textarea.svc-presenter-input-control--multiline {
   font-size: var(--ui-body-size);
   font-weight: 700;
   letter-spacing: .02em;
-  padding: 0 15px;
+  padding: 0 12px;
   box-shadow: none;
 }
 .svc-present-btn svg { width: var(--ui-icon-size); height: var(--ui-icon-size); }
@@ -6279,7 +6279,7 @@ textarea.svc-presenter-input-control--multiline {
   align-items: center;
   gap: 5px;
   height: 30px;
-  padding: 0 8px;
+  padding: 0 6px;
   border-radius: var(--r);
   background: color-mix(in srgb, var(--panel-2) 44%, transparent);
   color: var(--ink-3);
@@ -6859,8 +6859,8 @@ textarea.svc-presenter-input-control--multiline {
   --svc-thumb-wrap-width: calc(var(--svc-thumb-width) + (var(--svc-thumb-ring-space) * 2));
   width: 100%;
   min-width: 0;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--svc-thumb-wrap-width)), 1fr));
-  justify-content: stretch;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--svc-thumb-wrap-width)), var(--svc-thumb-wrap-width)));
+  justify-content: start;
   gap: 12px;
   max-width: 100%;
   overflow-x: hidden;
@@ -6910,7 +6910,7 @@ textarea.svc-presenter-input-control--multiline {
 .svc-slide-thumb-wrap {
   position: relative;
   display: grid;
-  width: 100%;
+  width: min(100%, var(--svc-thumb-wrap-width));
   min-width: 0;
   gap: 4px;
   border-radius: var(--r);
@@ -7017,6 +7017,7 @@ textarea.svc-presenter-input-control--multiline {
 }
 .svc-slide-thumb-frame {
   display: flex;
+  width: 100%;
   aspect-ratio: 16 / 9;
   flex-direction: column;
   justify-content: center;
@@ -7026,6 +7027,7 @@ textarea.svc-presenter-input-control--multiline {
   border-radius: 5px;
   background: color-mix(in srgb, var(--panel-2) 44%, transparent);
   color: #fff;
+  contain: layout size paint;
   padding: 0;
   box-shadow:
     inset 0 0 0 1px rgba(255,255,255,.46),
