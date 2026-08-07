@@ -63,6 +63,9 @@ Home hierarchy:
 - Worship is the primary operational area.
 - Praise and Scripture are major resources.
 - Calendar and References are home utilities.
+- Template structure is an internal management concept. Do not surface it in
+  the ordinary home/sidebar worship path unless the user is explicitly editing
+  templates.
 
 Inactive module tabs should stay visually quiet. Active tabs may show a clearer label and accent.
 

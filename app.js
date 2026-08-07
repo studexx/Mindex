@@ -12063,7 +12063,7 @@ function homeModuleCards() {
         serviceDisplayTypeName(nextService),
       ]).join(" · ") : serviceCountText,
       detail: nextService ? homeServiceScheduleLabel(nextService) : serviceCountText,
-      actionDetail: "목록/템플릿",
+      actionDetail: "예배 목록",
       compactMeta: null,
       meta: cleanList([
         nextService ? serviceDisplayTypeName(nextService) : "",
@@ -18160,11 +18160,6 @@ function renderServiceList() {
       <span>전체 예배</span>
       <small>${state.services.length}</small>
     </button>
-    ${state.module === "home" ? "" : `
-      <button class="service-type-row service-type-row--templates${state.selectedServiceTypeId === SERVICE_TEMPLATES_PANEL_ID && !state.selectedServiceId ? " active" : ""}" type="button" data-service-templates>
-        <span>템플릿</span>
-      </button>
-    `}
   `;
 
   refs.songList.innerHTML = `
@@ -18248,7 +18243,7 @@ function renderHomeSidebarRecentServiceShortcuts() {
   return `
     <section class="service-sidebar-section service-sidebar-section--recent">
       <div class="service-sidebar-head">
-        <span>최근 예배</span>
+          <span>다가오는 예배</span>
         <small>${services.length}</small>
       </div>
       ${renderServiceSidebarDateGroups(services)}
@@ -18809,15 +18804,12 @@ function renderServiceListDetail() {
     .filter((group) => group.types.length);
   const count = groups.reduce((total, group) => total + group.types.reduce((sum, entry) => sum + entry.services.length, 0), 0);
   const title = q ? "예배 검색 결과" : "전체 예배";
-  const helperText = q
-    ? `"${state.search.trim()}" 검색 결과입니다. 카드를 선택하면 바로 예배 입력 화면으로 이동합니다.`
-    : "유형별 최근 예배입니다. 카드를 선택해 입력/송출을 준비하고, 추가로 같은 유형의 예배를 만들 수 있습니다.";
   refs.detailPane.innerHTML = `
     <div class="service-date-list service-date-list--all">
       <div class="service-section-head">
         <div class="service-section-title-block">
           <h2 class="service-date-list-title">${escapeHtml(title)}</h2>
-          <p class="service-date-list-helper">${escapeHtml(helperText)}</p>
+          ${q ? `<p class="service-date-list-helper">${escapeHtml(`"${state.search.trim()}" 검색 결과`)}</p>` : ""}
         </div>
         <div class="service-section-head-actions">
           <span class="service-search-count">${count}${q ? "개 결과" : "개 예배"}</span>
@@ -20218,7 +20210,7 @@ function renderServiceDashboard() {
   }
 
   const services = getServiceDashboardServices();
-  const recentServices = getRecentServiceShortcuts(12);
+  const upcomingServices = getUpcomingServiceShortcuts(12);
   const q = normalizeSearchValue(state.search);
   const weekDays = serviceWeekDays();
   const servicesByDate = new Map();
@@ -20244,16 +20236,16 @@ function renderServiceDashboard() {
             ${weekDays.map((date) => renderServiceWeekDay(date, servicesByDate.get(toLocalDateStr(date)) || [])).join("")}
           </div>`}
       </section>
-      ${!q && recentServices.length ? `
+      ${!q && upcomingServices.length ? `
         <section class="service-dashboard-section">
           <div class="service-section-head">
-            <h2 class="service-date-list-title">최근 예배</h2>
+            <h2 class="service-date-list-title">다가오는 예배</h2>
             <button class="reference-new-btn secondary" type="button" data-service-list aria-label="전체 예배 보기">
               <span>전체</span>
             </button>
           </div>
           <div class="service-date-grid service-date-grid--dashboard">
-            ${recentServices.map((service) => renderServiceDateCard(service, { showType: true })).join("")}
+            ${upcomingServices.map((service) => renderServiceDateCard(service, { showType: true })).join("")}
           </div>
         </section>
       ` : ""}

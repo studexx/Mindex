@@ -871,7 +871,7 @@ def main() -> int:
                     })()
                     """
                 )
-                expected_home_order = ["예배", "전체 예배", "최근 예배"]
+                expected_home_order = ["예배", "전체 예배", "다가오는 예배"]
                 if (
                     home_order == expected_home_order
                     and not home_visibility_state["hasActivities"]
@@ -904,7 +904,7 @@ def main() -> int:
                     and home_design_state["weekDays"] == 7
                     and home_design_state["recentCards"] > 0
                     and "이번 주 예배" in home_design_state["text"]
-                    and "최근 예배" in home_design_state["text"]
+                    and "다가오는 예배" in home_design_state["text"]
                     and home_design_state["overflow"] <= 2
                 ):
                     pass_("home-design-shell", json.dumps(home_design_state, ensure_ascii=False))
@@ -1442,7 +1442,7 @@ def main() -> int:
                     """
                 )
                 if (
-                    home_recent_service_sidebar["heading"] == "최근 예배"
+                    home_recent_service_sidebar["heading"] == "다가오는 예배"
                     and home_recent_service_sidebar["count"] > 0
                     and home_recent_service_sidebar["isAscending"]
                     and home_recent_service_sidebar["staysWithinUpcomingWeek"]
