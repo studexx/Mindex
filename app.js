@@ -9153,7 +9153,7 @@ async function createPraiseSongFromServiceItem(index) {
   const title = stripHymnNo(presenterPreparationSongContent(item.raw_title)).title.trim();
   if (!title) return;
 
-  const existing = findServicePraiseSong(title) || findConfidentServicePraiseSong(title, item, service);
+  const existing = await resolveExistingPraiseSongForServiceInputAfterCatalogLoad(item.raw_title, item, service);
   if (existing) {
     item.song_id = existing.id;
     item.version_id = preferredServiceSongVersion(existing, item, service)?.id || null;
@@ -20841,8 +20841,12 @@ function findServicePraiseSong(value) {
 }
 
 function splitHymnNo(raw) {
-  const match = /^(통\s*\d+|\d+)\s+/.exec(raw || "");
-  return match ? { no: match[1].replace(/\s+/, " "), title: raw.slice(match[0].length) } : { no: null, title: raw || "—" };
+  const text = String(raw || "");
+  const match = /^(통\s*\d+|\d+)\s+/.exec(text);
+  if (match) return { no: match[1].replace(/\s+/, " "), title: text.slice(match[0].length) };
+  const hymnStyle = /^(\d{1,4})\s*장\s+(.+)$/.exec(text);
+  if (hymnStyle) return { no: String(Number(hymnStyle[1])), title: hymnStyle[2] };
+  return { no: null, title: text || "—" };
 }
 
 function stripHymnNo(raw) {
@@ -21401,8 +21405,12 @@ function parsePresenterPreparationHymnHint(value = "") {
   if (paren) return { title: String(paren[1] || "").trim(), hymnNo: String(paren[2] || "").trim() };
   const leading = raw.match(/^(?:새\s*)?(?:찬송가|찬)\s*(\d+)\s*장?\s+(.+)$/);
   if (leading) return { title: String(leading[2] || "").trim(), hymnNo: String(leading[1] || "").trim() };
+  const bareLeading = raw.match(/^(\d{1,4})\s*장\s+(.+)$/);
+  if (bareLeading) return { title: String(bareLeading[2] || "").trim(), hymnNo: String(bareLeading[1] || "").trim() };
   const trailing = raw.match(/^(.+?)\s+(?:새\s*)?(?:찬송가|찬)\s*(\d+)\s*장?\s*$/);
   if (trailing) return { title: String(trailing[1] || "").trim(), hymnNo: String(trailing[2] || "").trim() };
+  const bareTrailing = raw.match(/^(.+?)\s+(\d{1,4})\s*장\s*$/);
+  if (bareTrailing) return { title: String(bareTrailing[1] || "").trim(), hymnNo: String(bareTrailing[2] || "").trim() };
   const only = raw.match(/^(?:새\s*)?(?:찬송가|찬)?\s*(\d+)\s*장\s*$/);
   if (only && /(?:찬|장)/.test(raw)) return { title: "", hymnNo: String(only[1] || "").trim() };
   return { title: raw, hymnNo: "" };
@@ -21440,6 +21448,27 @@ function resolvePresenterPreparationSong(value, item, service) {
   return findConfidentServicePraiseSong(songInput, item, service);
 }
 
+function resolveExistingPraiseSongForServiceInput(value, item = {}, service = selectedServiceForEditor()) {
+  const songInput = presenterPreparationSongContent(value);
+  const title = stripHymnNo(songInput).title.trim();
+  const candidates = [...new Set([songInput, title].map((entry) => String(entry || "").trim()).filter(Boolean))];
+  for (const candidate of candidates) {
+    const song = resolvePresenterPreparationSong(candidate, item, service)
+      || findServicePraiseSong(candidate)
+      || findConfidentServicePraiseSong(candidate, item, service);
+    if (song) return song;
+  }
+  return null;
+}
+
+async function resolveExistingPraiseSongForServiceInputAfterCatalogLoad(value, item = {}, service = selectedServiceForEditor()) {
+  const existing = resolveExistingPraiseSongForServiceInput(value, item, service);
+  if (existing) return existing;
+  if (!state.client || songCatalogLoaded) return null;
+  await loadSongs();
+  return resolveExistingPraiseSongForServiceInput(value, item, service);
+}
+
 function presenterPreparationSongContent(value = "") {
   const text = cleanPresenterPreparationContent(value);
   // Keys such as G or D are notes for the instrumental team, not part of a song title.
@@ -21475,7 +21504,7 @@ async function createBlankPraiseSongForServiceInput(value, service = selectedSer
   if (!state.client) return null;
   const title = stripHymnNo(presenterPreparationSongContent(value)).title.trim();
   if (!title) return null;
-  const existing = findServicePraiseSong(title) || findConfidentServicePraiseSong(title, {}, service);
+  const existing = await resolveExistingPraiseSongForServiceInputAfterCatalogLoad(value, {}, service);
   if (existing) return existing;
 
   const praiseType = service?.type_id === "children" ? "children" : "ccm";

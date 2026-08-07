@@ -1289,13 +1289,21 @@ def main() -> int:
                           forms: [{ part_type: "Verse", lyrics: "첫 가사 통합검색 문장" }]
                         }]
                       };
+                      const syntheticHymn = {
+                        id: "__smoke_hymn_430__",
+                        title: "주와 같이 길 가는 것",
+                        hymn_no: "430",
+                        subtitle: "",
+                        original_title: "",
+                        versions: []
+                      };
                       const directMatches = {
                         subtitle: Boolean(getSongSearchMatch(syntheticSong, getSearchTokens("숨은 부제"))),
                         originalTitle: Boolean(getSongSearchMatch(syntheticSong, getSearchTokens("Original Integrated"))),
                         firstLyrics: Boolean(getSongSearchMatch(syntheticSong, getSearchTokens("첫 가사 통합검색"))),
                         initials: Boolean(getSongSearchMatch(syntheticSong, getSearchTokens("ㅌㅎㄱㅅ"))),
                       };
-                      state.songs = [syntheticSong, ...originalSongs];
+                      state.songs = [syntheticSong, syntheticHymn, ...originalSongs];
                       state.search = "첫 가사 통합검색";
                       if (refs.searchInput) refs.searchInput.value = state.search;
                       renderSongList();
@@ -1318,11 +1326,22 @@ def main() -> int:
                           { scriptureReferences: ["요 15:9", "롬 5:7–8"] },
                         ),
                       };
+                      const hymnPreparation = {
+                        bareLeading: parsePresenterPreparationHymnHint("430장 주와 같이 길 가는 것"),
+                        bareTrailing: parsePresenterPreparationHymnHint("주와 같이 길 가는 것 430장"),
+                        splitBareLeading: stripHymnNo("430장 주와 같이 길 가는 것"),
+                        resolvedId: resolvePresenterPreparationSong(
+                          "430장 주와 같이 길 가는 것",
+                          { label: "찬양 1" },
+                          { type_id: "sunday-first" },
+                        )?.id || "",
+                        fallbackTitle: stripHymnNo(presenterPreparationSongContent("430장 없는 찬송 제목")).title.trim(),
+                      };
                       state.songs = originalSongs;
                       state.search = originalSearch;
                       if (refs.searchInput) refs.searchInput.value = originalInputValue;
                       renderSongList();
-                      return { directMatches, rendered, scriptureReferences, complexScriptureReferences };
+                      return { directMatches, rendered, scriptureReferences, complexScriptureReferences, hymnPreparation };
                     })()
                     """
                 )
@@ -1339,6 +1358,13 @@ def main() -> int:
                         "longDash": ["마 13:31–33", "마 13:44–50"],
                         "formatted": "마 13:31–33, 44–50",
                         "displayTitle": "요 15:9; 롬 5:7–8",
+                    }
+                    and global_search_deep_state["hymnPreparation"] == {
+                        "bareLeading": {"title": "주와 같이 길 가는 것", "hymnNo": "430"},
+                        "bareTrailing": {"title": "주와 같이 길 가는 것", "hymnNo": "430"},
+                        "splitBareLeading": {"no": "430", "title": "주와 같이 길 가는 것"},
+                        "resolvedId": "__smoke_hymn_430__",
+                        "fallbackTitle": "없는 찬송 제목",
                     }
                 ):
                     pass_("global-search-deep-matching", json.dumps(global_search_deep_state, ensure_ascii=False))
@@ -4378,6 +4404,9 @@ def main() -> int:
                         (async () => {
                           const originalSongs = state.songs;
                           const originalClient = state.client;
+                          const originalServices = state.services;
+                          const originalServiceItems = state.serviceItems;
+                          const originalSelectedServiceId = state.selectedServiceId;
                           const service = { id: '__smoke_existing_song_service__', type_id: 'friday', date: '2026-07-31' };
                           const item = normalizeServiceItem({
                             service_id: service.id,
@@ -4407,6 +4436,18 @@ def main() -> int:
                                   forms: [{ id: '__smoke_other_song_form__', label: 'Verse 1', lyrics: '다른 가사' }],
                                 }] }),
                               }),
+                              normalizeServerSong({
+                                id: '__smoke_hymn_430_existing__',
+                                title: '주와 같이 길 가는 것',
+                                hymn_no: '430',
+                                praise_types: ['hymn'],
+                                memo: serializeSongMemo({ versions: [{
+                                  id: '__smoke_hymn_430_existing_version__',
+                                  name: '기본',
+                                  is_primary: true,
+                                  forms: [],
+                                }] }),
+                              }),
                             ];
                             state.client = {
                               from() {
@@ -4428,16 +4469,33 @@ def main() -> int:
                             const byOriginalTitle = resolvePresenterPreparationSong('To Know You More', item, service)?.id || '';
                             const byLyric = resolvePresenterPreparationSong('오 주님 채우소서', item, service)?.id || '';
                             const viaBlankFallback = await createBlankPraiseSongForServiceInput('주 내 소망은 주 더 알기 원합니다 G', service);
+                            const hymnViaBlankFallback = await createBlankPraiseSongForServiceInput('430장 주와 같이 길 가는 것', service);
+                            const serviceItem = normalizeServiceItem({
+                              service_id: service.id,
+                              label: '찬양 1',
+                              raw_title: '주 내 소망은 주 더 알기 원합니다 G',
+                              memo: serializeServiceItemMemo({ elementType: 'praise', inputMode: 'lyrics_db' }),
+                            });
+                            state.services = [service];
+                            state.selectedServiceId = service.id;
+                            state.serviceItems = { [service.id]: [serviceItem] };
+                            await createPraiseSongFromServiceItem(0);
+                            const linkedFromInput = getServiceItems(service.id)[0]?.song_id || '';
                             return {
                               byTitleWithKey,
                               byOriginalTitle,
                               byLyric,
                               viaBlankFallback: viaBlankFallback?.id || '',
+                              hymnViaBlankFallback: hymnViaBlankFallback?.id || '',
+                              linkedFromInput,
                               insertCalled,
                             };
                           } finally {
                             state.songs = originalSongs;
                             state.client = originalClient;
+                            state.services = originalServices;
+                            state.serviceItems = originalServiceItems;
+                            state.selectedServiceId = originalSelectedServiceId;
                           }
                         })()
                         """
@@ -4447,6 +4505,8 @@ def main() -> int:
                         and presenter_preparation_existing_song_guard.get("byOriginalTitle") == "__smoke_existing_song__"
                         and presenter_preparation_existing_song_guard.get("byLyric") == "__smoke_existing_song__"
                         and presenter_preparation_existing_song_guard.get("viaBlankFallback") == "__smoke_existing_song__"
+                        and presenter_preparation_existing_song_guard.get("hymnViaBlankFallback") == "__smoke_hymn_430_existing__"
+                        and presenter_preparation_existing_song_guard.get("linkedFromInput") == "__smoke_existing_song__"
                         and presenter_preparation_existing_song_guard.get("insertCalled") is False
                     ):
                         pass_("presenter-preparation-existing-song-guard", json.dumps(presenter_preparation_existing_song_guard, ensure_ascii=False))
