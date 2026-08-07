@@ -3990,7 +3990,10 @@ async function loadServiceItems(serviceId) {
       service,
       groupWorshipElements(sections, elements)[serviceId] || [],
     );
-    await loadSongsForIds(elements.map((item) => item.song_id));
+    loadSongsForIdsInBackground(elements.map((item) => item.song_id), {
+      render: state.selectedServiceId === serviceId,
+      serviceId,
+    });
     warmWorshipScriptureReferencesForService(serviceId);
     warmServiceItemScriptureReferencesForService(serviceId);
     renderCurrentServiceModuleDetail();
@@ -7597,7 +7600,7 @@ function commitActiveDeferredServiceTextInput(serviceId = state.selectedServiceI
 function saveCommittedServiceItem(index, serviceId = state.selectedServiceId, options = {}) {
   const item = getServiceItems(serviceId)[Number(index)];
   const service = state.services.find((candidate) => candidate.id === serviceId);
-  if (!item || !service || serviceItemSongSelectionInvalid(item, service) || serviceItemScriptureInputInvalid(item)) return;
+  if (!item || !service || serviceItemScriptureInputInvalid(item)) return;
   void resolveAndSaveCommittedServiceItem(serviceId, Number(index), options);
 }
 
@@ -7614,6 +7617,7 @@ function serviceItemSelectSaveOptions(field) {
 }
 
 async function resolveAndSaveCommittedServiceItem(serviceId, index, options = {}) {
+  await resolveServiceSongSelectionBeforeSave(serviceId, index);
   if (options.resolveScriptureBeforeSave !== false) {
     await resolveServiceScriptureBeforeSave(serviceId, index);
   }
@@ -7621,6 +7625,37 @@ async function resolveAndSaveCommittedServiceItem(serviceId, index, options = {}
   const service = state.services.find((candidate) => candidate.id === serviceId);
   if (!item || !service || serviceItemSongSelectionInvalid(item, service) || serviceItemScriptureInputInvalid(item)) return;
   await saveService(serviceId, options);
+}
+
+async function resolveServiceSongSelectionBeforeSave(serviceId, index) {
+  const items = getServiceItems(serviceId);
+  const item = items[index];
+  const service = state.services.find((candidate) => candidate.id === serviceId);
+  if (!item || !service) return false;
+  if (!isSongServiceLabel(item.label) && !isSpecialSongServiceItem(item)) return false;
+
+  const rawTitle = String(item.raw_title || "").trim();
+  if (!rawTitle) {
+    const linkedSong = serviceItemLinkedSong(item);
+    if (linkedSong && !item.version_id && !item.song_version_id) {
+      linkServiceItemToPraiseSong(item, linkedSong, service, { clearRawTitle: false });
+      return true;
+    }
+    return false;
+  }
+
+  const song = await resolveExistingPraiseSongForServiceInputAfterCatalogLoad(rawTitle, item, service);
+  if (!song) return false;
+  if (serviceItemRequiresNewHymnalScoreSong(item) && !isNewHymnalScoreSong(song)) return false;
+  linkServiceItemToPraiseSong(item, song, service, {
+    forceLyricsMode: isSpecialSongServiceItem(item)
+      && servicePraiseInputMode(item, parseServiceItemMemo(item.memo)) === "manual_praise",
+  });
+  markServiceItemSharedContentDirty(item, service);
+  item._worshipElementTemplateModified = true;
+  item._worshipTemplatePlaceholder = false;
+  state.serviceItems[serviceId] = normalizeServiceItemsInCurrentOrder(items);
+  return true;
 }
 
 function serviceItemPersistenceSignature(item = {}) {
@@ -9368,9 +9403,10 @@ async function createPraiseSongFromServiceItem(index) {
   if (!service || !item) return;
   const existing = await resolveExistingPraiseSongForServiceInputAfterCatalogLoad(item.raw_title, item, service);
   if (existing) {
-    item.song_id = existing.id;
-    item.version_id = preferredServiceSongVersion(existing, item, service)?.id || null;
-    item.song_version_id = item.version_id;
+    linkServiceItemToPraiseSong(item, existing, service, {
+      forceLyricsMode: isSpecialSongServiceItem(item)
+        && servicePraiseInputMode(item, parseServiceItemMemo(item.memo)) === "manual_praise",
+    });
     state.serviceItems[serviceId] = normalizeServiceItemsInCurrentOrder(items);
     state.dirty.service = true;
     renderCurrentServiceModuleDetail();
@@ -9971,6 +10007,17 @@ function applyServiceSongSelectionWithService(item, service = null) {
   }
   const memo = parseServiceItemMemo(item.memo);
   if (servicePraiseInputMode(item, memo) === "manual_praise") {
+    const manualSong = isSpecialSongServiceItem(item)
+      ? (
+        resolvePresenterPreparationSong(item.raw_title, item, service || selectedServiceForEditor())
+        || findServicePraiseSong(item.raw_title)
+        || findConfidentServicePraiseSong(item.raw_title, item, service || selectedServiceForEditor())
+      )
+      : null;
+    if (manualSong) {
+      linkServiceItemToPraiseSong(item, manualSong, service || selectedServiceForEditor(), { forceLyricsMode: true });
+      return;
+    }
     item.song_id = null;
     item.version_id = null;
     item.song_version_id = null;
@@ -9993,14 +10040,7 @@ function applyServiceSongSelectionWithService(item, service = null) {
     item.song_version_id = null;
     return;
   }
-  item.song_id = song.id;
-  item.raw_title = "";
-  item.version_id = preferredServiceSongVersion(
-    song,
-    item,
-    service || state.services.find((svc) => svc.id === state.selectedServiceId),
-  )?.id || null;
-  item.song_version_id = item.version_id;
+  linkServiceItemToPraiseSong(item, song, service || state.services.find((svc) => svc.id === state.selectedServiceId));
 }
 
 function runServiceDefaultItemAction(action, index) {
@@ -17783,6 +17823,23 @@ function templateVersionStartsOnOrBefore(version = {}, dateValue = "") {
   return true;
 }
 
+function linkServiceItemToPraiseSong(item, song, service = selectedServiceForEditor(), options = {}) {
+  if (!item || !song) return false;
+  const parsed = parseServiceItemMemo(item.memo);
+  if (options.forceLyricsMode) {
+    parsed.inputMode = "lyrics_db";
+    parsed.outputMode = "lyrics";
+    parsed.slides = [];
+    item.memo = serializeServiceItemMemo(parsed);
+  }
+  item.song_id = song.id;
+  if (options.clearRawTitle !== false) item.raw_title = "";
+  const preferredVersion = preferredServiceSongVersion(song, item, service);
+  item.version_id = preferredVersion?.id || null;
+  item.song_version_id = item.version_id;
+  return true;
+}
+
 function normalizeTemplateEffectiveDate(value = "") {
   const text = String(value || "").trim();
   if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text;
@@ -21906,8 +21963,8 @@ function findConfidentServicePraiseSong(value, item = {}, service = selectedServ
   return null;
 }
 
-async function createBlankPraiseSongForServiceInput(value, service = selectedServiceForEditor()) {
-  const existing = await resolveExistingPraiseSongForServiceInputAfterCatalogLoad(value, {}, service);
+async function createBlankPraiseSongForServiceInput(value, service = selectedServiceForEditor(), item = {}) {
+  const existing = await resolveExistingPraiseSongForServiceInputAfterCatalogLoad(value, item, service);
   if (existing) return existing;
   if (!state.client) return null;
 
@@ -22064,11 +22121,23 @@ async function applyPresenterPreparationInput(serviceId = state.selectedServiceI
         ? servicePraiseInputMode(item, memo)
         : serviceMemoInputMode(memo, item);
 
+      if (mode === "manual_praise" && isSpecialSongServiceItem(item)) {
+        const existingSong = await resolveExistingPraiseSongForServiceInputAfterCatalogLoad(content, item, service);
+        if (existingSong) {
+          linkServiceItemToPraiseSong(item, existingSong, service, { forceLyricsMode: true });
+          if (assignee) item.assignee = assignee;
+          item._worshipElementTemplateModified = true;
+          markServiceItemSharedContentDirty(item, service);
+          item._worshipTemplatePlaceholder = false;
+          continue;
+        }
+      }
+
       if (["praise_db", "score_db", "lyrics_db"].includes(mode) || serviceItemRequiresSongSelection(item, service)) {
         let song = resolvePresenterPreparationSong(content, item, service);
         if (!song && !serviceItemRequiresNewHymnalScoreSong(item)) {
           try {
-            song = await createBlankPraiseSongForServiceInput(content, service);
+            song = await createBlankPraiseSongForServiceInput(content, service, item);
             if (song) createdSongTitles.push(song.title || content);
           } catch (error) {
             errors.push(error.message || `${entry.label} 빈 곡을 만들지 못했습니다.`);

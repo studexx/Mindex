@@ -4710,6 +4710,16 @@ def main() -> int:
                             state.serviceItems = { [service.id]: [serviceItem] };
                             await createPraiseSongFromServiceItem(0);
                             const linkedFromInput = getServiceItems(service.id)[0]?.song_id || '';
+                            const specialManualItem = normalizeServiceItem({
+                              service_id: service.id,
+                              label: '특송',
+                              raw_title: '특송 찬 430',
+                              memo: serializeServiceItemMemo({ elementType: 'praise', inputMode: 'manual_praise', outputMode: 'lyrics' }),
+                            });
+                            state.serviceItems = { [service.id]: [specialManualItem] };
+                            await resolveServiceSongSelectionBeforeSave(service.id, 0);
+                            const resolvedSpecial = getServiceItems(service.id)[0] || {};
+                            const resolvedSpecialMemo = parseServiceItemMemo(resolvedSpecial.memo);
                             return {
                               byTitleWithKey,
                               byOriginalTitle,
@@ -4721,6 +4731,10 @@ def main() -> int:
                               bareHymnWithTitleViaBlankFallback: bareHymnWithTitleViaBlankFallback?.id || '',
                               pickerBareHymn,
                               linkedFromInput,
+                              resolvedSpecialSongId: resolvedSpecial.song_id || '',
+                              resolvedSpecialRawTitle: resolvedSpecial.raw_title || '',
+                              resolvedSpecialInputMode: resolvedSpecialMemo.inputMode || '',
+                              resolvedSpecialVersionId: resolvedSpecial.version_id || resolvedSpecial.song_version_id || '',
                               insertCalled,
                             };
                           } finally {
@@ -4744,6 +4758,10 @@ def main() -> int:
                         and presenter_preparation_existing_song_guard.get("bareHymnWithTitleViaBlankFallback") == "__smoke_hymn_430_existing__"
                         and presenter_preparation_existing_song_guard.get("pickerBareHymn", [None])[0] == "__smoke_hymn_430_existing__"
                         and presenter_preparation_existing_song_guard.get("linkedFromInput") == "__smoke_existing_song__"
+                        and presenter_preparation_existing_song_guard.get("resolvedSpecialSongId") == "__smoke_hymn_430_existing__"
+                        and presenter_preparation_existing_song_guard.get("resolvedSpecialRawTitle") == ""
+                        and presenter_preparation_existing_song_guard.get("resolvedSpecialInputMode") == "lyrics_db"
+                        and presenter_preparation_existing_song_guard.get("resolvedSpecialVersionId") == "__smoke_hymn_430_existing_version__"
                         and presenter_preparation_existing_song_guard.get("insertCalled") is False
                     ):
                         pass_("presenter-preparation-existing-song-guard", json.dumps(presenter_preparation_existing_song_guard, ensure_ascii=False))
