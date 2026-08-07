@@ -23166,8 +23166,7 @@ function renderPresenterReferenceMediaQuickAdd(sectionKey, serviceId) {
   return `
     <div class="svc-reference-media-quick-add">
       <div class="svc-reference-media-quick-add-copy">
-        <strong>참고 화면</strong>
-        <span>${escapeHtml(`${sectionLabel} 중 띄울 이미지, 영상 또는 음원`)}</span>
+        <strong>${escapeHtml(sectionLabel)}</strong>
       </div>
       <button class="svc-reference-media-add" type="button" data-presenter-reference-media-add
         data-presenter-reference-media-section="${escapeAttr(sectionKey)}" data-service-id="${escapeAttr(serviceId)}">

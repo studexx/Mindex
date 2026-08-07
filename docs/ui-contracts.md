@@ -66,6 +66,9 @@ Home hierarchy:
 - Template structure is an internal management concept. Do not surface it in
   the ordinary home/sidebar worship path unless the user is explicitly editing
   templates.
+- Prefer direct action labels over explanatory copy in operational screens. If a
+  button already says what will happen, do not add a nearby sentence that repeats
+  it.
 
 Inactive module tabs should stay visually quiet. Active tabs may show a clearer label and accent.
 
