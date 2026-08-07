@@ -10,6 +10,18 @@ Read `HANDOFF.md` first. This file is the short UI contract for Codex threads so
   shell tokens may stay on the older `4px` scale until that area is deliberately
   retuned; when touching a dense page, choose the nearest stable `5px` or `10px`
   value instead of adding one-off numbers.
+- App UI typography is separate from presenter output typography. Use the
+  compact app scale by role: labels `11px / 700`, supporting metadata
+  `12px / 500`, normal rows and form controls `14px / 600`, card titles
+  `15px / 700`, and page titles `20px / 700`.
+- Weight should communicate hierarchy, not decoration: primary labels and
+  titles may use `700`, routine editable values should usually use `600`, and
+  helper/meta text should stay at `500` unless it is an actionable label.
+- Icon sizing follows a separate glyph rhythm because Lucide-style interface
+  icons are optically tuned around `16px`: use `16px` for normal icons, `14px`
+  for dense helper icons, and `20px` for large home/action tiles. Topbar buttons
+  stay `40px`; normal icon buttons stay `34px`; dense inline controls may use
+  `30px` or `28px` only when they sit inside compact editor/tool rows.
 - Sidebar open or closed must not change the detail pane gutter.
 - Topbar icon buttons are square, `40px` by `40px`.
 - Sidebar toggle, home, theme, and save controls should share the same button geometry.
