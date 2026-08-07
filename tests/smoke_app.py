@@ -4407,6 +4407,45 @@ def main() -> int:
                     else:
                         fail("presenter-preparation-middle-dot-separator", json.dumps(presenter_preparation_middle_dot_separator, ensure_ascii=False))
 
+                    presenter_preparation_label_priority = page.evaluate(
+                        """
+                        (() => {
+                          const parsed = parsePresenterPreparationInput(`기도 찬양 나의 반석이신 하나님
+기도찬양2 부흥
+대표기도 문병자 권사
+특송 찬 430
+말씀 “신유란 무엇인가요?”
+설교 김남영 목사
+성경봉독 요 15:9; 롬 5:7-8`);
+                          return {
+                            errors: parsed.errors,
+                            entries: parsed.entries.map((entry) => ({
+                              rawLabel: entry.rawLabel,
+                              label: entry.label,
+                              key: entry.key,
+                              rawKey: entry.rawKey,
+                              content: entry.content,
+                            })),
+                          };
+                        })()
+                        """
+                    )
+                    if (
+                        presenter_preparation_label_priority.get("errors") == []
+                        and presenter_preparation_label_priority.get("entries") == [
+                            {"rawLabel": "기도 찬양", "label": "기도 찬양", "key": "기도찬양", "rawKey": "기도찬양", "content": "나의 반석이신 하나님"},
+                            {"rawLabel": "기도찬양 2", "label": "기도 찬양 2", "key": "기도찬양2", "rawKey": "기도찬양2", "content": "부흥"},
+                            {"rawLabel": "대표기도", "label": "대표기도", "key": "대표기도", "rawKey": "대표기도", "content": "문병자 권사"},
+                            {"rawLabel": "특송", "label": "특송", "key": "특송", "rawKey": "특송", "content": "찬 430"},
+                            {"rawLabel": "말씀", "label": "설교 본문", "key": "설교본문", "rawKey": "말씀", "content": "신유란 무엇인가요?"},
+                            {"rawLabel": "설교", "label": "설교 제목", "key": "설교제목", "rawKey": "설교", "content": "김남영 목사"},
+                            {"rawLabel": "성경봉독", "label": "성경봉독", "key": "성경봉독", "rawKey": "성경봉독", "content": "요 15:9; 롬 5:7-8"},
+                        ]
+                    ):
+                        pass_("presenter-preparation-label-priority", json.dumps(presenter_preparation_label_priority, ensure_ascii=False))
+                    else:
+                        fail("presenter-preparation-label-priority", json.dumps(presenter_preparation_label_priority, ensure_ascii=False))
+
                     presenter_preparation_existing_song_guard = page.evaluate(
                         """
                         (async () => {
@@ -4459,9 +4498,9 @@ def main() -> int:
                             ];
                             state.client = {
                               from() {
-                                insertCalled = true;
                                 return {
                                   insert() {
+                                    insertCalled = true;
                                     return {
                                       select() {
                                         return {
@@ -4802,7 +4841,7 @@ def main() -> int:
                                 missingCount: rawTitleScoreSlides.filter((slide) => slide.missingContent).length,
                                 slideTypes: rawTitleScoreSlides.map((slide) => slide.type || ''),
                               },
-                              prayer: byLabel('기도').assignee || '',
+                              prayer: (byLabel('기도').assignee || byLabel('대표기도').assignee || ''),
                               reading: byLabel('성경봉독').raw_title || '',
                               sermonTitle: byLabel('설교 제목').raw_title || '',
                               shorthand: {
@@ -4826,7 +4865,7 @@ def main() -> int:
                                 placeholder: loosePlaceholder,
                                 createdTitles: createdSongs.slice(0, 4).map((song) => song.title),
                                 praiseSongIds: ['찬양 1', '찬양 2', '찬양 3', '찬양 4'].map((label) => looseByLabel(label).song_id || ''),
-                                prayer: looseByLabel('기도').assignee || '',
+                                prayer: (looseByLabel('기도').assignee || looseByLabel('대표기도').assignee || ''),
                                 sermonTitle: looseByLabel('설교 제목').raw_title || '',
                                 sermonAssignee: looseByLabel('설교 제목').assignee || '',
                                 draftCleared: !state.presenterPreparationDrafts[looseService.id],
@@ -4916,7 +4955,7 @@ def main() -> int:
                             "citationSection": "sermon",
                         }
                         and presenter_preparation_paste["looseInput"] == {
-                            "placeholder": "찬양1 곡명\n찬양2 곡명\n찬양3 곡명\n찬양4 곡명\n찬송 곡명\n대표기도 이름 직분\n성경봉독 히 10:38-39\n특송 곡명 / 담당기관\n말씀 \"설교 제목\"\n설교 김남영 목사",
+                            "placeholder": "찬양1 곡명\n찬양2 곡명\n찬양3 곡명\n찬양4 곡명\n찬송 곡명\n대표기도 이름 직분\n성경봉독 히 10:38-39\n특송 제목 / 담당\n말씀 \"설교 제목\"\n설교 김남영 목사",
                             "createdTitles": ["주 찬양합니다", "변찮는 주님의 사랑과", "승리는 내 것일세", "꽃들도"],
                             "praiseSongIds": ["__created_song_1__", "__created_song_2__", "__created_song_3__", "__created_song_4__"],
                             "prayer": "문병자 권사",

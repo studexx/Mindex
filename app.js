@@ -21324,7 +21324,14 @@ function normalizePresenterPreparationInputLabel(label = "") {
   };
   if (aliases[key]) return aliases[key];
   const numbered = key.match(/^(찬양|기도찬양|공동기도)(\d+)$/);
-  if (numbered) return `${numbered[1]} ${Number(numbered[2])}`;
+  if (numbered) {
+    const displayBase = {
+      찬양: "찬양",
+      기도찬양: "기도 찬양",
+      공동기도: "공동기도",
+    }[numbered[1]] || numbered[1];
+    return `${displayBase} ${Number(numbered[2])}`;
+  }
   return raw;
 }
 
