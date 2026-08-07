@@ -5335,6 +5335,7 @@ def main() -> int:
                           };
                           const frames = [...document.querySelectorAll('.svc-slide-thumb-frame')].map(frameMetric);
                           const grids = [...document.querySelectorAll('.svc-board-grid')].map((grid) => {
+                            const gridRect = grid.getBoundingClientRect();
                             const gridFrames = [...grid.querySelectorAll('.svc-slide-thumb-frame')].map(frameMetric);
                             const rows = Object.values(gridFrames.reduce((acc, item) => {
                               const key = Object.keys(acc).find((top) => Math.abs(Number(top) - item.top) <= 2) || String(item.top);
@@ -5344,12 +5345,20 @@ def main() -> int:
                             }, {})).map((row) => row.sort((a, b) => a.left - b.left));
                             const row = rows.find((candidate) => candidate.length > 1) || [];
                             const horizontalGaps = row.slice(0, -1).map((item, index) => row[index + 1].left - (item.left + item.width));
-                            return { count: gridFrames.length, row, horizontalGaps };
+                            const first = row[0] || null;
+                            const last = row[row.length - 1] || null;
+                            return {
+                              count: gridFrames.length,
+                              row,
+                              horizontalGaps,
+                              leftInset: first ? Math.round(first.left - gridRect.left) : 0,
+                              rightInset: last ? Math.round(gridRect.right - (last.left + last.width)) : 0
+                            };
                           });
                           const grid = grids
                             .filter((candidate) => candidate.horizontalGaps.length)
-                            .sort((a, b) => b.row.length - a.row.length)[0] || { row: [], horizontalGaps: [] };
-                          return { frames: frames.slice(0, 12), row: grid.row, horizontalGaps: grid.horizontalGaps };
+                            .sort((a, b) => b.row.length - a.row.length)[0] || { row: [], horizontalGaps: [], leftInset: 0, rightInset: 0 };
+                          return { frames: frames.slice(0, 12), row: grid.row, horizontalGaps: grid.horizontalGaps, leftInset: grid.leftInset, rightInset: grid.rightInset };
                         })()
                         """
                     )
@@ -5365,6 +5374,8 @@ def main() -> int:
                             and horizontal_gaps
                             and max(horizontal_gaps) - min(horizontal_gaps) <= 2
                             and 18 <= horizontal_gaps[0] <= 24
+                            and thumb_metrics["leftInset"] <= 6
+                            and thumb_metrics["rightInset"] <= 6
                         )
                         if uniform:
                             pass_("presenter-thumbnail-grid", json.dumps(thumb_metrics, ensure_ascii=False))

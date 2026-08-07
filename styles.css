@@ -6899,13 +6899,12 @@ textarea.svc-presenter-input-control--multiline {
 .svc-board-grid {
   display: grid;
   --svc-thumb-width: 184px;
-  --svc-thumb-mini-scale: 0.0958333333;
   --svc-thumb-ring-space: 4px;
-  --svc-thumb-wrap-width: calc(var(--svc-thumb-width) + (var(--svc-thumb-ring-space) * 2));
+  --svc-thumb-wrap-min-width: calc(var(--svc-thumb-width) + (var(--svc-thumb-ring-space) * 2));
   width: 100%;
   min-width: 0;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--svc-thumb-wrap-width)), var(--svc-thumb-wrap-width)));
-  justify-content: start;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--svc-thumb-wrap-min-width)), 1fr));
+  justify-content: stretch;
   gap: 12px;
   max-width: 100%;
   overflow-x: hidden;
@@ -6956,7 +6955,7 @@ textarea.svc-presenter-input-control--multiline {
   position: relative;
   display: grid;
   box-sizing: border-box;
-  width: min(100%, var(--svc-thumb-wrap-width));
+  width: 100%;
   min-width: 0;
   gap: 4px;
   border-radius: var(--r);
@@ -7075,6 +7074,7 @@ textarea.svc-presenter-input-control--multiline {
   border-radius: 5px;
   background: color-mix(in srgb, var(--panel-2) 44%, transparent);
   color: #fff;
+  container-type: size;
   contain: layout size paint;
   isolation: isolate;
   padding: 0;
@@ -7114,7 +7114,6 @@ textarea.svc-presenter-input-control--multiline {
   background: #00ff00;
 }
 .svc-slide-mini-output {
-  --svc-thumb-mini-scale: 0.0958333333;
   --presenter-output-bg: #00ff00;
   --presenter-output-fg: #fff;
   --presenter-output-muted: rgba(255, 255, 255, .72);
@@ -7190,8 +7189,8 @@ textarea.svc-presenter-input-control--multiline {
   top: 50%;
   left: 50%;
   display: grid;
-  width: 1280px;
-  height: 720px;
+  width: 100cqw;
+  height: 100cqh;
   overflow: hidden;
   background: inherit;
   background-position: inherit;
@@ -7200,7 +7199,7 @@ textarea.svc-presenter-input-control--multiline {
   color: inherit;
   font-family: inherit;
   place-items: center;
-  transform: translate(-50%, -50%) scale(var(--svc-thumb-mini-scale));
+  transform: translate(-50%, -50%);
   transform-origin: center center;
   backface-visibility: hidden;
   pointer-events: none;
@@ -7387,7 +7386,6 @@ textarea.svc-presenter-input-control--multiline {
   .service-dashboard { grid-template-columns: 1fr; }
   .svc-board-grid {
     --svc-thumb-width: 168px;
-    --svc-thumb-mini-scale: 0.0875;
   }
   .svc-presenter-workspace { grid-template-columns: minmax(0, 1fr) minmax(280px, 320px); gap: 16px; }
   .svc-presenter-input-rail { padding-left: 12px; }
@@ -7440,7 +7438,6 @@ textarea.svc-presenter-input-control--multiline {
 @media (max-width: 760px) {
   .svc-board-grid {
     --svc-thumb-width: 148px;
-    --svc-thumb-mini-scale: 0.0770833333;
   }
   .svc-presenter-main,
   .svc-presenter-action-group {

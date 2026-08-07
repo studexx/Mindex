@@ -118,8 +118,13 @@
   position: absolute;
   top: 50%;
   left: 50%;
-  --presenter-stage-scale: var(--svc-thumb-mini-scale);
-  transform: translate(-50%, -50%) scale(var(--svc-thumb-mini-scale));
+  width: 100cqw;
+  height: 100cqh;
+  --presenter-stage-width: 100cqw;
+  --presenter-stage-height: 100cqh;
+  --presenter-stage-scale: 1;
+  --presenter-stage-unit: calc(100cqw / 1920);
+  transform: translate(-50%, -50%);
 }
 .presenter-output-layer {
   grid-area: 1 / 1;
