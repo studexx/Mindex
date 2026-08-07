@@ -5226,7 +5226,7 @@ function buildWorshipPersistenceRows(service, items, existingSectionById = {}, e
     const sourceRef = serviceElementSourceRefForSave(existingSourceRef, item, parsed, Boolean(manualBody));
     const contentState = serviceElementContentStateForSave(item, parsed, service);
     const scriptureReferences = scriptureBody
-      ? serviceItemScriptureReferences(item, parsed)
+      ? serviceItemScriptureReferences(item, parsed, service)
       : [];
     const scriptureReference = scriptureBody
       ? (scriptureReferences[0] || normalizeServiceItemReferenceSpacing(parsed.scriptureReference || item.raw_title || existingElement?.scripture_reference || ""))

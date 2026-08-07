@@ -2386,26 +2386,47 @@ def main() -> int:
                           fullscreenSermonBodyCompatibility: (() => {
                             const service = { id: '__smoke_fullscreen_sermon_body__', type_id: 'sunday-first', date: '2026-07-05' };
                             const previousServices = state.services.slice();
+                            const previousItems = state.serviceItems;
                             state.services.push(service);
+                            const readingItem = normalizeServiceItem({
+                              id: '__smoke_fullscreen_reading_body_item__',
+                              service_id: service.id,
+                              label: '성경봉독',
+                              raw_title: '요 21:15-25',
+                              _worshipSectionId: '__smoke_fullscreen_reading_section__',
+                              _worshipSectionKey: 'scripture_reading',
+                              _worshipSectionTitle: '성경봉독',
+                              memo: serializeServiceItemMemo({ elementType: 'scripture_body', inputMode: 'scripture', scriptureReferences: ['요 21:15–25'] })
+                            });
                             const item = normalizeServiceItem({
                               id: '__smoke_fullscreen_sermon_body_item__',
                               service_id: service.id,
                               label: '설교 본문',
-                              raw_title: '요 21:15-25',
+                              raw_title: '',
+                              _worshipSectionId: '__smoke_fullscreen_sermon_section__',
                               _worshipSectionKey: 'sermon',
                               _worshipSectionTitle: '설교',
-                              memo: serializeServiceItemMemo({ elementType: 'scripture_body', inputMode: 'scripture', scriptureReference: '요 21:15-25' })
+                              memo: serializeServiceItemMemo({ elementType: 'scripture_body', inputMode: 'scripture' })
                             });
+                            state.serviceItems = {
+                              ...state.serviceItems,
+                              [service.id]: [readingItem, item],
+                            };
                             const memo = parseServiceItemMemo(item.memo);
                             const content = resolvePresenterServiceItemContentState(item, memo, null, service);
                             const slides = buildPresenterSlidesForServiceItem(item, service, 0);
                             const staticInput = presenterServiceInputIsStatic(item, memo);
+                            const rows = buildWorshipPersistenceRows(service, [readingItem, item], {}, {}).elements;
+                            const sermonRow = rows[1] || null;
                             state.services = previousServices;
+                            state.serviceItems = previousItems;
                             return {
                               staticInput,
                               contentState: content.state || '',
                               reason: content.reason || '',
-                              slideCount: slides.length
+                              slideCount: slides.length,
+                              savedTitle: sermonRow?.title || '',
+                              savedReference: sermonRow?.scripture_reference || '',
                             };
                           })(),
                           worshipSongVersionFkGuard: (() => {
@@ -2933,7 +2954,9 @@ def main() -> int:
                             "staticInput": False,
                             "contentState": "filled",
                             "reason": "scripture_body",
-                            "slideCount": 0,
+                            "slideCount": 1,
+                            "savedTitle": "요 21:15–25",
+                            "savedReference": "요 21:15–25",
                         }
                         and template_terms["worshipSongVersionFkGuard"] == {
                             "staleInvalid": True,
