@@ -14380,13 +14380,14 @@ function getSelectedBibleTranslation() {
 
 function findBibleTranslation(value) {
   const key = normalizeTitle(value);
+  const compactKey = compactSearchValue(value);
   if (!key) return null;
   return state.bibleTranslations.find((translation) => [
     translation.id,
     translation.translationKey,
     translation.name,
     translation.abbreviation,
-  ].some((item) => normalizeTitle(item) === key)) || null;
+  ].some((item) => normalizeTitle(item) === key || compactSearchValue(item) === compactKey)) || null;
 }
 
 function isKoreanBibleTranslation(translation) {
@@ -22695,12 +22696,13 @@ async function buildLiveScriptureSlide(query) {
   await ensureBibleBookLookups();
   if (!state.bibleTranslations.length && !state.bibleReaderError) await loadBibleTranslations({ silent: true });
 
-  const reference = parseBibleReference(query);
+  const parsedQuery = parseLiveScriptureQuery(query);
+  const reference = parsedQuery.reference;
   if (!reference) {
     showToast("성구 형식을 확인해 주세요.", "error");
     return null;
   }
-  const translation = selectedPresenterBibleTranslation();
+  const translation = parsedQuery.translation || selectedPresenterBibleTranslation();
   if (!translation?.id) {
     showToast("사용 가능한 역본이 없습니다.", "error");
     return null;
@@ -22729,7 +22731,7 @@ async function buildLiveScriptureSlide(query) {
     return null;
   }
 
-  const title = formatLiveScriptureReference(reference);
+  const title = formatLiveScriptureReference(reference, translation);
   return {
     id: `live-scripture:${Date.now()}`,
     elementType: PRESENTER_ELEMENT_TYPES.SCRIPTURE_TEXT,
@@ -22740,8 +22742,25 @@ async function buildLiveScriptureSlide(query) {
     title,
     marker: title,
     text: formatLiveScriptureSlideText(title, verses),
+    translationLabel: serviceBibleTranslationDisplayLabel(translation),
     live: true,
   };
+}
+
+function parseLiveScriptureQuery(query) {
+  const text = String(query || "").normalize("NFKC").trim().replace(/\s+/g, " ");
+  const wholeReference = parseBibleReference(text);
+  const tokens = text.split(" ").filter(Boolean);
+  const maxTranslationTokens = Math.min(4, Math.max(tokens.length - 2, 0));
+  for (let count = maxTranslationTokens; count >= 1; count -= 1) {
+    const translationText = tokens.slice(-count).join(" ");
+    const translation = findBibleTranslation(translationText);
+    if (!translation) continue;
+    const referenceText = tokens.slice(0, -count).join(" ");
+    const reference = parseBibleReference(referenceText);
+    if (reference) return { reference, referenceText, translation };
+  }
+  return { reference: wholeReference, referenceText: text, translation: null };
 }
 
 function formatLiveScriptureSlideText(reference, verses = []) {
@@ -22757,14 +22776,14 @@ function formatLiveScriptureSlideText(reference, verses = []) {
 
 function selectedPresenterBibleTranslation() {
   return state.bibleTranslations.find((translation) => translation.id === state.selectedBibleTranslationId)
-    || state.bibleTranslations.find((translation) => /개역개정|KRV|Korean/i.test(`${translation.name || ""} ${translation.code || ""}`))
+    || state.bibleTranslations.find((translation) => /개역개정|KRV|Korean/i.test(`${translation.name || ""} ${translation.translationKey || ""} ${translation.code || ""}`))
     || state.bibleTranslations[0]
     || null;
 }
 
-function formatLiveScriptureReference(reference) {
-  const bookName = KOREAN_BIBLE_BOOK_ABBREVIATIONS[reference.book.code] || reference.book.koreanName || reference.book.code;
-  if (reference.verse === null) return `${bookName} ${reference.chapter}장`;
+function formatLiveScriptureReference(reference, translation = selectedPresenterBibleTranslation()) {
+  const bookName = scriptureBookCopyName(reference.book, translation);
+  if (reference.verse === null) return isKoreanBibleTranslation(translation) ? `${bookName} ${reference.chapter}장` : `${bookName} ${reference.chapter}`;
   const verseRange = reference.verseEnd && reference.verseEnd !== reference.verse
     ? `${reference.verse}-${reference.verseEnd}`
     : `${reference.verse}`;

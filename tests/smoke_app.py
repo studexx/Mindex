@@ -4402,6 +4402,89 @@ def main() -> int:
                     else:
                         fail("youth-missing-input-guard", json.dumps(youth_missing_input_guard, ensure_ascii=False))
 
+                    live_scripture_translation_hint = page.evaluate(
+                        """
+                        async () => {
+                          const previousClient = state.client;
+                          const previousTranslations = state.bibleTranslations;
+                          const previousSelectedTranslationId = state.selectedBibleTranslationId;
+                          const requests = [];
+                          try {
+                            state.bibleTranslations = [
+                              { id: '__live_ko__', translationKey: 'KRV', name: '개역한글', abbreviation: '개역한글', language: 'ko' },
+                              { id: '__live_new_ko__', translationKey: 'NKSB', name: '새한글성경', abbreviation: '새한글', language: 'ko' },
+                              { id: '__live_niv__', translationKey: 'NIV', name: 'New International Version', abbreviation: 'NIV', language: 'en' },
+                            ];
+                            state.selectedBibleTranslationId = '__live_ko__';
+                            state.client = {
+                              from(table) {
+                                const filters = [];
+                                const builder = {
+                                  select() { return builder; },
+                                  eq(field, value) { filters.push([field, value]); return builder; },
+                                  gte(field, value) { filters.push([field, value]); return builder; },
+                                  lte(field, value) { filters.push([field, value]); return builder; },
+                                  order() { return builder; },
+                                  then(resolve) {
+                                    const translationId = filters.find(([field]) => field === 'translation_id')?.[1] || '';
+                                    requests.push({ table, filters });
+                                    resolve({
+                                      data: [{
+                                        book_code: 'GEN',
+                                        chapter: 1,
+                                        verse: 1,
+                                        text: translationId === '__live_niv__'
+                                          ? 'In the beginning God created the heavens and the earth.'
+                                          : translationId === '__live_new_ko__'
+                                            ? '처음에 하나님이 하늘과 땅을 창조하셨다.'
+                                            : '태초에 하나님이 천지를 창조하시니라',
+                                      }],
+                                      error: null,
+                                    });
+                                  },
+                                };
+                                return builder;
+                              },
+                            };
+                            const korean = await buildLiveScriptureSlide('창 1 1 개역한글');
+                            const newKorean = await buildLiveScriptureSlide('창 1 1 새한글성경');
+                            const english = await buildLiveScriptureSlide('창 1 1 NIV');
+                            return {
+                              koreanTitle: korean?.title || '',
+                              koreanText: korean?.text || '',
+                              koreanTranslation: korean?.translationLabel || '',
+                              newKoreanTitle: newKorean?.title || '',
+                              newKoreanText: newKorean?.text || '',
+                              newKoreanTranslation: newKorean?.translationLabel || '',
+                              englishTitle: english?.title || '',
+                              englishText: english?.text || '',
+                              englishTranslation: english?.translationLabel || '',
+                              requestedTranslationIds: requests.map((request) => request.filters.find(([field]) => field === 'translation_id')?.[1] || ''),
+                            };
+                          } finally {
+                            state.client = previousClient;
+                            state.bibleTranslations = previousTranslations;
+                            state.selectedBibleTranslationId = previousSelectedTranslationId;
+                          }
+                        }
+                        """
+                    )
+                    if (
+                        live_scripture_translation_hint["koreanTitle"] == "창 1:1"
+                        and live_scripture_translation_hint["koreanText"].startswith("창 1:1   태초에")
+                        and live_scripture_translation_hint["koreanTranslation"] == "개역한글"
+                        and live_scripture_translation_hint["newKoreanTitle"] == "창 1:1"
+                        and live_scripture_translation_hint["newKoreanText"].startswith("창 1:1   처음에")
+                        and live_scripture_translation_hint["newKoreanTranslation"] == "새한글"
+                        and live_scripture_translation_hint["englishTitle"] == "Gen 1:1"
+                        and live_scripture_translation_hint["englishText"].startswith("Gen 1:1   In the beginning")
+                        and live_scripture_translation_hint["englishTranslation"] == "NIV"
+                        and live_scripture_translation_hint["requestedTranslationIds"] == ["__live_ko__", "__live_new_ko__", "__live_niv__"]
+                    ):
+                        pass_("live-scripture-translation-hint", json.dumps(live_scripture_translation_hint, ensure_ascii=False))
+                    else:
+                        fail("live-scripture-translation-hint", json.dumps(live_scripture_translation_hint, ensure_ascii=False))
+
                     presenter_preparation_real_song_match = page.evaluate(
                         """
                         (() => {
