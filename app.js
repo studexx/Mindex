@@ -7694,7 +7694,7 @@ async function resolveServiceSongSelectionBeforeSave(serviceId, index) {
   if (serviceItemRequiresNewHymnalScoreSong(item) && !isNewHymnalScoreSong(song)) return false;
   linkServiceItemToPraiseSong(item, song, service, {
     forceLyricsMode: isSpecialSongServiceItem(item)
-      && servicePraiseInputMode(item, parseServiceItemMemo(item.memo)) === "manual_praise",
+      && servicePraiseInputMode(item, parseServiceItemMemo(item.memo), service) === "manual_praise",
   });
   markServiceItemSharedContentDirty(item, service);
   item._worshipElementTemplateModified = true;
@@ -7806,7 +7806,8 @@ function updateServiceItemField(field, options = {}) {
   }
   if (key === "praise_input_mode") {
     const parsed = parseServiceItemMemo(item.memo);
-    const inputMode = servicePraiseInputMode(item, { ...parsed, inputMode: field.value });
+    const service = state.services.find((candidate) => candidate.id === serviceId) || selectedServiceForEditor();
+    const inputMode = servicePraiseInputMode(item, { ...parsed, inputMode: field.value }, service);
     parsed.inputMode = inputMode;
     parsed.outputMode = servicePraiseInputModeOutputMode(inputMode);
     if (inputMode === "manual_praise") {
@@ -8045,16 +8046,24 @@ function serviceMemoInputMode(memo = {}, item = {}) {
   return explicit || serviceInputModeForElementType(serviceMemoElementType(memo));
 }
 
-function servicePraiseInputMode(item = {}, memo = parseServiceItemMemo(item?.memo)) {
+function servicePraiseInputMode(item = {}, memo = parseServiceItemMemo(item?.memo), service = selectedServiceForEditor()) {
   const mode = serviceMemoInputMode(memo, item);
   if (["score_db", "lyrics_db", "manual_praise"].includes(mode)) return mode;
   const outputMode = serviceItemOutputMode(item, memo);
   if (outputMode === "score") return "score_db";
-  if (isSpecialSongServiceItem(item) && (!item?.song_id || (memo.slides || []).some((slide) => String(slide || "").trim()))) {
+  if (specialSongUsesManualPraiseFallback(item, memo, service)) {
     return "manual_praise";
   }
   if (mode === "praise_db") return "lyrics_db";
   return "lyrics_db";
+}
+
+function specialSongUsesManualPraiseFallback(item = {}, memo = parseServiceItemMemo(item?.memo), service = selectedServiceForEditor()) {
+  if (!isSpecialSongServiceItem(item)) return false;
+  const hasManualSlides = (memo.slides || []).some((slide) => String(slide || "").trim());
+  if (hasManualSlides) return true;
+  if (item?.song_id || item?.songId) return false;
+  return worshipAppServiceTypeId(service?.type_id || service?.typeId || "") === "sunday-main";
 }
 
 function servicePraiseInputModeOutputMode(inputMode = "") {
@@ -8769,7 +8778,7 @@ function serviceItemAllowsManualSongText(item = {}, service = selectedServiceFor
 
 function serviceItemRequiresSongSelection(item = {}, service = selectedServiceForEditor()) {
   if (isPublicFixedDoxologyServiceItem(item, parseServiceItemMemo(item.memo), service)) return false;
-  const praiseInputMode = servicePraiseInputMode(item, parseServiceItemMemo(item.memo));
+  const praiseInputMode = servicePraiseInputMode(item, parseServiceItemMemo(item.memo), service);
   if (praiseInputMode === "manual_praise") return false;
   const songLikeItem = isSongServiceLabel(item.label) || isSpecialSongServiceItem(item);
   if (songLikeItem && ["score_db", "lyrics_db"].includes(praiseInputMode)) return true;
@@ -8884,7 +8893,7 @@ function preferredServiceSongVersion(song = null, item = {}, service = selectedS
   const versions = serviceSelectableSongVersions(song, item, service);
   if (!versions.length) return null;
   const memo = parseServiceItemMemo(item?.memo);
-  const inputMode = servicePraiseInputMode(item, memo);
+  const inputMode = servicePraiseInputMode(item, memo, service);
   if (inputMode === "score_db") {
     return preferredNewHymnalVersion(song, versions) || (versions.length === 1 ? versions[0] : null);
   }
@@ -8921,7 +8930,7 @@ function serviceItemEditorModel(item = {}, options = {}) {
   const worshipLeaderItem = presenterTitleAssigneeUsesWorshipLeader(compactLabel);
   const genericRawTitle = presenterTitleAssigneeTitleIsGeneric(item.raw_title || "", item.label || "");
   const strictSong = serviceItemRequiresSongSelection(item, service);
-  const praiseInputMode = song ? servicePraiseInputMode(item, parsed) : "";
+  const praiseInputMode = song ? servicePraiseInputMode(item, parsed, service) : "";
   const linkedSong = serviceItemLinkedSong(item);
   const songVersions = linkedSong ? serviceSelectableSongVersions(linkedSong, item, service) : [];
   const titleInvalid = serviceItemSongSelectionInvalid(item, service) || serviceItemScriptureInputInvalid(item);
@@ -9462,7 +9471,7 @@ async function createPraiseSongFromServiceItem(index) {
   if (existing) {
     linkServiceItemToPraiseSong(item, existing, service, {
       forceLyricsMode: isSpecialSongServiceItem(item)
-        && servicePraiseInputMode(item, parseServiceItemMemo(item.memo)) === "manual_praise",
+        && servicePraiseInputMode(item, parseServiceItemMemo(item.memo), service) === "manual_praise",
     });
     state.serviceItems[serviceId] = normalizeServiceItemsInCurrentOrder(items);
     state.dirty.service = true;
@@ -10063,7 +10072,7 @@ function applyServiceSongSelectionWithService(item, service = null) {
     return;
   }
   const memo = parseServiceItemMemo(item.memo);
-  if (servicePraiseInputMode(item, memo) === "manual_praise") {
+  if (servicePraiseInputMode(item, memo, service) === "manual_praise") {
     const manualSong = isSpecialSongServiceItem(item)
       ? (
         resolvePresenterPreparationSong(item.raw_title, item, service || selectedServiceForEditor())
@@ -20336,7 +20345,7 @@ function renderServiceEditorTitleControl(item, origIndex, attrs = {}, model = se
 
 function renderServicePraiseInputModeControl(item, index, model = serviceItemEditorModel(item)) {
   if (!model.song) return "";
-  const selected = model.praiseInputMode || servicePraiseInputMode(item, model.parsed);
+  const selected = model.praiseInputMode || servicePraiseInputMode(item, model.parsed, model.service);
   return `
     <select
       class="svc-song-version-select svc-praise-input-mode-select"
@@ -20495,8 +20504,9 @@ function renderServiceEditorItem(item, mergedIndex, mergedItems, groupNum) {
 
 function renderServiceItemMemoEditor(item, index, options = {}) {
   const parsed = parseServiceItemMemo(item?.memo);
+  const service = options.service || state.services.find((candidate) => candidate.id === item?.service_id) || selectedServiceForEditor();
   const praiseInputMode = isSongServiceLabel(item?.label) || isSpecialSongServiceItem(item)
-    ? servicePraiseInputMode(item, parsed)
+    ? servicePraiseInputMode(item, parsed, service)
     : "";
   const preparation = isServicePreparationItem(item, parsed);
   const elementType = preparation ? servicePreparationElementTypeForServiceId(item?.service_id || state.selectedServiceId) : serviceMemoElementType(parsed);
@@ -22186,7 +22196,7 @@ async function applyPresenterPreparationInput(serviceId = state.selectedServiceI
       const item = items[targetIndex];
       const memo = parseServiceItemMemo(item.memo);
       const mode = isSongServiceLabel(item.label) || isSpecialSongServiceItem(item)
-        ? servicePraiseInputMode(item, memo)
+        ? servicePraiseInputMode(item, memo, service)
         : serviceMemoInputMode(memo, item);
 
       if (mode === "manual_praise" && isSpecialSongServiceItem(item)) {
@@ -22347,7 +22357,7 @@ function presenterServiceEditableInputCount(service) {
 function presenterServiceInputItem(item, service) {
   const model = serviceItemEditorModel(item, { service });
   const memo = model.parsed || parseServiceItemMemo(item.memo);
-  const inputMode = model.song ? servicePraiseInputMode(item, memo) : serviceMemoInputMode(memo, item);
+  const inputMode = model.song ? servicePraiseInputMode(item, memo, service) : serviceMemoInputMode(memo, item);
   if (presenterServiceInputIsStatic(item, memo)) return null;
   if (inputMode === "none" || inputMode === "config") return null;
   if (inputMode === "manual_praise") return { mode: "text", model, memo };
@@ -22394,7 +22404,7 @@ function presenterServiceTextInputSpec(item, model, memo) {
   const elementType = serviceMemoElementType(memo);
   const label = compactSearchValue(item.label || "");
   const specialSong = isSpecialSongServiceItem(item);
-  const manualPraise = model?.song && servicePraiseInputMode(item, memo) === "manual_praise";
+  const manualPraise = model?.song && servicePraiseInputMode(item, memo, model?.service) === "manual_praise";
   const genericTitle = presenterTitleAssigneeTitleIsGeneric(item.raw_title || "", item.label || "");
   const needsTitle = manualPraise
     || /설교제목|특송|공동기도/.test(label)
@@ -22416,7 +22426,7 @@ function presenterServiceInputHasEditableField(item, service) {
   const context = presenterServiceInputItem(item, service);
   if (!context) return false;
   if (["praise_db", "score_db", "lyrics_db", "scripture", "asset"].includes(context.mode)) return true;
-  if (context.mode === "text" && context.model?.song && servicePraiseInputMode(item, context.memo) === "manual_praise") return true;
+  if (context.mode === "text" && context.model?.song && servicePraiseInputMode(item, context.memo, service) === "manual_praise") return true;
   const { needsTitle, needsAssignee } = presenterServiceTextInputSpec(item, context.model, context.memo);
   return needsTitle || needsAssignee;
 }
@@ -25415,7 +25425,7 @@ function resolvePresenterServiceItemContentState(item = {}, memo = emptyServiceI
   const elementType = serviceMemoElementType(memo);
   const inputMode = serviceMemoInputMode(memo, item);
   const praiseInputMode = isSongServiceLabel(item?.label) || isSpecialSongServiceItem(item)
-    ? servicePraiseInputMode(item, memo)
+    ? servicePraiseInputMode(item, memo, service)
     : "";
   const requiresSongSelection = serviceItemRequiresSongSelection(item, service);
   const effectiveInputMode = praiseInputMode || (requiresSongSelection ? "praise_db" : inputMode);

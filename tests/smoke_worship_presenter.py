@@ -2892,6 +2892,56 @@ def main() -> int:
                           text: slide.text || '',
                           sectionKey: slide.sectionKey || '',
                         }));
+                      const specialInputModes = {
+                        sundayMain: (() => {
+                          const item = {
+                            id: '__smoke_special_mode_sunday_main__',
+                            label: '특송',
+                            raw_title: '',
+                            song_id: '',
+                            _worshipSectionKey: 'special_song',
+                            _worshipSectionTitle: '특송',
+                            memo: serializeServiceItemMemo({ elementType: 'praise' })
+                          };
+                          const targetService = { ...service, type_id: 'sunday-main' };
+                          return {
+                            mode: servicePraiseInputMode(item, parseServiceItemMemo(item.memo), targetService),
+                            requiresSong: serviceItemRequiresSongSelection(item, targetService),
+                          };
+                        })(),
+                        sundaySecond: (() => {
+                          const item = {
+                            id: '__smoke_special_mode_sunday_second__',
+                            label: '특송',
+                            raw_title: '',
+                            song_id: '',
+                            _worshipSectionKey: 'special_song',
+                            _worshipSectionTitle: '특송',
+                            memo: serializeServiceItemMemo({ elementType: 'praise' })
+                          };
+                          const targetService = { ...service, type_id: 'sunday-second' };
+                          return {
+                            mode: servicePraiseInputMode(item, parseServiceItemMemo(item.memo), targetService),
+                            requiresSong: serviceItemRequiresSongSelection(item, targetService),
+                          };
+                        })(),
+                        manualSlidesOutsideSundayMain: (() => {
+                          const item = {
+                            id: '__smoke_special_mode_manual_slides__',
+                            label: '특송',
+                            raw_title: '',
+                            song_id: '',
+                            _worshipSectionKey: 'special_song',
+                            _worshipSectionTitle: '특송',
+                            memo: serializeServiceItemMemo({ elementType: 'praise', slides: ['기관 특송'] })
+                          };
+                          const targetService = { ...service, type_id: 'sunday-second' };
+                          return {
+                            mode: servicePraiseInputMode(item, parseServiceItemMemo(item.memo), targetService),
+                            requiresSong: serviceItemRequiresSongSelection(item, targetService),
+                          };
+                        })(),
+                      };
                       const emptyTemplateInputSlides = buildPresenterSlidesForServiceItem({
                         id: '__smoke_empty_template_input_item__',
                         label: '대표기도',
@@ -3107,6 +3157,7 @@ def main() -> int:
                         thirdManualSpecialTitleSlides,
                         thirdEmptySpecialMissingSlides,
                         thirdTitlePersonSpecialSlides,
+                        specialInputModes,
                         emptyTemplateInputSlides,
                         defaultTemplateInputSlides,
                         persistenceStateRows,
@@ -3353,6 +3404,20 @@ def main() -> int:
                         "text": "특송\n청년부",
                         "sectionKey": "special_song",
                     }]
+                    and form_preset_state["specialInputModes"] == {
+                        "sundayMain": {
+                            "mode": "manual_praise",
+                            "requiresSong": False,
+                        },
+                        "sundaySecond": {
+                            "mode": "lyrics_db",
+                            "requiresSong": True,
+                        },
+                        "manualSlidesOutsideSundayMain": {
+                            "mode": "manual_praise",
+                            "requiresSong": False,
+                        },
+                    }
                     and form_preset_state["emptyTemplateInputSlides"] == [{
                         "type": "title-assignee",
                         "elementType": "title_assignee",
@@ -4279,7 +4344,7 @@ def main() -> int:
                     and scripture_context_state["readingVersion"] == "개역개정"
                     and scripture_context_state["readingFin"] == "Fin."
                     and scripture_context_state["readingFinFontStyle"] == "italic"
-                    and scripture_context_state["readingSidePadding"] >= 100
+                    and scripture_context_state["readingSidePadding"] >= 75
                     and scripture_context_state["readingHeaderSplit"]
                     and scripture_context_state["readingBodyBelowHeader"]
                     and scripture_context_state["readingNumber"] == ""
@@ -4293,14 +4358,14 @@ def main() -> int:
                     and scripture_context_state["readingRefFontWeight"] == "700"
                     and scripture_context_state["readingVersionFontWeight"] == "600"
                     and scripture_context_state["readingVersionOpacity"] == "1"
-                    and float(scripture_context_state["readingVersionFontSize"].replace("px", "")) >= 50
+                    and float(scripture_context_state["readingVersionFontSize"].replace("px", "")) >= 35
                     and scripture_context_state["readingFinFontWeight"] == "600"
-                    and -6 <= float(scripture_context_state["readingLetterSpacing"].replace("px", "") or "0") <= -5
+                    and -4.5 <= float(scripture_context_state["readingLetterSpacing"].replace("px", "") or "0") <= -3.5
                     and scripture_context_state["readingLineBreak"] == "anywhere"
                     and scripture_context_state["readingTextShadow"] == "none"
                     and float(scripture_context_state["readingTextStroke"].replace("px", "") or "0") > 0
                     and scripture_context_state["readingWordBreak"] == "break-all"
-                    and float(scripture_context_state["readingLineHeight"].replace("px", "") or "0") >= 100
+                    and float(scripture_context_state["readingLineHeight"].replace("px", "") or "0") >= 75
                     and scripture_context_state["sermonContext"] == "sermon-chromakey"
                     and scripture_context_state["sermonElementTitle"] == "출 23:14–19"
                     and scripture_context_state["sermonOutputContext"] == "chromakey"
