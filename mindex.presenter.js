@@ -435,7 +435,7 @@ function presenterFormPlanForServiceItem(version = {}, item, song = null) {
   const itemPreset = serviceItemFormPreset(item);
   const matchedRule = matchedServiceItemFormPresetRule(item, song, version);
   const songDefaultPreset = presenterSongDefaultFormPreset(song, version);
-  const specialHymnRulePreset = isHymn && isPresenterSpecialSongItem(item) ? matchedRule?.formPreset || null : null;
+  const specialHymnRulePreset = presenterSpecialSongHymnFormPreset(item, song, version, matchedRule);
   const preset = isHymn
     ? specialHymnRulePreset
       || itemPreset
@@ -461,6 +461,18 @@ function presenterFormPlanForServiceItem(version = {}, item, song = null) {
       : forms,
     warnings,
   };
+}
+
+function presenterSpecialSongHymnFormPreset(item = {}, song = null, version = null, matchedRule = null) {
+  if (!isPresenterSpecialSongItem(item)) return null;
+  const isHymn = versionEffectivePraiseTypes(song, version).includes("hymn")
+    || Boolean(song?.hymn_no || version?.hymn_no);
+  if (!isHymn) return null;
+  return matchedRule?.formPreset || normalizeServiceFormPreset(
+    ["1절", "후렴", "2절", "후렴", "간주", "마지막 절", "후렴"],
+    "1절-후렴-2절-후렴-간주-마지막 절-후렴",
+    "default",
+  );
 }
 
 function presenterFormPresetShouldOmitUnlisted(preset = null) {

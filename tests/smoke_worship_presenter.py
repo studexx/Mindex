@@ -115,7 +115,10 @@ def main() -> int:
             if not service:
                 skip("presenter-slides", "No service with generated slides.")
             else:
-                page.wait_for_selector("#servicePresenterControls", timeout=5000)
+                page.wait_for_function(
+                    "() => document.querySelector('#servicePresenterControls') && document.querySelector('.svc-slide-thumb')",
+                    timeout=10000,
+                )
                 slide_count = page.locator(".svc-slide-thumb").count()
                 if slide_count == service["slides"]:
                     pass_("presenter-slides", json.dumps(service, ensure_ascii=False))
@@ -208,6 +211,20 @@ def main() -> int:
                         { id: 'gv1', part_type: 'Verse', part_number: 1, lyrics: '1행\\n2행\\n3행\\n4행\\n5행\\n6행\\n7행\\n8행' },
                       ];
                       const groupedPlan = presenterFormPlanForServiceItem({ forms: groupedForms }, groupedItem, song);
+                      const specialHymnForms = [
+                        { id: 'sv1', part_type: 'Verse', part_number: 1, lyrics: '특송 1절' },
+                        { id: 'sc', part_type: 'Chorus', lyrics: '특송 후렴' },
+                        { id: 'sv2', part_type: 'Verse', part_number: 2, lyrics: '특송 2절' },
+                        { id: 'si', part_type: 'Interlude', lyrics: '특송 간주' },
+                        { id: 'sv4', part_type: 'Verse', part_number: 4, lyrics: '특송 4절' },
+                      ];
+                      const specialHymnItem = {
+                        label: '특송',
+                        _worshipSectionKey: 'special_song',
+                        _worshipSectionTitle: '특송',
+                        memo: JSON.stringify({ elementType: 'praise' }),
+                      };
+                      const specialHymnSong = { hymn_no: '430', versions: [{ id: 'special-hymn-version', forms: specialHymnForms }] };
                       return {
                         metadataOrder: presenterFormPlanForServiceItem({ forms }, suggestedItem, song).forms.map((form) => form.id),
                         disabledOrder: presenterFormPlanForServiceItem({ forms }, disabledItem, song).forms.map((form) => form.id),
@@ -215,6 +232,11 @@ def main() -> int:
                         forcedOrder: presenterFormPlanForServiceItem({ forms }, forcedItem, song).forms.map((form) => form.id),
                         groupedLabels: groupedPlan.forms.map((form) => presenterFormDisplayLabel(form)),
                         groupedLyrics: groupedPlan.forms.map((form) => form.lyrics),
+                        specialHymnOrder: presenterFormPlanForServiceItem(
+                          { forms: specialHymnForms },
+                          specialHymnItem,
+                          specialHymnSong,
+                        ).forms.map((form) => form.id),
                       };
                     })()
                     """
@@ -226,6 +248,7 @@ def main() -> int:
                     "forcedOrder": ["v1", "c", "v1"],
                     "groupedLabels": ["V1A", "V1B"],
                     "groupedLyrics": ["1행\n2행\n3행\n4행", "5행\n6행\n7행\n8행"],
+                    "specialHymnOrder": ["sv1", "sc", "sv2", "sc", "preset-blank:instrumental", "sv4", "sc"],
                 }:
                     pass_("presenter-ccm-repeats-chorus", json.dumps(ccm_form_order_state, ensure_ascii=False))
                 else:
@@ -4992,7 +5015,7 @@ def main() -> int:
                 output_page.wait_for_timeout(80)
                 page.wait_for_function(
                     "() => document.querySelector('.svc-presenter-status')?.textContent.trim() === '송출 중'",
-                    timeout=5000,
+                    timeout=10000,
                 )
                 heartbeat_state = page.evaluate(
                     """

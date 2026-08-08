@@ -1311,7 +1311,7 @@ function handleServiceOutlineSlideClick(serviceOutlineItem) {
   openPresenterSectionEditorForSlide(target.serviceId, target.slideIndex);
   syncServiceOutlineSelection(serviceOutlineItem);
   if (selectionChanged) renderServiceList();
-  scrollPresenterBoardToIndex(target.serviceId, target.slideIndex, { force: true });
+  scrollPresenterBoardToIndexStable(target.serviceId, target.slideIndex, { force: true });
 }
 
 function syncServiceOutlineSelection(serviceOutlineItem) {
@@ -24260,6 +24260,9 @@ function runPresenterAction(action, serviceId = state.selectedServiceId, options
   publishPresenterState();
   renderPresenterControlState(serviceId);
   scrollPresenterOutlineToActive(serviceId);
+  if (["next", "prev", "first", "last", "jump"].includes(action)) {
+    scrollPresenterBoardToIndexStable(serviceId, state.presenter.index, { force: false });
+  }
 }
 
 function prepareNextServiceFromPresenter(serviceId = state.selectedServiceId, options = {}) {
@@ -24341,6 +24344,16 @@ function scrollPresenterBoardToIndex(serviceId, index, options = {}) {
   window.requestAnimationFrame(() => {
     if (run()) return;
     window.setTimeout(run, 0);
+  });
+}
+
+function scrollPresenterBoardToIndexStable(serviceId, index, options = {}) {
+  scrollPresenterBoardToIndex(serviceId, index, { ...options, behavior: options.behavior || "auto" });
+  window.requestAnimationFrame(() => {
+    scrollPresenterBoardToIndex(serviceId, index, { ...options, behavior: options.behavior || "auto" });
+    window.setTimeout(() => {
+      scrollPresenterBoardToIndex(serviceId, index, { ...options, behavior: options.behavior || "auto" });
+    }, 60);
   });
 }
 
