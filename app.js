@@ -14832,6 +14832,7 @@ function versionEffectivePraiseTypes(song, version) {
   const explicitTypes = normalizePraiseTypes(version?.praise_types);
   if (explicitTypes.length) return explicitTypes;
   if (song?.hymn_no && isHymnBookVersion(song, version)) return ["hymn"];
+  if (song?.hymn_no) return ["hymn"];
   if (!song?.hymn_no) return ["ccm"];
   return [];
 }
@@ -17832,6 +17833,15 @@ function linkServiceItemToPraiseSong(item, song, service = selectedServiceForEdi
     parsed.slides = [];
     item.memo = serializeServiceItemMemo(parsed);
   }
+  if (
+    isSpecialSongServiceItem(item)
+    && isNewHymnalScoreSong(song)
+    && !parsed.formPresetDisabled
+    && !serviceFormPresetRulesHaveHymnRule(parsed.formPresetRules || [])
+  ) {
+    parsed.formPresetRules = [...(parsed.formPresetRules || []), PUBLIC_SPECIAL_HYMN_FORM_PRESET_RULE];
+    item.memo = serializeServiceItemMemo(parsed);
+  }
   item.song_id = song.id;
   if (options.clearRawTitle !== false) item.raw_title = "";
   const preferredVersion = preferredServiceSongVersion(song, item, service);
@@ -18772,7 +18782,8 @@ function renderServiceOutlineGroup(service, group, groupIndex, selectedIndex, sl
   if (!group?.items?.length) return "";
   const firstEntry = group.items[0];
   const childEntries = group.items.filter(({ item }) => !isServiceSidebarSectionMarkerItem(item, group));
-  const firstSlideIndex = firstPresenterSlideIndexForServiceItem(firstEntry.item, slides);
+  const firstSlideEntry = group.items.find(({ item }) => firstPresenterSlideIndexForServiceItem(item, slides) >= 0) || firstEntry;
+  const firstSlideIndex = firstPresenterSlideIndexForServiceItem(firstSlideEntry.item, slides);
   const selected = group.items.some(({ index }) => index === selectedIndex);
   const activeSlide = state.presenter.serviceId === service.id
     && group.items.some(({ item }) => presenterSlideBelongsToItem(state.presenter.slides[state.presenter.index], item));
@@ -18782,7 +18793,7 @@ function renderServiceOutlineGroup(service, group, groupIndex, selectedIndex, sl
     <div class="service-outline-group${selected ? " selected" : ""}${activeSlide ? " active" : ""}">
       <button class="service-outline-row service-outline-row--section${activeSlide ? " active" : ""}" type="button"
         data-service-outline-slide="${escapeAttr(firstSlideIndex >= 0 ? firstSlideIndex : "")}"
-        data-service-outline-item-index="${escapeAttr(firstEntry.index)}"
+        data-service-outline-item-index="${escapeAttr(firstSlideEntry.index)}"
         data-service-outline-service="${escapeAttr(service.id)}"
         aria-label="${escapeAttr(interactionHint)}"
         title="${escapeAttr(interactionHint)}"
