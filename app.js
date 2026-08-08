@@ -23295,13 +23295,19 @@ function renderPresenterSlideBoard(slides, index, serviceId) {
 }
 
 function presenterDeferredBoardGroupIndexes(groups = [], activeIndex = -1, slideCount = 0) {
-  // The normal board is more useful when fully expanded. Defer only unusually
-  // large services, where hundreds of miniature slide trees delay the editor.
-  if (slideCount < 180 || groups.length < 5) return new Set();
-  const immediate = new Set([0, 1]);
+  // Remote sessions feel slow when many thumbnail trees mount at once. Keep
+  // the first view interactive, then hydrate distant sections on scroll.
+  if (slideCount < 80 || groups.length < 3) return new Set();
+  const immediate = new Set([0]);
   const activeGroupIndex = groups.findIndex((group) =>
     group.slides.some(({ slideIndex }) => slideIndex === activeIndex));
-  if (activeGroupIndex >= 0) immediate.add(activeGroupIndex);
+  if (activeGroupIndex >= 0) {
+    immediate.add(activeGroupIndex);
+    immediate.add(activeGroupIndex - 1);
+    immediate.add(activeGroupIndex + 1);
+  } else {
+    immediate.add(1);
+  }
   return new Set(groups.map((_, index) => index).filter((index) => !immediate.has(index)));
 }
 
