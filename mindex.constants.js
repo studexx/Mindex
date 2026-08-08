@@ -1,11 +1,11 @@
 (function () {
   const PART_TYPES = [
+    "Lyrics",
     "Verse",
     "Pre-Chorus",
     "Chorus",
     "Bridge",
     "Coda",
-    "Lyrics",
   ];
 
   const KOREAN_BIBLE_BOOK_ABBREVIATIONS = {
