@@ -512,6 +512,13 @@ Use three focused threads:
 
 Each thread should read this document first, then inspect current files before editing.
 
+## Data Notes
+
+- 2026-08-09: `예수 우리 왕이여` is intentionally split into two same-display-title songs.
+  - Hymn: `hymn_no=38`, `praise_types=["hymn"]`, no subtitle/original title.
+  - CCM: `praise_types=["ccm"]`, subtitle/original title `Jesus, We Enthrone You`, version `예수전도단 역`.
+  - The CCM canonical uses internal `normalized_title=예수우리왕이여ccm` only to avoid the unique normalized-title collision; do not merge it back into hymn 38.
+
 ## Final Reminder
 
 The user values practical church usability over technical cleverness. Make the app calmer, faster, clearer, and safer. Preserve curated data. When uncertain, inspect the source data and ask only when a wrong automatic edit could damage real worship material.
