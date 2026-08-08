@@ -2265,7 +2265,9 @@ async function loadSongsOnce() {
   state.connectionError = "";
   state.songs = (data || []).map(normalizeServerSong).sort(sortSongs);
   clearSearchCaches();
+  await yieldToBrowser();
   await attachRelationalSongVersions();
+  await yieldToBrowser();
   if (!state.songs.some((song) => cleanList(song.related_song_ids).length)) {
     await attachSongRelations();
   }
@@ -2345,6 +2347,7 @@ async function loadMissingSongsForIds(missingIds = []) {
   for (const song of linkedSongs) songMap.set(song.id, song);
   state.songs = [...songMap.values()].sort(sortSongs);
   clearSearchCaches();
+  await yieldToBrowser();
   await attachRelationalSongVersionsForSongs(linkedSongs.map((song) => song.id));
 }
 
@@ -2418,6 +2421,7 @@ async function attachRelationalSongVersionsForSongs(songIds = []) {
   state.songVersionTablesSupported = true;
   state.songVersionPraiseTypesSupported = state.songVersionPraiseTypesSupported
     || versionRows.some((row) => Object.prototype.hasOwnProperty.call(row, "praise_types"));
+  await yieldToBrowser();
   attachRelationalSongVersionRows(versionRows, unitRows, ids);
 }
 
@@ -2475,6 +2479,7 @@ async function attachRelationalSongVersions() {
     (versionResponse.data || []).some((row) => Object.prototype.hasOwnProperty.call(row, "praise_types"))
     || await detectSongVersionPraiseTypesSupport();
 
+  await yieldToBrowser();
   attachRelationalSongVersionRows(versionResponse.data || [], unitResponse.data || []);
 }
 
@@ -2697,6 +2702,10 @@ async function fetchSupabasePaged(table, select = "*", buildQuery = (query) => q
     rows.push(...(data || []));
     if (!data || data.length < pageSize) return rows;
   }
+}
+
+function yieldToBrowser() {
+  return new Promise((resolve) => globalThis.setTimeout(resolve, 0));
 }
 
 const SUPABASE_STATIC_CACHE_TTL_MS = 10 * 60 * 1000;
@@ -11704,7 +11713,7 @@ function clearSearchCaches(options = {}) {
   state.searchCache.songFields = new WeakMap();
 }
 
-function scheduleSearchRender(delay = 120) {
+function scheduleSearchRender(delay = 180) {
   window.clearTimeout(state.searchCache.renderTimer);
   state.searchCache.renderTimer = window.setTimeout(() => {
     state.searchCache.renderTimer = 0;
@@ -11875,8 +11884,9 @@ function getGlobalSearchResults() {
 
 function getGlobalPraiseResults(tokens) {
   if (!tokens.length) return [];
+  const includeLyrics = state.module === "praise";
   return state.songs
-    .map((song) => ({ song, match: getSongSearchMatch(song, tokens) }))
+    .map((song) => ({ song, match: getSongSearchMatch(song, tokens, { includeLyrics }) }))
     .filter((item) => item.match)
     .sort((a, b) => b.match.score - a.match.score || sortSongsForCurrentList(a.song, b.song))
     .slice(0, 8)
@@ -15346,10 +15356,10 @@ function getBibleBookLookups() {
 }
 
 
-function getSongSearchMatch(song, tokens = getSearchTokens(state.search)) {
+function getSongSearchMatch(song, tokens = getSearchTokens(state.search), options = {}) {
   if (!tokens.length) return null;
 
-  const fields = getSongSearchFields(song);
+  const fields = getSongSearchFields(song, options);
   const phrase = getSearchPhrase(tokens);
   let bestMatch = null;
 
@@ -15371,10 +15381,12 @@ function getSongSearchMatch(song, tokens = getSearchTokens(state.search)) {
   return bestMatch;
 }
 
-function getSongSearchFields(song) {
+function getSongSearchFields(song, options = {}) {
   if (!song || typeof song !== "object") return [];
+  const includeLyrics = options.includeLyrics !== false;
+  const cacheBucket = includeLyrics ? "full" : "summary";
   const cached = state.searchCache.songFields.get(song);
-  if (cached) return cached;
+  if (cached?.[cacheBucket]) return cached[cacheBucket];
   const metadata = normalizeSongMetadata(song?.metadata);
   const fields = [
     searchField("title", song.title, 120),
@@ -15402,13 +15414,15 @@ function getSongSearchFields(song) {
     fields.push(searchField("version", versionMetadata.composer, 42));
     fields.push(searchField("version", versionMetadata.translator, 38));
     fields.push(searchField("version", versionMetadata.album, 36));
-    for (const form of version.forms || []) {
-      fields.push(searchField("lyrics", form.lyrics, 24));
+    if (includeLyrics) {
+      for (const form of version.forms || []) {
+        fields.push(searchField("lyrics", form.lyrics, 24));
+      }
     }
   }
 
   const filteredFields = fields.filter((field) => field.text);
-  state.searchCache.songFields.set(song, filteredFields);
+  state.searchCache.songFields.set(song, { ...(cached || {}), [cacheBucket]: filteredFields });
   return filteredFields;
 }
 
@@ -20439,9 +20453,11 @@ function serviceSongPickerResults(query, item = {}, service = selectedServiceFor
   const tokens = getSearchTokens(normalizedQuery);
   if (!tokens.length) return [];
   const requiresNewHymnal = serviceItemRequiresNewHymnalScoreSong(item);
+  const includeLyrics = getSearchPhrase(tokens).compact.length >= 4;
   const cacheKey = [
     normalizeSearchValue(normalizedQuery),
     requiresNewHymnal ? "hymn" : "all",
+    includeLyrics ? "lyrics" : "summary",
     service?.id || "",
     state.songs.length,
     limit,
@@ -20449,7 +20465,7 @@ function serviceSongPickerResults(query, item = {}, service = selectedServiceFor
   if (state.searchCache.songPicker.has(cacheKey)) return state.searchCache.songPicker.get(cacheKey);
   const candidates = state.songs
     .filter((song) => !requiresNewHymnal || isNewHymnalScoreSong(song))
-    .map((song) => ({ song, match: getSongSearchMatch(song, tokens) }))
+    .map((song) => ({ song, match: getSongSearchMatch(song, tokens, { includeLyrics }) }))
     .filter((entry) => entry.match);
   const phraseMatches = candidates.filter((entry) => entry.match.phraseMatched);
   const results = phraseMatches.length ? phraseMatches : candidates;
