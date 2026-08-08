@@ -708,6 +708,7 @@ const state = {
   searchCache: {
     global: new Map(),
     songPicker: new Map(),
+    songFields: new WeakMap(),
     renderTimer: 0,
   },
   forms: [],
@@ -2351,7 +2352,8 @@ function loadSongsForIdsInBackground(songIds = [], options = {}) {
   const ids = [...new Set(songIds.map((id) => String(id || "").trim()).filter(Boolean))];
   if (!ids.length) return;
   void loadSongsForIds(ids).then(() => {
-    if (options.render) render();
+    if (options.render === "detail") renderCurrentServiceModuleDetail();
+    else if (options.render) render();
     if (options.serviceId) refreshPresenterForService(options.serviceId);
   }).catch((error) => {
     console.warn("Could not hydrate linked songs in background.", error);
@@ -2785,10 +2787,11 @@ function writePersistentBibleChapterCache(translationId, bookCode, chapter, rows
 }
 
 async function fetchCachedSupabasePaged(table, select = "*", buildQuery = (query) => query, options = {}) {
-  const cached = readStaticSupabaseCache(table, select);
+  const cacheKey = options.cacheKey || select;
+  const cached = readStaticSupabaseCache(table, cacheKey);
   if (cached) return cached;
   const rows = await fetchSupabasePaged(table, select, buildQuery, options.pageSize || SUPABASE_PAGE_SIZE);
-  writeStaticSupabaseCache(table, select, rows);
+  writeStaticSupabaseCache(table, cacheKey, rows);
   return rows;
 }
 
@@ -3139,7 +3142,7 @@ async function loadWorshipData() {
     });
   }
   loadSongsForIdsInBackground(elements.map((item) => item.song_id), {
-    render: true,
+    render: "detail",
     serviceId: state.selectedServiceId,
   });
   warmWorshipScriptureReferencesForService(state.selectedServiceId);
@@ -4038,7 +4041,7 @@ async function loadServiceItems(serviceId) {
       groupWorshipElements(sections, elements)[serviceId] || [],
     );
     loadSongsForIdsInBackground(elements.map((item) => item.song_id), {
-      render: state.selectedServiceId === serviceId,
+      render: state.selectedServiceId === serviceId ? "detail" : false,
       serviceId,
     });
     warmWorshipScriptureReferencesForService(serviceId);
@@ -4057,7 +4060,7 @@ async function loadBibleTranslations({ silent = false } = {}) {
   if (!requireClient({ silent })) return;
 
   try {
-    const data = await fetchCachedSupabasePaged("mindex_bible_translations", "*", (query) =>
+    const data = await fetchCachedSupabasePaged("mindex_bible_translations", "id,translation_key,name,language,abbreviation,source", (query) =>
       query.eq("is_active", true).order("name", { ascending: true }));
     state.bibleReaderError = "";
     state.bibleTranslations = (data || []).map(normalizeServerBibleTranslation).sort(sortBibleTranslations);
@@ -4240,46 +4243,20 @@ async function fetchBibleTextSearchRowsByBook(query, translationId, page = 0) {
   const requestedPage = Math.max(0, Number(page) || 0);
   const requestedStart = requestedPage * pageSize;
   const requestedEnd = requestedStart + pageSize - 1;
-  const rows = [];
-  let totalCount = 0;
-  let seenBeforeBook = 0;
+  const { data, error, count } = await state.client
+    .from("mindex_bible_verses")
+    .select("id,book_code,chapter,verse,verse_end,text,section_title", { count: "estimated" })
+    .eq("is_active", true)
+    .eq("translation_id", translationId)
+    .ilike("text", `%${escapePostgrestLikePattern(query)}%`)
+    .order("book_code", { ascending: true })
+    .order("chapter", { ascending: true })
+    .order("verse", { ascending: true })
+    .range(requestedStart, requestedEnd);
 
-  for (const book of getBibleBooks().sort(sortBibleBooks)) {
-    const { error: countError, count } = await state.client
-      .from("mindex_bible_verses")
-      .select("id", { count: "exact", head: true })
-      .eq("is_active", true)
-      .eq("translation_id", translationId)
-      .eq("book_code", book.code)
-      .ilike("text", `%${escapePostgrestLikePattern(query)}%`);
-
-    if (countError) throw countError;
-    const bookCount = Number(count) || 0;
-    const bookStart = seenBeforeBook;
-    const bookEnd = seenBeforeBook + bookCount - 1;
-    totalCount += bookCount;
-
-    if (bookCount && requestedStart <= bookEnd && requestedEnd >= bookStart && rows.length < pageSize) {
-      const localFrom = Math.max(0, requestedStart - bookStart);
-      const localTo = Math.min(bookCount - 1, requestedEnd - bookStart);
-      const { data, error } = await state.client
-        .from("mindex_bible_verses")
-        .select("id,book_code,chapter,verse,verse_end,text,section_title")
-        .eq("is_active", true)
-        .eq("translation_id", translationId)
-        .eq("book_code", book.code)
-        .ilike("text", `%${escapePostgrestLikePattern(query)}%`)
-        .order("chapter", { ascending: true })
-        .order("verse", { ascending: true })
-        .range(localFrom, localTo);
-
-      if (error) throw error;
-      rows.push(...(data || []));
-    }
-
-    seenBeforeBook += bookCount;
-  }
-
+  if (error) throw error;
+  const rows = (data || []).sort(sortBibleVerseRows);
+  const totalCount = Number(count) || rows.length;
   const maxPage = Math.max(0, Math.ceil(totalCount / pageSize) - 1);
   if (requestedPage > maxPage && totalCount > 0) {
     return fetchBibleTextSearchRowsByBook(query, translationId, maxPage);
@@ -11724,6 +11701,7 @@ function renderConnectionStatus() {
 function clearSearchCaches(options = {}) {
   state.searchCache.global.clear();
   if (options.songs !== false) state.searchCache.songPicker.clear();
+  state.searchCache.songFields = new WeakMap();
 }
 
 function scheduleSearchRender(delay = 120) {
@@ -15394,6 +15372,9 @@ function getSongSearchMatch(song, tokens = getSearchTokens(state.search)) {
 }
 
 function getSongSearchFields(song) {
+  if (!song || typeof song !== "object") return [];
+  const cached = state.searchCache.songFields.get(song);
+  if (cached) return cached;
   const metadata = normalizeSongMetadata(song?.metadata);
   const fields = [
     searchField("title", song.title, 120),
@@ -15426,7 +15407,9 @@ function getSongSearchFields(song) {
     }
   }
 
-  return fields.filter((field) => field.text);
+  const filteredFields = fields.filter((field) => field.text);
+  state.searchCache.songFields.set(song, filteredFields);
+  return filteredFields;
 }
 
 function searchField(kind, text, weight) {

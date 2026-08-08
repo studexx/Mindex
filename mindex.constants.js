@@ -259,7 +259,7 @@
       selectedScriptureId: "mindex.ui.selectedScriptureId",
       selectedBookCode: "mindex.ui.selectedBookCode",
     },
-    SUPABASE_PAGE_SIZE: 1000,
+    SUPABASE_PAGE_SIZE: 2000,
     UI_SCRIPTURE_PREFIX: "Mindex UI:",
     UI_VERSE_SLOTS: ["home", "activities", "praise", "scripture"],
     LOADING_MESSAGE: "불러오는 중...",
