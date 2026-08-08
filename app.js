@@ -18961,9 +18961,14 @@ function serviceSidebarPersonSummary(item = {}, service = null) {
   if (!assignee) return "";
   const displayLabel = labelCompact === "기도" ? "대표기도" : label;
   const title = serviceItemDisplayText(item);
-  const titleCompact = compactSearchValue(title);
-  const titlePart = title && titleCompact !== labelCompact ? `${displayLabel} · ${title}` : displayLabel;
-  return `${titlePart} · ${assignee}`;
+  const assigneeCompact = compactSearchValue(assignee);
+  const extraTitle = cleanList(String(title || "").split(/[·/,]+/u))
+    .filter((part) => {
+      const compact = compactSearchValue(part);
+      return compact && compact !== labelCompact && compact !== assigneeCompact;
+    })
+    .join(" · ");
+  return cleanList([displayLabel, extraTitle, assignee]).join(" · ");
 }
 
 function serviceSidebarUsesLabelOnly(item = {}) {
