@@ -24919,18 +24919,22 @@ function movePresenterSlide(delta) {
   if (!count) return;
   const step = delta < 0 ? -1 : 1;
   let index = state.presenter.index + step;
-  while (index >= 0 && index < count && state.presenter.slides[index]?.hiddenInPresentation) index += step;
+  while (index >= 0 && index < count && presenterSlideIsHidden(state.presenter.slides[index])) index += step;
   if (index >= 0 && index < count) state.presenter.index = index;
 }
 
+function presenterSlideIsHidden(slide = {}) {
+  return Boolean(slide.hiddenInPresentation || slide.hidden_in_presentation || slide.hidden);
+}
+
 function firstPresenterNavigableIndex(slides = []) {
-  const index = slides.findIndex((slide) => !slide?.hiddenInPresentation);
+  const index = slides.findIndex((slide) => !presenterSlideIsHidden(slide));
   return index >= 0 ? index : 0;
 }
 
 function lastPresenterNavigableIndex(slides = []) {
   for (let index = slides.length - 1; index >= 0; index -= 1) {
-    if (!slides[index]?.hiddenInPresentation) return index;
+    if (!presenterSlideIsHidden(slides[index])) return index;
   }
   return Math.max(slides.length - 1, 0);
 }
@@ -24952,7 +24956,7 @@ function presenterSlideAnchor(slide = null) {
     scriptureContext: String(slide.scriptureContext || "").trim(),
     scripturePending: Boolean(slide.scripturePending),
     title: String(slide.title || slide.elementTitle || slide.marker || "").trim(),
-    hidden: Boolean(slide.hiddenInPresentation),
+    hidden: presenterSlideIsHidden(slide),
   };
 }
 
