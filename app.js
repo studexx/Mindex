@@ -24331,7 +24331,8 @@ function scrollPresenterBoardToIndex(serviceId, index, options = {}) {
         .find((node) => serviceIds.includes(node.dataset.serviceId) && Number(node.dataset.presenterIndex) === targetIndex);
     }
     if (!thumb) return false;
-    const viewportRect = root.getBoundingClientRect();
+    const viewport = refs.detailPane?.isConnected ? refs.detailPane : root;
+    const viewportRect = viewport.getBoundingClientRect();
     const thumbRect = thumb.getBoundingClientRect();
     const fullyVisible = thumbRect.top >= viewportRect.top
       && thumbRect.bottom <= viewportRect.bottom
