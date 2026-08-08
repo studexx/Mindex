@@ -774,6 +774,7 @@ function presenterFormPartTypeForPresetTarget(target = {}) {
   const type = String(target.type || "").trim();
   if (type === "verse") return "Verse";
   if (type === "chorus") return "Chorus";
+  if (type === "tag") return "Chorus";
   if (type === "bridge") return "Bridge";
   if (type === "pre-chorus") return "Pre-Chorus";
   if (type === "coda") return "Coda";
@@ -785,6 +786,10 @@ function findPresenterFormForPresetLabel(forms = [], label = "") {
   const target = normalizePresenterFormPresetLabel(label);
   if (!target.key) return null;
   if (target.blank) return presenterBlankFormPresetItem(label, target);
+  if (target.type === "tag") {
+    const chorus = findPresenterFormForPresetTarget(forms, { key: "chorus", type: "chorus" });
+    return chorus ? presenterTagFormPresetItem(label, target, chorus) : null;
+  }
   if (target.lastVerse) {
     const verses = forms
       .map((form, index) => ({ form, index, target: normalizePresenterFormPresetLabel(presenterFormDisplayLabel(form)) }))
@@ -803,6 +808,27 @@ function findPresenterFormForPresetLabel(forms = [], label = "") {
     return form ? presenterFormPresetGroupItem(label, target, form) : null;
   }
   return findPresenterFormForPresetTarget(forms, target);
+}
+
+function presenterTagFormPresetItem(label = "", target = {}, form = {}) {
+  const lines = String(form.lyrics || "")
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const lyrics = lines[lines.length - 1] || "";
+  if (!lyrics) return null;
+  const cleanLabel = String(label || "").trim() || "Tag";
+  const baseId = String(form._localId || form.id || target.key || "tag");
+  return {
+    ...form,
+    _presenterVirtual: true,
+    _presenterSourceFormId: form._localId || form.id || "",
+    id: `${baseId}:tag`,
+    part_type: "Chorus",
+    part_number: null,
+    lyrics,
+    label: cleanLabel,
+  };
 }
 
 function findPresenterFormForPresetTarget(forms = [], target = {}) {
@@ -889,18 +915,25 @@ function normalizePresenterFormPresetLabel(value = "") {
       ...(group ? { group, groupIndex: group.charCodeAt(0) - 64 } : {}),
     };
   }
-  const groupedType = raw.match(/^(pc|prechorus|pre-chorus|프리코러스|b|bridge|브릿지|coda|코다|ending|엔딩|lyrics|가사|간주|interlude|instrumental)\s*([a-z])?$/i);
+  const groupedType = raw.match(/^(pc|prechorus|pre-chorus|프리코러스|b|bridge|브릿지|lyrics|가사)\s*([a-z])?$/i);
   if (groupedType) {
     const type = normalizePresenterFormType(groupedType[1]);
     const group = groupedType[2] ? groupedType[2].toUpperCase() : "";
-    const blank = type === "instrumental";
     return {
       key: group ? `${type}:${group.toLowerCase()}` : type,
       type,
       number: 0,
       ...(group ? { group, groupIndex: group.charCodeAt(0) - 64 } : {}),
-      ...(blank ? { blank } : {}),
     };
+  }
+  if (/^(coda|코다|ending|엔딩)\s*[a-z]?$/i.test(raw)) {
+    return { key: "coda", type: "coda", number: 0 };
+  }
+  if (/^(간주|interlude|instrumental)\s*[a-z]?$/i.test(raw)) {
+    return { key: "instrumental", type: "instrumental", number: 0, blank: true };
+  }
+  if (/^(tag|태그)\s*[a-z]?$/i.test(raw)) {
+    return { key: "tag", type: "tag", number: 0 };
   }
   const display = raw.match(/^([A-Za-z][A-Za-z -]*?)(?:\s+(\d+))?(?:\s+([a-z]))?$/);
   if (display) {
@@ -925,6 +958,7 @@ function normalizePresenterFormType(value = "") {
   if (/^(bridge|브릿지)$/i.test(compact)) return "bridge";
   if (/^(prechorus|프리코러스)$/i.test(compact)) return "pre-chorus";
   if (/^(coda|코다|ending|엔딩)$/i.test(compact)) return "coda";
+  if (/^(tag|태그)$/i.test(compact)) return "tag";
   if (/^(lyrics|가사)$/i.test(compact)) return "lyrics";
   if (/^(interlude|instrumental|간주)$/i.test(compact)) return "instrumental";
   return compact;
@@ -939,6 +973,7 @@ function normalizePresenterMissingFormLabel(value = "") {
   if (target.key === "bridge") return "Bridge";
   if (target.key === "pre-chorus") return "Pre-Chorus";
   if (target.key === "coda") return "Coda";
+  if (target.key === "tag") return "Tag";
   return raw || "송폼";
 }
 

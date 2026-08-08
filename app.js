@@ -8450,15 +8450,17 @@ function normalizeSongFormPresetLabel(value = "") {
     const group = String(preChorus[1] || "").toLowerCase();
     return { key: group ? `pre-chorus:${group}` : "pre-chorus", type: "pre-chorus", ...(group ? { group } : {}) };
   }
-  const coda = raw.match(/^(?:coda|코다|ending|엔딩)\s*([a-z])?$/i);
+  const coda = raw.match(/^(?:coda|코다|ending|엔딩)\s*[a-z]?$/i);
   if (coda) {
-    const group = String(coda[1] || "").toLowerCase();
-    return { key: group ? `coda:${group}` : "coda", type: "coda", ...(group ? { group } : {}) };
+    return { key: "coda", type: "coda" };
   }
-  const instrumental = raw.match(/^(?:간주|interlude|instrumental)\s*([a-z])?$/i);
+  const instrumental = raw.match(/^(?:간주|interlude|instrumental)\s*[a-z]?$/i);
   if (instrumental) {
-    const group = String(instrumental[1] || "").toLowerCase();
-    return { key: group ? `instrumental:${group}` : "instrumental", type: "instrumental", ...(group ? { group } : {}) };
+    return { key: "instrumental", type: "instrumental" };
+  }
+  const tag = raw.match(/^(?:tag|태그)\s*[a-z]?$/i);
+  if (tag) {
+    return { key: "tag", type: "tag" };
   }
   return { key: compact, type: compact };
 }
