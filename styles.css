@@ -369,7 +369,7 @@ body.sidebar-collapsed .brand-home {
   height: 16px;
   stroke-width: 1.5;
 }
-.page-tab-add {
+.icon-btn.page-tab-add {
   display: inline-flex;
   width: var(--topbar-btn-size);
   height: var(--topbar-btn-size);
@@ -5462,6 +5462,43 @@ body[data-module="presenter"] .detail-pane {
   resize: vertical;
   line-height: 1.45;
 }
+.svc-manual-praise-lyrics {
+  display: grid;
+  gap: 6px;
+  margin: 4px 0 8px 38px;
+  border-left: 3px solid var(--accent);
+  border-radius: var(--r);
+  background: color-mix(in srgb, var(--panel-2) 18%, transparent);
+  padding: 10px 12px 12px;
+}
+.svc-manual-praise-lyrics.compact {
+  margin: 0 0 8px 30px;
+}
+.svc-manual-praise-lyrics > span {
+  color: var(--ink-4);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .06em;
+}
+.svc-manual-praise-lyrics textarea {
+  width: 100%;
+  min-height: 180px;
+  border: 0;
+  border-radius: calc(var(--r) - 2px);
+  background: color-mix(in srgb, var(--panel-2) 44%, transparent);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--ui-body-size);
+  font-weight: var(--ui-row-weight);
+  line-height: 1.55;
+  outline: none;
+  padding: 10px 12px;
+  resize: vertical;
+}
+.svc-manual-praise-lyrics textarea:focus {
+  background: color-mix(in srgb, var(--panel-2) 64%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 46%, transparent);
+}
 @media (max-width: 700px) {
   .svc-prep-editor-head {
     gap: var(--s2);
@@ -5769,6 +5806,14 @@ textarea.svc-presenter-input-control--multiline {
   line-height: 1.45;
   padding: 8px;
   resize: vertical;
+}
+.svc-presenter-input-field--lyrics {
+  grid-column: 1 / -1;
+}
+.svc-presenter-input-field--lyrics textarea.svc-presenter-input-control {
+  min-height: 180px;
+  line-height: 1.55;
+  padding: 10px 12px;
 }
 .svc-presenter-input-hint {
   color: var(--ink-4);

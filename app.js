@@ -3282,15 +3282,17 @@ function groupWorshipElements(sections = [], elements = []) {
     const elementType = sectionKey === "announcements" && !departmentAnnouncementBody
       ? "title"
       : configuredElementType;
-    const inputMode = normalizeServiceInputMode(
-      element.input_mode
-      || element.content_state?.inputMode
-      || element.content_state?.input_mode
-      || config.inputMode
+    const dbInputMode = normalizeServiceInputMode(element.input_mode);
+    const contentInputMode = normalizeServiceInputMode(element.content_state?.inputMode || element.content_state?.input_mode);
+    const configInputMode = normalizeServiceInputMode(
+      config.inputMode
       || config.input_mode
       || config.contentState?.inputMode
       || config.content_state?.input_mode,
     );
+    const inputMode = [configInputMode, contentInputMode].includes("manual_praise")
+      ? "manual_praise"
+      : (dbInputMode || contentInputMode || configInputMode);
     const asset = normalizeServiceAsset(config.asset || config.media || element.asset || sourceRef.asset);
     const audioAsset = normalizeServiceAudioAsset(config.audioAsset || config.audio_asset || sourceRef.audioAsset || sourceRef.audio_asset);
     const playback = normalizeServicePlaybackConfig(config.playback, elementType);
@@ -5110,7 +5112,7 @@ async function syncSharedSundayContentAfterSave(sourceService, sourceItems = [],
         ),
         changed: false,
       };
-      const targetIndex = update.items.findIndex((item) => sundaySharedContentKey(item) === key);
+      const targetIndex = sundaySharedContentItemIndex(update.items, key, update.service);
       if (targetIndex < 0) {
         targetUpdates.set(targetService.id, update);
         continue;
@@ -5131,7 +5133,7 @@ async function syncSharedSundayContentToService(targetService, key, sourceItem, 
     targetService,
     normalizeServiceItemsInCurrentOrder(getServiceItems(targetService.id)),
   );
-  const targetIndex = targetItems.findIndex((item) => sundaySharedContentKey(item) === key);
+  const targetIndex = sundaySharedContentItemIndex(targetItems, key, targetService);
   if (targetIndex < 0) return;
   targetItems[targetIndex] = applySharedSundayContentToItem(targetItems[targetIndex], sourceItem);
   await persistSharedSundayServiceItems(targetService, targetItems, options);
@@ -7678,6 +7680,8 @@ async function resolveServiceSongSelectionBeforeSave(serviceId, index) {
   const service = state.services.find((candidate) => candidate.id === serviceId);
   if (!item || !service) return false;
   if (!isSongServiceLabel(item.label) && !isSpecialSongServiceItem(item)) return false;
+  const memo = parseServiceItemMemo(item.memo);
+  if (servicePraiseInputMode(item, memo, service) === "manual_praise") return false;
 
   const rawTitle = String(item.raw_title || "").trim();
   if (!rawTitle) {
@@ -7821,10 +7825,19 @@ function updateServiceItemField(field, options = {}) {
     }
     item.memo = serializeServiceItemMemo(parsed);
   }
-  if (key === "memo_note" || key === "slide_overrides" || key === "form_hint" || key === "element_type" || key === "component_type" || key === "asset_name" || key === "asset_url" || key === "presenter_role" || key === "auto_advance_at") {
+  if (key === "memo_note" || key === "slide_overrides" || key === "manual_praise_lyrics" || key === "form_hint" || key === "element_type" || key === "component_type" || key === "asset_name" || key === "asset_url" || key === "presenter_role" || key === "auto_advance_at") {
     const parsed = parseServiceItemMemo(item.memo);
     if (key === "memo_note") parsed.note = field.value;
     if (key === "slide_overrides") parsed.slides = parseServiceSlideOverrideInput(field.value);
+    if (key === "manual_praise_lyrics") {
+      parsed.slides = parseServiceManualPraiseLyricsInput(field.value);
+      parsed.inputMode = "manual_praise";
+      parsed.outputMode = "lyrics";
+      parsed.elementType = "praise";
+      item.song_id = null;
+      item.version_id = null;
+      item.song_version_id = null;
+    }
     if (key === "form_hint") {
       const formHint = String(field.value || "").trim();
       parsed.formHint = formHint;
@@ -8491,6 +8504,16 @@ function parseServiceSlideOverrideInput(value) {
     .filter(Boolean);
 }
 
+function parseServiceManualPraiseLyricsInput(value) {
+  const text = String(value || "").trim();
+  if (!text) return [];
+  if (/\n\s*---+\s*\n/.test(text)) return parseServiceSlideOverrideInput(text);
+  return text
+    .split(/\n[ \t]*\n+/g)
+    .map((block) => block.trim())
+    .filter(Boolean);
+}
+
 function normalizeServiceIntroSlide(value) {
   if (!value) return null;
   if (typeof value === "string") {
@@ -8667,6 +8690,10 @@ function hasServiceIntroSlide(value) {
 
 function formatServiceSlideOverrideInput(memo) {
   return parseServiceItemMemo(memo).slides.join("\n---\n");
+}
+
+function formatServiceManualPraiseLyricsInput(memo) {
+  return parseServiceItemMemo(memo).slides.join("\n\n");
 }
 
 function serializeServiceItemMemo(value = {}) {
@@ -10073,17 +10100,6 @@ function applyServiceSongSelectionWithService(item, service = null) {
   }
   const memo = parseServiceItemMemo(item.memo);
   if (servicePraiseInputMode(item, memo, service) === "manual_praise") {
-    const manualSong = isSpecialSongServiceItem(item)
-      ? (
-        resolvePresenterPreparationSong(item.raw_title, item, service || selectedServiceForEditor())
-        || findServicePraiseSong(item.raw_title)
-        || findConfidentServicePraiseSong(item.raw_title, item, service || selectedServiceForEditor())
-      )
-      : null;
-    if (manualSong) {
-      linkServiceItemToPraiseSong(item, manualSong, service || selectedServiceForEditor(), { forceLyricsMode: true });
-      return;
-    }
     item.song_id = null;
     item.version_id = null;
     item.song_version_id = null;
@@ -20247,6 +20263,7 @@ function renderServiceItemGroups(items) {
             <button class="icon-btn danger" type="button" data-service-item-action="delete" data-service-item-index="${origIndex}" aria-label="항목 삭제"><i data-lucide="trash-2"></i></button>
           </div>
         </article>
+        ${subModel.praiseInputMode === "manual_praise" ? renderServiceManualPraiseLyricsEditor(item, origIndex, { compact: true }) : ""}
         ${subModel.praiseInputMode === "manual_praise" ? renderServiceItemMemoEditor(item, origIndex, { compact: true }) : ""}`;
       }
       html += `</div>`;
@@ -20415,7 +20432,22 @@ function renderServiceSongVersionPicker(item, index, model = serviceItemEditorMo
           ${escapeHtml(versionDisplayName(model.linkedSong, version))}
         </option>
       `).join("")}
-    </select>`;
+	    </select>`;
+}
+
+function renderServiceManualPraiseLyricsEditor(item, index, options = {}) {
+  const lyrics = formatServiceManualPraiseLyricsInput(item?.memo);
+  const rows = Math.max(8, Math.min(18, lyrics.split(/\r?\n/).length + 2));
+  return `
+    <label class="svc-manual-praise-lyrics${options.compact ? " compact" : ""}">
+      <span>가사</span>
+      <textarea
+        data-service-item-field="manual_praise_lyrics"
+        data-service-item-index="${index}"
+        rows="${rows}"
+        placeholder="가사를 붙여넣기&#10;&#10;빈 줄은 다음 슬라이드로 나뉩니다."
+      >${escapeHtml(lyrics)}</textarea>
+    </label>`;
 }
 
 function serviceSongPickerResults(query, item = {}, service = selectedServiceForEditor(), limit = 6) {
@@ -20504,6 +20536,7 @@ function renderServiceEditorItem(item, mergedIndex, mergedItems, groupNum) {
         <button class="icon-btn danger" type="button" ${actionAttr}="delete" ${indexAttr}="${origIndex}" aria-label="${isDefault ? "기본 항목 삭제" : "항목 삭제"}"><i data-lucide="trash-2"></i></button>
       </div>
     </article>
+    ${!isDefault && model.praiseInputMode === "manual_praise" ? renderServiceManualPraiseLyricsEditor(item, origIndex) : ""}
     ${!isDefault ? renderServiceItemMemoEditor(item, origIndex) : ""}`;
 }
 
@@ -20513,13 +20546,15 @@ function renderServiceItemMemoEditor(item, index, options = {}) {
   const praiseInputMode = isSongServiceLabel(item?.label) || isSpecialSongServiceItem(item)
     ? servicePraiseInputMode(item, parsed, service)
     : "";
+  const manualPraise = praiseInputMode === "manual_praise";
   const preparation = isServicePreparationItem(item, parsed);
   const elementType = preparation ? servicePreparationElementTypeForServiceId(item?.service_id || state.selectedServiceId) : serviceMemoElementType(parsed);
   const generatedScriptureSlides = Boolean(isScriptureBodyServiceItem(item) && parsed.scriptureReference && parsed.slides.length);
+  const showSlideOverrideInput = !manualPraise;
   const operationalSettings = Boolean(
     preparation
     || parsed.note
-    || (parsed.slides.length && !generatedScriptureSlides)
+    || (showSlideOverrideInput && parsed.slides.length && !generatedScriptureSlides)
     || parsed.formHint
     || parsed.formPreset
     || parsed.formPresetRules?.length
@@ -20533,7 +20568,7 @@ function renderServiceItemMemoEditor(item, index, options = {}) {
   const assetNamePlaceholder = elementType === "image" ? "예배 첫 슬라이드 이미지" : elementType === "audio" ? "MR · 성가대 음원 · 광고 BGM" : "준비 영상";
   const assetUrlPlaceholder = elementType === "image" ? "assets/.../first-slide.jpg" : elementType === "audio" ? "assets/.../song.mp3 또는 YouTube 링크" : "assets/.../ready.mp4";
   const autoAdvanceAt = String(parsed.playback?.autoAdvanceAt || "").trim();
-  const hasContent = Boolean(preparation || parsed.note || parsed.slides.length || parsed.formHint || parsed.formPreset || parsed.formPresetRules?.length || elementType || hasServiceAsset(parsed.asset) || parsed.presenterRole || autoAdvanceAt);
+  const hasContent = Boolean(preparation || parsed.note || (showSlideOverrideInput && parsed.slides.length) || parsed.formHint || parsed.formPreset || parsed.formPresetRules?.length || elementType || hasServiceAsset(parsed.asset) || parsed.presenterRole || autoAdvanceAt);
   const summary = renderServiceItemMemoSummary({ parsed, preparation, elementType, autoAdvanceAt });
   return `
     <details class="svc-item-note${options.compact ? " compact" : ""}${hasContent ? " has-content" : ""}"${praiseInputMode === "manual_praise" ? " open" : ""}>
@@ -20600,15 +20635,16 @@ function renderServiceItemMemoEditor(item, index, options = {}) {
             placeholder="${escapeAttr(assetUrlPlaceholder)}"
           />
         </label>
-        <label>
-          <span>${praiseInputMode === "manual_praise" ? "가사 직접 입력" : "슬라이드 직접 지정"}</span>
-          <textarea
-            data-service-item-field="slide_overrides"
-            data-service-item-index="${index}"
-            rows="3"
-            placeholder="Verse 1&#10;가사 두 줄&#10;---&#10;Chorus&#10;후렴 두 줄"
-          >${escapeHtml(formatServiceSlideOverrideInput(item?.memo))}</textarea>
-        </label>
+        ${showSlideOverrideInput ? `
+          <label>
+            <span>슬라이드 직접 지정</span>
+            <textarea
+              data-service-item-field="slide_overrides"
+              data-service-item-index="${index}"
+              rows="3"
+              placeholder="Verse 1&#10;가사 두 줄&#10;---&#10;Chorus&#10;후렴 두 줄"
+            >${escapeHtml(formatServiceSlideOverrideInput(item?.memo))}</textarea>
+          </label>` : ""}
       </div>
     </details>`;
 }
@@ -21038,6 +21074,7 @@ function sundaySharedContentKey(item = {}) {
   if (sectionKey === "praise" && praiseMatch && Number(praiseMatch[1]) >= 1 && Number(praiseMatch[1]) <= 3) {
     return `main-praise:${Number(praiseMatch[1])}`;
   }
+  if (sectionKey === "hymn_praise" && label === "찬송") return "main-praise:3";
   if (sectionKey === "scripture_reading" && label === "성경봉독") return "scripture-reading";
   if (sectionKey === "sermon" && ["설교", "설교제목"].includes(label)) return "sermon-title";
   if (sectionKey === "sermon" && ["설교본문", "본문", "성경본문"].includes(label)) return "sermon-scripture";
@@ -21054,7 +21091,11 @@ function sundaySharedContentTypesForItem(item = {}, service = null) {
   const key = sundaySharedContentKey(item);
   if (!key) return [];
   if (key.startsWith("main-praise:") && ["sunday-first", "sunday-second"].includes(typeId)) {
+    if (key === "main-praise:3") return ["sunday-first", "sunday-second", "sunday-main"];
     return ["sunday-first", "sunday-second"];
+  }
+  if (key === "main-praise:3" && typeId === "sunday-main" && isSundayMainHymnPraiseSharedItem(item)) {
+    return ["sunday-first", "sunday-second", "sunday-main"];
   }
   if ((["scripture-reading", "sermon-title", "sermon-scripture"].includes(key) || key.startsWith("sermon-citation:")) && ["sunday-second", "sunday-main"].includes(typeId)) {
     return ["sunday-second", "sunday-main"];
@@ -21063,6 +21104,27 @@ function sundaySharedContentTypesForItem(item = {}, service = null) {
     return ["sunday-first", "sunday-second", "sunday-main"];
   }
   return [];
+}
+
+function isSundayMainHymnPraiseSharedItem(item = {}) {
+  const sectionKey = String(item?._worshipSectionKey || item?.sectionKey || item?.section_key || "").trim();
+  const label = compactSearchValue(item?.label || item?.raw_title || "");
+  return sectionKey === "hymn_praise" && label === "찬송";
+}
+
+function sundaySharedContentItemIndex(items = [], key = "", service = null) {
+  const typeId = worshipAppServiceTypeId(service?.type_id);
+  if (key === "main-praise:3" && typeId === "sunday-main") {
+    const hymnIndex = items.findIndex((item) => isSundayMainHymnPraiseSharedItem(item));
+    if (hymnIndex >= 0) return hymnIndex;
+  }
+  if (key === "main-praise:3" && ["sunday-first", "sunday-second"].includes(typeId)) {
+    const praiseIndex = items.findIndex((item) =>
+      String(item?._worshipSectionKey || item?.sectionKey || item?.section_key || "").trim() === "praise"
+      && compactSearchValue(item?.label || item?.raw_title || "") === "찬양3");
+    if (praiseIndex >= 0) return praiseIndex;
+  }
+  return items.findIndex((item) => sundaySharedContentKey(item) === key);
 }
 
 function serviceItemHasDirectSundaySharedContent(item = {}, service = null) {
@@ -21099,7 +21161,9 @@ function sharedSundayContentSourceItem(item = {}, service = null) {
       worshipAppServiceTypeId(candidate.type_id) === typeId
       && String(candidate.date || "").trim() === serviceDate))
     .map((candidateService) => {
-      const sourceItem = (state.serviceItems[candidateService.id] || []).find((candidate) => sundaySharedContentKey(candidate) === key);
+      const candidateItems = state.serviceItems[candidateService.id] || [];
+      const sourceIndex = sundaySharedContentItemIndex(candidateItems, key, candidateService);
+      const sourceItem = sourceIndex >= 0 ? candidateItems[sourceIndex] : null;
       return sourceItem ? { item: sourceItem, service: candidateService } : null;
     })
     .find((entry) => entry && serviceItemHasDirectSundaySharedContent(entry.item, entry.service)) || null;
@@ -22409,7 +22473,7 @@ function presenterServiceTextInputSpec(item, model, memo) {
   const elementType = serviceMemoElementType(memo);
   const label = compactSearchValue(item.label || "");
   const specialSong = isSpecialSongServiceItem(item);
-  const manualPraise = model?.song && servicePraiseInputMode(item, memo, model?.service) === "manual_praise";
+  const manualPraise = servicePraiseInputMode(item, memo, model?.service) === "manual_praise";
   const genericTitle = presenterTitleAssigneeTitleIsGeneric(item.raw_title || "", item.label || "");
   const needsTitle = manualPraise
     || /설교제목|특송|공동기도/.test(label)
@@ -22431,7 +22495,7 @@ function presenterServiceInputHasEditableField(item, service) {
   const context = presenterServiceInputItem(item, service);
   if (!context) return false;
   if (["praise_db", "score_db", "lyrics_db", "scripture", "asset"].includes(context.mode)) return true;
-  if (context.mode === "text" && context.model?.song && servicePraiseInputMode(item, context.memo, service) === "manual_praise") return true;
+  if (context.mode === "text" && servicePraiseInputMode(item, context.memo, service) === "manual_praise") return true;
   const { needsTitle, needsAssignee } = presenterServiceTextInputSpec(item, context.model, context.memo);
   return needsTitle || needsAssignee;
 }
@@ -22572,7 +22636,8 @@ function renderPresenterReferenceMediaPreview(asset, kind) {
 
 function renderPresenterServiceTextInputs(item, index, model, memo) {
   const { needsTitle, needsAssignee } = presenterServiceTextInputSpec(item, model, memo);
-  if (!needsTitle && !needsAssignee) return "";
+  const manualPraise = servicePraiseInputMode(item, memo, model?.service) === "manual_praise";
+  if (!needsTitle && !needsAssignee && !manualPraise) return "";
   const specialSong = isSpecialSongServiceItem(item);
   const announcementText = isAnnouncementTextInputItem(item);
   const titleLabel = specialSong ? "곡" : "내용";
@@ -22587,6 +22652,12 @@ function renderPresenterServiceTextInputs(item, index, model, memo) {
           <small class="svc-presenter-input-hint">줄마다 ①, ②, ③으로 자동 표시됩니다.</small>` : `
           <input class="svc-presenter-input-control" type="text" data-service-item-field="raw_title" data-service-item-index="${index}"
             value="${escapeAttr(item.raw_title || "")}" placeholder="${escapeAttr(specialSong ? "곡명" : item.label || "내용")}" ${specialSong ? `autocomplete="off" spellcheck="false"` : ""} aria-label="${escapeAttr(`${item.label || "항목"} ${titleLabel}`)}" />`}
+      </label>` : ""}
+    ${manualPraise ? `
+      <label class="svc-presenter-input-field svc-presenter-input-field--lyrics">
+        <span>가사</span>
+        <textarea class="svc-presenter-input-control svc-presenter-input-control--multiline" data-service-item-field="manual_praise_lyrics" data-service-item-index="${index}"
+          rows="10" placeholder="가사를 붙여넣기&#10;&#10;빈 줄은 다음 슬라이드로 나뉩니다." aria-label="${escapeAttr(`${item.label || "특송"} 가사`)}">${escapeHtml(formatServiceManualPraiseLyricsInput(item.memo))}</textarea>
       </label>` : ""}
     ${needsAssignee ? `
       <label class="svc-presenter-input-field">

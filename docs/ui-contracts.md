@@ -75,6 +75,9 @@ Inactive module tabs should stay visually quiet. Active tabs may show a clearer 
 - When two or more page tabs are open, tabs can be dragged to reorder them.
 - The active page remains active after reordering, and the new order is persisted with the existing tab session state.
 - The add-tab control is not part of the draggable sequence.
+- Page tabs use `13px / 600`; the active tab uses `700`. The add-tab control is
+  a `40px` square command with a direct neutral hover surface and a centered
+  `16px / 1.5` Lucide Plus icon.
 
 ## Sidebar
 

@@ -1092,6 +1092,34 @@ def main() -> int:
                         json.dumps({"before": single_tab_close_before, "after": single_tab_close_state}, ensure_ascii=False),
                     )
 
+                page_tab_style = page.evaluate(
+                    """() => {
+                      const tab = document.querySelector('.page-tab.active');
+                      const add = document.querySelector('#pageTabAddBtn');
+                      const icon = add?.querySelector('svg');
+                      const tabStyle = tab ? getComputedStyle(tab) : null;
+                      const addRect = add?.getBoundingClientRect();
+                      const iconRect = icon?.getBoundingClientRect();
+                      return {
+                        tabWeight: Number(tabStyle?.fontWeight || 0),
+                        addWidth: Math.round(addRect?.width || 0),
+                        addHeight: Math.round(addRect?.height || 0),
+                        iconWidth: Math.round(iconRect?.width || 0),
+                        iconHeight: Math.round(iconRect?.height || 0)
+                      };
+                    }"""
+                )
+                if page_tab_style == {
+                    "tabWeight": 700,
+                    "addWidth": 40,
+                    "addHeight": 40,
+                    "iconWidth": 16,
+                    "iconHeight": 16,
+                }:
+                    pass_("page-tab-visual-contract", json.dumps(page_tab_style, ensure_ascii=False))
+                else:
+                    fail("page-tab-visual-contract", json.dumps(page_tab_style, ensure_ascii=False))
+
                 tab_reorder_state = page.evaluate(
                     """
                     (() => {
