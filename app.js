@@ -2736,6 +2736,45 @@ const WORSHIP_SERVICE_LIST_SELECT = [
   "status",
   "source_ref",
 ].join(",");
+const WORSHIP_SECTION_LIST_SELECT = [
+  "id",
+  "service_id",
+  "sort_order",
+  "section_key",
+  "title",
+  "person",
+  "template_id",
+  "template_modified",
+  "source_kind",
+  "source_ref",
+  "config",
+  "created_at",
+  "updated_at",
+].join(",");
+const WORSHIP_ELEMENT_LIST_SELECT = [
+  "id",
+  "section_id",
+  "sort_order",
+  "element_type",
+  "title",
+  "person",
+  "body",
+  "song_id",
+  "song_version_id",
+  "scripture_id",
+  "scripture_reference",
+  "asset",
+  "template_id",
+  "template_modified",
+  "source_kind",
+  "source_ref",
+  "review_status",
+  "config",
+  "input_mode",
+  "content_state",
+  "created_at",
+  "updated_at",
+].join(",");
 
 function staticSupabaseCacheKey(table, select = "*") {
   return `${SUPABASE_STATIC_CACHE_PREFIX}${table}:${select}`;
@@ -2847,7 +2886,7 @@ async function fetchWorshipRowsForServiceIds(serviceIds = []) {
 
   const sections = [];
   for (const batch of chunkArray(ids, 80)) {
-    const rows = await fetchSupabasePaged("mindex_worship_sections", "*", (query) =>
+    const rows = await fetchSupabasePaged("mindex_worship_sections", WORSHIP_SECTION_LIST_SELECT, (query) =>
       query
         .in("service_id", batch)
         .order("service_id", { ascending: true })
@@ -2858,7 +2897,7 @@ async function fetchWorshipRowsForServiceIds(serviceIds = []) {
   const sectionIds = sections.map((section) => section.id).filter(Boolean);
   const elements = [];
   for (const batch of chunkArray(sectionIds, 80)) {
-    const rows = await fetchSupabasePaged("mindex_worship_elements", "*", (query) =>
+    const rows = await fetchSupabasePaged("mindex_worship_elements", WORSHIP_ELEMENT_LIST_SELECT, (query) =>
       query
         .in("section_id", batch)
         .order("section_id", { ascending: true })
