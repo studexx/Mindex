@@ -25434,6 +25434,12 @@ function presenterFixedTitleText(item = {}) {
   return "";
 }
 
+function serviceItemsAreHydrating(serviceId = "") {
+  const id = String(serviceId || "").trim();
+  if (!id || state.loadedWorshipServiceIds.has(id)) return false;
+  return state.loading || serviceItemLoadPromises.has(id) || isServiceDataModule();
+}
+
 function resolvePresenterServiceItemContentState(item = {}, memo = emptyServiceItemMemo(), song = null, service = null) {
   const effectiveItem = serviceItemWithSharedSundayContent(item, service);
   if (effectiveItem !== item) {
@@ -25463,6 +25469,7 @@ function resolvePresenterServiceItemContentState(item = {}, memo = emptyServiceI
   });
   const filled = (reason) => result("filled", true, reason);
   const missing = (reason) => result("missing", false, reason);
+  const loading = (reason) => result("loading", false, reason);
   if (presenterFixedTitleText(item)) return filled("fixed_title");
   if (elementType === "title_content" && labelKey === "환영") return filled("title_content");
   if (isLiturgicalBodyServiceItem(item)) {
@@ -25473,7 +25480,11 @@ function resolvePresenterServiceItemContentState(item = {}, memo = emptyServiceI
   if (isOptionalCitationScriptureServiceItem(item) && !serviceItemScriptureReferences(item, memo, service).length) {
     return filled("optional_citation_empty");
   }
-  if (item?._worshipTemplatePlaceholder) return missing("template_placeholder");
+  if (item?._worshipTemplatePlaceholder) {
+    return serviceItemsAreHydrating(service?.id)
+      ? loading("service_items_hydrating")
+      : missing("template_placeholder");
+  }
   if (isScriptureBodyServiceItem(item)) {
     return serviceItemScriptureReferences(item, memo, service).length || serviceScriptureTextPayload(item, memo, service).verses.length
       ? filled("scripture_body")
@@ -25646,6 +25657,7 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
   const contentState = resolvePresenterServiceItemContentState(item, memo, song, service);
   const fixedTitle = presenterFixedTitleText(item);
   if (fixedTitle) return [presenterTitleOnlySlide(item, section, index, fixedTitle)];
+  if (contentState.state === "loading") return [];
   if (isOptionalCitationScriptureServiceItem(item)
     && !serviceItemScriptureReferences(item, memo, service).length
     && !serviceScriptureTextPayload(item, memo, service).verses.length) {
