@@ -110,6 +110,20 @@ class WorshipRuleGuardTests(unittest.TestCase):
         for key, (start, end) in expected.items():
             self.assertRegex(windows, rf'"?{re.escape(key)}"?:\s*{{\s*start:\s*"{start}",\s*end:\s*"{end}"')
 
+    def test_persistence_rows_are_sanitized_before_validation(self) -> None:
+        save = function_block(self.source, "saveWorshipServiceInstance")
+        shared = function_block(self.source, "persistSharedSundayServiceItems")
+        sanitizer = function_block(self.source, "sanitizeWorshipPersistenceRows")
+        for save_path in (save, shared):
+            self.assertIn("sanitizeWorshipPersistenceRows(rows", save_path)
+            self.assertLess(
+                save_path.index("sanitizeWorshipPersistenceRows(rows"),
+                save_path.index("validateWorshipPersistenceRows(rows"),
+            )
+        self.assertIn("worshipDbInputModeForSave", sanitizer)
+        self.assertIn("element.song_version_id = null", sanitizer)
+        self.assertIn("section.created_at = section.created_at || persistedAt", sanitizer)
+
 
 if __name__ == "__main__":
     unittest.main()

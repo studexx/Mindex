@@ -5019,6 +5019,7 @@ async function saveWorshipServiceInstance(service) {
     });
   }
 
+  sanitizeWorshipPersistenceRows(rows, { elementTypedStateColumns });
   validateWorshipPersistenceRows(rows, { serviceId });
   if (rows.sections.length) {
     const { error } = await state.client
@@ -5202,6 +5203,7 @@ async function persistSharedSundayServiceItems(service, items = [], options = {}
     existingElementById,
     options,
   );
+  sanitizeWorshipPersistenceRows(rows, options);
   validateWorshipPersistenceRows(rows, { serviceId });
   if (rows.sections.length) {
     const { error } = await state.client
@@ -5275,6 +5277,46 @@ function validateWorshipPersistenceRows(rows = {}, context = {}) {
   if (!errors.length) return;
   const prefix = serviceId ? `예배 ${serviceId} 저장 데이터가 DB 규칙과 맞지 않습니다.` : "예배 저장 데이터가 DB 규칙과 맞지 않습니다.";
   throw new Error(`${prefix} ${errors.slice(0, 4).join(" / ")}`);
+}
+
+function sanitizeWorshipPersistenceRows(rows = {}, options = {}) {
+  const persistedAt = new Date().toISOString();
+  const hasInputModeColumn = Boolean(options.elementTypedStateColumns?.inputMode);
+  (rows.sections || []).forEach((section) => {
+    if (!section || typeof section !== "object") return;
+    section.created_at = section.created_at || persistedAt;
+    section.updated_at = section.updated_at || persistedAt;
+    section.source_ref = section.source_ref && typeof section.source_ref === "object" ? section.source_ref : {};
+    section.config = section.config && typeof section.config === "object" ? section.config : {};
+  });
+  (rows.elements || []).forEach((element) => {
+    if (!element || typeof element !== "object") return;
+    element.created_at = element.created_at || persistedAt;
+    element.updated_at = element.updated_at || persistedAt;
+    element.element_type = worshipDbElementTypeForSave(element.element_type) || "plain_text";
+    if (!element.song_id) element.song_version_id = null;
+    element.asset = normalizeServiceAsset(element.asset || element.config?.asset);
+    element.source_ref = element.source_ref && typeof element.source_ref === "object" ? element.source_ref : {};
+    element.config = element.config && typeof element.config === "object" ? element.config : {};
+    if (Object.prototype.hasOwnProperty.call(element.config, "input_mode")) {
+      const configMode = normalizeServiceInputMode(element.config.input_mode);
+      if (configMode) element.config.inputMode = configMode;
+      delete element.config.input_mode;
+    }
+    if (Object.prototype.hasOwnProperty.call(element.config, "inputMode")) {
+      const configMode = normalizeServiceInputMode(element.config.inputMode);
+      if (configMode) element.config.inputMode = configMode;
+      else delete element.config.inputMode;
+    }
+    if (element.content_state && typeof element.content_state === "object") {
+      const contentMode = normalizeServiceInputMode(element.content_state.inputMode || element.content_state.input_mode);
+      if (contentMode) element.content_state.inputMode = contentMode;
+      delete element.content_state.input_mode;
+    }
+    if (hasInputModeColumn) element.input_mode = worshipDbInputModeForSave(element.input_mode || element.content_state?.inputMode || element.config.inputMode);
+    else delete element.input_mode;
+  });
+  return rows;
 }
 
 function isUnmodifiedTemplatePlaceholder(item = {}) {
@@ -8350,17 +8392,35 @@ function normalizeSongFormPresetLabel(value = "") {
     const number = Number(verse[1]) || 0;
     const group = String(verse[2] || "").toLowerCase();
     const baseKey = number ? `verse:${number}` : "verse";
-    return { key: group ? `${baseKey}:${group}` : baseKey, type: "verse", number };
+    return { key: group ? `${baseKey}:${group}` : baseKey, type: "verse", number, ...(group ? { group } : {}) };
   }
-  const chorus = raw.match(/^(?:c|chorus|후렴|코러스)\s*(\d*)$/i);
+  const chorus = raw.match(/^(?:c|chorus|후렴|코러스)\s*(\d*)([a-z])?$/i);
   if (chorus) {
     const number = Number(chorus[1]) || 0;
-    return { key: number ? `chorus:${number}` : "chorus", type: "chorus", number };
+    const group = String(chorus[2] || "").toLowerCase();
+    const baseKey = number ? `chorus:${number}` : "chorus";
+    return { key: group ? `${baseKey}:${group}` : baseKey, type: "chorus", number, ...(group ? { group } : {}) };
   }
-  if (/^(b|bridge|브릿지)$/i.test(compact)) return { key: "bridge", type: "bridge" };
-  if (/^(pc|prechorus|pre-chorus|프리코러스)$/i.test(compact)) return { key: "pre-chorus", type: "pre-chorus" };
-  if (/^(coda|코다|ending|엔딩)$/i.test(compact)) return { key: "coda", type: "coda" };
-  if (/^(간주|interlude|instrumental)$/i.test(compact)) return { key: "instrumental", type: "instrumental" };
+  const bridge = raw.match(/^(?:b|bridge|브릿지)\s*([a-z])?$/i);
+  if (bridge) {
+    const group = String(bridge[1] || "").toLowerCase();
+    return { key: group ? `bridge:${group}` : "bridge", type: "bridge", ...(group ? { group } : {}) };
+  }
+  const preChorus = raw.match(/^(?:pc|prechorus|pre-chorus|프리코러스)\s*([a-z])?$/i);
+  if (preChorus) {
+    const group = String(preChorus[1] || "").toLowerCase();
+    return { key: group ? `pre-chorus:${group}` : "pre-chorus", type: "pre-chorus", ...(group ? { group } : {}) };
+  }
+  const coda = raw.match(/^(?:coda|코다|ending|엔딩)\s*([a-z])?$/i);
+  if (coda) {
+    const group = String(coda[1] || "").toLowerCase();
+    return { key: group ? `coda:${group}` : "coda", type: "coda", ...(group ? { group } : {}) };
+  }
+  const instrumental = raw.match(/^(?:간주|interlude|instrumental)\s*([a-z])?$/i);
+  if (instrumental) {
+    const group = String(instrumental[1] || "").toLowerCase();
+    return { key: group ? `instrumental:${group}` : "instrumental", type: "instrumental", ...(group ? { group } : {}) };
+  }
   return { key: compact, type: compact };
 }
 
@@ -15502,6 +15562,14 @@ function normalizeReferenceInput(value) {
     .replace(/(\d{1,3})\s*절/g, "$1")
     .replace(/\s*:\s*/g, ":")
     .replace(/^([1-3])\s+([A-Za-z가-힣])/, "$1$2")
+    .replace(/^(.+?)(\d{1,3})(?::(\d{1,3})(?:-(\d{1,3}))?)?$/u, (match, book, chapter, verse, verseEnd) => {
+      if (!findBibleBookByReferenceName(book)) return match;
+      return `${book.trim()} ${chapter}${verse ? `:${verse}${verseEnd ? `-${verseEnd}` : ""}` : ""}`;
+    })
+    .replace(/^(.+?)\s+(\d{1,3})\s+(\d{1,3})(?:-(\d{1,3}))?$/u, (match, book, chapter, verse, verseEnd) => {
+      if (!findBibleBookByReferenceName(book)) return match;
+      return `${book.trim()} ${chapter} ${verse}${verseEnd ? `-${verseEnd}` : ""}`;
+    })
     .replace(/([^\s\d:-])(\d{1,3})(?::\d{1,3}(?:-\d{1,3})?)?$/u, (match, prefix) => {
       const numberPart = match.slice(prefix.length);
       return `${prefix} ${numberPart}`;
