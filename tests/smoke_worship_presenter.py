@@ -2925,6 +2925,22 @@ def main() -> int:
                             requiresSong: serviceItemRequiresSongSelection(item, targetService),
                           };
                         })(),
+                        monthlyYesterday: (() => {
+                          const item = {
+                            id: '__smoke_special_mode_monthly_yesterday__',
+                            label: '특송',
+                            raw_title: '430 주와 같이 길 가는 것',
+                            song_id: '',
+                            _worshipSectionKey: 'special_song',
+                            _worshipSectionTitle: '특송',
+                            memo: serializeServiceItemMemo({ elementType: 'praise' })
+                          };
+                          const targetService = { ...service, type_id: 'monthly', date: '2026-08-07', service_date: '2026-08-07' };
+                          return {
+                            mode: servicePraiseInputMode(item, parseServiceItemMemo(item.memo), targetService),
+                            requiresSong: serviceItemRequiresSongSelection(item, targetService),
+                          };
+                        })(),
                         manualSlidesOutsideSundayMain: (() => {
                           const item = {
                             id: '__smoke_special_mode_manual_slides__',
@@ -3410,6 +3426,10 @@ def main() -> int:
                             "requiresSong": False,
                         },
                         "sundaySecond": {
+                            "mode": "lyrics_db",
+                            "requiresSong": True,
+                        },
+                        "monthlyYesterday": {
                             "mode": "lyrics_db",
                             "requiresSong": True,
                         },
