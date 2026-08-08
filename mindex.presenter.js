@@ -4006,6 +4006,14 @@ function renderPresenterTitleAssigneeSlide(slide) {
   const assigneeChars = presenterLineCharEstimate(assignee);
   const orderChars = presenterLineCharEstimate(orderTitle);
   const contentChars = presenterLineCharEstimate(contentTitle);
+  if (slide?.missingContent) {
+    return `
+      <div class="presenter-slide-text presenter-title-assignee presenter-title-assignee--missing">
+        <span class="presenter-title-assignee-title" style="--line-chars: ${escapeAttr(titleChars)}">${escapeHtml(title)}</span>
+        ${assignee ? `<span class="presenter-title-assignee-person" style="--line-chars: ${escapeAttr(assigneeChars)}">${escapeHtml(assignee)}</span>` : ""}
+      </div>
+    `;
+  }
   if (presenterTitleAssigneeIsSermon(slide) && contentTitle && assignee) {
     return `
       <div class="presenter-slide-text presenter-title-assignee presenter-title-assignee--sermon">
