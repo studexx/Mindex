@@ -15595,6 +15595,10 @@ function normalizeReferenceInput(value) {
     .trim()
     .replace(/[：.]/g, ":")
     .replace(/[–—~]/g, "-")
+    .replace(/^(.+?)(\d{1,3})\s*장\s*(\d{1,3})(?:\s*-\s*(\d{1,3}))?\s*절?$/u, (match, book, chapter, verse, verseEnd) => {
+      if (!findBibleBookByReferenceName(book)) return match;
+      return `${book.trim()} ${chapter} ${verse}${verseEnd ? `-${verseEnd}` : ""}`;
+    })
     .replace(/(\d{1,3})\s*장\s*(\d{1,3})(?:\s*-\s*(\d{1,3}))?\s*절?/g, (_, chapter, verse, verseEnd) =>
       `${chapter} ${verse}${verseEnd ? `-${verseEnd}` : ""}`)
     .replace(/(\d{1,3})\s*장/g, "$1")
@@ -15604,6 +15608,10 @@ function normalizeReferenceInput(value) {
     .replace(/^(.+?)(\d{1,3})(?::(\d{1,3})(?:-(\d{1,3}))?)?$/u, (match, book, chapter, verse, verseEnd) => {
       if (!findBibleBookByReferenceName(book)) return match;
       return `${book.trim()} ${chapter}${verse ? `:${verse}${verseEnd ? `-${verseEnd}` : ""}` : ""}`;
+    })
+    .replace(/^(.+?)(\d{1,3})\s+(\d{1,3})(?:-(\d{1,3}))?$/u, (match, book, chapter, verse, verseEnd) => {
+      if (!findBibleBookByReferenceName(book)) return match;
+      return `${book.trim()} ${chapter} ${verse}${verseEnd ? `-${verseEnd}` : ""}`;
     })
     .replace(/^(.+?)\s+(\d{1,3})\s+(\d{1,3})(?:-(\d{1,3}))?$/u, (match, book, chapter, verse, verseEnd) => {
       if (!findBibleBookByReferenceName(book)) return match;
@@ -25720,9 +25728,10 @@ function presenterMissingContentSlide(item = {}, section = {}, index = 0, conten
   const label = String(item.label || section.elementLabel || section.sectionLabel || "항목").trim();
   // A missing item must identify the actionable element, never its grouping section.
   const title = label || "항목";
-  const warning = "입력 필요";
+  const loading = contentState?.state === "loading";
+  const warning = loading ? "불러오는 중" : "입력 필요";
   return {
-    id: `${item.id || index}:missing-content`,
+    id: `${item.id || index}:${loading ? "loading-content" : "missing-content"}`,
     ...section,
     elementLabel: label,
     elementTitle: title,
@@ -25735,7 +25744,8 @@ function presenterMissingContentSlide(item = {}, section = {}, index = 0, conten
     marker: "",
     text: cleanList([title, warning]).join("\n"),
     warnings: [warning],
-    missingContent: true,
+    missingContent: !loading,
+    loadingContent: loading,
     missingReason: contentState?.reason || "",
     inputMode: contentState?.inputMode || "",
     contentState: contentState?.state || "missing",
@@ -25838,7 +25848,7 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
   const contentState = resolvePresenterServiceItemContentState(item, memo, song, service);
   const fixedTitle = presenterFixedTitleText(item);
   if (fixedTitle) return [presenterTitleOnlySlide(item, section, index, fixedTitle)];
-  if (contentState.state === "loading") return [];
+  if (contentState.state === "loading") return withIntroAndSpecialTitle([presenterMissingContentSlide(item, section, index, contentState)]);
   if (isOptionalCitationScriptureServiceItem(item)
     && !serviceItemScriptureReferences(item, memo, service).length
     && !serviceScriptureTextPayload(item, memo, service).verses.length) {

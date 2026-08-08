@@ -877,26 +877,43 @@ function normalizePresenterFormPresetLabel(value = "") {
       ...(group ? { group, groupIndex: group.charCodeAt(0) - 64 } : {}),
     };
   }
-  const chorus = raw.match(/^(c|chorus|후렴|코러스)\s*(\d*)$/i);
+  const chorus = raw.match(/^(c|chorus|후렴|코러스)\s*(\d*)([a-z])?$/i);
   if (chorus) {
     const number = chorus[2] ? Number(chorus[2]) : 0;
-    return { key: number ? `chorus:${number}` : "chorus", type: "chorus", number };
+    const group = chorus[3] ? chorus[3].toUpperCase() : "";
+    const baseKey = number ? `chorus:${number}` : "chorus";
+    return {
+      key: group ? `${baseKey}:${group.toLowerCase()}` : baseKey,
+      type: "chorus",
+      number,
+      ...(group ? { group, groupIndex: group.charCodeAt(0) - 64 } : {}),
+    };
   }
-  const bridge = /^(b|bridge|브릿지)$/i.test(compact);
-  if (bridge) return { key: "bridge", type: "bridge", number: 0 };
-  const preChorus = /^(pc|prechorus|pre-chorus|프리코러스)$/i.test(compact);
-  if (preChorus) return { key: "pre-chorus", type: "pre-chorus", number: 0 };
-  const coda = /^(coda|코다|ending|엔딩)$/i.test(compact);
-  if (coda) return { key: "coda", type: "coda", number: 0 };
-  const lyrics = /^(lyrics|가사)$/i.test(compact);
-  if (lyrics) return { key: "lyrics", type: "lyrics", number: 0 };
-  const instrumental = /^(간주|interlude|instrumental)$/i.test(compact);
-  if (instrumental) return { key: "instrumental", type: "instrumental", number: 0, blank: true };
-  const display = raw.match(/^([A-Za-z][A-Za-z -]*?)(?:\s+(\d+))?$/);
+  const groupedType = raw.match(/^(pc|prechorus|pre-chorus|프리코러스|b|bridge|브릿지|coda|코다|ending|엔딩|lyrics|가사|간주|interlude|instrumental)\s*([a-z])?$/i);
+  if (groupedType) {
+    const type = normalizePresenterFormType(groupedType[1]);
+    const group = groupedType[2] ? groupedType[2].toUpperCase() : "";
+    const blank = type === "instrumental";
+    return {
+      key: group ? `${type}:${group.toLowerCase()}` : type,
+      type,
+      number: 0,
+      ...(group ? { group, groupIndex: group.charCodeAt(0) - 64 } : {}),
+      ...(blank ? { blank } : {}),
+    };
+  }
+  const display = raw.match(/^([A-Za-z][A-Za-z -]*?)(?:\s+(\d+))?(?:\s+([a-z]))?$/);
   if (display) {
     const type = normalizePresenterFormType(display[1]);
     const number = display[2] ? Number(display[2]) : 0;
-    return { key: number ? `${type}:${number}` : type, type, number };
+    const group = display[3] ? display[3].toUpperCase() : "";
+    const baseKey = number ? `${type}:${number}` : type;
+    return {
+      key: group ? `${baseKey}:${group.toLowerCase()}` : baseKey,
+      type,
+      number,
+      ...(group ? { group, groupIndex: group.charCodeAt(0) - 64 } : {}),
+    };
   }
   return { key: compact, type: compact, number: 0 };
 }
@@ -904,11 +921,12 @@ function normalizePresenterFormPresetLabel(value = "") {
 function normalizePresenterFormType(value = "") {
   const compact = compactSearchValue(value);
   if (/^verse$/i.test(compact)) return "verse";
-  if (/^chorus$/i.test(compact)) return "chorus";
-  if (/^bridge$/i.test(compact)) return "bridge";
-  if (/^prechorus$/i.test(compact)) return "pre-chorus";
-  if (/^coda$/i.test(compact)) return "coda";
-  if (/^(interlude|instrumental)$/i.test(compact)) return "instrumental";
+  if (/^(chorus|후렴|코러스)$/i.test(compact)) return "chorus";
+  if (/^(bridge|브릿지)$/i.test(compact)) return "bridge";
+  if (/^(prechorus|프리코러스)$/i.test(compact)) return "pre-chorus";
+  if (/^(coda|코다|ending|엔딩)$/i.test(compact)) return "coda";
+  if (/^(lyrics|가사)$/i.test(compact)) return "lyrics";
+  if (/^(interlude|instrumental|간주)$/i.test(compact)) return "instrumental";
   return compact;
 }
 
