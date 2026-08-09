@@ -104,6 +104,13 @@ Small visual polish that does not alter behavior does not need an entry.
   `letter-spacing: -0.05em` and removes text shadow; body stroke/weight
   synthesis is the other readability boost.
 
+### Ministry Service Auto-Generation
+
+- Youth and young-adult worship stay in the weekly auto-generation flow.
+- Children's worship templates and service type remain available for later use,
+  but weekly auto-generation is off until explicitly enabled through a reviewed
+  product decision. Do not hardcode a September activation date.
+
 ### Service Outline And Input State
 
 - Missing-input state belongs to the actionable element only. Section rows show
