@@ -2184,34 +2184,43 @@ async function switchModule(moduleName, options = {}) {
   render();
   if (syncHistory) syncBrowserHistory();
 
-  if (moduleName === "scripture" && !state.scriptures.length && !state.scriptureError) {
-    if (!state.scriptureBooks.length) await loadScriptureBooks();
-    await loadScriptures();
-  }
+  runModuleEntryLoads(moduleName);
+}
 
-  if (moduleName === "praise" && state.selectedSongId && state.selectedVersionId && !state.forms.length) {
-    await loadForms(state.selectedVersionId);
-  }
+function runModuleEntryLoads(moduleName) {
+  void (async () => {
+    if (moduleName === "scripture" && !state.scriptures.length && !state.scriptureError) {
+      if (!state.scriptureBooks.length) await loadScriptureBooks();
+      await loadScriptures();
+    }
 
-  if (moduleName === "praise" && !songCatalogLoaded && !state.connectionError) {
-    await loadSongs();
-  }
+    if (moduleName === "praise" && state.selectedSongId && state.selectedVersionId && !state.forms.length) {
+      await loadForms(state.selectedVersionId);
+    }
 
-  if (isServiceDataModule(moduleName) && !state.serviceTypes.length && !state.serviceError) {
-    await loadServiceData();
-  }
+    if (moduleName === "praise" && !songCatalogLoaded && !state.connectionError) {
+      await loadSongs();
+    }
 
-  if (moduleName === "presenter" && !state.serviceError) {
-    await loadWorshipPresenterSlides(state.selectedServiceId || state.presenter.serviceId);
-  }
+    if (isServiceDataModule(moduleName) && !state.serviceTypes.length && !state.serviceError) {
+      await loadServiceData();
+    }
 
-  if (moduleName === "calendar" && !state.calendarLoaded && !state.calendarLoading && !state.calendarError) {
-    await loadCalendarData();
-  }
+    if (moduleName === "presenter" && !state.serviceError) {
+      await loadWorshipPresenterSlides(state.selectedServiceId || state.presenter.serviceId);
+    }
 
-  if (moduleName === "references" && !state.referenceLinksLoaded && !state.referenceError) {
-    await loadReferenceLinks();
-  }
+    if (moduleName === "calendar" && !state.calendarLoaded && !state.calendarLoading && !state.calendarError) {
+      await loadCalendarData();
+    }
+
+    if (moduleName === "references" && !state.referenceLinksLoaded && !state.referenceError) {
+      await loadReferenceLinks();
+    }
+  })().catch((error) => {
+    console.error("[Navigation] module load failed:", error);
+    showToast(error?.message || "화면 데이터를 불러오지 못했습니다.", "error");
+  });
 }
 
 async function loadSongs() {
@@ -2853,6 +2862,7 @@ async function fetchCachedSupabasePaged(table, select = "*", buildQuery = (query
 // Loading every recent and future service's elements made the first screen wait
 // on hundreds of rows (and their linked praise records).
 const WORSHIP_INITIAL_ELEMENT_HOME_DAYS = 6;
+const WORSHIP_EMERGENCY_TODAY_ONLY = true;
 
 function localDateStringFromDate(date) {
   const target = date instanceof Date ? date : new Date(date);
@@ -2907,6 +2917,17 @@ function initialWorshipElementServiceIds(services = []) {
       return date && (!from || date >= from) && (!to || date <= to);
     })
     .map((service) => service.id);
+}
+
+function worshipServiceListQuery(query) {
+  let nextQuery = query;
+  if (WORSHIP_EMERGENCY_TODAY_ONLY) {
+    const today = localDateStringWithOffset(new Date(), 0);
+    nextQuery = nextQuery.gte("service_date", today).lte("service_date", today);
+  }
+  return nextQuery
+    .order("service_date", { ascending: true })
+    .order("service_type_id", { ascending: true });
 }
 
 async function fetchWorshipRowsForServiceIds(serviceIds = []) {
@@ -3164,8 +3185,7 @@ async function loadWorshipData() {
   const [types, services, templates, templateItems] = await Promise.all([
     fetchCachedSupabasePaged("mindex_worship_service_types", WORSHIP_SERVICE_TYPE_SELECT, (query) =>
       query.order("sort_order", { ascending: true })),
-    fetchSupabasePaged("mindex_worship_services", WORSHIP_SERVICE_LIST_SELECT, (query) =>
-      query.order("service_date", { ascending: true }).order("service_type_id", { ascending: true })),
+    fetchSupabasePaged("mindex_worship_services", WORSHIP_SERVICE_LIST_SELECT, worshipServiceListQuery),
     fetchCachedSupabasePaged("mindex_worship_templates", "*", (query) =>
       query.order("template_level", { ascending: true }).order("name", { ascending: true })),
     fetchCachedSupabasePaged("mindex_worship_template_items", "*", (query) =>
