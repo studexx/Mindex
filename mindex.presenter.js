@@ -3987,7 +3987,7 @@ function renderPresenterSlideBody(slide, options = {}) {
   if (slide?.type === "ready" && options.noChromakey) return renderPresenterFullscreenReadySlide(slide);
   if (elementType === PRESENTER_ELEMENT_TYPES.AUDIO) return "";
   if (layout === PRESENTER_SLIDE_LAYOUTS.MEDIA && elementType === PRESENTER_ELEMENT_TYPES.VIDEO) return renderPresenterVideoSlide(slide, options);
-  if (layout === PRESENTER_SLIDE_LAYOUTS.MEDIA && elementType === PRESENTER_ELEMENT_TYPES.IMAGE) return renderPresenterImageSlide(slide);
+  if (layout === PRESENTER_SLIDE_LAYOUTS.MEDIA && elementType === PRESENTER_ELEMENT_TYPES.IMAGE) return renderPresenterImageSlide(slide, options);
   if (layout === PRESENTER_SLIDE_LAYOUTS.FILE) return renderPresenterFileSlide(slide);
   if (elementType === PRESENTER_ELEMENT_TYPES.SCRIPTURE_TEXT && presenterScriptureContextUsesReadingForm(slide?.scriptureContext)) return renderPresenterScriptureReadingSlide(slide);
   if (layout === PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT && elementType === PRESENTER_ELEMENT_TYPES.TITLE_ASSIGNEE) return renderPresenterTitleAssigneeSlide(slide);
@@ -4081,11 +4081,15 @@ function renderPresenterVideoSlide(slide, options = {}) {
   `;
 }
 
-function renderPresenterImageSlide(slide) {
+function renderPresenterImageSlide(slide, options = {}) {
   const source = normalizePresenterMediaSource(slide.imageSrc || slide.asset?.url || slide.text);
   if (!source) return "";
   const referenceClass = slide?.referenceMedia ? " presenter-image--reference" : "";
-  return `<img class="presenter-image${referenceClass}" src="${escapeAttr(source)}" alt="" decoding="sync" loading="eager" fetchpriority="high" draggable="false" />`;
+  const previewStage = Boolean(options.previewStage);
+  const decoding = previewStage ? "async" : "sync";
+  const loading = previewStage ? "lazy" : "eager";
+  const fetchPriority = previewStage ? "low" : "high";
+  return `<img class="presenter-image${referenceClass}" src="${escapeAttr(source)}" alt="" decoding="${decoding}" loading="${loading}" fetchpriority="${fetchPriority}" draggable="false" />`;
 }
 
 function renderPresenterTitleAssigneeSlide(slide) {
