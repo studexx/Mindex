@@ -19,6 +19,7 @@ const worshipPresenterSlideLoadPromises = new Map();
 const worshipScripturePreloadPromises = new Map();
 const serviceItemScripturePreloadPromises = new Map();
 const scheduledPresenterRefreshes = new Map();
+const presenterSlideBuildCache = new Map();
 const explicitlyRequestedWorshipServiceIds = new Set();
 let hymnScoreManifestLoadPromise = null;
 let songCatalogLoaded = false;
@@ -9349,17 +9350,25 @@ async function hydratePresenterServiceData(serviceId = state.selectedServiceId) 
     await loadServiceItems(targetServiceId);
     const outputItems = getServiceOutputItems(targetServiceId);
     const songIds = outputItems.map((item) => item.song_id).filter(Boolean);
-    const tasks = [
-      loadSongsForIds(songIds),
-      preloadPresenterServiceScripturesBeforeOutput(targetServiceId),
-    ];
+    loadSongsForIdsInBackground(songIds, {
+      render: state.selectedServiceId === targetServiceId ? "detail" : false,
+      serviceId: targetServiceId,
+    });
+    void preloadPresenterServiceScripturesBeforeOutput(targetServiceId).then((loaded) => {
+      if (loaded) schedulePresenterRefreshForService(targetServiceId);
+    }).catch((error) => {
+      console.warn("Could not warm presenter scriptures in background.", error);
+    });
     if (
       !hymnScoreManifestLoadPromise
       && presenterServiceNeedsHymnScoreManifest(targetServiceId)
     ) {
-      tasks.push(loadHymnScoreManifest({ silent: true }));
+      void loadHymnScoreManifest({ silent: true })
+        .then(() => schedulePresenterRefreshForService(targetServiceId))
+        .catch((error) => {
+          console.warn("Could not warm hymn score manifest in background.", error);
+        });
     }
-    await Promise.all(tasks);
     return true;
   })();
   presenterServiceHydrationPromises.set(targetServiceId, hydrationPromise);
@@ -10715,7 +10724,6 @@ function render() {
   renderSongList();
   renderDetail();
   updateSaveState();
-  refreshIcons();
 }
 
 function isCalendarInlineFeast(row) {
@@ -11127,7 +11135,7 @@ function reorderPageTab(fromIndex, insertionIndex) {
   state.pageTabIndex = Math.max(0, state.pageTabs.findIndex((item) => item.id === activeId));
   persistPageTabsState();
   renderPageTabs();
-  refreshIcons();
+  refreshIcons(refs.pageTabs);
   return targetIndex !== fromIndex;
 }
 
@@ -11175,7 +11183,7 @@ async function closePageTab(index) {
   if (closingActive) await applyPageTabSnapshot(state.pageTabIndex);
   else {
     renderPageTabs();
-    refreshIcons();
+    refreshIcons(refs.pageTabs);
   }
 }
 
@@ -11199,7 +11207,7 @@ async function applyPageTabSnapshot(index) {
   persistPageTabsState();
   renderPageTabs();
   syncBrowserHistory({ replace: true });
-  refreshIcons();
+  refreshIcons(refs.pageTabs);
 }
 
 function renderNavigationSidebarState() {
@@ -11845,7 +11853,7 @@ function renderConnectionStatus() {
     refs.connectionStatus.className = "status-icon" + (cls ? " " + cls : "");
     refs.connectionStatus.setAttribute("aria-label", label);
     refs.connectionStatus.innerHTML = `<i data-lucide="${icon}"></i>`;
-    refreshIcons();
+    refreshIcons(refs.connectionStatus);
   }
 
   if (state.loading) {
@@ -12830,11 +12838,11 @@ function getReferenceLinks() {
 
 function finishListRender() {
   restoreCurrentListScroll();
-  refreshIcons();
+  refreshIcons(refs.songList);
 }
 
 function finishDetailRender() {
-  refreshIcons();
+  refreshIcons(refs.detailPane);
   updateSaveState();
   syncPraiseCreateControls();
 }
@@ -12907,7 +12915,7 @@ function scrollListItemIntoView(item) {
 function renderDetail() {
   if (isAuthRequired() && !state.auth.session) {
     refs.detailPane.innerHTML = renderAuthRequiredDetail();
-    refreshIcons();
+    refreshIcons(refs.detailPane);
     return;
   }
 
@@ -12923,7 +12931,7 @@ function renderDetail() {
 
   if (state.connectionError) {
     refs.detailPane.innerHTML = renderConnectionEmptyDetail(state.connectionError);
-    refreshIcons();
+    refreshIcons(refs.detailPane);
     return;
   }
 
@@ -12949,7 +12957,7 @@ function renderDetail() {
   }
   if (!state.client) {
     refs.detailPane.innerHTML = renderConnectionEmptyDetail();
-    refreshIcons();
+    refreshIcons(refs.detailPane);
     return;
   }
 
@@ -12957,13 +12965,13 @@ function renderDetail() {
 
   if (!song && state.loading && !state.songs.length) {
     refs.detailPane.innerHTML = renderLoadingDetail();
-    refreshIcons();
+    refreshIcons(refs.detailPane);
     return;
   }
 
   if (!song) {
     refs.detailPane.innerHTML = renderPraiseEmptyDetail();
-    refreshIcons();
+    refreshIcons(refs.detailPane);
     return;
   }
 
@@ -13009,7 +13017,7 @@ function renderDetail() {
     </div>
   `;
 
-  refreshIcons();
+  refreshIcons(refs.detailPane);
   resizeFormTextareas();
 }
 
@@ -13044,19 +13052,19 @@ function renderPraiseEmptyDetail() {
 function renderReferencesDetail() {
   if (!state.client) {
     refs.detailPane.innerHTML = renderConnectionEmptyDetail();
-    refreshIcons();
+    refreshIcons(refs.detailPane);
     return;
   }
 
   if (!state.referenceLinksLoaded) {
     refs.detailPane.innerHTML = renderLoadingDetail();
-    refreshIcons();
+    refreshIcons(refs.detailPane);
     return;
   }
 
   if (state.referenceError && state.referenceError !== "setup") {
     refs.detailPane.innerHTML = renderUnavailableDetail("references", "링크", state.referenceError);
-    refreshIcons();
+    refreshIcons(refs.detailPane);
     return;
   }
 
@@ -13089,7 +13097,7 @@ function renderReferencesDetail() {
       ${!hasLinks ? renderReferenceSetupNotice() : ""}
     </div>
   `;
-  refreshIcons();
+  refreshIcons(refs.detailPane);
 }
 
 function getReferenceEditorLinks() {
@@ -13418,25 +13426,25 @@ function renderScriptureDetail() {
 
   if (!state.client) {
     refs.detailPane.innerHTML = renderConnectionEmptyDetail();
-    refreshIcons();
+    refreshIcons(refs.detailPane);
     return;
   }
 
   if (state.scriptureError) {
     refs.detailPane.innerHTML = renderUnavailableDetail("scripture", "말씀", state.scriptureError);
-    refreshIcons();
+    refreshIcons(refs.detailPane);
     return;
   }
 
   if (isBibleTextSearchActive()) {
     refs.detailPane.innerHTML = renderBibleTextSearchDetail();
-    refreshIcons();
+    refreshIcons(refs.detailPane);
     return;
   }
 
   if (!scripture && !selectedBook) {
     refs.detailPane.innerHTML = renderModuleEmptyDetail("scripture", "말씀", "성경 권을 선택하세요.");
-    refreshIcons();
+    refreshIcons(refs.detailPane);
     return;
   }
 
@@ -13464,7 +13472,7 @@ function renderScriptureDetail() {
         </section>
       </div>
     `;
-    refreshIcons();
+    refreshIcons(refs.detailPane);
     return;
   }
 
@@ -16215,10 +16223,42 @@ function showToast(message, type = "info") {
   toast.removeTimer = window.setTimeout(() => toast.remove(), 3200);
 }
 
-function refreshIcons() {
-  if (window.lucide) {
+function refreshIcons(root = document) {
+  if (!window.lucide) return;
+  const selector = "i[data-lucide]";
+  const placeholders = [
+    ...(root.matches?.(selector) ? [root] : []),
+    ...root.querySelectorAll?.(selector) || [],
+  ];
+  if (!placeholders.length) return;
+  if (!window.lucide.createElement || !window.lucide.icons) {
     window.lucide.createIcons();
+    return;
   }
+  placeholders.forEach(replaceLucideIcon);
+}
+
+function replaceLucideIcon(node) {
+  const iconName = node?.getAttribute?.("data-lucide");
+  if (!iconName) return;
+  const icon = window.lucide.icons[lucideIconKey(iconName)];
+  if (!icon) return;
+  const attrs = Array.from(node.attributes).reduce((acc, attr) => {
+    acc[attr.name] = attr.value;
+    return acc;
+  }, {});
+  attrs["data-lucide"] = iconName;
+  const hasAccessibleAttrs = Object.keys(attrs).some((key) =>
+    key.startsWith("aria-") || key === "role" || key === "title"
+  );
+  if (!hasAccessibleAttrs) attrs["aria-hidden"] = "true";
+  attrs.class = ["lucide", `lucide-${iconName}`, attrs.class].filter(Boolean).join(" ");
+  node.parentNode?.replaceChild(window.lucide.createElement(icon, attrs), node);
+}
+
+function lucideIconKey(name) {
+  return String(name || "")
+    .replace(/^([a-z])|[\s-_]+(\w)/g, (_, first, next) => (next ? next.toUpperCase() : first.toUpperCase()));
 }
 
 function resizeFormTextareas() {
@@ -19509,7 +19549,7 @@ function renderServiceListTypeBlock(type, services, query) {
 function renderServiceDetail() {
   if (!state.client) {
     refs.detailPane.innerHTML = renderConnectionEmptyDetail();
-    refreshIcons();
+    refreshIcons(refs.detailPane);
     return;
   }
 
@@ -19591,7 +19631,7 @@ function renderServiceDetail() {
           ${services.map((service) => renderServiceDateCard(service)).join("")}
         </div>` : `<p class="service-no-results">${q ? "검색 결과가 없습니다." : "등록된 예배가 없습니다."}</p>`}
       </div>`;
-    refreshIcons();
+    refreshIcons(refs.detailPane);
     return;
   }
 
@@ -19602,7 +19642,7 @@ function renderServiceDetail() {
   if (!items) {
     if (shouldDeferPastWorshipServiceLoad(serviceId)) {
       refs.detailPane.innerHTML = renderDeferredPastServiceDetail(svc, "service");
-      refreshIcons();
+      refreshIcons(refs.detailPane);
       return;
     }
     refs.detailPane.innerHTML = renderLoadingDetail();
@@ -19613,7 +19653,7 @@ function renderServiceDetail() {
   const prepEditorOpen = state.servicePrepEditorOpenId === serviceId;
   if (prepEditorOpen) {
     refs.detailPane.innerHTML = renderServicePrepEditorDialog(svc);
-    refreshIcons();
+    refreshIcons(refs.detailPane);
     updateSaveState();
     return;
   }
@@ -19673,7 +19713,7 @@ function renderServiceAuthoringPanel(kicker, title, body) {
 function renderPresenterDetail() {
   if (!state.client) {
     refs.detailPane.innerHTML = renderConnectionEmptyDetail();
-    refreshIcons();
+    refreshIcons(refs.detailPane);
     return;
   }
 
@@ -19681,7 +19721,7 @@ function renderPresenterDetail() {
     refs.detailPane.innerHTML = state.serviceError
       ? renderUnavailableDetail("service", "Presenter", state.serviceError)
       : renderLoadingDetail();
-    refreshIcons();
+    refreshIcons(refs.detailPane);
     return;
   }
 
@@ -19696,7 +19736,7 @@ function renderPresenterDetail() {
   if (!items) {
     if (shouldDeferPastWorshipServiceLoad(serviceId)) {
       refs.detailPane.innerHTML = renderDeferredPastServiceDetail(svc, "presenter");
-      refreshIcons();
+      refreshIcons(refs.detailPane);
       return;
     }
     refs.detailPane.innerHTML = renderLoadingDetail();
@@ -22956,6 +22996,12 @@ function presenterBoardActiveIndex(slides, active, index) {
   return clampPresenterIndex(index, slides.length);
 }
 
+function presenterSlideRenderKeyText(slide = {}) {
+  const value = `${slide?.title || ""}\u0000${slide?.text || ""}\u0000${slide?.bodyText || ""}`;
+  if (value.length <= 96) return value;
+  return `${value.length}:${value.slice(0, 64)}:${value.slice(-24)}`;
+}
+
 function presenterControlBoardKey(service, slides = [], active = false, chromakey = true) {
   const theme = presenterOutputTheme(service?.type_id);
   const slideKey = slides.map((slide, index) => [
@@ -22969,7 +23015,7 @@ function presenterControlBoardKey(service, slides = [], active = false, chromake
     slide?.imageSrc || "",
     slide?.videoSrc || "",
     slide?.audioSrc || "",
-    compactSearchValue(`${slide?.title || ""} ${slide?.text || ""}`).slice(0, 80),
+    presenterSlideRenderKeyText(slide),
   ].join(":")).join("|");
   return [
     service?.id || "",
@@ -25338,7 +25384,67 @@ function presenterSlidesForService(serviceId) {
   return slides;
 }
 
+function presenterSlideBuildSourceSignature(serviceId) {
+  const service = state.services.find((svc) => svc.id === serviceId) || {};
+  const items = state.serviceItems[serviceId] || [];
+  const presenterRows = state.worshipPresenterSlides[serviceId] || [];
+  return JSON.stringify({
+    service: [
+      service.id || "",
+      service.type_id || "",
+      service.date || service.service_date || "",
+      service.updated_at || "",
+    ],
+    items: items.map((item) => {
+      const song = item.song_id ? songById(item.song_id) : null;
+      const version = song?.versions?.find((entry) => String(entry.id || "") === String(item.praise_version_id || ""))
+        || song?.versions?.[0]
+        || null;
+      return [
+        item.id || "",
+        item.section_id || item._worshipSectionId || "",
+        item.sort_order ?? "",
+        item.label || "",
+        item.name || "",
+        item.raw_title || "",
+        item.assignee || "",
+        item.song_id || "",
+        item.praise_version_id || "",
+        item.output_mode || item.outputMode || "",
+        item.updated_at || "",
+        item.memo || "",
+        song?.updated_at || "",
+        song?.versions?.length || 0,
+        version?.updated_at || "",
+        version?.forms?.length || 0,
+      ];
+    }),
+    presenterRows: presenterRows.map((slide) => [
+      slide.id || "",
+      slide.sort ?? "",
+      slide.title || "",
+      slide.text || "",
+      slide.updated_at || "",
+    ]),
+  });
+}
+
 function buildServicePresenterSlides(serviceId) {
+  const key = String(serviceId || "");
+  if (!key) return [];
+  const signature = presenterSlideBuildSourceSignature(key);
+  const cached = presenterSlideBuildCache.get(key);
+  if (cached?.signature === signature) return cached.slides;
+  const slides = buildServicePresenterSlidesUncached(key);
+  presenterSlideBuildCache.set(key, { signature, slides });
+  if (presenterSlideBuildCache.size > 8) {
+    const oldestKey = presenterSlideBuildCache.keys().next().value;
+    presenterSlideBuildCache.delete(oldestKey);
+  }
+  return slides;
+}
+
+function buildServicePresenterSlidesUncached(serviceId) {
   const service = state.services.find((svc) => svc.id === serviceId);
   if (!service) return [];
 
