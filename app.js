@@ -9323,6 +9323,32 @@ async function hydratePresenterServiceData(serviceId = state.selectedServiceId) 
   }
 }
 
+function presenterServiceIsPrepared(serviceId = state.selectedServiceId) {
+  const sourceItems = state.serviceItems[serviceId] || null;
+  return Boolean(
+    serviceId
+    && state.presenter.serviceId === serviceId
+    && state.presenter.sourceItems === sourceItems
+    && Array.isArray(state.presenter.slides)
+    && state.presenter.slides.length,
+  );
+}
+
+function hydratePresenterServiceDataInBackground(serviceId = state.selectedServiceId) {
+  const targetServiceId = String(serviceId || "").trim();
+  if (!targetServiceId) return;
+  void hydratePresenterServiceData(targetServiceId)
+    .then((loaded) => {
+      if (!loaded || state.presenter.serviceId !== targetServiceId) return;
+      preparePresenterService(targetServiceId);
+      publishPresenterState();
+      renderPresenterControlState(targetServiceId);
+    })
+    .catch((error) => {
+      console.warn("Could not hydrate presenter service in background.", error);
+    });
+}
+
 async function preloadServiceItemScriptureReferences(serviceId = state.selectedServiceId) {
   const service = state.services.find((candidate) => candidate.id === serviceId) || null;
   const items = getServiceItems(serviceId);
@@ -24659,9 +24685,9 @@ async function openPresenterOutput(serviceId = state.selectedServiceId) {
   if (!serviceId) return;
   state.presenter.outputStopAt = 0;
   state.presenter.outputStoppingClientId = "";
-  await hydratePresenterServiceData(serviceId);
-  preparePresenterService(serviceId);
+  if (!presenterServiceIsPrepared(serviceId)) preparePresenterService(serviceId);
   publishPresenterState();
+  hydratePresenterServiceDataInBackground(serviceId);
 
   const existingWindow = presenterOutputWindowRef();
   if (existingWindow) {
@@ -24918,8 +24944,7 @@ function patchPresenterBoardActiveState(root, serviceId, active, index) {
 
 async function startPresenterAtSlide(serviceId, index) {
   if (!serviceId || !Number.isFinite(Number(index))) return;
-  await hydratePresenterServiceData(serviceId);
-  preparePresenterService(serviceId);
+  if (!presenterServiceIsPrepared(serviceId)) preparePresenterService(serviceId);
   state.presenter.index = clampPresenterIndex(index, state.presenter.slides.length);
   clearPresenterBoardSelection({ render: false });
   state.presenter.safetyBlank = false;
@@ -24933,6 +24958,7 @@ async function startPresenterAtSlide(serviceId, index) {
   syncSelectedServiceItemToPresenterSlide(serviceId);
   syncServiceMusicWithPresenterContext(serviceId, { render: false });
   publishPresenterState();
+  hydratePresenterServiceDataInBackground(serviceId);
   openPresenterOutput(serviceId);
   renderPresenterControlState(serviceId);
   scrollPresenterOutlineToActive(serviceId);
