@@ -6659,9 +6659,8 @@ function handlePresenterDetailClick(event) {
         range: event.shiftKey,
       });
       syncSelectedServiceItemToPresenterSlide(serviceId, index);
-      renderPresenterControlState(serviceId);
+      patchPresenterSidebarActiveState(serviceId);
     }
-    scrollPresenterBoardToIndex(serviceId, index);
     return true;
   }
 
@@ -6677,7 +6676,7 @@ function handlePresenterDetailClick(event) {
         range: event.shiftKey,
       });
       syncSelectedServiceItemToPresenterSlide(serviceId, index);
-      renderPresenterControlState(serviceId);
+      patchPresenterSidebarActiveState(serviceId);
     }
     scrollPresenterBoardToIndex(serviceId, index, { force: true });
     return true;
