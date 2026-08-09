@@ -908,7 +908,7 @@ function normalizePresenterFormPresetLabel(value = "") {
       ...(group ? { group, groupIndex: group.charCodeAt(0) - 64 } : {}),
     };
   }
-  const chorus = raw.match(/^(c|chorus|후렴|코러스)\s*(\d*)([a-z])?$/i);
+  const chorus = raw.match(/^(c|chorus|후렴)\s*(\d*)([a-z])?$/i);
   if (chorus) {
     const number = chorus[2] ? Number(chorus[2]) : 0;
     const group = chorus[3] ? chorus[3].toUpperCase() : "";
@@ -920,7 +920,7 @@ function normalizePresenterFormPresetLabel(value = "") {
       ...(group ? { group, groupIndex: group.charCodeAt(0) - 64 } : {}),
     };
   }
-  const groupedType = raw.match(/^(pc|prechorus|pre-chorus|프리코러스|b|bridge|브릿지|lyrics|가사)\s*(\d*)([a-z])?$/i);
+  const groupedType = raw.match(/^(pc|prechorus|pre-chorus|b|bridge|lyrics)\s*(\d*)([a-z])?$/i);
   if (groupedType) {
     const type = normalizePresenterFormType(groupedType[1]);
     const number = groupedType[2] ? Number(groupedType[2]) : 0;
@@ -933,13 +933,13 @@ function normalizePresenterFormPresetLabel(value = "") {
       ...(group ? { group, groupIndex: group.charCodeAt(0) - 64 } : {}),
     };
   }
-  if (/^(coda|코다|ending|엔딩)\s*[a-z]?$/i.test(raw)) {
+  if (/^(coda|ending)\s*[a-z]?$/i.test(raw)) {
     return { key: "coda", type: "coda", number: 0 };
   }
   if (/^(간주|interlude|instrumental)\s*[a-z]?$/i.test(raw)) {
     return { key: "instrumental", type: "instrumental", number: 0, blank: true };
   }
-  if (/^(tag|태그)\s*[a-z]?$/i.test(raw)) {
+  if (/^(tag)\s*[a-z]?$/i.test(raw)) {
     return { key: "tag", type: "tag", number: 0 };
   }
   const display = raw.match(/^([A-Za-z][A-Za-z -]*?)(?:\s+(\d+))?(?:\s+([a-z]))?$/);
@@ -961,12 +961,12 @@ function normalizePresenterFormPresetLabel(value = "") {
 function normalizePresenterFormType(value = "") {
   const compact = compactSearchValue(value);
   if (/^verse$/i.test(compact)) return "verse";
-  if (/^(chorus|후렴|코러스)$/i.test(compact)) return "chorus";
-  if (/^(b|bridge|브릿지)$/i.test(compact)) return "bridge";
-  if (/^(prechorus|프리코러스)$/i.test(compact)) return "pre-chorus";
-  if (/^(coda|코다|ending|엔딩)$/i.test(compact)) return "coda";
-  if (/^(tag|태그)$/i.test(compact)) return "tag";
-  if (/^(lyrics|가사)$/i.test(compact)) return "lyrics";
+  if (/^(chorus|후렴)$/i.test(compact)) return "chorus";
+  if (/^(b|bridge)$/i.test(compact)) return "bridge";
+  if (/^prechorus$/i.test(compact)) return "pre-chorus";
+  if (/^(coda|ending)$/i.test(compact)) return "coda";
+  if (/^tag$/i.test(compact)) return "tag";
+  if (/^lyrics$/i.test(compact)) return "lyrics";
   if (/^(interlude|instrumental|간주)$/i.test(compact)) return "instrumental";
   return compact;
 }

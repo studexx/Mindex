@@ -8612,26 +8612,26 @@ function normalizeSongFormPresetLabel(value = "") {
     const baseKey = number ? `verse:${number}` : "verse";
     return { key: group ? `${baseKey}:${group}` : baseKey, type: "verse", number, ...(group ? { group } : {}) };
   }
-  const chorus = raw.match(/^(?:c|chorus|후렴|코러스)\s*(\d*)([a-z])?$/i);
+  const chorus = raw.match(/^(?:c|chorus|후렴)\s*(\d*)([a-z])?$/i);
   if (chorus) {
     const number = Number(chorus[1]) || 0;
     const group = String(chorus[2] || "").toLowerCase();
     const baseKey = number ? `chorus:${number}` : "chorus";
     return { key: group ? `${baseKey}:${group}` : baseKey, type: "chorus", number, ...(group ? { group } : {}) };
   }
-  const bridge = raw.match(/^(?:b|bridge|브릿지)\s*(\d*)([a-z])?$/i);
+  const bridge = raw.match(/^(?:b|bridge)\s*(\d*)([a-z])?$/i);
   if (bridge) {
     const number = Number(bridge[1]) || 0;
     const group = String(bridge[2] || "").toLowerCase();
     const baseKey = number ? `bridge:${number}` : "bridge";
     return { key: group ? `${baseKey}:${group}` : baseKey, type: "bridge", number, ...(group ? { group } : {}) };
   }
-  const preChorus = raw.match(/^(?:pc|prechorus|pre-chorus|프리코러스)\s*([a-z])?$/i);
+  const preChorus = raw.match(/^(?:pc|prechorus|pre-chorus)\s*([a-z])?$/i);
   if (preChorus) {
     const group = String(preChorus[1] || "").toLowerCase();
     return { key: group ? `pre-chorus:${group}` : "pre-chorus", type: "pre-chorus", ...(group ? { group } : {}) };
   }
-  const coda = raw.match(/^(?:coda|코다|ending|엔딩)\s*[a-z]?$/i);
+  const coda = raw.match(/^(?:coda|ending)\s*[a-z]?$/i);
   if (coda) {
     return { key: "coda", type: "coda" };
   }
@@ -8639,7 +8639,7 @@ function normalizeSongFormPresetLabel(value = "") {
   if (instrumental) {
     return { key: "instrumental", type: "instrumental" };
   }
-  const tag = raw.match(/^(?:tag|태그)\s*[a-z]?$/i);
+  const tag = raw.match(/^(?:tag)\s*[a-z]?$/i);
   if (tag) {
     return { key: "tag", type: "tag" };
   }
