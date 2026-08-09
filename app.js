@@ -1838,7 +1838,10 @@ async function applyBrowserHistorySnapshot(snapshot) {
       await loadBibleBookVerses({ silent: true });
       focusSelectedBibleVerseAfterRender();
     }
-    if (isServiceDataModule() && state.selectedServiceId) await loadServiceItems(state.selectedServiceId);
+    if (isServiceDataModule() && state.selectedServiceId) {
+      markWorshipServiceExplicitlyRequested(state.selectedServiceId);
+      await loadServiceItems(state.selectedServiceId);
+    }
   } finally {
     state.applyingBrowserHistory = false;
   }
@@ -7703,7 +7706,7 @@ function scheduleDeferredServiceTextPreview(field) {
     if (!field.isConnected || field.dataset.presenterPreviewValue === field.value) return;
     updateServiceItemField(field, { deferPresenterRefresh: true, livePreview: true });
     field.dataset.presenterPreviewValue = field.value;
-  }, 150));
+  }, 300));
 }
 
 function scheduleDeferredServiceScriptureReferenceCommit(field) {
@@ -7996,10 +7999,14 @@ function updateServiceItemField(field, options = {}) {
   }
   state.serviceItems[serviceId] = normalizeServiceItemsInCurrentOrder(items);
   state.dirty.service = true;
+  const presenterRefreshOptions = {
+    publish: !options.livePreview,
+    renderControls: !options.livePreview,
+  };
   if (options.deferPresenterRefresh) {
-    requestAnimationFrame(() => refreshPresenterForService(serviceId, { renderControls: !options.livePreview }));
+    schedulePresenterRefreshForService(serviceId, presenterRefreshOptions);
   } else {
-    refreshPresenterForService(serviceId, { renderControls: !options.livePreview });
+    refreshPresenterForService(serviceId, presenterRefreshOptions);
   }
   updateSaveState();
 }
@@ -9245,7 +9252,7 @@ async function resolveServiceScriptureBodyReference(serviceId, index, options = 
     item.memo = serializeServiceItemMemo(parsed);
     state.serviceItems[serviceId] = normalizeServiceItemsInCurrentOrder(items);
     state.dirty.service = true;
-    refreshPresenterForService(serviceId, { renderControls: options.renderControls !== false });
+    schedulePresenterRefreshForService(serviceId, { renderControls: options.renderControls !== false });
     if (options.renderDetail !== false) renderCurrentServiceModuleDetail();
     else renderPresenterControlState(serviceId);
     updateSaveState();
@@ -19773,7 +19780,7 @@ function renderPresenterDetail() {
     fitPresenterSongTitlePreviews(refs.detailPane);
     fitPresenterSermonTitlePreviews(refs.detailPane);
   });
-  if (state.module === "presenter") renderServiceList();
+  if (state.module === "presenter") patchPresenterSidebarActiveState(serviceId);
 }
 
 function serviceBulletinSectionTitle(item = {}) {
