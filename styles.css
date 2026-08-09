@@ -6438,33 +6438,6 @@ textarea.svc-presenter-input-control--multiline {
   background: color-mix(in srgb, var(--panel-2) 20%, transparent);
   opacity: .55;
 }
-.svc-slide-thumb-gap {
-  display: grid;
-  min-height: 92px;
-  align-content: center;
-  justify-items: center;
-  gap: 4px;
-  border: 1px dashed color-mix(in srgb, var(--ink-4) 24%, transparent);
-  border-radius: 7px;
-  background: color-mix(in srgb, var(--panel-2) 45%, transparent);
-  color: var(--ink-3);
-  cursor: pointer;
-  font: inherit;
-  padding: 12px;
-}
-.svc-slide-thumb-gap:hover {
-  border-color: color-mix(in srgb, var(--accent) 42%, transparent);
-  color: var(--ink);
-}
-.svc-slide-thumb-gap span {
-  font-size: 13px;
-  font-weight: 800;
-}
-.svc-slide-thumb-gap small {
-  color: var(--ink-4);
-  font-size: 11px;
-  font-weight: 700;
-}
 .svc-board-section-head {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
