@@ -206,6 +206,7 @@ const PRESENTER_PRE_SERVICE_VIDEO_ASSET = {
   kind: "video",
   name: "예배 전 영상",
   url: "assets/presenter/pre-service-video.mp4",
+  poster: "assets/presenter/pre-service-video-poster.png",
 };
 
 const PRESENTER_PUBLIC_COMMUNITY_CONFESSION_TEXT = `우리는 세상으로부터 부름 받은 하나님의 거룩한 백성입니다.
@@ -4073,7 +4074,11 @@ function renderPresenterVideoSlide(slide, options = {}) {
     (previewStage || playback.muted) ? "muted" : "",
     playback.loop ? "loop" : "",
     playback.controls ? "controls" : "",
-    (!previewStage && !options.noChromakey) ? `poster="${PRESENTER_CHROMAKEY_VIDEO_POSTER}"` : "",
+    previewStage && normalizePresenterMediaSource(slide.asset?.poster || "")
+      ? `poster="${escapeAttr(normalizePresenterMediaSource(slide.asset?.poster || ""))}"`
+      : (!previewStage && !options.noChromakey)
+        ? `poster="${PRESENTER_CHROMAKEY_VIDEO_POSTER}"`
+        : "",
     "playsinline",
     `preload=\"${previewStage ? "metadata" : "auto"}\"`,
   ].filter(Boolean).join(" ");
