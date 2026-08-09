@@ -9508,32 +9508,6 @@ async function hydratePresenterServiceData(serviceId = state.selectedServiceId) 
   }
 }
 
-function presenterServiceIsPrepared(serviceId = state.selectedServiceId) {
-  const sourceItems = state.serviceItems[serviceId] || null;
-  return Boolean(
-    serviceId
-    && state.presenter.serviceId === serviceId
-    && state.presenter.sourceItems === sourceItems
-    && Array.isArray(state.presenter.slides)
-    && state.presenter.slides.length,
-  );
-}
-
-function hydratePresenterServiceDataInBackground(serviceId = state.selectedServiceId) {
-  const targetServiceId = String(serviceId || "").trim();
-  if (!targetServiceId) return;
-  void hydratePresenterServiceData(targetServiceId)
-    .then((loaded) => {
-      if (!loaded || state.presenter.serviceId !== targetServiceId) return;
-      preparePresenterService(targetServiceId);
-      publishPresenterState();
-      renderPresenterControlState(targetServiceId);
-    })
-    .catch((error) => {
-      console.warn("Could not hydrate presenter service in background.", error);
-    });
-}
-
 async function preloadServiceItemScriptureReferences(serviceId = state.selectedServiceId) {
   const service = state.services.find((candidate) => candidate.id === serviceId) || null;
   const items = getServiceItems(serviceId);
@@ -23548,19 +23522,13 @@ function renderPresenterSlideBoard(slides, index, serviceId) {
 }
 
 function presenterDeferredBoardGroupIndexes(groups = [], activeIndex = -1, slideCount = 0) {
-  // Remote sessions feel slow when many thumbnail trees mount at once. Keep
-  // the first view interactive, then hydrate distant sections on scroll.
-  if (slideCount < 80 || groups.length < 3) return new Set();
-  const immediate = new Set([0]);
+  // The normal board is more useful when fully expanded. Defer only unusually
+  // large services, where hundreds of miniature slide trees delay the editor.
+  if (slideCount < 180 || groups.length < 5) return new Set();
+  const immediate = new Set([0, 1]);
   const activeGroupIndex = groups.findIndex((group) =>
     group.slides.some(({ slideIndex }) => slideIndex === activeIndex));
-  if (activeGroupIndex >= 0) {
-    immediate.add(activeGroupIndex);
-    immediate.add(activeGroupIndex - 1);
-    immediate.add(activeGroupIndex + 1);
-  } else {
-    immediate.add(1);
-  }
+  if (activeGroupIndex >= 0) immediate.add(activeGroupIndex);
   return new Set(groups.map((_, index) => index).filter((index) => !immediate.has(index)));
 }
 
@@ -24913,9 +24881,9 @@ async function openPresenterOutput(serviceId = state.selectedServiceId) {
   if (!serviceId) return;
   state.presenter.outputStopAt = 0;
   state.presenter.outputStoppingClientId = "";
-  if (!presenterServiceIsPrepared(serviceId)) preparePresenterService(serviceId);
+  await hydratePresenterServiceData(serviceId);
+  preparePresenterService(serviceId);
   publishPresenterState();
-  hydratePresenterServiceDataInBackground(serviceId);
 
   const existingWindow = presenterOutputWindowRef();
   if (existingWindow) {
@@ -25172,7 +25140,8 @@ function patchPresenterBoardActiveState(root, serviceId, active, index) {
 
 async function startPresenterAtSlide(serviceId, index) {
   if (!serviceId || !Number.isFinite(Number(index))) return;
-  if (!presenterServiceIsPrepared(serviceId)) preparePresenterService(serviceId);
+  await hydratePresenterServiceData(serviceId);
+  preparePresenterService(serviceId);
   state.presenter.index = clampPresenterIndex(index, state.presenter.slides.length);
   clearPresenterBoardSelection({ render: false });
   state.presenter.safetyBlank = false;
@@ -25186,7 +25155,6 @@ async function startPresenterAtSlide(serviceId, index) {
   syncSelectedServiceItemToPresenterSlide(serviceId);
   syncServiceMusicWithPresenterContext(serviceId, { render: false });
   publishPresenterState();
-  hydratePresenterServiceDataInBackground(serviceId);
   openPresenterOutput(serviceId);
   renderPresenterControlState(serviceId);
   scrollPresenterOutlineToActive(serviceId);
