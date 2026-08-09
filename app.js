@@ -467,12 +467,6 @@ const PRESENTER_SLIDE_LAYOUTS = {
   FILE: "file",
 };
 const PRESENTER_CHROMAKEY_VIDEO_POSTER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 9'%3E%3Crect width='16' height='9' fill='%2300ff00'/%3E%3C/svg%3E";
-const PRESENTER_PRE_SERVICE_VIDEO_ASSET = {
-  kind: "video",
-  name: "예배 전 영상",
-  url: "assets/presenter/pre-service-video.mp4",
-  poster: "assets/presenter/pre-service-video-poster.png",
-};
 const PRESENTER_MEDIA_STORAGE_BUCKET = "mindex-worship-media";
 const PRESENTER_REFERENCE_MEDIA_SECTION_KEYS = new Set(["sermon", "announcements"]);
 const PRESENTER_REFERENCE_MEDIA_ACCEPT = "image/*,video/*,audio/*";
@@ -8339,7 +8333,6 @@ function normalizeServiceAsset(value) {
     kind: SERVICE_ASSET_KINDS.has(kind) ? kind : "",
     name: String(value.name || value.title || "").trim(),
     url: String(value.url || value.path || value.href || "").trim(),
-    poster: String(value.poster || value.posterUrl || value.poster_url || "").trim(),
     ...(slides.length ? { slides } : {}),
   };
 }
