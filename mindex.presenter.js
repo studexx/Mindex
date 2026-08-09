@@ -4066,21 +4066,25 @@ function renderPresenterVideoSlide(slide, options = {}) {
       : "video";
   const playback = presenterPlaybackConfig(slide.playback, playbackType);
   const previewStage = Boolean(options.previewStage);
+  const previewPoster = normalizePresenterMediaSource(
+    slide.posterSrc || slide.poster || slide.asset?.poster || slide.asset?.posterUrl || slide.asset?.poster_url || "",
+  );
+  if (previewStage && previewPoster) {
+    return `<img class="presenter-video presenter-video--poster" src="${escapeAttr(previewPoster)}" alt="${escapeAttr(slide.title || slide.elementLabel || "영상 미리보기")}" decoding="async" loading="lazy" draggable="false" />`;
+  }
   const attrs = [
-    "class=\"presenter-video\"",
+    `class="presenter-video"`,
     `src="${escapeAttr(source)}"`,
     presenterRole ? `data-presenter-role="${escapeAttr(presenterRole)}"` : "",
     playback.autoplay ? "autoplay" : "",
     (previewStage || playback.muted) ? "muted" : "",
     playback.loop ? "loop" : "",
     playback.controls ? "controls" : "",
-    previewStage && normalizePresenterMediaSource(slide.asset?.poster || "")
-      ? `poster="${escapeAttr(normalizePresenterMediaSource(slide.asset?.poster || ""))}"`
-      : (!previewStage && !options.noChromakey)
-        ? `poster="${PRESENTER_CHROMAKEY_VIDEO_POSTER}"`
-        : "",
+    !previewStage && !options.noChromakey
+      ? `poster="${PRESENTER_CHROMAKEY_VIDEO_POSTER}"`
+      : "",
     "playsinline",
-    `preload=\"${previewStage ? "metadata" : "auto"}\"`,
+    `preload="${previewStage ? "metadata" : "auto"}"`,
   ].filter(Boolean).join(" ");
   return `
     <video ${attrs}></video>
