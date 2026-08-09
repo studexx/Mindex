@@ -2,6 +2,11 @@
 
 Date: 2026-08-09
 
+> Status: temporary live-service safety note. This file records emergency
+> constraints from the 2026-08-09 worship incident and must not be treated as a
+> general Presenter architecture spec. Revalidate before carrying any rule
+> forward.
+
 During live worship, keep the presenter path conservative.
 
 ## Current Safe State

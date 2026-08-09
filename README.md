@@ -1,8 +1,9 @@
 # Mindex
 
-Mindex is a ministry index prototype. The current modules are `Praise` for song
-forms and projection exports, and `Scripture` for storing and copying Bible
-passages.
+Mindex is a church ministry operations app for worship preparation, presenter
+output, Praise data, Scripture lookup, calendar, and reference links. Worship
+and Presenter reliability are the live-operation priority; Praise and
+Scripture remain canonical data modules used by worship elements.
 
 ## Collaboration Link
 

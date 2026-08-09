@@ -149,8 +149,9 @@ Small visual polish that does not alter behavior does not need an entry.
   표시하지 않는다.
 - 풀스크린 예배의 설교 `인용 구절`은 성경봉독과 같은 말씀 전용 화면으로
   출력한다. 크로마키 예배에서는 기존 하단 바 성구 화면을 유지한다.
-- 금요기도회의 기본 배경은 항상 `26-A3`이다. 이전 기본값으로 저장된
-  `26-B4`는 A3로 승계하며, 다른 개별 배경 선택은 그대로 유지한다.
+- 금요기도회의 기본 배경은 `26-B` 계열이다. 서비스별로 직접 고른
+  배경은 유지하지만, 금요기도회 템플릿/자동 생성 기본값은 `B` 그룹을
+  따른다.
 - `말씀 <제목>`은 성경 주소처럼 보이지 않으면 `설교 제목`으로,
   `설교 <이름/직분>`은 설교 제목 요소의 담당자로 반영한다.
 - 찬양 DB에서 원제/부제/첫 가사 등으로도 곡을 하나로 찾지 못하면,
@@ -229,7 +230,7 @@ Small visual polish that does not alter behavior does not need an entry.
   with 주일예배 [3부].
 - New 청소년부 예배 services receive this weekly scaffold: `사도신경`, main
   praise 3곡, `대표기도`, `봉헌` (`봉헌찬양`, `봉헌기도`), `성경봉독`, `설교`,
-  `결단기도`, `주기도문`, `광고`, and `반별 모임`.
+  `결단기도`, `광고`, `주기도문`, and `반별 모임`.
 - `통성기도` and `결단찬양` are not part of the regular youth template unless
   a user deliberately adds them for that service.
 - In every service template, the child element of the `대표기도` section is also
@@ -297,6 +298,11 @@ Small visual polish that does not alter behavior does not need an entry.
 - Explicit song-form presets may intentionally omit unlisted forms when they
   are grouped (`V1A`, `V1B`), manual/forced/song-default presets, or contain
   deliberate consecutive repeats such as `C-C`.
+- User-entered `manual` song forms are exact output instructions. A typed
+  sequence such as `V-C-V-C` or `V-C-V-C-Tag` must not auto-preserve unlisted
+  `Bridge`, `Pre-Chorus`, or extra chorus forms from the linked song version.
+  Template `default` and `forced` presets follow the same exactness rule unless
+  they explicitly list the supplemental forms.
 - Grouped labels such as `V1A` and `V1B` mean split `Verse 1` by lyric block.
   If there are no blank-line blocks, split evenly by lyric lines when possible.
 - `amen`/`아멘` is not a song-form type. Existing form rows have been migrated

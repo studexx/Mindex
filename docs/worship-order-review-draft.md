@@ -1,7 +1,11 @@
 # Worship Order Review Draft
 
-This is a review draft for rebuilding Worship templates from Mindex decisions.
-It is not runtime seed data yet.
+> Status: archived planning draft. Current reviewed rules live in
+> `docs/worship-presenter-decisions.md` and `docs/worship-data-contract.md`.
+> Do not implement from this file without revalidating against those contracts.
+
+This was a review draft for rebuilding Worship templates from Mindex decisions.
+It is not runtime seed data and is not the current source of truth.
 
 ## Principles
 

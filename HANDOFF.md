@@ -1,6 +1,6 @@
 # Mindex Handoff
 
-Last updated: 2026-07-18
+Last updated: 2026-08-09
 
 Mindex is a church ministry operations app. It is not only a song database and not only a presenter. It should support weekly worship preparation, lyrics/scripture management, worship presentation, calendar, and references while sharing one Supabase-backed data model and one coherent UI system. Activities/event screens are deferred to standalone utilities unless promoted later.
 
@@ -15,6 +15,10 @@ For Worship/Presenter work, also read
 `docs/worship-presenter-decisions.md`. Any durable behavior change must update
 that decision log in the same change so a later task does not silently restore
 an older rule.
+
+For documentation routing, read `docs/README.md`. It separates current
+contracts, deferred plans, and historical incident notes so old drafts do not
+outrank reviewed decisions.
 
 ## Thread Ownership
 
@@ -121,7 +125,7 @@ Scripture structure:
 
 Service/Worship structure:
 
-- Service types should use stable keys such as `sun_1st`, `sun_2nd`, `sun_3rd`, `sunday_afternoon`, `wednesday`, `friday`, `moon`, etc.
+- Service types should use reviewed stable keys such as `sunday-first`, `sunday-second`, `sunday-main`, `sunday-afternoon`, `wednesday`, `friday`, and `monthly`.
 - Special seasonal or temporary services can be grouped as special services instead of being promoted to permanent top-level categories.
 - First Friday prayer meeting of each month is replaced by monthly first-day worship where applicable.
 - Worship hierarchy is `Service > Section > Element > Slide`.
@@ -236,9 +240,12 @@ Forms:
   - `Chorus`
   - `Bridge`
   - `Coda`
-  - `Amen` where still needed
+  - `Tag`
 - If there is only one form of a type, avoid unnecessary numbering.
 - If multiple of a type exist, use numbered labels.
+- Explicit user-entered song forms are operator intent. Do not auto-insert
+  omitted Bridge/Pre-Chorus/extra Chorus slides into a `manual`, `forced`, or
+  template `default` form preset.
 - Do not auto-split by location or repeated pattern without review.
 - Children/audio-use lyrics should usually be `Lyrics`, not `Verse 1...Verse 6`.
 
@@ -499,16 +506,20 @@ Deployment sanity:
 
 ## Current Split For Future Threads
 
-Use three focused threads:
+Use two ownership tracks and hand off at the boundary:
 
-1. Presenter / Worship
-   - Live service operation, service elements, templates, presenter output, order/PPT matching.
+1. Data thread
+   - Supabase schema, migrations, imports/backfills, data repair, canonical
+     Praise/Scripture records, service defaults, and production data integrity.
 
-2. Database / Praise / Scripture
-   - Song metadata, song forms, hymn/CCM/children tagging, Bible search/copy, scripture metadata.
+2. UX thread
+   - App shell, controller/presenter interaction, layout, accessibility,
+     loading states, and UI-side validation.
 
-3. Shell / Home / Utilities
-   - App shell, navigation, home, calendar, references, and any future standalone event-screen integration.
+Presenter/Worship work often crosses both tracks. UX owns the user-facing
+behavior; Data owns persisted contracts and production data changes. If a task
+touches both, document the handoff instead of silently changing the other
+track's assumptions.
 
 Each thread should read this document first, then inspect current files before editing.
 
