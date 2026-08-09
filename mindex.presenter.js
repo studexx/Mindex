@@ -202,11 +202,6 @@ const PRESENTER_PUBLIC_APOSTLES_CREED_CHROMAKEY_TEXT = `나는 전능하신 아�
 
 const PRESENTER_SCRIPTURE_READING_BACKGROUND = "assets/worship-backgrounds/scripture-reading-cross.png";
 const PRESENTER_CHURCH_LOGO = "assets/presenter/church-logo-white.png";
-const PRESENTER_PRE_SERVICE_VIDEO_ASSET = {
-  kind: "video",
-  name: "예배 전 영상",
-  url: "assets/presenter/pre-service-video.mp4",
-};
 
 const PRESENTER_PUBLIC_COMMUNITY_CONFESSION_TEXT = `우리는 세상으로부터 부름 받은 하나님의 거룩한 백성입니다.
 또한 세상으로 보냄 받은 그리스도의 제자입니다.
@@ -1317,13 +1312,6 @@ function presenterFullscreenPreparationSlide(service, item, index, presenterRole
 }
 
 function presenterDefaultPreparationAsset(service, item = {}, memo = {}) {
-  const role = presenterPreparationRole(item, memo);
-  if (role === "ready" || role === "waiting_loop" || role === "intro") {
-    const elementType = servicePreparationElementTypeForType(service?.type_id);
-    if (elementType === "video" || role === "waiting_loop" || role === "intro") {
-      return { ...PRESENTER_PRE_SERVICE_VIDEO_ASSET };
-    }
-  }
   return { kind: "", name: "", url: "" };
 }
 
@@ -4073,7 +4061,7 @@ function renderPresenterVideoSlide(slide, options = {}) {
     (previewStage || playback.muted) ? "muted" : "",
     playback.loop ? "loop" : "",
     playback.controls ? "controls" : "",
-    (!previewStage && !options.noChromakey) ? `poster="${PRESENTER_CHROMAKEY_VIDEO_POSTER}"` : "",
+    options.noChromakey ? "" : `poster="${PRESENTER_CHROMAKEY_VIDEO_POSTER}"`,
     "playsinline",
     `preload=\"${previewStage ? "metadata" : "auto"}\"`,
   ].filter(Boolean).join(" ");
