@@ -519,6 +519,9 @@ function presenterFormPresetWithAvailableForms(preset = null, forms = []) {
   const originalTargets = cleanList(preset.forms).map((label) => normalizePresenterFormPresetLabel(label));
   const genericVerseChorusPreset = originalTargets.length
     && originalTargets.every((target) => target.type === "verse" || target.type === "chorus");
+  const presetStrength = String(preset?.strength || "").trim().toLowerCase();
+  const exactFormPreset = ["manual", "forced", "default"].includes(presetStrength);
+  const canPreserveSupplementalForms = genericVerseChorusPreset && !exactFormPreset;
   const base = presenterRepeatableVerseChorusPresetForms(preset, source) || cleanList(preset.forms);
   const merged = [];
   let sourceIndex = 0;
@@ -548,7 +551,7 @@ function presenterFormPresetWithAvailableForms(preset = null, forms = []) {
     }
     const matchIndex = source.findIndex(({ target: candidate }, index) => index >= sourceIndex && presenterFormTargetsMatch(target, candidate));
     if (matchIndex >= sourceIndex) {
-      if (genericVerseChorusPreset) {
+      if (canPreserveSupplementalForms) {
         source.slice(sourceIndex, matchIndex).forEach(({ form, target: candidate }) => {
           if (presenterSupplementalFormType(candidate)) merged.push(presenterFormDisplayLabel(form));
         });
@@ -570,9 +573,9 @@ function presenterFormPresetWithAvailableForms(preset = null, forms = []) {
     };
   }
 
-  // Preserve endings and bridges only for a generic sequence such as VCVC.
-  // Explicit forms like V-C-V-C-Tag must render exactly as written.
-  if (genericVerseChorusPreset) {
+  // Preserve endings and bridges only for inferred generic sequences such as VCVC.
+  // User/default/forced presets must render exactly as written.
+  if (canPreserveSupplementalForms) {
     let includeFollowingChorus = false;
     source.slice(sourceIndex).forEach(({ form, target }) => {
       if (presenterSupplementalFormType(target)) {
@@ -588,7 +591,7 @@ function presenterFormPresetWithAvailableForms(preset = null, forms = []) {
   }
 
   const hasPreChorus = source.some(({ target }) => target.type === "pre-chorus");
-  const formsWithPreChorus = genericVerseChorusPreset && hasPreChorus
+  const formsWithPreChorus = canPreserveSupplementalForms && hasPreChorus
     ? presenterInsertPreChorusBeforeChoruses(merged)
     : merged;
   const original = cleanList(preset.forms);

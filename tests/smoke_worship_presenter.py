@@ -2610,6 +2610,17 @@ def main() -> int:
                           formPreset: { forms: ['V', 'C', 'V', 'C', 'Tag'], hint: 'V-C-V-C-Tag', strength: 'manual' }
                         })
                       };
+                      const explicitGenericItem = {
+                        id: '__smoke_explicit_generic_item__',
+                        label: '찬양',
+                        raw_title: '태그 명시 테스트',
+                        song_id: explicitTagSong.id,
+                        version_id: '__smoke_explicit_tag_version__',
+                        memo: serializeServiceItemMemo({
+                          elementType: 'praise',
+                          formPreset: { forms: ['V', 'C', 'V', 'C'], hint: 'V-C-V-C', strength: 'manual' }
+                        })
+                      };
                       const defaultFormItem = {
                         id: '__smoke_default_form_item__',
                         label: '찬양',
@@ -2770,6 +2781,7 @@ def main() -> int:
                       const ccmSlides = buildPresenterSlidesForServiceItem(ccmItem, service, 1).filter((slide) => slide.type === 'lyrics');
                       const missingSlides = buildPresenterSlidesForServiceItem(missingItem, service, 2);
                       const explicitTagSlides = buildPresenterSlidesForServiceItem(explicitTagItem, service, 2.1).filter((slide) => slide.type === 'lyrics');
+                      const explicitGenericSlides = buildPresenterSlidesForServiceItem(explicitGenericItem, service, 2.15).filter((slide) => slide.type === 'lyrics');
                       const defaultFormSlides = buildPresenterSlidesForServiceItem(defaultFormItem, service, 2.2).filter((slide) => slide.type === 'lyrics');
                       const fallbackVersionSlides = buildPresenterSlidesForServiceItem(fallbackVersionItem, service, 2.25);
                       const fallbackTitleSlides = buildPresenterSlidesForServiceItem(fallbackTitleItem, service, 2.3);
@@ -3173,6 +3185,8 @@ def main() -> int:
                         ccmFormKeys: ccmSlides.map((slide) => slide.formKey),
                         explicitTagMarkers: explicitTagSlides.map((slide) => slide.marker),
                         explicitTagTexts: explicitTagSlides.map((slide) => slide.text),
+                        explicitGenericMarkers: explicitGenericSlides.map((slide) => slide.marker),
+                        explicitGenericTexts: explicitGenericSlides.map((slide) => slide.text),
                         defaultFormMetadataSummary: serviceFormPresetSummary(normalizeSongMetadata(defaultFormSong.metadata).presenter_form),
                         defaultFormMarkers: defaultFormSlides.map((slide) => slide.marker),
                         defaultFormTexts: defaultFormSlides.map((slide) => slide.text),
@@ -3326,6 +3340,8 @@ def main() -> int:
                     and form_preset_state["explicitTagMarkers"] == ["Verse 1", "Chorus", "Verse 2", "Chorus", "Tag"]
                     and "B 첫 줄" not in "\n".join(form_preset_state["explicitTagTexts"])
                     and "C2 첫 줄" not in "\n".join(form_preset_state["explicitTagTexts"])
+                    and form_preset_state["explicitGenericMarkers"] == ["Verse 1", "Chorus", "Verse 2", "Chorus 2"]
+                    and "B 첫 줄" not in "\n".join(form_preset_state["explicitGenericTexts"])
                     and form_preset_state["defaultFormMetadataSummary"] == "V1-C-V2-C-V3-C-Coda"
                     and form_preset_state["defaultFormMarkers"] == ["Verse 1", "Chorus", "Verse 2", "Chorus", "Verse 3", "Chorus", "Coda"]
                     and form_preset_state["defaultFormTexts"] == [
