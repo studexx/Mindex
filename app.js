@@ -19,6 +19,7 @@ const worshipPresenterSlideLoadPromises = new Map();
 const worshipScripturePreloadPromises = new Map();
 const serviceItemScripturePreloadPromises = new Map();
 const scheduledPresenterRefreshes = new Map();
+const explicitlyRequestedWorshipServiceIds = new Set();
 let hymnScoreManifestLoadPromise = null;
 let songCatalogLoaded = false;
 let backgroundSongLoadScheduled = false;
@@ -2865,6 +2866,29 @@ function localDateStringWithOffset(baseDate = new Date(), offsetDays = 0) {
   return localDateStringFromDate(date);
 }
 
+function worshipServiceIsPast(service, baseDate = new Date()) {
+  const dateValue = String(service?.date_end || service?.service_date_end || service?.date || service?.service_date || "").trim();
+  if (!dateValue) return false;
+  const serviceDate = parseLocalDate(dateValue);
+  const today = parseLocalDate(baseDate);
+  if (Number.isNaN(serviceDate.getTime()) || Number.isNaN(today.getTime())) return false;
+  serviceDate.setHours(0, 0, 0, 0);
+  today.setHours(0, 0, 0, 0);
+  return serviceDate < today;
+}
+
+function markWorshipServiceExplicitlyRequested(serviceId) {
+  const id = String(serviceId || "").trim();
+  if (id) explicitlyRequestedWorshipServiceIds.add(id);
+}
+
+function shouldDeferPastWorshipServiceLoad(serviceId) {
+  const id = String(serviceId || "").trim();
+  if (!id || explicitlyRequestedWorshipServiceIds.has(id)) return false;
+  const service = state.services.find((entry) => entry.id === id) || null;
+  return worshipServiceIsPast(service);
+}
+
 function initialWorshipElementServiceIds(services = []) {
   const pinned = new Set([state.selectedServiceId, state.presenter.serviceId].filter(Boolean));
   const loadHomeWeek = state.module === "home";
@@ -2873,7 +2897,7 @@ function initialWorshipElementServiceIds(services = []) {
   return services
     .filter((service) => {
       if (!service?.id) return false;
-      if (pinned.has(service.id)) return true;
+      if (pinned.has(service.id)) return !shouldDeferPastWorshipServiceLoad(service.id);
       if (!loadHomeWeek) return false;
       const date = String(service.date || service.service_date || "").trim();
       return date && (!from || date >= from) && (!to || date <= to);
@@ -3180,7 +3204,11 @@ async function loadWorshipData() {
   state.serviceTitleSupported = true;
 
   render();
-  if (state.selectedServiceId && (state.module === "presenter" || isServiceDataModule())) {
+  if (
+    state.selectedServiceId
+    && (state.module === "presenter" || isServiceDataModule())
+    && !shouldDeferPastWorshipServiceLoad(state.selectedServiceId)
+  ) {
     const hydrationServiceId = state.selectedServiceId;
     void hydratePresenterServiceData(state.selectedServiceId).then(() => {
       if (state.selectedServiceId === hydrationServiceId && (state.module === "presenter" || state.module === "service")) {
@@ -3194,13 +3222,16 @@ async function loadWorshipData() {
     render: "detail",
     serviceId: state.selectedServiceId,
   });
-  warmWorshipScriptureReferencesForService(state.selectedServiceId);
-  warmServiceItemScriptureReferencesForService(state.selectedServiceId);
+  if (!shouldDeferPastWorshipServiceLoad(state.selectedServiceId)) {
+    warmWorshipScriptureReferencesForService(state.selectedServiceId);
+    warmServiceItemScriptureReferencesForService(state.selectedServiceId);
+  }
 }
 
 async function loadWorshipPresenterSlides(serviceId = "") {
   if (!state.client) return;
   const targetServiceId = String(serviceId || "").trim();
+  if (targetServiceId && shouldDeferPastWorshipServiceLoad(targetServiceId)) return false;
   if (targetServiceId && state.loadedWorshipPresenterServiceIds.has(targetServiceId)) return;
   if (!targetServiceId && state.worshipPresenterSlidesLoaded) return;
   const loadKey = targetServiceId || "__all__";
@@ -4057,6 +4088,7 @@ function calendarCellClassForField(field) {
 
 async function loadServiceItems(serviceId) {
   if (!serviceId || state.loadedWorshipServiceIds.has(serviceId)) return;
+  if (shouldDeferPastWorshipServiceLoad(serviceId)) return false;
   if (serviceItemLoadPromises.has(serviceId)) return serviceItemLoadPromises.get(serviceId);
   if (!state.client) {
     state.serviceItems[serviceId] = state.serviceItems[serviceId] || [];
@@ -6208,6 +6240,12 @@ function handleDetailClick(event) {
     return;
   }
 
+  const presenterServiceItem = event.target.closest("[data-open-presenter-service]");
+  if (presenterServiceItem) {
+    void openServiceInPresenter(presenterServiceItem.dataset.openPresenterService);
+    return;
+  }
+
   const homeModule = event.target.closest("[data-home-module]");
   if (homeModule) {
     void switchModule(homeModule.dataset.homeModule);
@@ -6217,6 +6255,7 @@ function handleDetailClick(event) {
   const worshipEditorBtn = event.target.closest("[data-open-worship-editor]");
   if (worshipEditorBtn) {
     state.selectedServiceId = worshipEditorBtn.dataset.openWorshipEditor || state.selectedServiceId;
+    markWorshipServiceExplicitlyRequested(state.selectedServiceId);
     const service = state.services.find((svc) => svc.id === state.selectedServiceId);
     if (service) state.selectedServiceTypeId = service.type_id;
     void switchModule("service", { clearSearch: false });
@@ -9296,6 +9335,7 @@ async function preloadPresenterServiceScripturesBeforeOutput(serviceId = state.s
 async function hydratePresenterServiceData(serviceId = state.selectedServiceId) {
   const targetServiceId = String(serviceId || "").trim();
   if (!targetServiceId || !canUseClientData()) return false;
+  if (shouldDeferPastWorshipServiceLoad(targetServiceId)) return false;
   if (presenterServiceHydrationPromises.has(targetServiceId)) {
     return presenterServiceHydrationPromises.get(targetServiceId);
   }
@@ -19587,6 +19627,11 @@ function renderServiceDetail() {
 
   const items = state.serviceItems[serviceId];
   if (!items) {
+    if (shouldDeferPastWorshipServiceLoad(serviceId)) {
+      refs.detailPane.innerHTML = renderDeferredPastServiceDetail(svc, "service");
+      refreshIcons();
+      return;
+    }
     refs.detailPane.innerHTML = renderLoadingDetail();
     loadServiceItems(serviceId);
     return;
@@ -19676,6 +19721,11 @@ function renderPresenterDetail() {
 
   const items = state.serviceItems[serviceId];
   if (!items) {
+    if (shouldDeferPastWorshipServiceLoad(serviceId)) {
+      refs.detailPane.innerHTML = renderDeferredPastServiceDetail(svc, "presenter");
+      refreshIcons();
+      return;
+    }
     refs.detailPane.innerHTML = renderLoadingDetail();
     loadServiceItems(serviceId);
     return;
@@ -20990,6 +21040,33 @@ function renderServiceDateCard(service, options = {}) {
       ${note ? `<span class="service-date-card-note">${escapeHtml(note)}</span>` : ""}
       ${preview ? `<span class="service-date-card-preview">${escapeHtml(preview)}</span>` : ""}
     </button>`;
+}
+
+function renderDeferredPastServiceDetail(service, mode = "service") {
+  const isPresenter = mode === "presenter";
+  return `
+    <div class="service-dashboard">
+      <section class="service-dashboard-section">
+        <div class="service-section-head">
+          <div>
+            <h2 class="service-date-list-title">${escapeHtml(serviceDisplayTypeName(service))}</h2>
+            <p class="service-week-range">${escapeHtml(`${formatServiceDate(service)} · 지난 예배`)}</p>
+          </div>
+        </div>
+        <div class="service-date-grid service-date-grid--dashboard">
+          <button class="service-date-card" type="button" ${isPresenter
+            ? `data-open-presenter-service="${escapeAttr(service.id)}"`
+            : `data-service-id="${escapeAttr(service.id)}"`}>
+            <span class="service-date-card-top">
+              <span class="service-date-card-date">필요할 때만 불러오기</span>
+              <span class="service-date-card-open">열기</span>
+            </span>
+            <span class="service-date-card-type">${escapeHtml(serviceDisplayTypeName(service))}</span>
+            <span class="service-date-card-preview">날짜 지난 예배라서 아직 브라우저에 불러오지 않았습니다.</span>
+          </button>
+        </div>
+      </section>
+    </div>`;
 }
 
 function formatServiceDate(service, options = {}) {
@@ -26321,6 +26398,7 @@ async function deleteService(serviceId) {
 
 function selectService(id) {
   if (id !== state.selectedServiceId && !confirmDiscardServiceChanges()) return;
+  markWorshipServiceExplicitlyRequested(id);
   state.selectedServiceId = id;
   state.selectedServiceItemIndex = 0;
   const service = state.services.find((svc) => svc.id === id);
@@ -26337,6 +26415,7 @@ async function openHomeNextService(action = "presenter", serviceId = "") {
     showToast("준비된 다음 예배가 없습니다.", "info");
     return;
   }
+  markWorshipServiceExplicitlyRequested(id);
   if (action === "presenter") {
     await openServiceInPresenter(id);
     return;
@@ -26353,6 +26432,7 @@ async function openHomeNextService(action = "presenter", serviceId = "") {
 async function openServiceInPresenter(id) {
   if (!id) return;
   if (id !== state.selectedServiceId && !confirmDiscardServiceChanges()) return;
+  markWorshipServiceExplicitlyRequested(id);
   state.selectedServiceId = id;
   state.selectedServiceItemIndex = 0;
   const service = state.services.find((svc) => svc.id === id);
