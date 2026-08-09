@@ -472,6 +472,12 @@ const PRESENTER_REFERENCE_MEDIA_SECTION_KEYS = new Set(["sermon", "announcements
 const PRESENTER_REFERENCE_MEDIA_ACCEPT = "image/*,video/*,audio/*";
 const SERVICE_ITEM_AUDIO_ACCEPT = "audio/*";
 const PRESENTER_REFERENCE_MEDIA_MAX_BYTES = 50 * 1024 * 1024;
+const PRESENTER_REFERENCE_VIDEO_MAX_BYTES = 500 * 1024 * 1024;
+const PRESENTER_PRE_SERVICE_VIDEO_ASSET = {
+  kind: "video",
+  name: "예배 전 영상",
+  url: "assets/presenter/pre-service-video.mp4",
+};
 const SERVICE_FUTURE_LOOKAHEAD_DAYS = 7;
 const SERVICE_LIST_PANEL_ID = "__list";
 const SERVICE_TEMPLATES_PANEL_ID = "__templates";
@@ -10712,6 +10718,9 @@ function worshipTemplateElementAsset(step = {}, label = "") {
   const asset = normalizeServiceAsset(step.asset || step.media || step.file);
   if (asset.url) return asset;
   const compact = compactSearchValue(label);
+  if (compact === "대기영상" || compact === "예배전영상") {
+    return PRESENTER_PRE_SERVICE_VIDEO_ASSET;
+  }
   if (compact === "마무리" || compact === "마침") {
     return PUBLIC_WORSHIP_CLOSING_IMAGE_ASSET;
   }
