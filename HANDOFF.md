@@ -518,6 +518,9 @@ Each thread should read this document first, then inspect current files before e
   - Hymn: `hymn_no=38`, `praise_types=["hymn"]`, no subtitle/original title.
   - CCM: `praise_types=["ccm"]`, subtitle/original title `Jesus, We Enthrone You`, version `예수전도단 역`.
   - The CCM canonical uses internal `normalized_title=예수우리왕이여ccm` only to avoid the unique normalized-title collision; do not merge it back into hymn 38.
+- 2026-08-09: Youth worship order intentionally places `광고` before `주기도문`.
+  - Template order is `... 결단기도 → 청소년부 광고 → 주기도문 → 반별 모임`.
+  - Existing youth services with both sections were updated in Supabase; older imported youth services without those sections were left untouched.
 
 ## Final Reminder
 

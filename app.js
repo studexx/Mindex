@@ -16618,8 +16618,8 @@ function youthWorshipTemplate() {
     publicWorshipScriptureReadingStep(),
     publicWorshipSermonStep({ typeId: "youth" }),
     publicWorshipResponseStep(),
-    publicWorshipLordsPrayerStep(),
     youthWorshipAnnouncementsStep(),
+    publicWorshipLordsPrayerStep(),
     {
       label: "교제",
       name: "교제",

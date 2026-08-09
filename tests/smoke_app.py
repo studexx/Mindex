@@ -3130,11 +3130,11 @@ def main() -> int:
                     if youth_template == {
                         "sections": [
                             "ready", "creed", "praise", "prayer", "offering", "scripture_reading",
-                            "sermon", "response_song", "lords_prayer", "announcements", "fellowship",
+                            "sermon", "response_song", "announcements", "lords_prayer", "fellowship",
                         ],
                         "labels": [
                             "대기 영상", "사도신경", "찬양 1", "찬양 2", "찬양 3", "대표기도", "봉헌찬양", "봉헌기도",
-                            "성경봉독", "설교 제목", "설교 본문", "인용 구절", "결단기도", "주기도문", "청소년부 광고", "반별 모임",
+                            "성경봉독", "설교 제목", "설교 본문", "인용 구절", "결단기도", "청소년부 광고", "주기도문", "반별 모임",
                         ],
                         "offeringTitle": "",
                         "offeringLinked": True,
