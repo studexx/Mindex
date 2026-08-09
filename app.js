@@ -19897,7 +19897,6 @@ function renderPresenterDetail() {
     fitPresenterSongTitlePreviews(refs.detailPane);
     fitPresenterSermonTitlePreviews(refs.detailPane);
   });
-  if (state.module === "presenter") patchPresenterSidebarActiveState(serviceId);
 }
 
 function serviceBulletinSectionTitle(item = {}) {
