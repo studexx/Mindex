@@ -477,7 +477,6 @@ const PRESENTER_PRE_SERVICE_VIDEO_ASSET = {
   kind: "video",
   name: "예배 전 영상",
   url: "assets/presenter/pre-service-video.mp4",
-  poster: "assets/presenter/pre-service-video-poster.png",
 };
 const SERVICE_FUTURE_LOOKAHEAD_DAYS = 7;
 const SERVICE_LIST_PANEL_ID = "__list";
@@ -8339,7 +8338,6 @@ function normalizeServiceAsset(value) {
     kind: SERVICE_ASSET_KINDS.has(kind) ? kind : "",
     name: String(value.name || value.title || "").trim(),
     url: String(value.url || value.path || value.href || "").trim(),
-    poster: String(value.poster || value.posterUrl || value.poster_url || "").trim(),
     ...(slides.length ? { slides } : {}),
   };
 }
