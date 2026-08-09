@@ -516,6 +516,9 @@ function presenterFormPresetWithAvailableForms(preset = null, forms = []) {
     .filter(({ target }) => target.key && target.type !== "lyrics");
   if (!source.length) return preset;
 
+  const originalTargets = cleanList(preset.forms).map((label) => normalizePresenterFormPresetLabel(label));
+  const genericVerseChorusPreset = originalTargets.length
+    && originalTargets.every((target) => target.type === "verse" || target.type === "chorus");
   const base = presenterRepeatableVerseChorusPresetForms(preset, source) || cleanList(preset.forms);
   const merged = [];
   let sourceIndex = 0;
@@ -545,9 +548,11 @@ function presenterFormPresetWithAvailableForms(preset = null, forms = []) {
     }
     const matchIndex = source.findIndex(({ target: candidate }, index) => index >= sourceIndex && presenterFormTargetsMatch(target, candidate));
     if (matchIndex >= sourceIndex) {
-      source.slice(sourceIndex, matchIndex).forEach(({ form, target: candidate }) => {
-        if (presenterSupplementalFormType(candidate)) merged.push(presenterFormDisplayLabel(form));
-      });
+      if (genericVerseChorusPreset) {
+        source.slice(sourceIndex, matchIndex).forEach(({ form, target: candidate }) => {
+          if (presenterSupplementalFormType(candidate)) merged.push(presenterFormDisplayLabel(form));
+        });
+      }
       sourceIndex = matchIndex + 1;
       merged.push(presenterFormDisplayLabel(source[matchIndex].form));
       return;
@@ -565,22 +570,25 @@ function presenterFormPresetWithAvailableForms(preset = null, forms = []) {
     };
   }
 
-  // Preserve endings and bridges omitted by a generic sequence such as VCVC.
-  let includeFollowingChorus = false;
-  source.slice(sourceIndex).forEach(({ form, target }) => {
-    if (presenterSupplementalFormType(target)) {
-      merged.push(presenterFormDisplayLabel(form));
-      includeFollowingChorus = target.type === "bridge" || target.type === "pre-chorus";
-      return;
-    }
-    if (includeFollowingChorus && target.type === "chorus") {
-      merged.push(presenterFormDisplayLabel(form));
-      includeFollowingChorus = false;
-    }
-  });
+  // Preserve endings and bridges only for a generic sequence such as VCVC.
+  // Explicit forms like V-C-V-C-Tag must render exactly as written.
+  if (genericVerseChorusPreset) {
+    let includeFollowingChorus = false;
+    source.slice(sourceIndex).forEach(({ form, target }) => {
+      if (presenterSupplementalFormType(target)) {
+        merged.push(presenterFormDisplayLabel(form));
+        includeFollowingChorus = target.type === "bridge" || target.type === "pre-chorus";
+        return;
+      }
+      if (includeFollowingChorus && target.type === "chorus") {
+        merged.push(presenterFormDisplayLabel(form));
+        includeFollowingChorus = false;
+      }
+    });
+  }
 
   const hasPreChorus = source.some(({ target }) => target.type === "pre-chorus");
-  const formsWithPreChorus = hasPreChorus
+  const formsWithPreChorus = genericVerseChorusPreset && hasPreChorus
     ? presenterInsertPreChorusBeforeChoruses(merged)
     : merged;
   const original = cleanList(preset.forms);

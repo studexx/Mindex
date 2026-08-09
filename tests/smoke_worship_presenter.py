@@ -2481,6 +2481,22 @@ def main() -> int:
                           ]
                         }]
                       };
+                      const explicitTagSong = {
+                        id: '__smoke_explicit_tag_song__',
+                        title: '태그 명시 테스트',
+                        versions: [{
+                          id: '__smoke_explicit_tag_version__',
+                          name: 'Default',
+                          is_primary: true,
+                          forms: [
+                            { id: 'et-v1', part_type: 'Verse', part_number: 1, lyrics: 'V1 첫 줄\\nV1 둘째 줄', sort_order: 1 },
+                            { id: 'et-c1', part_type: 'Chorus', part_number: null, lyrics: 'C 첫 줄\\nC 둘째 줄', sort_order: 2 },
+                            { id: 'et-v2', part_type: 'Verse', part_number: 2, lyrics: 'V2 첫 줄\\nV2 둘째 줄', sort_order: 3 },
+                            { id: 'et-b', part_type: 'Bridge', part_number: null, lyrics: 'B 첫 줄\\nB 둘째 줄', sort_order: 4 },
+                            { id: 'et-c2', part_type: 'Chorus', part_number: 2, lyrics: 'C2 첫 줄\\nC2 둘째 줄', sort_order: 5 },
+                          ]
+                        }]
+                      };
                       const defaultFormSong = {
                         id: '__smoke_default_form_song__',
                         title: '감사',
@@ -2541,7 +2557,7 @@ def main() -> int:
                           ],
                         },
                       };
-                      state.songs = state.songs.filter((song) => !String(song.id || '').startsWith('__smoke_')).concat([hymnSong, hymnScoreSong, offeringSong, ccmSong, defaultFormSong, fallbackSong]);
+                      state.songs = state.songs.filter((song) => !String(song.id || '').startsWith('__smoke_')).concat([hymnSong, hymnScoreSong, offeringSong, ccmSong, explicitTagSong, defaultFormSong, fallbackSong]);
                       const service = { id: '__smoke_form_service__', type_id: 'sunday-main', date: '2026-07-04' };
                       const hymnItem = {
                         id: '__smoke_hymn_item__',
@@ -2581,6 +2597,17 @@ def main() -> int:
                         memo: serializeServiceItemMemo({
                           elementType: 'praise',
                           formPreset: { forms: ['V1', 'C', 'B'], hint: 'V1-C-B', strength: 'manual' }
+                        })
+                      };
+                      const explicitTagItem = {
+                        id: '__smoke_explicit_tag_item__',
+                        label: '찬양',
+                        raw_title: '태그 명시 테스트',
+                        song_id: explicitTagSong.id,
+                        version_id: '__smoke_explicit_tag_version__',
+                        memo: serializeServiceItemMemo({
+                          elementType: 'praise',
+                          formPreset: { forms: ['V', 'C', 'V', 'C', 'Tag'], hint: 'V-C-V-C-Tag', strength: 'manual' }
                         })
                       };
                       const defaultFormItem = {
@@ -2742,6 +2769,7 @@ def main() -> int:
                       const hymnBlankSlides = hymnAllSlides.filter((slide) => slide.type === 'blank');
                       const ccmSlides = buildPresenterSlidesForServiceItem(ccmItem, service, 1).filter((slide) => slide.type === 'lyrics');
                       const missingSlides = buildPresenterSlidesForServiceItem(missingItem, service, 2);
+                      const explicitTagSlides = buildPresenterSlidesForServiceItem(explicitTagItem, service, 2.1).filter((slide) => slide.type === 'lyrics');
                       const defaultFormSlides = buildPresenterSlidesForServiceItem(defaultFormItem, service, 2.2).filter((slide) => slide.type === 'lyrics');
                       const fallbackVersionSlides = buildPresenterSlidesForServiceItem(fallbackVersionItem, service, 2.25);
                       const fallbackTitleSlides = buildPresenterSlidesForServiceItem(fallbackTitleItem, service, 2.3);
@@ -3143,6 +3171,8 @@ def main() -> int:
                         ccmMarkers: ccmSlides.map((slide) => slide.marker),
                         ccmTexts: ccmSlides.map((slide) => slide.text),
                         ccmFormKeys: ccmSlides.map((slide) => slide.formKey),
+                        explicitTagMarkers: explicitTagSlides.map((slide) => slide.marker),
+                        explicitTagTexts: explicitTagSlides.map((slide) => slide.text),
                         defaultFormMetadataSummary: serviceFormPresetSummary(normalizeSongMetadata(defaultFormSong.metadata).presenter_form),
                         defaultFormMarkers: defaultFormSlides.map((slide) => slide.marker),
                         defaultFormTexts: defaultFormSlides.map((slide) => slide.text),
@@ -3293,6 +3323,9 @@ def main() -> int:
                     and form_preset_state["ccmMarkers"] == ["Verse 1", "Chorus", "Chorus"]
                     and form_preset_state["ccmTexts"] == ["V1 첫 줄\nV1 둘째 줄", "C 첫 줄\nC 둘째 줄", "C 첫 줄\nC 둘째 줄"]
                     and len(set(form_preset_state["ccmFormKeys"])) == 3
+                    and form_preset_state["explicitTagMarkers"] == ["Verse 1", "Chorus", "Verse 2", "Chorus", "Tag"]
+                    and "B 첫 줄" not in "\n".join(form_preset_state["explicitTagTexts"])
+                    and "C2 첫 줄" not in "\n".join(form_preset_state["explicitTagTexts"])
                     and form_preset_state["defaultFormMetadataSummary"] == "V1-C-V2-C-V3-C-Coda"
                     and form_preset_state["defaultFormMarkers"] == ["Verse 1", "Chorus", "Verse 2", "Chorus", "Verse 3", "Chorus", "Coda"]
                     and form_preset_state["defaultFormTexts"] == [
