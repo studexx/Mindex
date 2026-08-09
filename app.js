@@ -16293,40 +16293,7 @@ function sundayThirdSpecialSongTemplateForDate(dateValue = "") {
   const targetDate = String(dateValue || "").slice(0, 10);
   if (targetDate < "2026-07-26") return null;
   return {
-    defaultText: `주 은혜임을 / 할렐루야 찬양대
-
-주 나의 모습 보네
-상한 나의 맘 보시네
-
-주 나의 눈물 아네
-홀로 울던 맘 아시네
-
-주 사랑 내게 있네
-그 사랑이 날 채우네
-
-주 은혜 내게 있네
-그 은혜로 날 세우네
-
-세상 소망 다 사라져 가도
-주의 사랑은 끝이 없으니
-
-살아가는 이 모든 순간이
-주 은혜임을 나는 믿네
-
-주 사랑 내게 있네
-그 사랑이 날 채우네
-
-주 은혜 내게 있네
-그 은혜로 날 세우네
-
-세상 소망 다 사라져 가도
-주의 사랑은 끝이 없으니
-
-살아가는 이 모든 순간이
-주 은혜임을 나는 믿네
-
-은혜임을 나는 믿네
-나는 믿네`,
+    defaultText: "",
     defaultAssignee: "할렐루야 찬양대",
   };
 }
