@@ -7118,6 +7118,7 @@ body.is-chromium .svc-slide-thumb-wrap.active {
   text-align: left;
 }
 .svc-slide-thumb-frame {
+  --presenter-preview-scale: 0.15;
   display: flex;
   width: 100%;
   min-width: 0;
