@@ -749,6 +749,7 @@ async function init() {
     return;
   }
   cacheRefs();
+  applyRuntimePlatformClass();
   applyTheme(readTheme());
   const linkParams = readLinkParams();
   state.config = readConfig(linkParams);
@@ -771,6 +772,14 @@ async function init() {
   } else if (state.connectionError) {
     showToast(state.connectionError, "error");
   }
+}
+
+function applyRuntimePlatformClass() {
+  const ua = navigator.userAgent || "";
+  const isChromium =
+    Boolean(window.chrome) ||
+    /\b(?:Chrome|Chromium|Edg|OPR|SamsungBrowser)\b/i.test(ua);
+  document.body.classList.toggle("is-chromium", isChromium);
 }
 
 function bindElectronDesktopEvents() {
@@ -1200,6 +1209,10 @@ function bindStaticEvents() {
   window.addEventListener("pointerup", handleWindowPointerUp);
   window.addEventListener("mousedown", handleMouseSideButtonNavigation, { capture: true });
   window.addEventListener("popstate", handleBrowserHistoryPop);
+  window.addEventListener("resize", () => {
+    if (state.module !== "presenter") return;
+    window.requestAnimationFrame(() => applyPresenterPreviewScales(refs.detailPane));
+  });
 
   SYSTEM_THEME_QUERY?.addEventListener("change", () => {
     if (!safeStorageGet("local", STORAGE.theme)) applyTheme(readTheme());
@@ -2723,7 +2736,7 @@ function yieldToBrowser() {
   return new Promise((resolve) => globalThis.setTimeout(resolve, 0));
 }
 
-const SUPABASE_STATIC_CACHE_TTL_MS = 10 * 60 * 1000;
+const SUPABASE_STATIC_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 const SUPABASE_STATIC_CACHE_PREFIX = "mindex.supabase.static.v1.";
 const BIBLE_CHAPTER_CACHE_TTL_MS = 12 * 60 * 60 * 1000;
 const BIBLE_CHAPTER_CACHE_PREFIX = "mindex.bible.chapter.v1.";
@@ -2863,6 +2876,7 @@ async function fetchCachedSupabasePaged(table, select = "*", buildQuery = (query
 // on hundreds of rows (and their linked praise records).
 const WORSHIP_INITIAL_ELEMENT_HOME_DAYS = 6;
 const WORSHIP_EMERGENCY_TODAY_ONLY = true;
+const emergencyWorshipSnapshotPromises = new Map();
 
 function localDateStringFromDate(date) {
   const target = date instanceof Date ? date : new Date(date);
@@ -2930,32 +2944,115 @@ function worshipServiceListQuery(query) {
     .order("service_type_id", { ascending: true });
 }
 
+async function fetchWorshipServiceListRows() {
+  const cacheKey = WORSHIP_EMERGENCY_TODAY_ONLY
+    ? `today:${localDateStringWithOffset(new Date(), 0)}`
+    : WORSHIP_SERVICE_LIST_SELECT;
+  try {
+    const rows = await fetchSupabasePaged("mindex_worship_services", WORSHIP_SERVICE_LIST_SELECT, worshipServiceListQuery);
+    writeStaticSupabaseCache("mindex_worship_services", cacheKey, rows);
+    return rows;
+  } catch (error) {
+    const cached = readStaticSupabaseCache("mindex_worship_services", cacheKey);
+    if (cached) {
+      console.warn("Using cached worship services after Supabase fetch failed.", error);
+      return cached;
+    }
+    const emergency = await readEmergencyWorshipServices();
+    if (emergency) {
+      console.warn("Using emergency worship service snapshot after Supabase fetch failed.", error);
+      return emergency;
+    }
+    throw error;
+  }
+}
+
+function worshipRowsCacheKey(serviceIds = []) {
+  return `service-rows:${serviceIds.slice().sort().join(",")}`;
+}
+
+async function loadEmergencyWorshipSnapshot(date = localDateStringWithOffset(new Date(), 0)) {
+  const snapshotDate = String(date || "").trim();
+  if (!snapshotDate) return null;
+  if (emergencyWorshipSnapshotPromises.has(snapshotDate)) return emergencyWorshipSnapshotPromises.get(snapshotDate);
+  const promise = (async () => {
+    try {
+      const response = await fetch(`./data/emergency-worship-${snapshotDate}.json?v=mindex-emergency-${snapshotDate}`, {
+        cache: "no-store",
+      });
+      if (!response.ok) return null;
+      return await response.json();
+    } catch (error) {
+      console.warn("Could not load emergency worship snapshot.", error);
+      return null;
+    }
+  })();
+  emergencyWorshipSnapshotPromises.set(snapshotDate, promise);
+  return promise;
+}
+
+async function readEmergencyWorshipServices() {
+  if (!WORSHIP_EMERGENCY_TODAY_ONLY) return null;
+  const snapshot = await loadEmergencyWorshipSnapshot();
+  return Array.isArray(snapshot?.services) ? snapshot.services : null;
+}
+
+async function readEmergencyWorshipRows(serviceIds = []) {
+  if (!WORSHIP_EMERGENCY_TODAY_ONLY) return null;
+  const ids = new Set(serviceIds.map((id) => String(id || "").trim()).filter(Boolean));
+  const snapshot = await loadEmergencyWorshipSnapshot();
+  const sections = Array.isArray(snapshot?.sections)
+    ? snapshot.sections.filter((section) => ids.has(section.service_id))
+    : [];
+  const sectionIds = new Set(sections.map((section) => section.id).filter(Boolean));
+  const elements = Array.isArray(snapshot?.elements)
+    ? snapshot.elements.filter((element) => sectionIds.has(element.section_id))
+    : [];
+  return sections.length || elements.length ? { sections, elements } : null;
+}
+
 async function fetchWorshipRowsForServiceIds(serviceIds = []) {
   const ids = [...new Set(serviceIds.map((id) => String(id || "").trim()).filter(Boolean))];
   if (!ids.length) return { sections: [], elements: [] };
 
-  const sections = [];
-  for (const batch of chunkArray(ids, 80)) {
-    const rows = await fetchSupabasePaged("mindex_worship_sections", WORSHIP_SECTION_LIST_SELECT, (query) =>
-      query
-        .in("service_id", batch)
-        .order("service_id", { ascending: true })
-        .order("sort_order", { ascending: true }));
-    sections.push(...rows);
-  }
+  const cacheKey = worshipRowsCacheKey(ids);
+  try {
+    const sections = [];
+    for (const batch of chunkArray(ids, 80)) {
+      const rows = await fetchSupabasePaged("mindex_worship_sections", WORSHIP_SECTION_LIST_SELECT, (query) =>
+        query
+          .in("service_id", batch)
+          .order("service_id", { ascending: true })
+          .order("sort_order", { ascending: true }));
+      sections.push(...rows);
+    }
 
-  const sectionIds = sections.map((section) => section.id).filter(Boolean);
-  const elements = [];
-  for (const batch of chunkArray(sectionIds, 80)) {
-    const rows = await fetchSupabasePaged("mindex_worship_elements", WORSHIP_ELEMENT_LIST_SELECT, (query) =>
-      query
-        .in("section_id", batch)
-        .order("section_id", { ascending: true })
-        .order("sort_order", { ascending: true }));
-    elements.push(...rows);
-  }
+    const sectionIds = sections.map((section) => section.id).filter(Boolean);
+    const elements = [];
+    for (const batch of chunkArray(sectionIds, 80)) {
+      const rows = await fetchSupabasePaged("mindex_worship_elements", WORSHIP_ELEMENT_LIST_SELECT, (query) =>
+        query
+          .in("section_id", batch)
+          .order("section_id", { ascending: true })
+          .order("sort_order", { ascending: true }));
+      elements.push(...rows);
+    }
 
-  return { sections, elements };
+    writeStaticSupabaseCache("mindex_worship_rows", cacheKey, [{ sections, elements }]);
+    return { sections, elements };
+  } catch (error) {
+    const cached = readStaticSupabaseCache("mindex_worship_rows", cacheKey)?.[0];
+    if (cached?.sections && cached?.elements) {
+      console.warn("Using cached worship rows after Supabase fetch failed.", error);
+      return cached;
+    }
+    const emergency = await readEmergencyWorshipRows(ids);
+    if (emergency) {
+      console.warn("Using emergency worship row snapshot after Supabase fetch failed.", error);
+      return emergency;
+    }
+    throw error;
+  }
 }
 
 function autoUpcomingPublicServiceTargets(baseDate = new Date()) {
@@ -3184,18 +3281,27 @@ function worshipAppServiceTypeId(typeId) {
 async function loadWorshipData() {
   const [types, services, templates, templateItems] = await Promise.all([
     fetchCachedSupabasePaged("mindex_worship_service_types", WORSHIP_SERVICE_TYPE_SELECT, (query) =>
-      query.order("sort_order", { ascending: true })),
-    fetchSupabasePaged("mindex_worship_services", WORSHIP_SERVICE_LIST_SELECT, worshipServiceListQuery),
+      query.order("sort_order", { ascending: true })).catch((error) => {
+        console.warn("Could not load worship service types; using defaults.", error);
+        return [];
+      }),
+    fetchWorshipServiceListRows(),
     fetchCachedSupabasePaged("mindex_worship_templates", "*", (query) =>
-      query.order("template_level", { ascending: true }).order("name", { ascending: true })),
+      query.order("template_level", { ascending: true }).order("name", { ascending: true })).catch((error) => {
+        console.warn("Could not load worship templates; using persisted service rows only.", error);
+        return [];
+      }),
     fetchCachedSupabasePaged("mindex_worship_template_items", "*", (query) =>
-      query.order("template_id", { ascending: true }).order("sort_order", { ascending: true })),
+      query.order("template_id", { ascending: true }).order("sort_order", { ascending: true })).catch((error) => {
+        console.warn("Could not load worship template items; using persisted service rows only.", error);
+        return [];
+      }),
   ]);
 
   const resolvedTypes = types.length ? types : defaultWorshipServiceTypes();
   state.serviceTypes = resolvedTypes.map(normalizeWorshipServiceType);
   state.services = services.map(normalizeWorshipService);
-  const autoServices = await ensureUpcomingPublicWorshipServices();
+  const autoServices = WORSHIP_EMERGENCY_TODAY_ONLY ? [] : await ensureUpcomingPublicWorshipServices();
   if (autoServices.length) state.services = sortServicesByDate([...state.services, ...autoServices]);
   state.templateElementSuppressions.clear();
   state.worshipTemplates = templates;
@@ -19802,6 +19908,7 @@ function renderPresenterDetail() {
   restorePresenterViewportSnapshot(viewportSnapshot);
   updateSaveState();
   requestAnimationFrame(() => {
+    applyPresenterPreviewScales(refs.detailPane);
     fitPresenterChromakeyScripturePreviews(refs.detailPane);
     fitPresenterSongTitlePreviews(refs.detailPane);
     fitPresenterSermonTitlePreviews(refs.detailPane);
@@ -23520,6 +23627,7 @@ function hydrateDeferredPresenterBoardSection(root, serviceId, slides, groupInde
   placeholder.replaceWith(template.content.firstElementChild);
   syncPresenterBoardSelectionClasses(root);
   refreshIcons();
+  window.requestAnimationFrame(() => applyPresenterPreviewScales(root));
   return true;
 }
 

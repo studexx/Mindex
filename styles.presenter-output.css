@@ -9,6 +9,7 @@
   display: grid;
   width: 100vw;
   height: 100vh;
+  height: 100dvh;
   margin: 0;
   place-items: center;
   overflow: hidden;
@@ -25,10 +26,10 @@
 }
 .presenter-output-body * { box-sizing: border-box; }
 .presenter-output-root {
-  --presenter-stage-width: 1920px;
-  --presenter-stage-height: 1080px;
-  --presenter-stage-scale: min(1, calc(100vw / 1920px), calc(100vh / 1080px));
-  --presenter-stage-unit: 1px;
+  --presenter-stage-width: min(100vw, 177.777778vh);
+  --presenter-stage-height: min(100vh, 56.25vw);
+  --presenter-stage-scale: 1;
+  --presenter-stage-unit: 0.0520833333cqw;
   --presenter-chromakey: #00ff00;
   --presenter-output-bg: var(--presenter-chromakey);
   --presenter-output-fg: #fff;
@@ -118,13 +119,13 @@
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 100cqw;
-  height: 100cqh;
-  --presenter-stage-width: 100cqw;
-  --presenter-stage-height: 100cqh;
+  width: 1920px;
+  height: 1080px;
+  --presenter-stage-width: 1920px;
+  --presenter-stage-height: 1080px;
   --presenter-stage-scale: 1;
-  --presenter-stage-unit: calc(100cqw / 1920);
-  transform: translate(-50%, -50%);
+  --presenter-stage-unit: 1px;
+  transform: translate(-50%, -50%) scale(var(--presenter-preview-scale, 1));
 }
 .presenter-output-layer {
   grid-area: 1 / 1;

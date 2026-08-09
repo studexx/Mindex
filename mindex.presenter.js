@@ -2861,6 +2861,28 @@ function syncPresenterOutputDocumentTitle(payload = {}) {
   document.title = presenterOutputDocumentTitle(payload);
 }
 
+function presenterScaleForBox(width, height, stageWidth = 1920, stageHeight = 1080) {
+  const boxWidth = Number(width);
+  const boxHeight = Number(height);
+  if (!Number.isFinite(boxWidth) || !Number.isFinite(boxHeight) || boxWidth <= 0 || boxHeight <= 0) return 1;
+  return Math.min(1, boxWidth / stageWidth, boxHeight / stageHeight);
+}
+
+function applyPresenterOutputViewportScale(root = document.getElementById("presenterOutputRoot")) {
+  if (!root) return;
+  root.style.setProperty("--presenter-stage-scale", "1");
+}
+
+function applyPresenterPreviewScales(host = document) {
+  if (!host?.querySelectorAll) return;
+  host.querySelectorAll(".svc-slide-mini-canvas.presenter-output-root").forEach((canvas) => {
+    const frame = canvas.closest(".svc-slide-thumb-frame") || canvas.parentElement;
+    const rect = frame?.getBoundingClientRect?.();
+    const scale = presenterScaleForBox(rect?.width, rect?.height);
+    canvas.style.setProperty("--presenter-preview-scale", String(scale));
+  });
+}
+
 function initPresenterOutputCore() {
   document.title = "MINDEX";
   document.documentElement.classList.add("presenter-output-document");
@@ -2868,6 +2890,8 @@ function initPresenterOutputCore() {
   document.body.innerHTML = `
     <main id="presenterOutputRoot" class="presenter-output-root no-chromakey" aria-live="polite"></main>
   `;
+  applyPresenterOutputViewportScale();
+  window.addEventListener("resize", () => applyPresenterOutputViewportScale());
 
   let currentPayload = null;
   let channel = null;
@@ -3216,6 +3240,7 @@ function presenterLastNavigableIndex(slides = []) {
 function renderPresenterOutput(payload, options = {}) {
   const root = document.getElementById("presenterOutputRoot");
   if (!root) return;
+  applyPresenterOutputViewportScale(root);
   clearPresenterOutputAutoAdvanceTimer();
   const slides = Array.isArray(payload?.slides) ? payload.slides : [];
   const liveSlide = payload?.liveScripture?.active ? payload.liveScripture.slide : null;
