@@ -18,6 +18,7 @@ const linkedSongLoadPromises = new Map();
 const worshipPresenterSlideLoadPromises = new Map();
 const worshipScripturePreloadPromises = new Map();
 const serviceItemScripturePreloadPromises = new Map();
+const scheduledPresenterRefreshes = new Map();
 let hymnScoreManifestLoadPromise = null;
 let songCatalogLoaded = false;
 let backgroundSongLoadScheduled = false;
@@ -9260,7 +9261,7 @@ function warmWorshipScriptureReferencesForService(serviceId = state.selectedServ
   const loadKey = String(serviceId);
   if (worshipScripturePreloadPromises.has(loadKey)) return worshipScripturePreloadPromises.get(loadKey);
   const loadPromise = preloadWorshipScriptureReferences(state.worshipSections, state.worshipElements, { serviceId }).then((loaded) => {
-    if (loaded) refreshPresenterForService(serviceId);
+    if (loaded) schedulePresenterRefreshForService(serviceId);
     return loaded;
   }).finally(() => {
     if (worshipScripturePreloadPromises.get(loadKey) === loadPromise) worshipScripturePreloadPromises.delete(loadKey);
@@ -9274,7 +9275,7 @@ function warmServiceItemScriptureReferencesForService(serviceId = state.selected
   const loadKey = String(serviceId);
   if (serviceItemScripturePreloadPromises.has(loadKey)) return serviceItemScripturePreloadPromises.get(loadKey);
   const loadPromise = preloadServiceItemScriptureReferences(serviceId).then((loaded) => {
-    if (loaded) refreshPresenterForService(serviceId);
+    if (loaded) schedulePresenterRefreshForService(serviceId);
     return loaded;
   }).finally(() => {
     if (serviceItemScripturePreloadPromises.get(loadKey) === loadPromise) serviceItemScripturePreloadPromises.delete(loadKey);
@@ -24041,6 +24042,7 @@ function renderPresenterBoardSubgroup(subgroup, activeIndex, serviceId, options 
   const active = subgroup.slides.some(({ slideIndex }) => slideIndex === activeIndex);
   const firstIndex = subgroup.slides[0]?.slideIndex ?? 0;
   const slides = options.slides || annotatePresenterFormStarts(subgroup.slides).entries;
+  const gridEntries = presenterBoardSubgroupGridEntries(slides, activeIndex);
   const rawLabel = subgroup.label || "항목";
   const rawTitle = subgroup.title || subgroup.name;
   const firstSlide = subgroup.slides[0]?.slide || slides[0]?.slide;
@@ -24068,10 +24070,67 @@ function renderPresenterBoardSubgroup(subgroup, activeIndex, serviceId, options 
         </header>` : ""}
       ${inputControls}
       <div class="svc-board-grid">
-        ${slides.map(({ slide, slideIndex, formLabel }) =>
-          renderPresenterSlideThumb(slide, slideIndex, activeIndex, serviceId, formLabel)).join("")}
+        ${gridEntries.map((entry) => entry.placeholder
+          ? renderPresenterBoardThumbGap(entry, serviceId)
+          : renderPresenterSlideThumb(entry.slide, entry.slideIndex, activeIndex, serviceId, entry.formLabel)).join("")}
       </div>
     </div>`;
+}
+
+function presenterBoardSubgroupGridEntries(entries = [], activeIndex = -1) {
+  const limit = 72;
+  if (entries.length <= limit) return entries;
+  const indexes = new Set();
+  const addRange = (from, to) => {
+    for (let index = Math.max(0, from); index <= Math.min(entries.length - 1, to); index += 1) {
+      indexes.add(index);
+    }
+  };
+  addRange(0, 17);
+  addRange(entries.length - 8, entries.length - 1);
+  const localActiveIndex = entries.findIndex((entry) => entry.slideIndex === activeIndex);
+  if (localActiveIndex >= 0) addRange(localActiveIndex - 12, localActiveIndex + 12);
+
+  const sorted = [...indexes].sort((a, b) => a - b);
+  const result = [];
+  let previous = -1;
+  sorted.forEach((entryIndex) => {
+    if (entryIndex > previous + 1) {
+      result.push({
+        placeholder: true,
+        from: previous + 1,
+        to: entryIndex - 1,
+        slideIndex: entries[previous + 1]?.slideIndex ?? entryIndex,
+      });
+    }
+    result.push(entries[entryIndex]);
+    previous = entryIndex;
+  });
+  if (previous < entries.length - 1) {
+    result.push({
+      placeholder: true,
+      from: previous + 1,
+      to: entries.length - 1,
+      slideIndex: entries[previous + 1]?.slideIndex ?? previous + 1,
+    });
+  }
+  return result;
+}
+
+function renderPresenterBoardThumbGap(entry = {}, serviceId = state.selectedServiceId) {
+  const from = Number(entry.from) || 0;
+  const to = Number(entry.to) || from;
+  const count = Math.max(1, to - from + 1);
+  const slideIndex = Number(entry.slideIndex) || from;
+  return `
+    <button class="svc-slide-thumb-gap" type="button"
+      data-presenter-action="jump"
+      data-presenter-index="${slideIndex}"
+      data-service-id="${escapeAttr(serviceId)}"
+      aria-label="${from + 1}번부터 ${to + 1}번까지 ${count}장">
+      <span>${from + 1}-${to + 1}</span>
+      <small>${count}장</small>
+    </button>`;
 }
 
 function renderPresenterBoardSubgroupAudioControls(serviceId, subgroup = {}) {
@@ -24838,9 +24897,9 @@ function renderPresenterControlState(serviceId = state.selectedServiceId) {
         patchPresenterControlsTop(root, service, slides, active, index);
         patchPresenterBoardActiveState(root, serviceId, active, index);
         clearPresenterTransientBoardActiveMarks(root, serviceId);
+        patchPresenterSidebarActiveState(serviceId);
         refreshIcons();
         updateSaveState();
-        renderServiceList();
         return;
       }
       const focusedInput = capturePresenterFocusedInput(root);
@@ -24942,6 +25001,38 @@ function patchPresenterBoardActiveState(root, serviceId, active, index) {
   syncPresenterBoardSelectionClasses(root);
 }
 
+function patchPresenterSidebarActiveState(serviceId = state.selectedServiceId) {
+  if (state.module !== "presenter" || !refs.songList || !serviceId) return;
+  const sidebar = refs.songList.querySelector(".service-sidebar--presenter");
+  if (!sidebar) return;
+  const slides = presenterSlidesForService(serviceId);
+  const active = state.presenter.serviceId === serviceId;
+  const activeIndex = active ? clampPresenterIndex(state.presenter.index, slides.length) : -1;
+  const activeSlide = activeIndex >= 0 ? slides[activeIndex] : null;
+  const items = getServiceItems(serviceId);
+  const activeItemIndexes = new Set();
+  if (activeSlide) {
+    items.forEach((item, index) => {
+      if (!presenterSlideBelongsToItem(activeSlide, item)) return;
+      activeItemIndexes.add(Number.isInteger(item._origIndex) ? item._origIndex : index);
+    });
+  }
+  sidebar.querySelectorAll(".service-outline-row").forEach((row) => {
+    const itemIndexRaw = String(row.dataset.serviceOutlineItemIndex || "").trim();
+    const slideIndexRaw = String(row.dataset.serviceOutlineSlide || "").trim();
+    const itemIndex = itemIndexRaw ? Number(itemIndexRaw) : NaN;
+    const slideIndex = slideIndexRaw ? Number(slideIndexRaw) : NaN;
+    const rowActive = active && (
+      (Number.isInteger(itemIndex) && activeItemIndexes.has(itemIndex))
+      || (!Number.isInteger(itemIndex) && Number.isInteger(slideIndex) && slideIndex === activeIndex)
+    );
+    row.classList.toggle("active", rowActive);
+  });
+  sidebar.querySelectorAll(".service-outline-group").forEach((group) => {
+    group.classList.toggle("active", Boolean(group.querySelector(".service-outline-row.active")));
+  });
+}
+
 async function startPresenterAtSlide(serviceId, index) {
   if (!serviceId || !Number.isFinite(Number(index))) return;
   if (!presenterServiceIsPrepared(serviceId)) preparePresenterService(serviceId);
@@ -24980,14 +25071,14 @@ function preparePresenterService(serviceId = state.selectedServiceId) {
   if (!serviceId) return;
   const outputItems = getServiceOutputItems(serviceId);
   if (!songCatalogLoaded && !songLoadPromise && canUseClientData()) {
-    void loadSongsForIds(outputItems.map((item) => item.song_id)).then(() => refreshPresenterForService(serviceId));
+    void loadSongsForIds(outputItems.map((item) => item.song_id)).then(() => schedulePresenterRefreshForService(serviceId));
   }
   if (
     canUseClientData()
     && !hymnScoreManifestLoadPromise
     && presenterServiceNeedsHymnScoreManifest(serviceId)
   ) {
-    void loadHymnScoreManifest({ silent: true }).then(() => refreshPresenterForService(serviceId));
+    void loadHymnScoreManifest({ silent: true }).then(() => schedulePresenterRefreshForService(serviceId));
   }
   if (
     canUseClientData()
@@ -25034,6 +25125,27 @@ function schedulePendingServiceScriptureResolves(serviceId) {
     if (serviceScriptureTextPayload(item, memo, service).verses.length) return;
     scheduleServiceScriptureBodyResolve(serviceId, index);
   });
+}
+
+function mergePresenterRefreshOptions(current = {}, next = {}) {
+  return {
+    publish: current.publish !== false && next.publish !== false,
+    renderControls: current.renderControls !== false && next.renderControls !== false,
+  };
+}
+
+function schedulePresenterRefreshForService(serviceId, options = {}) {
+  if (!serviceId) return;
+  const key = String(serviceId);
+  const existing = scheduledPresenterRefreshes.get(key);
+  const mergedOptions = mergePresenterRefreshOptions(existing?.options || {}, options);
+  if (existing?.timer) window.clearTimeout(existing.timer);
+  const timer = window.setTimeout(() => {
+    const pending = scheduledPresenterRefreshes.get(key);
+    scheduledPresenterRefreshes.delete(key);
+    refreshPresenterForService(key, pending?.options || mergedOptions);
+  }, 90);
+  scheduledPresenterRefreshes.set(key, { timer, options: mergedOptions });
 }
 
 function refreshPresenterForService(serviceId, options = {}) {
