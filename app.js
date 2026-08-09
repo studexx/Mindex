@@ -8613,10 +8613,12 @@ function normalizeSongFormPresetLabel(value = "") {
     const baseKey = number ? `chorus:${number}` : "chorus";
     return { key: group ? `${baseKey}:${group}` : baseKey, type: "chorus", number, ...(group ? { group } : {}) };
   }
-  const bridge = raw.match(/^(?:b|bridge|브릿지)\s*([a-z])?$/i);
+  const bridge = raw.match(/^(?:b|bridge|브릿지)\s*(\d*)([a-z])?$/i);
   if (bridge) {
-    const group = String(bridge[1] || "").toLowerCase();
-    return { key: group ? `bridge:${group}` : "bridge", type: "bridge", ...(group ? { group } : {}) };
+    const number = Number(bridge[1]) || 0;
+    const group = String(bridge[2] || "").toLowerCase();
+    const baseKey = number ? `bridge:${number}` : "bridge";
+    return { key: group ? `${baseKey}:${group}` : baseKey, type: "bridge", number, ...(group ? { group } : {}) };
   }
   const preChorus = raw.match(/^(?:pc|prechorus|pre-chorus|프리코러스)\s*([a-z])?$/i);
   if (preChorus) {

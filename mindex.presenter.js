@@ -915,14 +915,16 @@ function normalizePresenterFormPresetLabel(value = "") {
       ...(group ? { group, groupIndex: group.charCodeAt(0) - 64 } : {}),
     };
   }
-  const groupedType = raw.match(/^(pc|prechorus|pre-chorus|프리코러스|b|bridge|브릿지|lyrics|가사)\s*([a-z])?$/i);
+  const groupedType = raw.match(/^(pc|prechorus|pre-chorus|프리코러스|b|bridge|브릿지|lyrics|가사)\s*(\d*)([a-z])?$/i);
   if (groupedType) {
     const type = normalizePresenterFormType(groupedType[1]);
-    const group = groupedType[2] ? groupedType[2].toUpperCase() : "";
+    const number = groupedType[2] ? Number(groupedType[2]) : 0;
+    const group = groupedType[3] ? groupedType[3].toUpperCase() : "";
+    const baseKey = number ? `${type}:${number}` : type;
     return {
-      key: group ? `${type}:${group.toLowerCase()}` : type,
+      key: group ? `${baseKey}:${group.toLowerCase()}` : baseKey,
       type,
-      number: 0,
+      number,
       ...(group ? { group, groupIndex: group.charCodeAt(0) - 64 } : {}),
     };
   }
@@ -955,7 +957,7 @@ function normalizePresenterFormType(value = "") {
   const compact = compactSearchValue(value);
   if (/^verse$/i.test(compact)) return "verse";
   if (/^(chorus|후렴|코러스)$/i.test(compact)) return "chorus";
-  if (/^(bridge|브릿지)$/i.test(compact)) return "bridge";
+  if (/^(b|bridge|브릿지)$/i.test(compact)) return "bridge";
   if (/^(prechorus|프리코러스)$/i.test(compact)) return "pre-chorus";
   if (/^(coda|코다|ending|엔딩)$/i.test(compact)) return "coda";
   if (/^(tag|태그)$/i.test(compact)) return "tag";
