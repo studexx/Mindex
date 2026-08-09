@@ -2875,7 +2875,7 @@ async function fetchCachedSupabasePaged(table, select = "*", buildQuery = (query
 // Loading every recent and future service's elements made the first screen wait
 // on hundreds of rows (and their linked praise records).
 const WORSHIP_INITIAL_ELEMENT_HOME_DAYS = 6;
-const WORSHIP_EMERGENCY_TODAY_ONLY = true;
+const WORSHIP_EMERGENCY_TODAY_ONLY = false;
 const emergencyWorshipSnapshotPromises = new Map();
 
 function localDateStringFromDate(date) {
