@@ -734,6 +734,8 @@ const state = {
 };
 
 const refs = {};
+let presenterPreviewScaleObserver = null;
+let presenterPreviewScaleRaf = 0;
 const bibleBookLookupCache = {
   books: null,
   byCode: new Map(),
@@ -888,6 +890,30 @@ function restorePresenterViewportSnapshot(snapshot) {
       pane.scrollTop = snapshot.scrollTop;
     }
   });
+}
+
+function schedulePresenterPreviewScaleUpdate(host = refs.detailPane) {
+  if (!host?.querySelectorAll || typeof applyPresenterPreviewScales !== "function") return;
+  if (presenterPreviewScaleRaf) window.cancelAnimationFrame(presenterPreviewScaleRaf);
+  presenterPreviewScaleRaf = window.requestAnimationFrame(() => {
+    applyPresenterPreviewScales(host);
+    presenterPreviewScaleRaf = window.requestAnimationFrame(() => {
+      applyPresenterPreviewScales(host);
+      presenterPreviewScaleRaf = 0;
+    });
+  });
+}
+
+function observePresenterPreviewScaleFrames(host = refs.detailPane) {
+  presenterPreviewScaleObserver?.disconnect?.();
+  presenterPreviewScaleObserver = null;
+  if (!host?.querySelectorAll || typeof ResizeObserver === "undefined") return;
+  const frames = [...host.querySelectorAll(".svc-slide-thumb-frame")];
+  if (!frames.length) return;
+  presenterPreviewScaleObserver = new ResizeObserver(() => {
+    if (state.module === "presenter") schedulePresenterPreviewScaleUpdate(host);
+  });
+  frames.forEach((frame) => presenterPreviewScaleObserver.observe(frame));
 }
 
 async function loadHymnScoreManifest({ silent = false } = {}) {
@@ -1211,7 +1237,7 @@ function bindStaticEvents() {
   window.addEventListener("popstate", handleBrowserHistoryPop);
   window.addEventListener("resize", () => {
     if (state.module !== "presenter") return;
-    window.requestAnimationFrame(() => applyPresenterPreviewScales(refs.detailPane));
+    schedulePresenterPreviewScaleUpdate(refs.detailPane);
   });
 
   SYSTEM_THEME_QUERY?.addEventListener("change", () => {
@@ -19886,8 +19912,9 @@ function renderPresenterDetail() {
   mountDeferredPresenterBoardSections(document.getElementById("servicePresenterControls"), serviceId, presenterSlides);
   restorePresenterViewportSnapshot(viewportSnapshot);
   updateSaveState();
+  observePresenterPreviewScaleFrames(refs.detailPane);
+  schedulePresenterPreviewScaleUpdate(refs.detailPane);
   requestAnimationFrame(() => {
-    applyPresenterPreviewScales(refs.detailPane);
     fitPresenterChromakeyScripturePreviews(refs.detailPane);
     fitPresenterSongTitlePreviews(refs.detailPane);
     fitPresenterSermonTitlePreviews(refs.detailPane);
@@ -23599,7 +23626,8 @@ function hydrateDeferredPresenterBoardSection(root, serviceId, slides, groupInde
   placeholder.replaceWith(template.content.firstElementChild);
   syncPresenterBoardSelectionClasses(root);
   refreshIcons();
-  window.requestAnimationFrame(() => applyPresenterPreviewScales(root));
+  observePresenterPreviewScaleFrames(root);
+  schedulePresenterPreviewScaleUpdate(root);
   return true;
 }
 
@@ -25036,6 +25064,7 @@ function renderPresenterControlState(serviceId = state.selectedServiceId) {
         patchPresenterBoardActiveState(root, serviceId, active, index);
         clearPresenterTransientBoardActiveMarks(root, serviceId);
         refreshIcons();
+        schedulePresenterPreviewScaleUpdate(root);
         updateSaveState();
         renderServiceList();
         return;
@@ -25057,6 +25086,8 @@ function renderPresenterControlState(serviceId = state.selectedServiceId) {
       refreshIcons();
       mountDeferredPresenterBoardSections(nextRoot, serviceId, slides);
       restorePresenterViewportSnapshot(viewportSnapshot);
+      observePresenterPreviewScaleFrames(nextRoot);
+      schedulePresenterPreviewScaleUpdate(nextRoot);
       updateSaveState();
       renderServiceList();
       return;
