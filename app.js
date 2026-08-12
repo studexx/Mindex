@@ -24755,7 +24755,7 @@ function scrollPresenterBoardToTop(serviceId = state.selectedServiceId) {
     target.scrollIntoView({
       block: "start",
       inline: "nearest",
-      behavior: "smooth",
+      behavior: "auto",
     });
   };
   window.requestAnimationFrame(run);
@@ -24786,7 +24786,7 @@ function scrollPresenterBoardToIndex(serviceId, index, options = {}) {
     thumb.scrollIntoView({
       block: options.block || "center",
       inline: "nearest",
-      behavior: options.behavior || "smooth",
+      behavior: options.behavior || "auto",
     });
     return true;
   };

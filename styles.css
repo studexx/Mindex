@@ -7030,10 +7030,19 @@ body.is-chromium .svc-slide-thumb-wrap.active {
 .svc-slide-thumb-wrap:has(.svc-slide-thumb:focus-visible) {
   background: color-mix(in srgb, var(--accent) 10%, var(--panel-2) 12%);
 }
+body.is-chromium .svc-slide-thumb-wrap:has(.svc-slide-thumb:hover),
+body.is-chromium .svc-slide-thumb-wrap:has(.svc-slide-thumb:focus-visible) {
+  background: transparent;
+}
 .svc-slide-thumb-wrap:has(.svc-slide-thumb:hover) .svc-slide-thumb-no,
 .svc-slide-thumb-wrap:has(.svc-slide-thumb:focus-visible) .svc-slide-thumb-no {
   color: var(--accent);
   font-weight: 800;
+}
+body.is-chromium .svc-slide-thumb-wrap:has(.svc-slide-thumb:hover) .svc-slide-thumb-no,
+body.is-chromium .svc-slide-thumb-wrap:has(.svc-slide-thumb:focus-visible) .svc-slide-thumb-no {
+  color: var(--ink-3);
+  font-weight: 700;
 }
 .svc-slide-thumb-meta {
   display: flex;
@@ -7155,6 +7164,10 @@ body.is-chromium .svc-slide-thumb-frame {
   box-shadow:
     inset 0 0 0 1px rgba(255,255,255,.46),
     0 1px 3px rgba(0, 0, 0, .10);
+}
+body.is-chromium .svc-slide-thumb:hover .svc-slide-thumb-frame {
+  outline: 1px solid color-mix(in srgb, var(--accent) 50%, transparent);
+  outline-offset: -1px;
 }
 body.is-chromium .svc-slide-thumb:hover .svc-slide-thumb-frame,
 body.is-chromium .svc-slide-thumb.active .svc-slide-thumb-frame,
