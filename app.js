@@ -25140,6 +25140,16 @@ function patchPresenterControlsTop(root, service, slides, active, index) {
   if (!root || !service) return;
   root.setAttribute("aria-label", uiText("presenter.controls"));
   const currentTop = root.querySelector(".svc-presenter-top");
+  if (currentTop?.querySelector(":active")) {
+    if (root.dataset.presenterTopPatchPending !== "true") {
+      root.dataset.presenterTopPatchPending = "true";
+      window.setTimeout(() => {
+        delete root.dataset.presenterTopPatchPending;
+        if (root.isConnected) renderPresenterControlState(service.id);
+      }, 0);
+    }
+    return;
+  }
   const template = document.createElement("template");
   template.innerHTML = renderPresenterControlsTop(service, slides, active, index).trim();
   const nextTop = template.content.firstElementChild;

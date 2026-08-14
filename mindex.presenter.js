@@ -2643,9 +2643,9 @@ function markPresenterOutputConnected(clientId = "", warmup = null) {
     && Date.now() - state.presenter.outputConnectedAt <= PRESENTER_OUTPUT_HEARTBEAT_TTL_MS;
   state.presenter.outputConnectedAt = Date.now();
   if (clientId) state.presenter.outputClientId = clientId;
-  updatePresenterOutputWarmupState(warmup);
+  const warmupChanged = updatePresenterOutputWarmupState(warmup);
   if (!state.presenter.outputWindowMonitor) startPresenterOutputWindowMonitor(state.presenter.serviceId);
-  if (!wasConnected || warmup) refreshPresenterOutputConnectionState();
+  if (!wasConnected || warmupChanged) refreshPresenterOutputConnectionState();
 }
 
 function markPresenterOutputDisconnected(clientId = "") {
@@ -2660,11 +2660,11 @@ function markPresenterOutputDisconnected(clientId = "") {
 }
 
 function updatePresenterOutputWarmupState(warmup = null) {
-  if (!warmup || typeof warmup !== "object") return;
+  if (!warmup || typeof warmup !== "object") return false;
   const total = Math.max(0, Number(warmup.total) || 0);
   const ready = Math.max(0, Math.min(total, Number(warmup.ready) || 0));
   const queued = Math.max(0, Math.min(total, Number(warmup.queued) || 0));
-  state.presenter.outputWarmup = {
+  const nextWarmup = {
     serviceId: warmup.serviceId || state.presenter.serviceId || "",
     total,
     ready,
@@ -2672,6 +2672,15 @@ function updatePresenterOutputWarmupState(warmup = null) {
     complete: Boolean(warmup.complete) || (total > 0 && ready >= total),
     updatedAt: Date.now(),
   };
+  const previous = state.presenter.outputWarmup;
+  const changed = !previous
+    || previous.serviceId !== nextWarmup.serviceId
+    || previous.total !== nextWarmup.total
+    || previous.ready !== nextWarmup.ready
+    || previous.queued !== nextWarmup.queued
+    || previous.complete !== nextWarmup.complete;
+  state.presenter.outputWarmup = nextWarmup;
+  return changed;
 }
 
 function refreshPresenterOutputConnectionState() {
