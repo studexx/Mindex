@@ -245,7 +245,6 @@ const PRESENTER_SIGNAL_KEY = "mindex.presenter.signal";
 const PRESENTER_JUMP_MAX_DIGITS = 3;
 const PRESENTER_OUTPUT_HEARTBEAT_INTERVAL_MS = 1000;
 const PRESENTER_OUTPUT_HEARTBEAT_TTL_MS = 3000;
-const PRESENTER_FULLSCREEN_RETRY_DELAYS_MS = [0, 80, 240, 600];
 const PRESENTER_OUTPUT_ESCAPE_EXIT_MS = 1600;
 const PRESENTER_OUTPUT_IMAGE_PRELOAD_RADIUS = 8;
 const PRESENTER_OUTPUT_SCORE_PRELOAD_LIMIT = 32;
@@ -21922,7 +21921,7 @@ function renderPresenterHelpControl() {
     ["범위 밖 번호", "현재 화면 유지"],
     ["Esc Esc", "프레젠터 종료"],
     ["실시간 성구 송출", "해당 순서에서 성구 입력"],
-    ["출력 전체화면", "컨트롤러 F11 · 출력 창 F / Space / Enter"],
+    ["출력 전체화면", "출력 창에서 F"],
   ];
   return `
     <details class="svc-presenter-help" data-presenter-help>
@@ -21932,7 +21931,7 @@ function renderPresenterHelpControl() {
       <div class="svc-presenter-help-panel" role="dialog" aria-label="${escapeAttr(uiText("presenter.help.title"))}">
         <div class="svc-presenter-help-head">
           <strong>${escapeHtml(uiText("presenter.help.title"))}</strong>
-          <small>출력 창이 열려 있으면 컨트롤러 F11도 출력 창 전체화면을 우선 적용합니다</small>
+          <small>브라우저 전체화면은 출력 창에서 직접 F를 눌러 적용합니다</small>
         </div>
         <dl>
           ${rows.map(([key, value]) => `
@@ -24949,7 +24948,7 @@ async function openPresenterOutput(serviceId = state.selectedServiceId) {
   const targetRect = await resolvePresenterTargetScreenRect();
   if (!state.presenter.screens.length) void requestPresenterScreens();
 
-  const url = presenterOutputUrl({ fullscreen: true });
+  const url = presenterOutputUrl();
   if (window.mindexElectron?.openPresenterOutput) {
     try {
       await window.mindexElectron.openPresenterOutput({ url, targetRect });
@@ -24972,22 +24971,12 @@ async function openPresenterOutput(serviceId = state.selectedServiceId) {
   state.presenter.outputWindow = outputWindow;
   startPresenterOutputWindowMonitor(serviceId);
   outputWindow.focus();
-  requestPresenterOutputFullscreenOnce(outputWindow);
   if (!targetRect) await positionPresenterOutputWindow(outputWindow);
   outputWindow.addEventListener?.("load", () => {
     publishPresenterState();
   }, { once: true });
   window.setTimeout(() => publishPresenterState(), 250);
   renderPresenterControlState(serviceId);
-}
-
-function requestPresenterOutputFullscreenOnce(outputWindow) {
-  try {
-    if (!outputWindow || outputWindow.closed) return;
-    outputWindow.document?.documentElement?.requestFullscreen?.().catch?.(() => {});
-  } catch {
-    // Browsers may reject cross-window fullscreen unless the Show click activation is still alive.
-  }
 }
 
 function presenterOutputWindowRef() {
@@ -25003,7 +24992,6 @@ function presenterOutputWindowRef() {
 function presenterOutputWindowFeatures(targetRect = null) {
   const features = [
     "popup=yes",
-    "fullscreen=yes",
     "menubar=no",
     "toolbar=no",
     "location=no",

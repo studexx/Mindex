@@ -2837,18 +2837,6 @@ function handlePresenterShortcut(event) {
 
 function requestPresenterOutputFullscreenFromController() {
   window.mindexElectron?.fullscreenPresenterOutput?.().catch?.(() => {});
-  try {
-    const outputWindow = presenterOutputWindowRef();
-    outputWindow?.document?.documentElement?.requestFullscreen?.().catch?.(() => {});
-  } catch {
-    // Cross-window fullscreen can be rejected outside the current browser activation.
-  }
-  const payload = {
-    type: "presenter-output-fullscreen",
-    updatedAt: Date.now(),
-  };
-  state.presenter.channel?.postMessage(payload);
-  safeStorageSet("local", PRESENTER_SIGNAL_KEY, JSON.stringify(payload));
 }
 
 function shouldKeepPresenterShortcutInFocusedControl(event) {
@@ -3015,10 +3003,6 @@ function initPresenterOutputCore() {
           window.close();
         }, 40);
       }
-      if (event.data?.type === "presenter-output-fullscreen") {
-        requestLocalPresenterFullscreen({ retry: true, requireActivation: true });
-        postHeartbeat();
-      }
     };
     window.setTimeout(() => {
       channel.postMessage({ type: "presenter-ready", clientId: outputClientId });
@@ -3044,10 +3028,6 @@ function initPresenterOutputCore() {
     if (event.key !== PRESENTER_SIGNAL_KEY || !event.newValue) return;
     try {
       const message = JSON.parse(event.newValue);
-      if (message.type === "presenter-output-fullscreen") {
-        requestLocalPresenterFullscreen({ retry: true, requireActivation: true });
-        postHeartbeat();
-      }
     } catch {
       // Ignore malformed cross-window presenter signals.
     }
@@ -3078,12 +3058,6 @@ function initPresenterOutputCore() {
         publishPresenterPayload(currentPayload);
         renderPresenterOutput(currentPayload, { onAutoAdvance: requestPresenterOutputNext });
       }
-      return;
-    }
-    if (!event.metaKey && !event.ctrlKey && !event.altKey && (event.key === "Enter" || event.key === " ")) {
-      event.preventDefault();
-      requestLocalPresenterFullscreen();
-      postHeartbeat();
       return;
     }
     if (!event.metaKey && !event.ctrlKey && !event.altKey && event.key === "Escape" && jumpDraft) {
@@ -3119,35 +3093,10 @@ function initPresenterOutputCore() {
       }
     }
   });
-  window.addEventListener("pointerdown", () => {
-    document.documentElement.requestFullscreen?.().catch?.(() => {});
-  }, { once: true });
-  document.addEventListener("fullscreenchange", () => {
-    if (shouldAutoFullscreenPresenterOutput() && !document.fullscreenElement) exitArmedAt = Date.now();
-  });
-
 }
 
-function shouldAutoFullscreenPresenterOutput() {
-  return new URLSearchParams(window.location.search).get("fullscreen") === "1";
-}
-
-function requestLocalPresenterFullscreen(options = {}) {
-  const canRequest = () => !options.requireActivation || !navigator.userActivation || navigator.userActivation.isActive;
-  const request = () => {
-    if (!canRequest()) return;
-    document.documentElement.requestFullscreen?.().catch?.(() => {});
-  };
-  if (!options.retry) {
-    request();
-    return;
-  }
-  const delays = options.retry ? PRESENTER_FULLSCREEN_RETRY_DELAYS_MS : [0];
-  delays.forEach((delay) => {
-    window.setTimeout(() => {
-      request();
-    }, delay);
-  });
+function requestLocalPresenterFullscreen() {
+  document.documentElement.requestFullscreen?.().catch?.(() => {});
 }
 
 function presenterOutputKeyAction(event) {

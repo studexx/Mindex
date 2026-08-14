@@ -4787,7 +4787,6 @@ def main() -> int:
                     )
                     page.click(f'.svc-presenter-launch[data-service-id="{service["id"]}"]')
                     page.wait_for_function("() => Boolean(window.__mindexPresenterOpenArgs)", timeout=5000)
-                    page.wait_for_function("() => (window.__mindexPresenterFullscreenCalls || 0) > 0", timeout=5000)
                     target_state = page.evaluate(
                         """
                         (() => ({
@@ -4800,13 +4799,13 @@ def main() -> int:
                     )
                     target_features = target_state["args"]["features"] or ""
                     if (
-                        "fullscreen=1" in target_state["args"]["url"]
+                        "fullscreen=1" not in target_state["args"]["url"]
                         and "left=1440" in target_features
                         and "top=0" in target_features
                         and "width=1920" in target_features
                         and "height=1080" in target_features
-                        and "fullscreen=yes" in target_features
-                        and target_state["fullscreenCalls"] > 0
+                        and "fullscreen=yes" not in target_features
+                        and target_state["fullscreenCalls"] == 0
                         and target_state["focusCalls"] == 1
                         and target_state["openCalls"] == 1
                     ):
@@ -6317,10 +6316,10 @@ def main() -> int:
                     controller_f11_state["handled"]
                     and controller_f11_state["preventCount"] == 1
                     and controller_f11_state["stopCount"] == 1
-                    and controller_f11_state["directFullscreenCalls"] == 1
+                    and controller_f11_state["directFullscreenCalls"] == 0
                     and controller_f11_state["electronFullscreenCalls"] == 1
-                    and controller_f11_state["messageTypes"] == ["presenter-output-fullscreen"]
-                    and controller_f11_state["signalType"] == "presenter-output-fullscreen"
+                    and controller_f11_state["messageTypes"] == []
+                    and controller_f11_state["signalType"] == ""
                 ):
                     pass_("presenter-controller-f11-output-fullscreen", json.dumps(controller_f11_state, ensure_ascii=False))
                 else:
