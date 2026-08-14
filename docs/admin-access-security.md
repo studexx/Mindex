@@ -11,6 +11,23 @@ as the anon role allowed by RLS.
 
 This is acceptable only as a temporary trusted-link model.
 
+For church users, prefer the short preset URL instead of copying the full config
+hash:
+
+```text
+https://studexx.github.io/Mindex/church/
+```
+
+That redirect opens:
+
+```text
+https://studexx.github.io/Mindex/?preset=gwc
+```
+
+The deployed `index.html` owns the browser-safe Supabase config for that preset,
+so shared links no longer need to repeat `supabaseUrl` or `supabaseAnonKey`.
+Old full-config links still work for compatibility.
+
 ## Target Model
 
 Use Supabase Auth for administrator access:
@@ -22,7 +39,7 @@ Use Supabase Auth for administrator access:
 5. Open/share Mindex with `auth=required` in the hash:
 
 ```text
-https://<github-user>.github.io/<repo-name>/#supabaseUrl=<PROJECT_URL>&supabaseAnonKey=<ANON_KEY>&auth=required
+https://<github-user>.github.io/<repo-name>/?preset=gwc#auth=required
 ```
 
 For private hosting, injected config can use the same option:
@@ -49,6 +66,9 @@ After `scripts/admin-auth-rls.sql`:
 - Presenter read views remain readable by `anon` and `authenticated`.
 - Server-side imports and GitHub Actions should keep using server-side secrets
   or narrow RPC contracts, not browser write access.
+
+Use `supabase-rls-audit.sql` after policy changes. The expected result is zero
+rows for `rls_disabled`, `anon_write_grant`, and `anon_write_policy`.
 
 ## Important
 

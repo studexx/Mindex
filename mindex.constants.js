@@ -278,6 +278,7 @@
       "anonKey",
       "anon_key",
       "key",
+      "preset",
       "auth",
       "authRequired",
       "auth_required",

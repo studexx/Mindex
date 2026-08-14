@@ -438,7 +438,11 @@ join public.mindex_worship_sections sec on sec.service_id = svc.id
 join public.mindex_worship_elements el on el.section_id = sec.id
 join public.mindex_worship_slides sl on sl.element_id = el.id;
 
--- ── RLS: current prototype collaboration model.
+-- ── RLS: legacy prototype collaboration model.
+-- Do not run this block against the shared church database. The production
+-- security contract is in scripts/admin-auth-rls.sql: anon may read, and only
+-- authenticated administrators may write. Use supabase-rls-audit.sql after
+-- applying RLS changes.
 alter table public.mindex_worship_service_types enable row level security;
 alter table public.mindex_worship_templates enable row level security;
 alter table public.mindex_worship_template_items enable row level security;

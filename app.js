@@ -25,6 +25,7 @@ let hymnScoreManifestLoadPromise = null;
 let songCatalogLoaded = false;
 let backgroundSongLoadScheduled = false;
 const serviceScriptureChapterLoadPromises = new Map();
+const DEFAULT_CONFIG_PRESET = "gwc";
 
 const { BIBLE_CHAPTER_COUNTS } = MINDEX_CONSTANTS;
 
@@ -1900,6 +1901,7 @@ async function applyBrowserHistorySnapshot(snapshot) {
 
 function readConfig(params = readLinkParams()) {
   const injected = window.MINDEX_SUPABASE || {};
+  const preset = normalizeConfigPreset(params.get("preset") || injected.preset || DEFAULT_CONFIG_PRESET);
   const config = {
     url:
       params.get("supabaseUrl") ||
@@ -1924,6 +1926,7 @@ function readConfig(params = readLinkParams()) {
       injected.authRequired ||
       injected.auth_required ||
       false,
+    preset,
   };
   return sanitizeSupabaseConfig(config);
 }
@@ -1935,7 +1938,14 @@ function sanitizeSupabaseConfig(config = {}) {
     url: isPlaceholderSupabaseValue(url) ? "" : url,
     anonKey: isPlaceholderSupabaseValue(anonKey) ? "" : anonKey,
     authRequired: normalizeBooleanFlag(config.authRequired),
+    preset: normalizeConfigPreset(config.preset),
   };
+}
+
+function normalizeConfigPreset(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (!normalized) return "";
+  return /^[a-z0-9_-]{1,40}$/.test(normalized) ? normalized : "";
 }
 
 function normalizeBooleanFlag(value) {
@@ -2054,12 +2064,31 @@ function buildMindexLink(snapshot = currentBrowserHistorySnapshot()) {
   url.searchParams.delete("output");
 
   const params = new URLSearchParams();
-  if (state.config.url) params.set("supabaseUrl", state.config.url);
-  if (state.config.anonKey) params.set("supabaseAnonKey", state.config.anonKey);
+  if (canShareConfigAsPreset()) {
+    params.set("preset", configPresetForLink());
+  } else {
+    if (state.config.url) params.set("supabaseUrl", state.config.url);
+    if (state.config.anonKey) params.set("supabaseAnonKey", state.config.anonKey);
+  }
   if (state.config.authRequired) params.set("auth", "required");
   appendRouteParams(params, snapshot);
   url.hash = params.toString();
   return url.toString();
+}
+
+function configPresetForLink() {
+  return normalizeConfigPreset(state.config.preset || window.MINDEX_SUPABASE?.preset || DEFAULT_CONFIG_PRESET) || DEFAULT_CONFIG_PRESET;
+}
+
+function canShareConfigAsPreset() {
+  const injected = sanitizeSupabaseConfig(window.MINDEX_SUPABASE || {});
+  return Boolean(
+    configPresetForLink()
+    && injected.url
+    && injected.anonKey
+    && state.config.url === injected.url
+    && state.config.anonKey === injected.anonKey
+  );
 }
 
 function appendRouteParams(params, snapshot) {
@@ -2203,8 +2232,12 @@ function authRedirectUrl() {
   const url = new URL(window.location.href);
   url.search = "";
   const params = new URLSearchParams();
-  if (state.config.url) params.set("supabaseUrl", state.config.url);
-  if (state.config.anonKey) params.set("supabaseAnonKey", state.config.anonKey);
+  if (canShareConfigAsPreset()) {
+    params.set("preset", configPresetForLink());
+  } else {
+    if (state.config.url) params.set("supabaseUrl", state.config.url);
+    if (state.config.anonKey) params.set("supabaseAnonKey", state.config.anonKey);
+  }
   params.set("auth", "required");
   appendRouteParams(params, currentBrowserHistorySnapshot());
   url.hash = params.toString();
