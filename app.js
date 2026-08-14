@@ -6817,7 +6817,8 @@ function handlePresenterDetailClick(event) {
     event.preventDefault();
     const serviceId = presenterThumb.dataset.serviceId;
     const index = Number(presenterThumb.dataset.presenterIndex);
-    if (presenterControllerIsLive(serviceId)) {
+    const live = presenterControllerIsLive(serviceId);
+    if (live) {
       runPresenterAction("jump", serviceId, { index });
     } else {
       selectPresenterBoardSlide(serviceId, index, {
@@ -6825,9 +6826,8 @@ function handlePresenterDetailClick(event) {
         range: event.shiftKey,
       });
       syncSelectedServiceItemToPresenterSlide(serviceId, index);
-      renderPresenterControlState(serviceId);
     }
-    scrollPresenterBoardToIndex(serviceId, index);
+    if (live) scrollPresenterBoardToIndex(serviceId, index);
     return true;
   }
 
@@ -6843,7 +6843,6 @@ function handlePresenterDetailClick(event) {
         range: event.shiftKey,
       });
       syncSelectedServiceItemToPresenterSlide(serviceId, index);
-      renderPresenterControlState(serviceId);
     }
     scrollPresenterBoardToIndex(serviceId, index, { force: true });
     return true;
@@ -23704,6 +23703,8 @@ function selectPresenterBoardSlide(serviceId, slideIndex, options = {}) {
     drag: current.drag || null,
     clipboard: current.clipboard || null,
   };
+  const root = document.getElementById("servicePresenterControls");
+  if (root?.isConnected) root.dataset.presenterInteractionAt = String(Date.now());
   if (options.render === false) return;
   syncPresenterBoardSelectionClasses();
 }
@@ -24778,15 +24779,28 @@ function scrollPresenterBoardToIndex(serviceId, index, options = {}) {
   const run = () => {
     const root = document.getElementById("servicePresenterControls");
     if (!root?.isConnected) return false;
+    const viewport = refs.detailPane?.isConnected ? refs.detailPane : root;
+    const scrollTopBeforeHydration = viewport.scrollTop;
     const serviceIds = [...new Set([serviceId, state.selectedServiceId].filter(Boolean))];
     let thumb = [...root.querySelectorAll(".svc-slide-thumb[data-presenter-index][data-service-id]")]
       .find((node) => serviceIds.includes(node.dataset.serviceId) && Number(node.dataset.presenterIndex) === targetIndex);
-    if (!thumb && hydrateDeferredPresenterBoardSectionForSlide(root, serviceId, targetIndex)) {
-      thumb = [...root.querySelectorAll(".svc-slide-thumb[data-presenter-index][data-service-id]")]
-        .find((node) => serviceIds.includes(node.dataset.serviceId) && Number(node.dataset.presenterIndex) === targetIndex);
+    if (!thumb) {
+      const overflowAnchor = viewport.style.overflowAnchor;
+      viewport.style.overflowAnchor = "none";
+      if (!hydrateDeferredPresenterBoardSectionForSlide(root, serviceId, targetIndex)) {
+        viewport.style.overflowAnchor = overflowAnchor;
+        return false;
+      }
+      viewport.scrollTop = scrollTopBeforeHydration;
+      window.requestAnimationFrame(() => {
+        viewport.scrollTop = scrollTopBeforeHydration;
+        run();
+        window.requestAnimationFrame(() => {
+          viewport.style.overflowAnchor = overflowAnchor;
+        });
+      });
+      return true;
     }
-    if (!thumb) return false;
-    const viewport = refs.detailPane?.isConnected ? refs.detailPane : root;
     const viewportRect = viewport.getBoundingClientRect();
     const thumbRect = thumb.getBoundingClientRect();
     const fullyVisible = thumbRect.top >= viewportRect.top
@@ -25063,6 +25077,18 @@ function renderPresenterControlState(serviceId = state.selectedServiceId) {
         schedulePresenterPreviewScaleUpdate(root);
         updateSaveState();
         renderServiceList();
+        return;
+      }
+      const interactionAt = Number(root.dataset.presenterInteractionAt) || 0;
+      const interactionDelay = 150 - (Date.now() - interactionAt);
+      if (interactionDelay > 0) {
+        if (root.dataset.presenterBoardPatchPending !== "true") {
+          root.dataset.presenterBoardPatchPending = "true";
+          window.setTimeout(() => {
+            delete root.dataset.presenterBoardPatchPending;
+            if (root.isConnected) renderPresenterControlState(serviceId);
+          }, interactionDelay + 16);
+        }
         return;
       }
       const focusedInput = capturePresenterFocusedInput(root);

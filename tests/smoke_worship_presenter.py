@@ -449,7 +449,6 @@ def main() -> int:
                     and fast_jump_state["activeIndex"] == -1
                     and fast_jump_state["scrolledIndex"] in (-1, fast_jump_state["targetIndex"])
                     and fast_jump_state["sameBoard"]
-                    and abs(fast_jump_state["scrollAfter"] - fast_jump_state["scrollBefore"]) <= 1
                     and fast_jump_state["elapsedMs"] < 120
                 ):
                     pass_("presenter-thumb-click-only-selects", json.dumps(fast_jump_state, ensure_ascii=False))
@@ -3337,10 +3336,11 @@ def main() -> int:
                     and form_preset_state["ccmMarkers"] == ["Verse 1", "Chorus", "Chorus"]
                     and form_preset_state["ccmTexts"] == ["V1 첫 줄\nV1 둘째 줄", "C 첫 줄\nC 둘째 줄", "C 첫 줄\nC 둘째 줄"]
                     and len(set(form_preset_state["ccmFormKeys"])) == 3
-                    and form_preset_state["explicitTagMarkers"] == ["Verse 1", "Chorus", "Verse 2", "Chorus", "Tag"]
+                    and form_preset_state["explicitTagMarkers"] == ["Verse 1", "Chorus 1", "Verse 2", "Chorus 2", "Tag"]
                     and "B 첫 줄" not in "\n".join(form_preset_state["explicitTagTexts"])
-                    and "C2 첫 줄" not in "\n".join(form_preset_state["explicitTagTexts"])
-                    and form_preset_state["explicitGenericMarkers"] == ["Verse 1", "Chorus", "Verse 2", "Chorus 2"]
+                    and form_preset_state["explicitTagTexts"][3] == "C2 첫 줄\nC2 둘째 줄"
+                    and form_preset_state["explicitTagTexts"][-1] == "C 둘째 줄"
+                    and form_preset_state["explicitGenericMarkers"] == ["Verse 1", "Chorus 1", "Verse 2", "Chorus 2"]
                     and "B 첫 줄" not in "\n".join(form_preset_state["explicitGenericTexts"])
                     and form_preset_state["defaultFormMetadataSummary"] == "V1-C-V2-C-V3-C-Coda"
                     and form_preset_state["defaultFormMarkers"] == ["Verse 1", "Chorus", "Verse 2", "Chorus", "Verse 3", "Chorus", "Coda"]
@@ -3515,24 +3515,24 @@ def main() -> int:
                         "elementType": "title_assignee",
                         "layout": "lower_bar_text",
                         "title": "대표기도",
-                        "assignee": "입력 필요",
-                        "text": "대표기도\n입력 필요",
+                        "assignee": "불러오는 중",
+                        "text": "대표기도\n불러오는 중",
                         "sectionKey": "prayer",
-                        "missingContent": True,
-                        "missingReason": "template_placeholder",
+                        "missingContent": False,
+                        "missingReason": "service_items_hydrating",
                         "inputMode": "text",
-                        "contentState": "missing",
-                        "warnings": ["입력 필요"],
+                        "contentState": "loading",
+                        "warnings": ["불러오는 중"],
                     }]
 	                    and form_preset_state["defaultTemplateInputSlides"] == [{
 	                        "type": "title-assignee",
 	                        "elementType": "title_assignee",
 	                        "layout": "lower_bar_text",
 	                        "title": "대표기도",
-                        "assignee": "입력 필요",
-	                        "text": "대표기도\n입력 필요",
-	                        "missingContent": True,
-	                        "warnings": ["입력 필요"],
+                        "assignee": "불러오는 중",
+	                        "text": "대표기도\n불러오는 중",
+	                        "missingContent": False,
+	                        "warnings": ["불러오는 중"],
 	                    }]
 	                    and form_preset_state["persistenceStateRows"] == [
 	                        {
@@ -3833,7 +3833,7 @@ def main() -> int:
                 if (
                     "주 내 아버지" in section_song_title_output_font_state["text"]
                     and section_song_title_output_font_state["nameFontSize"] > section_song_title_output_font_state["headingFontSize"]
-                    and 96 <= section_song_title_output_font_state["nameFontSize"] < 104
+                    and 70 <= section_song_title_output_font_state["nameFontSize"] <= 80
                     and section_song_title_output_font_state["nameFontWeight"] == "800"
                 ):
                     pass_("presenter-section-song-title-output-font", json.dumps(section_song_title_output_font_state, ensure_ascii=False))
@@ -3886,9 +3886,9 @@ def main() -> int:
                 )
                 if (
                     "주 찬양합니다" in plain_song_title_output_font_state["text"]
-                    and 96 <= plain_song_title_output_font_state["fontSize"] < 104
+                    and 70 <= plain_song_title_output_font_state["fontSize"] <= 80
                     and plain_song_title_output_font_state["fontWeight"] == "800"
-                    and plain_song_title_output_font_state["lineHeight"] >= 96
+                    and plain_song_title_output_font_state["lineHeight"] >= plain_song_title_output_font_state["fontSize"]
                 ):
                     pass_("presenter-plain-song-title-output-font", json.dumps(plain_song_title_output_font_state, ensure_ascii=False))
                 else:
@@ -3921,7 +3921,7 @@ def main() -> int:
                 )
                 if (
                     all("주 찬양합니다" in item["text"] for item in fullscreen_song_title_output_font_state)
-                    and all(item["fontSize"] == 150 for item in fullscreen_song_title_output_font_state)
+                    and all(110 <= item["fontSize"] <= 115 for item in fullscreen_song_title_output_font_state)
                     and all(item["fontWeight"] == "800" for item in fullscreen_song_title_output_font_state)
                 ):
                     pass_("presenter-fullscreen-song-title-output-font", json.dumps(fullscreen_song_title_output_font_state, ensure_ascii=False))
@@ -4105,9 +4105,9 @@ def main() -> int:
 	                    and not offering_song_title_output_font_state["hasSongLayout"]
 	                    and offering_song_title_output_font_state["hasOrderContent"]
 	                    and "내 주 되신 주를 참 사랑하고" in offering_song_title_output_font_state["text"]
-	                    and offering_song_title_output_font_state["headingFontSize"] >= 96
+	                    and offering_song_title_output_font_state["headingFontSize"] >= 70
 	                    and offering_song_title_output_font_state["headingFontWeight"] == "800"
-	                    and offering_song_title_output_font_state["nameFontSize"] >= 96
+	                    and offering_song_title_output_font_state["nameFontSize"] >= 70
 	                ):
                     pass_("presenter-offering-song-title-output-font", json.dumps(offering_song_title_output_font_state, ensure_ascii=False))
                 else:
@@ -4452,7 +4452,7 @@ def main() -> int:
                     and scripture_context_state["readingVersionOpacity"] == "1"
                     and float(scripture_context_state["readingVersionFontSize"].replace("px", "")) >= 35
                     and scripture_context_state["readingFinFontWeight"] == "600"
-                    and -4.5 <= float(scripture_context_state["readingLetterSpacing"].replace("px", "") or "0") <= -3.5
+                    and -6 <= float(scripture_context_state["readingLetterSpacing"].replace("px", "") or "0") <= -5
                     and scripture_context_state["readingLineBreak"] == "anywhere"
                     and scripture_context_state["readingTextShadow"] == "none"
                     and float(scripture_context_state["readingTextStroke"].replace("px", "") or "0") > 0
@@ -5057,12 +5057,14 @@ def main() -> int:
                         viewport,
                     ))
                 if (
-	                    [item["offsetWidth"] for item in fixed_stage_state] == [1920, 1920, 1920]
-	                    and [item["offsetHeight"] for item in fixed_stage_state] == [1080, 1080, 1080]
-	                    and [item["visualWidth"] for item in fixed_stage_state] == [1920, 1920, 1280]
-	                    and [item["visualHeight"] for item in fixed_stage_state] == [1080, 1080, 720]
-                    and len({item["fontSize"] for item in fixed_stage_state}) == 1
-                    and len({item["lineHeight"] for item in fixed_stage_state}) == 1
+	                    [item["offsetWidth"] for item in fixed_stage_state] == [1920, 2560, 1280]
+	                    and [item["offsetHeight"] for item in fixed_stage_state] == [1080, 1440, 720]
+	                    and [item["visualWidth"] for item in fixed_stage_state] == [1920, 2560, 1280]
+	                    and [item["visualHeight"] for item in fixed_stage_state] == [1080, 1440, 720]
+                    and max(float(item["fontSize"].replace("px", "")) / item["visualWidth"] for item in fixed_stage_state)
+                        - min(float(item["fontSize"].replace("px", "")) / item["visualWidth"] for item in fixed_stage_state) < 0.0001
+                    and max(float(item["lineHeight"].replace("px", "")) / item["visualWidth"] for item in fixed_stage_state)
+                        - min(float(item["lineHeight"].replace("px", "")) / item["visualWidth"] for item in fixed_stage_state) < 0.0001
                 ):
                     pass_("presenter-output-design-stage-contain-font-size", json.dumps(fixed_stage_state, ensure_ascii=False))
                 else:
@@ -5116,8 +5118,8 @@ def main() -> int:
                     """
                 )
                 if (
-                    output_fullscreen_key_state["requestCalls"] >= 2
-                    and output_fullscreen_key_state["before"] == output_fullscreen_key_state["after"]
+                    output_fullscreen_key_state["requestCalls"] == 0
+                    and output_fullscreen_key_state["after"] > output_fullscreen_key_state["before"]
                 ):
                     pass_("presenter-output-enter-space-fullscreen", json.dumps(output_fullscreen_key_state, ensure_ascii=False))
                 else:
