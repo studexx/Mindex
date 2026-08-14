@@ -2579,51 +2579,55 @@ function restorePresenterControllerSession() {
 function bindPresenterChannel() {
   window.addEventListener("storage", handlePresenterStorageSignal);
   if (!("BroadcastChannel" in window)) return;
-  state.presenter.channel = new BroadcastChannel(PRESENTER_CHANNEL);
-  state.presenter.channel.onmessage = (event) => {
-    const message = event.data || {};
-    if (message.type === "presenter-ready") {
-      markPresenterOutputConnected(message.clientId);
-      const restoreState = restorePresenterControllerSession();
-      if (restoreState === "none") publishPresenterState();
-      return;
-    }
-    if (message.type === "presenter-heartbeat") {
-      markPresenterOutputConnected(message.clientId, message.warmup);
-      restorePresenterControllerSession();
-      return;
-    }
-    if (message.type === "presenter-output-disconnect") {
-      markPresenterOutputDisconnected(message.clientId);
-      return;
-    }
-    if (message.type === "presenter-control") {
-      if (message.action === "stop") {
-        stopPresenterOutput(state.presenter.serviceId);
-        return;
-      }
-      markPresenterOutputConnected(message.clientId);
-      runPresenterAction(message.action, state.presenter.serviceId, {
-        index: Number.isFinite(Number(message.index)) ? Number(message.index) : undefined,
-      });
-      return;
-    }
-    if (message.type === "presenter-jump-draft") {
-      if (message.value) setPresenterJumpDraft(message.value, state.presenter.serviceId);
-      else clearPresenterJumpDraft(state.presenter.serviceId);
-    }
-  };
+  try {
+    state.presenter.channel = new BroadcastChannel(PRESENTER_CHANNEL);
+  } catch {
+    state.presenter.channel = null;
+    return;
+  }
+  state.presenter.channel.onmessage = (event) => handlePresenterControllerMessage(event.data);
   // The output can stay open while the controller reloads. Ask it to announce
   // itself again so sidebar clicks immediately return to live-output behavior.
   state.presenter.channel.postMessage({ type: "presenter-controller-ready" });
 }
 
+function handlePresenterControllerMessage(message = {}) {
+  if (message.type === "presenter-ready") {
+    markPresenterOutputConnected(message.clientId);
+    const restoreState = restorePresenterControllerSession();
+    if (restoreState === "none") publishPresenterState();
+    return;
+  }
+  if (message.type === "presenter-heartbeat") {
+    markPresenterOutputConnected(message.clientId, message.warmup);
+    restorePresenterControllerSession();
+    return;
+  }
+  if (message.type === "presenter-output-disconnect") {
+    markPresenterOutputDisconnected(message.clientId);
+    return;
+  }
+  if (message.type === "presenter-control") {
+    if (message.action === "stop") {
+      stopPresenterOutput(state.presenter.serviceId);
+      return;
+    }
+    markPresenterOutputConnected(message.clientId);
+    runPresenterAction(message.action, state.presenter.serviceId, {
+      index: Number.isFinite(Number(message.index)) ? Number(message.index) : undefined,
+    });
+    return;
+  }
+  if (message.type === "presenter-jump-draft") {
+    if (message.value) setPresenterJumpDraft(message.value, state.presenter.serviceId);
+    else clearPresenterJumpDraft(state.presenter.serviceId);
+  }
+}
+
 function handlePresenterStorageSignal(event) {
   if (event.key !== PRESENTER_SIGNAL_KEY || !event.newValue) return;
   try {
-    const message = JSON.parse(event.newValue);
-    if (message.type === "presenter-output-disconnect") markPresenterOutputDisconnected(message.clientId);
-    if (message.type === "presenter-control" && message.action === "stop") stopPresenterOutput(state.presenter.serviceId);
+    handlePresenterControllerMessage(JSON.parse(event.newValue));
   } catch {
     // Ignore malformed cross-window presenter signals.
   }
@@ -2698,6 +2702,16 @@ function presenterScreenKey(screen) {
   return `${screen.left ?? 0},${screen.top ?? 0}`;
 }
 
+function presenterScreenRect(screen) {
+  if (!screen) return null;
+  return {
+    left: screen.availLeft ?? screen.left ?? 0,
+    top: screen.availTop ?? screen.top ?? 0,
+    width: screen.availWidth || screen.width || 1280,
+    height: screen.availHeight || screen.height || 720,
+  };
+}
+
 async function requestPresenterScreens() {
   if (!window.getScreenDetails || !window.isSecureContext) return;
   try {
@@ -2707,6 +2721,7 @@ async function requestPresenterScreens() {
         key: presenterScreenKey(screen),
         label: screen.isPrimary ? `Display ${index + 1} (Primary)` : `Display ${index + 1}`,
         isPrimary: Boolean(screen.isPrimary),
+        rect: presenterScreenRect(screen),
       }));
       if (state.presenter.serviceId) renderPresenterControlState(state.presenter.serviceId);
     };
@@ -2721,42 +2736,12 @@ function findPresenterTargetScreen(screens, currentScreen) {
   const selectedKey = state.presenter.selectedScreenId;
   return (selectedKey && screens.find((screen) => presenterScreenKey(screen) === selectedKey))
     || screens.find((screen) => !screen.isPrimary)
-    || screens.find((screen) => screen !== currentScreen);
+    || (currentScreen ? screens.find((screen) => screen !== currentScreen) : null);
 }
 
-async function resolvePresenterTargetScreenRect() {
-  if (!window.getScreenDetails || !window.isSecureContext) return null;
-  try {
-    const details = await window.getScreenDetails();
-    const target = findPresenterTargetScreen([...(details.screens || [])], details.currentScreen);
-    if (!target) return null;
-    return {
-      left: target.availLeft ?? target.left ?? 0,
-      top: target.availTop ?? target.top ?? 0,
-      width: target.availWidth || target.width || 1280,
-      height: target.availHeight || target.height || 720,
-    };
-  } catch {
-    return null;
-  }
-}
-
-async function positionPresenterOutputWindow(outputWindow) {
-  if (!outputWindow || !window.getScreenDetails || !window.isSecureContext) return;
-  try {
-    const details = await window.getScreenDetails();
-    const screens = [...(details.screens || [])];
-    const target = findPresenterTargetScreen(screens, details.currentScreen);
-    if (!target) return;
-    const left = target.availLeft ?? target.left ?? 0;
-    const top = target.availTop ?? target.top ?? 0;
-    const width = target.availWidth || target.width || 1280;
-    const height = target.availHeight || target.height || 720;
-    outputWindow.moveTo?.(left, top);
-    outputWindow.resizeTo?.(width, height);
-  } catch {
-    // Manual placement remains the fallback when window-management permission is unavailable.
-  }
+function resolvePresenterTargetScreenRect() {
+  const target = findPresenterTargetScreen(state.presenter.screens || [], null);
+  return target?.rect || null;
 }
 
 function handlePresenterShortcut(event) {
@@ -2911,9 +2896,17 @@ function initPresenterOutputCore() {
   const applyInitialPresenterState = (payload) => {
     applyPayload(payload);
   };
+  const sendControllerMessage = (message) => {
+    const payload = { ...message, updatedAt: Date.now() };
+    if (channel) {
+      channel.postMessage(payload);
+      return true;
+    }
+    return safeStorageSet("local", PRESENTER_SIGNAL_KEY, JSON.stringify(payload));
+  };
   const postHeartbeat = () => {
     if (outputStopping) return;
-    channel?.postMessage({
+    sendControllerMessage({
       type: "presenter-heartbeat",
       clientId: outputClientId,
       warmup: presenterOutputWarmupSummary(),
@@ -2949,8 +2942,7 @@ function initPresenterOutputCore() {
       clientId: outputClientId,
       updatedAt: Date.now(),
     };
-    channel?.postMessage(payload);
-    safeStorageSet("local", PRESENTER_SIGNAL_KEY, JSON.stringify(payload));
+    sendControllerMessage(payload);
     window.setTimeout(() => {
       closeOutputChannel();
       if (canCloseOutputWindow()) window.close();
@@ -2958,10 +2950,7 @@ function initPresenterOutputCore() {
   };
   const requestPresenterOutputNext = () => {
     postHeartbeat();
-    if (channel) {
-      channel.postMessage({ type: "presenter-control", action: "next", clientId: outputClientId });
-      return;
-    }
+    if (sendControllerMessage({ type: "presenter-control", action: "next", clientId: outputClientId })) return;
     currentPayload = applyPresenterActionToPayload(currentPayload, "next");
     publishPresenterPayload(currentPayload);
     renderPresenterOutput(currentPayload, { onAutoAdvance: requestPresenterOutputNext });
@@ -2972,8 +2961,7 @@ function initPresenterOutputCore() {
       clientId: outputClientId,
       updatedAt: Date.now(),
     };
-    channel?.postMessage(payload);
-    safeStorageSet("local", PRESENTER_SIGNAL_KEY, JSON.stringify(payload));
+    sendControllerMessage(payload);
   };
 
   const renderStoredState = () => {
@@ -2986,7 +2974,13 @@ function initPresenterOutputCore() {
   };
 
   if ("BroadcastChannel" in window) {
-    channel = new BroadcastChannel(PRESENTER_CHANNEL);
+    try {
+      channel = new BroadcastChannel(PRESENTER_CHANNEL);
+    } catch {
+      channel = null;
+    }
+  }
+  if (channel) {
     channel.onmessage = (event) => {
       if (event.data?.type === "presenter-state") {
         applyInitialPresenterState(event.data.payload);
@@ -3005,7 +2999,7 @@ function initPresenterOutputCore() {
       }
     };
     window.setTimeout(() => {
-      channel.postMessage({ type: "presenter-ready", clientId: outputClientId });
+      sendControllerMessage({ type: "presenter-ready", clientId: outputClientId });
       postHeartbeat();
     }, 50);
     heartbeatTimer = window.setInterval(postHeartbeat, PRESENTER_OUTPUT_HEARTBEAT_INTERVAL_MS);
@@ -3014,6 +3008,11 @@ function initPresenterOutputCore() {
     // frame before a fullscreen service appears.
   } else {
     renderStoredState();
+    window.setTimeout(() => {
+      sendControllerMessage({ type: "presenter-ready", clientId: outputClientId });
+      postHeartbeat();
+    }, 50);
+    heartbeatTimer = window.setInterval(postHeartbeat, PRESENTER_OUTPUT_HEARTBEAT_INTERVAL_MS);
   }
   window.addEventListener("pagehide", () => {
     postDisconnect();
@@ -3041,7 +3040,7 @@ function initPresenterOutputCore() {
     if (!event.metaKey && !event.ctrlKey && !event.altKey && /^\d$/.test(event.key)) {
       event.preventDefault();
       jumpDraft = `${jumpDraft}${event.key}`.slice(0, PRESENTER_JUMP_MAX_DIGITS);
-      channel?.postMessage({ type: "presenter-jump-draft", value: jumpDraft });
+      sendControllerMessage({ type: "presenter-jump-draft", value: jumpDraft });
       postHeartbeat();
       return;
     }
@@ -3049,11 +3048,9 @@ function initPresenterOutputCore() {
       event.preventDefault();
       const index = Number(jumpDraft) - 1;
       jumpDraft = "";
-      channel?.postMessage({ type: "presenter-jump-draft", value: "" });
+      sendControllerMessage({ type: "presenter-jump-draft", value: "" });
       postHeartbeat();
-      if (channel) {
-        channel.postMessage({ type: "presenter-control", action: "jump", index, clientId: outputClientId });
-      } else {
+      if (!sendControllerMessage({ type: "presenter-control", action: "jump", index, clientId: outputClientId })) {
         currentPayload = applyPresenterActionToPayload(currentPayload, "jump", { index });
         publishPresenterPayload(currentPayload);
         renderPresenterOutput(currentPayload, { onAutoAdvance: requestPresenterOutputNext });
@@ -3063,7 +3060,7 @@ function initPresenterOutputCore() {
     if (!event.metaKey && !event.ctrlKey && !event.altKey && event.key === "Escape" && jumpDraft) {
       event.preventDefault();
       jumpDraft = "";
-      channel?.postMessage({ type: "presenter-jump-draft", value: "" });
+      sendControllerMessage({ type: "presenter-jump-draft", value: "" });
       postHeartbeat();
       return;
     }
@@ -3082,11 +3079,9 @@ function initPresenterOutputCore() {
     if (action) {
       event.preventDefault();
       jumpDraft = "";
-      channel?.postMessage({ type: "presenter-jump-draft", value: "" });
+      sendControllerMessage({ type: "presenter-jump-draft", value: "" });
       postHeartbeat();
-      if (channel) {
-        channel.postMessage({ type: "presenter-control", action, clientId: outputClientId });
-      } else {
+      if (!sendControllerMessage({ type: "presenter-control", action, clientId: outputClientId })) {
         currentPayload = applyPresenterActionToPayload(currentPayload, action);
         publishPresenterPayload(currentPayload);
         renderPresenterOutput(currentPayload, { onAutoAdvance: requestPresenterOutputNext });

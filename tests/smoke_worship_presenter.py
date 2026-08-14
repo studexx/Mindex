@@ -4750,11 +4750,15 @@ def main() -> int:
                             availWidth: 1920,
                             availHeight: 1080,
                           };
-                          window.getScreenDetails = async () => ({
-                            currentScreen: primary,
-                            screens: [primary, secondary],
-                            addEventListener() {},
-                          });
+                          window.__mindexScreenDetailsCalls = 0;
+                          window.getScreenDetails = async () => {
+                            window.__mindexScreenDetailsCalls += 1;
+                            return {
+                              currentScreen: primary,
+                              screens: [primary, secondary],
+                              addEventListener() {},
+                            };
+                          };
                           window.__mindexPresenterOpenArgs = null;
                           window.__mindexPresenterFullscreenCalls = 0;
                           window.__mindexPresenterFocusCalls = 0;
@@ -4785,6 +4789,8 @@ def main() -> int:
                         })()
                         """
                     )
+                    page.evaluate("() => requestPresenterScreens()")
+                    page.wait_for_function("() => state.presenter.screens.length === 2", timeout=5000)
                     page.click(f'.svc-presenter-launch[data-service-id="{service["id"]}"]')
                     page.wait_for_function("() => Boolean(window.__mindexPresenterOpenArgs)", timeout=5000)
                     target_state = page.evaluate(
@@ -4794,6 +4800,7 @@ def main() -> int:
                           fullscreenCalls: window.__mindexPresenterFullscreenCalls || 0,
                           focusCalls: window.__mindexPresenterFocusCalls || 0,
                           openCalls: window.__mindexPresenterOpenCalls || 0,
+                          screenDetailsCalls: window.__mindexScreenDetailsCalls || 0,
                         }))()
                         """
                     )
@@ -4808,6 +4815,7 @@ def main() -> int:
                         and target_state["fullscreenCalls"] == 0
                         and target_state["focusCalls"] == 1
                         and target_state["openCalls"] == 1
+                        and target_state["screenDetailsCalls"] == 1
                     ):
                         pass_("presenter-secondary-fullscreen-launch", json.dumps(target_state, ensure_ascii=False))
                     else:

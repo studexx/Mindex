@@ -24940,13 +24940,10 @@ async function openPresenterOutput(serviceId = state.selectedServiceId) {
     return;
   }
 
-  // Resolve the target display BEFORE creating the window. Chrome appears to
-  // associate a popup's fullscreen target with whichever screen it was
-  // created on; moving an already-open window with moveTo/resizeTo and then
-  // requesting fullscreen can snap back to the origin screen. Opening the
-  // window with left/top already set to the target display avoids that.
-  const targetRect = await resolvePresenterTargetScreenRect();
-  if (!state.presenter.screens.length) void requestPresenterScreens();
+  // Display detection is an explicit, permission-gated action. Reuse only a
+  // previously detected target here so opening the output is never delayed or
+  // blocked by the Screen Details API.
+  const targetRect = resolvePresenterTargetScreenRect();
 
   const url = presenterOutputUrl();
   if (window.mindexElectron?.openPresenterOutput) {
@@ -24971,7 +24968,6 @@ async function openPresenterOutput(serviceId = state.selectedServiceId) {
   state.presenter.outputWindow = outputWindow;
   startPresenterOutputWindowMonitor(serviceId);
   outputWindow.focus();
-  if (!targetRect) await positionPresenterOutputWindow(outputWindow);
   outputWindow.addEventListener?.("load", () => {
     publishPresenterState();
   }, { once: true });
