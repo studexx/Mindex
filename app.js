@@ -896,8 +896,16 @@ function schedulePresenterPreviewScaleUpdate(host = refs.detailPane) {
   if (!host?.querySelectorAll || typeof applyPresenterPreviewScales !== "function") return;
   if (presenterPreviewScaleRaf) window.cancelAnimationFrame(presenterPreviewScaleRaf);
   presenterPreviewScaleRaf = window.requestAnimationFrame(() => {
+    if (!host.isConnected && host !== document) {
+      presenterPreviewScaleRaf = 0;
+      return;
+    }
     applyPresenterPreviewScales(host);
     presenterPreviewScaleRaf = window.requestAnimationFrame(() => {
+      if (!host.isConnected && host !== document) {
+        presenterPreviewScaleRaf = 0;
+        return;
+      }
       applyPresenterPreviewScales(host);
       presenterPreviewScaleRaf = 0;
     });
@@ -908,12 +916,16 @@ function observePresenterPreviewScaleFrames(host = refs.detailPane) {
   presenterPreviewScaleObserver?.disconnect?.();
   presenterPreviewScaleObserver = null;
   if (!host?.querySelectorAll || typeof ResizeObserver === "undefined") return;
-  const frames = [...host.querySelectorAll(".svc-slide-thumb-frame")];
-  if (!frames.length) return;
+  const targets = [
+    host,
+    host.querySelector("#servicePresenterControls"),
+    host.querySelector(".svc-presenter-board-column"),
+  ].filter((target, index, list) => target?.isConnected && list.indexOf(target) === index);
+  if (!targets.length) return;
   presenterPreviewScaleObserver = new ResizeObserver(() => {
     if (state.module === "presenter") schedulePresenterPreviewScaleUpdate(host);
   });
-  frames.forEach((frame) => presenterPreviewScaleObserver.observe(frame));
+  targets.forEach((target) => presenterPreviewScaleObserver.observe(target));
 }
 
 async function loadHymnScoreManifest({ silent = false } = {}) {

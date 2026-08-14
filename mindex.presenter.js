@@ -2892,6 +2892,8 @@ function applyPresenterPreviewScales(host = document) {
     const frame = canvas.closest(".svc-slide-thumb-frame") || canvas.parentElement;
     const rect = frame?.getBoundingClientRect?.();
     const scale = presenterScaleForBox(rect?.width, rect?.height);
+    const currentScale = Number(canvas.style.getPropertyValue("--presenter-preview-scale"));
+    if (Number.isFinite(currentScale) && Math.abs(currentScale - scale) < 0.0005) return;
     canvas.style.setProperty("--presenter-preview-scale", String(scale));
   });
 }
