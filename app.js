@@ -7989,7 +7989,7 @@ async function resolveServiceSongSelectionBeforeSave(serviceId, index) {
   if (!item || !service) return false;
   if (!isSongServiceLabel(item.label) && !isSpecialSongServiceItem(item)) return false;
   const memo = parseServiceItemMemo(item.memo);
-  if (servicePraiseInputMode(item, memo, service) === "manual_praise") return false;
+  const inputMode = servicePraiseInputMode(item, memo, service);
 
   const rawTitle = String(item.raw_title || "").trim();
   if (!rawTitle) {
@@ -8006,7 +8006,7 @@ async function resolveServiceSongSelectionBeforeSave(serviceId, index) {
   if (serviceItemRequiresNewHymnalScoreSong(item) && !isNewHymnalScoreSong(song)) return false;
   linkServiceItemToPraiseSong(item, song, service, {
     forceLyricsMode: isSpecialSongServiceItem(item)
-      && servicePraiseInputMode(item, parseServiceItemMemo(item.memo), service) === "manual_praise",
+      && inputMode === "manual_praise",
   });
   markServiceItemSharedContentDirty(item, service);
   item._worshipElementTemplateModified = true;
@@ -19050,15 +19050,22 @@ function renderPresenterSidebar(query, services, selectedService) {
 
 function renderPresenterSidebarPreparationInput(service) {
   if (!service?.id) return "";
-  const inputCount = presenterServiceEditableInputCount(service);
+  const inputProgress = presenterServiceInputProgress(service);
   const draft = state.presenterPreparationDrafts[service.id] || "";
   const applying = state.presenterPreparationApplyingServiceIds.has(service.id);
   const examples = presenterPreparationPlaceholderForService(service);
+  const progressLabel = inputProgress.loading
+    ? "불러오는 중"
+    : inputProgress.missing
+      ? `${inputProgress.missing}개 입력 필요`
+      : inputProgress.total
+        ? "입력 완료"
+        : "입력 없음";
   return `
     <section class="service-sidebar-section service-sidebar-section--preparation-input" aria-label="예배 입력 붙여넣기">
       <div class="service-sidebar-head">
         <span>예배 입력</span>
-        <small>${escapeHtml(inputCount ? `${inputCount}개 항목` : "입력 없음")}</small>
+        <small>${escapeHtml(progressLabel)}</small>
       </div>
       <div class="svc-presenter-preparation-input svc-presenter-preparation-input--sidebar">
         <textarea class="svc-presenter-preparation-text svc-presenter-preparation-text--sidebar" data-presenter-preparation-input data-service-id="${escapeAttr(service.id)}" rows="4" placeholder="여기에 붙여넣기" aria-label="예배 입력 붙여넣기">${escapeHtml(draft)}</textarea>
@@ -22824,11 +22831,22 @@ async function applyPresenterPreparationInput(serviceId = state.selectedServiceI
   }
 }
 
-function presenterServiceEditableInputCount(service) {
-  if (!service?.id) return 0;
-  return servicePrepEditorItems(service.id)
-    .filter((item) => presenterServiceInputHasEditableField(item, service))
-    .length;
+function presenterServiceInputProgress(service) {
+  if (!service?.id) return { total: 0, missing: 0, loading: false };
+  const editableItems = servicePrepEditorItems(service.id)
+    .filter((item) => presenterServiceInputHasEditableField(item, service));
+  return editableItems.reduce((progress, item) => {
+    const memo = parseServiceItemMemo(item.memo);
+    const contentState = resolvePresenterServiceItemContentState(
+      item,
+      memo,
+      serviceItemLinkedSong(item),
+      service,
+    );
+    if (contentState.state === "missing") progress.missing += 1;
+    if (contentState.state === "loading") progress.loading = true;
+    return progress;
+  }, { total: editableItems.length, missing: 0, loading: false });
 }
 
 function presenterServiceInputItem(item, service) {
@@ -25114,13 +25132,14 @@ function renderPresenterControlState(serviceId = state.selectedServiceId) {
       }
       const interactionAt = Number(root.dataset.presenterInteractionAt) || 0;
       const interactionDelay = 150 - (Date.now() - interactionAt);
-      if (interactionDelay > 0) {
+      const hoveredThumbnail = root.querySelector(".svc-slide-thumb:hover");
+      if (interactionDelay > 0 || hoveredThumbnail) {
         if (root.dataset.presenterBoardPatchPending !== "true") {
           root.dataset.presenterBoardPatchPending = "true";
           window.setTimeout(() => {
             delete root.dataset.presenterBoardPatchPending;
             if (root.isConnected) renderPresenterControlState(serviceId);
-          }, interactionDelay + 16);
+          }, Math.max(interactionDelay, 100) + 16);
         }
         return;
       }

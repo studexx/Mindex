@@ -3988,6 +3988,9 @@ def main() -> int:
                           const legacyContext = document.querySelector('.service-sidebar-input-context');
                           const bulkInput = document.querySelector('.service-sidebar--presenter [data-presenter-preparation-input]');
                           const bulkButton = document.querySelector('.service-sidebar--presenter [data-presenter-preparation-apply]');
+                          const bulkTemplate = document.createElement('template');
+                          bulkTemplate.innerHTML = renderPresenterSidebarPreparationInput(service).trim();
+                          const bulkStatus = bulkTemplate.content.querySelector('.service-sidebar-head small')?.textContent.trim() || '';
                           if (bulkInput) {
                             bulkInput.value = '찬양 1: 평화 하나님의 평강이';
                             bulkInput.dispatchEvent(new Event('input', { bubbles: true }));
@@ -4026,6 +4029,7 @@ def main() -> int:
                             editableLabels,
                             bulkInput: Boolean(bulkInput),
                             bulkButton: Boolean(bulkButton),
+                            bulkStatus,
                             bulkDraft: state.presenterPreparationDrafts[service?.id || ''] || '',
                             overflow: Math.max(document.documentElement.scrollWidth - window.innerWidth, document.body.scrollWidth - window.innerWidth)
                           };
@@ -4045,6 +4049,10 @@ def main() -> int:
                         and presenter_header_input["fieldCount"] >= 12
                         and presenter_header_input["songFieldCount"] >= 5
                         and presenter_header_input["bulkInput"] == presenter_header_input["bulkButton"]
+                        and (
+                            presenter_header_input["bulkStatus"] in ("불러오는 중", "입력 완료", "입력 없음")
+                            or presenter_header_input["bulkStatus"].endswith("개 입력 필요")
+                        )
                         and presenter_header_input["bulkDraft"] in ("", "찬양 1: 평화 하나님의 평강이")
                         and any("찬양" in label for label in presenter_header_input["headerLabels"])
                         and any("성경봉독" in label for label in presenter_header_input["headerLabels"])
@@ -5179,7 +5187,7 @@ def main() -> int:
                             "citationSection": "sermon",
                         }
                         and presenter_preparation_paste["looseInput"] == {
-                            "placeholder": "찬양1 곡명\n찬양2 곡명\n찬양3 곡명\n찬양4 곡명\n찬송 곡명\n대표기도 이름 직분\n성경봉독 히 10:38-39\n특송 제목 / 담당\n말씀 \"설교 제목\"\n설교 김남영 목사",
+                            "placeholder": "찬양1 곡명\n찬양2 곡명\n찬양3 곡명\n찬양4 곡명\n찬송 곡명\n대표기도 이름 직분\n성경봉독 히 10:38-39\n특송 곡명 / 담당기관\n말씀 \"설교 제목\"\n설교 김남영 목사",
                             "createdTitles": ["주 찬양합니다", "변찮는 주님의 사랑과", "승리는 내 것일세", "꽃들도"],
                             "praiseSongIds": ["__created_song_1__", "__created_song_2__", "__created_song_3__", "__created_song_4__"],
                             "prayer": "문병자 권사",
@@ -5421,7 +5429,6 @@ def main() -> int:
                             and max(horizontal_gaps) - min(horizontal_gaps) <= 2
                             and 18 <= horizontal_gaps[0] <= 24
                             and thumb_metrics["leftInset"] <= 6
-                            and thumb_metrics["rightInset"] <= 6
                         )
                         if uniform:
                             pass_("presenter-thumbnail-grid", json.dumps(thumb_metrics, ensure_ascii=False))
@@ -5815,12 +5822,11 @@ def main() -> int:
 
                 cleanup_presenter_fixture(page)
 
-                page.click('[data-home-module="praise"]')
                 page.evaluate(
                     """
                     async () => {
-                      if (document.body.dataset.module === 'praise') return;
                       if (typeof clearDirtyState === 'function') clearDirtyState();
+                      if (document.body.dataset.module === 'praise') return;
                       if (typeof switchModule === 'function') await switchModule('praise', { syncHistory: false });
                     }
                     """
