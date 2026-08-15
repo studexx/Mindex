@@ -12137,6 +12137,7 @@ const SERVICE_TIME_WINDOWS = {
   "sunday-main": { start: "10:50", end: "12:00" },
   children: { start: "10:50", end: "12:00" },
   youth: { start: "10:50", end: "12:00" },
+  "young-adult": { start: "13:10", end: "14:20" },
   "sunday-afternoon": { start: "13:20", end: "14:30" },
   monthly: { start: "20:00", end: "22:00" },
 };
@@ -18391,8 +18392,18 @@ function sortServicesByDate(services, direction = "asc") {
   return [...services].sort((a, b) => {
     const dateCompare = String(a.date || "").localeCompare(String(b.date || ""));
     if (dateCompare) return dateCompare * weight;
+    const timeCompare = serviceStartSortMinutes(a) - serviceStartSortMinutes(b);
+    if (timeCompare) return timeCompare;
     return serviceTypeSortOrder(a.type_id) - serviceTypeSortOrder(b.type_id);
   });
+}
+
+function serviceStartSortMinutes(service = {}) {
+  const typeId = worshipAppServiceTypeId(service?.type_id);
+  const time = SERVICE_TIME_WINDOWS[typeId]?.start || "";
+  const match = String(time).match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return Number.MAX_SAFE_INTEGER;
+  return (Number(match[1]) * 60) + Number(match[2]);
 }
 
 function serviceTypeSortOrder(typeId) {

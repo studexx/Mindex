@@ -1629,6 +1629,24 @@ def main() -> int:
                 else:
                     fail("upcoming-service-sidebar-order", json.dumps(upcoming_service_sidebar, ensure_ascii=False))
 
+                service_time_sort_order = page.evaluate(
+                    """
+                    (() => sortServicesByDate([
+                      { id: 'afternoon', type_id: 'sunday-afternoon', date: '2099-08-16' },
+                      { id: 'youth', type_id: 'youth', date: '2099-08-16' },
+                      { id: 'first', type_id: 'sunday-first', date: '2099-08-16' },
+                      { id: 'children', type_id: 'children', date: '2099-08-16' },
+                      { id: 'main', type_id: 'sunday-main', date: '2099-08-16' },
+                      { id: 'second', type_id: 'sunday-second', date: '2099-08-16' },
+                      { id: 'young-adult', type_id: 'young-adult', date: '2099-08-16' },
+                    ]).map((service) => service.id))()
+                    """
+                )
+                if service_time_sort_order == ["first", "second", "main", "children", "youth", "young-adult", "afternoon"]:
+                    pass_("service-time-sort-order", json.dumps(service_time_sort_order, ensure_ascii=False))
+                else:
+                    fail("service-time-sort-order", json.dumps(service_time_sort_order, ensure_ascii=False))
+
                 page.evaluate("goHome()")
                 page.wait_for_function("() => document.body.dataset.module === 'home'", timeout=5000)
                 home_recent_service_sidebar = page.evaluate(
