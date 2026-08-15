@@ -3517,9 +3517,8 @@ async function loadWorshipData() {
   state.worshipTemplates = templates;
   state.worshipTemplateItems = templateItems;
 
-  // Render the navigation and weekly board before fetching detail rows. The
-  // template projection keeps those cards useful while actual service content
-  // arrives in the background.
+  // Home cards are the actual service overview, so preload their lightweight
+  // row data before rendering them. Other modules can show their shell first.
   state.worshipSections = [];
   state.worshipElements = [];
   state.loadedWorshipServiceIds = new Set();
@@ -3530,14 +3529,18 @@ async function loadWorshipData() {
   worshipPresenterSlideLoadPromises.clear();
   worshipScripturePreloadPromises.clear();
   serviceItemScripturePreloadPromises.clear();
-  render();
 
   const preloadServiceIds = initialWorshipElementServiceIds(state.services);
-  const { sections, elements } = await fetchWorshipRowsForServiceIds(preloadServiceIds);
-  state.worshipSections = sections;
-  state.worshipElements = elements;
-  state.loadedWorshipServiceIds = new Set(preloadServiceIds);
-  state.serviceItems = projectGroupedWorshipItemsFromTemplates(groupWorshipElements(sections, elements));
+  let sections = [];
+  let elements = [];
+  if (state.module !== "home") render();
+  if (preloadServiceIds.length) {
+    ({ sections, elements } = await fetchWorshipRowsForServiceIds(preloadServiceIds));
+    state.worshipSections = sections;
+    state.worshipElements = elements;
+    state.loadedWorshipServiceIds = new Set(preloadServiceIds);
+    state.serviceItems = projectGroupedWorshipItemsFromTemplates(groupWorshipElements(sections, elements));
+  }
   state.serviceItemAssigneeSupported = true;
   state.serviceItemVersionSupported = true;
   state.serviceItemMemoSupported = true;

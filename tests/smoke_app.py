@@ -1705,6 +1705,44 @@ def main() -> int:
                 else:
                     fail("home-sidebar-upcoming-week-services", json.dumps(home_recent_service_sidebar, ensure_ascii=False))
 
+                home_visible_service_previews = page.evaluate(
+                    """
+                    (() => {
+                      const visibleIds = [...document.querySelectorAll('.service-week-card[data-service-id], .service-date-card[data-service-id]')]
+                        .map((card) => card.dataset.serviceId)
+                        .filter(Boolean);
+                      const uniqueIds = [...new Set(visibleIds)];
+                      const previewable = uniqueIds
+                        .map((id) => {
+                          const service = state.services.find((item) => item.id === id) || {};
+                          const items = state.serviceItems[id] || [];
+                          const sermonTitle = items.find((item) => isPresenterPreparationSermonTitleItem(item));
+                          return {
+                            id,
+                            type: worshipAppServiceTypeId(service.type_id),
+                            hasSermonTitle: Boolean(String(sermonTitle?.raw_title || '').trim()),
+                            preview: serviceItemPreview(id),
+                            loaded: state.loadedWorshipServiceIds?.has(id) || false,
+                          };
+                        })
+                        .filter((entry) => entry.hasSermonTitle);
+                      return {
+                        visibleCount: uniqueIds.length,
+                        previewable,
+                        allPreviewableShown: previewable.every((entry) => entry.loaded && Boolean(entry.preview)),
+                      };
+                    })()
+                    """
+                )
+                if (
+                    home_visible_service_previews["visibleCount"] > 0
+                    and home_visible_service_previews["previewable"]
+                    and home_visible_service_previews["allPreviewableShown"]
+                ):
+                    pass_("home-visible-service-previews-loaded", json.dumps(home_visible_service_previews, ensure_ascii=False))
+                else:
+                    fail("home-visible-service-previews-loaded", json.dumps(home_visible_service_previews, ensure_ascii=False))
+
                 page.locator("[data-service-list]").first.click()
                 page.wait_for_selector(".service-date-list", timeout=5000)
                 service_gutter = page.evaluate(
