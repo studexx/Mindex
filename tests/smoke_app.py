@@ -1649,13 +1649,23 @@ def main() -> int:
 
                 sunday_auto_targets = page.evaluate(
                     """
-                    (() => autoUpcomingPublicServiceTargets(new Date('2099-08-16T12:00:00')).map((target) => `${target.typeId}:${target.date}`))()
+                    (() => {
+                      const defaultTargets = autoUpcomingPublicServiceTargets(new Date('2099-08-16T12:00:00'))
+                        .map((target) => `${target.typeId}:${target.date}`);
+                      const childrenType = serviceTypeById('children');
+                      const originalConfig = { ...(childrenType?._worshipConfig || {}) };
+                      if (childrenType) childrenType._worshipConfig = { ...originalConfig, autoScheduleEnabled: true };
+                      const enabledTargets = autoUpcomingPublicServiceTargets(new Date('2099-08-16T12:00:00'))
+                        .map((target) => `${target.typeId}:${target.date}`);
+                      if (childrenType) childrenType._worshipConfig = originalConfig;
+                      return { defaultTargets, enabledTargets };
+                    })()
                     """
                 )
-                if "children:2099-08-16" in sunday_auto_targets:
-                    pass_("sunday-auto-targets-include-children", json.dumps(sunday_auto_targets, ensure_ascii=False))
+                if "children:2099-08-16" not in sunday_auto_targets["defaultTargets"] and "children:2099-08-16" in sunday_auto_targets["enabledTargets"]:
+                    pass_("children-auto-targets-config-opt-in", json.dumps(sunday_auto_targets, ensure_ascii=False))
                 else:
-                    fail("sunday-auto-targets-include-children", json.dumps(sunday_auto_targets, ensure_ascii=False))
+                    fail("children-auto-targets-config-opt-in", json.dumps(sunday_auto_targets, ensure_ascii=False))
 
                 page.evaluate("goHome()")
                 page.wait_for_function("() => document.body.dataset.module === 'home'", timeout=5000)

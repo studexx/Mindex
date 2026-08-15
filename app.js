@@ -3255,7 +3255,16 @@ async function fetchWorshipRowsForServiceIds(serviceIds = []) {
   }
 }
 
-const CHILDREN_WORSHIP_AUTO_GENERATION_ENABLED = true;
+const CHILDREN_WORSHIP_AUTO_GENERATION_DEFAULT = false;
+
+function childrenWorshipAutoGenerationEnabled() {
+  const config = serviceTypeById("children")?._worshipConfig || {};
+  return CHILDREN_WORSHIP_AUTO_GENERATION_DEFAULT
+    || normalizeBooleanFlag(config.autoScheduleEnabled)
+    || normalizeBooleanFlag(config.auto_schedule_enabled)
+    || normalizeBooleanFlag(config.autoGenerateServices)
+    || normalizeBooleanFlag(config.auto_generate_services);
+}
 
 function autoUpcomingPublicServiceTargets(baseDate = new Date()) {
   const today = parseLocalDate(baseDate);
@@ -3284,7 +3293,7 @@ function autoUpcomingPublicServiceTargets(baseDate = new Date()) {
     { typeId: "sunday-first", date: sunday },
     { typeId: "sunday-second", date: sunday },
     { typeId: "sunday-main", date: sunday },
-    ...(CHILDREN_WORSHIP_AUTO_GENERATION_ENABLED ? [{ typeId: "children", date: sunday }] : []),
+    ...(childrenWorshipAutoGenerationEnabled() ? [{ typeId: "children", date: sunday }] : []),
     { typeId: "youth", date: sunday },
     { typeId: "young-adult", date: sunday },
     { typeId: "sunday-afternoon", date: sunday },
