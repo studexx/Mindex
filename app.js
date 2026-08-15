@@ -870,11 +870,21 @@ function capturePresenterViewportSnapshot(expectedServiceId = state.selectedServ
   };
 }
 
+let presenterViewportRestoreSerial = 0;
+
 function restorePresenterViewportSnapshot(snapshot) {
   if (!snapshot || state.module !== "presenter" || state.selectedServiceId !== snapshot.serviceId) return;
+  const pane = refs.detailPane;
+  if (!pane?.isConnected) return;
+  const restoreSerial = ++presenterViewportRestoreSerial;
+  if (Number.isFinite(snapshot.scrollTop)) pane.scrollTop = snapshot.scrollTop;
   window.requestAnimationFrame(() => {
-    const pane = refs.detailPane;
-    if (!pane?.isConnected) return;
+    if (
+      restoreSerial !== presenterViewportRestoreSerial
+      || !pane.isConnected
+      || state.module !== "presenter"
+      || state.selectedServiceId !== snapshot.serviceId
+    ) return;
     const root = document.getElementById("servicePresenterControls");
     let restored = false;
     if (root?.isConnected && snapshot.selector) {
@@ -889,6 +899,45 @@ function restorePresenterViewportSnapshot(snapshot) {
     if (!restored && Number.isFinite(snapshot.scrollTop)) {
       pane.scrollTop = snapshot.scrollTop;
     }
+  });
+}
+
+let detailViewportRestoreSerial = 0;
+
+function detailViewportIdentity() {
+  if (state.module === "presenter") return "";
+  if (state.module === "praise") {
+    return [state.module, state.selectedSongId || "", state.selectedVersionId || ""].join(":");
+  }
+  if (state.module === "scripture") {
+    return [state.module, state.selectedScriptureId || "", state.selectedBookCode || ""].join(":");
+  }
+  if (state.module === "service") {
+    return [state.module, state.selectedServiceTypeId || "", state.selectedServiceId || ""].join(":");
+  }
+  return state.module || "";
+}
+
+function captureDetailViewportSnapshot() {
+  const pane = refs.detailPane;
+  const identity = detailViewportIdentity();
+  if (!identity || !pane?.isConnected) return null;
+  return { identity, scrollTop: pane.scrollTop };
+}
+
+function restoreDetailViewportSnapshot(snapshot) {
+  if (!snapshot || detailViewportIdentity() !== snapshot.identity || !Number.isFinite(snapshot.scrollTop)) return;
+  const pane = refs.detailPane;
+  if (!pane?.isConnected) return;
+  const restoreSerial = ++detailViewportRestoreSerial;
+  pane.scrollTop = snapshot.scrollTop;
+  window.requestAnimationFrame(() => {
+    if (
+      restoreSerial !== detailViewportRestoreSerial
+      || !pane.isConnected
+      || detailViewportIdentity() !== snapshot.identity
+    ) return;
+    pane.scrollTop = snapshot.scrollTop;
   });
 }
 
@@ -10908,11 +10957,13 @@ function runCopyAction(action, index, versionId = "") {
 }
 
 function render() {
+  const viewportSnapshot = captureDetailViewportSnapshot();
   document.body.dataset.module = state.module;
   renderModuleSwitcher();
   renderConnectionStatus();
   renderSongList();
   renderDetail();
+  restoreDetailViewportSnapshot(viewportSnapshot);
   updateSaveState();
 }
 

@@ -464,6 +464,74 @@ def main() -> int:
             else:
                 pass_("document-title-uppercase")
 
+            viewport_restore_state = page.evaluate(
+                """
+                (async () => {
+                  const originalPane = refs.detailPane;
+                  const originalState = {
+                    module: state.module,
+                    selectedSongId: state.selectedSongId,
+                    selectedVersionId: state.selectedVersionId,
+                    selectedServiceId: state.selectedServiceId,
+                  };
+                  const pane = document.createElement('div');
+                  pane.style.cssText = 'position:fixed;left:-9999px;top:0;width:320px;height:120px;overflow:auto';
+                  pane.innerHTML = '<div style="height:2400px"></div>';
+                  document.body.appendChild(pane);
+                  refs.detailPane = pane;
+                  try {
+                    state.module = 'praise';
+                    state.selectedSongId = 'scroll-song';
+                    state.selectedVersionId = 'scroll-version';
+                    pane.scrollTop = 420;
+                    const detailSnapshot = captureDetailViewportSnapshot();
+                    pane.scrollTop = 0;
+                    restoreDetailViewportSnapshot(detailSnapshot);
+                    const detailImmediate = pane.scrollTop;
+                    await new Promise((resolve) => requestAnimationFrame(resolve));
+                    const detailAfterFrame = pane.scrollTop;
+
+                    state.module = 'presenter';
+                    state.selectedServiceId = 'scroll-service';
+                    pane.scrollTop = 0;
+                    restorePresenterViewportSnapshot({
+                      serviceId: 'scroll-service',
+                      scrollTop: 520,
+                      selector: '',
+                      offsetTop: 0,
+                    });
+                    const presenterImmediate = pane.scrollTop;
+                    restorePresenterViewportSnapshot({
+                      serviceId: 'scroll-service',
+                      scrollTop: 620,
+                      selector: '',
+                      offsetTop: 0,
+                    });
+                    await new Promise((resolve) => requestAnimationFrame(resolve));
+                    return {
+                      detailImmediate,
+                      detailAfterFrame,
+                      presenterImmediate,
+                      presenterLatest: pane.scrollTop,
+                    };
+                  } finally {
+                    refs.detailPane = originalPane;
+                    Object.assign(state, originalState);
+                    pane.remove();
+                  }
+                })()
+                """
+            )
+            if viewport_restore_state == {
+                "detailImmediate": 420,
+                "detailAfterFrame": 420,
+                "presenterImmediate": 520,
+                "presenterLatest": 620,
+            }:
+                pass_("detail-viewport-survives-rerender", json.dumps(viewport_restore_state, ensure_ascii=False))
+            else:
+                fail("detail-viewport-survives-rerender", json.dumps(viewport_restore_state, ensure_ascii=False))
+
             unsaved_leave_dialog = page.evaluate(
                 """
                 (async () => {
