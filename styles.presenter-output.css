@@ -591,12 +591,6 @@
 .presenter-slide--title-assignee .presenter-title-assignee--solo {
   grid-template-columns: 1fr;
 }
-.presenter-slide--title-assignee .presenter-title-assignee--missing {
-  grid-template-columns: minmax(0, 1fr);
-  justify-items: center;
-  gap: 1cqh;
-  text-align: center;
-}
 .presenter-title-assignee-title {
   min-width: 0;
   overflow: visible;

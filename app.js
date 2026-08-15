@@ -731,6 +731,12 @@ const state = {
     service: false,
     references: false,
   },
+  cleanFingerprints: {
+    praise: "",
+    scripture: "",
+    service: "",
+    references: "",
+  },
 };
 
 const refs = {};
@@ -1349,7 +1355,7 @@ function bindStaticEvents() {
     // Presenter changes are persisted through its own save flow. A browser-native
     // prompt here is both misleading and unable to trigger that save operation.
     if (state.module === "presenter") return;
-    if (!hasDirtyChanges()) return;
+    if (!hasDirtyChanges({ reconcile: true })) return;
     event.preventDefault();
     event.returnValue = "";
   });
@@ -1779,6 +1785,73 @@ function clearDirtyState() {
   state.dirtyServiceTypeIds.clear();
 }
 
+function dirtyComparableValue(value) {
+  if (Array.isArray(value)) return value.map(dirtyComparableValue);
+  if (!value || typeof value !== "object") return value;
+  return Object.keys(value)
+    .filter((key) => !key.startsWith("_") && typeof value[key] !== "function")
+    .sort()
+    .reduce((result, key) => {
+      result[key] = dirtyComparableValue(value[key]);
+      return result;
+    }, {});
+}
+
+function dirtyModuleValue(moduleName) {
+  if (moduleName === "praise") {
+    return {
+      song: getSelectedSong(),
+      versionId: state.selectedVersionId || "",
+      forms: state.forms,
+    };
+  }
+  if (moduleName === "scripture") return getSelectedScripture();
+  if (moduleName === "service") {
+    const service = state.services.find((item) => item.id === state.selectedServiceId) || null;
+    return {
+      service,
+      items: service ? getServiceItems(service.id) : [],
+      serviceTypes: state.serviceTypes,
+    };
+  }
+  if (moduleName === "references") return state.referenceLinks;
+  return null;
+}
+
+function dirtyModuleFingerprint(moduleName) {
+  return JSON.stringify(dirtyComparableValue(dirtyModuleValue(moduleName)));
+}
+
+function captureCleanFingerprint(moduleName) {
+  if (!Object.prototype.hasOwnProperty.call(state.cleanFingerprints, moduleName)) return;
+  state.cleanFingerprints[moduleName] = dirtyModuleFingerprint(moduleName);
+}
+
+function reconcileDirtyState() {
+  if ((state.dirty.song || state.dirty.forms) && state.cleanFingerprints.praise) {
+    if (dirtyModuleFingerprint("praise") === state.cleanFingerprints.praise) {
+      state.dirty.song = false;
+      state.dirty.forms = false;
+    }
+  }
+  if (state.dirty.scripture && state.cleanFingerprints.scripture) {
+    if (dirtyModuleFingerprint("scripture") === state.cleanFingerprints.scripture) {
+      state.dirty.scripture = false;
+    }
+  }
+  if (state.dirty.service && state.cleanFingerprints.service) {
+    if (dirtyModuleFingerprint("service") === state.cleanFingerprints.service) {
+      state.dirty.service = false;
+      state.dirtyServiceTypeIds.clear();
+    }
+  }
+  if (state.dirty.references && state.cleanFingerprints.references) {
+    if (dirtyModuleFingerprint("references") === state.cleanFingerprints.references) {
+      state.dirty.references = false;
+    }
+  }
+}
+
 function getDirtyModules() {
   return {
     praise: state.dirty.song || state.dirty.forms,
@@ -1820,6 +1893,9 @@ function resetHomeState() {
   state.newServiceForm = null;
   state.metadataPopupOpen = false;
   state.forms = [];
+  Object.keys(state.cleanFingerprints).forEach((moduleName) => {
+    state.cleanFingerprints[moduleName] = "";
+  });
   state.listScroll[getListScrollKey()] = 0;
   refs.searchInput.value = "";
   clearBibleTextSearch();
@@ -2775,6 +2851,8 @@ async function loadScriptures({ silent = false } = {}) {
   if (state.selectedScriptureId && !state.scriptures.some((scripture) => scripture.id === state.selectedScriptureId)) {
     state.selectedScriptureId = null;
   }
+  state.dirty.scripture = false;
+  captureCleanFingerprint("scripture");
 
   persistUiState();
   render();
@@ -2829,6 +2907,7 @@ async function loadServiceDataOnce({ silent = false } = {}) {
     if (state.module === "presenter") await loadWorshipPresenterSlides(state.selectedServiceId || state.presenter.serviceId);
     state.dirtyServiceTypeIds.clear();
     state.dirty.service = false;
+    captureCleanFingerprint("service");
     state.serviceError = "";
     render();
     return;
@@ -3936,6 +4015,7 @@ async function loadReferenceLinks({ silent = false } = {}) {
     state.referenceLinksLoaded = true;
     state.referenceError = "";
     state.dirty.references = false;
+    captureCleanFingerprint("references");
     render();
   } catch (error) {
     state.referenceLinks = [];
@@ -4340,11 +4420,20 @@ function calendarCellClassForField(field) {
 }
 
 async function loadServiceItems(serviceId) {
-  if (!serviceId || state.loadedWorshipServiceIds.has(serviceId)) return;
+  if (!serviceId) return;
+  if (state.loadedWorshipServiceIds.has(serviceId)) {
+    if (state.selectedServiceId === serviceId && !state.dirty.service) {
+      captureCleanFingerprint("service");
+    }
+    return;
+  }
   if (shouldDeferPastWorshipServiceLoad(serviceId)) return false;
   if (serviceItemLoadPromises.has(serviceId)) return serviceItemLoadPromises.get(serviceId);
   if (!state.client) {
     state.serviceItems[serviceId] = state.serviceItems[serviceId] || [];
+    if (state.selectedServiceId === serviceId && !state.dirty.service) {
+      captureCleanFingerprint("service");
+    }
     return;
   }
   const service = state.services.find((svc) => svc.id === serviceId);
@@ -4374,6 +4463,9 @@ async function loadServiceItems(serviceId) {
       service,
       groupWorshipElements(sections, elements)[serviceId] || [],
     );
+    if (state.selectedServiceId === serviceId && !state.dirty.service) {
+      captureCleanFingerprint("service");
+    }
     loadSongsForIdsInBackground(elements.map((item) => item.song_id), {
       render: state.selectedServiceId === serviceId ? "detail" : false,
       serviceId,
@@ -4635,6 +4727,7 @@ async function selectSong(songId) {
   syncBrowserHistory();
   focusSelectedItemAfterRender();
   await loadForms(state.selectedVersionId);
+  captureCleanFingerprint("praise");
   focusSelectedItemAfterRender();
 }
 
@@ -4646,6 +4739,7 @@ async function selectScripture(scriptureId) {
   state.dirty.song = false;
   state.dirty.forms = false;
   state.dirty.scripture = false;
+  captureCleanFingerprint("scripture");
   persistUiState();
   render();
   syncBrowserHistory();
@@ -4703,6 +4797,7 @@ async function loadForms(versionId) {
   const song = getSelectedSong();
   const version = (song?.versions || []).find((candidate) => candidate.id === versionId) || getSelectedVersion();
   state.forms = normalizeForms((version?.forms || []).map((form) => withLocalId({ ...form, song_id: versionId })));
+  if (!state.dirty.song && !state.dirty.forms) captureCleanFingerprint("praise");
   render();
 }
 
@@ -4732,6 +4827,7 @@ async function createReferenceLink(options = {}) {
     state.referenceLinks = [...state.referenceLinks, normalizeReferenceLink(data)].sort(sortReferenceLinks);
     state.editingReferenceId = data.id;
     state.dirty.references = false;
+    captureCleanFingerprint("references");
     render();
     focusEditingReference(data.id);
     showToast("링크를 추가했습니다.");
@@ -4793,6 +4889,7 @@ async function createPraiseSong(options = {}) {
     state.metadataPopupOpen = true;
     state.dirty.song = false;
     state.dirty.forms = false;
+    captureCleanFingerprint("praise");
     persistUiState();
     render();
     requestAnimationFrame(() => refs.detailPane.querySelector('[data-song-field="title"]')?.focus());
@@ -4875,6 +4972,7 @@ async function deleteSelectedSong() {
     state.forms = [];
     state.dirty.song = false;
     state.dirty.forms = false;
+    captureCleanFingerprint("praise");
     persistUiState();
     render();
     showToast("빈 곡을 삭제했습니다.");
@@ -4920,6 +5018,7 @@ async function saveAll() {
     clearSearchCaches();
     state.dirty.song = false;
     state.dirty.forms = false;
+    captureCleanFingerprint("praise");
     showToast("저장했습니다.");
     render();
   } catch (error) {
@@ -4966,6 +5065,7 @@ async function saveReferenceLinks() {
     state.referenceError = "";
     state.referenceLinksLoaded = true;
     state.dirty.references = false;
+    captureCleanFingerprint("references");
     showToast("링크를 저장했습니다.");
     render();
   } catch (error) {
@@ -5187,6 +5287,7 @@ async function saveScripture() {
     Object.assign(scripture, normalizeServerScripture(data));
     state.scriptures = state.scriptures.sort(sortScriptures);
     state.dirty.scripture = false;
+    captureCleanFingerprint("scripture");
     showToast("저장했습니다.");
     render();
   } catch (error) {
@@ -5216,6 +5317,7 @@ async function saveService(serviceId = state.selectedServiceId, options = {}) {
       await saveWorshipServiceInstance(service);
     }
     state.dirty.service = false;
+    captureCleanFingerprint("service");
     if (!options.silent) showToast("예배를 저장했습니다.");
     // Field-level commits already refreshed the affected presenter content. Avoid
     // rebuilding the whole application after a small inline edit.
@@ -16153,7 +16255,8 @@ function requireClient({ silent = false } = {}) {
   return false;
 }
 
-function hasDirtyChanges() {
+function hasDirtyChanges({ reconcile = false } = {}) {
+  if (reconcile) reconcileDirtyState();
   return state.dirty.song || state.dirty.forms || state.dirty.scripture || state.dirty.service || state.dirty.references;
 }
 
@@ -16216,7 +16319,7 @@ async function discardUnsavedChanges() {
 }
 
 async function confirmSaveBeforeLeaving() {
-  if (!hasDirtyChanges()) return true;
+  if (!hasDirtyChanges({ reconcile: true })) return true;
   const action = await confirmUnsavedChangesAction();
   if (action === "cancel") return false;
   if (action === "discard") {
@@ -16224,7 +16327,7 @@ async function confirmSaveBeforeLeaving() {
     return true;
   }
   await saveAll();
-  if (!hasDirtyChanges()) return true;
+  if (!hasDirtyChanges({ reconcile: true })) return true;
   showToast("저장되지 않은 변경이 남아 있어요. 다시 저장하거나 저장 안 함을 선택해 주세요.", "error");
   return false;
 }
@@ -18250,6 +18353,7 @@ function serializeServiceDefaultItems(typeId) {
 }
 
 function confirmDiscardServiceChanges() {
+  reconcileDirtyState();
   if (!state.dirty.service) return true;
   return window.confirm("저장하지 않은 예배 변경사항이 있습니다. 계속할까요?");
 }
@@ -23748,11 +23852,11 @@ function renderPresenterSlideBoard(slides, index, serviceId) {
   return `
     <div class="svc-slide-board svc-slide-board--${escapeAttr(theme)}${chromakey ? "" : " svc-slide-board--clean"}" role="list" aria-label="Presenter slide board">
       ${groups.map((group, groupIndex) => {
-        const options = { nextService: groupIndex === groups.length - 1 ? nextTarget : null };
         return deferredGroups.has(groupIndex)
           ? renderDeferredPresenterBoardSection(group, serviceId, groupIndex)
-          : renderPresenterBoardSection(group, index, serviceId, options);
+          : renderPresenterBoardSection(group, index, serviceId);
       }).join("")}
+      ${renderPresenterNextPreparationButton(serviceId, nextTarget)}
     </div>`;
 }
 
@@ -23825,11 +23929,9 @@ function hydrateDeferredPresenterBoardSection(root, serviceId, slides, groupInde
   const groups = groupPresenterSlidesBySection(slides, serviceId);
   const group = groups[groupIndex];
   if (!group) return false;
-  const service = state.services.find((candidate) => candidate.id === serviceId);
-  const nextService = groupIndex === groups.length - 1 ? nextPreparationTarget(service) : null;
   const activeIndex = presenterBoardActiveIndex(slides, state.presenter.serviceId === serviceId, state.presenter.index);
   const template = document.createElement("template");
-  template.innerHTML = renderPresenterBoardSection(group, activeIndex, serviceId, { nextService }).trim();
+  template.innerHTML = renderPresenterBoardSection(group, activeIndex, serviceId).trim();
   placeholder.replaceWith(template.content.firstElementChild);
   syncPresenterBoardSelectionClasses(root);
   refreshIcons();
@@ -24362,7 +24464,7 @@ function presenterPraiseSubgroupLabel(label, number) {
   return `찬양 ${number}`;
 }
 
-function renderPresenterBoardSection(group, activeIndex, serviceId, options = {}) {
+function renderPresenterBoardSection(group, activeIndex, serviceId) {
   const active = group.slides.some(({ slideIndex }) => slideIndex === activeIndex);
   const firstIndex = group.slides[0]?.slideIndex ?? 0;
   const visibleTitle = group.title || group.label || group.name;
@@ -24399,7 +24501,6 @@ function renderPresenterBoardSection(group, activeIndex, serviceId, options = {}
       <div class="svc-board-subgroups">
         ${subgroupsHtml}
       </div>
-      ${renderPresenterNextPreparationButton(serviceId, options.nextService)}
     </section>`;
 }
 
@@ -26625,6 +26726,7 @@ async function createService() {
     state.selectedServiceItemIndex = 0;
     state.newServiceForm = null;
     state.dirty.service = false;
+    captureCleanFingerprint("service");
     renderServiceList();
     renderCurrentServiceModuleDetail();
     syncBrowserHistory();
@@ -26697,6 +26799,7 @@ async function deleteService(serviceId) {
       state.selectedServiceItemIndex = null;
       state.newServiceForm = null;
       state.dirty.service = false;
+      captureCleanFingerprint("service");
     }
     if (state.presenter.serviceId === serviceId) {
       state.presenter.serviceId = null;
@@ -26732,6 +26835,7 @@ function selectService(id) {
   state.selectedServiceItemIndex = 0;
   const service = state.services.find((svc) => svc.id === id);
   if (service) state.selectedServiceTypeId = service.type_id;
+  if (state.loadedWorshipServiceIds.has(id)) captureCleanFingerprint("service");
   renderCurrentServiceModuleDetail();
   renderServiceList();
   syncBrowserHistory();

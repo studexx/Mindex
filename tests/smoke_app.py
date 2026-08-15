@@ -544,6 +544,7 @@ def main() -> int:
                     reloadedModules = dirtyModules;
                   };
                   if (typeof clearDirtyState === 'function') clearDirtyState();
+                  state.cleanFingerprints.praise = '';
                   state.dirty.song = true;
                   if (typeof updateSaveState === 'function') updateSaveState();
                   const pending = confirmSaveBeforeLeaving();
@@ -572,6 +573,52 @@ def main() -> int:
                 pass_("unsaved-leave-dialog-discard", json.dumps(unsaved_leave_dialog, ensure_ascii=False))
             else:
                 fail("unsaved-leave-dialog-discard", json.dumps(unsaved_leave_dialog, ensure_ascii=False))
+
+            actual_dirty_diff = page.evaluate(
+                """
+                (() => {
+                  if (
+                    typeof state === 'undefined'
+                    || typeof captureCleanFingerprint !== 'function'
+                    || typeof hasDirtyChanges !== 'function'
+                  ) return { ready: false };
+                  const originalLinks = state.referenceLinks;
+                  const originalDirty = { ...state.dirty };
+                  const originalFingerprints = { ...state.cleanFingerprints };
+                  try {
+                    state.referenceLinks = [{
+                      id: 'dirty-smoke-reference',
+                      title: '기준 제목',
+                      url: 'https://example.com',
+                      sort_order: 10,
+                      is_active: true,
+                    }];
+                    captureCleanFingerprint('references');
+                    state.dirty.references = true;
+                    const unchanged = hasDirtyChanges({ reconcile: true });
+                    state.referenceLinks[0].title = '변경 제목';
+                    state.dirty.references = true;
+                    const changed = hasDirtyChanges({ reconcile: true });
+                    state.referenceLinks[0].title = '기준 제목';
+                    const restored = hasDirtyChanges({ reconcile: true });
+                    return { ready: true, unchanged, changed, restored };
+                  } finally {
+                    state.referenceLinks = originalLinks;
+                    Object.assign(state.dirty, originalDirty);
+                    Object.assign(state.cleanFingerprints, originalFingerprints);
+                  }
+                })()
+                """
+            )
+            if actual_dirty_diff == {
+                "ready": True,
+                "unchanged": False,
+                "changed": True,
+                "restored": False,
+            }:
+                pass_("unsaved-warning-uses-actual-diff", json.dumps(actual_dirty_diff, ensure_ascii=False))
+            else:
+                fail("unsaved-warning-uses-actual-diff", json.dumps(actual_dirty_diff, ensure_ascii=False))
 
             icon_metrics = page.evaluate(
                 """

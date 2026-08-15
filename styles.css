@@ -5605,11 +5605,11 @@ body[data-module="presenter"] .detail-pane {
   border-radius: var(--r);
   background: transparent;
   overflow-x: clip;
-  padding: 0 0 16px;
+  padding: 0;
 }
 .svc-presenter-strip.is-active {
   background: transparent;
-  padding: 0 0 16px;
+  padding: 0;
 }
 .svc-presenter-workspace {
   display: grid;
@@ -6396,7 +6396,7 @@ textarea.svc-presenter-input-control--multiline {
   gap: 16px;
   align-items: start;
   overflow-x: hidden;
-  padding: 4px 0 16px;
+  padding: 4px 0 0;
   scrollbar-width: thin;
 }
 .svc-slide-board--empty {
@@ -6966,7 +6966,7 @@ textarea.svc-presenter-input-control--multiline {
 .svc-board-next-prep {
   display: flex;
   justify-content: flex-end;
-  margin-top: 6px;
+  margin-top: 0;
 }
 .svc-board-next-prep-btn {
   display: inline-flex;

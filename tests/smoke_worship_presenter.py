@@ -1495,6 +1495,9 @@ def main() -> int:
                         },
                     ]
                     and all("presenter-title-assignee" in item["html"] for item in title_assignee_state["slides"])
+                    and "presenter-title-assignee--missing" not in title_assignee_state["slides"][0]["html"]
+                    and "presenter-title-assignee-title" in title_assignee_state["slides"][0]["html"]
+                    and "presenter-title-assignee-person" in title_assignee_state["slides"][0]["html"]
                     and title_assignee_state["sermonTitleQuote"] == "｢정함｣\n김남영 목사"
                     and title_assignee_state["offeringBoard"] == {
                         "label": "봉헌기도",
@@ -6473,6 +6476,8 @@ def main() -> int:
                         const before = {
                           text: button?.textContent.replace(/\\s+/g, ' ').trim() || '',
                           nextServiceId: button?.dataset.nextServiceId || '',
+                          isBoardFooter: button?.parentElement?.parentElement?.classList.contains('svc-slide-board') || false,
+                          isInsideSection: Boolean(button?.closest('.svc-board-section')),
                           nextFromFirst: nextPreparationService(state.services.find((service) => service.id === '__smoke_next_first__'))?.id || '',
                           nextFromSecond: nextPreparationService(state.services.find((service) => service.id === '__smoke_next_second__'))?.id || '',
                           nextFromThird: nextPreparationService(state.services.find((service) => service.id === '__smoke_next_third__'))?.id || '',
@@ -6521,6 +6526,8 @@ def main() -> int:
                 if (
                     next_prep_state["before"]["text"] == "다음 예배 준비 청소년부 예배"
                     and next_prep_state["before"]["nextServiceId"] == "__smoke_next_youth__"
+                    and next_prep_state["before"]["isBoardFooter"]
+                    and not next_prep_state["before"]["isInsideSection"]
                     and next_prep_state["before"]["nextFromFirst"] == "__smoke_next_youth__"
                     and next_prep_state["before"]["nextFromSecond"] == "__smoke_next_third__"
                     and next_prep_state["before"]["nextFromThird"] == "__smoke_next_afternoon__"
