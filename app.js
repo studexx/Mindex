@@ -23220,8 +23220,8 @@ function renderPresenterServiceTextInputs(item, index, model, memo) {
         <span>${escapeHtml(titleLabel)}</span>
         ${announcementText ? `
           <textarea class="svc-presenter-input-control svc-presenter-input-control--multiline" data-service-item-field="raw_title" data-service-item-index="${index}"
-            rows="4" placeholder="다음 주 모임 안내&#10;새가족 환영&#10;생일 축하" aria-label="${escapeAttr(`${item.label || "항목"} ${titleLabel}`)}">${escapeHtml(item.raw_title || "")}</textarea>
-          <small class="svc-presenter-input-hint">줄마다 ①, ②, ③으로 자동 표시됩니다.</small>` : `
+            rows="4" placeholder="1. 다음 주 모임 안내&#10;같은 항목의 추가 내용&#10;2. 새가족 환영" aria-label="${escapeAttr(`${item.label || "항목"} ${titleLabel}`)}">${escapeHtml(item.raw_title || "")}</textarea>
+          <small class="svc-presenter-input-hint">줄 맨 앞의 1., 2.마다 새 항목으로 표시됩니다. 번호 없는 다음 줄은 같은 항목에 포함됩니다.</small>` : `
           <input class="svc-presenter-input-control" type="text" data-service-item-field="raw_title" data-service-item-index="${index}"
             value="${escapeAttr(item.raw_title || "")}" placeholder="${escapeAttr(specialSong ? "곡명" : item.label || "내용")}" ${specialSong ? `autocomplete="off" spellcheck="false"` : ""} aria-label="${escapeAttr(`${item.label || "항목"} ${titleLabel}`)}" />`}
       </label>` : ""}

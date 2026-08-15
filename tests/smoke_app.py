@@ -4649,6 +4649,8 @@ def main() -> int:
                             {"marker": "②", "lines": ["반별 사진 제출"]},
                         ]
                         and "<textarea" in youth_missing_input_guard["announcementInputHtml"]
+                        and "줄 맨 앞의 1., 2.마다 새 항목" in youth_missing_input_guard["announcementInputHtml"]
+                        and "번호 없는 다음 줄은 같은 항목" in youth_missing_input_guard["announcementInputHtml"]
                     ):
                         pass_("youth-missing-input-guard", json.dumps(youth_missing_input_guard, ensure_ascii=False))
                     else:
