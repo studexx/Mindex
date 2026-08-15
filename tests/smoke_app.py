@@ -4177,6 +4177,83 @@ def main() -> int:
                     else:
                         fail("presenter-praise-input-mode-persistence", json.dumps(presenter_praise_input_mode_persistence, ensure_ascii=False))
 
+                    presenter_manual_title_match_guard = page.evaluate(
+                        """
+                        (async () => {
+                          const originalSongs = state.songs;
+                          const originalServices = state.services;
+                          const originalServiceItems = state.serviceItems;
+                          const originalSelectedServiceId = state.selectedServiceId;
+                          const service = { id: '__smoke_manual_title_match__', type_id: 'special', date: '2026-08-02' };
+                          try {
+                            state.songs = [
+                              normalizeServerSong({
+                                id: '__smoke_manual_match_song__',
+                                title: '은혜',
+                                memo: serializeSongMemo({ versions: [{
+                                  id: '__smoke_manual_match_version__',
+                                  name: '기본',
+                                  is_primary: true,
+                                  forms: [{ id: '__smoke_manual_match_form__', label: 'Verse 1', lyrics: 'DB 가사' }],
+                                }] }),
+                              }),
+                              ...originalSongs,
+                            ];
+                            state.services = [service];
+                            state.selectedServiceId = service.id;
+                            const item = normalizeServiceItem({
+                              service_id: service.id,
+                              label: '찬양 1',
+                              raw_title: '',
+                              song_id: null,
+                              version_id: null,
+                              song_version_id: null,
+                              memo: serializeServiceItemMemo({
+                                elementType: 'praise',
+                                inputMode: 'manual_praise',
+                                outputMode: 'lyrics',
+                                slides: ['직접 입력한 가사'],
+                              }),
+                              _worshipSectionKey: 'praise',
+                              _worshipSectionTitle: '찬양',
+                              _worshipElementTemplateModified: true,
+                              _worshipTemplatePlaceholder: false,
+                            }, 0);
+                            state.serviceItems = { [service.id]: [item] };
+                            item.raw_title = '은혜';
+                            applyServiceSongSelectionWithService(item, service);
+                            await resolveServiceSongSelectionBeforeSave(service.id, 0);
+                            const updated = getServiceItems(service.id)[0] || {};
+                            const memo = parseServiceItemMemo(updated.memo);
+                            return {
+                              rawTitle: updated.raw_title || '',
+                              songId: updated.song_id || '',
+                              versionId: updated.version_id || updated.song_version_id || '',
+                              inputMode: memo.inputMode || '',
+                              outputMode: memo.outputMode || '',
+                              slides: memo.slides || [],
+                            };
+                          } finally {
+                            state.songs = originalSongs;
+                            state.services = originalServices;
+                            state.serviceItems = originalServiceItems;
+                            state.selectedServiceId = originalSelectedServiceId;
+                          }
+                        })()
+                        """
+                    )
+                    if presenter_manual_title_match_guard == {
+                        "rawTitle": "은혜",
+                        "songId": "",
+                        "versionId": "",
+                        "inputMode": "manual_praise",
+                        "outputMode": "lyrics",
+                        "slides": ["직접 입력한 가사"],
+                    }:
+                        pass_("presenter-manual-title-match-guard", json.dumps(presenter_manual_title_match_guard, ensure_ascii=False))
+                    else:
+                        fail("presenter-manual-title-match-guard", json.dumps(presenter_manual_title_match_guard, ensure_ascii=False))
+
                     presenter_lyrics_db_version_resolution = page.evaluate(
                         """
                         (() => {
@@ -4824,10 +4901,10 @@ def main() -> int:
                         and presenter_preparation_existing_song_guard.get("bareHymnWithTitleViaBlankFallback") == "__smoke_hymn_430_existing__"
                         and presenter_preparation_existing_song_guard.get("pickerBareHymn", [None])[0] == "__smoke_hymn_430_existing__"
                         and presenter_preparation_existing_song_guard.get("linkedFromInput") == "__smoke_existing_song__"
-                        and presenter_preparation_existing_song_guard.get("resolvedSpecialSongId") == "__smoke_hymn_430_existing__"
-                        and presenter_preparation_existing_song_guard.get("resolvedSpecialRawTitle") == ""
-                        and presenter_preparation_existing_song_guard.get("resolvedSpecialInputMode") == "lyrics_db"
-                        and presenter_preparation_existing_song_guard.get("resolvedSpecialVersionId") == "__smoke_hymn_430_existing_version__"
+                        and presenter_preparation_existing_song_guard.get("resolvedSpecialSongId") == ""
+                        and presenter_preparation_existing_song_guard.get("resolvedSpecialRawTitle") == "특송 찬 430"
+                        and presenter_preparation_existing_song_guard.get("resolvedSpecialInputMode") == "manual_praise"
+                        and presenter_preparation_existing_song_guard.get("resolvedSpecialVersionId") == ""
                         and presenter_preparation_existing_song_guard.get("insertCalled") is False
                     ):
                         pass_("presenter-preparation-existing-song-guard", json.dumps(presenter_preparation_existing_song_guard, ensure_ascii=False))

@@ -8000,6 +8000,12 @@ async function resolveServiceSongSelectionBeforeSave(serviceId, index) {
   if (!isSongServiceLabel(item.label) && !isSpecialSongServiceItem(item)) return false;
   const memo = parseServiceItemMemo(item.memo);
   const inputMode = servicePraiseInputMode(item, memo, service);
+  if (inputMode === "manual_praise") {
+    item.song_id = null;
+    item.version_id = null;
+    item.song_version_id = null;
+    return false;
+  }
 
   const rawTitle = String(item.raw_title || "").trim();
   if (!rawTitle) {
