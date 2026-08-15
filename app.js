@@ -2666,6 +2666,7 @@ async function attachSongRelations() {
 }
 
 async function fetchAllRows(buildQuery, { pageSize = SUPABASE_PAGE_SIZE } = {}) {
+  pageSize = Math.min(Math.max(1, Number(pageSize) || SUPABASE_PAGE_SIZE), 1000);
   const rows = [];
   for (let from = 0; ; from += pageSize) {
     const to = from + pageSize - 1;
@@ -2791,6 +2792,7 @@ async function loadServiceDataOnce({ silent = false } = {}) {
 }
 
 async function fetchSupabasePaged(table, select = "*", buildQuery = (query) => query, pageSize = 1000) {
+  pageSize = Math.min(Math.max(1, Number(pageSize) || 1000), 1000);
   const rows = [];
   for (let start = 0; ; start += pageSize) {
     const end = start + pageSize - 1;
@@ -4649,7 +4651,8 @@ async function loadForms(versionId) {
   if (!requireClient()) return;
   if (!versionId) return;
 
-  const version = getSelectedVersion();
+  const song = getSelectedSong();
+  const version = (song?.versions || []).find((candidate) => candidate.id === versionId) || getSelectedVersion();
   state.forms = normalizeForms((version?.forms || []).map((form) => withLocalId({ ...form, song_id: versionId })));
   render();
 }
@@ -13885,8 +13888,9 @@ function renderVersionCompare(song, versions, linkedEntries = []) {
 function renderVersionCompareColumn(version, forms) {
   const active = version.id === getSelectedVersionId();
   const song = getSelectedSong();
-  const content = forms.length
-    ? forms.map((form, index) => {
+  const displayForms = active ? activeVersionForms(version) : forms;
+  const content = displayForms.length
+    ? displayForms.map((form, index) => {
         if (active) return renderFormBlock(form, index, { song, version });
         return `
           <div class="version-picker" data-version-id="${escapeAttr(version.id)}" role="button" tabindex="0">
@@ -13896,6 +13900,11 @@ function renderVersionCompareColumn(version, forms) {
       }).join("")
     : `<div class="version-empty-cell" aria-hidden="true"></div>`;
   return `<div class="version-compare-column${active ? " active" : ""}">${content}</div>`;
+}
+
+function activeVersionForms(version) {
+  if (state.forms.length || state.dirty.forms) return state.forms;
+  return normalizeForms((version?.forms || []).map((form) => withLocalId({ ...form, song_id: version?.id })));
 }
 
 function renderLinkedSongVersionColumn(entry) {
@@ -15000,6 +15009,7 @@ function normalizeSongVersions(song, versions) {
     ...version,
     id: version.id || `${song.id}:version:${index + 1}`,
     name: normalizeGeneratedVersionName(version.name || version.curated_version_name || version.version_label || `Version ${index + 1}`),
+    curated_version_name: version.curated_version_name || null,
     version_label: version.version_label || null,
     raw_section_name: version.raw_section_name || null,
     hymn_no: version.hymn_no || null,
@@ -15018,6 +15028,7 @@ function normalizeRelationalVersion(row, index) {
     _worshipVersionPersisted: true,
     version_order: Number(row.version_order) || index + 1,
     name: normalizeGeneratedVersionName(row.curated_version_name || row.version_label || `Version ${index + 1}`),
+    curated_version_name: row.curated_version_name || null,
     version_label: row.version_label || null,
     raw_section_name: row.raw_section_name || null,
     hymn_no: row.hymn_no || null,
