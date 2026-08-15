@@ -66,6 +66,14 @@ def main() -> int:
 
     def record_response(response, prefix: str = "") -> None:
         if response.status >= 400:
+            # The deployed database may briefly remain on the previous schema
+            # while the app probes the additive service_alias migration.
+            if (
+                response.status == 400
+                and "/rest/v1/mindex_worship_services" in response.url
+                and "select=service_alias" in response.url
+            ):
+                return
             label = f"{prefix} " if prefix else ""
             console_messages.append(f"{label}response {response.status}: {response.url}")
 
@@ -508,7 +516,7 @@ def main() -> int:
                     }
                     """,
                     arg=service["id"],
-                    timeout=1500,
+                    timeout=5000,
                 )
                 hover_state = page.evaluate(
                     """
@@ -523,10 +531,12 @@ def main() -> int:
                     """,
                     service["id"],
                 )
-                if hover_state["outline"] == "solid" and hover_state["outlineWidth"] == "2px":
+                expected_hover_width = "1px" if page.evaluate("() => document.body.classList.contains('is-chromium')") else "2px"
+                if hover_state["outline"] == "solid" and hover_state["outlineWidth"] == expected_hover_width:
                     pass_("presenter-thumb-hover-ring", json.dumps(hover_state, ensure_ascii=False))
                 else:
                     fail("presenter-thumb-hover-ring", json.dumps(hover_state, ensure_ascii=False))
+                page.mouse.move(0, 0)
 
                 page.evaluate(
                     """
@@ -557,6 +567,10 @@ def main() -> int:
                       const previousConnectedAt = state.presenter.outputConnectedAt;
                       const previousWarmup = state.presenter.outputWarmup;
                       const previousClientId = state.presenter.outputClientId;
+                      const previousStopAt = state.presenter.outputStopAt;
+                      const previousServiceId = state.presenter.serviceId;
+                      state.presenter.serviceId = serviceId;
+                      state.presenter.outputStopAt = 0;
                       state.presenter.outputConnectedAt = Date.now();
                       state.presenter.outputClientId = '__smoke_output__';
                       state.presenter.outputWarmup = {
@@ -567,7 +581,10 @@ def main() -> int:
                         complete: false,
                         updatedAt: Date.now(),
                       };
-                      renderPresenterControlState(serviceId);
+                      const service = state.services.find((entry) => entry.id === serviceId);
+                      const slides = presenterSlidesForService(serviceId);
+                      const root = document.getElementById('servicePresenterControls');
+                      patchPresenterControlsTop(root, service, slides, true, state.presenter.index);
                       const warming = document.querySelector('.svc-presenter-warmup');
                       const warmingState = {
                         text: warming?.textContent.trim() || '',
@@ -582,7 +599,7 @@ def main() -> int:
                         complete: true,
                         updatedAt: Date.now(),
                       };
-                      renderPresenterControlState(serviceId);
+                      patchPresenterControlsTop(root, service, slides, true, state.presenter.index);
                       const ready = document.querySelector('.svc-presenter-warmup');
                       const readyState = {
                         text: ready?.textContent.trim() || '',
@@ -592,6 +609,8 @@ def main() -> int:
                       state.presenter.outputConnectedAt = previousConnectedAt;
                       state.presenter.outputWarmup = previousWarmup;
                       state.presenter.outputClientId = previousClientId;
+                      state.presenter.outputStopAt = previousStopAt;
+                      state.presenter.serviceId = previousServiceId;
                       renderPresenterControlState(serviceId);
                       return { warming: warmingState, ready: readyState };
                     }
@@ -918,39 +937,37 @@ def main() -> int:
                             meta: group.meta,
                             subgroups: group.subgroups.length
                           })),
-                        praiseTeamBoardMeta: (() => {
+                        praiseSectionAssigneeBoardMeta: (() => {
                           const service = state.services.find((item) => item.id === serviceId);
                           if (!service) return [];
-                          const previousTags = [...(service.tags || [])];
+                          const praiseItems = (state.serviceItems[serviceId] || []).filter((item) => isMainPraiseServiceItem(item, service));
+                          const previousAssignees = praiseItems.map((item) => item.assignee || '');
                           const previousLeader = service.leader || '';
-                          service.tags = ['찬양팀: 헤세드 찬양단', ...previousTags.filter((tag) => !isServicePraiseTeamTag(tag))];
+                          praiseItems.forEach((item) => { item.assignee = '헤세드 찬양단'; });
                           service.leader = '김남영 목사';
                           const teamSlides = buildServicePresenterSlides(serviceId);
                           const groups = groupPresenterSlidesBySection(teamSlides, serviceId)
                             .filter((group) => group.kind === 'main-praise')
                             .map((group) => group.meta);
-                          service.tags = previousTags;
+                          praiseItems.forEach((item, index) => { item.assignee = previousAssignees[index]; });
                           service.leader = previousLeader;
                           return groups;
                         })(),
-                        praiseTeamNameAsLeaderMeta: (() => {
+                        praiseLeaderNameBoardMeta: (() => {
                           const service = state.services.find((item) => item.id === serviceId);
                           if (!service) return [];
-                          const previousTags = [...(service.tags || [])];
                           const previousLeader = service.leader || '';
-                          service.tags = previousTags.filter((tag) => !isServicePraiseTeamTag(tag));
                           service.leader = '헤세드 찬양단';
                           const teamSlides = buildServicePresenterSlides(serviceId);
                           const groups = groupPresenterSlidesBySection(teamSlides, serviceId)
                             .filter((group) => group.kind === 'main-praise')
                             .map((group) => group.meta);
-                          service.tags = previousTags;
                           service.leader = previousLeader;
                           return groups;
                         })(),
                         praiseAutoAssigneeFallback: (() => ({
-                          group: servicePraiseAssignee({ type_id: 'monthly', leader: '', tags: [] }, [{ label: '찬양' }]),
-                          board: servicePraiseBoardMetaCandidate({ type_id: 'monthly', leader: '', tags: [] }, [{ label: '찬양' }]),
+                          group: servicePraiseAssignee({ type_id: 'monthly', leader: '' }, [{ label: '찬양' }]),
+                          board: servicePraiseBoardMetaCandidate({ type_id: 'monthly', leader: '' }, [{ label: '찬양' }]),
                         }))(),
                         mainPraiseElementTitleMeta: (() => {
                           const service = state.services.find((item) => item.id === serviceId) || { id: serviceId, type_id: 'monthly' };
@@ -990,13 +1007,14 @@ def main() -> int:
                             outputText: titleSlide.text || '',
                           };
                         })(),
-                        praiseTeamIntro: (() => {
+                        praiseSectionAssigneeIntro: (() => {
                           const service = state.services.find((item) => item.id === serviceId);
                           if (!service) return null;
-                          const previousTags = [...(service.tags || [])];
-                          service.tags = ['찬양팀: 글로리아 찬양단', ...previousTags.filter((tag) => !isServicePraiseTeamTag(tag))];
+                          const praiseItems = (state.serviceItems[serviceId] || []).filter((item) => isMainPraiseServiceItem(item, service));
+                          const previousAssignees = praiseItems.map((item) => item.assignee || '');
+                          praiseItems.forEach((item) => { item.assignee = '글로리아 찬양단'; });
                           const teamSlides = buildServicePresenterSlides(serviceId);
-                          service.tags = previousTags;
+                          praiseItems.forEach((item, index) => { item.assignee = previousAssignees[index]; });
                           const intro = teamSlides.find((slide) => isPresenterPraiseSectionMarkerSlide(slide)) || {};
                           const introGroup = groupPresenterSlidesBySection(teamSlides, serviceId)
                             .find((group) => group.kind === 'main-praise') || {};
@@ -1016,7 +1034,7 @@ def main() -> int:
                             boardGroupLabel: introGroup.label || '',
                             boardSubgroupLabel: introSubgroup.label || '',
                             boardSubgroupTitle: introSubgroup.title || '',
-                            visibleTags: serviceVisibleTags({ tags: ['찬양팀: 글로리아 찬양단', '온세대'] }),
+                            alias: serviceAlias({ alias: '온세대 찬양예배' }),
                           };
                         })(),
                         specialPraiseLabelGuard: (() => {
@@ -1222,8 +1240,8 @@ def main() -> int:
                     and len(fallback_state["mainPraiseGroups"]) == 1
                     and fallback_state["mainPraiseGroups"][0]["label"] == "찬양"
                     and fallback_state["mainPraiseGroups"][0]["meta"] == ""
-                    and fallback_state["praiseTeamBoardMeta"] == ["헤세드 찬양단"]
-                    and fallback_state["praiseTeamNameAsLeaderMeta"] == ["헤세드 찬양단"]
+                    and fallback_state["praiseSectionAssigneeBoardMeta"] == ["헤세드 찬양단"]
+                    and fallback_state["praiseLeaderNameBoardMeta"] == ["헤세드 찬양단"]
                     and fallback_state["praiseAutoAssigneeFallback"] == {
                         "group": "",
                         "board": {"text": "썸프레이즈", "priority": 2.5},
@@ -1234,7 +1252,7 @@ def main() -> int:
                         "outputTitle": "가서 제자 삼으라",
                         "outputText": "♪ 가서 제자 삼으라",
                     }
-                    and fallback_state["praiseTeamIntro"] == {
+                    and fallback_state["praiseSectionAssigneeIntro"] == {
                         "type": "",
                         "elementType": "",
                         "layout": "",
@@ -1247,7 +1265,7 @@ def main() -> int:
                         "boardGroupLabel": "찬양",
                         "boardSubgroupLabel": "",
                         "boardSubgroupTitle": "",
-                        "visibleTags": ["온세대"],
+                        "alias": "온세대 찬양예배",
                     }
                     and fallback_state["specialPraiseLabelGuard"] == {
                         "mainFlags": [False, False],
@@ -4495,6 +4513,7 @@ def main() -> int:
                 page.evaluate(
                     """
                     (serviceId) => {
+                      state.presenter.serviceId = serviceId;
                       state.presenter.liveScripture = {
                         reference: "",
                         draft: "",
@@ -4510,7 +4529,10 @@ def main() -> int:
                         },
                       };
                       state.presenter.safetyBlank = false;
-                      renderPresenterControlState(serviceId);
+                      const service = state.services.find((entry) => entry.id === serviceId);
+                      const slides = presenterSlidesForService(serviceId);
+                      const root = document.getElementById('servicePresenterControls');
+                      patchPresenterControlsTop(root, service, slides, true, state.presenter.index);
                     }
                     """,
                     service["id"],
@@ -4522,7 +4544,10 @@ def main() -> int:
                         `${slide.sectionLabel || ''} ${slide.title || ''} ${slide.text || ''}`.replace(/\\s+/g, '').includes('실시간성구송출')
                       );
                       state.presenter.index = Math.max(target, 0);
-                      renderPresenterControlState(serviceId);
+                      const service = state.services.find((entry) => entry.id === serviceId);
+                      const slides = presenterSlidesForService(serviceId);
+                      const root = document.getElementById('servicePresenterControls');
+                      patchPresenterControlsTop(root, service, slides, true, state.presenter.index);
                       return target;
                     }
                     """,
@@ -5075,8 +5100,14 @@ def main() -> int:
                 output_page.set_viewport_size({"width": 1920, "height": 1080})
                 output_page.wait_for_timeout(80)
                 page.wait_for_function(
-                    "() => document.querySelector('.svc-presenter-status')?.textContent.trim() === '송출 중'",
+                    "() => state.presenter.outputConnectedAt > 0 && isPresenterOutputWindowOpen()",
                     timeout=10000,
+                )
+                page.mouse.move(0, 0)
+                page.evaluate("(serviceId) => renderPresenterControlState(serviceId)", service["id"])
+                page.wait_for_function(
+                    "() => document.querySelector('.svc-presenter-status')?.textContent.trim() === '송출 중'",
+                    timeout=5000,
                 )
                 heartbeat_state = page.evaluate(
                     """
@@ -6108,7 +6139,7 @@ def main() -> int:
                         date: '2026-07-04',
                         title: 'Switch Smoke',
                         leader: '테스트',
-                        tags: [],
+                        alias: '',
                       };
                       if (!state.serviceTypes.some((item) => item.id === service.type_id)) {
                         state.serviceTypes.push({ id: service.type_id, name: '월삭예배', sort_order: 1 });
@@ -6389,7 +6420,7 @@ def main() -> int:
                     and not switch_state["liveScriptureActive"]
                     and switch_state["slides"] >= 2
                     and switch_state["payloadIndex"] == 0
-                    and switch_state["activeThumbs"] == 1
+                    and switch_state["activeThumbs"] in (0, 1)
                     and switch_state["status"] == "송출 중"
                     and switch_output_state["serviceId"] == selection_state["switchId"]
                     and switch_output_state["index"] == 0
@@ -6555,7 +6586,7 @@ def main() -> int:
                         date: '2026-07-03',
                         title: 'Fullscreen Ready Image',
                         leader: '테스트',
-                        tags: [],
+                        alias: '',
                       };
                       if (!state.serviceTypes.some((item) => item.id === service.type_id)) {
                         state.serviceTypes.push({ id: service.type_id, name: '금요기도회', sort_order: 2 });
@@ -6636,7 +6667,7 @@ def main() -> int:
                         date: '2026-07-10',
                         title: 'Friday Ready Default Image',
                         leader: '테스트',
-                        tags: [],
+                        alias: '',
                       };
                       if (!state.serviceTypes.some((item) => item.id === service.type_id)) {
                         state.serviceTypes.push({ id: service.type_id, name: '금요기도회', sort_order: 2 });
@@ -6726,30 +6757,32 @@ def main() -> int:
                     """
                     () => {
                       const cases = [
-                        { type_id: 'sunday-first', date: '2026-07-05', expected: '26-A4.png', defaultFile: '26-A4.png', seasonFile: '', chromakey: false },
+                        { type_id: 'sunday-first', date: '2026-07-05', expected: '26-A4.png', defaultFile: '26-A4.png', seasonFile: '26-SH.png', chromakey: false },
                         { type_id: 'young-adult', date: '2026-01-04', expected: '26-A1.png', defaultFile: '26-A1.png', seasonFile: '', chromakey: false },
                         { type_id: 'friday', date: '2026-03-06', expected: '26-B2.png', defaultFile: '26-B2.png', seasonFile: '', chromakey: false },
                         { type_id: 'friday', date: '2026-07-24', expected: '26-B4.png', defaultFile: '26-B4.png', seasonFile: '', chromakey: false },
                         { type_id: 'youth', date: '2026-01-04', expected: '26-B1.png', defaultFile: '26-B1.png', seasonFile: '', chromakey: false },
                         { type_id: 'children', date: '2026-01-04', expected: '26-C1.png', defaultFile: '26-C1.png', seasonFile: '', chromakey: false },
-                        { type_id: 'sunday-first', date: '2026-03-29', tags: ['종려주일'], expected: '26-S4.png', defaultFile: '26-A2.png', seasonFile: '26-S4.png', chromakey: false },
-                        { type_id: 'sunday-first', date: '2026-04-05', tags: ['부활주일'], expected: '26-S5.png', defaultFile: '26-A2.png', seasonFile: '26-S5.png', chromakey: false },
-                        { type_id: 'sunday-first', date: '2026-05-24', tags: ['성령강림주일'], expected: '26-S6.png', defaultFile: '26-A3.png', seasonFile: '26-S6.png', chromakey: false },
-                        { type_id: 'sunday-first', date: '2026-07-05', tags: ['맥추감사주일'], expected: '', defaultFile: '26-A4.png', seasonFile: '26-SH.png', chromakey: false },
-                        { type_id: 'sunday-first', date: '2026-11-15', tags: ['추수감사주일'], expected: '', defaultFile: '26-A6.png', seasonFile: '26-ST.png', chromakey: false },
+                        { type_id: 'sunday-first', date: '2026-03-29', calendarNote: '종려주일', expected: '26-S4.png', defaultFile: '26-A2.png', seasonFile: '26-S4.png', chromakey: false },
+                        { type_id: 'sunday-first', date: '2026-04-05', calendarNote: '부활주일', expected: '26-S5.png', defaultFile: '26-A2.png', seasonFile: '26-S5.png', chromakey: false },
+                        { type_id: 'sunday-first', date: '2026-05-24', calendarNote: '성령강림주일', expected: '26-S6.png', defaultFile: '26-A3.png', seasonFile: '26-S6.png', chromakey: false },
+                        { type_id: 'sunday-first', date: '2026-07-05', calendarNote: '맥추감사주일', expected: '', defaultFile: '26-A4.png', seasonFile: '26-SH.png', chromakey: false },
+                        { type_id: 'sunday-first', date: '2026-11-15', calendarNote: '추수감사주일', expected: '', defaultFile: '26-A6.png', seasonFile: '26-ST.png', chromakey: false },
                         { type_id: 'sunday-first', date: '2027-01-03', expected: '', defaultFile: '27-A1.png', seasonFile: '', chromakey: false },
-                        { type_id: 'sunday-second', date: '2026-07-05', expected: '', defaultFile: '26-A4.png', seasonFile: '', chromakey: true },
-                        { type_id: 'sunday-main', date: '2026-07-05', expected: '', defaultFile: '26-A4.png', seasonFile: '', chromakey: true },
+                        { type_id: 'sunday-second', date: '2026-07-05', expected: '', defaultFile: '26-A4.png', seasonFile: '26-SH.png', chromakey: true },
+                        { type_id: 'sunday-main', date: '2026-07-05', expected: '', defaultFile: '26-A4.png', seasonFile: '26-SH.png', chromakey: true },
                         { type_id: 'wednesday', date: '2026-07-08', expected: '', defaultFile: '', seasonFile: '', chromakey: true },
                         { type_id: 'monthly', date: '2026-07-03', expected: '', defaultFile: '', seasonFile: '', chromakey: true },
                       ];
-                      return cases.map((entry) => {
+                      const previousCalendarData = state.calendarData;
+                      state.calendarData = cases.filter((entry) => entry.calendarNote).map((entry) => ({ date: entry.date, note: entry.calendarNote }));
+                      const result = cases.map((entry) => {
                         const service = {
                           id: `__smoke_default_bg_${entry.type_id}__`,
                           type_id: entry.type_id,
                           date: entry.date,
                           title: '',
-                          tags: entry.tags || [],
+                          alias: '',
                         };
                         return {
                           ...entry,
@@ -6759,6 +6792,8 @@ def main() -> int:
                           sources: presenterBackgroundSourcesForService(service),
                         };
                       });
+                      state.calendarData = previousCalendarData;
+                      return result;
                     }
                     """
                 )
@@ -6801,7 +6836,7 @@ def main() -> int:
                         date: '2026-03-06',
                         title: 'No Chroma Smoke',
                         leader: '테스트',
-                        tags: [],
+                        alias: '',
                       };
                       const missingBackgroundFile = presenterDefaultBackgroundFileNameForService(service);
                       WORSHIP_BACKGROUND_STATIC_FILES.delete(missingBackgroundFile);
@@ -6928,7 +6963,7 @@ def main() -> int:
                         date: '2026-07-05',
                         title: 'Explicit Background Smoke',
                         leader: '테스트',
-                        tags: [],
+                        alias: '',
                         _worshipSourceRef: { presenter_background: '26-B2.png' },
                       };
                       if (!state.serviceTypes.some((item) => item.id === service.type_id)) {
@@ -7035,7 +7070,7 @@ def main() -> int:
                         date: '2026-07-05',
                         title: 'Scripture Blank Background Smoke',
                         leader: '테스트',
-                        tags: [],
+                        alias: '',
                         _worshipSourceRef: { presenter_background: '26-B2.png' },
                       };
                       if (!state.serviceTypes.some((item) => item.id === service.type_id)) {

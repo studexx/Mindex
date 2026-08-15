@@ -1617,8 +1617,6 @@ function isMainPraiseTitleContentItem(item = {}, section = {}, titleText = "") {
 }
 
 function resolveMainPraiseIntroBodyText(service = null, bodyText = "") {
-  const explicitTeam = servicePraiseTeamName(service);
-  if (explicitTeam) return explicitTeam;
   const defaultTeam = serviceDefaultMainPraiseTeamName(service);
   if (!defaultTeam) return String(bodyText || "").trim();
   const bodyKey = compactSearchValue(bodyText);

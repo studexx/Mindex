@@ -323,6 +323,17 @@ Small visual polish that does not alter behavior does not need an entry.
 - Presenter-specific workflow and verification:
   `docs/thread-worship-presenter.md`.
 
+## Worship Service Identity
+
+- `mindex_worship_services`에는 범용 `tags`를 두지 않는다. 날짜별로 화면에
+  표시할 공개 이름은 `service_alias`에 저장한다. 예: `온세대 찬양예배`,
+  `청소년부 제자헌신예배`.
+- 정규 예배 유형과 기본 제목은 `service_type_id`와 `title`이 소유한다.
+  별명은 이 값을 덮어쓰지 않으며, 목록·검색·프레젠터 표시에서만 우선한다.
+- 찬양대·찬양팀 이름은 해당 찬양 섹션의 담당자, 집회 없음·헌신예배 같은
+  machine state는 typed `source_ref`, 절기와 교회 일정은 교회력 데이터가 각각 소유한다.
+  별명에 이 값을 합쳐 저장하거나 새 범용 metadata bucket을 만들지 않는다.
+
 ## Presenter Output Rules
 - `참고 화면`은 전역 presenter toolbar가 아니라 `설교` 또는 `광고` 섹션에 추가한다.
   `참고 화면 추가`는 해당 섹션의 마지막에 image element를 만들며, 이름과
@@ -341,6 +352,6 @@ Small visual polish that does not alter behavior does not need an entry.
 
 ## Service Auto-Schedule Rules
 - 어린이부 예배, 청소년부 예배, 청년부 예배는 주일 자동 생성 대상이다.
-- 단, 해당 주일의 교회력/일정/예배 태그에 `온세대` 또는 `찬양예배`가
+- 단, 해당 주일의 교회력/일정/예배 별명에 `온세대` 또는 `찬양예배`가
   있으면 어린이부, 청소년부, 청년부 예배를 별도로 생성하지 않는다.
   그날은 3부 예배(`sunday-main`)가 통합 예배의 source of truth다.

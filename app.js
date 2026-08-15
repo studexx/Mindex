@@ -515,7 +515,7 @@ const { LINK_CONFIG_KEYS, LINK_ROUTE_KEYS } = MINDEX_CONSTANTS;
  * @property {string=} title
  * @property {string=} leader
  * @property {string=} status
- * @property {string[]=} tags
+ * @property {string=} alias
  */
 
 /**
@@ -635,7 +635,7 @@ const state = {
   serviceItemAssigneeSupported: false,
   serviceItemVersionSupported: false,
   serviceItemMemoSupported: false,
-  serviceTitleSupported: false,
+  serviceAliasSupported: false,
   selectedServiceTypeId: null,
   selectedServiceId: null,
   selectedServiceItemIndex: null,
@@ -2950,7 +2950,7 @@ const WORSHIP_SERVICE_TYPE_SELECT = [
   "chromakey_enabled",
   "config",
 ].join(",");
-const WORSHIP_SERVICE_LIST_SELECT = [
+const WORSHIP_SERVICE_BASE_LIST_SELECT = [
   "id",
   "service_type_id",
   "service_date",
@@ -2958,12 +2958,12 @@ const WORSHIP_SERVICE_LIST_SELECT = [
   "title",
   "worship_leader",
   "praise_leader",
-  "tags",
   "notes",
   "created_at",
   "status",
   "source_ref",
 ].join(",");
+const WORSHIP_SERVICE_LIST_SELECT = `${WORSHIP_SERVICE_BASE_LIST_SELECT},service_alias`;
 const WORSHIP_SECTION_LIST_SELECT = [
   "id",
   "service_id",
@@ -3145,11 +3145,14 @@ function worshipServiceListQuery(query) {
 }
 
 async function fetchWorshipServiceListRows() {
+  const select = state.serviceAliasSupported
+    ? WORSHIP_SERVICE_LIST_SELECT
+    : WORSHIP_SERVICE_BASE_LIST_SELECT;
   const cacheKey = WORSHIP_EMERGENCY_TODAY_ONLY
     ? `today:${localDateStringWithOffset(new Date(), 0)}`
-    : WORSHIP_SERVICE_LIST_SELECT;
+    : select;
   try {
-    const rows = await fetchSupabasePaged("mindex_worship_services", WORSHIP_SERVICE_LIST_SELECT, worshipServiceListQuery);
+    const rows = await fetchSupabasePaged("mindex_worship_services", select, worshipServiceListQuery);
     writeStaticSupabaseCache("mindex_worship_services", cacheKey, rows);
     return rows;
   } catch (error) {
@@ -3311,7 +3314,7 @@ const FRIDAY_SERVICE_VARIANTS = {
     key: "monthly",
     typeId: "monthly",
     title: "",
-    tags: ["월삭예배"],
+    alias: "",
     displayName: "월삭예배",
     templateNote: "monthly",
   },
@@ -3319,7 +3322,7 @@ const FRIDAY_SERVICE_VARIANTS = {
     key: "culture",
     typeId: "friday",
     title: "문화예배",
-    tags: ["문화예배", "집회 없음"],
+    alias: "문화예배",
     displayName: "문화예배",
     templateNote: "no_gathering",
     noGathering: true,
@@ -3328,7 +3331,7 @@ const FRIDAY_SERVICE_VARIANTS = {
     key: "3355",
     typeId: "friday",
     title: "",
-    tags: ["삼삼오오예배"],
+    alias: "삼삼오오예배",
     displayName: "삼삼오오예배",
     templateNote: "friday_prayer",
   },
@@ -3336,7 +3339,7 @@ const FRIDAY_SERVICE_VARIANTS = {
     key: "district-union",
     typeId: "friday",
     title: "",
-    tags: ["구역연합예배"],
+    alias: "구역연합예배",
     displayName: "구역연합예배",
     templateNote: "friday_prayer",
   },
@@ -3367,7 +3370,7 @@ function autoFridayServiceTarget(date = "") {
     typeId: variant.typeId,
     date,
     title: variant.title,
-    tags: [...variant.tags],
+    alias: variant.alias,
     sourceRef: {
       friday_variant: variant.key,
       friday_variant_name: variant.displayName,
@@ -3395,8 +3398,8 @@ function isAllGenerationsWorshipDate(date) {
       && worshipAppServiceTypeId(service?.type_id) === "sunday-main")
     .map((service) => cleanList([
       service.title,
+      service.alias,
       service.raw_text,
-      ...(Array.isArray(service.tags) ? service.tags : []),
     ]).join(" "))
     .join(" ");
   const compact = compactSearchValue([calendarText, serviceText].filter(Boolean).join(" "));
@@ -3416,7 +3419,7 @@ function autoWorshipServicePayload(target = {}) {
   const typeId = worshipAppServiceTypeId(target.typeId);
   const persistedAt = new Date().toISOString();
   const sourceRef = target.sourceRef && typeof target.sourceRef === "object" ? target.sourceRef : {};
-  return {
+  const payload = {
     id: createUuid(),
     service_type_id: canonicalWorshipServiceTypeId(typeId),
     service_date: target.date,
@@ -3426,7 +3429,6 @@ function autoWorshipServicePayload(target = {}) {
     status: "draft",
     worship_leader: defaultServiceWorshipLeader(typeId),
     praise_leader: serviceUsesPraiseLeader(typeId) ? defaultServicePraiseLeader(typeId) : "",
-    tags: Array.isArray(target.tags) ? target.tags : [],
     source_kind: "mindex",
     source_ref: {
       created_from: "mindex_auto_schedule",
@@ -3436,6 +3438,8 @@ function autoWorshipServicePayload(target = {}) {
     },
     notes: "",
   };
+  if (state.serviceAliasSupported) payload.service_alias = String(target.alias || "").trim();
+  return payload;
 }
 
 async function ensureUpcomingPublicWorshipServices(baseDate = new Date()) {
@@ -3489,6 +3493,7 @@ function worshipAppServiceTypeId(typeId) {
 }
 
 async function loadWorshipData() {
+  state.serviceAliasSupported = await detectTableColumnSupport("mindex_worship_services", "service_alias");
   const [types, services, templates, templateItems] = await Promise.all([
     fetchCachedSupabasePaged("mindex_worship_service_types", WORSHIP_SERVICE_TYPE_SELECT, (query) =>
       query.order("sort_order", { ascending: true })).catch((error) => {
@@ -3544,7 +3549,6 @@ async function loadWorshipData() {
   state.serviceItemAssigneeSupported = true;
   state.serviceItemVersionSupported = true;
   state.serviceItemMemoSupported = true;
-  state.serviceTitleSupported = true;
 
   render();
   if (
@@ -3660,10 +3664,10 @@ function normalizeWorshipService(service = {}) {
     date: serviceDate,
     date_end: service.service_date_end || null,
     title: normalizeWorshipServiceTitle(service.title || "", { type_id: typeId, date: serviceDate }),
+    alias: String(service.service_alias || "").trim(),
     leader: praiseLeader,
     worshipLeader,
     praiseLeader,
-    tags: Array.isArray(service.tags) ? service.tags : [],
     raw_text: service.notes || "",
     created_at: service.created_at,
     _worship: true,
@@ -5390,9 +5394,12 @@ async function saveWorshipServiceInstance(service) {
     status: service._worshipStatus || "draft",
     worship_leader: worshipLeader,
     praise_leader: praiseLeader,
-    tags: Array.isArray(service.tags) ? service.tags : [],
+    source_ref: service._worshipSourceRef && typeof service._worshipSourceRef === "object"
+      ? service._worshipSourceRef
+      : {},
     notes: service.raw_text || "",
   };
+  if (state.serviceAliasSupported) servicePayload.service_alias = String(service.alias || "").trim();
   const { error: serviceError } = await state.client
     .from("mindex_worship_services")
     .update(servicePayload)
@@ -7973,8 +7980,8 @@ function updateServiceMetaField(field) {
   const service = state.services.find((s) => s.id === state.selectedServiceId);
   if (!service) return;
   const key = field.dataset.serviceMetaField;
-  if (key === "title") {
-    service.title = normalizeWorshipServiceTitle(field.value, service);
+  if (key === "alias") {
+    service.alias = String(field.value || "").trim();
   } else if (key === "leader") {
     if (!serviceUsesPraiseLeader(service.type_id)) {
       service.leader = "";
@@ -7983,17 +7990,12 @@ function updateServiceMetaField(field) {
     }
     service.leader = field.value;
     service.praiseLeader = field.value;
-  } else if (key === "praiseTeam") {
-    setServicePraiseTeamName(service, field.value);
-  } else if (key === "tags") {
-    const praiseTeam = servicePraiseTeamName(service);
-    service.tags = field.value.split(",").map((t) => t.trim()).filter(Boolean);
-    setServicePraiseTeamName(service, praiseTeam);
   } else if (key === "dedication") {
     const enabled = Boolean(field.checked);
-    const tags = (Array.isArray(service.tags) ? service.tags : [])
-      .filter((tag) => compactSearchValue(tag) !== "헌신예배");
-    service.tags = enabled ? [...tags, "헌신예배"] : tags;
+    service._worshipSourceRef = {
+      ...(service._worshipSourceRef && typeof service._worshipSourceRef === "object" ? service._worshipSourceRef : {}),
+      dedication_service: enabled,
+    };
     syncSundayAfternoonDedicationSlots(service.id, enabled);
   }
   state.dirty.service = true;
@@ -8018,7 +8020,7 @@ function syncSundayAfternoonDedicationSlots(serviceId, enabled) {
 function updateNewServiceFormField(field) {
   if (!state.newServiceForm) return;
   const key = field.dataset.newServiceField;
-  if (["date", "title", "leader", "praiseTeam", "tags"].includes(key)) {
+  if (["date", "alias", "leader"].includes(key)) {
     if (key === "leader" && !serviceUsesPraiseLeader(state.newServiceForm.type_id)) {
       state.newServiceForm[key] = "";
       return;
@@ -9307,9 +9309,9 @@ function serviceItemAllowsManualSongText(item = {}, service = selectedServiceFor
   const label = compactSearchValue(item.label || "");
   if (isSpecialSongServiceItem(item)) return true;
   const titleText = compactSearchValue([
+    service?.alias,
     service?.title,
     service?.type_id,
-    ...(Array.isArray(service?.tags) ? service.tags : []),
   ].filter(Boolean).join(" "));
   if (titleText.includes("온세대") && isMainPraiseServiceItem(item, { allowUnlabeled: true })) return true;
   return false;
@@ -10693,10 +10695,8 @@ function startNewServiceForm(typeId = state.selectedServiceTypeId) {
   state.newServiceForm = {
     type_id: appTypeId,
     date: toLocalDateStr(new Date()),
-    title: "",
+    alias: "",
     leader: defaultServicePraiseLeader(appTypeId),
-    praiseTeam: "",
-    tags: "",
   };
   renderServiceList();
   renderCurrentServiceModuleDetail();
@@ -11875,8 +11875,15 @@ function presenterSeasonBackgroundFileNameForService(service) {
 }
 
 function presenterSeasonBackgroundCode(service) {
-  const tags = Array.isArray(service?.tags) ? service.tags.map((tag) => String(tag).replace(/\s+/g, "")) : [];
-  const haystack = [serviceDisplayTypeName(service), ...tags].join(" ");
+  const calendarRow = (state.calendarData || []).find((row) => String(row?.date || "").trim() === String(service?.date || "").trim());
+  const haystack = [
+    serviceDisplayTypeName(service),
+    service?.alias,
+    service?.title,
+    calendarRow?.liturgical,
+    calendarRow?.note,
+    calendarRow?.church_schedule,
+  ].filter(Boolean).join(" ");
   if (/맥추|harvest/i.test(haystack)) return "SH";
   if (/추수|thanksgiving/i.test(haystack)) return "ST";
   if (/대림|advent/i.test(haystack)) return "S1";
@@ -17418,12 +17425,11 @@ function publicSundayThirdTemplate(options = {}) {
 }
 
 function serviceIsDedicationWorship(service = null) {
-  const tags = Array.isArray(service?.tags) ? service.tags : [];
   const sourceRef = service?._worshipSourceRef && typeof service._worshipSourceRef === "object" ? service._worshipSourceRef : {};
   const text = compactSearchValue([
+    service?.alias,
     service?.title,
     service?.raw_text,
-    ...tags,
   ].filter(Boolean).join(" "));
   return Boolean(sourceRef.dedication_service || text.includes("헌신예배"));
 }
@@ -18438,16 +18444,18 @@ function serviceCustomTitle(service) {
   return String(service?.title || "").trim();
 }
 
+function serviceAlias(service) {
+  return String(service?.alias || "").replace(/\s+/g, " ").trim();
+}
+
 function normalizeServiceDisplayName(value) {
   return String(value || "").replace(/주일예배 \((1부|2부|3부)\)/g, "주일예배 [$1]");
 }
 
 function serviceDisplayTypeName(service) {
   if (!service) return "";
-  const tags = Array.isArray(service.tags) ? service.tags : [];
-  if (service.type_id === "sunday-main" && tags.some((tag) => String(tag).includes("2·3부 통합"))) {
-    return "주일예배 [2·3부 통합]";
-  }
+  const alias = serviceAlias(service);
+  if (alias) return alias;
   const sourceRef = service?._worshipSourceRef && typeof service._worshipSourceRef === "object" ? service._worshipSourceRef : {};
   if (worshipAppServiceTypeId(service.type_id) === "friday") {
     const fridayName = String(sourceRef.friday_variant_name || "").trim();
@@ -18466,12 +18474,11 @@ function serviceTypeById(typeId) {
 
 function serviceIsNoGathering(service = null) {
   const sourceRef = service?._worshipSourceRef && typeof service._worshipSourceRef === "object" ? service._worshipSourceRef : {};
-  const tags = Array.isArray(service?.tags) ? service.tags : [];
   const text = compactSearchValue([
     sourceRef.friday_template,
     sourceRef.no_gathering ? "집회 없음" : "",
+    service?.alias,
     service?.title,
-    ...tags,
   ].filter(Boolean).join(" "));
   return Boolean(sourceRef.no_gathering || text.includes("집회없음"));
 }
@@ -19084,7 +19091,9 @@ function serviceMatchesSearch(svc, q) {
   if (!q) return true;
   const norm = (s) => normalizeSearchValue(s);
   const leaders = norm([serviceWorshipLeaderLabel(svc), servicePraiseLeaderLabel(svc)].filter(Boolean).join(" "));
-  const tags = norm((svc.tags || []).join(" "));
+  const alias = norm(serviceAlias(svc));
+  const calendarRow = (state.calendarData || []).find((row) => String(row?.date || "").trim() === String(svc?.date || "").trim());
+  const calendar = norm([calendarRow?.liturgical, calendarRow?.note, calendarRow?.church_schedule].filter(Boolean).join(" "));
   const date = svc.date || "";
   const d = new Date(date + "T00:00:00");
   const dateFmt = `${d.getMonth()+1}/${d.getDate()}`;
@@ -19094,7 +19103,8 @@ function serviceMatchesSearch(svc, q) {
     ...getServiceItems(svc.id),
     ...getServiceDefaultItems(svc.type_id),
   ].map((item) => `${item.label || ""} ${item.raw_title || ""}`).join(" "));
-  return leaders.includes(q) || date.includes(q) || tags.includes(q) || dateDisplay.includes(q) || type.includes(q) || items.includes(q);
+  return leaders.includes(q) || alias.includes(q) || calendar.includes(q)
+    || date.includes(q) || dateDisplay.includes(q) || type.includes(q) || items.includes(q);
 }
 
 function getFilteredServicesForType(typeId) {
@@ -20054,26 +20064,16 @@ function renderServiceDetail() {
               <label class="svc-new-label">날짜</label>
               <input class="svc-new-input" type="date" data-new-service-field="date" value="${escapeAttr(form.date)}" required />
             </div>
-            ${state.serviceTitleSupported ? `
-              <div class="svc-new-field">
-                <label class="svc-new-label">예배명</label>
-                <input class="svc-new-input" type="text" data-new-service-field="title" value="${escapeAttr(form.title || "")}" placeholder="${typeId === "special" ? "고난주간 특별새벽기도회" : "필요할 때만"}" />
-              </div>
-            ` : ""}
+            <div class="svc-new-field">
+              <label class="svc-new-label">예배 별명</label>
+              <input class="svc-new-input" type="text" data-new-service-field="alias" value="${escapeAttr(form.alias || "")}" placeholder="온세대 찬양예배" />
+            </div>
             ${serviceUsesPraiseLeader(typeId) ? `
               <div class="svc-new-field">
                 <label class="svc-new-label">찬양 인도자</label>
                 <input class="svc-new-input" type="text" data-new-service-field="leader" value="${escapeAttr(form.leader)}" placeholder="이름/직분" />
               </div>
             ` : ""}
-            <div class="svc-new-field">
-              <label class="svc-new-label">찬양팀</label>
-              <input class="svc-new-input" type="text" data-new-service-field="praiseTeam" value="${escapeAttr(form.praiseTeam || "")}" placeholder="OOO 찬양단" />
-            </div>
-            <div class="svc-new-field">
-              <label class="svc-new-label">비고</label>
-              <input class="svc-new-input" type="text" data-new-service-field="tags" value="${escapeAttr(form.tags)}" placeholder="쉼표로 구분" />
-            </div>
           </div>
           <div class="svc-new-form-actions">
             <button class="btn primary" type="button" data-create-service>추가</button>
@@ -20698,39 +20698,13 @@ function renderServiceEditorHeader(typeId) {
     </div>`;
 }
 
-function serviceVisibleTags(service) {
-  return serviceTagsWithoutPraiseTeam(service?.tags || [])
-    .map((tag) => String(tag || "").trim())
-    .filter((tag) => tag && tag !== "PPT 확인" && tag !== "2·3부 통합");
-}
-
-function parseServicePraiseTeamTag(tag) {
-  const text = String(tag || "").trim();
-  const match = text.match(/^(?:찬양\s*(?:팀|단)|praise\s*team)\s*[:：]\s*(.+)$/i);
-  return match ? match[1].replace(/\s+/g, " ").trim() : "";
-}
-
-function isServicePraiseTeamTag(tag) {
-  return Boolean(parseServicePraiseTeamTag(tag));
-}
-
-function serviceTagsWithoutPraiseTeam(tags = []) {
-  return (Array.isArray(tags) ? tags : []).filter((tag) => !isServicePraiseTeamTag(tag));
-}
-
-function servicePraiseTeamName(service) {
-  return (Array.isArray(service?.tags) ? service.tags : [])
-    .map(parseServicePraiseTeamTag)
-    .find(Boolean) || "";
-}
-
 function serviceDefaultMainPraiseTeamName(service) {
   const typeId = worshipAppServiceTypeId(service?.type_id);
   if (typeId === "monthly") return "썸프레이즈";
   if (typeId === "sunday-main") {
     const context = compactSearchValue([
+      service?.alias,
       service?.title,
-      ...(Array.isArray(service?.tags) ? service.tags : []),
     ].filter(Boolean).join(" "));
     return context.includes("온세대") || context.includes("찬양예배")
       ? "테힐라 찬양단"
@@ -20740,14 +20714,7 @@ function serviceDefaultMainPraiseTeamName(service) {
 }
 
 function serviceMainPraiseTeamName(service, fallback = "") {
-  return servicePraiseTeamName(service) || serviceDefaultMainPraiseTeamName(service) || cleanServiceAssignee(fallback);
-}
-
-function setServicePraiseTeamName(service, value) {
-  if (!service) return;
-  const clean = String(value || "").replace(/\s+/g, " ").trim();
-  const tags = serviceTagsWithoutPraiseTeam(service.tags || []);
-  service.tags = clean ? [`찬양팀: ${clean}`, ...tags] : tags;
+  return cleanServiceAssignee(fallback) || serviceDefaultMainPraiseTeamName(service);
 }
 
 function serviceUsesPraiseLeader(typeId) {
@@ -20759,14 +20726,13 @@ function renderServiceMetaEditor(service) {
   const leaderHidden = !serviceUsesPraiseLeader(service.type_id);
   return `
     <div class="svc-meta-editor">
-      ${state.serviceTitleSupported ? `
       <label>
-        <span>예배명</span>
-        <input class="svc-meta-input svc-meta-input--title" type="text" data-service-meta-field="title"
-          value="${escapeAttr(service.title || "")}"
-          placeholder="${service.type_id === "special" ? "특별예배명" : "필요할 때만"}"
-          aria-label="예배명" />
-      </label>` : ""}
+        <span>예배 별명</span>
+        <input class="svc-meta-input svc-meta-input--title" type="text" data-service-meta-field="alias"
+          value="${escapeAttr(serviceAlias(service))}"
+          placeholder="온세대 찬양예배"
+          aria-label="예배 별명" />
+      </label>
       ${leaderHidden ? "" : `
       <label>
         <span>찬양 인도자</span>
@@ -20775,25 +20741,11 @@ function renderServiceMetaEditor(service) {
           placeholder="이름/직분"
           aria-label="찬양 인도자" />
       </label>`}
-      <label>
-        <span>찬양팀</span>
-        <input class="svc-meta-input" type="text" data-service-meta-field="praiseTeam"
-          value="${escapeAttr(servicePraiseTeamName(service))}"
-          placeholder="OOO 찬양단"
-          aria-label="찬양팀" />
-      </label>
       ${worshipAppServiceTypeId(service.type_id) === "sunday-afternoon" ? `
       <label class="svc-meta-toggle">
         <input type="checkbox" data-service-meta-field="dedication" ${serviceIsDedicationWorship(service) ? "checked" : ""} />
         <span>헌신예배</span>
       </label>` : ""}
-      <label>
-        <span>비고</span>
-        <input class="svc-meta-input" type="text" data-service-meta-field="tags"
-          value="${escapeAttr(serviceVisibleTags(service).join(", "))}"
-          placeholder="온세대 찬양예배, 2·3부 통합..."
-          aria-label="비고" />
-      </label>
     </div>
   `;
 }
@@ -21490,7 +21442,11 @@ function renderServiceWeekCard(service) {
 
 function renderServiceDateCard(service, options = {}) {
   const preview = serviceItemPreview(service.id);
-  const note = (service.tags || []).join(", ");
+  const calendarRow = (state.calendarData || []).find((row) => String(row?.date || "").trim() === String(service?.date || "").trim());
+  const note = cleanList([
+    calendarRow?.note,
+    serviceIsNoGathering(service) ? "집회 없음" : "",
+  ]).filter((value) => compactSearchValue(value) !== compactSearchValue(serviceDisplayTypeName(service))).join(" · ");
   const serviceName = serviceDisplayTypeName(service);
   return `
     <button
@@ -22143,8 +22099,6 @@ function servicePraiseAssignee(service, items = []) {
 }
 
 function servicePraiseBoardMetaCandidate(service, items = []) {
-  const team = servicePraiseTeamName(service);
-  if (team) return { text: team, priority: 3 };
   const introAssignee = items
     .map((item) => item?.praiseIntro ? cleanServiceAssignee(item.assignee) : "")
     .find(Boolean);
@@ -22258,7 +22212,7 @@ function renderPresenterHelpControl() {
 function renderServicePresenterControls(service, slides, active, index) {
   const boardKey = presenterControlBoardKey(service, slides, active, presenterServiceUsesChromakey(service));
   return `
-    <section id="servicePresenterControls" class="${escapeAttr(presenterControlsClassName(active, presenterServiceUsesChromakey(service)))}" aria-label="${escapeAttr(uiText("presenter.controls"))}" data-board-key="${escapeAttr(boardKey)}">
+    <section id="servicePresenterControls" class="${escapeAttr(presenterControlsClassName(active, presenterServiceUsesChromakey(service)))}" aria-label="${escapeAttr(uiText("presenter.controls"))}" data-board-key="${escapeAttr(boardKey)}" data-service-id="${escapeAttr(service.id)}">
       ${renderPresenterControlsTop(service, slides, active, index)}
       <div class="svc-presenter-board-column">
         ${renderPresenterSlideBoard(slides, presenterBoardActiveIndex(slides, active, index), service.id)}
@@ -25399,10 +25353,14 @@ function renderPresenterControlState(serviceId = state.selectedServiceId) {
         renderServiceList();
         return;
       }
+      // Connection controls are lightweight and must reflect start/stop
+      // immediately even while a hovered thumbnail delays the board swap.
+      patchPresenterControlsTop(root, service, slides, active, index);
+      const sameService = root.dataset.serviceId === serviceId;
       const interactionAt = Number(root.dataset.presenterInteractionAt) || 0;
       const interactionDelay = 150 - (Date.now() - interactionAt);
-      const hoveredThumbnail = root.querySelector(".svc-slide-thumb:hover");
-      if (interactionDelay > 0 || hoveredThumbnail) {
+      const hoveredThumbnail = sameService && root.querySelector(".svc-slide-thumb:hover");
+      if (sameService && (interactionDelay > 0 || hoveredThumbnail)) {
         if (root.dataset.presenterBoardPatchPending !== "true") {
           root.dataset.presenterBoardPatchPending = "true";
           window.setTimeout(() => {
@@ -25487,7 +25445,7 @@ function patchPresenterControlsTop(root, service, slides, active, index) {
   if (!root || !service) return;
   root.setAttribute("aria-label", uiText("presenter.controls"));
   const currentTop = root.querySelector(".svc-presenter-top");
-  if (currentTop?.querySelector(":active")) {
+  if (currentTop?.querySelector("button:active")) {
     if (root.dataset.presenterTopPatchPending !== "true") {
       root.dataset.presenterTopPatchPending = "true";
       window.setTimeout(() => {
@@ -26709,27 +26667,21 @@ async function createService() {
 
   const serviceId = createUuid();
   const persistedAt = new Date().toISOString();
-  const tags = String(form.tags || "")
-    .split(",")
-    .map((tag) => tag.trim())
-    .filter(Boolean);
-  const praiseTeam = String(form.praiseTeam || "").replace(/\s+/g, " ").trim();
-  if (praiseTeam) tags.unshift(`찬양팀: ${praiseTeam}`);
   const servicePayload = {
     id: serviceId,
     service_type_id: canonicalWorshipServiceTypeId(typeId),
     service_date: date,
     created_at: persistedAt,
     updated_at: persistedAt,
-    title: String(form.title || "").trim(),
+    title: "",
     status: "draft",
     worship_leader: defaultServiceWorshipLeader(typeId),
     praise_leader: serviceUsesPraiseLeader(typeId) ? String(form.leader || "").trim() : "",
-    tags,
     source_kind: "mindex",
     source_ref: { created_from: "mindex_template", app_service_type_id: typeId },
     notes: "",
   };
+  if (state.serviceAliasSupported) servicePayload.service_alias = String(form.alias || "").trim();
   state.saving = true;
   updateSaveState();
   try {

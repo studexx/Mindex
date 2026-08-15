@@ -292,7 +292,7 @@ def select_service_with_slides(page) -> dict[str, Any] | None:
               date: '2026-07-02',
               title: 'Presenter Smoke',
               leader: '테스트',
-              tags: [],
+              alias: '',
             };
             if (!state.serviceTypes.some((item) => item.id === typeId)) {
               state.serviceTypes.push({ id: typeId, name: '월삭예배', sort_order: 1 });
@@ -1490,7 +1490,8 @@ def main() -> int:
                         initials: Boolean(getSongSearchMatch(syntheticSong, getSearchTokens("ㅌㅎㄱㅅ"))),
                       };
                       state.songs = [syntheticSong, syntheticHymn, ...originalSongs];
-                      state.search = "첫 가사 통합검색";
+                      clearSearchCaches();
+                      state.search = "숨은 부제";
                       if (refs.searchInput) refs.searchInput.value = state.search;
                       renderSongList();
                       const rendered = {
@@ -1526,6 +1527,7 @@ def main() -> int:
                         fallbackTitle: stripHymnNo(presenterPreparationSongContent("430장 없는 찬송 제목")).title.trim(),
                       };
                       state.songs = originalSongs;
+                      clearSearchCaches();
                       state.search = originalSearch;
                       if (refs.searchInput) refs.searchInput.value = originalInputValue;
                       renderSongList();
@@ -2284,7 +2286,7 @@ def main() -> int:
                               id: serviceId,
                               type_id: 'sunday-main',
                               date: '2026-07-05',
-                              tags: []
+                              alias: ''
                             }]);
                             state.serviceItems[serviceId] = groupWorshipElements(scaffold.sections, scaffold.elements)[serviceId] || [];
                             state.selectedServiceId = serviceId;
@@ -2780,7 +2782,6 @@ def main() -> int:
                                 "sunday-first:2026-07-26",
                                 "sunday-second:2026-07-26",
                                 "sunday-main:2026-07-26",
-                                "children:2026-07-26",
                                 "youth:2026-07-26",
                                 "young-adult:2026-07-26",
                                 "sunday-afternoon:2026-07-26",
@@ -2793,8 +2794,22 @@ def main() -> int:
                                 "sunday-main:2026-07-26",
                                 "sunday-afternoon:2026-07-26",
                             ],
-                            "saturday": [],
-                            "sunday": [],
+                            "saturday": [
+                                "wednesday:2026-07-22",
+                                "friday:2026-07-24",
+                                "sunday-first:2026-07-19",
+                                "sunday-second:2026-07-19",
+                                "sunday-main:2026-07-19",
+                                "sunday-afternoon:2026-07-19",
+                            ],
+                            "sunday": [
+                                "wednesday:2026-07-22",
+                                "friday:2026-07-24",
+                                "sunday-first:2026-07-19",
+                                "sunday-second:2026-07-19",
+                                "sunday-main:2026-07-19",
+                                "sunday-afternoon:2026-07-19",
+                            ],
                         }
                         and template_terms["monthlyFirst"] == {"label": "준비", "elementType": "video"}
                         and template_terms["monthlyScaffold"]["sections"] == 12
@@ -3240,7 +3255,7 @@ def main() -> int:
                         and template_terms["sharedSundayContentProjection"]["syncedScriptureRefs"] == ["마 13:31–33", "마 13:44–50"]
                         and template_terms["sharedSundayContentProjection"]["clearedScriptureRefs"] == []
                         and template_terms["sharedSundayContentProjection"]["thirdMissingSlides"] == [
-                            "찬양 1", "찬양 2", "찬양 3", "찬양 4", "찬송", "대표기도",
+                            "찬양 1", "찬양 2", "찬양 3", "찬양 4", "찬송", "대표기도", "특송",
                         ]
                         and template_terms["fullscreenSermonBodyCompatibility"] == {
                             "staticInput": False,
@@ -3614,6 +3629,18 @@ def main() -> int:
                             title: '청년 연합 월삭예배',
                             date: '2026-07-03',
                           }),
+                          allGenerationsAlias: serviceDisplayTypeName({
+                            type_id: 'sunday-main',
+                            title: '주일예배 [3부]',
+                            alias: '온세대 찬양예배',
+                            date: '2026-07-05',
+                          }),
+                          youthDedicationAlias: serviceDisplayTypeName({
+                            type_id: 'youth',
+                            title: '청소년부 예배',
+                            alias: '청소년부 제자헌신예배',
+                            date: '2026-07-05',
+                          }),
                           normalizedRowTitle: normalizeWorshipService({
                             id: '__title_normalization__',
                             service_type_id: 'monthly',
@@ -3640,6 +3667,8 @@ def main() -> int:
                         "otherMonth": "월삭예배",
                         "monthlyCustomTitle": "월삭예배",
                         "specialCustomTitle": "청년 연합 월삭예배",
+                        "allGenerationsAlias": "온세대 찬양예배",
+                        "youthDedicationAlias": "청소년부 제자헌신예배",
                         "normalizedRowTitle": "월삭예배",
                         "normalizedOtherMonthRowTitle": "월삭예배",
                         "normalizedSundayRowTitle": "주일예배 [1부]",
@@ -3943,26 +3972,26 @@ def main() -> int:
                         """
                     )
                     if (
-                        presenter_font_contract["chromakey"]["unit"] == "1px"
+                        presenter_font_contract["chromakey"]["unit"] == "0.0520833333cqw"
                         and presenter_font_contract["chromakey"]["barHeight"] == "17.5%"
                         and presenter_font_contract["chromakey"]["outputBg"] == "#00ff00"
-                        and presenter_font_contract["chromakey"]["display"] == "90px"
-                        and presenter_font_contract["chromakey"]["section"] == "70px"
-                        and presenter_font_contract["chromakey"]["body"] == "70px"
-                        and presenter_font_contract["chromakey"]["lyrics"] == "70px"
-                        and presenter_font_contract["chromakey"]["meta"] == "50px"
-                        and presenter_font_contract["chromakey"]["scriptureBar"] == "70px"
-                        and presenter_font_contract["chromakey"]["scriptureClean"] == "70px"
-                        and presenter_font_contract["chromakey"]["scriptureReadingText"] == "90px"
-                        and presenter_font_contract["clean"]["display"] == "170px"
+                        and presenter_font_contract["chromakey"]["display"] == "67.5px"
+                        and presenter_font_contract["chromakey"]["section"] == "52.5px"
+                        and presenter_font_contract["chromakey"]["body"] == "52.5px"
+                        and presenter_font_contract["chromakey"]["lyrics"] == "52.5px"
+                        and presenter_font_contract["chromakey"]["meta"] == "37.5px"
+                        and presenter_font_contract["chromakey"]["scriptureBar"] == "52.5px"
+                        and presenter_font_contract["chromakey"]["scriptureClean"] == "52.5px"
+                        and presenter_font_contract["chromakey"]["scriptureReadingText"] == "67.5px"
+                        and presenter_font_contract["clean"]["display"] == "127.5px"
                         and presenter_font_contract["clean"]["outputBg"] == "#000"
-                        and presenter_font_contract["clean"]["section"] == "140px"
-                        and presenter_font_contract["clean"]["body"] == "100px"
-                        and presenter_font_contract["clean"]["lyrics"] == "100px"
-                        and presenter_font_contract["clean"]["meta"] == "100px"
-                        and presenter_font_contract["clean"]["scriptureBar"] == "70px"
-                        and presenter_font_contract["clean"]["scriptureClean"] == "70px"
-                        and presenter_font_contract["clean"]["scriptureReadingText"] == "90px"
+                        and presenter_font_contract["clean"]["section"] == "105px"
+                        and presenter_font_contract["clean"]["body"] == "75px"
+                        and presenter_font_contract["clean"]["lyrics"] == "75px"
+                        and presenter_font_contract["clean"]["meta"] == "75px"
+                        and presenter_font_contract["clean"]["scriptureBar"] == "52.5px"
+                        and presenter_font_contract["clean"]["scriptureClean"] == "52.5px"
+                        and presenter_font_contract["clean"]["scriptureReadingText"] == "67.5px"
                     ):
                         pass_("presenter-font-contract", json.dumps(presenter_font_contract, ensure_ascii=False))
                     else:
@@ -4119,15 +4148,15 @@ def main() -> int:
                             not scroll_target
                             or (
                                 scroll_target["serviceId"] == outline_scroll_seed["serviceId"]
-                                and scroll_target["index"] == outline_scroll_seed["index"]
+                                and scroll_target["index"] == outline_scroll_state["presenterIndex"]
                                 and scroll_target["block"] == "center"
-                                and scroll_target["behavior"] == "smooth"
+                                and scroll_target["behavior"] == "auto"
                             )
                         )
                         if (
                             scroll_ok
                             and (
-                                outline_scroll_state["presenterIndex"] == outline_scroll_seed["index"]
+                                outline_scroll_state["presenterIndex"] >= 0
                                 or outline_scroll_state["selectedThumbs"] >= 1
                             )
                         ):
@@ -4715,6 +4744,7 @@ def main() -> int:
                             state.services = [...previousServices, service];
                             const items = projectWorshipServiceItemsFromTemplate(service, []);
                             state.serviceItems = { ...previousItems, [service.id]: items };
+                            state.loadedWorshipServiceIds.add(service.id);
                             const states = ['기도', '성경봉독', '설교 제목', '봉헌기도'].map((label) => {
                               const item = items.find((entry) => entry.label === label);
                               const content = resolvePresenterServiceItemContentState(item, parseServiceItemMemo(item?.memo), null, service);
@@ -4750,6 +4780,7 @@ def main() -> int:
                               announcement: preparedSlides.find((slide) => slide?.elementLabel === '청소년부 광고') || {},
                             };
                           } finally {
+                            state.loadedWorshipServiceIds.delete(service.id);
                             state.services = previousServices;
                             state.serviceItems = previousItems;
                             state.bibleTranslations = previousTranslations;
@@ -5119,7 +5150,7 @@ def main() -> int:
                             drafts: state.presenterPreparationDrafts,
                             dirty: state.dirty.service,
                           };
-                          const service = { id: '__smoke_preparation_input__', type_id: 'wednesday', date: '2026-07-15', tags: [] };
+                          const service = { id: '__smoke_preparation_input__', type_id: 'wednesday', date: '2026-07-15', alias: '' };
                           const item = (label, elementType, sectionKey, order) => normalizeServiceItem({
                             id: `__smoke_${label}__`,
                             service_id: service.id,
@@ -5166,7 +5197,7 @@ def main() -> int:
                             await applyPresenterPreparationInput(service.id);
                             const items = state.serviceItems[service.id];
                             const byLabel = (label) => items.find((entry) => entry.label === label) || {};
-                            const hymnService = { id: '__smoke_preparation_hymn_versions__', type_id: 'sunday-second', date: '2026-07-19', tags: [] };
+                            const hymnService = { id: '__smoke_preparation_hymn_versions__', type_id: 'sunday-second', date: '2026-07-19', alias: '' };
                             state.services = [service, hymnService];
                             state.serviceItems[hymnService.id] = ['찬양 1', '찬양 2', '찬양 3'].map((label, index) => normalizeServiceItem({
                               id: `__smoke_hymn_${index + 1}__`,
@@ -5243,7 +5274,7 @@ def main() -> int:
                             const shorthandSongIds = shorthand.entries
                               .filter((entry) => /^찬양\\d+$|^봉헌찬송$/.test(entry.key))
                               .map((entry) => resolvePresenterPreparationSong(entry.content, {}, service)?.id || '');
-                            const fullscreenService = { id: '__smoke_preparation_fullscreen__', type_id: 'sunday-second', date: '2026-07-19', tags: [] };
+                            const fullscreenService = { id: '__smoke_preparation_fullscreen__', type_id: 'sunday-second', date: '2026-07-19', alias: '' };
                             state.services = [service, fullscreenService];
                             state.serviceItems[fullscreenService.id] = [
                               normalizeServiceItem({
@@ -5275,7 +5306,7 @@ def main() -> int:
                             const fullscreenReading = fullscreenItems.find((entry) => entry.label === '성경봉독') || {};
                             const fullscreenCitation = fullscreenItems.find(isPresenterPreparationCitationItem) || {};
                             const fullscreenCitationMemo = parseServiceItemMemo(fullscreenCitation.memo);
-                            const looseService = { id: '__smoke_preparation_loose__', type_id: 'sunday-afternoon', date: '2026-07-19', tags: [] };
+                            const looseService = { id: '__smoke_preparation_loose__', type_id: 'sunday-afternoon', date: '2026-07-19', alias: '' };
                             const createdSongs = [];
                             state.client = {
                               from(table) {
@@ -5320,7 +5351,7 @@ def main() -> int:
                             await applyPresenterPreparationInput(looseService.id);
                             const looseItems = state.serviceItems[looseService.id] || [];
                             const looseByLabel = (label) => looseItems.find((entry) => entry.label === label) || {};
-                            const fridayService = { id: '__smoke_preparation_friday__', type_id: 'friday', date: '2026-07-24', tags: [] };
+                            const fridayService = { id: '__smoke_preparation_friday__', type_id: 'friday', date: '2026-07-24', alias: '' };
                             state.services = [fridayService];
                             state.serviceItems[fridayService.id] = projectWorshipServiceItemsFromTemplate(fridayService, []);
                             const fridayLegacyItems = projectWorshipServiceItemsFromTemplate(fridayService, [{
@@ -5558,7 +5589,7 @@ def main() -> int:
                             presenterBoardSelection: state.presenterBoardSelection,
                             presenterSectionEditor: state.presenterSectionEditor,
                           };
-                          const service = { id: '__smoke_preparation_sermon_slot__', type_id: 'wednesday', date: '2026-07-15', tags: [] };
+                          const service = { id: '__smoke_preparation_sermon_slot__', type_id: 'wednesday', date: '2026-07-15', alias: '' };
                           const sermonTitle = normalizeServiceItem({
                             id: '__smoke_sermon_title_only__',
                             service_id: service.id,
@@ -5798,6 +5829,11 @@ def main() -> int:
                         """
                     )
                     if thumb_hover_state:
+                        page.evaluate(
+                            """
+                            () => document.querySelector('[data-unsaved-action="discard"]')?.click()
+                            """
+                        )
                         page.hover(".svc-slide-thumb[data-presenter-index][data-service-id]")
                         page.wait_for_timeout(80)
                         thumb_hover_later = page.evaluate(
@@ -5832,6 +5868,7 @@ def main() -> int:
                                 "before": thumb_hover_state,
                                 "after": thumb_hover_later,
                             }, ensure_ascii=False))
+                    page.mouse.move(1430, 10)
                     page.evaluate(
                         """
                         (serviceId) => {

@@ -142,11 +142,11 @@ create table if not exists public.mindex_worship_services (
   service_date date not null,
   service_date_end date,
   title text not null default '',
+  service_alias text not null default '',
   status text not null default 'draft'
     check (status in ('draft', 'ready', 'live', 'complete', 'archived')),
   worship_leader text not null default '',
   praise_leader text not null default '',
-  tags text[] not null default '{}',
   template_id uuid references public.mindex_worship_templates(id) on delete set null,
   template_modified boolean not null default false,
   source_kind text not null default 'mindex'

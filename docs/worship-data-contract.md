@@ -33,7 +33,7 @@ mindex_worship_service_types (예배 타입)
 mindex_worship_services (특정 날짜 예배)
 ├─ id / service_type_id / service_date
 ├─ created_at / updated_at
-├─ title / status / tags
+├─ title / service_alias / status
 ├─ worship_leader / praise_leader
 ├─ template link / source lineage
 └─ owns ordered sections for that date
@@ -550,8 +550,10 @@ copy legacy `fixed_items` or `order_template` content into Worship.
 
 One actual worship service instance on a date.
 
-Use this for date, status, service title, worship leader, praise leader,
-tags, template link, and source lineage.
+Use this for date, status, the canonical service title, an optional human-facing
+`service_alias`, worship leader, praise leader, template link, and
+source lineage. Do not add generic tags back: church-calendar occasions belong
+to the calendar, while machine state belongs to typed keys in `source_ref`.
 
 Presenter background is opt-in. Until a dedicated column exists, keep an
 explicit source in `source_ref.presenter_background`; Presenter must not infer
