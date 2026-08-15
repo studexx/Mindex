@@ -3255,20 +3255,19 @@ async function fetchWorshipRowsForServiceIds(serviceIds = []) {
   }
 }
 
-const CHILDREN_WORSHIP_AUTO_GENERATION_ENABLED = false;
+const CHILDREN_WORSHIP_AUTO_GENERATION_ENABLED = true;
 
 function autoUpcomingPublicServiceTargets(baseDate = new Date()) {
   const today = parseLocalDate(baseDate);
   if (Number.isNaN(today.getTime())) return [];
   today.setHours(0, 0, 0, 0);
-  if (today.getDay() === 0 || today.getDay() === 6) return [];
 
   const weekStart = new Date(today);
   weekStart.setDate(today.getDate() - today.getDay());
 
   const nextDateForWeekday = (weekday) => {
     const date = new Date(weekStart);
-    const offset = weekday === 0 ? 7 : weekday;
+    const offset = weekday === 0 && today.getDay() !== 0 ? 7 : weekday;
     date.setDate(weekStart.getDate() + offset);
     if (date < today) date.setDate(date.getDate() + 7);
     return toLocalDateStr(date);

@@ -1647,6 +1647,16 @@ def main() -> int:
                 else:
                     fail("service-time-sort-order", json.dumps(service_time_sort_order, ensure_ascii=False))
 
+                sunday_auto_targets = page.evaluate(
+                    """
+                    (() => autoUpcomingPublicServiceTargets(new Date('2099-08-16T12:00:00')).map((target) => `${target.typeId}:${target.date}`))()
+                    """
+                )
+                if "children:2099-08-16" in sunday_auto_targets:
+                    pass_("sunday-auto-targets-include-children", json.dumps(sunday_auto_targets, ensure_ascii=False))
+                else:
+                    fail("sunday-auto-targets-include-children", json.dumps(sunday_auto_targets, ensure_ascii=False))
+
                 page.evaluate("goHome()")
                 page.wait_for_function("() => document.body.dataset.module === 'home'", timeout=5000)
                 home_recent_service_sidebar = page.evaluate(
