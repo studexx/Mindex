@@ -5626,16 +5626,23 @@ function buildWorshipPersistenceRows(service, items, existingSectionById = {}, e
         ? existingElementSection
         : null
     );
-    const projectedSectionKey = [
-      item._worshipSectionId,
-      item._worshipSectionKey,
-      item._worshipSectionTitle,
-    ].map((value) => String(value || "").trim()).filter(Boolean).join(":") || `item:${index}`;
+    const projectedSectionKey = (
+      item._worshipTemplateProjected
+        ? [item._worshipSectionKey, item._worshipSectionTitle, item._worshipSectionOrder]
+        : [item._worshipSectionId, item._worshipSectionKey, item._worshipSectionTitle]
+    ).map((value) => String(value || "").trim()).filter(Boolean).join(":") || `item:${index}`;
+    const deterministicSectionId = item._worshipTemplateProjected && service?.id
+      ? createDeterministicUuid(`worship:${service.id}:section:${projectedSectionKey}`)
+      : "";
     const sectionId = existingSection?.id
       || generatedSectionIds.get(projectedSectionKey)
+      || deterministicSectionId
       || createUuid();
     if (!existingSection) generatedSectionIds.set(projectedSectionKey, sectionId);
-    const elementId = existingElement?.id || createUuid();
+    const deterministicElementId = item._worshipTemplateProjected && service?.id
+      ? createDeterministicUuid(`worship:${service.id}:element:${projectedSectionKey}:${Number(item._worshipElementOrder) || 0}`)
+      : "";
+    const elementId = existingElement?.id || deterministicElementId || createUuid();
     if (!sectionSort.has(sectionId)) sectionSort.set(sectionId, sectionSort.size + 1);
     sectionElementCounts.set(sectionId, (sectionElementCounts.get(sectionId) || 0) + 1);
 
@@ -16266,6 +16273,29 @@ function createUuid() {
   return createLocalId();
 }
 
+function createDeterministicUuid(value = "") {
+  const text = String(value || "");
+  let h1 = 0x811c9dc5;
+  let h2 = 0x9e3779b9;
+  let h3 = 0x85ebca6b;
+  let h4 = 0xc2b2ae35;
+  for (let index = 0; index < text.length; index += 1) {
+    const code = text.charCodeAt(index);
+    h1 = Math.imul(h1 ^ code, 0x01000193);
+    h2 = Math.imul(h2 ^ code, 0x27d4eb2d);
+    h3 = Math.imul(h3 ^ code, 0x165667b1);
+    h4 = Math.imul(h4 ^ code, 0x85ebca77);
+  }
+  const hex = [h1, h2, h3, h4]
+    .map((hash) => (hash >>> 0).toString(16).padStart(8, "0"))
+    .join("")
+    .split("");
+  hex[12] = "5";
+  hex[16] = ((parseInt(hex[16], 16) & 0x3) | 0x8).toString(16);
+  const compact = hex.join("");
+  return `${compact.slice(0, 8)}-${compact.slice(8, 12)}-${compact.slice(12, 16)}-${compact.slice(16, 20)}-${compact.slice(20)}`;
+}
+
 function normalizeCanonicalTitle(value) {
   return normalizeTitle(value).replace(/\s+/g, "");
 }
@@ -17496,15 +17526,16 @@ function projectWorshipServiceItemsFromTemplate(service, items = []) {
   // Migrate legacy section ownership before hierarchy normalization. Otherwise
   // normalization recognizes the entrance-praise label but preserves its old
   // main-praise section ID, making the error impossible to repair on save.
-  const existing = collapseLegacyPresenterCitationItems(
-    collapseLegacyScriptureReadingItems(
-      normalizeServiceItemsForTemplateHierarchy(
-        service,
-        migrateLegacyFridayTemplateItems(service, items),
-        { preserveSourceIndex: true },
+  const existing = collapseDuplicateTemplateProjectionItems(service,
+    collapseLegacyPresenterCitationItems(
+      collapseLegacyScriptureReadingItems(
+        normalizeServiceItemsForTemplateHierarchy(
+          service,
+          migrateLegacyFridayTemplateItems(service, items),
+          { preserveSourceIndex: true },
+        ),
       ),
-    ),
-  );
+    ));
   const suppressedTemplateKeys = new Set(existing
     .filter(isTemplateSuppressedServiceItem)
     .map((item) => serviceItemTemplateProjectionKey(item, { includeLabel: true })));
@@ -17629,6 +17660,53 @@ function serviceItemProjectionSpecificity(item = {}) {
     parsed.slides?.length,
     !item._worshipTemplatePlaceholder,
   ].filter(Boolean).length;
+}
+
+function collapseDuplicateTemplateProjectionItems(service = null, items = []) {
+  const appTypeId = worshipAppServiceTypeId(service?.type_id);
+  if (!TEMPLATE_PROJECTED_SERVICE_TYPES.has(appTypeId) || items.length < 2) return items;
+  const hierarchy = serviceTemplateHierarchyIndex(appTypeId, { service, items });
+  const groups = new Map();
+
+  items.forEach((item, index) => {
+    if (isTemplateSuppressedServiceItem(item)) return;
+    const meta = serviceTemplateHierarchyMetaForItem(hierarchy, item);
+    if (!meta?.groupKey) return;
+    const elementOrder = Number(meta.elementOrder) || Number(item._worshipElementOrder) || 0;
+    if (!elementOrder) return;
+    const key = `${meta.groupKey}:${elementOrder}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push({ item, index });
+  });
+
+  const replacements = new Map();
+  const removed = new Set();
+  groups.forEach((entries) => {
+    if (entries.length < 2) return;
+    const ranked = entries.slice().sort((a, b) => {
+      const specificity = serviceItemProjectionSpecificity(b.item) - serviceItemProjectionSpecificity(a.item);
+      if (specificity) return specificity;
+      return a.index - b.index;
+    });
+    const winner = ranked[0];
+    const donors = ranked.slice(1).map(({ item }) => item);
+    const firstUseful = (selector) => [winner.item, ...donors].map(selector).find(Boolean);
+    replacements.set(winner.index, {
+      ...winner.item,
+      raw_title: firstUseful((item) => String(item.raw_title || "").trim()) || "",
+      assignee: firstUseful((item) => cleanServiceAssignee(item.assignee)) || "",
+      song_id: firstUseful((item) => item.song_id) || null,
+      version_id: firstUseful((item) => item.version_id || item.song_version_id) || null,
+    });
+    entries.forEach(({ index }) => {
+      if (index !== winner.index) removed.add(index);
+    });
+  });
+
+  return items.flatMap((item, index) => {
+    if (removed.has(index)) return [];
+    return [replacements.get(index) || item];
+  });
 }
 
 function isTemplateSuppressedServiceItem(item = {}) {

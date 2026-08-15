@@ -2215,6 +2215,29 @@ def main() -> int:
                               elementTimestamps: rows.elements.every((element) => Boolean(element.created_at && element.updated_at)),
                             };
                           })(),
+                          concurrentTemplateProjectionDeduplication: (() => {
+                            const service = { id: '__smoke_concurrent_template__', type_id: 'sunday-main', date: '2026-08-16' };
+                            const first = projectWorshipServiceItemsFromTemplate(service, []);
+                            const second = projectWorshipServiceItemsFromTemplate(service, []).map((item) => (
+                              item.label === '설교 제목'
+                                ? { ...item, raw_title: '동시 저장 보존 제목', _worshipElementTemplateModified: true }
+                                : item
+                            ));
+                            const collapsed = projectWorshipServiceItemsFromTemplate(service, [...first, ...second]);
+                            const firstRows = buildWorshipPersistenceRows(service, first, {}, {});
+                            const secondRows = buildWorshipPersistenceRows(service, projectWorshipServiceItemsFromTemplate(service, []), {}, {});
+                            const ids = (rows) => ({
+                              sections: rows.sections.map((row) => row.id).sort(),
+                              elements: rows.elements.map((row) => row.id).sort(),
+                            });
+                            return {
+                              praiseCount: collapsed.filter((item) => item.label === '찬송').length,
+                              specialSongCount: collapsed.filter((item) => item.label === '특송').length,
+                              sermonTitleCount: collapsed.filter((item) => item.label === '설교 제목').length,
+                              sermonTitle: collapsed.find((item) => item.label === '설교 제목')?.raw_title || '',
+                              deterministicIds: JSON.stringify(ids(firstRows)) === JSON.stringify(ids(secondRows)),
+                            };
+                          })(),
                           templateSuppressionProjection: (() => {
                             const service = { id: '__smoke_template_suppression__', type_id: 'friday', date: '2026-07-24' };
                             const scaffold = buildWorshipServiceScaffold(service.id, service.type_id, { service });
@@ -2932,6 +2955,13 @@ def main() -> int:
                             "sharedSection": True,
                             "sectionTimestamps": True,
                             "elementTimestamps": True,
+                        }
+                        and template_terms["concurrentTemplateProjectionDeduplication"] == {
+                            "praiseCount": 1,
+                            "specialSongCount": 1,
+                            "sermonTitleCount": 1,
+                            "sermonTitle": "동시 저장 보존 제목",
+                            "deterministicIds": True,
                         }
 	                        and template_terms["templateSuppressionProjection"] == {
 	                            "sourceFound": True,
