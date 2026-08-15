@@ -112,3 +112,11 @@ Inactive module tabs should stay visually quiet. Active tabs may show a clearer 
 ## Presenter
 
 Presenter details live in `docs/thread-worship-presenter.md`. Keep shell edits out of presenter internals unless required for integration.
+
+- Chromium may suppress CSS transitions inside the `service` and `presenter`
+  modules to keep worship loading, thumbnail sizing, and live controls stable.
+  Keep that safeguard scoped to those operational modules; home and resource
+  modules should retain their normal interaction feedback.
+- Dense presenter status, navigation, help, and section metadata must still use
+  the shared `11px` label and `12px` metadata scale. Reserve smaller text for
+  nonessential thumbnail annotations only.
