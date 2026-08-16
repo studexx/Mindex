@@ -310,6 +310,9 @@ Small visual polish that does not alter behavior does not need an entry.
   `Bridge`, `Pre-Chorus`, or extra chorus forms from the linked song version.
   Template `default` and `forced` presets follow the same exactness rule unless
   they explicitly list the supplemental forms.
+- An automatic/default preset must not show `C 없음` when the linked source
+  song has no chorus form at all. Explicit manual requests still surface a
+  missing-form warning so an operator typo does not pass silently.
 - Grouped labels such as `V1A` and `V1B` mean split `Verse 1` by lyric block.
   If there are no blank-line blocks, split evenly by lyric lines when possible.
 - `amen`/`아멘` is not a song-form type. Existing form rows have been migrated

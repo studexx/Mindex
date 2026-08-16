@@ -233,6 +233,12 @@ def main() -> int:
                         memo: JSON.stringify({ elementType: 'praise' }),
                       };
                       const specialHymnSong = { hymn_no: '430', versions: [{ id: 'special-hymn-version', forms: specialHymnForms }] };
+                      const specialHymnWithoutChorusForms = specialHymnForms.filter((form) => form.part_type !== 'Chorus');
+                      const specialHymnWithoutChorusPlan = presenterFormPlanForServiceItem(
+                        { forms: specialHymnWithoutChorusForms },
+                        specialHymnItem,
+                        { hymn_no: '323', versions: [{ id: 'special-hymn-no-chorus-version', forms: specialHymnWithoutChorusForms }] },
+                      );
                       return {
                         metadataOrder: presenterFormPlanForServiceItem({ forms }, suggestedItem, song).forms.map((form) => form.id),
                         disabledOrder: presenterFormPlanForServiceItem({ forms }, disabledItem, song).forms.map((form) => form.id),
@@ -245,6 +251,7 @@ def main() -> int:
                           specialHymnItem,
                           specialHymnSong,
                         ).forms.map((form) => form.id),
+                        specialHymnWithoutChorusWarnings: specialHymnWithoutChorusPlan.warnings,
                       };
                     })()
                     """
@@ -257,6 +264,7 @@ def main() -> int:
                     "groupedLabels": ["V1A", "V1B"],
                     "groupedLyrics": ["1행\n2행\n3행\n4행", "5행\n6행\n7행\n8행"],
                     "specialHymnOrder": ["sv1", "sc", "sv2", "sc", "preset-blank:instrumental", "sv4", "sc"],
+                    "specialHymnWithoutChorusWarnings": [],
                 }:
                     pass_("presenter-ccm-repeats-chorus", json.dumps(ccm_form_order_state, ensure_ascii=False))
                 else:

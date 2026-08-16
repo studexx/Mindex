@@ -452,7 +452,7 @@ function presenterFormPlanForServiceItem(version = {}, item, song = null) {
   const effectivePreset = presenterFormPresetWithAvailableForms(preset, forms);
   if (!effectivePreset?.forms?.length) return { forms, warnings: [] };
   const resolved = resolvePresenterFormPresetSequence(forms, effectivePreset);
-  const warnings = resolved.missing.map((label) => `${label} 없음`);
+  const warnings = presenterMissingFormWarnings(resolved.missing, forms, effectivePreset);
   const omitUnlisted = presenterFormPresetShouldOmitUnlisted(effectivePreset);
   return {
     forms: resolved.items.length
@@ -462,6 +462,20 @@ function presenterFormPlanForServiceItem(version = {}, item, song = null) {
       : forms,
     warnings,
   };
+}
+
+function presenterMissingFormWarnings(missing = [], forms = [], preset = null) {
+  const strength = String(preset?.strength || "").trim().toLowerCase();
+  const automaticPreset = ["auto", "default", "suggested"].includes(strength);
+  const sourceHasChorus = normalizeForms(forms || [])
+    .filter((form) => normalizeLyricsForCopy(form.lyrics))
+    .some((form) => normalizePresenterFormPresetLabel(presenterFormDisplayLabel(form)).type === "chorus");
+  return cleanList(missing)
+    .filter((label) => {
+      const target = normalizePresenterFormPresetLabel(label);
+      return !(automaticPreset && target.type === "chorus" && !sourceHasChorus);
+    })
+    .map((label) => `${label} 없음`);
 }
 
 function presenterSpecialSongHymnFormPreset(item = {}, song = null, version = null, matchedRule = null) {
