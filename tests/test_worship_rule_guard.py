@@ -80,6 +80,16 @@ class WorshipRuleGuardTests(unittest.TestCase):
             pattern = rf"{re.escape(service_type)}:[^}}]+{key}:\s*\"{re.escape(value)}\""
             self.assertRegex(defaults, pattern)
 
+    def test_department_announcement_defaults_stay_seeded(self) -> None:
+        youth = function_block(self.source, "youthWorshipAnnouncementsStep")
+        young_adult = function_block(self.source, "youngAdultWorshipAnnouncementsStep")
+        self.assertIn("청소년부 광고", youth)
+        self.assertIn("오늘도 청소년부 예배에 오신 여러분을 환영하고 축복합니다 :)", youth)
+        self.assertIn("1. 오늘 2부 활동은 반별 모임으로 진행합니다.", youth)
+        self.assertIn("청년부 광고", young_adult)
+        self.assertIn("오늘도 청년부 예배에 오신 여러분을 환영하고 축복합니다 :)", young_adult)
+        self.assertIn("1. 오늘 2부 활동은 셀 모임으로 진행합니다.", young_adult)
+
     def test_sunday_shared_content_contract_stays_linked(self) -> None:
         shared = function_block(self.source, "sundaySharedContentTypesForItem")
         self.assertIn('key === "main-praise:3"', shared)

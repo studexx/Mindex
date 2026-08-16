@@ -17178,7 +17178,12 @@ function youthWorshipAnnouncementsStep() {
     required: false,
     flex: true,
     sectionKey: "announcements",
-    elements: [{ label: "청소년부 광고", name: "청소년부 광고", elementType: "body" }],
+    elements: [{
+      label: "청소년부 광고",
+      name: "청소년부 광고",
+      elementType: "body",
+      default_text: "오늘도 청소년부 예배에 오신 여러분을 환영하고 축복합니다 :)\n1. 오늘 2부 활동은 반별 모임으로 진행합니다.",
+    }],
   };
 }
 
@@ -17189,7 +17194,12 @@ function youngAdultWorshipAnnouncementsStep() {
     required: false,
     flex: true,
     sectionKey: "announcements",
-    elements: [{ label: "청년부 광고", name: "청년부 광고", elementType: "body" }],
+    elements: [{
+      label: "청년부 광고",
+      name: "청년부 광고",
+      elementType: "body",
+      default_text: "오늘도 청년부 예배에 오신 여러분을 환영하고 축복합니다 :)\n1. 오늘 2부 활동은 셀 모임으로 진행합니다.",
+    }],
   };
 }
 
