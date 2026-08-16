@@ -480,6 +480,7 @@
   line-height: 1.12;
   padding: 2.25cqh 2.8cqw;
   -webkit-text-stroke: 0;
+  overflow: hidden;
   overflow-wrap: normal;
   text-shadow: none;
   word-break: keep-all;

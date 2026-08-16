@@ -5896,6 +5896,54 @@ def main() -> int:
                 else:
                     fail("presenter-long-live-scripture-fits-lower-bar", json.dumps(long_live_scripture_state, ensure_ascii=False))
 
+                extra_long_live_scripture_state = output_page.evaluate(
+                    """
+                    (() => {
+                      const slide = {
+                        id: '__smoke_extra_long_live_scripture__',
+                        elementType: PRESENTER_ELEMENT_TYPES.SCRIPTURE_TEXT,
+                        layout: PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT,
+                        type: 'scripture',
+                        title: '창세기 45:11',
+                        text: '11 흉년이 아직 다섯 해가 있으니 내가 거기서 아버지를 봉양하리이다 아버지와 아버지의 가족과 아버지께 속한 모든 사람에게 부족함이 없도록 하겠습니다',
+                        live: true,
+                        outputContext: 'chromakey',
+                      };
+                      renderPresenterOutput({
+                        serviceId: '__smoke_extra_long_live_scripture_service__',
+                        serviceType: 'sunday-main',
+                        chromakey: true,
+                        slides: [slide],
+                        index: 0,
+                        safetyBlank: false,
+                      }, {});
+                      const root = document.getElementById('presenterOutputRoot');
+                      const textEl = root?.querySelector('.presenter-slide--scripture .presenter-slide-text');
+                      const firstLine = textEl?.querySelector('span');
+                      const textRect = textEl?.getBoundingClientRect();
+                      const firstRect = firstLine?.getBoundingClientRect();
+                      const style = textEl ? getComputedStyle(textEl) : null;
+                      return {
+                        fontSize: Number.parseFloat(style?.fontSize || '0'),
+                        fitsHeight: textEl ? textEl.scrollHeight <= textEl.clientHeight + 1 : false,
+                        fitsWidth: textEl ? textEl.scrollWidth <= textEl.clientWidth + 1 : false,
+                        textInsideBox: textRect && firstRect ? firstRect.top >= textRect.top - 1 && firstRect.bottom <= textRect.bottom + 1 : false,
+                        clipsOverflow: style?.overflow === 'hidden',
+                      };
+                    })()
+                    """
+                )
+                if (
+                    extra_long_live_scripture_state["fontSize"] <= 72
+                    and extra_long_live_scripture_state["fitsHeight"]
+                    and extra_long_live_scripture_state["fitsWidth"]
+                    and extra_long_live_scripture_state["textInsideBox"]
+                    and extra_long_live_scripture_state["clipsOverflow"]
+                ):
+                    pass_("presenter-extra-long-live-scripture-fits-lower-bar", json.dumps(extra_long_live_scripture_state, ensure_ascii=False))
+                else:
+                    fail("presenter-extra-long-live-scripture-fits-lower-bar", json.dumps(extra_long_live_scripture_state, ensure_ascii=False))
+
                 long_live_scripture_preview_state = page.evaluate(
                     """
                     (() => {

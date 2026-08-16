@@ -3310,7 +3310,7 @@ function fitPresenterChromakeyScriptureText(host, frameState = {}) {
   const baseSize = Number.parseFloat(window.getComputedStyle(textBox).fontSize);
   if (!Number.isFinite(baseSize) || baseSize <= 0) return;
 
-  const minimumSize = Math.min(48, baseSize);
+  const minimumSize = Math.min(32, baseSize);
   for (let size = baseSize; size >= minimumSize; size -= 2) {
     textBox.style.setProperty("--presenter-scripture-fitted-size", `${size}px`);
     if (textBox.scrollHeight <= textBox.clientHeight + 1 && textBox.scrollWidth <= textBox.clientWidth + 1) return;

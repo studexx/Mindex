@@ -352,6 +352,9 @@ Small visual polish that does not alter behavior does not need an entry.
   설교 제목을 왼쪽, 담당자를 오른쪽에 둔다.
 - 모든 예배 타입의 설교 제목은 presenter와 프리뷰에서 홑낫표
   `｢제목｣`로 감싼다. 입력에 기존 따옴표가 있어도 출력에서는 중첩하지 않는다.
+- 크로마키 lower-bar 성구는 하단 bar 안에 들어오는 것이 우선이다. 긴 절은
+  presenter/thumbnail 공통 fit 로직으로 최대 32px까지 줄이고, bar 밖으로
+  overflow시키지 않는다.
 
 ## Service Auto-Schedule Rules
 - 어린이부 예배, 청소년부 예배, 청년부 예배는 주일 자동 생성 대상이다.
