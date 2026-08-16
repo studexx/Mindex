@@ -1,5 +1,6 @@
 // Presenter slide/output helpers split from app.js.
-// Loaded before app.js so the main controller can keep small wrappers.
+// Runtime order is constants -> presenter -> app. Shared controller helpers are
+// owned by app.js and must not be redeclared here; tests/solid_audit.py enforces it.
 
 function presenterSlidesWithIntroSlide(item = {}, section = {}, index = 0, memo = emptyServiceItemMemo(), slides = []) {
   const list = Array.isArray(slides) ? slides.filter(Boolean) : [];
@@ -1732,10 +1733,6 @@ function isPresenterScriptureReadingSource(source = {}) {
     || normalizeWorshipElementType(source.elementType) === "scripture_reading";
 }
 
-function serviceElementTypeLabel(type) {
-  return SERVICE_ELEMENT_LABELS[normalizeServiceElementType(type)] || "항목";
-}
-
 function buildPresenterCustomSlides(item, section, index) {
   if (isScriptureBodyServiceItem(item)) return [];
   const slides = parseServiceItemMemo(item?.memo).slides;
@@ -2424,66 +2421,6 @@ function isSongServiceLabel(label) {
   if (compact === "결단" || compact === "파송") return true;
   if (/찬양|찬송|특송|송영/.test(compact)) return true;
   return /^(결단|봉헌|파송)(찬양|찬송)$/.test(compact);
-}
-
-function presenterSlideElementGroupKey(slide) {
-  if (!slide) return "";
-  return String(slide.elementId || slide.sectionId || slide.id || "").trim();
-}
-
-function presenterSlideAnchor(slide = null) {
-  if (!slide) return null;
-  return {
-    id: String(slide.id || "").trim(),
-    groupKey: presenterSlideElementGroupKey(slide),
-    type: String(slide.type || "").trim(),
-    layout: String(slide.layout || slide.slideLayout || "").trim(),
-    elementType: String(slide.elementType || slide.element_type || "").trim(),
-    scriptureContext: String(slide.scriptureContext || "").trim(),
-    scripturePending: Boolean(slide.scripturePending),
-    title: String(slide.title || slide.elementTitle || slide.marker || "").trim(),
-    hidden: Boolean(slide.hiddenInPresentation),
-  };
-}
-
-function presenterSlideTypeMatchesAnchor(slide, anchor) {
-  const slideType = String(slide?.type || "").trim();
-  const anchorType = String(anchor?.type || "").trim();
-  if (slideType === anchorType) return true;
-  return (
-    (anchorType === "scripture-pending" && slideType === "scripture")
-    || (anchorType === "scripture" && slideType === "scripture-pending")
-  );
-}
-
-function presenterSlideContextMatchesAnchor(slide, anchor) {
-  const anchorContext = String(anchor?.scriptureContext || "").trim();
-  if (!anchorContext) return true;
-  return String(slide?.scriptureContext || "").trim() === anchorContext;
-}
-
-function presenterSlideIndexForAnchor(slides = [], anchor = null, fallbackIndex = 0) {
-  if (!Array.isArray(slides) || !slides.length) return 0;
-  if (!anchor) return clampPresenterIndex(fallbackIndex, slides.length);
-  if (anchor.id) {
-    const exactIndex = slides.findIndex((slide) => String(slide?.id || "").trim() === anchor.id);
-    if (exactIndex >= 0) return exactIndex;
-  }
-  if (anchor.groupKey) {
-    const sameTypeIndex = slides.findIndex((slide) =>
-      presenterSlideElementGroupKey(slide) === anchor.groupKey
-      && presenterSlideTypeMatchesAnchor(slide, anchor)
-      && presenterSlideContextMatchesAnchor(slide, anchor)
-      && !slide?.hiddenInPresentation);
-    if (sameTypeIndex >= 0) return sameTypeIndex;
-    const visibleGroupIndex = slides.findIndex((slide) =>
-      presenterSlideElementGroupKey(slide) === anchor.groupKey
-      && !slide?.hiddenInPresentation);
-    if (visibleGroupIndex >= 0) return visibleGroupIndex;
-    const groupIndex = slides.findIndex((slide) => presenterSlideElementGroupKey(slide) === anchor.groupKey);
-    if (groupIndex >= 0) return groupIndex;
-  }
-  return clampPresenterIndex(fallbackIndex, slides.length);
 }
 
 function presenterStatePayload(serviceId = state.presenter.serviceId) {
@@ -3178,10 +3115,6 @@ function applyPresenterActionToPayload(payload, action, options = {}) {
   next.slideAnchor = presenterSlideAnchor(next.slides[clampPresenterIndex(next.index, next.slides.length)]);
   next.updatedAt = Date.now();
   return next;
-}
-
-function presenterSlideIsHidden(slide = {}) {
-  return Boolean(slide.hiddenInPresentation || slide.hidden_in_presentation || slide.hidden);
 }
 
 function presenterNextNavigableIndex(slides = [], currentIndex = 0, direction = 1) {

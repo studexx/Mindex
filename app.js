@@ -1,3 +1,4 @@
+// Shared runtime configuration, caches, and domain lookup tables.
 const MINDEX_CONSTANTS = window.MINDEX_APP_CONSTANTS || {};
 const {
   PART_TYPES,
@@ -18675,10 +18676,6 @@ function serviceSermonLeaderLabel(service = null, items = []) {
   return cleanServiceAssignee(sermonTitle?.assignee || sermonTitle?.person || "")
     || serviceWorshipLeaderLabel(service)
     || defaultServiceSermonLeader(service?.type_id);
-}
-
-function serviceHasPastorWorshipLeader(service = null) {
-  return compactSearchValue(serviceWorshipLeaderLabel(service)).includes("목사");
 }
 
 function serviceHasPastorWorshipLeader(service = null) {

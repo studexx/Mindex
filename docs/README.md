@@ -14,6 +14,8 @@ stale document in the same change.
 - `thread-worship-presenter.md`: implementation workflow for Worship and
   Presenter changes.
 - `ui-contracts.md`: app shell and UI interaction contracts.
+- `code-organization.md`: runtime script order, code ownership boundaries, and
+  safe-refactoring rules.
 
 ## Planning Or Deferred Work
 
