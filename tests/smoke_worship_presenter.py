@@ -202,6 +202,50 @@ def main() -> int:
                 else:
                     fail("presenter-status-ready", json.dumps(initial_status, ensure_ascii=False))
 
+                announcement_center_state = page.evaluate(
+                    """
+                    (() => {
+                      const host = document.createElement('div');
+                      host.style.cssText = 'position:fixed;left:-10000px;top:0;width:800px;height:450px;';
+                      host.innerHTML = `
+                        <section class="presenter-slide presenter-slide--liturgical-body" style="width:100%;height:100%;">
+                          <div class="presenter-liturgical-body">
+                            <div class="presenter-announcement-items">
+                              <div class="presenter-announcement-item">
+                                <span class="presenter-announcement-marker">①</span>
+                                <span class="presenter-announcement-copy"><span>첫 번째 광고</span></span>
+                              </div>
+                              <div class="presenter-announcement-item">
+                                <span class="presenter-announcement-marker">②</span>
+                                <span class="presenter-announcement-copy"><span>두 번째 광고</span></span>
+                              </div>
+                            </div>
+                          </div>
+                        </section>`;
+                      document.body.appendChild(host);
+                      const bodyRect = host.querySelector('.presenter-liturgical-body').getBoundingClientRect();
+                      const listRect = host.querySelector('.presenter-announcement-items').getBoundingClientRect();
+                      const items = [...host.querySelectorAll('.presenter-announcement-item')];
+                      const firstRect = items[0].getBoundingClientRect();
+                      const lastRect = items[items.length - 1].getBoundingClientRect();
+                      const state = {
+                        bodyHeight: Math.round(bodyRect.height),
+                        listHeight: Math.round(listRect.height),
+                        centerDelta: Math.round(((firstRect.top + lastRect.bottom) / 2) - ((bodyRect.top + bodyRect.bottom) / 2)),
+                      };
+                      host.remove();
+                      return state;
+                    })()
+                    """
+                )
+                if (
+                    announcement_center_state["bodyHeight"] == announcement_center_state["listHeight"]
+                    and abs(announcement_center_state["centerDelta"]) <= 2
+                ):
+                    pass_("presenter-department-announcement-vertical-center", json.dumps(announcement_center_state, ensure_ascii=False))
+                else:
+                    fail("presenter-department-announcement-vertical-center", json.dumps(announcement_center_state, ensure_ascii=False))
+
                 ccm_form_order_state = page.evaluate(
                     """
                     (() => {
