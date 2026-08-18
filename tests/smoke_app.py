@@ -3137,11 +3137,12 @@ def main() -> int:
                         and not (template_terms["sundayPublicScaffold"]["allGeneration"]["specialSong"].get("title") or "").strip()
                         and template_terms["sundayPublicScaffold"]["allGeneration"]["praiseElements"] == [
                             {"label": "환영", "title": "환영\n테힐라 찬양단"},
-                            {"label": "찬양 1", "title": "오직 예수뿐이네"},
-                            {"label": "찬양 2", "title": "열려라 에바다"},
-                            {"label": "찬양 3", "title": "나의 참 친구"},
-                            {"label": "찬양 4", "title": "충만"},
-                            {"label": "찬양 5", "title": "내 한 가지 소원"},
+                            {"label": "찬양 1", "title": "모든 민족과 방언들 가운데"},
+                            {"label": "찬양 2", "title": "이 눈에 아무 증거 아니 뵈어도"},
+                            {"label": "찬양 3", "title": "우리는 주의 백성이오니"},
+                            {"label": "찬양 4", "title": "일어나라 주의 백성"},
+                            {"label": "찬양 5", "title": "내 안에 부어 주소서"},
+                            {"label": "찬양 6", "title": "모든 열방 주 볼 때까지 + 물이 바다 덮음같이"},
                         ]
                         and template_terms["sundayPublicScaffold"]["third"]["praiseElements"][-1] == {
                             "type": "praise",

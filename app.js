@@ -3392,11 +3392,12 @@ const FRIDAY_SERVICE_VARIANTS = {
 
 const ALL_GENERATION_MAIN_PRAISE_SERVICE_ALIAS = "온세대 찬양예배";
 const ALL_GENERATION_MAIN_PRAISE_DEFAULT_SONGS = [
-  "오직 예수뿐이네",
-  "열려라 에바다",
-  "나의 참 친구",
-  "충만",
-  "내 한 가지 소원",
+  "모든 민족과 방언들 가운데",
+  "이 눈에 아무 증거 아니 뵈어도",
+  "우리는 주의 백성이오니",
+  "일어나라 주의 백성",
+  "내 안에 부어 주소서",
+  "모든 열방 주 볼 때까지 + 물이 바다 덮음같이",
 ];
 
 function sundayMainWorshipServiceVariantForDate(dateValue = "") {
@@ -10968,6 +10969,7 @@ function worshipTemplateDefaultSong(step = {}, elementType = "") {
   const song = findServicePraiseSong([hymnNo, title].filter(Boolean).join(" "))
     || findServicePraiseSong(title);
   if (!song || (hymnNo && String(song.hymn_no || "").trim() !== hymnNo)) return null;
+  if (title.includes("+") && compactSearchValue(song.title || "") !== compactSearchValue(title)) return null;
   const versions = Array.isArray(song.versions) ? song.versions : [];
   const version = versions.find((item) => item.id === getPreferredVersionId(song)) || versions[0] || null;
   return version ? { song, version } : null;
