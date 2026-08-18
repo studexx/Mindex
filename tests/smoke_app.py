@@ -1654,17 +1654,27 @@ def main() -> int:
                     (() => {
                       const defaultTargets = autoUpcomingPublicServiceTargets(new Date('2099-08-16T12:00:00'))
                         .map((target) => `${target.typeId}:${target.date}`);
+                      const sundayEveningTargets = autoUpcomingPublicServiceTargets(new Date('2099-08-16T16:00:00'))
+                        .map((target) => `${target.typeId}:${target.date}`);
                       const childrenType = serviceTypeById('children');
                       const originalConfig = { ...(childrenType?._worshipConfig || {}) };
                       if (childrenType) childrenType._worshipConfig = { ...originalConfig, autoScheduleEnabled: true };
                       const enabledTargets = autoUpcomingPublicServiceTargets(new Date('2099-08-16T12:00:00'))
                         .map((target) => `${target.typeId}:${target.date}`);
                       if (childrenType) childrenType._worshipConfig = originalConfig;
-                      return { defaultTargets, enabledTargets };
+                      return { defaultTargets, sundayEveningTargets, enabledTargets };
                     })()
                     """
                 )
-                if "children:2099-08-16" not in sunday_auto_targets["defaultTargets"] and "children:2099-08-16" in sunday_auto_targets["enabledTargets"]:
+                if (
+                    "children:2099-08-16" not in sunday_auto_targets["defaultTargets"]
+                    and "children:2099-08-16" in sunday_auto_targets["enabledTargets"]
+                    and "sunday-first:2099-08-16" in sunday_auto_targets["defaultTargets"]
+                    and "sunday-first:2099-08-16" not in sunday_auto_targets["sundayEveningTargets"]
+                    and "sunday-first:2099-08-23" in sunday_auto_targets["sundayEveningTargets"]
+                    and "wednesday:2099-08-19" in sunday_auto_targets["sundayEveningTargets"]
+                    and "friday:2099-08-21" in sunday_auto_targets["sundayEveningTargets"]
+                ):
                     pass_("children-auto-targets-config-opt-in", json.dumps(sunday_auto_targets, ensure_ascii=False))
                 else:
                     fail("children-auto-targets-config-opt-in", json.dumps(sunday_auto_targets, ensure_ascii=False))
@@ -2792,6 +2802,7 @@ def main() -> int:
                                 "sunday-first:2026-07-26",
                                 "sunday-second:2026-07-26",
                                 "sunday-main:2026-07-26",
+                                "young-adult:2026-07-26",
                                 "sunday-afternoon:2026-07-26",
                             ],
                             "saturday": [
@@ -2800,6 +2811,7 @@ def main() -> int:
                                 "sunday-first:2026-07-19",
                                 "sunday-second:2026-07-19",
                                 "sunday-main:2026-07-19",
+                                "young-adult:2026-07-19",
                                 "sunday-afternoon:2026-07-19",
                             ],
                             "sunday": [
@@ -2808,6 +2820,7 @@ def main() -> int:
                                 "sunday-first:2026-07-19",
                                 "sunday-second:2026-07-19",
                                 "sunday-main:2026-07-19",
+                                "young-adult:2026-07-19",
                                 "sunday-afternoon:2026-07-19",
                             ],
                         }

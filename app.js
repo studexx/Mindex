@@ -3271,9 +3271,8 @@ function childrenWorshipAutoGenerationEnabled() {
 }
 
 function autoUpcomingPublicServiceTargets(baseDate = new Date()) {
-  const today = parseLocalDate(baseDate);
+  const today = upcomingServiceBaseDate(baseDate);
   if (Number.isNaN(today.getTime())) return [];
-  today.setHours(0, 0, 0, 0);
 
   const weekStart = new Date(today);
   weekStart.setDate(today.getDate() - today.getDay());
@@ -12164,6 +12163,7 @@ const SERVICE_TIME_WINDOWS = {
   monthly: { start: "20:00", end: "22:00" },
 };
 
+const SUNDAY_SERVICE_PREP_ROLLOVER_TIME = "15:00";
 const INTEGRATED_SUNDAY_SKIP_SERVICE_TYPES = new Set(["children", "youth"]);
 
 const AUTO_UPCOMING_PUBLIC_SERVICE_TYPES = [
@@ -19199,12 +19199,47 @@ function getHomeNextService(baseDate = new Date()) {
 }
 
 function currentServiceWeekRange(base = new Date()) {
-  const start = new Date(base);
+  const start = serviceDashboardWeekBaseDate(base);
   start.setHours(0, 0, 0, 0);
   start.setDate(start.getDate() - start.getDay());
   const end = new Date(start);
   end.setDate(start.getDate() + 6);
   return { start, end };
+}
+
+function serviceBaseDateTime(base = new Date()) {
+  const value = base instanceof Date ? new Date(base) : new Date(base);
+  if (!Number.isNaN(value.getTime())) return value;
+  return parseLocalDate(base);
+}
+
+function timeStringToMinutes(value = "") {
+  const match = String(value || "").trim().match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return 0;
+  return (Number(match[1]) * 60) + Number(match[2]);
+}
+
+function isAfterSundayServicePrepRollover(base = new Date()) {
+  const value = serviceBaseDateTime(base);
+  if (Number.isNaN(value.getTime()) || value.getDay() !== 0) return false;
+  const minutes = (value.getHours() * 60) + value.getMinutes();
+  return minutes >= timeStringToMinutes(SUNDAY_SERVICE_PREP_ROLLOVER_TIME);
+}
+
+function upcomingServiceBaseDate(base = new Date()) {
+  const value = serviceBaseDateTime(base);
+  if (Number.isNaN(value.getTime())) return value;
+  if (isAfterSundayServicePrepRollover(value)) value.setDate(value.getDate() + 1);
+  value.setHours(0, 0, 0, 0);
+  return value;
+}
+
+function serviceDashboardWeekBaseDate(base = new Date()) {
+  const value = serviceBaseDateTime(base);
+  if (Number.isNaN(value.getTime())) return value;
+  if (isAfterSundayServicePrepRollover(value)) value.setDate(value.getDate() + 7);
+  value.setHours(0, 0, 0, 0);
+  return value;
 }
 
 function serviceWeekDays(base = new Date()) {
@@ -19220,8 +19255,7 @@ function getServiceSidebarServices() {
   const q = normalizeSearchValue(state.search);
   if (q) return getFilteredServices().slice(0, 40);
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = upcomingServiceBaseDate();
   const end = new Date(today);
   end.setDate(today.getDate() + SERVICE_FUTURE_LOOKAHEAD_DAYS);
   const upcoming = getFilteredServices().filter((service) => {
@@ -19236,8 +19270,7 @@ function getRecentServiceShortcuts(limit = 8) {
 }
 
 function getUpcomingServiceShortcuts(limit = 8, baseDate = new Date()) {
-  const today = new Date(baseDate);
-  today.setHours(0, 0, 0, 0);
+  const today = upcomingServiceBaseDate(baseDate);
   return sortServicesByDate(state.services.filter((service) => {
     const serviceDate = parseLocalDate(service?.date);
     return !Number.isNaN(serviceDate.getTime()) && serviceDate >= today;
