@@ -58,7 +58,13 @@
             <button class="filter-tab" type="button" data-list-filter="ccm">CCM</button>
             <button class="filter-tab" type="button" data-list-filter="children" hidden>어린이</button>
           </div>
-          <div id="songCount" class="sidebar-count">0곡</div>
+          <div class="sidebar-list-head">
+            <div id="songCount" class="sidebar-count">0곡</div>
+            <button id="sidebarCreateSongBtn" class="sidebar-create-song-btn" type="button" data-create-song hidden>
+              <i data-lucide="plus"></i>
+              <span>곡 추가</span>
+            </button>
+          </div>
           <div id="songList" class="song-list" tabindex="0"></div>
         </div>
       </aside>

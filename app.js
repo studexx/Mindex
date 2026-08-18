@@ -11637,7 +11637,7 @@ function syncPraiseCreateControls() {
     refs.newSongBtn.hidden = !canCreate;
     refs.newSongBtn.disabled = !canCreate;
   }
-  refs.detailPane?.querySelectorAll("[data-create-song]").forEach((button) => {
+  document.querySelectorAll("[data-create-song]").forEach((button) => {
     button.hidden = !canCreate;
     button.disabled = !canCreate;
   });
@@ -14172,7 +14172,7 @@ function renderVersionAttentionStatus(song, version, forms, options = {}) {
   const info = versionAttentionInfo(song, version, forms);
   if (!info.hasIssue) return "";
   const label = versionAttentionLabel(song, version, forms);
-  const visibleLabel = info.needsReview ? "Review" : "Empty";
+  const visibleLabel = info.needsReview ? "검토 필요" : "가사 없음";
   return `
     <span class="version-attention-status ${escapeAttr(info.tone)}" aria-label="${escapeAttr(label)}">
       <span class="version-attention-mark">!</span>

@@ -544,12 +544,12 @@ body[data-theme="dark"] .top-module-entry.active {
   display: grid;
   width: 100%;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
+  gap: 5px;
   margin-top: 0;
   padding: 4px var(--sidebar-item-end) 7px var(--sidebar-item-x);
 }
 body[data-module="praise"] .list-filter {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
 }
 .filter-tab {
   height: 28px;
@@ -578,6 +578,41 @@ body[data-module="praise"] .list-filter {
   color: var(--ink-4); font-size: 10px; font-weight: 500; letter-spacing: .04em; line-height: 17px; text-transform: uppercase;
 }
 .sidebar-count { color: var(--sidebar-label); font-weight: 600; letter-spacing: .08em; }
+.sidebar-list-head {
+  display: flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
+  padding: 0 var(--sidebar-item-end) 0 var(--sidebar-item-x);
+}
+.sidebar-create-song-btn {
+  display: inline-flex;
+  flex: 0 0 auto;
+  height: 30px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 0;
+  border-radius: var(--r);
+  background: color-mix(in srgb, var(--accent-soft) 72%, transparent);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+  padding: 0 10px;
+}
+.sidebar-create-song-btn[hidden] {
+  display: none;
+}
+.sidebar-create-song-btn:hover {
+  background: color-mix(in srgb, var(--accent-soft) 92%, transparent);
+  color: var(--accent);
+}
+.sidebar-create-song-btn svg {
+  width: 15px;
+  height: 15px;
+}
 .field {
   color: var(--ink-4);
   font-size: var(--ui-label-size);
