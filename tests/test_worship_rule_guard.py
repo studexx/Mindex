@@ -134,6 +134,13 @@ class WorshipRuleGuardTests(unittest.TestCase):
         self.assertIn("element.song_version_id = null", sanitizer)
         self.assertIn("section.created_at = section.created_at || persistedAt", sanitizer)
 
+    def test_calendar_load_precedes_auto_worship_generation(self) -> None:
+        load_worship = function_block(self.source, "loadWorshipData")
+        self.assertLess(
+            load_worship.index("await loadCalendarData({ silent: true })"),
+            load_worship.index("await ensureUpcomingPublicWorshipServices()"),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

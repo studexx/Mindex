@@ -3395,7 +3395,7 @@ def main() -> int:
                         ],
                         "childrenLastSection": "교제",
                         "scheduledOnIntegratedSunday": False,
-                        "youngAdultScheduledOnIntegratedSunday": False,
+                        "youngAdultScheduledOnIntegratedSunday": True,
                     }:
                         pass_("youth-service-template", json.dumps(youth_template, ensure_ascii=False))
                     else:

@@ -3305,7 +3305,7 @@ function autoUpcomingPublicServiceTargets(baseDate = new Date()) {
     target
     && AUTO_UPCOMING_PUBLIC_SERVICE_TYPES.includes(target.typeId)
     && target.date
-    && !(integratedSunday && SUNDAY_MINISTRY_SERVICE_TYPES.has(target.typeId)));
+    && !(integratedSunday && INTEGRATED_SUNDAY_SKIP_SERVICE_TYPES.has(target.typeId)));
 }
 
 const FRIDAY_SERVICE_VARIANT_START_DATE = "2026-08-01";
@@ -3517,6 +3517,9 @@ async function loadWorshipData() {
   const resolvedTypes = types.length ? types : defaultWorshipServiceTypes();
   state.serviceTypes = resolvedTypes.map(normalizeWorshipServiceType);
   state.services = services.map(normalizeWorshipService);
+  if (!state.calendarLoaded && !state.calendarLoading) {
+    await loadCalendarData({ silent: true });
+  }
   const autoServices = WORSHIP_EMERGENCY_TODAY_ONLY ? [] : await ensureUpcomingPublicWorshipServices();
   if (autoServices.length) state.services = sortServicesByDate([...state.services, ...autoServices]);
   state.templateElementSuppressions.clear();
@@ -12161,7 +12164,7 @@ const SERVICE_TIME_WINDOWS = {
   monthly: { start: "20:00", end: "22:00" },
 };
 
-const SUNDAY_MINISTRY_SERVICE_TYPES = new Set(["children", "youth", "young-adult"]);
+const INTEGRATED_SUNDAY_SKIP_SERVICE_TYPES = new Set(["children", "youth"]);
 
 const AUTO_UPCOMING_PUBLIC_SERVICE_TYPES = [
   "wednesday",
