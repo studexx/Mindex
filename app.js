@@ -16815,7 +16815,11 @@ const PUBLIC_WORSHIP_TEMPLATE_VERSIONS = {
         specialSong: sundayThirdSpecialSongTemplateForDate(options.service?.date || options.service?.service_date || ""),
         introTeamName: serviceDefaultMainPraiseTeamName(options.service || {}),
         ...(isAllGenerationsWorshipService(options.service || {}) ? {
+          includeCommunityConfession: false,
+          includeConfession: false,
           includeEntrancePraise: false,
+          includeHymnPraise: false,
+          includeCreed: false,
           specialSong: null,
           mainPraiseDefaults: ALL_GENERATION_MAIN_PRAISE_DEFAULT_SONGS,
         } : {}),
@@ -17532,7 +17536,11 @@ function publicSundayThirdTemplate(options = {}) {
   const introTeamName = options.introTeamName || "헤세드 찬양단";
   const mainPraiseDefaults = Array.isArray(options.mainPraiseDefaults) ? options.mainPraiseDefaults : [];
   const mainPraiseCount = Math.max(Number(options.mainPraiseCount) || 4, mainPraiseDefaults.length);
+  const includeCommunityConfession = options.includeCommunityConfession !== false;
+  const includeConfession = options.includeConfession !== false;
   const includeEntrancePraise = options.includeEntrancePraise !== false;
+  const includeHymnPraise = options.includeHymnPraise !== false;
+  const includeCreed = options.includeCreed !== false;
   return [
     publicWorshipReadyStep(),
     publicWorshipPraiseStep({
@@ -17542,8 +17550,8 @@ function publicSundayThirdTemplate(options = {}) {
       required: true,
       extraElements: includeEntrancePraise ? [publicSundayThirdEntrancePraiseElement()] : [],
     }),
-    publicSundayThirdConfessionStep(),
-    { label: "찬송", name: "찬송", required: false, flex: true, sectionKey: "hymn_praise", elementType: "praise", ...scoreOutputMode() },
+    ...(includeConfession ? [publicSundayThirdConfessionStep()] : []),
+    ...(includeHymnPraise ? [{ label: "찬송", name: "찬송", required: false, flex: true, sectionKey: "hymn_praise", elementType: "praise", ...scoreOutputMode() }] : []),
     { label: "대표기도", name: "대표기도", required: true, flex: false, sectionKey: "prayer", elements: [
       { label: "대표기도", name: "대표기도", elementType: "title_person" },
     ] },
@@ -17556,10 +17564,10 @@ function publicSundayThirdTemplate(options = {}) {
     { label: "결단", name: "결단", required: false, flex: true, sectionKey: "response_song", elements: [
       { label: "결단기도", name: "결단기도", elementType: "title_person" },
     ] },
-    publicWorshipCreedStep(),
+    ...(includeCreed ? [publicWorshipCreedStep()] : []),
     publicWorshipOfferingStep({ score: true, praiseLabel: "봉헌찬송", typeId }),
     publicSundayThirdAnnouncementsStep(),
-    publicWorshipCommunityConfessionStep(),
+    ...(includeCommunityConfession ? [publicWorshipCommunityConfessionStep()] : []),
     publicWorshipSendingStep({ typeId, doxology: false, extraElements: [publicSundayThirdSendingPraiseElement()] }),
     publicSundayThirdClosingStep(),
   ];

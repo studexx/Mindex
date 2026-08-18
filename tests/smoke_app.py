@@ -3061,6 +3061,19 @@ def main() -> int:
                             item["label"]
                             for item in template_terms["sundayPublicScaffold"]["third"]["praiseElements"]
                         ] == ["환영", "찬양 1", "찬양 2", "찬양 3", "찬양 4", "입례찬양"]
+                        and template_terms["sundayPublicScaffold"]["allGeneration"]["sectionKeys"] == [
+                            "ready",
+                            "praise",
+                            "prayer",
+                            "scripture_reading",
+                            "special_song",
+                            "sermon",
+                            "response_song",
+                            "offering",
+                            "announcements",
+                            "sending",
+                            "closing_visual",
+                        ]
                         and "special_song" in template_terms["sundayPublicScaffold"]["allGeneration"]["sectionKeys"]
                         and not (template_terms["sundayPublicScaffold"]["allGeneration"]["specialSong"].get("person") or "").strip()
                         and not (template_terms["sundayPublicScaffold"]["allGeneration"]["specialSong"].get("title") or "").strip()
