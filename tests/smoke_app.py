@@ -5402,6 +5402,22 @@ def main() -> int:
                             await applyPresenterPreparationInput(fridayService.id);
                             const fridayItems = state.serviceItems[fridayService.id] || [];
                             const fridayByLabel = (label) => fridayItems.find((entry) => entry.label === label) || {};
+                            const allGenerationService = {
+                              id: '__smoke_all_generation_dynamic_praise__',
+                              type_id: 'sunday-main',
+                              date: '2026-07-26',
+                              alias: '온세대 찬양예배',
+                              _worshipSourceRef: { sunday_main_variant: 'all_generations' },
+                            };
+                            state.services = [allGenerationService];
+                            state.serviceItems[allGenerationService.id] = projectWorshipServiceItemsFromTemplate(allGenerationService, []);
+                            state.presenterPreparationDrafts[allGenerationService.id] = Array.from(
+                              { length: 12 },
+                              (_, index) => `찬양 ${index + 1}: 온세대 테스트곡 ${index + 1}`
+                            ).join('\\n');
+                            await applyPresenterPreparationInput(allGenerationService.id);
+                            const allGenerationItems = state.serviceItems[allGenerationService.id] || [];
+                            const allGenerationPraiseItems = allGenerationItems.filter((entry) => /^찬양\\s*\\d+$/.test(entry.label || ''));
                             return {
                               songIds: ['찬양 1', '찬양 2', '찬양 3', '찬양 4', '결단찬양'].map((label) => byLabel(label).song_id || ''),
                               versionIds: ['찬양 1', '찬양 2', '찬양 3'].map((label) => byLabel(label).version_id || byLabel(label).song_version_id || ''),
@@ -5461,6 +5477,12 @@ def main() -> int:
                                 freePrayerEditable: presenterServiceInputHasEditableField(freePrayer, fridayService),
                                 freePrayerMissing: freePrayerSlides.some((slide) => slide.missingContent),
                                 draftCleared: !state.presenterPreparationDrafts[fridayService.id],
+                              },
+                              allGenerationInput: {
+                                labels: allGenerationPraiseItems.map((entry) => entry.label),
+                                songCount: allGenerationPraiseItems.filter((entry) => entry.song_id).length,
+                                maxElementOrder: Math.max(...allGenerationPraiseItems.map((entry) => Number(entry._worshipElementOrder) || 0)),
+                                draftCleared: !state.presenterPreparationDrafts[allGenerationService.id],
                               },
                               citationCount: citations.length,
                               citationReferences,
@@ -5559,6 +5581,12 @@ def main() -> int:
                         and presenter_preparation_paste["fridayInput"]["freePrayerEditable"] is False
                         and presenter_preparation_paste["fridayInput"]["freePrayerMissing"] is False
                         and presenter_preparation_paste["fridayInput"]["draftCleared"] is True
+                        and presenter_preparation_paste["allGenerationInput"] == {
+                            "labels": [f"찬양 {index}" for index in range(1, 13)],
+                            "songCount": 12,
+                            "maxElementOrder": 120,
+                            "draftCleared": True,
+                        }
                         and presenter_preparation_paste["citationCount"] == 1
                         and presenter_preparation_paste["citationReferences"] == [
                             "렘 3:22", "마 3:11", "눅 24:49", "행 2:4", "고후 10:4", "롬 8:35–37", "살전 4:3", "벧전 1:14–15",

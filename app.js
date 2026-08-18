@@ -22240,6 +22240,40 @@ function isMainPraiseLabel(label) {
   return /^찬양\d*$/.test(compact);
 }
 
+function serviceAllowsDynamicMainPraiseCount(service = null) {
+  return Boolean(service && isAllGenerationsWorshipService(service));
+}
+
+function createDynamicMainPraiseProjectedItem(service, label) {
+  if (!serviceAllowsDynamicMainPraiseCount(service)) return null;
+  const match = compactSearchValue(label).match(/^찬양(\d+)$/);
+  const ordinal = Number(match?.[1]) || 0;
+  if (ordinal < 1) return null;
+  const existingPraiseItems = servicePrepEditorItems(service.id)
+    .filter((item) => isMainPraiseServiceItem(item))
+    .sort((a, b) => (Number(a._worshipElementOrder) || 0) - (Number(b._worshipElementOrder) || 0));
+  const base = existingPraiseItems.find((item) => compactSearchValue(item.label || "") === "찬양1")
+    || existingPraiseItems[0];
+  if (!base) return null;
+  return normalizeServiceItem({
+    ...base,
+    id: `template:dynamic-main-praise:${service.id}:${ordinal}`,
+    service_id: service.id,
+    label: `찬양 ${ordinal}`,
+    raw_title: "",
+    song_id: null,
+    version_id: null,
+    song_version_id: null,
+    assignee: "",
+    _worshipSectionKey: "praise",
+    _worshipSectionTitle: base._worshipSectionTitle || "찬양",
+    _worshipElementOrder: ordinal * 10,
+    _worshipTemplateProjected: true,
+    _worshipTemplatePlaceholder: true,
+    _worshipElementTemplateModified: false,
+  }, ordinal - 1);
+}
+
 function servicePraiseAssignee(service, items = []) {
   if (!serviceUsesPraiseLeader(service?.type_id)) return "";
   const itemAssignee = items.map((item) => cleanServiceAssignee(item?.assignee)).find(Boolean);
@@ -22733,6 +22767,8 @@ function findPresenterPreparationProjectedItem(service, label) {
   const items = servicePrepEditorItems(service.id);
   const exact = items.find((item) => compactSearchValue(item.label || "") === labelKey);
   if (exact) return exact;
+  const dynamicPraise = createDynamicMainPraiseProjectedItem(service, label);
+  if (dynamicPraise) return dynamicPraise;
   const numbered = labelKey.match(/^(.*?)(\d+)$/);
   if (numbered) {
     const baseKey = numbered[1];
