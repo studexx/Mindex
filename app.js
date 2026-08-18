@@ -3290,12 +3290,17 @@ function autoUpcomingPublicServiceTargets(baseDate = new Date()) {
   const fridayTarget = autoFridayServiceTarget(friday);
   const sunday = nextDateForWeekday(0);
   const integratedSunday = isAllGenerationsWorshipDate(sunday);
+  const sundayMainVariant = sundayMainWorshipServiceVariantForDate(sunday);
   return [
     { typeId: "wednesday", date: wednesday },
     fridayTarget,
     { typeId: "sunday-first", date: sunday },
     { typeId: "sunday-second", date: sunday },
-    { typeId: "sunday-main", date: sunday },
+    {
+      typeId: "sunday-main",
+      date: sunday,
+      ...(sundayMainVariant || {}),
+    },
     ...(childrenWorshipAutoGenerationEnabled() ? [{ typeId: "children", date: sunday }] : []),
     { typeId: "youth", date: sunday },
     { typeId: "young-adult", date: sunday },
@@ -3385,6 +3390,22 @@ const FRIDAY_SERVICE_VARIANTS = {
   },
 };
 
+const ALL_GENERATION_MAIN_PRAISE_SERVICE_ALIAS = "온세대 찬양예배";
+
+function sundayMainWorshipServiceVariantForDate(dateValue = "") {
+  const targetDate = toLocalDateStr(dateValue);
+  if (!targetDate || !isAllGenerationsWorshipDate(targetDate)) return null;
+  return {
+    title: ALL_GENERATION_MAIN_PRAISE_SERVICE_ALIAS,
+    alias: ALL_GENERATION_MAIN_PRAISE_SERVICE_ALIAS,
+    sourceRef: {
+      sunday_main_variant: "all_generations",
+      sunday_main_variant_name: ALL_GENERATION_MAIN_PRAISE_SERVICE_ALIAS,
+      auto_generated: true,
+    },
+  };
+}
+
 function fridayWeekOfMonth(dateValue = "") {
   const target = parseLocalDate(dateValue);
   if (Number.isNaN(target.getTime()) || target.getDay() !== 5) return 0;
@@ -3453,8 +3474,18 @@ function isAllGenerationsWorshipDate(date) {
 
 function isAllGenerationsWorshipService(service = null) {
   if (!service || typeof service !== "object") return false;
+  const sourceRef = service._worshipSourceRef && typeof service._worshipSourceRef === "object" ? service._worshipSourceRef : {};
+  const sundayMainVariant = String(sourceRef.sunday_main_variant || "").trim();
+  if (sundayMainVariant && sundayMainVariant.toLowerCase() === "all_generations") {
+    return true;
+  }
   const serviceDate = toLocalDateStr(service?.date || service?.service_date || service?.serviceDate || "");
-  const serviceContext = compactSearchValue([service.alias, service.title, service.raw_text].filter(Boolean).join(" "));
+  const sourceRefContext = compactSearchValue([
+    sourceRef.sunday_main_variant_name,
+    sourceRef.all_generations_note,
+    sourceRef.auto_generated ? "온세대 찬양예배" : "",
+  ].filter(Boolean).join(" "));
+  const serviceContext = compactSearchValue([service.alias, service.title, service.raw_text, sourceRefContext].filter(Boolean).join(" "));
   return isAllGenerationsWorshipContext(serviceContext)
     || isAllGenerationsWorshipDate(serviceDate)
     || isAllGenerationsWorshipDate(service?._worshipServiceDate || serviceDate);
@@ -18540,6 +18571,9 @@ function serviceDisplayTypeName(service) {
   if (!service) return "";
   const alias = serviceAlias(service);
   if (alias) return alias;
+  if (worshipAppServiceTypeId(service.type_id) === "sunday-main" && isAllGenerationsWorshipService(service)) {
+    return ALL_GENERATION_MAIN_PRAISE_SERVICE_ALIAS;
+  }
   const sourceRef = service?._worshipSourceRef && typeof service._worshipSourceRef === "object" ? service._worshipSourceRef : {};
   if (worshipAppServiceTypeId(service.type_id) === "friday") {
     const fridayName = String(sourceRef.friday_variant_name || "").trim();
