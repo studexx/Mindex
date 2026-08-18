@@ -16816,6 +16816,7 @@ const PUBLIC_WORSHIP_TEMPLATE_VERSIONS = {
         introTeamName: serviceDefaultMainPraiseTeamName(options.service || {}),
         ...(isAllGenerationsWorshipService(options.service || {}) ? {
           includeEntrancePraise: false,
+          specialSong: null,
           mainPraiseDefaults: ALL_GENERATION_MAIN_PRAISE_DEFAULT_SONGS,
         } : {}),
       }),

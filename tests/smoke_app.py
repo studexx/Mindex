@@ -2133,12 +2133,18 @@ def main() -> int:
                                 };
                                 const scaffold = buildWorshipServiceScaffold(service.id, service.type_id, { service });
                                 const praiseSection = scaffold.sections.find((section) => section.section_key === 'praise');
-                                return scaffold.elements
-                                  .filter((element) => element.section_id === praiseSection?.id)
-                                  .map((element) => ({
-                                    label: element.source_ref?.label || '',
-                                    title: element.title || state.songs.find((song) => song.id === element.song_id)?.title || '',
-                                  }));
+                                const specialSection = scaffold.sections.find((section) => section.section_key === 'special_song');
+                                return {
+                                  sectionKeys: scaffold.sections.map((section) => section.section_key || ''),
+                                  sectionTitles: scaffold.sections.map((section) => section.title || ''),
+                                  specialSong: scaffold.elements.find((element) => element.section_id === specialSection?.id) || null,
+                                  praiseElements: scaffold.elements
+                                    .filter((element) => element.section_id === praiseSection?.id)
+                                    .map((element) => ({
+                                      label: element.source_ref?.label || '',
+                                      title: element.title || state.songs.find((song) => song.id === element.song_id)?.title || '',
+                                    })),
+                                };
                               })(),
                               afternoon: summarize('sunday-afternoon'),
                               thirdDefaults: {
@@ -3055,7 +3061,10 @@ def main() -> int:
                             item["label"]
                             for item in template_terms["sundayPublicScaffold"]["third"]["praiseElements"]
                         ] == ["환영", "찬양 1", "찬양 2", "찬양 3", "찬양 4", "입례찬양"]
-                        and template_terms["sundayPublicScaffold"]["allGeneration"] == [
+                        and "special_song" in template_terms["sundayPublicScaffold"]["allGeneration"]["sectionKeys"]
+                        and not (template_terms["sundayPublicScaffold"]["allGeneration"]["specialSong"].get("person") or "").strip()
+                        and not (template_terms["sundayPublicScaffold"]["allGeneration"]["specialSong"].get("title") or "").strip()
+                        and template_terms["sundayPublicScaffold"]["allGeneration"]["praiseElements"] == [
                             {"label": "환영", "title": "환영\n테힐라 찬양단"},
                             {"label": "찬양 1", "title": "오직 예수뿐이네"},
                             {"label": "찬양 2", "title": "열려라 에바다"},
