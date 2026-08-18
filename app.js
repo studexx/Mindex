@@ -3420,6 +3420,11 @@ function autoFridayServiceTarget(date = "") {
   };
 }
 
+function isAllGenerationsWorshipContext(text = "") {
+  const compact = compactSearchValue(text);
+  return compact.includes("온세대") || compact.includes("찬양예배");
+}
+
 function isAllGenerationsWorshipDate(date) {
   const targetDate = String(date || "").trim();
   if (!targetDate) return false;
@@ -3443,7 +3448,16 @@ function isAllGenerationsWorshipDate(date) {
     ]).join(" "))
     .join(" ");
   const compact = compactSearchValue([calendarText, serviceText].filter(Boolean).join(" "));
-  return compact.includes("온세대") || compact.includes("찬양예배");
+  return isAllGenerationsWorshipContext(compact);
+}
+
+function isAllGenerationsWorshipService(service = null) {
+  if (!service || typeof service !== "object") return false;
+  const serviceDate = String(service?.date || service?.service_date || service?.serviceDate || "").trim();
+  const serviceContext = compactSearchValue([service.alias, service.title, service.raw_text].filter(Boolean).join(" "));
+  return isAllGenerationsWorshipContext(serviceContext)
+    || isAllGenerationsWorshipDate(serviceDate)
+    || isAllGenerationsWorshipDate(String(service?._worshipServiceDate || ""));
 }
 
 function worshipServiceExistsForTarget(target = {}) {
@@ -16719,11 +16733,17 @@ function resizeFormTextarea(textarea) {
 const PUBLIC_WORSHIP_TEMPLATE_VERSION = "2026-q3";
 const PUBLIC_WORSHIP_TEMPLATE_EFFECTIVE_FROM = "2026-07-01";
 
-function publicWorshipTemplateVersion(build, version = PUBLIC_WORSHIP_TEMPLATE_VERSION, effectiveFrom = PUBLIC_WORSHIP_TEMPLATE_EFFECTIVE_FROM) {
+function publicWorshipTemplateVersion(
+  build,
+  version = PUBLIC_WORSHIP_TEMPLATE_VERSION,
+  effectiveFrom = PUBLIC_WORSHIP_TEMPLATE_EFFECTIVE_FROM,
+  match = null,
+) {
   return {
     version,
     effectiveFrom,
     build,
+    match,
   };
 }
 
@@ -16744,12 +16764,10 @@ const PUBLIC_WORSHIP_TEMPLATE_VERSIONS = {
     publicWorshipTemplateVersion(() => publicSundaySecondTemplate({ score: true, specialScore: false })),
   ],
   "sunday-main": [
-    publicWorshipTemplateVersion((options = {}) => publicSundayThirdTemplate({
-      specialSong: sundayThirdSpecialSongTemplateForDate(options.service?.date || options.service?.service_date || ""),
-    })),
     publicWorshipTemplateVersion(
       (options = {}) => publicSundayThirdTemplate({
         specialSong: sundayThirdSpecialSongTemplateForDate(options.service?.date || options.service?.service_date || ""),
+        introTeamName: serviceDefaultMainPraiseTeamName(options.service || {}),
       }),
       "2026-q3-07-26",
       "2026-07-26",
@@ -17450,11 +17468,12 @@ function publicSundaySecondTemplate(options = {}) {
 function publicSundayThirdTemplate(options = {}) {
   const typeId = "sunday-main";
   const specialSong = options.specialSong || null;
+  const introTeamName = options.introTeamName || "헤세드 찬양단";
   return [
     publicWorshipReadyStep(),
     publicWorshipPraiseStep({
       count: 4,
-      introTeamName: "헤세드 찬양단",
+      introTeamName,
       required: true,
       extraElements: [publicSundayThirdEntrancePraiseElement()],
     }),
@@ -18568,7 +18587,7 @@ function serviceOrderTemplateFallback(appTypeId = "", options = {}) {
 
 function materializePublicWorshipTemplate(typeId = "", options = {}) {
   const appTypeId = worshipAppServiceTypeId(typeId);
-  const versions = publicWorshipTemplateVersionsForDate(appTypeId, serviceTemplateDate(options.service));
+  const versions = publicWorshipTemplateVersionsForDate(appTypeId, serviceTemplateDate(options.service), { service: options.service });
   if (!versions.length) return null;
   let steps = [];
   let activeVersion = null;
@@ -18587,14 +18606,22 @@ function resolvePublicWorshipTemplateVersion(typeId = "", options = {}) {
   return materializePublicWorshipTemplate(typeId, options)?.version || null;
 }
 
-function publicWorshipTemplateVersionsForDate(typeId = "", dateValue = "") {
+function publicWorshipTemplateVersionsForDate(typeId = "", dateValue = "", options = {}) {
   const versions = PUBLIC_WORSHIP_TEMPLATE_VERSIONS[worshipAppServiceTypeId(typeId)] || [];
   const serviceDate = normalizeTemplateEffectiveDate(dateValue) || toLocalDateStr(new Date());
   const active = versions
     .filter((version) => templateVersionStartsOnOrBefore(version, serviceDate))
+    .filter((version) => templateVersionMatchesService(version, options.service))
     .sort(compareTemplateVersions);
   if (active.length) return active;
   return versions.slice(0, 1).sort(compareTemplateVersions);
+}
+
+function templateVersionMatchesService(version = {}, service = null) {
+  const matcher = version?.match;
+  if (!matcher) return true;
+  if (typeof matcher !== "function") return Boolean(matcher);
+  return Boolean(matcher(service || null));
 }
 
 function serviceTemplateDate(service = null) {
@@ -20788,11 +20815,7 @@ function serviceDefaultMainPraiseTeamName(service) {
   const typeId = worshipAppServiceTypeId(service?.type_id);
   if (typeId === "monthly") return "썸프레이즈";
   if (typeId === "sunday-main") {
-    const context = compactSearchValue([
-      service?.alias,
-      service?.title,
-    ].filter(Boolean).join(" "));
-    return context.includes("온세대") || context.includes("찬양예배")
+    return isAllGenerationsWorshipService(service)
       ? "테힐라 찬양단"
       : "헤세드 찬양단";
   }
