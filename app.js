@@ -3391,6 +3391,13 @@ const FRIDAY_SERVICE_VARIANTS = {
 };
 
 const ALL_GENERATION_MAIN_PRAISE_SERVICE_ALIAS = "온세대 찬양예배";
+const ALL_GENERATION_MAIN_PRAISE_DEFAULT_SONGS = [
+  "오직 예수뿐이네",
+  "열려라 에바다",
+  "나의 참 친구",
+  "충만",
+  "내 한 가지 소원",
+];
 
 function sundayMainWorshipServiceVariantForDate(dateValue = "") {
   const targetDate = toLocalDateStr(dateValue);
@@ -16807,6 +16814,10 @@ const PUBLIC_WORSHIP_TEMPLATE_VERSIONS = {
       (options = {}) => publicSundayThirdTemplate({
         specialSong: sundayThirdSpecialSongTemplateForDate(options.service?.date || options.service?.service_date || ""),
         introTeamName: serviceDefaultMainPraiseTeamName(options.service || {}),
+        ...(isAllGenerationsWorshipService(options.service || {}) ? {
+          includeEntrancePraise: false,
+          mainPraiseDefaults: ALL_GENERATION_MAIN_PRAISE_DEFAULT_SONGS,
+        } : {}),
       }),
       "2026-q3-07-26",
       "2026-07-26",
@@ -17051,18 +17062,28 @@ function publicWorshipMainPraiseIntroElement(defaultTeamName = "") {
 
 function publicWorshipPraiseStep(options = {}) {
   const score = Boolean(options.score);
-  const count = Number(options.count) || 1;
+  const defaultSongs = Array.isArray(options.defaultSongs)
+    ? options.defaultSongs.map((title) => String(title || "").trim()).filter(Boolean)
+    : [];
+  const count = Math.max(Number(options.count) || 1, defaultSongs.length);
   const introTeamName = String(options.introTeamName || options.introAssignee || "").trim();
   const required = options.required !== undefined ? Boolean(options.required) : false;
   const extraElements = Array.isArray(options.extraElements) ? options.extraElements.filter(Boolean) : [];
   const elements = [
     ...(introTeamName ? [publicWorshipMainPraiseIntroElement(introTeamName)] : []),
-    ...Array.from({ length: count }, (_, index) => ({
-    label: `찬양 ${index + 1}`,
-    name: `찬양 ${index + 1}`,
-    elementType: "praise",
-    ...scoreOutputMode(score),
-    })),
+    ...Array.from({ length: count }, (_, index) => {
+      const defaultTitle = defaultSongs[index] || "";
+      return {
+        label: `찬양 ${index + 1}`,
+        name: `찬양 ${index + 1}`,
+        elementType: "praise",
+        ...(defaultTitle ? {
+          default_text: defaultTitle,
+          defaultSong: { title: defaultTitle },
+        } : {}),
+        ...scoreOutputMode(score),
+      };
+    }),
     ...extraElements,
   ];
   return {
@@ -17508,13 +17529,17 @@ function publicSundayThirdTemplate(options = {}) {
   const typeId = "sunday-main";
   const specialSong = options.specialSong || null;
   const introTeamName = options.introTeamName || "헤세드 찬양단";
+  const mainPraiseDefaults = Array.isArray(options.mainPraiseDefaults) ? options.mainPraiseDefaults : [];
+  const mainPraiseCount = Math.max(Number(options.mainPraiseCount) || 4, mainPraiseDefaults.length);
+  const includeEntrancePraise = options.includeEntrancePraise !== false;
   return [
     publicWorshipReadyStep(),
     publicWorshipPraiseStep({
-      count: 4,
+      count: mainPraiseCount,
+      defaultSongs: mainPraiseDefaults,
       introTeamName,
       required: true,
-      extraElements: [publicSundayThirdEntrancePraiseElement()],
+      extraElements: includeEntrancePraise ? [publicSundayThirdEntrancePraiseElement()] : [],
     }),
     publicSundayThirdConfessionStep(),
     { label: "찬송", name: "찬송", required: false, flex: true, sectionKey: "hymn_praise", elementType: "praise", ...scoreOutputMode() },

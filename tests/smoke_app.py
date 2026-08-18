@@ -2123,6 +2123,23 @@ def main() -> int:
                               firstPastor: summarize('sunday-first', { id: '__smoke_sunday_first_pastor__', type_id: 'sunday-first', worshipLeader: '김남영 목사' }),
                               second: summarize('sunday-second'),
                               third: summarize('sunday-main'),
+                              allGeneration: (() => {
+                                const service = {
+                                  id: '__smoke_sunday_third_all_generation__',
+                                  type_id: 'sunday-main',
+                                  date: '2026-07-26',
+                                  alias: '온세대 찬양예배',
+                                  _worshipSourceRef: { sunday_main_variant: 'all_generations' },
+                                };
+                                const scaffold = buildWorshipServiceScaffold(service.id, service.type_id, { service });
+                                const praiseSection = scaffold.sections.find((section) => section.section_key === 'praise');
+                                return scaffold.elements
+                                  .filter((element) => element.section_id === praiseSection?.id)
+                                  .map((element) => ({
+                                    label: element.source_ref?.label || '',
+                                    title: element.title || state.songs.find((song) => song.id === element.song_id)?.title || '',
+                                  }));
+                              })(),
                               afternoon: summarize('sunday-afternoon'),
                               thirdDefaults: {
                                 entrancePraise: publicSundayThirdEntrancePraiseElement().defaultSong || null,
@@ -3038,6 +3055,14 @@ def main() -> int:
                             item["label"]
                             for item in template_terms["sundayPublicScaffold"]["third"]["praiseElements"]
                         ] == ["환영", "찬양 1", "찬양 2", "찬양 3", "찬양 4", "입례찬양"]
+                        and template_terms["sundayPublicScaffold"]["allGeneration"] == [
+                            {"label": "환영", "title": "환영\n테힐라 찬양단"},
+                            {"label": "찬양 1", "title": "오직 예수뿐이네"},
+                            {"label": "찬양 2", "title": "열려라 에바다"},
+                            {"label": "찬양 3", "title": "나의 참 친구"},
+                            {"label": "찬양 4", "title": "충만"},
+                            {"label": "찬양 5", "title": "내 한 가지 소원"},
+                        ]
                         and template_terms["sundayPublicScaffold"]["third"]["praiseElements"][-1] == {
                             "type": "praise",
                             "label": "입례찬양",
