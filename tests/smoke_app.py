@@ -1904,6 +1904,46 @@ def main() -> int:
                               state.calendarData = previousCalendarData;
                             }
                           })(),
+                          allGenerationDateGuards: (() => {
+                            const previousCalendarData = state.calendarData;
+                            try {
+                              state.calendarData = [
+                                { id: '__smoke_regular_blank__', date: '2026-08-02', note: '', church_schedule: '' },
+                                { id: '__smoke_regular_note__', date: '2026-08-09', note: '온세대 찬양예배', church_schedule: '청소년부 제자헌신예배' },
+                                { id: '__smoke_regular_alias__', date: '2026-08-16', note: '', church_schedule: '' },
+                                { id: '__smoke_all_generation_schedule__', date: '2026-08-23', note: '', church_schedule: '온세대 찬양예배' },
+                              ];
+                              return {
+                                blankDate: isAllGenerationsWorshipDate('2026-08-02'),
+                                noteOnlyDate: isAllGenerationsWorshipDate('2026-08-09'),
+                                aliasOnlyService: isAllGenerationsWorshipService({
+                                  id: '__smoke_alias_only__',
+                                  type_id: 'sunday-main',
+                                  date: '2026-08-16',
+                                  alias: '온세대 찬양예배',
+                                }),
+                                sourceRefOnlyService: isAllGenerationsWorshipService({
+                                  id: '__smoke_source_ref_only__',
+                                  type_id: 'sunday-main',
+                                  date: '2026-08-16',
+                                  _worshipSourceRef: { sunday_main_variant: 'all_generations' },
+                                }),
+                                scheduledDate: isAllGenerationsWorshipDate('2026-08-23'),
+                                scheduledThirdService: isAllGenerationsWorshipService({
+                                  id: '__smoke_scheduled_third__',
+                                  type_id: 'sunday-main',
+                                  date: '2026-08-23',
+                                }),
+                                scheduledYouthService: isAllGenerationsWorshipService({
+                                  id: '__smoke_scheduled_youth__',
+                                  type_id: 'youth',
+                                  date: '2026-08-23',
+                                }),
+                              };
+                            } finally {
+                              state.calendarData = previousCalendarData;
+                            }
+                          })(),
                           levels: [...document.querySelectorAll('.svc-template-level-card strong')]
                             .map((node) => node.textContent.trim()),
                           monthlyFirst: (() => {
@@ -2124,6 +2164,7 @@ def main() -> int:
                               second: summarize('sunday-second'),
                               third: summarize('sunday-main'),
                               allGeneration: (() => {
+                                const previousCalendarData = state.calendarData;
                                 const service = {
                                   id: '__smoke_sunday_third_all_generation__',
                                   type_id: 'sunday-main',
@@ -2131,20 +2172,28 @@ def main() -> int:
                                   alias: '온세대 찬양예배',
                                   _worshipSourceRef: { sunday_main_variant: 'all_generations' },
                                 };
-                                const scaffold = buildWorshipServiceScaffold(service.id, service.type_id, { service });
-                                const praiseSection = scaffold.sections.find((section) => section.section_key === 'praise');
-                                const specialSection = scaffold.sections.find((section) => section.section_key === 'special_song');
-                                return {
-                                  sectionKeys: scaffold.sections.map((section) => section.section_key || ''),
-                                  sectionTitles: scaffold.sections.map((section) => section.title || ''),
-                                  specialSong: scaffold.elements.find((element) => element.section_id === specialSection?.id) || null,
-                                  praiseElements: scaffold.elements
-                                    .filter((element) => element.section_id === praiseSection?.id)
-                                    .map((element) => ({
-                                      label: element.source_ref?.label || '',
-                                      title: element.title || state.songs.find((song) => song.id === element.song_id)?.title || '',
-                                    })),
-                                };
+                                try {
+                                  state.calendarData = [
+                                    ...(previousCalendarData || []),
+                                    { id: '__smoke_all_generation_scaffold__', date: '2026-07-26', church_schedule: '온세대 찬양예배' },
+                                  ];
+                                  const scaffold = buildWorshipServiceScaffold(service.id, service.type_id, { service });
+                                  const praiseSection = scaffold.sections.find((section) => section.section_key === 'praise');
+                                  const specialSection = scaffold.sections.find((section) => section.section_key === 'special_song');
+                                  return {
+                                    sectionKeys: scaffold.sections.map((section) => section.section_key || ''),
+                                    sectionTitles: scaffold.sections.map((section) => section.title || ''),
+                                    specialSong: scaffold.elements.find((element) => element.section_id === specialSection?.id) || null,
+                                    praiseElements: scaffold.elements
+                                      .filter((element) => element.section_id === praiseSection?.id)
+                                      .map((element) => ({
+                                        label: element.source_ref?.label || '',
+                                        title: element.title || state.songs.find((song) => song.id === element.song_id)?.title || '',
+                                      })),
+                                  };
+                                } finally {
+                                  state.calendarData = previousCalendarData;
+                                }
                               })(),
                               afternoon: summarize('sunday-afternoon'),
                               thirdDefaults: {
@@ -2847,6 +2896,15 @@ def main() -> int:
                                 "sunday-afternoon:2026-07-19",
                             ],
                         }
+                        and template_terms["allGenerationDateGuards"] == {
+                            "blankDate": False,
+                            "noteOnlyDate": False,
+                            "aliasOnlyService": False,
+                            "sourceRefOnlyService": False,
+                            "scheduledDate": True,
+                            "scheduledThirdService": True,
+                            "scheduledYouthService": False,
+                        }
                         and template_terms["monthlyFirst"] == {"label": "준비", "elementType": "video"}
                         and template_terms["monthlyScaffold"]["sections"] == 12
                         and template_terms["monthlyScaffold"]["elements"] == 26
@@ -3245,7 +3303,7 @@ def main() -> int:
 	                        and template_terms["templateVersionBaseline"] == {
 	                            "version": "2026-q3",
 	                            "effectiveFrom": "2026-07-01",
-	                            "versions": ["2026-q3", "2026-q3", "2026-q3", "2026-q3", "2026-q3", "2026-q3"],
+	                            "versions": ["2026-q3", "2026-q3", "2026-q3-07-26", "2026-q3", "2026-q3", "2026-q3"],
 	                        }
 	                        and template_terms["legacyHierarchyCleanup"]["normalized"] == [
                             {
@@ -5207,6 +5265,7 @@ def main() -> int:
                             songVersionTablesSupported: state.songVersionTablesSupported,
                             selectedServiceId: state.selectedServiceId,
                             selectedServiceTypeId: state.selectedServiceTypeId,
+                            calendarData: state.calendarData,
                             drafts: state.presenterPreparationDrafts,
                             dirty: state.dirty.service,
                           };
@@ -5456,6 +5515,10 @@ def main() -> int:
                               alias: '온세대 찬양예배',
                               _worshipSourceRef: { sunday_main_variant: 'all_generations' },
                             };
+                            state.calendarData = [
+                              ...(state.calendarData || []),
+                              { id: '__smoke_all_generation_dynamic_calendar__', date: '2026-07-26', church_schedule: '온세대 찬양예배' },
+                            ];
                             state.services = [allGenerationService];
                             state.serviceItems[allGenerationService.id] = projectWorshipServiceItemsFromTemplate(allGenerationService, []);
                             state.presenterPreparationDrafts[allGenerationService.id] = Array.from(
@@ -5550,6 +5613,7 @@ def main() -> int:
                             state.songVersionTablesSupported = original.songVersionTablesSupported;
                             state.selectedServiceId = original.selectedServiceId;
                             state.selectedServiceTypeId = original.selectedServiceTypeId;
+                            state.calendarData = original.calendarData;
                             state.presenterPreparationDrafts = original.drafts;
                             state.dirty.service = original.dirty;
                             renderPresenterDetail();
