@@ -4004,7 +4004,7 @@ function inferWorshipSlideMarker(row = {}, elementType = "") {
   const text = String(row.slide_body || "").trim();
   const bracket = text.match(/^\[([^\]]{1,24})\]/);
   if (bracket) return normalizeImportedPraiseMarker(bracket[1].trim());
-  const named = text.match(/^(verse|chorus|pre-chorus|prechorus|bridge|coda|ending|intro|outro|후렴|브릿지)\s*(\d+)?/i);
+  const named = text.match(/^(verse|chorus|pre-chorus|prechorus|pc|bridge|coda|ending|intro|outro|후렴|브릿지)\s*(\d+)?/i);
   if (named) return normalizeImportedPraiseMarker([named[1], named[2]].filter(Boolean).join(" "));
   const numbered = text.match(/^(\d{1,2})[\s.]/);
   if (numbered) return `Verse ${numbered[1]}`;
@@ -4013,6 +4013,7 @@ function inferWorshipSlideMarker(row = {}, elementType = "") {
 
 function normalizeImportedPraiseMarker(value = "") {
   const raw = String(value || "").trim();
+  if (/^(?:pc|pre[-\s]?chorus)$/i.test(raw)) return "Pre-Chorus";
   if (/^(ending|엔딩)(?:\s+\d+)?$/i.test(raw)) return "Coda";
   return raw;
 }
@@ -8917,7 +8918,7 @@ function normalizeSongFormPresetLabel(value = "") {
     const baseKey = number ? `bridge:${number}` : "bridge";
     return { key: group ? `${baseKey}:${group}` : baseKey, type: "bridge", number, ...(group ? { group } : {}) };
   }
-  const preChorus = raw.match(/^(?:pc|prechorus|pre-chorus)\s*([a-z])?$/i);
+  const preChorus = raw.match(/^(?:pc|prechorus|pre-chorus|p-c|p\.c\.)\s*([a-z])?$/i);
   if (preChorus) {
     const group = String(preChorus[1] || "").toLowerCase();
     return { key: group ? `pre-chorus:${group}` : "pre-chorus", type: "pre-chorus", ...(group ? { group } : {}) };

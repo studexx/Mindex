@@ -984,6 +984,7 @@ function normalizePresenterFormType(value = "") {
   if (/^verse$/i.test(compact)) return "verse";
   if (/^(chorus|후렴)$/i.test(compact)) return "chorus";
   if (/^(b|bridge)$/i.test(compact)) return "bridge";
+  if (/^pc$/i.test(compact)) return "pre-chorus";
   if (/^prechorus$/i.test(compact)) return "pre-chorus";
   if (/^(coda|ending)$/i.test(compact)) return "coda";
   if (/^tag$/i.test(compact)) return "tag";
@@ -1782,7 +1783,7 @@ function parsePresenterCustomSlideBlock(block) {
   const first = lines[0];
   const bracketed = first.match(/^\[([^\]]+)\]$/)?.[1]?.trim();
   const markerCandidate = bracketed || first;
-  if (/^(Verse|Chorus|Pre-Chorus|Bridge|Coda|Lyrics)(?:\s+\d+)?$/i.test(markerCandidate)) {
+  if (/^(Verse|Chorus|Pre[-\s]?Chorus|PC|Bridge|Coda|Lyrics)(?:\s+\d+)?$/i.test(markerCandidate)) {
     return { marker: normalizePresenterCustomMarker(markerCandidate), text: lines.slice(1).join("\n") };
   }
   return { marker: "", text: lines.join("\n") };
@@ -1790,6 +1791,7 @@ function parsePresenterCustomSlideBlock(block) {
 
 function normalizePresenterCustomMarker(value) {
   return String(value || "")
+    .replace(/^pc$/i, "Pre-Chorus")
     .replace(/^pre[\s-]?chorus/i, "Pre-Chorus")
     .replace(/^verse/i, "Verse")
     .replace(/^chorus/i, "Chorus")
