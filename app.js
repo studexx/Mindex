@@ -3426,7 +3426,7 @@ function isAllGenerationsWorshipContext(text = "") {
 }
 
 function isAllGenerationsWorshipDate(date) {
-  const targetDate = String(date || "").trim();
+  const targetDate = toLocalDateStr(date);
   if (!targetDate) return false;
   const calendarText = (state.calendarData || [])
     .filter((row) => toLocalDateStr(row?.date) === targetDate)
@@ -3439,7 +3439,7 @@ function isAllGenerationsWorshipDate(date) {
     .join(" ");
   const serviceText = (state.services || [])
     .filter((service) =>
-      String(service?.date || "").trim() === targetDate
+      toLocalDateStr(service?.date) === targetDate
       && worshipAppServiceTypeId(service?.type_id) === "sunday-main")
     .map((service) => cleanList([
       service.title,
@@ -3453,11 +3453,11 @@ function isAllGenerationsWorshipDate(date) {
 
 function isAllGenerationsWorshipService(service = null) {
   if (!service || typeof service !== "object") return false;
-  const serviceDate = String(service?.date || service?.service_date || service?.serviceDate || "").trim();
+  const serviceDate = toLocalDateStr(service?.date || service?.service_date || service?.serviceDate || "");
   const serviceContext = compactSearchValue([service.alias, service.title, service.raw_text].filter(Boolean).join(" "));
   return isAllGenerationsWorshipContext(serviceContext)
     || isAllGenerationsWorshipDate(serviceDate)
-    || isAllGenerationsWorshipDate(String(service?._worshipServiceDate || ""));
+    || isAllGenerationsWorshipDate(service?._worshipServiceDate || serviceDate);
 }
 
 function worshipServiceExistsForTarget(target = {}) {
@@ -10682,6 +10682,14 @@ function applyServiceSongSelectionWithService(item, service = null) {
     return;
   }
   const memo = parseServiceItemMemo(item.memo);
+  if (isSpecialSongServiceItem(item) && !String(item.raw_title || "").trim()) {
+    if (!item.song_id && !item.version_id && !item.song_version_id) {
+      item.song_id = null;
+      item.version_id = null;
+      item.song_version_id = null;
+    }
+    return;
+  }
   if (servicePraiseInputMode(item, memo, service) === "manual_praise") {
     item.song_id = null;
     item.version_id = null;
