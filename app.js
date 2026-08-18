@@ -4013,7 +4013,7 @@ function inferWorshipSlideMarker(row = {}, elementType = "") {
 
 function normalizeImportedPraiseMarker(value = "") {
   const raw = String(value || "").trim();
-  if (/^(?:pc|pre[-\s]?chorus)$/i.test(raw)) return "Pre-Chorus";
+  if (normalizeSongFormPresetLabel(raw).type === "pre-chorus") return "Pre-Chorus";
   if (/^(ending|엔딩)(?:\s+\d+)?$/i.test(raw)) return "Coda";
   return raw;
 }
