@@ -100,6 +100,16 @@ the same metadata sources but have no existing 통일찬송가 version in Mindex
 remain unresolved because creating those versions would require importing and
 curating old-hymnal lyrics, not merely repairing an existing relationship.
 
+The same full local-score pass found one more existing metadata error among the
+appendix Amen settings. The rendered score for 새찬송가 643 explicitly says `통555`,
+while Mindex labeled its unchanged threefold-Amen unit as `통556`. The local score,
+the New York Bethel score, and the Hbible lyric reference agree on 새643↔통555, so
+the existing version metadata was corrected from 556 to 555. 새찬송가 642 has no
+old-hymnal number in its local score and was not assigned one by inference.
+After the correction, all 480 mappings confirmed by corrected filenames or explicit
+local-score headers had zero wrong links and zero duplicated unified numbers. The
+only absent confirmed versions are the already documented 143↔141 and 343↔443 pair.
+
 ## Commands
 
 ```sh
@@ -108,4 +118,5 @@ python3 -m unittest tests.test_audit_hbible_hymns
 python3 scripts/audit_hbible_hymns.py --book both \
   --workers 4 --delay 0.05 \
   --output /tmp/mindex-hymn-audit-full.json
+python3 scripts/repair_confirmed_unified_hymn_amen_mapping.py --apply
 ```
