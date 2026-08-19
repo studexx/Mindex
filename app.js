@@ -25907,6 +25907,7 @@ function renderPresenterControlState(serviceId = state.selectedServiceId) {
         patchServiceOutlineActiveState(serviceId);
         clearPresenterTransientBoardActiveMarks(root, serviceId);
         refreshIcons();
+        if (presenterPreviewScaleNeedsUpdate(root)) schedulePresenterPreviewScaleUpdate(root);
         updateSaveState();
         return;
       }
@@ -26036,6 +26037,18 @@ function patchPresenterBoardActiveState(root, serviceId, active, index) {
     section.classList.toggle("active", Boolean(section.querySelector(".svc-slide-thumb.active")));
   });
   syncPresenterBoardSelectionClasses(root);
+}
+
+function presenterPreviewScaleNeedsUpdate(root = document.getElementById("servicePresenterControls")) {
+  if (!root?.querySelectorAll || typeof presenterScaleForBox !== "function") return false;
+  return [...root.querySelectorAll(".svc-slide-mini-canvas.presenter-output-root")].some((canvas) => {
+    const frame = canvas.closest(".svc-slide-thumb-frame") || canvas.parentElement;
+    const rect = frame?.getBoundingClientRect?.();
+    if (!rect?.width || !rect?.height) return true;
+    const expected = presenterScaleForBox(rect.width, rect.height);
+    const current = Number(canvas.style.getPropertyValue("--presenter-preview-scale"));
+    return !Number.isFinite(current) || Math.abs(current - expected) >= 0.0005;
+  });
 }
 
 function patchServiceOutlineActiveState(serviceId = state.selectedServiceId) {
