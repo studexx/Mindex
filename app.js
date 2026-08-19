@@ -3391,14 +3391,6 @@ const FRIDAY_SERVICE_VARIANTS = {
 };
 
 const ALL_GENERATION_MAIN_PRAISE_SERVICE_ALIAS = "온세대 찬양예배";
-const ALL_GENERATION_MAIN_PRAISE_DEFAULT_SONGS = [
-  "모든 민족과 방언들 가운데",
-  "이 눈에 아무 증거 아니 뵈어도",
-  "우리는 주의 백성이오니",
-  "일어나라 주의 백성",
-  "내 안에 부어 주소서",
-  "모든 열방 주 볼 때까지 + 물이 바다 덮음같이",
-];
 
 function sundayMainWorshipServiceVariantForDate(dateValue = "") {
   const targetDate = toLocalDateStr(dateValue);
@@ -9385,12 +9377,7 @@ function selectedServiceForEditor() {
 function serviceItemAllowsManualSongText(item = {}, service = selectedServiceForEditor()) {
   const label = compactSearchValue(item.label || "");
   if (isSpecialSongServiceItem(item)) return true;
-  const titleText = compactSearchValue([
-    service?.alias,
-    service?.title,
-    service?.type_id,
-  ].filter(Boolean).join(" "));
-  if (titleText.includes("온세대") && isMainPraiseServiceItem(item, { allowUnlabeled: true })) return true;
+  if (isAllGenerationsWorshipService(service) && isMainPraiseServiceItem(item, { allowUnlabeled: true })) return true;
   return false;
 }
 
@@ -16800,8 +16787,7 @@ const PUBLIC_WORSHIP_TEMPLATE_VERSIONS = {
           includeEntrancePraise: false,
           includeHymnPraise: false,
           includeCreed: false,
-          specialSong: null,
-          mainPraiseDefaults: ALL_GENERATION_MAIN_PRAISE_DEFAULT_SONGS,
+          specialSong: {},
         } : {}),
       }),
       "2026-q3-07-26",

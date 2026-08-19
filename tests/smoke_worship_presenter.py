@@ -2897,6 +2897,17 @@ def main() -> int:
                       const offeringScoreSlides = buildPresenterSlidesForServiceItem(offeringScoreItem, service, 7);
                       const specialScoreSlides = buildPresenterSlidesForServiceItem(specialScoreItem, service, 8);
                       const specialLinkedScoreSlides = buildPresenterSlidesForServiceItem(specialLinkedScoreItem, service, 8.1);
+                      const allGenerationSpecialSlides = buildPresenterSlidesForServiceItem({
+                        ...specialLinkedScoreItem,
+                        id: '__smoke_all_generation_special_item__',
+                        raw_title: '한 사람',
+                        assignee: '카다로스 중창단',
+                      }, {
+                        ...service,
+                        type_id: 'sunday-main',
+                        alias: '온세대 찬양예배',
+                        _worshipSourceRef: { sunday_main_variant: 'all_generations' },
+                      }, 8.2);
                       const doxologyScoreSlides = buildPresenterSlidesForServiceItem(doxologyScoreItem, service, 9);
                       const sundayFirstMainScoreSlides = buildPresenterSlidesForServiceItem({
                         ...scoreItem,
@@ -3302,6 +3313,7 @@ def main() -> int:
                           slide.sourceType === 'score' || slide.componentType === 'score' || slide.scoreBackground
                         ).length,
                         specialLinkedIntroSlides,
+                        allGenerationSpecialOutputContexts: allGenerationSpecialSlides.map((slide) => slide.outputContext || ''),
                         specialLinkedLyricsSlides,
                         sundayFirstMainScoreTitleSlides: sundayFirstMainScoreSlides.filter((slide) => slide.type === 'song-title').map((slide) => ({
                           title: slide.title,
@@ -3470,6 +3482,7 @@ def main() -> int:
                             "sectionKey": "special_song",
                         },
                     ]
+                    and "clean" not in form_preset_state["allGenerationSpecialOutputContexts"]
                     and form_preset_state["specialLinkedLyricsSlides"] == [
                         {
                             "type": "lyrics",

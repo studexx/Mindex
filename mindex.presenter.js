@@ -125,7 +125,19 @@ function shouldUseSundayMainSpecialSongCleanOutput(item = {}, section = {}, serv
   const typeId = typeof worshipAppServiceTypeId === "function"
     ? worshipAppServiceTypeId(rawType)
     : rawType;
-  return typeId === "sunday-main";
+  return typeId === "sunday-main" && !isPresenterAllGenerationsService(service);
+}
+
+function isPresenterAllGenerationsService(service = null) {
+  if (!service || typeof service !== "object") return false;
+  const sourceRef = service._worshipSourceRef && typeof service._worshipSourceRef === "object"
+    ? service._worshipSourceRef
+    : service.source_ref && typeof service.source_ref === "object"
+      ? service.source_ref
+      : {};
+  const variant = String(sourceRef.sunday_main_variant || "").trim().toLowerCase();
+  if (variant === "all_generations") return true;
+  return compactSearchValue([service.alias, service.service_alias].filter(Boolean).join(" ")).includes("온세대찬양예배");
 }
 
 function presenterSpecialSongSectionTitleSlide(item = {}, section = {}, index = 0, songTitleSlide = null) {
