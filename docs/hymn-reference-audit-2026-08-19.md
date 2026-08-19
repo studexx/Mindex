@@ -103,6 +103,8 @@ so both hymn versions use the same line-break convention without importing lyric
 새찬송가 343↔통일찬송가 443 uses different old-hymnal wording. The verified old
 wording was stored as a separate 통일찬송가 version with modern Korean spacing and
 the same four-line verse layout used by the curated 새찬송가 version.
+Automated reference matches remain `pending`/`needs_review` until a person reviews
+them; external cross-checking alone does not clear the visible review badge.
 
 Both hymnals follow modern Korean spacing in Mindex. Edition-specific words and
 endings remain distinct, while spacing-only differences are not preserved. For

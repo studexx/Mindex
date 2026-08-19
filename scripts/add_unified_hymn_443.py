@@ -118,7 +118,7 @@ def build_plan(
         "version_order": 2,
         "version_label": "통일 443 시험 받을 때에",
         "curated_version_name": "통일 443 시험 받을 때에",
-        "version_review_status": "reviewed",
+        "version_review_status": "pending",
         "deck_key": None,
         "raw_section_name": None,
         "subtitle": None,
@@ -145,8 +145,8 @@ def build_plan(
             "curated_unit_type": part_type,
             "curated_unit_label": label,
             "curated_order": index,
-            "review_status": "reviewed",
-            "review_note": "Verified against 통일찬송가 443; spacing modernized.",
+            "review_status": "needs_review",
+            "review_note": "Automated reference match; manual review required.",
             "reviewed_at": None,
         })
     return {
