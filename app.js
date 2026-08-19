@@ -11849,6 +11849,7 @@ const WORSHIP_BACKGROUND_STATIC_FILES = new Set([
   "26-S6.png",
 ]);
 function presenterServiceUsesChromakey(service) {
+  if (serviceIsFridayVariant(service, "3355")) return true;
   return serviceTypeUsesChromakey(service?.type_id);
 }
 
@@ -11893,7 +11894,7 @@ function presenterBackgroundSourcesForService(service, options = {}) {
     const seasonSources = worshipBackgroundSourcesForFileName(seasonFileName);
     if (seasonSources.length) return seasonSources;
   }
-  const sourceRef = service?._worshipSourceRef && typeof service._worshipSourceRef === "object" ? service._worshipSourceRef : {};
+  const sourceRef = serviceSourceRef(service);
   const value = firstNonBlankString(
     service?.presenter_background,
     service?.presenter_background_file,
@@ -18563,8 +18564,54 @@ function serviceAlias(service) {
   return String(service?.alias || "").replace(/\s+/g, " ").trim();
 }
 
+function serviceSourceRef(service = null) {
+  if (!service || typeof service !== "object") return {};
+  if (service._worshipSourceRef && typeof service._worshipSourceRef === "object") return service._worshipSourceRef;
+  if (service.source_ref && typeof service.source_ref === "object") return service.source_ref;
+  return {};
+}
+
 function normalizeServiceDisplayName(value) {
   return String(value || "").replace(/주일예배 \((1부|2부|3부)\)/g, "주일예배 [$1]");
+}
+
+function serviceFridayVariantKey(service = null) {
+  const typeId = worshipAppServiceTypeId(service?.type_id || service?.service_type_id || "");
+  const sourceRef = serviceSourceRef(service);
+  const key = String(sourceRef.friday_variant || "").trim();
+  if (key) return key;
+  if (typeId === "monthly") return "monthly";
+  const label = compactSearchValue([service?.alias, service?.service_alias, service?.title].filter(Boolean).join(" "));
+  if (label.includes("삼삼오오")) return "3355";
+  if (label.includes("문화예배")) return "culture";
+  if (label.includes("구역연합")) return "district-union";
+  return typeId === "friday" ? "friday" : "";
+}
+
+function serviceIsFridayFamily(service = null) {
+  const typeId = worshipAppServiceTypeId(service?.type_id || service?.service_type_id || "");
+  return typeId === "friday" || typeId === "monthly" || Boolean(serviceFridayVariantKey(service));
+}
+
+function serviceIsFridayVariant(service = null, variantKey = "") {
+  return serviceFridayVariantKey(service) === String(variantKey || "").trim();
+}
+
+function serviceVariantDisplayName(service = null) {
+  if (!serviceIsFridayFamily(service)) return "";
+  const sourceRef = serviceSourceRef(service);
+  const fromSource = String(sourceRef.friday_variant_name || "").trim();
+  if (fromSource) return fromSource;
+  const key = serviceFridayVariantKey(service);
+  if (key === "monthly") return "월삭예배";
+  if (key === "culture") return "문화예배";
+  if (key === "3355") return "삼삼오오예배";
+  if (key === "district-union") return "구역연합예배";
+  return serviceAlias(service) || serviceCustomTitle(service) || "금요기도회";
+}
+
+function serviceFamilyDisplayName(service = null) {
+  return serviceIsFridayFamily(service) ? "금요예배" : serviceDisplayTypeName(service);
 }
 
 function serviceDisplayTypeName(service) {
@@ -20368,8 +20415,8 @@ function renderPresenterDetail() {
     <div class="service-viewer presenter-viewer">
       <div class="svc-header">
         <div class="svc-header-date">
-          <h2 class="svc-service-title">${escapeHtml(serviceDisplayTypeName(svc))}</h2>
-          <span class="svc-date-text">${escapeHtml(dateStr)}</span>
+          <h2 class="svc-service-title">${escapeHtml(serviceFamilyDisplayName(svc))}</h2>
+          <span class="svc-date-text">${escapeHtml(cleanList([dateStr, serviceVariantDisplayName(svc)]).join(" · "))}</span>
         </div>
         <div class="svc-header-actions">
           ${serviceSupportsBulletin(svc) ? `
@@ -20662,7 +20709,8 @@ function renderServicePrepEditorDialog(service) {
         <header class="svc-prep-editor-head">
           <div>
             <span class="svc-prep-editor-kicker">${escapeHtml(formatServiceIsoDate(service))}</span>
-            <h3 id="svcPrepEditorTitle">${escapeHtml(serviceDisplayTypeName(service))}</h3>
+            <h3 id="svcPrepEditorTitle">${escapeHtml(serviceFamilyDisplayName(service))}</h3>
+            ${serviceVariantDisplayName(service) ? `<small>${escapeHtml(serviceVariantDisplayName(service))}</small>` : ""}
           </div>
           <div class="svc-prep-editor-head-actions">
             <button class="reference-new-btn" type="button" data-service-item-action="add" data-service-item-index="${escapeAttr(getServiceItems(service.id).length)}" aria-label="순서 항목 추가">
@@ -21580,13 +21628,15 @@ function renderServiceWeekDay(date, services) {
 
 function renderServiceWeekCard(service) {
   const preview = serviceItemPreview(service.id);
+  const variant = serviceVariantDisplayName(service);
   return `
     <button
       class="service-week-card"
       type="button"
       data-service-id="${escapeAttr(service.id)}"
     >
-      <strong>${escapeHtml(serviceDisplayTypeName(service))}</strong>
+      <strong>${escapeHtml(serviceFamilyDisplayName(service))}</strong>
+      ${variant ? `<span class="service-week-card-preview">${escapeHtml(variant)}</span>` : ""}
       ${preview ? `<span class="service-week-card-preview">${escapeHtml(preview)}</span>` : ""}
     </button>`;
 }
@@ -21594,17 +21644,19 @@ function renderServiceWeekCard(service) {
 function renderServiceDateCard(service, options = {}) {
   const preview = serviceItemPreview(service.id);
   const calendarRow = (state.calendarData || []).find((row) => String(row?.date || "").trim() === String(service?.date || "").trim());
+  const variant = serviceVariantDisplayName(service);
   const note = cleanList([
+    variant,
     calendarRow?.note,
     serviceIsNoGathering(service) ? "집회 없음" : "",
-  ]).filter((value) => compactSearchValue(value) !== compactSearchValue(serviceDisplayTypeName(service))).join(" · ");
-  const serviceName = serviceDisplayTypeName(service);
+  ]).filter((value) => compactSearchValue(value) !== compactSearchValue(serviceFamilyDisplayName(service))).join(" · ");
+  const serviceName = serviceFamilyDisplayName(service);
   return `
     <button
       class="service-date-card"
       type="button"
       data-service-id="${escapeAttr(service.id)}"
-      aria-label="${escapeAttr(`${formatServiceDate(service, { compact: true })} ${serviceName} 열기`)}"
+      aria-label="${escapeAttr(`${formatServiceDate(service, { compact: true })} ${cleanList([serviceName, variant]).join(" ")} 열기`)}"
     >
       <span class="service-date-card-top">
         <span class="service-date-card-date">${escapeHtml(formatServiceDate(service, { compact: true }))}</span>

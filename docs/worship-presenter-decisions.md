@@ -169,6 +169,11 @@ Small visual polish that does not alter behavior does not need an entry.
   금요기도회 송출 템플릿을 붙이지 않는다. 셋째 금요일 `삼삼오오예배`와
   넷째 금요일 `구역연합예배`는 표시명만 바꾸고 기존 금요기도회 양식을
   유지한다. 다섯째 금요일은 별도 지시가 없으면 기존 `금요기도회`로 둔다.
+- 금요일 저녁에 드리는 예배들은 UI에서 `금요예배` family로 묶고,
+  `월삭예배`, `문화예배`, `삼삼오오예배`, `구역연합예배`, `금요기도회`는
+  variant로 표시한다. DB service type은 월삭 템플릿과 금요 템플릿을 안정적으로
+  유지하기 위해 기존 `monthly`/`friday`를 그대로 사용한다.
+- `삼삼오오예배`는 `friday` 계열 variant이지만 output은 크로마키로 송출한다.
 - 출력 창은 BroadcastChannel 연결 시 이전 local payload를 재출력하지 않고
   현재 controller state를 기다린다. 따라서 풀스크린 예배 시작 시 이전
   크로마키 프레임이 잠깐 노출되지 않는다.
