@@ -6582,7 +6582,9 @@ def main() -> int:
                         canCreate: canCreatePraiseSong(),
                         topbarHidden: refs.newSongBtn.hidden,
                         topbarDisabled: refs.newSongBtn.disabled,
-                        detailButtonsHidden: [...document.querySelectorAll('[data-create-song]')]
+                        sidebarHidden: document.querySelector('.sidebar-create-song-btn[data-create-song]')?.hidden ?? true,
+                        sidebarDisabled: document.querySelector('.sidebar-create-song-btn[data-create-song]')?.disabled ?? false,
+                        detailButtonsHidden: [...document.querySelectorAll('.praise-create-btn[data-create-song], .praise-empty-create-btn[data-create-song]')]
                           .every((button) => button.hidden && button.disabled)
                       };
                       state.songs = originalSongs;
@@ -6657,6 +6659,8 @@ def main() -> int:
                     and not praise_actions["loadingCreateState"]["canCreate"]
                     and praise_actions["loadingCreateState"]["topbarHidden"]
                     and praise_actions["loadingCreateState"]["topbarDisabled"]
+                    and not praise_actions["loadingCreateState"]["sidebarHidden"]
+                    and praise_actions["loadingCreateState"]["sidebarDisabled"]
                     and praise_actions["loadingCreateState"]["detailButtonsHidden"]
                     and praise_actions["draftTitle"] == "테스트 새 찬양"
                     and praise_actions["draftVersions"] == 1

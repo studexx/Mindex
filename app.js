@@ -11719,11 +11719,17 @@ function canCreatePraiseSong() {
 
 function syncPraiseCreateControls() {
   const canCreate = canCreatePraiseSong();
+  const showSidebarCreate = state.module === "praise";
+  if (refs.sidebarCreateSongBtn) {
+    refs.sidebarCreateSongBtn.hidden = !showSidebarCreate;
+    refs.sidebarCreateSongBtn.disabled = !canCreate;
+  }
   if (refs.newSongBtn) {
     refs.newSongBtn.hidden = !canCreate;
     refs.newSongBtn.disabled = !canCreate;
   }
   document.querySelectorAll("[data-create-song]").forEach((button) => {
+    if (button === refs.sidebarCreateSongBtn) return;
     button.hidden = !canCreate;
     button.disabled = !canCreate;
   });
