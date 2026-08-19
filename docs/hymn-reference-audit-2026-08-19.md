@@ -96,9 +96,11 @@ and moved without changing their IDs or lyric units:
 | 114 | 새찬송가 108 | 새찬송가 114 |
 
 새찬송가 143↔통일찬송가 141 and 새찬송가 343↔통일찬송가 443 are supported by
-the same metadata sources but have no existing 통일찬송가 version in Mindex. They
-remain unresolved because creating those versions would require importing and
-curating old-hymnal lyrics, not merely repairing an existing relationship.
+the same metadata sources. The canonical record for 새찬송가 143 already contained
+a hidden six-unit version with lyrics identical to 통일찬송가 141. That version was
+renamed and linked to the visible song without importing or duplicating lyrics.
+새찬송가 343↔통일찬송가 443 remains unresolved because the old-hymnal wording is
+different and no curated local copy of those lyrics is available.
 
 The same full local-score pass found one more existing metadata error among the
 appendix Amen settings. The rendered score for 새찬송가 643 explicitly says `통555`,
@@ -108,7 +110,7 @@ the existing version metadata was corrected from 556 to 555. 새찬송가 642 ha
 old-hymnal number in its local score and was not assigned one by inference.
 After the correction, all 480 mappings confirmed by corrected filenames or explicit
 local-score headers had zero wrong links and zero duplicated unified numbers. The
-only absent confirmed versions are the already documented 143↔141 and 343↔443 pair.
+only absent confirmed version is the already documented 343↔443 pair.
 
 ## Commands
 
@@ -119,4 +121,5 @@ python3 scripts/audit_hbible_hymns.py --book both \
   --workers 4 --delay 0.05 \
   --output /tmp/mindex-hymn-audit-full.json
 python3 scripts/repair_confirmed_unified_hymn_amen_mapping.py --apply
+python3 scripts/add_confirmed_unified_hymn_141.py --apply
 ```
