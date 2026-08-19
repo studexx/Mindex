@@ -13459,9 +13459,8 @@ function renderDetail() {
           </div>
           <div class="head-actions">
             ${canCreatePraiseSong() ? `
-              <button class="reference-new-btn praise-create-btn" type="button" data-create-song>
+              <button class="reference-new-btn praise-create-btn" type="button" data-create-song aria-label="곡 추가" title="곡 추가">
                 <i data-lucide="plus"></i>
-                <span>곡 추가</span>
               </button>
             ` : ""}
             <span class="dirty-pill" ${hasDirtyChanges() ? "" : "hidden"}>저장되지 않은 변경</span>
@@ -13493,9 +13492,8 @@ function renderPraiseEmptyDetail() {
     <div class="empty-detail">
       ${canCreatePraiseSong() ? `
         <div class="empty-detail-actions">
-          <button class="reference-new-btn praise-empty-create-btn" type="button" data-create-song>
+          <button class="reference-new-btn praise-empty-create-btn" type="button" data-create-song aria-label="곡 추가" title="곡 추가">
             <i data-lucide="plus"></i>
-            <span>곡 추가</span>
           </button>
         </div>
       ` : ""}

@@ -589,8 +589,8 @@ body[data-module="praise"] .list-filter {
 .sidebar-create-song-btn {
   display: inline-flex;
   flex: 0 0 auto;
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
   align-items: center;
   justify-content: center;
   border: 0;
@@ -604,7 +604,7 @@ body[data-module="praise"] .list-filter {
   display: none;
 }
 .sidebar-create-song-btn:hover {
-  background: color-mix(in srgb, var(--accent-soft) 40%, transparent);
+  background: color-mix(in srgb, var(--accent-soft) 28%, transparent);
   color: var(--accent);
 }
 .sidebar-create-song-btn svg {
@@ -1763,28 +1763,28 @@ body[data-module="calendar"] .detail-pane { overflow: hidden; }
     grid-template-columns: 1fr;
   }
 }
-.praise-create-btn,
-.praise-empty-create-btn {
+.praise-create-btn.reference-new-btn,
+.praise-empty-create-btn.reference-new-btn {
   display: inline-flex;
+  width: 30px;
+  min-height: 30px;
   height: 30px;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  background: color-mix(in srgb, var(--accent-soft) 72%, transparent);
+  gap: 0;
+  background: transparent;
   color: var(--accent);
-  font-size: 12px;
-  font-weight: 700;
   line-height: 1;
-  padding: 0 10px;
+  padding: 0;
 }
-.praise-create-btn span,
-.praise-empty-create-btn span {
+.praise-create-btn.reference-new-btn span,
+.praise-empty-create-btn.reference-new-btn span {
   color: inherit;
-  display: block;
+  display: none;
   line-height: 1;
 }
-.praise-create-btn svg,
-.praise-empty-create-btn svg {
+.praise-create-btn.reference-new-btn svg,
+.praise-empty-create-btn.reference-new-btn svg {
   color: inherit;
   display: block;
   flex: 0 0 15px;
@@ -1792,9 +1792,9 @@ body[data-module="calendar"] .detail-pane { overflow: hidden; }
   height: 15px;
   stroke-width: 2.4;
 }
-.praise-create-btn:hover,
-.praise-empty-create-btn:hover {
-  background: color-mix(in srgb, var(--accent-soft) 92%, transparent);
+.praise-create-btn.reference-new-btn:hover,
+.praise-empty-create-btn.reference-new-btn:hover {
+  background: color-mix(in srgb, var(--accent-soft) 28%, transparent);
   color: var(--accent);
 }
 .reference-group-stack {
