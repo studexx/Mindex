@@ -21900,15 +21900,18 @@ function serviceItemPreview(serviceId) {
 }
 
 function homeServicePrepSummary(serviceId) {
-  const slides = buildServicePresenterSlides(serviceId);
-  const missingCount = slides.filter((slide) => slide?.missingContent).length;
+  const service = state.services.find((candidate) => candidate.id === serviceId) || null;
+  const items = getServiceOutputItems(serviceId);
+  const missingCount = service
+    ? presenterServiceInputProgress(service).missing
+    : 0;
   const preview = serviceItemPreview(serviceId) || "순서 구성 필요";
-  const slideCount = slides.length;
+  const slideCount = items.length;
   const status = missingCount
     ? `${missingCount}개 입력 필요`
     : slideCount
-      ? `준비됨 · ${slideCount} 슬라이드`
-      : "슬라이드 없음";
+      ? "준비됨"
+      : "순서 없음";
   return { preview, missingCount, slideCount, status };
 }
 
@@ -25901,11 +25904,10 @@ function renderPresenterControlState(serviceId = state.selectedServiceId) {
         root.className = presenterControlsClassName(active, presenterServiceUsesChromakey(service));
         patchPresenterControlsTop(root, service, slides, active, index);
         patchPresenterBoardActiveState(root, serviceId, active, index);
+        patchServiceOutlineActiveState(serviceId);
         clearPresenterTransientBoardActiveMarks(root, serviceId);
         refreshIcons();
-        schedulePresenterPreviewScaleUpdate(root);
         updateSaveState();
-        renderServiceList();
         return;
       }
       // Connection controls are lightweight and must reflect start/stop
@@ -25944,8 +25946,8 @@ function renderPresenterControlState(serviceId = state.selectedServiceId) {
       restorePresenterViewportSnapshot(viewportSnapshot);
       observePresenterPreviewScaleFrames(nextRoot);
       schedulePresenterPreviewScaleUpdate(nextRoot);
+      patchServiceOutlineActiveState(serviceId);
       updateSaveState();
-      renderServiceList();
       return;
     }
     renderPresenterDetail();
@@ -26034,6 +26036,32 @@ function patchPresenterBoardActiveState(root, serviceId, active, index) {
     section.classList.toggle("active", Boolean(section.querySelector(".svc-slide-thumb.active")));
   });
   syncPresenterBoardSelectionClasses(root);
+}
+
+function patchServiceOutlineActiveState(serviceId = state.selectedServiceId) {
+  if (state.module !== "presenter" || state.selectedServiceId !== serviceId) return;
+  const outline = refs.songList?.querySelector(".service-outline-list");
+  if (!outline) return;
+  const slides = state.presenter.serviceId === serviceId ? state.presenter.slides : [];
+  const activeSlide = slides[clampPresenterIndex(state.presenter.index, slides.length)] || null;
+  outline.querySelectorAll(".service-outline-row.active, .service-outline-group.active")
+    .forEach((node) => node.classList.remove("active"));
+  if (!activeSlide) return;
+  const activeGroups = new Set();
+  outline.querySelectorAll(".service-outline-row[data-service-outline-service]").forEach((row) => {
+    if (row.dataset.serviceOutlineService !== serviceId) return;
+    const index = Number(row.dataset.serviceOutlineItemIndex);
+    const item = Number.isInteger(index)
+      ? getServiceItems(serviceId).find((entry, itemIndex) => (Number.isInteger(entry._serviceItemIndex) ? entry._serviceItemIndex : itemIndex) === index)
+      : null;
+    const active = item
+      ? presenterSlideBelongsToItem(activeSlide, item)
+      : Number(row.dataset.serviceOutlineSlide) === state.presenter.index;
+    row.classList.toggle("active", active);
+    const group = row.closest(".service-outline-group");
+    if (active && group) activeGroups.add(group);
+  });
+  activeGroups.forEach((group) => group.classList.add("active"));
 }
 
 async function startPresenterAtSlide(serviceId, index) {
