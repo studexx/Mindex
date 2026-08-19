@@ -79,6 +79,27 @@ at 4,186. Post-repair schema checks had no issues or warnings, the targeted audi
 reported no duplicate mappings, and the deployed praise list showed two versions
 only on 새찬송가 141, 631, 636, and 638.
 
+## New York Bethel Cross-check
+
+The [New York Bethel Church index](https://nybethel.org/240) covers all 645 new hymns, but its text table has
+several shifted or mistyped old-hymnal numbers. Candidate mismatches were therefore
+checked against the linked score image, the local corrected lyric filename, and the
+`(통 nnn)` header rendered in the Mindex score asset.
+
+Three existing versions were confirmed as attached to the adjacent same-title hymn
+and moved without changing their IDs or lyric units:
+
+| 통일찬송가 | Before | After |
+| ---: | ---: | ---: |
+| 2 | 새찬송가 4 | 새찬송가 3 |
+| 36 | 새찬송가 37 | 새찬송가 36 |
+| 114 | 새찬송가 108 | 새찬송가 114 |
+
+새찬송가 143↔통일찬송가 141 and 새찬송가 343↔통일찬송가 443 are supported by
+the same metadata sources but have no existing 통일찬송가 version in Mindex. They
+remain unresolved because creating those versions would require importing and
+curating old-hymnal lyrics, not merely repairing an existing relationship.
+
 ## Commands
 
 ```sh
