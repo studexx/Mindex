@@ -100,8 +100,14 @@ the same metadata sources. The canonical record for 새찬송가 143 already con
 a hidden six-unit version with lyrics identical to 통일찬송가 141. That legacy
 version was removed, and 통일찬송가 141 was rebuilt from the curated 새찬송가 units
 so both hymn versions use the same line-break convention without importing lyrics.
-새찬송가 343↔통일찬송가 443 remains unresolved because the old-hymnal wording is
-different and no curated local copy of those lyrics is available.
+새찬송가 343↔통일찬송가 443 uses different old-hymnal wording. The verified old
+wording was stored as a separate 통일찬송가 version with modern Korean spacing and
+the same four-line verse layout used by the curated 새찬송가 version.
+
+Both hymnals follow modern Korean spacing in Mindex. Edition-specific words and
+endings remain distinct, while spacing-only differences are not preserved. For
+example, 통443 keeps `맙소서`/`줍소서` but uses the principle forms `시험받을`,
+`지켜 줍소서`, `맡아 줍소서`, and `의지하리니`.
 
 The same cleanup removed all 58 remaining hidden `기본`/`public` hymn versions and
 their 231 units after confirming that every affected hymn had a formal 새찬송가
@@ -116,8 +122,8 @@ the New York Bethel score, and the Hbible lyric reference agree on 새643↔통5
 the existing version metadata was corrected from 556 to 555. 새찬송가 642 has no
 old-hymnal number in its local score and was not assigned one by inference.
 After the correction, all 480 mappings confirmed by corrected filenames or explicit
-local-score headers had zero wrong links and zero duplicated unified numbers. The
-only absent confirmed version is the already documented 343↔443 pair.
+local-score headers had zero wrong links, zero missing versions, and zero duplicated
+unified numbers.
 
 ## Commands
 
@@ -129,4 +135,5 @@ python3 scripts/audit_hbible_hymns.py --book both \
   --output /tmp/mindex-hymn-audit-full.json
 python3 scripts/repair_confirmed_unified_hymn_amen_mapping.py --apply
 python3 scripts/remove_hymn_legacy_versions.py --apply
+python3 scripts/add_unified_hymn_443.py --apply
 ```
