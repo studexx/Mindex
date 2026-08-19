@@ -41,6 +41,27 @@ Do not auto-apply findings. 하나성경 새찬송가 19장 제목은 `찬양하
 줄바꿈, 새찬송가-통일찬송가 연결은 다른 대조 자료와 교차 확인한 뒤 확실한 항목만
 수정한다.
 
+## Confirmed Title Repairs
+
+Seven clear typographical errors were cross-checked and repaired in
+`mindex_song_versions.curated_version_name` and `version_label` only:
+
+| 통일찬송가 | Before | After |
+| ---: | --- | --- |
+| 307 | 공중 나는 새르 보라 | 공중 나는 새를 보라 |
+| 326 | 죄집에 눌린 사람은 | 죄짐에 눌린 사람은 |
+| 346 | 값비산 향율을 주께 드린 | 값비싼 향유를 주께 드린 |
+| 438 | 예부터 도움 도시고 | 예부터 도움 되시고 |
+| 455 | 주 안에 이는 나에게 | 주 안에 있는 나에게 |
+| 474 | 이 세상에 금심된 일이 많고 | 이 세상에 근심된 일이 많고 |
+| 486 | 주 에수여 은혜를 | 주 예수여 은혜를 |
+
+The repair used exact old-value guards and required one matching version per
+hymn number. Post-repair schema checks had no issues or warnings. A targeted
+reference audit found no remaining title mismatch for the seven versions, and
+the deployed GitHub Pages praise list showed every corrected title with none of
+the old spellings present.
+
 ## Commands
 
 ```sh
