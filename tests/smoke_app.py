@@ -997,6 +997,41 @@ def main() -> int:
                     pass_("share-link-connection", json.dumps(raw_link_state, ensure_ascii=False))
                 else:
                     fail("share-link-connection", json.dumps(raw_link_state, ensure_ascii=False))
+
+                explicit_past_service_link = raw_page.evaluate(
+                    """
+                    (() => {
+                      const serviceId = '44444444-4444-4444-8444-444444444444';
+                      const originalServices = state.services;
+                      const originalSelectedServiceId = state.selectedServiceId;
+                      const originalModule = state.module;
+                      try {
+                        explicitlyRequestedWorshipServiceIds.delete(serviceId);
+                        state.services = [{ id: serviceId, type_id: 'wednesday', date: '2000-01-01' }];
+                        const deferredBefore = shouldDeferPastWorshipServiceLoad(serviceId);
+                        applyLinkState(new URLSearchParams(`module=presenter&service=${serviceId}`));
+                        return {
+                          deferredBefore,
+                          deferredAfter: shouldDeferPastWorshipServiceLoad(serviceId),
+                          selectedServiceId: state.selectedServiceId,
+                        };
+                      } finally {
+                        explicitlyRequestedWorshipServiceIds.delete(serviceId);
+                        state.services = originalServices;
+                        state.selectedServiceId = originalSelectedServiceId;
+                        state.module = originalModule;
+                      }
+                    })()
+                    """
+                )
+                if (
+                    explicit_past_service_link["deferredBefore"]
+                    and not explicit_past_service_link["deferredAfter"]
+                    and explicit_past_service_link["selectedServiceId"] == "44444444-4444-4444-8444-444444444444"
+                ):
+                    pass_("explicit-past-service-link-loads", json.dumps(explicit_past_service_link, ensure_ascii=False))
+                else:
+                    fail("explicit-past-service-link-loads", json.dumps(explicit_past_service_link, ensure_ascii=False))
                 raw_page.close()
 
                 wait_for_supabase_client(page)

@@ -14,6 +14,9 @@ const {
 const TABLE_COLUMN_SUPPORT_CACHE = new Map();
 let songLoadPromise = null;
 let serviceDataLoadPromise = null;
+let calendarLoadPromise = null;
+let scriptureBookLoadPromise = null;
+let bibleTranslationLoadPromise = null;
 const serviceItemLoadPromises = new Map();
 const presenterServiceHydrationPromises = new Map();
 const linkedSongLoadPromises = new Map();
@@ -2247,6 +2250,7 @@ function applyLinkState(params) {
   state.lastSelectedBibleVerse = state.selectedBibleVerse || null;
   state.selectedServiceTypeId = snapshot.selectedServiceTypeId || state.selectedServiceTypeId;
   state.selectedServiceId = snapshot.selectedServiceId || state.selectedServiceId;
+  if (snapshot.selectedServiceId) markWorshipServiceExplicitlyRequested(snapshot.selectedServiceId);
   state.selectedServiceItemIndex = null;
   state.bibleTextSearchQuery = snapshot.bibleTextSearchQuery || state.bibleTextSearchQuery;
   state.bibleTextSearchPage = Number.isFinite(snapshot.bibleTextSearchPage) ? snapshot.bibleTextSearchPage : state.bibleTextSearchPage;
@@ -2657,7 +2661,6 @@ async function loadMissingSongsForIds(targetIds = []) {
   }
   const hydratableIds = targetIds.filter((id) => state.songs.some((song) => song.id === id));
   if (!hydratableIds.length) return;
-  await yieldToBrowser();
   await attachRelationalSongVersionsForSongs(hydratableIds);
 }
 
@@ -2955,6 +2958,16 @@ async function loadScriptures({ silent = false } = {}) {
 }
 
 async function loadScriptureBooks({ silent = false } = {}) {
+  if (scriptureBookLoadPromise) return scriptureBookLoadPromise;
+  scriptureBookLoadPromise = loadScriptureBooksOnce({ silent });
+  try {
+    return await scriptureBookLoadPromise;
+  } finally {
+    scriptureBookLoadPromise = null;
+  }
+}
+
+async function loadScriptureBooksOnce({ silent = false } = {}) {
   if (!requireClient({ silent })) return;
 
   try {
@@ -3002,7 +3015,9 @@ async function loadServiceDataOnce({ silent = false } = {}) {
       await loadHymnScoreManifest({ silent });
     }
     restorePresenterControllerSession();
-    if (state.module === "presenter") await loadWorshipPresenterSlides(state.selectedServiceId || state.presenter.serviceId);
+    if (state.module === "presenter") {
+      await loadWorshipPresenterSlides(state.selectedServiceId || state.presenter.serviceId, { renderControls: false });
+    }
     state.dirtyServiceTypeIds.clear();
     state.dirty.service = false;
     captureCleanFingerprint("service");
@@ -3678,9 +3693,7 @@ async function loadWorshipData() {
   const resolvedTypes = types.length ? types : defaultWorshipServiceTypes();
   state.serviceTypes = resolvedTypes.map(normalizeWorshipServiceType);
   state.services = services.map(normalizeWorshipService);
-  if (!state.calendarLoaded && !state.calendarLoading) {
-    await loadCalendarData({ silent: true });
-  }
+  await loadCalendarData({ silent: true });
   const autoServices = WORSHIP_EMERGENCY_TODAY_ONLY ? [] : await ensureUpcomingPublicWorshipServices();
   if (autoServices.length) state.services = sortServicesByDate([...state.services, ...autoServices]);
   state.templateElementSuppressions.clear();
@@ -3701,9 +3714,14 @@ async function loadWorshipData() {
   serviceItemScripturePreloadPromises.clear();
 
   const preloadServiceIds = initialWorshipElementServiceIds(state.services);
+  const deferSelectedPresenterRender = Boolean(
+    state.module === "presenter"
+    && state.selectedServiceId
+    && preloadServiceIds.includes(state.selectedServiceId),
+  );
   let sections = [];
   let elements = [];
-  render();
+  if (!deferSelectedPresenterRender) render();
   if (preloadServiceIds.length) {
     ({ sections, elements } = await fetchWorshipRowsForServiceIds(preloadServiceIds));
     state.worshipSections = sections;
@@ -3711,11 +3729,19 @@ async function loadWorshipData() {
     state.loadedWorshipServiceIds = new Set(preloadServiceIds);
     state.serviceItems = projectGroupedWorshipItemsFromTemplates(groupWorshipElements(sections, elements));
   }
+  const prioritizedPresenterSongLoad = Boolean(
+    state.module === "presenter"
+    && state.selectedServiceId
+    && elements.some((item) => item.song_id),
+  );
+  if (prioritizedPresenterSongLoad) {
+    await loadSongsForIds(elements.map((item) => item.song_id));
+  }
   state.serviceItemAssigneeSupported = true;
   state.serviceItemVersionSupported = true;
   state.serviceItemMemoSupported = true;
 
-  render();
+  if (!prioritizedPresenterSongLoad) render();
   if (
     state.selectedServiceId
     && (state.module === "presenter" || isServiceDataModule())
@@ -3723,24 +3749,26 @@ async function loadWorshipData() {
   ) {
     const hydrationServiceId = state.selectedServiceId;
     void hydratePresenterServiceData(state.selectedServiceId).then(() => {
-      if (state.selectedServiceId === hydrationServiceId && (state.module === "presenter" || state.module === "service")) {
+      if (
+        !prioritizedPresenterSongLoad
+        && state.selectedServiceId === hydrationServiceId
+        && (state.module === "presenter" || state.module === "service")
+      ) {
         renderCurrentServiceModuleDetail();
       }
     }).catch((error) => {
       console.warn("Could not hydrate selected worship service in background.", error);
     });
   }
-  loadSongsForIdsInBackground(elements.map((item) => item.song_id), {
-    render: "detail",
-    serviceId: state.selectedServiceId,
-  });
-  if (!shouldDeferPastWorshipServiceLoad(state.selectedServiceId)) {
-    warmWorshipScriptureReferencesForService(state.selectedServiceId);
-    warmServiceItemScriptureReferencesForService(state.selectedServiceId);
+  if (!prioritizedPresenterSongLoad) {
+    loadSongsForIdsInBackground(elements.map((item) => item.song_id), {
+      render: "detail",
+      serviceId: state.selectedServiceId,
+    });
   }
 }
 
-async function loadWorshipPresenterSlides(serviceId = "") {
+async function loadWorshipPresenterSlides(serviceId = "", options = {}) {
   if (!state.client) return;
   const targetServiceId = String(serviceId || "").trim();
   if (targetServiceId && shouldDeferPastWorshipServiceLoad(targetServiceId)) return false;
@@ -3773,7 +3801,10 @@ async function loadWorshipPresenterSlides(serviceId = "") {
         [targetServiceId]: groupedSlides[targetServiceId] || [],
       };
       state.loadedWorshipPresenterServiceIds.add(targetServiceId);
-      refreshPresenterForService(targetServiceId, { publish: false });
+      refreshPresenterForService(targetServiceId, {
+        publish: false,
+        renderControls: options.renderControls !== false,
+      });
     } else {
       state.worshipPresenterSlides = groupedSlides;
       state.worshipPresenterSlidesLoaded = true;
@@ -4252,7 +4283,18 @@ async function detectTableColumnSupport(table, column) {
 }
 
 async function loadCalendarData({ silent = false } = {}) {
-  if (!state.client || state.calendarLoading) return;
+  if (state.calendarLoaded) return;
+  if (calendarLoadPromise) return calendarLoadPromise;
+  calendarLoadPromise = loadCalendarDataOnce({ silent });
+  try {
+    return await calendarLoadPromise;
+  } finally {
+    calendarLoadPromise = null;
+  }
+}
+
+async function loadCalendarDataOnce({ silent = false } = {}) {
+  if (!state.client) return;
   state.calendarLoading = true;
   state.calendarError = "";
   try {
@@ -4666,6 +4708,16 @@ async function loadServiceItems(serviceId) {
 }
 
 async function loadBibleTranslations({ silent = false } = {}) {
+  if (bibleTranslationLoadPromise) return bibleTranslationLoadPromise;
+  bibleTranslationLoadPromise = loadBibleTranslationsOnce({ silent });
+  try {
+    return await bibleTranslationLoadPromise;
+  } finally {
+    bibleTranslationLoadPromise = null;
+  }
+}
+
+async function loadBibleTranslationsOnce({ silent = false } = {}) {
   if (!requireClient({ silent })) return;
 
   try {
@@ -9851,10 +9903,17 @@ async function fetchServiceScriptureVerses(reference, requestedTranslation = nul
 }
 
 function warmWorshipScriptureReferencesForService(serviceId = state.selectedServiceId) {
-  if (!serviceId || !state.worshipSections.length || !state.worshipElements.length) return Promise.resolve(false);
+  if (
+    !serviceId
+    || !state.loadedWorshipServiceIds.has(serviceId)
+    || !state.worshipSections.length
+    || !state.worshipElements.length
+  ) return Promise.resolve(false);
   const loadKey = String(serviceId);
   if (worshipScripturePreloadPromises.has(loadKey)) return worshipScripturePreloadPromises.get(loadKey);
-  const loadPromise = preloadWorshipScriptureReferences(state.worshipSections, state.worshipElements, { serviceId }).then((loaded) => {
+  const songIds = getServiceOutputItems(serviceId).map((item) => item.song_id).filter(Boolean);
+  const loadPromise = loadSongsForIds(songIds).then(() =>
+    preloadWorshipScriptureReferences(state.worshipSections, state.worshipElements, { serviceId })).then((loaded) => {
     if (loaded) refreshPresenterForService(serviceId);
     return loaded;
   }).finally(() => {
@@ -9865,10 +9924,11 @@ function warmWorshipScriptureReferencesForService(serviceId = state.selectedServ
 }
 
 function warmServiceItemScriptureReferencesForService(serviceId = state.selectedServiceId) {
-  if (!serviceId || !state.client) return Promise.resolve(false);
+  if (!serviceId || !state.client || !state.loadedWorshipServiceIds.has(serviceId)) return Promise.resolve(false);
   const loadKey = String(serviceId);
   if (serviceItemScripturePreloadPromises.has(loadKey)) return serviceItemScripturePreloadPromises.get(loadKey);
-  const loadPromise = preloadServiceItemScriptureReferences(serviceId).then((loaded) => {
+  const songIds = getServiceOutputItems(serviceId).map((item) => item.song_id).filter(Boolean);
+  const loadPromise = loadSongsForIds(songIds).then(() => preloadServiceItemScriptureReferences(serviceId)).then((loaded) => {
     if (loaded) refreshPresenterForService(serviceId);
     return loaded;
   }).finally(() => {
@@ -9898,10 +9958,8 @@ async function hydratePresenterServiceData(serviceId = state.selectedServiceId) 
     await loadServiceItems(targetServiceId);
     const outputItems = getServiceOutputItems(targetServiceId);
     const songIds = outputItems.map((item) => item.song_id).filter(Boolean);
-    loadSongsForIdsInBackground(songIds, {
-      render: state.selectedServiceId === targetServiceId ? "detail" : false,
-      serviceId: targetServiceId,
-    });
+    await loadSongsForIds(songIds);
+    refreshPresenterForService(targetServiceId, { renderControls: false });
     void preloadPresenterServiceScripturesBeforeOutput(targetServiceId).then((loaded) => {
       if (loaded) schedulePresenterRefreshForService(targetServiceId);
     }).catch((error) => {
