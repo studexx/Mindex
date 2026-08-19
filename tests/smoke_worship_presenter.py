@@ -5264,6 +5264,51 @@ def main() -> int:
                 else:
                     fail("presenter-heartbeat-output-stop-affordance", json.dumps(heartbeat_stop_state, ensure_ascii=False))
 
+                blocked_popup_state = page.evaluate(
+                    """
+                    async (serviceId) => {
+                      const originalOpen = window.open;
+                      const originalHydrate = hydratePresenterServiceData;
+                      window.__mindexPresenterOpenCalls = 0;
+                      let hydrateCalls = 0;
+                      state.presenter.outputWindow = null;
+                      state.presenter.outputConnectedAt = 0;
+                      state.presenter.outputClientId = "";
+                      state.presenter.outputStopAt = 0;
+                      stopPresenterOutputWindowMonitor();
+                      window.open = () => {
+                        window.__mindexPresenterOpenCalls += 1;
+                        return null;
+                      };
+                      hydratePresenterServiceData = async (...args) => {
+                        hydrateCalls += 1;
+                        return originalHydrate(...args);
+                      };
+                      await openPresenterOutput(serviceId);
+                      window.open = originalOpen;
+                      hydratePresenterServiceData = originalHydrate;
+                      return {
+                        openCalls: window.__mindexPresenterOpenCalls || 0,
+                        hydrateCalls,
+                        connected: state.presenter.outputConnectedAt > 0,
+                        open: isPresenterOutputWindowOpen(),
+                        hasWindowRef: Boolean(state.presenter.outputWindow),
+                      };
+                    }
+                    """,
+                    service["id"],
+                )
+                if (
+                    blocked_popup_state["openCalls"] == 1
+                    and blocked_popup_state["hydrateCalls"] == 0
+                    and not blocked_popup_state["connected"]
+                    and not blocked_popup_state["open"]
+                    and not blocked_popup_state["hasWindowRef"]
+                ):
+                    pass_("presenter-popup-block-skips-hydrate", json.dumps(blocked_popup_state, ensure_ascii=False))
+                else:
+                    fail("presenter-popup-block-skips-hydrate", json.dumps(blocked_popup_state, ensure_ascii=False))
+
                 payload = page.evaluate(
                     """
                     (serviceId) => {

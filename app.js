@@ -3639,7 +3639,7 @@ async function loadWorshipData() {
   const preloadServiceIds = initialWorshipElementServiceIds(state.services);
   let sections = [];
   let elements = [];
-  if (state.module !== "home") render();
+  render();
   if (preloadServiceIds.length) {
     ({ sections, elements } = await fetchWorshipRowsForServiceIds(preloadServiceIds));
     state.worshipSections = sections;
@@ -25613,22 +25613,25 @@ async function openPresenterOutput(serviceId = state.selectedServiceId) {
   if (!serviceId) return;
   state.presenter.outputStopAt = 0;
   state.presenter.outputStoppingClientId = "";
-  await hydratePresenterServiceData(serviceId);
-  preparePresenterService(serviceId);
-  publishPresenterState();
 
   const existingWindow = presenterOutputWindowRef();
   if (existingWindow) {
+    preparePresenterService(serviceId);
+    publishPresenterState();
     startPresenterOutputWindowMonitor(serviceId);
     existingWindow.focus?.();
     window.setTimeout(() => publishPresenterState(), 250);
     renderPresenterControlState(serviceId);
+    hydratePresenterOutputInBackground(serviceId);
     return;
   }
   if (isPresenterOutputHeartbeatOpen()) {
+    preparePresenterService(serviceId);
+    publishPresenterState();
     startPresenterOutputWindowMonitor(serviceId);
     window.setTimeout(() => publishPresenterState(), 250);
     renderPresenterControlState(serviceId);
+    hydratePresenterOutputInBackground(serviceId);
     return;
   }
 
@@ -25641,9 +25644,12 @@ async function openPresenterOutput(serviceId = state.selectedServiceId) {
   if (window.mindexElectron?.openPresenterOutput) {
     try {
       await window.mindexElectron.openPresenterOutput({ url, targetRect });
+      preparePresenterService(serviceId);
+      publishPresenterState();
       startPresenterOutputWindowMonitor(serviceId);
       window.setTimeout(() => publishPresenterState(), 250);
       renderPresenterControlState(serviceId);
+      hydratePresenterOutputInBackground(serviceId);
       return;
     } catch (error) {
       console.warn("Electron presenter window failed; falling back to browser popup.", error);
@@ -25663,8 +25669,27 @@ async function openPresenterOutput(serviceId = state.selectedServiceId) {
   outputWindow.addEventListener?.("load", () => {
     publishPresenterState();
   }, { once: true });
+  preparePresenterService(serviceId);
+  publishPresenterState();
   window.setTimeout(() => publishPresenterState(), 250);
   renderPresenterControlState(serviceId);
+  hydratePresenterOutputInBackground(serviceId, outputWindow);
+}
+
+function hydratePresenterOutputInBackground(serviceId, outputWindow = null) {
+  void hydratePresenterServiceData(serviceId).then(() => {
+    preparePresenterService(serviceId);
+    publishPresenterState();
+    renderPresenterControlState(serviceId);
+  }).catch((error) => {
+    console.warn("Could not hydrate presenter output data.", error);
+    if (!outputWindow) return;
+    stopPresenterOutputWindowMonitor();
+    state.presenter.outputWindow = null;
+    try {
+      if (!outputWindow.closed) outputWindow.close?.();
+    } catch {}
+  });
 }
 
 function presenterOutputWindowRef() {
