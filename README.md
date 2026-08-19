@@ -204,6 +204,21 @@ python3 scripts/backfill_song_relations_from_memo.py --apply
 
 Only add `--clear-memo-related` after verifying the relation rows in the app.
 
+### Hymn Reference Audit
+
+Use 하나성경 as a read-only reference to check hymn numbers, titles, missing
+lyrics, and broad verse/chorus/Amen structure. The audit does not write to
+Supabase and does not persist or include the reference lyrics in its report.
+
+```sh
+python3 scripts/audit_hbible_hymns.py --book new --number 202
+python3 scripts/audit_hbible_hymns.py --book union --number 204
+python3 scripts/audit_hbible_hymns.py --book both --output /tmp/mindex-hymn-audit.json
+```
+
+Treat findings as review candidates. Do not automatically replace MINDEX text,
+line breaks, or 새찬송가-통일찬송가 relationships from this source.
+
 ## Presenter Media
 
 Presenter video slides should store only a file path or public URL in service

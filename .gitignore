@@ -10,6 +10,7 @@ mindex.local.js
 .cache/
 scripts/*
 !scripts/audit_mindex_content.py
+!scripts/audit_hbible_hymns.py
 !scripts/activities-schema.sql
 !scripts/service_templates.py
 !scripts/backfill_song_versions_from_memo.py

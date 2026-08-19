@@ -1,0 +1,52 @@
+# Hymn Reference Audit - 2026-08-19
+
+## Scope
+
+- Reference: 하나성경 hymn pages
+- 새찬송가: 1-645
+- 통일찬송가: 1-558
+- MINDEX tables: `mindex_songs`, `mindex_song_versions`, `mindex_version_units`
+- Read-only: no Supabase rows were inserted, updated, or deleted
+- Reference lyrics were compared in memory and were not persisted in the report
+
+## Verification
+
+- Supabase schema check: no issues or warnings
+- Reference pages checked: 1,203
+- Reference fetch failures: 0
+- Audit findings: 621
+
+| Book | Finding | Count |
+| --- | --- | ---: |
+| 새찬송가 | Title review candidate | 1 |
+| 새찬송가 | Chorus structure review candidate | 22 |
+| 새찬송가 | Amen structure review candidate | 1 |
+| 새찬송가 | Low lyric similarity candidate | 23 |
+| 통일찬송가 | Numbered version not found | 79 |
+| 통일찬송가 | Version found but lyrics empty | 452 |
+| 통일찬송가 | Duplicate numbered version candidate | 4 |
+| 통일찬송가 | Title review candidate | 36 |
+| 통일찬송가 | Chorus structure review candidate | 1 |
+| 통일찬송가 | Amen structure review candidate | 1 |
+| 통일찬송가 | Low lyric similarity candidate | 1 |
+
+새찬송가 645곡은 모두 MINDEX song/version/lyrics records가 존재했다. 통일찬송가의
+`not found` 결과는 통일 장 번호를 version metadata에서 찾지 못했다는 뜻이며, 곧바로
+곡 자체가 DB에 없다는 뜻은 아니다.
+
+## Review Rule
+
+Do not auto-apply findings. 하나성경 새찬송가 19장 제목은 `찬양하는 소리 있어`로
+표시되지만 MINDEX의 `찬송하는 소리 있어`가 맞을 가능성이 높다. 제목, 맞춤법,
+줄바꿈, 새찬송가-통일찬송가 연결은 다른 대조 자료와 교차 확인한 뒤 확실한 항목만
+수정한다.
+
+## Commands
+
+```sh
+python3 tests/check_supabase_schema.py
+python3 -m unittest tests.test_audit_hbible_hymns
+python3 scripts/audit_hbible_hymns.py --book both \
+  --workers 4 --delay 0.05 \
+  --output /tmp/mindex-hymn-audit-full.json
+```
