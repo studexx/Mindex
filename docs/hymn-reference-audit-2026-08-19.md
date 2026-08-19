@@ -149,6 +149,9 @@ unified numbers.
 
 ## Commands
 
+The final strict 1,203-page pass and confirmed lyric repairs are documented in
+`docs/full-hymn-audit-2026-08-19.md`.
+
 ```sh
 python3 tests/check_supabase_schema.py
 python3 -m unittest tests.test_audit_hbible_hymns

@@ -110,6 +110,18 @@ def comparison_text(value: Any) -> str:
     return re.sub(r"[^0-9a-z가-힣]", "", text)
 
 
+def structural_text(value: Any) -> str:
+    text = clean_lyrics(value)
+    text = re.sub(r"\[\s*(?:verse|chorus|pre-chorus|bridge|coda|lyrics)(?:\s+\d+)?\s*]", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"<\s*후렴\s*>", "", text)
+    text = re.sub(r"(?:^|\n)\s*\d+\s*[.)]\s*", "\n", text)
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def strict_lyric_text(value: Any) -> str:
+    return re.sub(r"\s+", "", structural_text(value))
+
+
 def normalize_title(value: Any) -> str:
     return re.sub(r"[^0-9a-z가-힣]", "", clean_inline_text(value).casefold())
 
@@ -290,6 +302,20 @@ def audit_reference(
             reference_has_amen=reference.has_amen,
             db_has_amen=db_has_amen,
         ))
+
+    reference_strict = strict_lyric_text(reference.lyrics)
+    db_strict = strict_lyric_text(db_lyrics)
+    if reference_strict != db_strict:
+        issues.append(issue(
+            reference,
+            "lyric-character-mismatch",
+            "warning",
+            reference_hash=hashlib.sha256(reference_strict.encode()).hexdigest()[:16],
+            db_hash=hashlib.sha256(db_strict.encode()).hexdigest()[:16],
+            similarity=round(difflib.SequenceMatcher(None, reference_strict, db_strict).ratio(), 4),
+        ))
+    elif structural_text(reference.lyrics) != structural_text(db_lyrics):
+        issues.append(issue(reference, "lyric-spacing-only-difference", "warning"))
 
     ratio = difflib.SequenceMatcher(None, comparison_text(reference.lyrics), comparison_text(db_lyrics)).ratio()
     if ratio < similarity_threshold:

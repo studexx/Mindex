@@ -12,6 +12,8 @@ from audit_hbible_hymns import (  # noqa: E402
     audit_reference,
     comparison_text,
     parse_hbible_hymn,
+    strict_lyric_text,
+    structural_text,
     unified_number,
     version_units_by_version,
 )
@@ -20,6 +22,13 @@ from audit_hbible_hymns import (  # noqa: E402
 class HbibleHymnAuditTest(unittest.TestCase):
     def test_comparison_ignores_mindex_unit_labels(self) -> None:
         self.assertEqual(comparison_text("[Verse 1]\n첫째 절\n[Chorus]\n후렴"), "첫째절후렴")
+
+    def test_strict_comparison_preserves_characters_but_ignores_structure(self) -> None:
+        reference = "1. 노래 소리\n<후렴> 아-멘"
+        database = "[Verse 1]\n노래 소리\n[Chorus]\n아-멘"
+        self.assertEqual(structural_text(reference), structural_text(database))
+        self.assertEqual(strict_lyric_text(reference), strict_lyric_text(database))
+        self.assertNotEqual(strict_lyric_text("노랫소리"), strict_lyric_text("노래 소리"))
 
     def test_parses_reference_without_persisting_page_noise(self) -> None:
         html = """
@@ -75,6 +84,7 @@ class HbibleHymnAuditTest(unittest.TestCase):
         self.assertIn("chorus-structure-mismatch", codes)
         self.assertIn("amen-structure-mismatch", codes)
         self.assertIn("low-lyric-similarity", codes)
+        self.assertIn("lyric-character-mismatch", codes)
         self.assertTrue(all("lyrics" not in row for row in issues))
 
 
