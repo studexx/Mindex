@@ -361,7 +361,8 @@ def select_service_with_slides(page) -> dict[str, Any] | None:
           state.selectedServiceTypeId = service.type_id;
           state.selectedServiceId = service.id;
           render();
-          return { id: service.id, typeId: service.type_id, date: service.date, slides: slides.length, fixture };
+          const renderedSlides = presenterSlidesForService(service.id);
+          return { id: service.id, typeId: service.type_id, date: service.date, slides: renderedSlides.length, fixture };
         })()
         """
     )

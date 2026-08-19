@@ -34,6 +34,36 @@ smoke suite.
 The annotated Git tag `stable-2026-08-16` is the rollback point immediately
 before this ownership cleanup.
 
+## 2026-08-19 Structural Audit
+
+The current stable version intentionally raised the ratchet ceilings after the
+home/service navigation, presenter stability, praise input, and button grammar
+work landed across multiple threads. This was a stabilization checkpoint, not a
+new architecture target.
+
+Known pressure points:
+
+- `app.js` is still the integration hub for state, persistence, service input,
+  controller UI, and app-level event delegation.
+- `bindStaticEvents` and `handleDetailClick` are the highest-risk growth areas
+  because new controls often enter through those event routers.
+- Service navigation now has two explicit sentinel panels:
+  `SERVICE_WEEK_PANEL_ID` for `금주 예배` and `SERVICE_LIST_PANEL_ID` for
+  `전체 예배`. Home keeps its own `이번 주 예배` dashboard copy.
+- Do not move presenter slide construction into app UI code. Keep output
+  rendering in `mindex.presenter.js`, and keep controller/service authoring in
+  `app.js` until an extraction has smoke coverage.
+
+Recommended extraction order:
+
+1. Move pure worship parsing and song lookup helpers out first.
+2. Move service dashboard/list rendering helpers only after the service-tab
+   smoke tests cover `금주 예배`, `전체 예배`, and direct service opening.
+3. Split controller presenter-board helpers after Chrome output/reload smoke
+   remains stable.
+4. Split CSS by module only when visual smoke screenshots or pixel checks cover
+   the affected presenter/controller surfaces.
+
 ## Baseline Ratchets
 
 The size and coupling limits in `tests/solid_audit.py` describe the current

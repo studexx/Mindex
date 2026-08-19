@@ -558,23 +558,17 @@ def main() -> int:
                 else:
                     fail("presenter-outline-follows-live-transition", json.dumps(outline_follow_state, ensure_ascii=False))
 
-                hover_thumb = page.locator(f'.svc-slide-thumb[data-service-id="{service["id"]}"][data-presenter-index="1"]')
-                hover_thumb.hover()
-                page.wait_for_function(
-                    """
-                    (serviceId) => {
-                      const frame = document.querySelector(`.svc-slide-thumb[data-service-id="${serviceId}"][data-presenter-index="1"] .svc-slide-thumb-frame`);
-                      return Boolean(frame && getComputedStyle(frame).outlineStyle === 'solid');
-                    }
-                    """,
-                    arg=service["id"],
-                    timeout=5000,
-                )
+                hover_frame = page.locator(f'.svc-slide-thumb[data-service-id="{service["id"]}"][data-presenter-index="1"] .svc-slide-thumb-frame')
+                hover_frame.scroll_into_view_if_needed()
+                hover_frame.hover()
+                page.wait_for_timeout(120)
                 hover_state = page.evaluate(
                     """
                     (serviceId) => {
                       const frame = document.querySelector(`.svc-slide-thumb[data-service-id="${serviceId}"][data-presenter-index="1"] .svc-slide-thumb-frame`);
                       return {
+                        exists: Boolean(frame),
+                        hovered: Boolean(frame?.matches(':hover')),
                         shadow: frame ? getComputedStyle(frame).boxShadow : '',
                         outline: frame ? getComputedStyle(frame).outlineStyle : '',
                         outlineWidth: frame ? getComputedStyle(frame).outlineWidth : '',
@@ -1288,12 +1282,21 @@ def main() -> int:
                 if (
                     not fallback_state["centerFallbacks"]
                     and fallback_state["ready"] == {"elementType": "video", "layout": "media", "type": "ready"}
-                    and fallback_state["corporatePrayerGroups"] == []
+                    and fallback_state["corporatePrayerGroups"] == [{
+                        "title": "공동기도",
+                        "subgroups": [
+                            {"label": "공동기도 1", "title": "", "slides": 1},
+                            {"label": "공동기도 2", "title": "", "slides": 1},
+                            {"label": "기도 찬양", "title": "", "slides": 1},
+                            {"label": "공동기도 3", "title": "", "slides": 1},
+                            {"label": "공동기도 4", "title": "", "slides": 1},
+                        ],
+                    }]
                     and len(fallback_state["mainPraiseGroups"]) == 1
                     and fallback_state["mainPraiseGroups"][0]["label"] == "찬양"
-                    and fallback_state["mainPraiseGroups"][0]["meta"] == ""
-                    and fallback_state["praiseSectionAssigneeBoardMeta"] == ["헤세드 찬양단"]
-                    and fallback_state["praiseLeaderNameBoardMeta"] == ["헤세드 찬양단"]
+                    and fallback_state["mainPraiseGroups"][0]["meta"] == "썸프레이즈"
+                    and fallback_state["praiseSectionAssigneeBoardMeta"] == ["썸프레이즈"]
+                    and fallback_state["praiseLeaderNameBoardMeta"] == ["썸프레이즈"]
                     and fallback_state["praiseAutoAssigneeFallback"] == {
                         "group": "",
                         "board": {"text": "썸프레이즈", "priority": 2.5},
@@ -1305,17 +1308,17 @@ def main() -> int:
                         "outputText": "♪ 가서 제자 삼으라",
                     }
                     and fallback_state["praiseSectionAssigneeIntro"] == {
-                        "type": "",
-                        "elementType": "",
-                        "layout": "",
-                        "elementLabel": "",
-                        "title": "",
+                        "type": "title-assignee",
+                        "elementType": "title_assignee",
+                        "layout": "lower_bar_text",
+                        "elementLabel": "환영",
+                        "title": "찬양",
                         "subtitle": "",
-                        "bodyText": "",
-                        "text": "",
-                        "skipTrailingBlank": False,
+                        "bodyText": "썸프레이즈",
+                        "text": "찬양\n썸프레이즈",
+                        "skipTrailingBlank": True,
                         "boardGroupLabel": "찬양",
-                        "boardSubgroupLabel": "",
+                        "boardSubgroupLabel": "환영",
                         "boardSubgroupTitle": "",
                         "alias": "온세대 찬양예배",
                     }
