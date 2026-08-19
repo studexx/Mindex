@@ -1085,16 +1085,16 @@ def main() -> int:
                     """
                 )
                 if (
-                    service_default_state["selectedTypeId"] == "__week"
-                    and service_default_state["hasDashboard"]
-                    and not service_default_state["hasAllList"]
-                    and service_default_state["title"] == "금주 예배"
-                    and service_default_state["activeWeekRows"] == 1
-                    and service_default_state["activeListRows"] == 0
+                    service_default_state["selectedTypeId"] == "__list"
+                    and not service_default_state["hasDashboard"]
+                    and service_default_state["hasAllList"]
+                    and service_default_state["title"] == "전체 예배"
+                    and service_default_state["activeWeekRows"] == 0
+                    and service_default_state["activeListRows"] == 1
                 ):
-                    pass_("service-default-opens-week-list", json.dumps(service_default_state, ensure_ascii=False))
+                    pass_("service-default-opens-all-list", json.dumps(service_default_state, ensure_ascii=False))
                 else:
-                    fail("service-default-opens-week-list", json.dumps(service_default_state, ensure_ascii=False))
+                    fail("service-default-opens-all-list", json.dumps(service_default_state, ensure_ascii=False))
                 page.evaluate("() => { resetHomeState(); render(); }")
                 page.wait_for_function("() => document.body.dataset.module === 'home'", timeout=5000)
 

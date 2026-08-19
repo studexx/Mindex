@@ -61,6 +61,9 @@ Primary app modules:
 Home hierarchy:
 
 - Worship is the primary operational area.
+- Home shows the week dashboard: `이번 주 예배` plus `다가오는 예배`.
+- The Worship/Service tab opens to `전체 예배` by default. `금주 예배` remains
+  a secondary sidebar panel, not the default Worship tab landing screen.
 - Praise and Scripture are major resources.
 - Calendar and References are home utilities.
 - Template structure is an internal management concept. Do not surface it in

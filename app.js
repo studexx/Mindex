@@ -2409,8 +2409,8 @@ async function switchModule(moduleName, options = {}) {
   const syncHistory = options.syncHistory !== false;
   saveCurrentListScroll();
   state.module = moduleName;
-  if (moduleName === "service" && !state.selectedServiceId && !state.selectedServiceTypeId) {
-    state.selectedServiceTypeId = SERVICE_WEEK_PANEL_ID;
+  if (moduleName === "service" && !state.selectedServiceId) {
+    state.selectedServiceTypeId = SERVICE_LIST_PANEL_ID;
   }
   if (moduleName === "calendar") {
     state.calendarScrollTargetMonth = toLocalDateStr(new Date()).slice(0, 7);
@@ -20365,8 +20365,8 @@ function renderServiceDetail() {
   }
 
   if (!state.selectedServiceTypeId) {
-    state.selectedServiceTypeId = SERVICE_WEEK_PANEL_ID;
-    renderServiceDashboard({ title: SERVICE_WEEK_PANEL_TITLE });
+    state.selectedServiceTypeId = SERVICE_LIST_PANEL_ID;
+    renderServiceListDetail();
     return;
   }
 
