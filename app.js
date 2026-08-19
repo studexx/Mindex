@@ -678,6 +678,7 @@ const state = {
     serviceId: null,
     slides: [],
     sourceItems: null,
+    sourceSignature: "",
     index: 0,
     safetyBlank: false,
     jumpDraft: "",
@@ -26214,6 +26215,7 @@ function preparePresenterService(serviceId = state.selectedServiceId) {
   const previousServiceId = state.presenter.serviceId;
   const previousSlides = state.presenter.slides;
   const previousIndex = state.presenter.index;
+  const signature = presenterSlideBuildSourceSignature(serviceId);
   const slides = buildServicePresenterSlides(serviceId);
   if (previousServiceId !== serviceId) {
     state.presenter.restorePayload = null;
@@ -26229,6 +26231,7 @@ function preparePresenterService(serviceId = state.selectedServiceId) {
   // Building the output can normalize projected items into a new array.
   // Keep the post-build source reference so cached slides never outlive it.
   state.presenter.sourceItems = state.serviceItems[serviceId] || null;
+  state.presenter.sourceSignature = signature;
   state.presenter.index = previousServiceId === serviceId
     ? reconcilePresenterIndexForSlides(previousSlides, previousIndex, slides)
     : clampPresenterIndex(state.presenter.index, slides.length);
@@ -26257,8 +26260,10 @@ function refreshPresenterForService(serviceId, options = {}) {
   }
   const previousSlides = state.presenter.slides;
   const previousIndex = state.presenter.index;
+  const signature = presenterSlideBuildSourceSignature(serviceId);
   state.presenter.slides = buildServicePresenterSlides(serviceId);
   state.presenter.sourceItems = state.serviceItems[serviceId] || null;
+  state.presenter.sourceSignature = signature;
   state.presenter.index = reconcilePresenterIndexForSlides(previousSlides, previousIndex, state.presenter.slides);
   if (!state.presenter.slides.length) state.presenter.safetyBlank = false;
   syncServiceMusicWithPresenterContext(serviceId, { render: false });
@@ -26370,8 +26375,10 @@ function reconcilePresenterIndexForSlides(previousSlides = [], previousIndex = 0
 
 function presenterSlidesForService(serviceId) {
   const sourceItems = state.serviceItems[serviceId] || null;
+  const signature = presenterSlideBuildSourceSignature(serviceId);
   if (state.presenter.serviceId === serviceId
     && state.presenter.sourceItems === sourceItems
+    && state.presenter.sourceSignature === signature
     && Array.isArray(state.presenter.slides)
     && state.presenter.slides.length) {
     state.presenter.index = clampPresenterIndex(state.presenter.index, state.presenter.slides.length);
@@ -26383,6 +26390,7 @@ function presenterSlidesForService(serviceId) {
     const previousIndex = state.presenter.index;
     state.presenter.slides = slides;
     state.presenter.sourceItems = state.serviceItems[serviceId] || null;
+    state.presenter.sourceSignature = signature;
     state.presenter.index = reconcilePresenterIndexForSlides(previousSlides, previousIndex, slides);
   }
   return slides;
@@ -27452,6 +27460,7 @@ async function deleteService(serviceId) {
       state.presenter.serviceId = null;
       state.presenter.slides = [];
       state.presenter.sourceItems = null;
+      state.presenter.sourceSignature = "";
       state.presenter.index = 0;
       state.presenter.safetyBlank = false;
       state.presenter.jumpDraft = "";
