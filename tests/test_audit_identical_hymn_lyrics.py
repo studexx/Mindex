@@ -8,7 +8,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from audit_identical_hymn_lyrics import spacing_only_text  # noqa: E402
+from audit_identical_hymn_lyrics import spacing_only_text, unified_targets  # noqa: E402
 
 
 class AuditIdenticalHymnLyricsTests(unittest.TestCase):
@@ -24,6 +24,40 @@ class AuditIdenticalHymnLyricsTests(unittest.TestCase):
 
     def test_punctuation_is_not_ignored(self) -> None:
         self.assertNotEqual(spacing_only_text("아-멘"), spacing_only_text("아멘"))
+
+    def test_all_scope_includes_filled_and_empty_unified_versions(self) -> None:
+        songs = [{"id": "song", "hymn_no": "20", "title": "테스트"}]
+        versions = [
+            {
+                "id": "new",
+                "source_song_id": "song",
+                "version_order": 1,
+                "curated_version_name": "새찬송가",
+                "is_primary": True,
+            },
+            {
+                "id": "filled",
+                "source_song_id": "song",
+                "version_order": 2,
+                "curated_version_name": "통일 41 테스트",
+                "hymn_no": "통 41",
+            },
+            {
+                "id": "empty",
+                "source_song_id": "song",
+                "version_order": 3,
+                "curated_version_name": "통일 42 테스트",
+                "hymn_no": "통 42",
+            },
+        ]
+        by_version = {"new": [{"text": "가사"}], "filled": [{"text": "가사"}]}
+        targets = unified_targets(songs, versions, by_version, only_empty=False)
+        self.assertEqual([row["union_no"] for row in targets], [41, 42])
+        self.assertEqual([row["union_has_lyrics"] for row in targets], [True, False])
+        self.assertEqual(
+            [row["union_no"] for row in unified_targets(songs, versions, by_version, only_empty=True)],
+            [42],
+        )
 
 
 if __name__ == "__main__":

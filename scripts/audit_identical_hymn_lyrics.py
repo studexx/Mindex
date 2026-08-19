@@ -52,10 +52,12 @@ def primary_new_version(song_id: str, versions: list[dict[str, Any]]) -> dict[st
     return sorted(selected, key=lambda row: row.get("version_order") or 0)[0] if selected else None
 
 
-def empty_unified_targets(
+def unified_targets(
     songs: list[dict[str, Any]],
     versions: list[dict[str, Any]],
     by_version: dict[str, list[dict[str, Any]]],
+    *,
+    only_empty: bool,
 ) -> list[dict[str, Any]]:
     song_by_id = {str(song.get("id")): song for song in songs}
     targets: list[dict[str, Any]] = []
@@ -65,7 +67,8 @@ def empty_unified_targets(
         if union_no is None or not song or not str(song.get("hymn_no") or "").isdigit():
             continue
         new_no = int(song["hymn_no"])
-        if not 1 <= new_no <= 645 or by_version.get(str(version.get("id"))):
+        target_units = by_version.get(str(version.get("id")), [])
+        if not 1 <= new_no <= 645 or (only_empty and target_units):
             continue
         primary = primary_new_version(str(song["id"]), versions)
         targets.append({
@@ -75,8 +78,18 @@ def empty_unified_targets(
             "title": str(song.get("title") or ""),
             "new_version_id": str((primary or {}).get("id") or ""),
             "union_version_id": str(version.get("id") or ""),
+            "union_unit_count": len(target_units),
+            "union_has_lyrics": bool(target_units),
         })
     return sorted(targets, key=lambda row: (row["new_no"], row["union_no"]))
+
+
+def empty_unified_targets(
+    songs: list[dict[str, Any]],
+    versions: list[dict[str, Any]],
+    by_version: dict[str, list[dict[str, Any]]],
+) -> list[dict[str, Any]]:
+    return unified_targets(songs, versions, by_version, only_empty=True)
 
 
 def audit_target(
@@ -124,6 +137,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--timeout", type=float, default=20.0)
     parser.add_argument("--retries", type=int, default=1)
     parser.add_argument("--delay", type=float, default=0.03)
+    parser.add_argument(
+        "--scope",
+        choices=("empty", "all"),
+        default="empty",
+        help="Audit only empty unified versions or every mapped unified version",
+    )
     parser.add_argument("--output", type=Path)
     return parser.parse_args()
 
@@ -147,7 +166,7 @@ def main() -> int:
         "id,version_id,unit_order,curated_order,text",
     )
     by_version = grouped_units(units)
-    targets = empty_unified_targets(songs, versions, by_version)
+    targets = unified_targets(songs, versions, by_version, only_empty=args.scope == "empty")
 
     def run(target: dict[str, Any]) -> dict[str, Any]:
         if args.delay:
@@ -174,7 +193,10 @@ def main() -> int:
             "review_status_after_copy": "needs_review",
         },
         "summary": {
-            "empty_unified_targets": len(targets),
+            "scope": args.scope,
+            "mapped_unified_targets": len(targets),
+            "empty_unified_targets": sum(not row["union_has_lyrics"] for row in targets),
+            "filled_unified_targets": sum(row["union_has_lyrics"] for row in targets),
             "eligible": len(candidates),
             "excluded": len(rows) - len(candidates),
             "by_reason": dict(sorted(by_reason.items())),
