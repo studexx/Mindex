@@ -13,6 +13,8 @@ stale document in the same change.
   contracts, service type IDs, input modes, and default materialization rules.
 - `thread-worship-presenter.md`: implementation workflow for Worship and
   Presenter changes.
+- `design-system.md`: app UI design tokens, button grammar, and design
+  migration rules.
 - `ui-contracts.md`: app shell and UI interaction contracts.
 - `code-organization.md`: runtime script order, code ownership boundaries, and
   safe-refactoring rules.
@@ -28,21 +30,19 @@ stale document in the same change.
 - `solid-refactor-notes.md`: refactor notes only. Do not treat as a required
   migration plan unless the user asks to resume it.
 
-## Historical Or Incident Notes
+## Data Review Evidence
 
-- `emergency-worship-handoff.md`: temporary safety note from the 2026-08-09
-  live-service incident. Revalidate before applying it to normal development.
-- `worship-order-review-draft.md`: archived planning draft, not runtime seed
-  data and not the source of truth.
-- `2026-07-19-sunday-second-db-repair.md`: historical repair log.
-- `review-status-incident.md`: historical incident/review note.
+- `hymn-reference-audit-2026-08-19.md`: read-only hymn audit and verified
+  repair record. Use only as data review evidence, not as app behavior.
 
-Historical notes may contain old table names, old service IDs, or emergency
-workarounds. Preserve them as evidence, but do not copy those names into new
-code or migrations unless the current data contract also lists them.
+## Retired Notes
+
+Temporary incident logs and old worship-order drafts are not kept as active
+documentation. Use Git history if you need to inspect them. Current behavior
+must come from the contract documents above.
 
 ## Cleanup Rule
 
 If a user-facing behavior changes, update the current decision log or data
-contract with the same commit. Do not let old drafts, emergency notes, or
-incident logs override current reviewed behavior.
+contract with the same commit. Do not restore retired drafts or incident logs
+as behavior sources.

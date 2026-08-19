@@ -369,61 +369,22 @@ If Activities returns later, its empty verse should use the shared UI verse syst
 
 ## UI System Rules
 
-General:
+Use `docs/design-system.md` for reusable UI tokens and design grammar. Use
+`docs/ui-contracts.md` for screen-level shell, navigation, sidebar, empty-state,
+calendar, reference, and presenter controller behavior.
 
-- Match Studex spacing logic, but adapt visually to Mindex.
-- Avoid one-off padding values unless there is a clear reason.
-- Remove unnecessary borders and strokes.
-- Keep hierarchy clear through spacing, type, and subdued backgrounds.
-- Avoid too many labels, pills, and explanatory paragraphs.
-- Do not use browser-native `title` tooltips for large shortcut/help text.
-- Keep button hit areas stable.
+Current UI baseline:
 
-Layout tokens:
-
-- Desktop main content horizontal gutter: `25px`.
-- Desktop main content top padding: `20px`.
-- Narrow screen horizontal gutter: `15px`.
-- Narrow screen top padding: `15px`.
-- Sidebar open/closed should not change the main content gutter token.
-- Reading panes may have max-width; dashboards, grids, lists, and search results should generally use the shared outer gutter.
-
-Topbar:
-
-- Topbar button grid should align with Studex.
-- Icon buttons should remain square, normally `32x32`.
-- Sidebar, calendar/home utility, theme, and save buttons should use consistent button geometry.
-- Inactive module tabs should not retain strong accent colors.
-- Active tab can show label and accent.
-- If tabs are icon-only while inactive, ensure active label appears clearly.
-- Mindex logo should sit vertically centered in the topbar.
-- Logo can navigate home, but should not have noisy hover animation.
-
-Sidebar:
-
-- Sidebar element hover/padding should align to the sidebar toggle x-position.
-- Sidebar content spacing should feel relaxed, not cramped.
-- Sidebars across modules should have consistent y-start and width unless there is a strong reason.
-- Sidebar toggle should not make the sidebar/home button jump vertically.
-
-Typography:
-
-- Avoid overly bold subtitles and metadata.
-- Metadata labels should share a consistent style across Praise and Scripture.
-- Functional UI can be English.
-- Worship/service labels may remain Korean.
-- UX/UI uses the self-hosted Pretendard Variable face.
-- All Presenter previews and output themes use the self-hosted Freesentation family.
-
-Color:
-
-- Maintain sufficient contrast in dark and light modes.
-- Avoid muddy colors.
-- Praise can lean pink.
-- Scripture can lean blue.
-- Worship can lean warm/olive/gold where appropriate.
-- Calendar should not accidentally inherit Scripture blue unless intended.
-- References should be neutral unless a strong design reason emerges.
+- App shell spacing uses the reviewed `24px` detail gutter, with new local
+  spacing on 5px/10px steps unless an existing area is still on the legacy 4px
+  shell rhythm.
+- App UI typography follows the compact role ladder documented in
+  `docs/design-system.md`; presenter output typography remains separate.
+- Button geometry and icon sizing come from `mindex.design-tokens.js`.
+- Sidebar/ambient utility actions should be quiet icon-only controls with
+  accessible labels.
+- Do not use retired 25px/20px gutter or 32x32 icon-button notes as current
+  design guidance.
 
 ## Testing And Verification
 
