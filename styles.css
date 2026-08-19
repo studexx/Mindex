@@ -265,11 +265,13 @@ body[data-module="home"] .brand-home:hover {
   height: 40px;
   flex: 0 0 40px;
   align-items: center;
+  gap: 10px;
   padding: 0 var(--sidebar-item-pad-x);
 }
 .sidebar-wordmark {
   appearance: none;
   display: inline-flex;
+  flex: 0 0 auto;
   align-items: center;
   border: 0;
   background: transparent;
@@ -3080,29 +3082,27 @@ body[data-module="calendar"] .detail-pane { overflow: hidden; }
 #newSongBtn { display: none; }
 
 .loading-status {
-  position: fixed;
-  left: calc(var(--shell-left-w) + var(--s4));
-  bottom: var(--s4);
-  z-index: 19;
+  position: static;
   display: inline-flex;
-  max-width: min(320px, calc(100vw - var(--shell-left-w) - 32px));
-  min-height: 32px;
+  min-width: 0;
+  max-width: 120px;
+  min-height: 24px;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   border: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
-  border-radius: var(--r);
-  background: color-mix(in srgb, var(--panel) 92%, transparent);
-  box-shadow: var(--shadow-soft);
+  border-radius: calc(var(--r) - 2px);
+  background: color-mix(in srgb, var(--panel-2) 50%, transparent);
+  box-shadow: none;
   color: var(--ink-2);
   font-size: var(--ui-meta-size);
   font-weight: 700;
   line-height: 1.2;
-  padding: 0 10px;
+  padding: 0 8px;
   pointer-events: none;
 }
 .loading-status-dot {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
   flex: 0 0 auto;
   border-radius: 999px;
   background: var(--accent);
@@ -7092,12 +7092,12 @@ textarea.svc-presenter-input-control--multiline {
 .svc-slide-form-badge:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .svc-board-grid {
   display: grid;
-  --svc-thumb-width: 184px;
+  --svc-thumb-min-width: 220px;
+  --svc-thumb-max-width: 320px;
   --svc-thumb-ring-space: 4px;
-  --svc-thumb-wrap-min-width: calc(var(--svc-thumb-width) + (var(--svc-thumb-ring-space) * 2));
   width: 100%;
   min-width: 0;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--svc-thumb-wrap-min-width)), var(--svc-thumb-wrap-min-width)));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--svc-thumb-min-width)), var(--svc-thumb-max-width)));
   justify-content: start;
   gap: 12px;
   max-width: 100%;
@@ -7613,7 +7613,8 @@ body.is-chromium .svc-slide-thumb.selected .svc-slide-thumb-frame {
 @media (max-width: 1180px) {
   .service-dashboard { grid-template-columns: 1fr; }
   .svc-board-grid {
-    --svc-thumb-width: 168px;
+    --svc-thumb-min-width: 200px;
+    --svc-thumb-max-width: 280px;
   }
   .svc-presenter-workspace { grid-template-columns: minmax(0, 1fr) minmax(280px, 320px); gap: 16px; }
   .svc-presenter-input-rail { padding-left: 12px; }
@@ -7665,7 +7666,8 @@ body.is-chromium .svc-slide-thumb.selected .svc-slide-thumb-frame {
 
 @media (max-width: 760px) {
   .svc-board-grid {
-    --svc-thumb-width: 148px;
+    --svc-thumb-min-width: 160px;
+    --svc-thumb-max-width: 240px;
   }
   .svc-presenter-main,
   .svc-presenter-action-group {

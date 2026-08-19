@@ -14,8 +14,8 @@
     <link rel="preload" href="./vendor/fonts/freesentation/Freesentation-6SemiBold.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="./vendor/fonts/freesentation/Freesentation-7Bold.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="./vendor/fonts/freesentation/Freesentation-8ExtraBold.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="stylesheet" href="./styles.css?v=mindex-presenter-thumb-fit-20260819-001" />
-    <link rel="stylesheet" href="./styles.presenter-output.css?v=mindex-presenter-thumb-fit-20260819-001" />
+    <link rel="stylesheet" href="./styles.css?v=mindex-loading-sidebar-thumb-width-20260819-001" />
+    <link rel="stylesheet" href="./styles.presenter-output.css?v=mindex-loading-sidebar-thumb-width-20260819-001" />
     <link rel="stylesheet" href="./styles.calendar.css?v=mindex-calendar-ui-010" />
   </head>
   <body>
@@ -47,6 +47,7 @@
         <div id="mindexSidebarPanel" class="sidebar" aria-label="Mindex 목록">
           <div class="sidebar-brand-row">
             <button id="brandNameHome" class="sidebar-wordmark" type="button" aria-label="Mindex 홈으로 이동">MINDE<span class="brand-accent">X</span></button>
+            <div id="loadingStatus" class="loading-status" role="status" aria-live="polite" aria-atomic="true" hidden></div>
           </div>
           <div class="search-wrap global-search-wrap sidebar-search-wrap">
             <i data-lucide="search"></i>
@@ -99,7 +100,6 @@
       </main>
     </div>
 
-    <div id="loadingStatus" class="loading-status" role="status" aria-live="polite" aria-atomic="true" hidden></div>
     <div id="toastRegion" class="toast-region" aria-live="polite" aria-atomic="true"></div>
 
     <script src="./vendor/lucide.min.js"></script>
@@ -113,7 +113,7 @@
     </script>
     <script src="./mindex.constants.js?v=mindex-sidebar-state-001"></script>
     <script src="./mindex.design-tokens.js?v=mindex-design-tokens-20260819-002"></script>
-    <script src="./mindex.presenter.js?v=mindex-presenter-thumb-fit-20260819-001"></script>
-    <script src="./app.js?v=mindex-presenter-thumb-fit-20260819-001"></script>
+    <script src="./mindex.presenter.js?v=mindex-loading-sidebar-thumb-width-20260819-001"></script>
+    <script src="./app.js?v=mindex-loading-sidebar-thumb-width-20260819-001"></script>
   </body>
 </html>
