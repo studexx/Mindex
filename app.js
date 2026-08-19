@@ -1018,6 +1018,7 @@ function cacheRefs() {
   refs.connectionStatus = document.getElementById("connectionStatus");
   refs.themeBtn = document.getElementById("themeBtn");
   refs.newSongBtn = document.getElementById("newSongBtn");
+  refs.sidebarCreateSongBtn = document.getElementById("sidebarCreateSongBtn");
   refs.saveAllBtn = document.getElementById("saveAllBtn");
   refs.searchInput = document.getElementById("searchInput");
   refs.listFilter = document.getElementById("listFilter");
@@ -1027,6 +1028,7 @@ function cacheRefs() {
   refs.sidebar = document.querySelector(".sidebar");
   refs.detailPane = document.getElementById("detailPane");
   refs.toastRegion = document.getElementById("toastRegion");
+  normalizeSidebarCreateSongButton();
 }
 
 function bindStaticEvents() {
@@ -1360,6 +1362,14 @@ function bindStaticEvents() {
     event.preventDefault();
     event.returnValue = "";
   });
+}
+
+function normalizeSidebarCreateSongButton() {
+  const button = refs.sidebarCreateSongBtn;
+  if (!button) return;
+  button.querySelectorAll("span").forEach((span) => span.remove());
+  button.setAttribute("aria-label", "곡 추가");
+  button.setAttribute("title", "곡 추가");
 }
 
 const handleSidebarToggle = () => {

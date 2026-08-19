@@ -1766,16 +1766,16 @@ body[data-module="calendar"] .detail-pane { overflow: hidden; }
 .praise-create-btn,
 .praise-empty-create-btn {
   display: inline-flex;
-  height: 34px;
+  height: 30px;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  background: var(--accent);
-  color: var(--accent-ink);
-  font-size: 13px;
+  gap: 6px;
+  background: color-mix(in srgb, var(--accent-soft) 72%, transparent);
+  color: var(--accent);
+  font-size: 12px;
   font-weight: 700;
   line-height: 1;
-  padding: 0 13px;
+  padding: 0 10px;
 }
 .praise-create-btn span,
 .praise-empty-create-btn span {
@@ -1787,14 +1787,15 @@ body[data-module="calendar"] .detail-pane { overflow: hidden; }
 .praise-empty-create-btn svg {
   color: inherit;
   display: block;
-  flex: 0 0 16px;
-  width: 16px;
-  height: 16px;
+  flex: 0 0 15px;
+  width: 15px;
+  height: 15px;
+  stroke-width: 2.4;
 }
 .praise-create-btn:hover,
 .praise-empty-create-btn:hover {
-  background: color-mix(in srgb, var(--accent) 88%, var(--ink));
-  color: var(--accent-ink);
+  background: color-mix(in srgb, var(--accent-soft) 92%, transparent);
+  color: var(--accent);
 }
 .reference-group-stack {
   display: grid;
