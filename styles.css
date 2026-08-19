@@ -7097,7 +7097,7 @@ textarea.svc-presenter-input-control--multiline {
   --svc-thumb-wrap-min-width: calc(var(--svc-thumb-width) + (var(--svc-thumb-ring-space) * 2));
   width: 100%;
   min-width: 0;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--svc-thumb-wrap-min-width)), var(--svc-thumb-wrap-min-width)));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--svc-thumb-wrap-min-width)), 1fr));
   justify-content: start;
   gap: 12px;
   max-width: 100%;
