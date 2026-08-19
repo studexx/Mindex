@@ -8,14 +8,17 @@ is a maintenance contract, not a request to split large files mechanically.
 `index.html` must load the runtime scripts in this order:
 
 1. `mindex.constants.js`
-2. `mindex.presenter.js`
-3. `app.js`
+2. `mindex.design-tokens.js`
+3. `mindex.presenter.js`
+4. `app.js`
 
 The order is checked by `tests/solid_audit.py`.
 
 ## Ownership
 
 - `mindex.constants.js` owns static values shared by the app and presenter.
+- `mindex.design-tokens.js` owns app-shell design tokens, button grammar
+  labels, and shared UI copy. It must not own worship domain data.
 - `mindex.presenter.js` owns slide construction and presenter-output helpers.
 - `app.js` owns bootstrap, state, persistence, DOM events, canonical shared
   helpers, and controller integration.
@@ -40,6 +43,10 @@ The current stable version intentionally raised the ratchet ceilings after the
 home/service navigation, presenter stability, praise input, and button grammar
 work landed across multiple threads. This was a stabilization checkpoint, not a
 new architecture target.
+
+The app.js line ceiling includes a 6-line design-token bridge added on
+2026-08-19 so shared navigation copy can come from `mindex.design-tokens.js`
+without changing behavior. Lower that ceiling after the next UI extraction.
 
 Known pressure points:
 

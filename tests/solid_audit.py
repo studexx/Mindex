@@ -8,12 +8,15 @@ from pathlib import Path
 APP_DIR = Path(__file__).resolve().parents[1]
 INDEX_HTML = APP_DIR / "index.html"
 APP_JS = APP_DIR / "app.js"
+DESIGN_TOKENS_JS = APP_DIR / "mindex.design-tokens.js"
 PRESENTER_JS = APP_DIR / "mindex.presenter.js"
 STYLES_CSS = APP_DIR / "styles.css"
 
 # Stable 2026-08-19 baseline. These are ratchets, not target architecture sizes.
 # Lower a limit when code is extracted; do not raise one without documenting why.
-MAX_APP_JS_LINES = 27_262
+# Raised by 6 on 2026-08-19 for the design-token bridge in app.js.
+# Lower this after the next UI extraction moves literals out of app.js.
+MAX_APP_JS_LINES = 27_268
 MAX_PRESENTER_JS_LINES = 4_259
 MAX_STYLES_LINES = 7_629
 MAX_FUNCTION_LINES = 450
@@ -132,12 +135,14 @@ def main() -> int:
 
     script_positions = [
         index_html.find("mindex.constants.js"),
+        index_html.find("mindex.design-tokens.js"),
         index_html.find("mindex.presenter.js"),
         index_html.find("app.js"),
     ]
     if any(position < 0 for position in script_positions) or script_positions != sorted(script_positions):
         failures.append(
-            "runtime script order must be mindex.constants.js, mindex.presenter.js, app.js"
+            "runtime script order must be mindex.constants.js, "
+            "mindex.design-tokens.js, mindex.presenter.js, app.js"
         )
 
     for function in largest:

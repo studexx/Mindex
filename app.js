@@ -1,5 +1,6 @@
 // Shared runtime configuration, caches, and domain lookup tables.
 const MINDEX_CONSTANTS = window.MINDEX_APP_CONSTANTS || {};
+const MINDEX_DESIGN_TOKENS = window.MINDEX_DESIGN_TOKENS || {};
 const {
   PART_TYPES,
   STRUCTURAL_PART_TYPES,
@@ -477,6 +478,11 @@ const SERVICE_FUTURE_LOOKAHEAD_DAYS = 7;
 const SERVICE_WEEK_PANEL_ID = "__week";
 const SERVICE_LIST_PANEL_ID = "__list";
 const SERVICE_TEMPLATES_PANEL_ID = "__templates";
+const SERVICE_NAVIGATION_LABELS = MINDEX_DESIGN_TOKENS.serviceNavigation || {};
+const SERVICE_HOME_WEEK_TITLE = SERVICE_NAVIGATION_LABELS.homeWeekTitle || "이번 주 예배";
+const SERVICE_WEEK_PANEL_TITLE = SERVICE_NAVIGATION_LABELS.serviceWeekTitle || "금주 예배";
+const SERVICE_LIST_PANEL_TITLE = SERVICE_NAVIGATION_LABELS.serviceListTitle || "전체 예배";
+const SERVICE_TEMPLATES_PANEL_TITLE = SERVICE_NAVIGATION_LABELS.templatesTitle || "템플릿";
 const CALENDAR_MIN_DATE = "2025-11-30";
 const {
   SUPABASE_PAGE_SIZE,
@@ -11396,9 +11402,9 @@ function currentPageTabTitle() {
   if (state.module === "service") {
     const service = state.services.find((svc) => svc.id === state.selectedServiceId);
     if (service) return serviceDisplayTypeName(service);
-    if (state.selectedServiceTypeId === SERVICE_WEEK_PANEL_ID) return "금주 예배";
-    if (state.selectedServiceTypeId === SERVICE_LIST_PANEL_ID) return "전체 예배";
-    if (state.selectedServiceTypeId === SERVICE_TEMPLATES_PANEL_ID) return "템플릿";
+    if (state.selectedServiceTypeId === SERVICE_WEEK_PANEL_ID) return SERVICE_WEEK_PANEL_TITLE;
+    if (state.selectedServiceTypeId === SERVICE_LIST_PANEL_ID) return SERVICE_LIST_PANEL_TITLE;
+    if (state.selectedServiceTypeId === SERVICE_TEMPLATES_PANEL_ID) return SERVICE_TEMPLATES_PANEL_TITLE;
     return "예배";
   }
   if (state.module === "scripture") {
@@ -11472,9 +11478,9 @@ function pageTabTitleForSnapshot(snapshot = {}) {
   if (moduleName === "service") {
     const service = state.services.find((svc) => svc.id === snapshot.selectedServiceId);
     if (service) return serviceDisplayTypeName(service);
-    if (snapshot.selectedServiceTypeId === SERVICE_WEEK_PANEL_ID) return "금주 예배";
-    if (snapshot.selectedServiceTypeId === SERVICE_LIST_PANEL_ID) return "전체 예배";
-    if (snapshot.selectedServiceTypeId === SERVICE_TEMPLATES_PANEL_ID) return "템플릿";
+    if (snapshot.selectedServiceTypeId === SERVICE_WEEK_PANEL_ID) return SERVICE_WEEK_PANEL_TITLE;
+    if (snapshot.selectedServiceTypeId === SERVICE_LIST_PANEL_ID) return SERVICE_LIST_PANEL_TITLE;
+    if (snapshot.selectedServiceTypeId === SERVICE_TEMPLATES_PANEL_ID) return SERVICE_TEMPLATES_PANEL_TITLE;
     return "예배";
   }
   if (moduleName === "scripture") {
@@ -19595,11 +19601,11 @@ function renderServiceList() {
       : `<p class="service-no-results">검색 결과가 없습니다.</p>`}
   ` : `
     <button class="service-type-row${state.selectedServiceTypeId === SERVICE_WEEK_PANEL_ID && !state.selectedServiceId ? " active" : ""}" type="button" data-service-week>
-      <span>금주 예배</span>
+      <span>${escapeHtml(SERVICE_WEEK_PANEL_TITLE)}</span>
       <small>${getServiceDashboardServices().length}</small>
     </button>
     <button class="service-type-row${state.selectedServiceTypeId === SERVICE_LIST_PANEL_ID && !state.selectedServiceId ? " active" : ""}" type="button" data-service-list>
-      <span>전체 예배</span>
+      <span>${escapeHtml(SERVICE_LIST_PANEL_TITLE)}</span>
       <small>${state.services.length}</small>
     </button>
   `;
@@ -20267,7 +20273,7 @@ function renderServiceListDetail() {
     }))
     .filter((group) => group.types.length);
   const count = groups.reduce((total, group) => total + group.types.reduce((sum, entry) => sum + entry.services.length, 0), 0);
-  const title = q ? "예배 검색 결과" : "전체 예배";
+  const title = q ? "예배 검색 결과" : SERVICE_LIST_PANEL_TITLE;
   refs.detailPane.innerHTML = `
     <div class="service-date-list service-date-list--all">
       <div class="service-section-head">
@@ -20360,12 +20366,12 @@ function renderServiceDetail() {
 
   if (!state.selectedServiceTypeId) {
     state.selectedServiceTypeId = SERVICE_WEEK_PANEL_ID;
-    renderServiceDashboard({ title: "금주 예배" });
+    renderServiceDashboard({ title: SERVICE_WEEK_PANEL_TITLE });
     return;
   }
 
   if (state.selectedServiceTypeId === SERVICE_WEEK_PANEL_ID) {
-    renderServiceDashboard({ title: "금주 예배" });
+    renderServiceDashboard({ title: SERVICE_WEEK_PANEL_TITLE });
     return;
   }
 
@@ -21698,7 +21704,7 @@ function renderServiceDashboard(options = {}) {
   const services = getServiceDashboardServices();
   const upcomingServices = getUpcomingServiceShortcuts(12);
   const q = normalizeSearchValue(state.search);
-  const title = options.title || "이번 주 예배";
+  const title = options.title || SERVICE_HOME_WEEK_TITLE;
   const weekDays = serviceWeekDays();
   const servicesByDate = new Map();
   for (const service of services) {

@@ -1,0 +1,57 @@
+# MINDEX Design System
+
+This document is the stable UI design grammar for the app shell. It complements
+`docs/ui-contracts.md`: this file owns reusable design tokens and migration
+rules, while `docs/ui-contracts.md` owns screen-level behavior contracts.
+
+## Runtime Owner
+
+`mindex.design-tokens.js` owns the small set of app UI tokens that need to be
+shared by multiple screens without turning `app.js` into a styling glossary.
+It loads after `mindex.constants.js` and before `mindex.presenter.js`/`app.js`.
+
+Keep presenter output typography and layout rules in `mindex.presenter.js` and
+`styles.presenter-output.css`. The design-token file is for the controller app
+shell, navigation, buttons, labels, and shared UI copy.
+
+## Token Rules
+
+- Use 5px or 10px steps for new UI spacing. Existing 4px shell rhythm may stay
+  until that area is deliberately retuned.
+- Use the shared typography ladder before adding a new one-off size:
+  `11/700` labels, `12/500` metadata, `14/600` rows and controls,
+  `15/700` compact titles, `20/700` page titles.
+- Use shared icon sizes before adding local values: 14px helper, 16px normal,
+  20px large.
+- Use shared button sizes: 40px topbar, 34px icon, 30px dense, 28px compact.
+- Do not add accent color to neutral shell controls. Accent is for selected
+  state, primary creation actions, or explicit attention.
+
+## Button Grammar
+
+- Sidebar and ambient utility actions should be icon-only with an accessible
+  `aria-label`.
+- Use text labels only when the command is primary, destructive, or ambiguous
+  without text.
+- Primary creation buttons may use accent fill; repeated inline add controls
+  should stay visually quiet.
+- Danger buttons must remain visually distinct from primary actions.
+
+## Service Navigation Copy
+
+- Home dashboard title: `이번 주 예배`
+- Service week panel title: `금주 예배`
+- Service list title: `전체 예배`
+- Template surfaces should not appear as ordinary default navigation unless
+  the user is explicitly managing templates.
+
+## Migration Rule
+
+Do not split `styles.css` or mechanically move large UI blocks without smoke or
+visual coverage. The safe sequence is:
+
+1. Document the rule.
+2. Add or reuse a token in `mindex.design-tokens.js`.
+3. Replace narrow repeated literals.
+4. Add smoke coverage if behavior can regress.
+5. Only then extract larger CSS or JS modules.
