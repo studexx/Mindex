@@ -67,7 +67,9 @@ create table if not exists public.mindex_song_versions (
   lyric_signature text not null,
   source_count integer not null default 1,
   is_primary boolean not null default false,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  unique (canonical_song_id, version_order),
+  unique (canonical_song_id, lyric_signature)
 );
 
 alter table public.mindex_song_versions

@@ -97,10 +97,17 @@ and moved without changing their IDs or lyric units:
 
 새찬송가 143↔통일찬송가 141 and 새찬송가 343↔통일찬송가 443 are supported by
 the same metadata sources. The canonical record for 새찬송가 143 already contained
-a hidden six-unit version with lyrics identical to 통일찬송가 141. That version was
-renamed and linked to the visible song without importing or duplicating lyrics.
+a hidden six-unit version with lyrics identical to 통일찬송가 141. That legacy
+version was removed, and 통일찬송가 141 was rebuilt from the curated 새찬송가 units
+so both hymn versions use the same line-break convention without importing lyrics.
 새찬송가 343↔통일찬송가 443 remains unresolved because the old-hymnal wording is
 different and no curated local copy of those lyrics is available.
+
+The same cleanup removed all 58 remaining hidden `기본`/`public` hymn versions and
+their 231 units after confirming that every affected hymn had a formal 새찬송가
+version and none of the legacy versions was referenced by a worship element.
+The schema source now also records the two production uniqueness constraints on
+`(canonical_song_id, version_order)` and `(canonical_song_id, lyric_signature)`.
 
 The same full local-score pass found one more existing metadata error among the
 appendix Amen settings. The rendered score for 새찬송가 643 explicitly says `통555`,
@@ -121,5 +128,5 @@ python3 scripts/audit_hbible_hymns.py --book both \
   --workers 4 --delay 0.05 \
   --output /tmp/mindex-hymn-audit-full.json
 python3 scripts/repair_confirmed_unified_hymn_amen_mapping.py --apply
-python3 scripts/add_confirmed_unified_hymn_141.py --apply
+python3 scripts/remove_hymn_legacy_versions.py --apply
 ```
