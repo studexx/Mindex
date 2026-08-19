@@ -1038,6 +1038,7 @@ function cacheRefs() {
   refs.songList = document.getElementById("songList");
   refs.sidebar = document.querySelector(".sidebar");
   refs.detailPane = document.getElementById("detailPane");
+  refs.loadingStatus = document.getElementById("loadingStatus");
   refs.toastRegion = document.getElementById("toastRegion");
   normalizeSidebarCreateSongButton();
 }
@@ -2924,10 +2925,12 @@ async function loadScriptureBooks({ silent = false } = {}) {
 async function loadServiceData({ silent = false } = {}) {
   if (serviceDataLoadPromise) return serviceDataLoadPromise;
   serviceDataLoadPromise = loadServiceDataOnce({ silent });
+  renderLoadingStatus();
   try {
     return await serviceDataLoadPromise;
   } finally {
     serviceDataLoadPromise = null;
+    renderLoadingStatus();
   }
 }
 
@@ -4597,10 +4600,12 @@ async function loadServiceItems(serviceId) {
     renderCurrentServiceModuleDetail();
   })();
   serviceItemLoadPromises.set(serviceId, loadPromise);
+  renderLoadingStatus();
   try {
     await loadPromise;
   } finally {
     serviceItemLoadPromises.delete(serviceId);
+    renderLoadingStatus();
   }
 }
 
@@ -9859,10 +9864,12 @@ async function hydratePresenterServiceData(serviceId = state.selectedServiceId) 
     return true;
   })();
   presenterServiceHydrationPromises.set(targetServiceId, hydrationPromise);
+  renderLoadingStatus();
   try {
     return await hydrationPromise;
   } finally {
     presenterServiceHydrationPromises.delete(targetServiceId);
+    renderLoadingStatus();
   }
 }
 
@@ -12344,6 +12351,7 @@ function renderConnectionStatus() {
   const hasClient = Boolean(state.client);
   const hasDirty = hasDirtyChanges();
   syncPraiseCreateControls();
+  renderLoadingStatus();
   function setStatusIcon(icon, cls, label) {
     refs.connectionStatus.className = "status-icon" + (cls ? " " + cls : "");
     refs.connectionStatus.setAttribute("aria-label", label);
@@ -12382,6 +12390,44 @@ function renderConnectionStatus() {
   }
 
   setStatusIcon("database", "connected", "연결됨");
+}
+
+function currentLoadingStatusItems() {
+  const items = [];
+  if (state.auth.loading) items.push("로그인 확인");
+  if (serviceDataLoadPromise) items.push("예배 목록");
+  if (serviceItemLoadPromises.size) items.push(`예배 내용 ${serviceItemLoadPromises.size}건`);
+  if (presenterServiceHydrationPromises.size) items.push("송출 준비");
+  if (songLoadPromise || state.loading) items.push("찬양 데이터");
+  if (backgroundSongLoadScheduled && !songCatalogLoaded) items.push("찬양 백그라운드");
+  if (hymnScoreManifestLoadPromise) items.push("악보 목록");
+  if (state.calendarLoading) items.push("교회력");
+  if (state.bibleReaderLoading) items.push("성경 본문");
+  if (state.bibleTextSearchLoading) items.push("말씀 검색");
+  if (state.saving) items.push("저장");
+  if (state.presenter.outputPendingAt && !isPresenterOutputHeartbeatOpen()) {
+    items.push(state.presenter.outputBlockedAt ? "팝업 차단 확인" : "출력 창 연결");
+  }
+  return [...new Set(items)];
+}
+
+function renderLoadingStatus() {
+  const el = refs.loadingStatus;
+  if (!el) return;
+  const items = currentLoadingStatusItems();
+  if (!items.length) {
+    el.hidden = true;
+    el.innerHTML = "";
+    return;
+  }
+  const primary = items[0];
+  const extra = items.length > 1 ? ` 외 ${items.length - 1}` : "";
+  el.hidden = false;
+  el.innerHTML = `
+    <span class="loading-status-dot" aria-hidden="true"></span>
+    <span class="loading-status-text">${escapeHtml(primary)}${escapeHtml(extra)}</span>
+  `;
+  el.setAttribute("aria-label", `${items.join(", ")} 처리 중`);
 }
 
 function clearSearchCaches(options = {}) {
