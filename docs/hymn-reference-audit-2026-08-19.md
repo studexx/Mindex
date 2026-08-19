@@ -62,6 +62,23 @@ reference audit found no remaining title mismatch for the seven versions, and
 the deployed GitHub Pages praise list showed every corrected title with none of
 the old spellings present.
 
+## Confirmed Duplicate Mapping Repairs
+
+Four duplicate 통일찬송가 mappings were cross-checked and repaired:
+
+| 통일찬송가 | Final 새찬송가 | Removed or moved from |
+| ---: | ---: | --- |
+| 132 호산나 호산나 | 141 | Removed empty version from 143 웬말인가 날 위하여 |
+| 548 주 기도문 영창 | 636 | Removed alias from 635 and moved the official version from 635 to 636 |
+| 549 우리 기도를 | 631 | Removed empty version from 632 주여 주여 우리를 |
+| 550 주 너를 지키시고 | 638 | Removed empty version from 639 주 함께하소서 |
+
+All four deleted versions had zero `mindex_version_units`. The operation reduced
+`mindex_song_versions` from 1,640 to 1,636 while `mindex_version_units` remained
+at 4,186. Post-repair schema checks had no issues or warnings, the targeted audit
+reported no duplicate mappings, and the deployed praise list showed two versions
+only on 새찬송가 141, 631, 636, and 638.
+
 ## Commands
 
 ```sh
