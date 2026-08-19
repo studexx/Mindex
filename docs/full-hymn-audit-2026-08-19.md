@@ -84,6 +84,29 @@ the shared correction.
 - The 29 title candidates remain unchanged unless the mismatch is independently
   confirmed; for example, 새찬송가 19 is not changed to the reference site's title.
 
+## Two-line Block Integrity
+
+All 724 hymn versions containing lyrics were also checked for the Mindex hymn
+layout convention: each lyric unit is divided into blocks of at most two lines,
+with one blank line between blocks. This blank-line structure is used when a
+presenter form addresses grouped sections such as `V1A` and `V1B`.
+
+| Item | Count |
+| --- | ---: |
+| Lyric units checked | 3,182 |
+| Units already conforming | 2,816 |
+| Units normalized | 366 |
+| Affected 새찬송가 versions | 115 |
+| Affected 통일찬송가 versions | 6 |
+| Nonconforming units after repair | 0 |
+
+Every affected row had no internal blank line before repair. Normalization only
+inserted blank lines after each pair of existing lyric lines; it did not split,
+join, reorder, or edit any non-whitespace character. Each changed unit remains
+`needs_review`, and each affected version remains `pending`. All 63 independently
+confirmed identical 새찬송가-통일찬송가 pairs still match in exact text and block
+structure after normalization.
+
 ## Verification
 
 - Pre- and post-update Supabase schema checks: zero issues, zero warnings
@@ -96,6 +119,8 @@ the shared correction.
 python3 tests/check_supabase_schema.py
 python3 scripts/repair_confirmed_full_hymn_audit.py
 python3 scripts/repair_confirmed_full_hymn_audit.py --apply
+python3 scripts/normalize_hymn_two_line_blocks.py
+python3 scripts/normalize_hymn_two_line_blocks.py --apply
 python3 scripts/audit_hbible_hymns.py --book both --workers 4 \
   --timeout 30 --retries 2 --delay 0.05 \
   --output /tmp/mindex-hymn-audit-strict-post-20260819.json
