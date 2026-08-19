@@ -474,6 +474,7 @@ const PRESENTER_REFERENCE_MEDIA_ACCEPT = "image/*,video/*,audio/*";
 const SERVICE_ITEM_AUDIO_ACCEPT = "audio/*";
 const PRESENTER_REFERENCE_MEDIA_MAX_BYTES = 50 * 1024 * 1024;
 const SERVICE_FUTURE_LOOKAHEAD_DAYS = 7;
+const SERVICE_WEEK_PANEL_ID = "__week";
 const SERVICE_LIST_PANEL_ID = "__list";
 const SERVICE_TEMPLATES_PANEL_ID = "__templates";
 const CALENDAR_MIN_DATE = "2025-11-30";
@@ -1186,6 +1187,19 @@ function bindStaticEvents() {
       state.selectedServiceTypeId = worshipAppServiceTypeId(serviceTypeItem.dataset.serviceTypeId);
       state.selectedServiceId = null;
       state.selectedServiceItemIndex = null;
+      renderServiceList();
+      renderCurrentServiceModuleDetail();
+      syncBrowserHistory();
+      return;
+    }
+
+    const serviceWeekItem = event.target.closest("[data-service-week]");
+    if (serviceWeekItem) {
+      if (!confirmDiscardServiceChanges()) return;
+      state.selectedServiceTypeId = SERVICE_WEEK_PANEL_ID;
+      state.selectedServiceId = null;
+      state.selectedServiceItemIndex = null;
+      state.newServiceForm = null;
       renderServiceList();
       renderCurrentServiceModuleDetail();
       syncBrowserHistory();
@@ -2390,7 +2404,7 @@ async function switchModule(moduleName, options = {}) {
   saveCurrentListScroll();
   state.module = moduleName;
   if (moduleName === "service" && !state.selectedServiceId && !state.selectedServiceTypeId) {
-    state.selectedServiceTypeId = SERVICE_LIST_PANEL_ID;
+    state.selectedServiceTypeId = SERVICE_WEEK_PANEL_ID;
   }
   if (moduleName === "calendar") {
     state.calendarScrollTargetMonth = toLocalDateStr(new Date()).slice(0, 7);
@@ -11381,7 +11395,11 @@ function currentPageTabTitle() {
   }
   if (state.module === "service") {
     const service = state.services.find((svc) => svc.id === state.selectedServiceId);
-    return service ? serviceDisplayTypeName(service) : "예배";
+    if (service) return serviceDisplayTypeName(service);
+    if (state.selectedServiceTypeId === SERVICE_WEEK_PANEL_ID) return "금주 예배";
+    if (state.selectedServiceTypeId === SERVICE_LIST_PANEL_ID) return "전체 예배";
+    if (state.selectedServiceTypeId === SERVICE_TEMPLATES_PANEL_ID) return "템플릿";
+    return "예배";
   }
   if (state.module === "scripture") {
     const book = getBibleBooks().find((item) => item.code === state.selectedBookCode);
@@ -11454,6 +11472,7 @@ function pageTabTitleForSnapshot(snapshot = {}) {
   if (moduleName === "service") {
     const service = state.services.find((svc) => svc.id === snapshot.selectedServiceId);
     if (service) return serviceDisplayTypeName(service);
+    if (snapshot.selectedServiceTypeId === SERVICE_WEEK_PANEL_ID) return "금주 예배";
     if (snapshot.selectedServiceTypeId === SERVICE_LIST_PANEL_ID) return "전체 예배";
     if (snapshot.selectedServiceTypeId === SERVICE_TEMPLATES_PANEL_ID) return "템플릿";
     return "예배";
@@ -19575,6 +19594,10 @@ function renderServiceList() {
       ? renderServiceSidebarDateGroups(services)
       : `<p class="service-no-results">검색 결과가 없습니다.</p>`}
   ` : `
+    <button class="service-type-row${state.selectedServiceTypeId === SERVICE_WEEK_PANEL_ID && !state.selectedServiceId ? " active" : ""}" type="button" data-service-week>
+      <span>금주 예배</span>
+      <small>${getServiceDashboardServices().length}</small>
+    </button>
     <button class="service-type-row${state.selectedServiceTypeId === SERVICE_LIST_PANEL_ID && !state.selectedServiceId ? " active" : ""}" type="button" data-service-list>
       <span>전체 예배</span>
       <small>${state.services.length}</small>
@@ -20336,8 +20359,13 @@ function renderServiceDetail() {
   }
 
   if (!state.selectedServiceTypeId) {
-    state.selectedServiceTypeId = SERVICE_LIST_PANEL_ID;
-    renderServiceListDetail();
+    state.selectedServiceTypeId = SERVICE_WEEK_PANEL_ID;
+    renderServiceDashboard({ title: "금주 예배" });
+    return;
+  }
+
+  if (state.selectedServiceTypeId === SERVICE_WEEK_PANEL_ID) {
+    renderServiceDashboard({ title: "금주 예배" });
     return;
   }
 
@@ -21659,7 +21687,7 @@ function renderServiceScriptureLinkControl(item) {
   return `<button class="svc-item-link" type="button" data-open-scripture-reference="${escapeAttr(reference)}" aria-label="말씀에서 열기">말씀</button>`;
 }
 
-function renderServiceDashboard() {
+function renderServiceDashboard(options = {}) {
   if (!state.serviceTypes.length) {
     refs.detailPane.innerHTML = state.serviceError
       ? renderUnavailableDetail("service", "예배", state.serviceError)
@@ -21670,6 +21698,7 @@ function renderServiceDashboard() {
   const services = getServiceDashboardServices();
   const upcomingServices = getUpcomingServiceShortcuts(12);
   const q = normalizeSearchValue(state.search);
+  const title = options.title || "이번 주 예배";
   const weekDays = serviceWeekDays();
   const servicesByDate = new Map();
   for (const service of services) {
@@ -21683,7 +21712,7 @@ function renderServiceDashboard() {
       <section class="service-dashboard-section">
         <div class="service-section-head">
           <div>
-            <h2 class="service-date-list-title">${q ? "검색 결과" : "이번 주 예배"}</h2>
+            <h2 class="service-date-list-title">${q ? "검색 결과" : escapeHtml(title)}</h2>
             ${!q ? `<p class="service-week-range">${escapeHtml(formatServiceWeekRange(start, end))}</p>` : ""}
           </div>
         </div>
