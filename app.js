@@ -16799,6 +16799,7 @@ const PUBLIC_WORSHIP_TEMPLATE_VERSIONS = {
           includeEntrancePraise: false,
           includeHymnPraise: false,
           includeCreed: false,
+          offeringSpecial: String(options.service?.date || options.service?.service_date || "").slice(0, 10) === "2026-07-19",
           offeringThanksAsset: String(options.service?.date || options.service?.service_date || "").slice(0, 10) === "2026-07-19"
             ? ALL_GENERATIONS_2026_07_19_OFFERING_THANKS_ASSET
             : null,
@@ -17008,8 +17009,9 @@ function publicAllGenerationsOfferingStep(options = {}) {
   const prayerPerson = cleanServiceAssignee(
     options.prayerPerson || options.person || defaultServiceOfferingPrayerLeader("sunday-main"),
   );
+  const praiseLabel = options.specialOffering || options.special_offering ? "봉헌특송" : "봉헌찬송";
   const elements = [
-    { label: "봉헌특송", name: "봉헌특송", elementType: "praise" },
+    { label: praiseLabel, name: praiseLabel, elementType: "praise" },
     { label: "봉헌기도", name: "봉헌기도", elementType: "title_person", person: prayerPerson },
   ];
   if (options.thanksAsset) {
@@ -17574,7 +17576,10 @@ function publicSundayThirdTemplate(options = {}) {
     ] },
     ...(includeCreed ? [publicWorshipCreedStep()] : []),
     allGenerations
-      ? publicAllGenerationsOfferingStep({ thanksAsset: options.offeringThanksAsset })
+      ? publicAllGenerationsOfferingStep({
+        specialOffering: options.offeringSpecial,
+        thanksAsset: options.offeringThanksAsset,
+      })
       : publicWorshipOfferingStep({ score: true, praiseLabel: "봉헌찬송", typeId }),
     publicSundayThirdAnnouncementsStep(),
     ...(includeCommunityConfession ? [publicWorshipCommunityConfessionStep()] : []),

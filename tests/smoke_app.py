@@ -2235,6 +2235,33 @@ def main() -> int:
                                   state.calendarData = previousCalendarData;
                                 }
                               })(),
+                              allGenerationRegular: (() => {
+                                const previousCalendarData = state.calendarData;
+                                const service = {
+                                  id: '__smoke_sunday_third_all_generation_regular__',
+                                  type_id: 'sunday-main',
+                                  date: '2026-08-23',
+                                  alias: '온세대 찬양예배',
+                                };
+                                try {
+                                  state.calendarData = [
+                                    ...(previousCalendarData || []),
+                                    { id: '__smoke_all_generation_regular_scaffold__', date: '2026-08-23', church_schedule: '온세대 찬양예배' },
+                                  ];
+                                  const scaffold = buildWorshipServiceScaffold(service.id, service.type_id, { service });
+                                  const offeringSection = scaffold.sections.find((section) => section.section_key === 'offering');
+                                  return scaffold.elements
+                                    .filter((element) => element.section_id === offeringSection?.id)
+                                    .map((element) => ({
+                                      type: element.element_type || '',
+                                      label: element.source_ref?.label || '',
+                                      outputMode: element.config?.outputMode || '',
+                                      assetUrl: element.config?.asset?.url || '',
+                                    }));
+                                } finally {
+                                  state.calendarData = previousCalendarData;
+                                }
+                              })(),
                               afternoon: summarize('sunday-afternoon'),
                               thirdDefaults: {
                                 entrancePraise: publicSundayThirdEntrancePraiseElement().defaultSong || null,
@@ -3184,6 +3211,10 @@ def main() -> int:
                                 "outputMode": "",
                                 "assetUrl": "assets/worship-templates/all-generations-2026-07-19-offering-thanks.png",
                             },
+                        ]
+                        and template_terms["sundayPublicScaffold"]["allGenerationRegular"] == [
+                            {"type": "praise", "label": "봉헌찬송", "outputMode": "", "assetUrl": ""},
+                            {"type": "title_person", "label": "봉헌기도", "outputMode": "", "assetUrl": ""},
                         ]
                         and template_terms["sundayPublicScaffold"]["allGeneration"]["praiseElements"] == [
                             {"label": "환영", "title": "환영\n테힐라 찬양단"},
@@ -5714,7 +5745,7 @@ def main() -> int:
                                 songCount: allGenerationPraiseItems.filter((entry) => entry.song_id).length,
                                 maxElementOrder: Math.max(...allGenerationPraiseItems.map((entry) => Number(entry._worshipElementOrder) || 0)),
                                 projectedFromRegularSections: allGenerationProjectedSections,
-                                projectedFromRegularBlockedLabels: ["입례찬양", "찬송", "사도신경", "공동체고백", "봉헌찬송"]
+                                projectedFromRegularBlockedLabels: ["입례찬양", "찬송", "사도신경", "공동체고백"]
                                   .filter((label) => allGenerationProjectedLabels.includes(label)),
                                 draftCleared: !state.presenterPreparationDrafts[allGenerationService.id],
                               },
