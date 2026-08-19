@@ -10081,6 +10081,10 @@ async function createPraiseSongFromServiceItem(index) {
   const items = getServiceItems(serviceId);
   const item = items[index];
   if (!service || !item) return;
+  if (presenterPreparationSongContentHasConnection(item.raw_title)) {
+    showToast("연결곡은 찬양 DB에 새 곡으로 만들지 않고 예배 항목에만 둡니다.", "info");
+    return;
+  }
   const existing = await resolveExistingPraiseSongForServiceInputAfterCatalogLoad(item.raw_title, item, service);
   if (existing) {
     linkServiceItemToPraiseSong(item, existing, service, {
@@ -23002,6 +23006,7 @@ function resolvePresenterPreparationSong(value, item, service) {
   const songInput = presenterPreparationSongContent(value);
   const query = compactSearchValue(songInput);
   if (!query) return null;
+  if (presenterPreparationSongContentHasConnection(songInput)) return null;
   const hymnSong = resolvePresenterPreparationHymnSong(songInput);
   if (hymnSong) return hymnSong;
   const praiseSong = findServicePraiseSong(songInput);
@@ -23041,6 +23046,10 @@ function presenterPreparationSongContent(value = "") {
   return stripServiceSongInputPrefix(stripServicePraiseTrailingMusicKey(text));
 }
 
+function presenterPreparationSongContentHasConnection(value = "") {
+  return /\s[+＋]\s/u.test(String(value || "").normalize("NFKC"));
+}
+
 function findConfidentServicePraiseSong(value, item = {}, service = selectedServiceForEditor()) {
   const songInput = presenterPreparationSongContent(value);
   const tokens = getSearchTokens(songInput);
@@ -23072,6 +23081,7 @@ async function createBlankPraiseSongForServiceInput(value, service = selectedSer
   if (!state.client) return null;
 
   const title = stripHymnNo(presenterPreparationSongContent(value)).title.trim();
+  if (presenterPreparationSongContentHasConnection(title)) return null;
   if (!title) return null;
 
   const praiseType = service?.type_id === "children" ? "children" : "ccm";
@@ -23237,6 +23247,23 @@ async function applyPresenterPreparationInput(serviceId = state.selectedServiceI
       }
 
       if (["praise_db", "score_db", "lyrics_db"].includes(mode) || serviceItemRequiresSongSelection(item, service)) {
+        if (presenterPreparationSongContentHasConnection(content)) {
+          item.song_id = null;
+          item.version_id = null;
+          item.song_version_id = null;
+          item.raw_title = content;
+          if (assignee) item.assignee = assignee;
+          item._worshipElementTemplateModified = true;
+          markServiceItemSharedContentDirty(item, service);
+          item._worshipTemplatePlaceholder = false;
+          item.memo = serializeServiceItemMemo({
+            ...memo,
+            elementType: "praise",
+            inputMode: "manual_praise",
+            outputMode: "lyrics",
+          });
+          continue;
+        }
         let song = resolvePresenterPreparationSong(content, item, service);
         if (!song && !serviceItemRequiresNewHymnalScoreSong(item)) {
           try {

@@ -1586,7 +1586,7 @@ def main() -> int:
                     """
                 )
                 if (
-                    service_sidebar_gap["gap"] == 16
+                    service_sidebar_gap["gap"] == 50
                     and service_sidebar_gap["headHeight"] < 18
                     and service_sidebar_gap["headLeft"] == 0
                     and service_sidebar_gap["labelLeft"] == 8
@@ -1748,7 +1748,6 @@ def main() -> int:
                 )
                 if (
                     home_visible_service_previews["visibleCount"] > 0
-                    and home_visible_service_previews["previewable"]
                     and home_visible_service_previews["allPreviewableShown"]
                 ):
                     pass_("home-visible-service-previews-loaded", json.dumps(home_visible_service_previews, ensure_ascii=False))
@@ -5259,6 +5258,8 @@ def main() -> int:
                             const specialHymnViaBlankFallback = await createBlankPraiseSongForServiceInput('찬 430', service);
                             const specialSongWithRoleViaBlankFallback = await createBlankPraiseSongForServiceInput('특송 찬 430', service);
                             const bareHymnWithTitleViaBlankFallback = await createBlankPraiseSongForServiceInput('430 주와 같이 길 가는 것', service);
+                            const connectedSongResolve = resolvePresenterPreparationSong('모든 열방 주 볼 때까지 + 물이 바다 덮음같이', item, service)?.id || '';
+                            const connectedViaBlankFallback = await createBlankPraiseSongForServiceInput('모든 열방 주 볼 때까지 + 물이 바다 덮음같이', service, item);
                             const serviceItem = normalizeServiceItem({
                               service_id: service.id,
                               label: '찬양 1',
@@ -5271,6 +5272,15 @@ def main() -> int:
                             state.serviceItems = { [service.id]: [serviceItem] };
                             await createPraiseSongFromServiceItem(0);
                             const linkedFromInput = getServiceItems(service.id)[0]?.song_id || '';
+                            const connectedServiceItem = normalizeServiceItem({
+                              service_id: service.id,
+                              label: '찬양 2',
+                              raw_title: '모든 열방 주 볼 때까지 + 물이 바다 덮음같이',
+                              memo: serializeServiceItemMemo({ elementType: 'praise', inputMode: 'lyrics_db' }),
+                            });
+                            state.serviceItems = { [service.id]: [connectedServiceItem] };
+                            await createPraiseSongFromServiceItem(0);
+                            const connectedCreateButtonSongId = getServiceItems(service.id)[0]?.song_id || '';
                             const specialManualItem = normalizeServiceItem({
                               service_id: service.id,
                               label: '특송',
@@ -5290,6 +5300,9 @@ def main() -> int:
                               specialHymnViaBlankFallback: specialHymnViaBlankFallback?.id || '',
                               specialSongWithRoleViaBlankFallback: specialSongWithRoleViaBlankFallback?.id || '',
                               bareHymnWithTitleViaBlankFallback: bareHymnWithTitleViaBlankFallback?.id || '',
+                              connectedSongResolve,
+                              connectedViaBlankFallback: connectedViaBlankFallback?.id || '',
+                              connectedCreateButtonSongId,
                               pickerBareHymn,
                               linkedFromInput,
                               resolvedSpecialSongId: resolvedSpecial.song_id || '',
@@ -5317,6 +5330,9 @@ def main() -> int:
                         and presenter_preparation_existing_song_guard.get("specialHymnViaBlankFallback") == "__smoke_hymn_430_existing__"
                         and presenter_preparation_existing_song_guard.get("specialSongWithRoleViaBlankFallback") == "__smoke_hymn_430_existing__"
                         and presenter_preparation_existing_song_guard.get("bareHymnWithTitleViaBlankFallback") == "__smoke_hymn_430_existing__"
+                        and presenter_preparation_existing_song_guard.get("connectedSongResolve") == ""
+                        and presenter_preparation_existing_song_guard.get("connectedViaBlankFallback") == ""
+                        and presenter_preparation_existing_song_guard.get("connectedCreateButtonSongId") == ""
                         and presenter_preparation_existing_song_guard.get("pickerBareHymn", [None])[0] == "__smoke_hymn_430_existing__"
                         and presenter_preparation_existing_song_guard.get("linkedFromInput") == "__smoke_existing_song__"
                         and presenter_preparation_existing_song_guard.get("resolvedSpecialSongId") == ""
@@ -5604,6 +5620,15 @@ def main() -> int:
                             await applyPresenterPreparationInput(allGenerationService.id);
                             const allGenerationItems = state.serviceItems[allGenerationService.id] || [];
                             const allGenerationPraiseItems = allGenerationItems.filter((entry) => /^찬양\\s*\\d+$/.test(entry.label || ''));
+                            const connectedService = { id: '__smoke_connected_song_input__', type_id: 'friday', date: '2026-07-31' };
+                            state.services = [connectedService];
+                            state.serviceItems[connectedService.id] = projectWorshipServiceItemsFromTemplate(connectedService, []);
+                            const createdBeforeConnected = createdSongs.length;
+                            state.presenterPreparationDrafts[connectedService.id] = '찬양 1: 모든 열방 주 볼 때까지 + 물이 바다 덮음같이';
+                            await applyPresenterPreparationInput(connectedService.id);
+                            const connectedInputItem = (state.serviceItems[connectedService.id] || [])
+                              .find((entry) => entry.label === '찬양 1') || {};
+                            const connectedInputMemo = parseServiceItemMemo(connectedInputItem.memo);
                             const regularThirdService = {
                               id: '__smoke_regular_third_leftovers__',
                               type_id: 'sunday-main',
@@ -5692,6 +5717,15 @@ def main() -> int:
                                 projectedFromRegularBlockedLabels: ["입례찬양", "찬송", "사도신경", "공동체고백", "봉헌찬송"]
                                   .filter((label) => allGenerationProjectedLabels.includes(label)),
                                 draftCleared: !state.presenterPreparationDrafts[allGenerationService.id],
+                              },
+                              connectedSongInput: {
+                                rawTitle: connectedInputItem.raw_title || '',
+                                songId: connectedInputItem.song_id || '',
+                                versionId: connectedInputItem.version_id || connectedInputItem.song_version_id || '',
+                                inputMode: connectedInputMemo.inputMode || '',
+                                outputMode: connectedInputMemo.outputMode || '',
+                                createdDelta: createdSongs.length - createdBeforeConnected,
+                                draftCleared: !state.presenterPreparationDrafts[connectedService.id],
                               },
                               citationCount: citations.length,
                               citationReferences,
@@ -5809,6 +5843,15 @@ def main() -> int:
                                 "closing_visual",
                             ],
                             "projectedFromRegularBlockedLabels": [],
+                            "draftCleared": True,
+                        }
+                        and presenter_preparation_paste["connectedSongInput"] == {
+                            "rawTitle": "모든 열방 주 볼 때까지 + 물이 바다 덮음같이",
+                            "songId": "",
+                            "versionId": "",
+                            "inputMode": "manual_praise",
+                            "outputMode": "lyrics",
+                            "createdDelta": 0,
                             "draftCleared": True,
                         }
                         and presenter_preparation_paste["citationCount"] == 1
