@@ -362,6 +362,9 @@ Small visual polish that does not alter behavior does not need an entry.
 - `mindex_worship_services`에는 범용 `tags`를 두지 않는다. 날짜별로 화면에
   표시할 공개 이름은 `service_alias`에 저장한다. 예: `온세대 찬양예배`,
   `청소년부 제자헌신예배`.
+- `금요기도회`, `월삭예배`, `삼삼오오예배`, `문화예배`, `구역연합예배`는
+  제목을 하나로 덮어쓰지 않는다. 전체 예배 목록 UI에서는 같은 family인
+  `금요예배`로 묶고, 각 카드에는 variant 이름을 subtitle로 표시한다.
 - 정규 예배 유형과 기본 제목은 `service_type_id`와 `title`이 소유한다.
   별명은 이 값을 덮어쓰지 않으며, 목록·검색·프레젠터 표시에서만 우선한다.
 - 찬양대·찬양팀 이름은 해당 찬양 섹션의 담당자, 집회 없음·헌신예배 같은

@@ -20210,13 +20210,7 @@ function renderServiceListDetail() {
   const groups = ["public", "ministry", "special", "other"]
     .map((key) => ({
       key,
-      types: types
-        .filter((type) => serviceTypeGroupKey(type.id) === key)
-        .map((type) => ({
-          type,
-          services: getFilteredServicesForType(type.id),
-        }))
-        .filter((entry) => entry.services.length || !q),
+      types: serviceListTypeEntriesForGroup(types.filter((type) => serviceTypeGroupKey(type.id) === key), q),
     }))
     .filter((group) => group.types.length);
   const count = groups.reduce((total, group) => total + group.types.reduce((sum, entry) => sum + entry.services.length, 0), 0);
@@ -20237,7 +20231,7 @@ function renderServiceListDetail() {
           <section class="service-list-group">
             <h3>${escapeHtml(serviceTypeGroupLabel(group.key))}</h3>
             <div class="service-list-type-stack">
-              ${group.types.map(({ type, services }) => renderServiceListTypeBlock(type, services, q)).join("")}
+              ${group.types.map((entry) => renderServiceListTypeBlock(entry.type, entry.services, q, entry)).join("")}
             </div>
           </section>
         `).join("")}
@@ -20246,9 +20240,35 @@ function renderServiceListDetail() {
   finishDetailRender();
 }
 
-function renderServiceListTypeBlock(type, services, query) {
+function serviceListTypeEntriesForGroup(types = [], query = "") {
+  const entries = [];
+  const handled = new Set();
+  for (const type of types) {
+    const familyKey = serviceListTypeFamilyKey(type.id);
+    if (handled.has(familyKey)) continue;
+    handled.add(familyKey);
+    const familyTypes = types.filter((entry) => serviceListTypeFamilyKey(entry.id) === familyKey);
+    const services = familyTypes.flatMap((entry) => getFilteredServicesForType(entry.id));
+    if (services.length || !query) {
+      entries.push({
+        type,
+        services,
+        familyKey,
+        title: familyKey === "friday-family" ? "금요예배" : serviceTypeDisplayName(type.id),
+      });
+    }
+  }
+  return entries;
+}
+
+function serviceListTypeFamilyKey(typeId = "") {
+  const appTypeId = worshipAppServiceTypeId(typeId);
+  return ["friday", "monthly"].includes(appTypeId) ? "friday-family" : appTypeId;
+}
+
+function renderServiceListTypeBlock(type, services, query, options = {}) {
   const sorted = sortServicesByDate(services, "desc");
-  const typeName = serviceTypeDisplayName(type.id);
+  const typeName = options.title || serviceTypeDisplayName(type.id);
   return `
     <section class="service-list-type-block">
       <header>

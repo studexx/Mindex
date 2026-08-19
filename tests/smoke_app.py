@@ -1785,6 +1785,38 @@ def main() -> int:
                 else:
                     fail("service-date-list-gutter", json.dumps(service_gutter, ensure_ascii=False))
 
+                friday_family_grouping = page.evaluate(
+                    """
+                    (() => {
+                      const blocks = [...document.querySelectorAll('.service-list-type-block')].map((block) => ({
+                        title: block.querySelector('.service-list-type-open strong')?.textContent.trim() || '',
+                        cardTypes: [...block.querySelectorAll('.service-date-card-type')].map((node) => node.textContent.trim()),
+                        notes: [...block.querySelectorAll('.service-date-card-note')].map((node) => node.textContent.trim()).filter(Boolean),
+                      }));
+                      const friday = blocks.find((block) => block.title === '금요예배') || {};
+                      return {
+                        titles: blocks.map((block) => block.title),
+                        fridayCardTypes: friday.cardTypes || [],
+                        fridayNotes: friday.notes || [],
+                        hasFridayFamily: Boolean(friday.title),
+                        splitFridayTitles: blocks
+                          .map((block) => block.title)
+                          .filter((title) => ['금요기도회', '월삭예배', '삼삼오오예배'].includes(title)),
+                      };
+                    })()
+                    """
+                )
+                if (
+                    friday_family_grouping["hasFridayFamily"]
+                    and friday_family_grouping["splitFridayTitles"] == []
+                    and all(type_name == "금요예배" for type_name in friday_family_grouping["fridayCardTypes"])
+                    and any("월삭예배" in note for note in friday_family_grouping["fridayNotes"])
+                    and any("삼삼오오예배" in note for note in friday_family_grouping["fridayNotes"])
+                ):
+                    pass_("service-list-friday-family-grouping", json.dumps(friday_family_grouping, ensure_ascii=False))
+                else:
+                    fail("service-list-friday-family-grouping", json.dumps(friday_family_grouping, ensure_ascii=False))
+
                 page.evaluate(
                     """
                     (() => {
