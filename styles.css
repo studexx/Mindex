@@ -108,7 +108,7 @@
   --sidebar-section-x: var(--sidebar-item-x); --sidebar-section-label-x: var(--sidebar-item-pad-x); --sidebar-section-label-gap: var(--s2);
   --content-pad-y: 24px; --content-pad-x: 24px; --content-pad-tight: 24px;
   --page-title-size: 20px; --page-title-weight: 700; --page-subtitle-size: 12px;
-  --ui-label-size: 11px; --ui-meta-size: 12px; --ui-body-size: 14px; --ui-row-size: 14px; --ui-card-title-size: 15px;
+  --ui-label-size: 11px; --ui-meta-size: 12px; --ui-body-size: 14px; --ui-row-size: 14px; --ui-card-title-size: 15px; --ui-page-title-size: 20px;
   --ui-label-weight: 700; --ui-meta-weight: 500; --ui-row-weight: 600; --ui-title-weight: 700;
   --ui-icon-size: 16px; --ui-icon-sm: 14px; --ui-icon-lg: 20px;
   --ui-icon-btn-size: 34px; --ui-icon-btn-dense: 30px; --ui-icon-btn-inline: 28px;
@@ -229,7 +229,7 @@ body.sidebar-collapsed { --shell-left-w: var(--topbar-left-compact-w); }
 }
 .top-left-tool:focus-visible,
 .brand-home:focus-visible {
-  outline: 0;
+  outline: 2px solid var(--accent); outline-offset: 2px;
 }
 .top-left-tool:focus-visible::before,
 .brand-home:focus-visible::before {
@@ -775,7 +775,7 @@ body[data-module="praise"] .list-filter {
   background: var(--sidebar-hover-bg);
 }
 .nav-rail-tab:focus-visible {
-  outline: 0;
+  outline: 2px solid var(--accent); outline-offset: 2px;
 }
 .nav-rail-tab:focus-visible::before {
   background: var(--sidebar-hover-bg);
@@ -2556,7 +2556,7 @@ body[data-module="calendar"] .detail-pane { overflow: hidden; }
   user-select: none;
 }
 .bible-verse:hover { background: color-mix(in srgb, var(--panel-2) 50%, transparent); }
-.bible-verse:focus-visible { outline: 1px solid var(--line-2); outline-offset: 2px; }
+.bible-verse:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .bible-verse.selected { background: color-mix(in srgb, var(--accent-soft) 34%, transparent); }
 .bible-search-result {
   grid-template-columns: 72px minmax(0, 1fr) 24px;
@@ -6103,6 +6103,14 @@ textarea.svc-presenter-input-control--multiline {
 .svc-presenter-status--ready {
   background: color-mix(in srgb, var(--accent) 16%, transparent);
   color: var(--accent);
+}
+.svc-presenter-status--pending {
+  background: color-mix(in srgb, var(--warn) 14%, transparent);
+  color: var(--warn);
+}
+.svc-presenter-status--blocked {
+  background: color-mix(in srgb, #d9534f 18%, transparent);
+  color: #ff9b96;
 }
 .svc-presenter-warmup {
   display: inline-flex;

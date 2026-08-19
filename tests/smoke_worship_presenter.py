@@ -5291,8 +5291,12 @@ def main() -> int:
                         openCalls: window.__mindexPresenterOpenCalls || 0,
                         hydrateCalls,
                         connected: state.presenter.outputConnectedAt > 0,
+                        pending: state.presenter.outputPendingAt > 0,
+                        blocked: state.presenter.outputBlockedAt > 0,
+                        attemptServiceId: state.presenter.outputAttemptServiceId,
                         open: isPresenterOutputWindowOpen(),
                         hasWindowRef: Boolean(state.presenter.outputWindow),
+                        status: document.querySelector('.svc-presenter-status')?.textContent.trim() || '',
                       };
                     }
                     """,
@@ -5302,8 +5306,12 @@ def main() -> int:
                     blocked_popup_state["openCalls"] == 1
                     and blocked_popup_state["hydrateCalls"] == 0
                     and not blocked_popup_state["connected"]
+                    and not blocked_popup_state["pending"]
+                    and blocked_popup_state["blocked"]
+                    and blocked_popup_state["attemptServiceId"] == service["id"]
                     and not blocked_popup_state["open"]
                     and not blocked_popup_state["hasWindowRef"]
+                    and blocked_popup_state["status"] == "팝업 차단"
                 ):
                     pass_("presenter-popup-block-skips-hydrate", json.dumps(blocked_popup_state, ensure_ascii=False))
                 else:
@@ -6457,6 +6465,7 @@ def main() -> int:
                       let stopCount = 0;
                       let directFullscreenCalls = 0;
                       let electronFullscreenCalls = 0;
+                      let outputFocusCalls = 0;
                       const messages = [];
                       state.module = 'presenter';
                       state.selectedServiceId = '__smoke_active_presenter__';
@@ -6464,6 +6473,9 @@ def main() -> int:
                       state.presenter.outputConnectedAt = Date.now();
                       state.presenter.outputWindow = {
                         closed: false,
+                        focus() {
+                          outputFocusCalls += 1;
+                        },
                         document: {
                           documentElement: {
                             requestFullscreen() {
@@ -6511,6 +6523,7 @@ def main() -> int:
                         stopCount,
                         directFullscreenCalls,
                         electronFullscreenCalls,
+                        outputFocusCalls,
                         messageTypes: messages.map((message) => message.type),
                         signalType: signal.type || '',
                       };
@@ -6523,6 +6536,7 @@ def main() -> int:
                     and controller_f11_state["stopCount"] == 1
                     and controller_f11_state["directFullscreenCalls"] == 0
                     and controller_f11_state["electronFullscreenCalls"] == 1
+                    and controller_f11_state["outputFocusCalls"] == 1
                     and controller_f11_state["messageTypes"] == []
                     and controller_f11_state["signalType"] == ""
                 ):

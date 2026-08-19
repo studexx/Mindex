@@ -1837,9 +1837,9 @@ def main() -> int:
                 if (
                     friday_family_grouping["hasFridayFamily"]
                     and friday_family_grouping["splitFridayTitles"] == []
-                    and all(type_name == "금요예배" for type_name in friday_family_grouping["fridayCardTypes"])
-                    and any("월삭예배" in note for note in friday_family_grouping["fridayNotes"])
-                    and any("삼삼오오예배" in note for note in friday_family_grouping["fridayNotes"])
+                    and "금요기도회" in friday_family_grouping["fridayCardTypes"]
+                    and "월삭예배" in friday_family_grouping["fridayCardTypes"]
+                    and "삼삼오오예배" in friday_family_grouping["fridayCardTypes"]
                 ):
                     pass_("service-list-friday-family-grouping", json.dumps(friday_family_grouping, ensure_ascii=False))
                 else:

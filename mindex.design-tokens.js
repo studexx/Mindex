@@ -11,6 +11,14 @@
     helper: 14,
     normal: 16,
     large: 20,
+    stroke: 1.5,
+  });
+
+  const TABS = Object.freeze({
+    width: 180,
+    size: 13,
+    weight: 600,
+    activeWeight: 700,
   });
 
   const BUTTONS = Object.freeze({
@@ -45,6 +53,7 @@
     version: "2026-08-19",
     typography: TYPOGRAPHY,
     icons: ICONS,
+    tabs: TABS,
     buttons: BUTTONS,
     spacing: SPACING,
     serviceNavigation: SERVICE_NAVIGATION,

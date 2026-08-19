@@ -106,6 +106,26 @@ the same four-line verse layout used by the curated 새찬송가 version.
 Automated reference matches remain `pending`/`needs_review` until a person reviews
 them; external cross-checking alone does not clear the visible review badge.
 
+## Spacing-only Identical Lyrics
+
+The 452 mapped unified versions with no lyric units were checked against both
+Hbible editions. A version qualified only when the current MINDEX 새찬송가 text
+matched the 새찬송가 reference and the two reference editions differed solely in
+whitespace, line breaks, verse-number prefixes, or chorus structure labels.
+Punctuation and every other character remained significant, so `노랫소리` and
+`노래 소리` were treated as different lyrics.
+
+| Result | Count |
+| --- | ---: |
+| Eligible spacing-only identical versions | 50 |
+| Edition lyric differences | 339 |
+| MINDEX 새찬송가/reference differences | 63 |
+
+The 50 eligible versions contain 226 units. They are copied from the existing
+curated 새찬송가 units without changing text, labels, or line breaks. Every target
+version is set to `pending`, and every copied unit is set to `needs_review` with no
+review timestamp. This operation does not approve imported lyrics automatically.
+
 Both hymnals follow modern Korean spacing in Mindex. Edition-specific words and
 endings remain distinct, while spacing-only differences are not preserved. For
 example, 통443 keeps `맙소서`/`줍소서` but uses the principle forms `시험받을`,
@@ -138,4 +158,8 @@ python3 scripts/audit_hbible_hymns.py --book both \
 python3 scripts/repair_confirmed_unified_hymn_amen_mapping.py --apply
 python3 scripts/remove_hymn_legacy_versions.py --apply
 python3 scripts/add_unified_hymn_443.py --apply
+python3 scripts/audit_identical_hymn_lyrics.py --workers 4 --timeout 30 \
+  --retries 2 --output /tmp/mindex-identical-hymn-candidates.json
+python3 scripts/backfill_identical_unified_hymn_lyrics.py \
+  --report /tmp/mindex-identical-hymn-candidates.json --apply
 ```

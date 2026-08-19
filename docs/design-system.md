@@ -10,6 +10,11 @@ rules, while `docs/ui-contracts.md` owns screen-level behavior contracts.
 shared by multiple screens without turning `app.js` into a styling glossary.
 It loads after `mindex.constants.js` and before `mindex.presenter.js`/`app.js`.
 
+The DEX-family numeric baseline lives at workspace-level
+`docs/dex-design-tokens.json`. Mindex may add domain tokens, but shared role,
+icon, button, and tab values must remain compatible with that baseline and
+`tools/check_dex_shell.py`.
+
 Keep presenter output typography and layout rules in `mindex.presenter.js` and
 `styles.presenter-output.css`. The design-token file is for the controller app
 shell, navigation, buttons, labels, and shared UI copy.

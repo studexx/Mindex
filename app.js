@@ -245,6 +245,7 @@ const { STORAGE } = MINDEX_CONSTANTS;
 const PRESENTER_CHANNEL = "mindex.presenter";
 const PRESENTER_STORAGE_KEY = "mindex.presenter.state";
 const PRESENTER_SIGNAL_KEY = "mindex.presenter.signal";
+const PRESENTER_TARGET_SCREEN_STORAGE_KEY = "mindex.presenter.targetScreen.v1";
 const PRESENTER_JUMP_MAX_DIGITS = 3;
 const PRESENTER_OUTPUT_HEARTBEAT_INTERVAL_MS = 1000;
 const PRESENTER_OUTPUT_HEARTBEAT_TTL_MS = 3000;
@@ -667,6 +668,9 @@ const state = {
     outputWindow: null,
     outputWindowMonitor: null,
     outputConnectedAt: 0,
+    outputPendingAt: 0,
+    outputBlockedAt: 0,
+    outputAttemptServiceId: "",
     outputStopAt: 0,
     outputStoppingClientId: "",
     outputClientId: "",
@@ -1786,6 +1790,7 @@ function readUiState() {
   state.selectedBibleTranslationId = safeStorageGet("session", STORAGE.bibleTranslationId) || null;
   state.selectedBibleChapter = Number.isFinite(bibleChapter) && bibleChapter > 0 ? bibleChapter : 1;
   state.bibleCopyReference = bibleCopyReference !== "false";
+  state.presenter.selectedScreenId = safeStorageGet("local", PRESENTER_TARGET_SCREEN_STORAGE_KEY) || null;
 }
 
 function persistUiState() {
@@ -7598,6 +7603,11 @@ function handleDetailChange(event) {
   const presenterScreenSelect = event.target.closest("[data-presenter-screen-select]");
   if (presenterScreenSelect) {
     state.presenter.selectedScreenId = presenterScreenSelect.value || null;
+    if (state.presenter.selectedScreenId) {
+      safeStorageSet("local", PRESENTER_TARGET_SCREEN_STORAGE_KEY, state.presenter.selectedScreenId);
+    } else {
+      safeStorageRemove("local", PRESENTER_TARGET_SCREEN_STORAGE_KEY);
+    }
     return;
   }
 
@@ -21771,14 +21781,15 @@ function renderServiceWeekDay(date, services) {
 function renderServiceWeekCard(service) {
   const preview = serviceItemPreview(service.id);
   const variant = serviceVariantDisplayName(service);
+  const serviceName = serviceDisplayTypeName(service);
   return `
     <button
       class="service-week-card"
       type="button"
       data-service-id="${escapeAttr(service.id)}"
     >
-      <strong>${escapeHtml(serviceFamilyDisplayName(service))}</strong>
-      ${variant ? `<span class="service-week-card-preview">${escapeHtml(variant)}</span>` : ""}
+      <strong>${escapeHtml(serviceName)}</strong>
+      ${variant && compactSearchValue(variant) !== compactSearchValue(serviceName) ? `<span class="service-week-card-preview">${escapeHtml(variant)}</span>` : ""}
       ${preview ? `<span class="service-week-card-preview">${escapeHtml(preview)}</span>` : ""}
     </button>`;
 }
@@ -21787,12 +21798,12 @@ function renderServiceDateCard(service, options = {}) {
   const preview = serviceItemPreview(service.id);
   const calendarRow = (state.calendarData || []).find((row) => String(row?.date || "").trim() === String(service?.date || "").trim());
   const variant = serviceVariantDisplayName(service);
+  const serviceName = serviceDisplayTypeName(service);
   const note = cleanList([
     variant,
     calendarRow?.note,
     serviceIsNoGathering(service) ? "집회 없음" : "",
-  ]).filter((value) => compactSearchValue(value) !== compactSearchValue(serviceFamilyDisplayName(service))).join(" · ");
-  const serviceName = serviceFamilyDisplayName(service);
+  ]).filter((value) => compactSearchValue(value) !== compactSearchValue(serviceName)).join(" · ");
   return `
     <button
       class="service-date-card"
@@ -22531,6 +22542,87 @@ function looksLikePersonOrGroup(value) {
   const text = String(value || "").trim();
   if (!text) return false;
   return /(목사|전도사|장로|권사|집사|청년|구역|전도회|기관|일동)$/.test(text);
+}
+
+function normalizePresenterScreen(screen = {}, index = 0, currentScreen = null) {
+  const left = Number(screen.availLeft ?? screen.left ?? 0);
+  const top = Number(screen.availTop ?? screen.top ?? 0);
+  const width = Number(screen.availWidth ?? screen.width ?? window.screen?.availWidth ?? 1920);
+  const height = Number(screen.availHeight ?? screen.height ?? window.screen?.availHeight ?? 1080);
+  const safeLeft = Number.isFinite(left) ? left : 0;
+  const safeTop = Number.isFinite(top) ? top : 0;
+  const safeWidth = Number.isFinite(width) && width > 0 ? width : 1920;
+  const safeHeight = Number.isFinite(height) && height > 0 ? height : 1080;
+  const isCurrent = screen === currentScreen;
+  const isPrimary = Boolean(screen.isPrimary);
+  const key = [
+    Math.round(safeLeft),
+    Math.round(safeTop),
+    Math.round(safeWidth),
+    Math.round(safeHeight),
+    isPrimary ? "primary" : "display",
+  ].join(":");
+  const labelParts = [
+    `화면 ${index + 1}`,
+    isPrimary ? "기본" : "외부",
+    isCurrent ? "현재" : "",
+  ].filter(Boolean);
+  return {
+    key,
+    label: labelParts.join(" · "),
+    isPrimary,
+    isCurrent,
+    rect: {
+      left: safeLeft,
+      top: safeTop,
+      width: safeWidth,
+      height: safeHeight,
+    },
+  };
+}
+
+async function requestPresenterScreens() {
+  if (!window.getScreenDetails || !window.isSecureContext) {
+    showToast("이 브라우저에서는 화면 감지를 지원하지 않습니다.", "error");
+    return [];
+  }
+  try {
+    const details = await window.getScreenDetails();
+    const screens = Array.from(details?.screens || [])
+      .map((screen, index) => normalizePresenterScreen(screen, index, details?.currentScreen))
+      .filter((screen) => screen.rect.width > 0 && screen.rect.height > 0);
+    state.presenter.screens = screens;
+    const selectedStillAvailable = screens.some((screen) => screen.key === state.presenter.selectedScreenId);
+    if (!selectedStillAvailable) {
+      state.presenter.selectedScreenId = screens.find((screen) => !screen.isCurrent && !screen.isPrimary)?.key
+        || screens.find((screen) => !screen.isPrimary)?.key
+        || screens[0]?.key
+        || null;
+    }
+    if (state.presenter.selectedScreenId) {
+      safeStorageSet("local", PRESENTER_TARGET_SCREEN_STORAGE_KEY, state.presenter.selectedScreenId);
+    } else {
+      safeStorageRemove("local", PRESENTER_TARGET_SCREEN_STORAGE_KEY);
+    }
+    renderPresenterControlState(state.selectedServiceId || state.presenter.serviceId);
+    showToast(screens.length > 1 ? "출력 화면을 감지했습니다." : "감지된 외부 화면이 없습니다.", screens.length > 1 ? "success" : "info");
+    return screens;
+  } catch (error) {
+    console.warn("Could not detect presenter screens.", error);
+    showToast("화면 감지 권한을 확인해 주세요.", "error");
+    return [];
+  }
+}
+
+function resolvePresenterTargetScreenRect() {
+  const screens = state.presenter.screens || [];
+  if (!screens.length) return null;
+  const selected = screens.find((screen) => screen.key === state.presenter.selectedScreenId)
+    || screens.find((screen) => !screen.isCurrent && !screen.isPrimary)
+    || screens.find((screen) => !screen.isPrimary)
+    || null;
+  if (!selected?.rect) return null;
+  return selected.rect;
 }
 
 function renderPresenterScreenControl() {
@@ -23736,15 +23828,30 @@ function renderPresenterControlsTop(service, slides, active, index) {
   const anyOutputOpen = isPresenterOutputWindowOpen();
   const outputOpen = active && anyOutputOpen;
   const outputOpenElsewhere = anyOutputOpen && state.presenter.serviceId && state.presenter.serviceId !== service.id;
+  const outputConnected = active && isPresenterOutputHeartbeatOpen();
+  const outputPending = active
+    && !outputConnected
+    && Boolean(state.presenter.outputPendingAt)
+    && state.presenter.outputAttemptServiceId === service.id;
+  const outputPendingDelayed = outputPending
+    && Date.now() - state.presenter.outputPendingAt > PRESENTER_OUTPUT_HEARTBEAT_TTL_MS * 2;
+  const outputBlocked = !anyOutputOpen
+    && Boolean(state.presenter.outputBlockedAt)
+    && state.presenter.outputAttemptServiceId === service.id
+    && Date.now() - state.presenter.outputBlockedAt <= PRESENTER_OUTPUT_HEARTBEAT_TTL_MS * 3;
   const jumpInputValue = active && state.presenter.jumpDraft
     ? state.presenter.jumpDraft
     : (count || current === 0 ? current : "");
-  const statusLabel = outputOpen
+  const statusLabel = outputBlocked
+    ? "팝업 차단"
+    : outputPending
+      ? outputPendingDelayed ? "연결 지연" : "연결 중"
+      : outputOpen
     ? uiText("presenter.status.live")
     : outputOpenElsewhere
       ? uiText("presenter.status.otherLive")
       : uiText("presenter.status.ready");
-  const statusTone = outputOpen ? "live" : outputOpenElsewhere ? "other" : "ready";
+  const statusTone = outputBlocked ? "blocked" : outputPending ? "pending" : outputOpen ? "live" : outputOpenElsewhere ? "other" : "ready";
   const mode = presenterControllerMode(service, { active, count, current, outputOpen, outputOpenElsewhere, safeIndex });
   const warmup = presenterOutputWarmupUiState(service.id, { active, outputOpen });
   const launchAction = anyOutputOpen ? "stop" : "open";
@@ -25553,6 +25660,9 @@ function stopPresenterOutput(serviceId = state.presenter.serviceId) {
   stopServiceMusicPlayback({ clearSource: true, mode: "manual", render: false });
   state.presenter.outputWindow = null;
   state.presenter.outputConnectedAt = 0;
+  state.presenter.outputPendingAt = 0;
+  state.presenter.outputBlockedAt = 0;
+  state.presenter.outputAttemptServiceId = "";
   state.presenter.outputStopAt = Date.now();
   state.presenter.outputStoppingClientId = state.presenter.outputClientId;
   state.presenter.outputClientId = "";
@@ -25613,6 +25723,10 @@ async function openPresenterOutput(serviceId = state.selectedServiceId) {
   if (!serviceId) return;
   state.presenter.outputStopAt = 0;
   state.presenter.outputStoppingClientId = "";
+  state.presenter.outputPendingAt = Date.now();
+  state.presenter.outputBlockedAt = 0;
+  state.presenter.outputAttemptServiceId = serviceId;
+  renderPresenterControlState(serviceId);
 
   const existingWindow = presenterOutputWindowRef();
   if (existingWindow) {
@@ -25659,7 +25773,11 @@ async function openPresenterOutput(serviceId = state.selectedServiceId) {
   const features = presenterOutputWindowFeatures(targetRect);
   const outputWindow = window.open(url, "mindexPresenterOutput", features);
   if (!outputWindow) {
+    state.presenter.outputPendingAt = 0;
+    state.presenter.outputBlockedAt = Date.now();
+    state.presenter.outputAttemptServiceId = serviceId;
     showToast("브라우저가 출력 창을 차단했습니다.", "error");
+    renderPresenterControlState(serviceId);
     return;
   }
 
@@ -25686,6 +25804,7 @@ function hydratePresenterOutputInBackground(serviceId, outputWindow = null) {
     if (!outputWindow) return;
     stopPresenterOutputWindowMonitor();
     state.presenter.outputWindow = null;
+    state.presenter.outputPendingAt = 0;
     try {
       if (!outputWindow.closed) outputWindow.close?.();
     } catch {}
@@ -25745,10 +25864,17 @@ function isPresenterOutputHeartbeatOpen() {
 function startPresenterOutputWindowMonitor(serviceId) {
   stopPresenterOutputWindowMonitor();
   state.presenter.outputWindowMonitor = window.setInterval(() => {
-    if (isPresenterOutputWindowOpen()) return;
+    if (isPresenterOutputWindowOpen()) {
+      if (state.presenter.outputPendingAt && !isPresenterOutputHeartbeatOpen() && serviceId) {
+        renderPresenterControlState(serviceId);
+      }
+      return;
+    }
     stopPresenterOutputWindowMonitor();
     state.presenter.outputWindow = null;
     state.presenter.outputConnectedAt = 0;
+    state.presenter.outputPendingAt = 0;
+    state.presenter.outputAttemptServiceId = "";
     state.presenter.outputClientId = "";
     state.presenter.outputWarmup = null;
     refreshPresenterOutputConnectionState();

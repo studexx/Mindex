@@ -2606,6 +2606,9 @@ function markPresenterOutputConnected(clientId = "", warmup = null) {
   const wasConnected = state.presenter.outputConnectedAt
     && Date.now() - state.presenter.outputConnectedAt <= PRESENTER_OUTPUT_HEARTBEAT_TTL_MS;
   state.presenter.outputConnectedAt = Date.now();
+  state.presenter.outputPendingAt = 0;
+  state.presenter.outputBlockedAt = 0;
+  state.presenter.outputAttemptServiceId = "";
   if (clientId) state.presenter.outputClientId = clientId;
   const warmupChanged = updatePresenterOutputWarmupState(warmup);
   if (!state.presenter.outputWindowMonitor) startPresenterOutputWindowMonitor(state.presenter.serviceId);
@@ -2616,6 +2619,7 @@ function markPresenterOutputDisconnected(clientId = "") {
   if (clientId && state.presenter.outputClientId && clientId !== state.presenter.outputClientId) return;
   state.presenter.outputWindow = null;
   state.presenter.outputConnectedAt = 0;
+  state.presenter.outputPendingAt = 0;
   state.presenter.outputClientId = "";
   state.presenter.outputWarmup = null;
   stopPresenterOutputWindowMonitor();
@@ -2666,7 +2670,6 @@ function publishPresenterPayload(payload) {
 function presenterOutputUrl(options = {}) {
   const url = new URL(window.location.href);
   url.searchParams.set("output", "presenter");
-  if (options.fullscreen) url.searchParams.set("fullscreen", "1");
   url.hash = "";
   return url.toString();
 }
@@ -2692,10 +2695,23 @@ async function requestPresenterScreens() {
     const apply = () => {
       state.presenter.screens = [...(details.screens || [])].map((screen, index) => ({
         key: presenterScreenKey(screen),
-        label: screen.isPrimary ? `Display ${index + 1} (Primary)` : `Display ${index + 1}`,
+        label: screen.isPrimary ? `화면 ${index + 1} · 기본` : `화면 ${index + 1} · 외부`,
         isPrimary: Boolean(screen.isPrimary),
+        isCurrent: screen === details.currentScreen,
         rect: presenterScreenRect(screen),
       }));
+      const selectedStillAvailable = state.presenter.screens.some((screen) => screen.key === state.presenter.selectedScreenId);
+      if (!selectedStillAvailable) {
+        state.presenter.selectedScreenId = state.presenter.screens.find((screen) => !screen.isCurrent && !screen.isPrimary)?.key
+          || state.presenter.screens.find((screen) => !screen.isPrimary)?.key
+          || state.presenter.screens[0]?.key
+          || null;
+      }
+      if (state.presenter.selectedScreenId) {
+        safeStorageSet("local", PRESENTER_TARGET_SCREEN_STORAGE_KEY, state.presenter.selectedScreenId);
+      } else {
+        safeStorageRemove("local", PRESENTER_TARGET_SCREEN_STORAGE_KEY);
+      }
       if (state.presenter.serviceId) renderPresenterControlState(state.presenter.serviceId);
     };
     apply();
@@ -2707,7 +2723,8 @@ async function requestPresenterScreens() {
 
 function findPresenterTargetScreen(screens, currentScreen) {
   const selectedKey = state.presenter.selectedScreenId;
-  return (selectedKey && screens.find((screen) => presenterScreenKey(screen) === selectedKey))
+  return (selectedKey && screens.find((screen) => (screen.key || presenterScreenKey(screen)) === selectedKey))
+    || screens.find((screen) => !screen.isCurrent && !screen.isPrimary)
     || screens.find((screen) => !screen.isPrimary)
     || (currentScreen ? screens.find((screen) => screen !== currentScreen) : null);
 }
@@ -2794,6 +2811,7 @@ function handlePresenterShortcut(event) {
 }
 
 function requestPresenterOutputFullscreenFromController() {
+  presenterOutputWindowRef()?.focus?.();
   window.mindexElectron?.fullscreenPresenterOutput?.().catch?.(() => {});
 }
 
