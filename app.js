@@ -2389,6 +2389,9 @@ async function switchModule(moduleName, options = {}) {
   const syncHistory = options.syncHistory !== false;
   saveCurrentListScroll();
   state.module = moduleName;
+  if (moduleName === "service" && !state.selectedServiceId && !state.selectedServiceTypeId) {
+    state.selectedServiceTypeId = SERVICE_LIST_PANEL_ID;
+  }
   if (moduleName === "calendar") {
     state.calendarScrollTargetMonth = toLocalDateStr(new Date()).slice(0, 7);
     state.calendarAutoScrolledMonth = null;
@@ -20333,7 +20336,8 @@ function renderServiceDetail() {
   }
 
   if (!state.selectedServiceTypeId) {
-    renderServiceDashboard();
+    state.selectedServiceTypeId = SERVICE_LIST_PANEL_ID;
+    renderServiceListDetail();
     return;
   }
 

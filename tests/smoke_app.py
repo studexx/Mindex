@@ -1069,6 +1069,32 @@ def main() -> int:
                 else:
                     fail("home-design-shell", json.dumps(home_design_state, ensure_ascii=False))
 
+                page.evaluate("switchModule('service')")
+                page.wait_for_function("() => document.body.dataset.module === 'service'", timeout=5000)
+                service_default_state = page.evaluate(
+                    """
+                    (() => ({
+                      selectedTypeId: state.selectedServiceTypeId || '',
+                      hasDashboard: Boolean(document.querySelector('.service-dashboard')),
+                      hasAllList: Boolean(document.querySelector('.service-date-list--all')),
+                      title: document.querySelector('.service-date-list-title')?.textContent.trim() || '',
+                      activeListRows: document.querySelectorAll('[data-service-list].active').length,
+                    }))()
+                    """
+                )
+                if (
+                    service_default_state["selectedTypeId"] == "__list"
+                    and not service_default_state["hasDashboard"]
+                    and service_default_state["hasAllList"]
+                    and service_default_state["title"] == "전체 예배"
+                    and service_default_state["activeListRows"] == 1
+                ):
+                    pass_("service-default-opens-all-list", json.dumps(service_default_state, ensure_ascii=False))
+                else:
+                    fail("service-default-opens-all-list", json.dumps(service_default_state, ensure_ascii=False))
+                page.evaluate("() => { resetHomeState(); render(); }")
+                page.wait_for_function("() => document.body.dataset.module === 'home'", timeout=5000)
+
                 spacing_modules = ["home", "service", "presenter", "scripture", "praise", "calendar", "references"]
                 module_spacing = []
                 for module_id in spacing_modules:
