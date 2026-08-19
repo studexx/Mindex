@@ -961,6 +961,7 @@ function restoreDetailViewportSnapshot(snapshot) {
 
 function schedulePresenterPreviewScaleUpdate(host = refs.detailPane) {
   if (!host?.querySelectorAll || typeof applyPresenterPreviewScales !== "function") return;
+  applyPresenterPreviewScales(host);
   if (presenterPreviewScaleRaf) window.cancelAnimationFrame(presenterPreviewScaleRaf);
   presenterPreviewScaleRaf = window.requestAnimationFrame(() => {
     if (!host.isConnected && host !== document) {
@@ -979,14 +980,31 @@ function schedulePresenterPreviewScaleUpdate(host = refs.detailPane) {
   });
 }
 
+function fitPresenterPreviewText(host = refs.detailPane) {
+  if (!host?.querySelectorAll) return;
+  if (typeof fitPresenterChromakeyScripturePreviews === "function") fitPresenterChromakeyScripturePreviews(host);
+  if (typeof fitPresenterSongTitlePreviews === "function") fitPresenterSongTitlePreviews(host);
+  if (typeof fitPresenterSermonTitlePreviews === "function") fitPresenterSermonTitlePreviews(host);
+}
+
+function schedulePresenterPreviewLayoutUpdate(host = refs.detailPane) {
+  schedulePresenterPreviewScaleUpdate(host);
+  window.requestAnimationFrame(() => {
+    if (!host?.isConnected && host !== document) return;
+    fitPresenterPreviewText(host);
+  });
+}
+
 function observePresenterPreviewScaleFrames(host = refs.detailPane) {
   presenterPreviewScaleObserver?.disconnect?.();
   presenterPreviewScaleObserver = null;
   if (!host?.querySelectorAll || typeof ResizeObserver === "undefined") return;
+  const frameTargets = [...host.querySelectorAll(".svc-slide-thumb-frame")];
   const targets = [
     host,
     host.querySelector("#servicePresenterControls"),
     host.querySelector(".svc-presenter-board-column"),
+    ...frameTargets,
   ].filter((target, index, list) => target?.isConnected && list.indexOf(target) === index);
   if (!targets.length) return;
   presenterPreviewScaleObserver = new ResizeObserver(() => {
@@ -1332,7 +1350,25 @@ function bindStaticEvents() {
   window.addEventListener("popstate", handleBrowserHistoryPop);
   window.addEventListener("resize", () => {
     if (state.module !== "presenter") return;
-    schedulePresenterPreviewScaleUpdate(refs.detailPane);
+    schedulePresenterPreviewLayoutUpdate(refs.detailPane);
+  });
+  window.visualViewport?.addEventListener?.("resize", () => {
+    if (state.module !== "presenter") return;
+    schedulePresenterPreviewLayoutUpdate(refs.detailPane);
+  });
+  if (typeof MutationObserver !== "undefined") {
+    const presenterViewportObserver = new MutationObserver(() => {
+      if (state.module !== "presenter") return;
+      schedulePresenterPreviewLayoutUpdate(refs.detailPane);
+    });
+    presenterViewportObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class", "style"],
+    });
+  }
+  window.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "visible" || state.module !== "presenter") return;
+    schedulePresenterPreviewLayoutUpdate(refs.detailPane);
   });
 
   SYSTEM_THEME_QUERY?.addEventListener("change", () => {
@@ -20634,12 +20670,7 @@ function renderPresenterDetail() {
   restorePresenterViewportSnapshot(viewportSnapshot);
   updateSaveState();
   observePresenterPreviewScaleFrames(refs.detailPane);
-  schedulePresenterPreviewScaleUpdate(refs.detailPane);
-  requestAnimationFrame(() => {
-    fitPresenterChromakeyScripturePreviews(refs.detailPane);
-    fitPresenterSongTitlePreviews(refs.detailPane);
-    fitPresenterSermonTitlePreviews(refs.detailPane);
-  });
+  schedulePresenterPreviewLayoutUpdate(refs.detailPane);
 }
 
 function serviceBulletinSectionTitle(item = {}) {
@@ -24472,7 +24503,7 @@ function hydrateDeferredPresenterBoardSection(root, serviceId, slides, groupInde
   syncPresenterBoardSelectionClasses(root);
   refreshIcons();
   observePresenterPreviewScaleFrames(root);
-  schedulePresenterPreviewScaleUpdate(root);
+  schedulePresenterPreviewLayoutUpdate(root);
   return true;
 }
 
@@ -25992,7 +26023,7 @@ function renderPresenterControlState(serviceId = state.selectedServiceId) {
       mountDeferredPresenterBoardSections(nextRoot, serviceId, slides);
       restorePresenterViewportSnapshot(viewportSnapshot);
       observePresenterPreviewScaleFrames(nextRoot);
-      schedulePresenterPreviewScaleUpdate(nextRoot);
+      schedulePresenterPreviewLayoutUpdate(nextRoot);
       patchServiceOutlineActiveState(serviceId);
       updateSaveState();
       return;
