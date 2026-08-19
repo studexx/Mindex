@@ -12924,7 +12924,11 @@ function renderLoadingDetail() {
 }
 
 function renderLoadingList() {
-  return renderListEmptyState(LOADING_MESSAGE, "");
+  return `
+    <div class="song-list-empty song-list-empty--loading" aria-busy="true">
+      <strong>${escapeHtml(LOADING_MESSAGE)}</strong>
+    </div>
+  `;
 }
 
 function renderConnectionList(message = DB_CONNECTION_EMPTY_MESSAGE) {

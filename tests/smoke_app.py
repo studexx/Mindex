@@ -1586,7 +1586,7 @@ def main() -> int:
                     """
                 )
                 if (
-                    service_sidebar_gap["gap"] == 50
+                    service_sidebar_gap["gap"] == 16
                     and service_sidebar_gap["headHeight"] < 18
                     and service_sidebar_gap["headLeft"] == 0
                     and service_sidebar_gap["labelLeft"] == 8

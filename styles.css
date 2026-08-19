@@ -586,6 +586,9 @@ body[data-module="praise"] .list-filter {
   gap: var(--s2);
   padding: 0 var(--sidebar-item-end) 0 var(--sidebar-item-x);
 }
+.sidebar-list-head:has(.sidebar-count:empty):has(.sidebar-create-song-btn[hidden]) {
+  display: none;
+}
 .sidebar-create-song-btn {
   display: inline-flex;
   flex: 0 0 auto;
@@ -950,6 +953,7 @@ body[data-module="calendar"] .detail-pane { overflow: hidden; }
   font-weight: 700;
 }
 .song-list-empty { display: grid; gap: 3px; padding: var(--s3) var(--sidebar-item-pad-x); color: var(--ink-4); font-size: 11px; line-height: 1.35; }
+.song-list-empty--loading { padding-top: 7px; }
 .song-list-empty strong { color: var(--ink-3); font-size: 12px; font-weight: 700; }
 .song-list-empty span { color: var(--ink-4); }
 .attention-icon {
