@@ -89,3 +89,36 @@
 The 63 mappings contain no duplicate new-hymnal or unified-hymnal number. Fifty
 were the empty targets populated by the guarded backfill; the other thirteen
 already had lyric units before that operation.
+
+## Modern Spacing Correction And Sync
+
+The 63 identical mappings were synchronized from their curated 새찬송가 units.
+Only clear modern-spacing corrections were applied; edition wording such as
+`정케`, `충만케`, and `가리우네` was preserved. `도와주다` was also preserved as
+a dictionary word, while auxiliary verbs follow the principle spacing in Korean
+Orthography Article 47.
+
+| 새찬송가 | Corrections |
+| ---: | --- |
+| 68 | `지켜주시니` → `지켜 주시니` |
+| 89 | `간 데 마다` → `간 데마다` |
+| 222 | `품어주시기를` → `품어 주시기를`; `지켜주시기를` → `지켜 주시기를` |
+| 312 | `힘주시고` → `힘 주시고`; `지켜주시리` → `지켜 주시리` |
+| 337 | `구해주사` → `구해 주사` (2 occurrences) |
+| 366 | `녹여주사` → `녹여 주사` |
+| 368 | `풀어주사` → `풀어 주사`; `부어주사` → `부어 주사` |
+| 384 | `내 주안에` → `내 주 안에` |
+| 460 | `힘주시고` → `힘 주시고` |
+| 591 | `내려주니` → `내려 주니` |
+| 602 | `하나되는` → `하나 되는` |
+
+This changed 15 occurrences across 11 hymn pairs. 새찬송가 527 and 통일찬송가
+317 also had their internal blank-line structure synchronized. In total, 12
+pairs changed, 31 unit rows were patched, and all 63 pairs passed exact text and
+unit-structure comparison afterward. Changed versions remain `pending`; changed
+units remain `needs_review`.
+
+```sh
+python3 scripts/sync_identical_hymn_lyrics.py \
+  --report /tmp/mindex-identical-hymns-all.json --apply
+```
