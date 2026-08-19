@@ -17908,7 +17908,7 @@ function projectWorshipServiceItemsFromTemplate(service, items = []) {
 
   for (const index of unmatched) {
     const item = visibleExisting[index];
-    if (shouldDropUnmodifiedTemplateProjectionExtra(item)) continue;
+    if (shouldDropUnmodifiedTemplateProjectionExtra(service, item)) continue;
     projected.push(item);
   }
   projected = normalizeSendingConclusionProjectionItems(projected);
@@ -18276,11 +18276,28 @@ function mergeTemplateProjectionMemo(templateMemo = "", existingMemo = "") {
   });
 }
 
-function shouldDropUnmodifiedTemplateProjectionExtra(item = {}) {
+function shouldDropUnmodifiedTemplateProjectionExtra(service = null, item = {}) {
   if (item._worshipSectionTemplateModified || item._worshipElementTemplateModified) return false;
+  if (shouldDropAllGenerationsRegularThirdProjectionExtra(service, item)) return true;
   const parsed = parseServiceItemMemo(item.memo);
   const templateish = !String(item.raw_title || "").trim();
   return templateish && !item.song_id && !cleanServiceAssignee(item.assignee);
+}
+
+function shouldDropAllGenerationsRegularThirdProjectionExtra(service = null, item = {}) {
+  if (!isAllGenerationsWorshipService(service)) return false;
+  const sectionKey = templateProjectionSectionKey(item);
+  const labelKey = compactSearchValue(item.label || "");
+  const regularOnlySections = new Set([
+    "confession",
+    "hymn_praise",
+    "creed",
+    "community_confession",
+  ]);
+  if (regularOnlySections.has(sectionKey)) return true;
+  if (sectionKey === "praise" && labelKey === "입례찬양") return true;
+  if (sectionKey === "offering" && labelKey === "봉헌찬송") return true;
+  return false;
 }
 
 function normalizeServiceItemsForTemplateHierarchy(service, items = [], options = {}) {

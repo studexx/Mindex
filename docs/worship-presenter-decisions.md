@@ -394,3 +394,9 @@ Small visual polish that does not alter behavior does not need an entry.
   않는다. 그날은 3부 예배(`sunday-main`)가 통합 예배의 source of
   truth다. `service_alias`, 절기명, 메모, 부서 담당 정보만으로는 온세대
   variant를 자동 판정하지 않는다.
+- 이미 일반 3부 template으로 materialized 된 3부 예배가 나중에 교회력상
+  온세대 찬양예배로 판정되면, projection 단계에서 수정되지 않은 일반
+  3부 전용 항목(`참회기도`, `찬송`, `입례찬양`, `사도신경`, `공동체고백`,
+  기존 `봉헌찬송`)은 제거한다. `새가족환영`은 3부 공통 안내 slot으로
+  유지한다. 사용자가 수정한 항목은
+  `template_modified`를 존중해 보존한다.

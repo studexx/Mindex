@@ -5572,6 +5572,26 @@ def main() -> int:
                             await applyPresenterPreparationInput(allGenerationService.id);
                             const allGenerationItems = state.serviceItems[allGenerationService.id] || [];
                             const allGenerationPraiseItems = allGenerationItems.filter((entry) => /^찬양\\s*\\d+$/.test(entry.label || ''));
+                            const regularThirdService = {
+                              id: '__smoke_regular_third_leftovers__',
+                              type_id: 'sunday-main',
+                              date: '2026-08-02',
+                            };
+                            const regularThirdScaffold = buildWorshipServiceScaffold(
+                              regularThirdService.id,
+                              regularThirdService.type_id,
+                              { service: regularThirdService }
+                            );
+                            const regularThirdItems = groupWorshipElements(
+                              regularThirdScaffold.sections,
+                              regularThirdScaffold.elements
+                            )[regularThirdService.id] || [];
+                            const allGenerationProjectedFromRegular = projectWorshipServiceItemsFromTemplate(
+                              allGenerationService,
+                              regularThirdItems
+                            );
+                            const allGenerationProjectedLabels = allGenerationProjectedFromRegular.map((entry) => entry.label || '');
+                            const allGenerationProjectedSections = [...new Set(allGenerationProjectedFromRegular.map((entry) => entry._worshipSectionKey || ''))];
                             return {
                               songIds: ['찬양 1', '찬양 2', '찬양 3', '찬양 4', '결단찬양'].map((label) => byLabel(label).song_id || ''),
                               versionIds: ['찬양 1', '찬양 2', '찬양 3'].map((label) => byLabel(label).version_id || byLabel(label).song_version_id || ''),
@@ -5636,6 +5656,9 @@ def main() -> int:
                                 labels: allGenerationPraiseItems.map((entry) => entry.label),
                                 songCount: allGenerationPraiseItems.filter((entry) => entry.song_id).length,
                                 maxElementOrder: Math.max(...allGenerationPraiseItems.map((entry) => Number(entry._worshipElementOrder) || 0)),
+                                projectedFromRegularSections: allGenerationProjectedSections,
+                                projectedFromRegularBlockedLabels: ["입례찬양", "찬송", "사도신경", "공동체고백", "봉헌찬송"]
+                                  .filter((label) => allGenerationProjectedLabels.includes(label)),
                                 draftCleared: !state.presenterPreparationDrafts[allGenerationService.id],
                               },
                               citationCount: citations.length,
@@ -5740,6 +5763,20 @@ def main() -> int:
                             "labels": [f"찬양 {index}" for index in range(1, 13)],
                             "songCount": 12,
                             "maxElementOrder": 120,
+                            "projectedFromRegularSections": [
+                                "ready",
+                                "praise",
+                                "prayer",
+                                "scripture_reading",
+                                "special_song",
+                                "sermon",
+                                "response_song",
+                                "offering",
+                                "announcements",
+                                "sending",
+                                "closing_visual",
+                            ],
+                            "projectedFromRegularBlockedLabels": [],
                             "draftCleared": True,
                         }
                         and presenter_preparation_paste["citationCount"] == 1
