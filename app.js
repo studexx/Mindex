@@ -2601,63 +2601,78 @@ async function loadSongsOnce() {
 
 async function loadSongsForIds(songIds = []) {
   if (!state.client) return;
-  if (songCatalogLoaded) return;
   const ids = [...new Set(songIds.map((id) => String(id || "").trim()).filter(Boolean))];
   const pendingPromises = [...new Set(ids.map((id) => linkedSongLoadPromises.get(id)).filter(Boolean))];
-  const missingIds = ids.filter((id) =>
+  const hydrationIds = ids.filter((id) =>
     !linkedSongLoadPromises.has(id)
-    && !state.songs.some((song) => song.id === id));
-  if (!missingIds.length) {
+    && songNeedsRelationalHydration(id));
+  if (!hydrationIds.length) {
     if (pendingPromises.length) await Promise.all(pendingPromises);
     return;
   }
 
-  const loadPromise = loadMissingSongsForIds(missingIds);
-  missingIds.forEach((id) => linkedSongLoadPromises.set(id, loadPromise));
+  const loadPromise = loadMissingSongsForIds(hydrationIds);
+  hydrationIds.forEach((id) => linkedSongLoadPromises.set(id, loadPromise));
   try {
     await Promise.all([loadPromise, ...pendingPromises]);
   } finally {
-    missingIds.forEach((id) => {
+    hydrationIds.forEach((id) => {
       if (linkedSongLoadPromises.get(id) === loadPromise) linkedSongLoadPromises.delete(id);
     });
   }
 }
 
-async function loadMissingSongsForIds(missingIds = []) {
+function songNeedsRelationalHydration(songId = "") {
+  if (!isUuid(songId)) return false;
+  const song = state.songs.find((candidate) => candidate.id === songId) || null;
+  return !song || song._relationalVersionsLoaded !== true;
+}
+
+async function loadMissingSongsForIds(targetIds = []) {
+  const existingIds = new Set(state.songs.map((song) => song.id));
+  const missingIds = targetIds.filter((id) => !existingIds.has(id));
   let songRows = [];
-  try {
-    for (const batch of chunkArray(missingIds, 80)) {
-      const { data, error } = await state.client
-        .from("mindex_songs")
-        .select("*")
-        .in("id", batch)
-        .order("title", { ascending: true });
-      if (error) throw error;
-      songRows.push(...(data || []));
+  if (missingIds.length) {
+    try {
+      for (const batch of chunkArray(missingIds, 80)) {
+        const { data, error } = await state.client
+          .from("mindex_songs")
+          .select("*")
+          .in("id", batch)
+          .order("title", { ascending: true });
+        if (error) throw error;
+        songRows.push(...(data || []));
+      }
+    } catch (error) {
+      if (!isUnavailableRelationError(error)) console.warn("Could not load linked praise songs.", error);
     }
-  } catch (error) {
-    if (!isUnavailableRelationError(error)) console.warn("Could not load linked praise songs.", error);
-    return;
   }
 
-  if (!songRows.length) return;
-
-  const songMap = new Map(state.songs.map((song) => [song.id, song]));
-  const linkedSongs = songRows.map(normalizeServerSong);
-  for (const song of linkedSongs) songMap.set(song.id, song);
-  state.songs = [...songMap.values()].sort(sortSongs);
-  clearSearchCaches();
+  if (songRows.length) {
+    const songMap = new Map(state.songs.map((song) => [song.id, song]));
+    const linkedSongs = songRows.map(normalizeServerSong);
+    for (const song of linkedSongs) songMap.set(song.id, song);
+    state.songs = [...songMap.values()].sort(sortSongs);
+    clearSearchCaches();
+  }
+  const hydratableIds = targetIds.filter((id) => state.songs.some((song) => song.id === id));
+  if (!hydratableIds.length) return;
   await yieldToBrowser();
-  await attachRelationalSongVersionsForSongs(linkedSongs.map((song) => song.id));
+  await attachRelationalSongVersionsForSongs(hydratableIds);
 }
 
 function loadSongsForIdsInBackground(songIds = [], options = {}) {
   const ids = [...new Set(songIds.map((id) => String(id || "").trim()).filter(Boolean))];
   if (!ids.length) return;
   void loadSongsForIds(ids).then(() => {
+    if (options.serviceId) {
+      refreshPresenterForService(options.serviceId, { renderControls: false });
+    }
     if (options.render === "detail") renderCurrentServiceModuleDetail();
     else if (options.render) render();
-    if (options.serviceId) refreshPresenterForService(options.serviceId);
+    if (state.module === "presenter" && state.selectedServiceId === options.serviceId) {
+      renderServiceList();
+    }
   }).catch((error) => {
     console.warn("Could not hydrate linked songs in background.", error);
   });
@@ -2696,7 +2711,10 @@ async function attachRelationalSongVersionsForSongs(songIds = []) {
   }
 
   versionRows = [...new Map(versionRows.map((row) => [row.id, row])).values()];
-  if (!versionRows.length) return;
+  if (!versionRows.length) {
+    attachRelationalSongVersionRows([], [], ids);
+    return;
+  }
 
   let unitRows = [];
   try {
@@ -2814,6 +2832,7 @@ function attachRelationalSongVersionRows(versionRows = [], unitRows = [], target
   for (const song of state.songs) {
     if (allowedSongIds && !allowedSongIds.has(song.id)) continue;
     const rows = sourceVersionsBySong.get(song.id) || fallbackVersionsBySong.get(song.id) || [];
+    song._relationalVersionsLoaded = true;
     if (!rows.length) continue;
     const versions = rows
       .sort(sortVersionRows)
@@ -26251,6 +26270,27 @@ function schedulePendingServiceScriptureResolves(serviceId) {
   });
 }
 
+function mergePresenterRefreshOptions(current = {}, next = {}) {
+  return {
+    publish: current.publish !== false && next.publish !== false,
+    renderControls: current.renderControls !== false && next.renderControls !== false,
+  };
+}
+
+function schedulePresenterRefreshForService(serviceId, options = {}) {
+  if (!serviceId) return;
+  const key = String(serviceId);
+  const existing = scheduledPresenterRefreshes.get(key);
+  const mergedOptions = mergePresenterRefreshOptions(existing?.options || {}, options);
+  if (existing?.timer) window.clearTimeout(existing.timer);
+  const timer = window.setTimeout(() => {
+    const pending = scheduledPresenterRefreshes.get(key);
+    scheduledPresenterRefreshes.delete(key);
+    refreshPresenterForService(key, pending?.options || mergedOptions);
+  }, 90);
+  scheduledPresenterRefreshes.set(key, { timer, options: mergedOptions });
+}
+
 function refreshPresenterForService(serviceId, options = {}) {
   if (!serviceId) return;
   const isActive = state.presenter.serviceId === serviceId;
@@ -26409,7 +26449,8 @@ function presenterSlideBuildSourceSignature(serviceId) {
     ],
     items: items.map((item) => {
       const song = item.song_id ? songById(item.song_id) : null;
-      const version = song?.versions?.find((entry) => String(entry.id || "") === String(item.praise_version_id || ""))
+      const selectedVersionId = item.version_id || item.song_version_id || "";
+      const version = song?.versions?.find((entry) => String(entry.id || "") === String(selectedVersionId))
         || song?.versions?.[0]
         || null;
       return [
@@ -26421,14 +26462,19 @@ function presenterSlideBuildSourceSignature(serviceId) {
         item.raw_title || "",
         item.assignee || "",
         item.song_id || "",
-        item.praise_version_id || "",
+        selectedVersionId,
         item.output_mode || item.outputMode || "",
         item.updated_at || "",
         item.memo || "",
         song?.updated_at || "",
+        song?._relationalVersionsLoaded === true,
         song?.versions?.length || 0,
         version?.updated_at || "",
-        version?.forms?.length || 0,
+        (version?.forms || []).map((form) => [
+          form.id || "",
+          form.label || form.name || form.type || "",
+          form.lyrics || form.text || "",
+        ]),
       ];
     }),
     presenterRows: presenterRows.map((slide) => [

@@ -4605,6 +4605,103 @@ def main() -> int:
                     else:
                         fail("presenter-input-completion-guard", json.dumps(presenter_input_completion_guard, ensure_ascii=False))
 
+                    presenter_linked_song_hydration = page.evaluate(
+                        """
+                        (() => {
+                          const originalSongs = state.songs;
+                          const originalServices = state.services;
+                          const originalServiceItems = state.serviceItems;
+                          const originalSelectedServiceId = state.selectedServiceId;
+                          const service = { id: '__smoke_linked_song_hydration__', type_id: 'special', date: '2026-08-19' };
+                          const songId = '11111111-1111-4111-8111-111111111111';
+                          const versionId = '22222222-2222-4222-8222-222222222222';
+                          try {
+                            state.songs = [normalizeServerSong({ id: songId, title: '연결 찬양', praise_types: ['ccm'], memo: null })];
+                            state.services = [service];
+                            state.selectedServiceId = service.id;
+                            state.serviceItems = { [service.id]: [normalizeServiceItem({
+                              id: '__smoke_linked_item__',
+                              service_id: service.id,
+                              label: '찬양 1',
+                              raw_title: '',
+                              song_id: songId,
+                              song_version_id: versionId,
+                              memo: serializeServiceItemMemo({
+                                elementType: 'praise',
+                                inputMode: 'lyrics_db',
+                                outputMode: 'lyrics',
+                              }),
+                              _worshipSectionKey: 'praise',
+                              _worshipSectionTitle: '찬양',
+                              _worshipElementTemplateModified: true,
+                              _worshipTemplatePlaceholder: false,
+                            }, 0)] };
+                            clearSearchCaches();
+                            const beforeSignature = presenterSlideBuildSourceSignature(service.id);
+                            const beforeNeedsHydration = songNeedsRelationalHydration(songId);
+                            attachRelationalSongVersionRows([{
+                              id: versionId,
+                              source_song_id: songId,
+                              canonical_song_id: songId,
+                              version_order: 1,
+                              curated_version_name: 'Default',
+                              version_label: 'Default',
+                              is_primary: true,
+                              praise_types: ['ccm'],
+                            }], [{
+                              id: '33333333-3333-4333-8333-333333333333',
+                              version_id: versionId,
+                              unit_order: 1,
+                              unit_label: 'Verse 1',
+                              unit_kind: 'Verse',
+                              curated_order: 1,
+                              curated_unit_label: 'Verse 1',
+                              curated_unit_type: 'Verse',
+                              text: '연결된 가사',
+                            }], [songId]);
+                            clearSearchCaches();
+                            const afterSignature = presenterSlideBuildSourceSignature(service.id);
+                            const progress = presenterServiceInputProgress(service);
+                            const slides = buildServicePresenterSlidesUncached(service.id);
+                            const hydratedSong = songById(songId);
+                            const hydratedVersion = hydratedSong?.versions?.find((version) => version.id === versionId);
+                            hydratedVersion.forms[0].lyrics = '수정된 연결 가사';
+                            const lyricsSignature = presenterSlideBuildSourceSignature(service.id);
+                            return {
+                              beforeNeedsHydration,
+                              afterNeedsHydration: songNeedsRelationalHydration(songId),
+                              versionId: hydratedVersion?.id || '',
+                              missing: progress.missing,
+                              slideText: slides.map((slide) => slide.text || '').join(' '),
+                              hasMissingSlide: slides.some((slide) => slide.missingContent),
+                              signatureChangedOnHydration: beforeSignature !== afterSignature,
+                              signatureChangedOnLyrics: afterSignature !== lyricsSignature,
+                            };
+                          } finally {
+                            presenterSlideBuildCache.delete(service.id);
+                            state.songs = originalSongs;
+                            state.services = originalServices;
+                            state.serviceItems = originalServiceItems;
+                            state.selectedServiceId = originalSelectedServiceId;
+                            clearSearchCaches();
+                          }
+                        })()
+                        """
+                    )
+                    if (
+                        presenter_linked_song_hydration["beforeNeedsHydration"]
+                        and not presenter_linked_song_hydration["afterNeedsHydration"]
+                        and presenter_linked_song_hydration["versionId"] == "22222222-2222-4222-8222-222222222222"
+                        and presenter_linked_song_hydration["missing"] == 0
+                        and "연결된 가사" in presenter_linked_song_hydration["slideText"]
+                        and not presenter_linked_song_hydration["hasMissingSlide"]
+                        and presenter_linked_song_hydration["signatureChangedOnHydration"]
+                        and presenter_linked_song_hydration["signatureChangedOnLyrics"]
+                    ):
+                        pass_("presenter-linked-song-hydration", json.dumps(presenter_linked_song_hydration, ensure_ascii=False))
+                    else:
+                        fail("presenter-linked-song-hydration", json.dumps(presenter_linked_song_hydration, ensure_ascii=False))
+
                     presenter_praise_input_mode_persistence = page.evaluate(
                         """
                         (() => {
