@@ -596,7 +596,7 @@ body[data-module="praise"] .list-filter {
   border: 0;
   border-radius: var(--r);
   background: transparent;
-  color: var(--accent);
+  color: var(--ink-4);
   line-height: 1;
   padding: 0;
 }
@@ -604,8 +604,8 @@ body[data-module="praise"] .list-filter {
   display: none;
 }
 .sidebar-create-song-btn:hover {
-  background: color-mix(in srgb, var(--accent-soft) 28%, transparent);
-  color: var(--accent);
+  background: color-mix(in srgb, var(--panel-2) 42%, transparent);
+  color: var(--ink-2);
 }
 .sidebar-create-song-btn svg {
   width: 15px;
@@ -1773,7 +1773,7 @@ body[data-module="calendar"] .detail-pane { overflow: hidden; }
   justify-content: center;
   gap: 0;
   background: transparent;
-  color: var(--accent);
+  color: var(--ink-4);
   line-height: 1;
   padding: 0;
 }
@@ -1794,8 +1794,8 @@ body[data-module="calendar"] .detail-pane { overflow: hidden; }
 }
 .praise-create-btn.reference-new-btn:hover,
 .praise-empty-create-btn.reference-new-btn:hover {
-  background: color-mix(in srgb, var(--accent-soft) 28%, transparent);
-  color: var(--accent);
+  background: color-mix(in srgb, var(--panel-2) 42%, transparent);
+  color: var(--ink-2);
 }
 .reference-group-stack {
   display: grid;

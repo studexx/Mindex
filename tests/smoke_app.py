@@ -6610,10 +6610,12 @@ def main() -> int:
                         createButtonAria: document.querySelector('.praise-create-btn[data-create-song]')?.getAttribute('aria-label') || '',
                         createButtonWidth: Math.round(document.querySelector('.praise-create-btn[data-create-song]')?.getBoundingClientRect().width || 0),
                         createButtonBg: getComputedStyle(document.querySelector('.praise-create-btn[data-create-song]')).backgroundColor,
+                        createButtonColor: getComputedStyle(document.querySelector('.praise-create-btn[data-create-song]')).color,
                         sidebarCreateButtonText: document.querySelector('.sidebar-create-song-btn[data-create-song]')?.textContent.trim() || '',
                         sidebarCreateButtonAria: document.querySelector('.sidebar-create-song-btn[data-create-song]')?.getAttribute('aria-label') || '',
                         sidebarCreateButtonWidth: Math.round(document.querySelector('.sidebar-create-song-btn[data-create-song]')?.getBoundingClientRect().width || 0),
                         sidebarCreateButtonBg: getComputedStyle(document.querySelector('.sidebar-create-song-btn[data-create-song]')).backgroundColor,
+                        sidebarCreateButtonColor: getComputedStyle(document.querySelector('.sidebar-create-song-btn[data-create-song]')).color,
                         addVersionAria: document.querySelector('.version-add-btn[data-add-version]')?.getAttribute('aria-label') || '',
                         copyVersionAria: document.querySelector('.version-copy-btn[data-copy-action="plain"]')?.getAttribute('aria-label') || '',
                         versionNameInputs: document.querySelectorAll('[data-version-name-field]').length,
@@ -6656,10 +6658,12 @@ def main() -> int:
                     and praise_actions["createButtonAria"] == "곡 추가"
                     and praise_actions["createButtonWidth"] <= 32
                     and praise_actions["createButtonBg"] == "rgba(0, 0, 0, 0)"
+                    and praise_actions["createButtonColor"] != "rgb(255, 126, 193)"
                     and praise_actions["sidebarCreateButtonText"] == ""
                     and praise_actions["sidebarCreateButtonAria"] == "곡 추가"
                     and praise_actions["sidebarCreateButtonWidth"] <= 30
                     and praise_actions["sidebarCreateButtonBg"] == "rgba(0, 0, 0, 0)"
+                    and praise_actions["sidebarCreateButtonColor"] != "rgb(255, 126, 193)"
                     and praise_actions["addVersionAria"] == "이 버전으로 새 버전 추가"
                     and praise_actions["copyVersionAria"] == "이 버전 가사 복사"
                     and praise_actions["versionNameInputs"] >= 1
