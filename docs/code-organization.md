@@ -55,7 +55,7 @@ Known pressure points:
 - `bindStaticEvents` and `handleDetailClick` are the highest-risk growth areas
   because new controls often enter through those event routers.
 - Service navigation now has two explicit sentinel panels:
-  `SERVICE_WEEK_PANEL_ID` for `금주 예배` and `SERVICE_LIST_PANEL_ID` for
+  `SERVICE_WEEK_PANEL_ID` for `이번 주 예배` and `SERVICE_LIST_PANEL_ID` for
   `전체 예배`. Home keeps its own `이번 주 예배` dashboard copy.
 - Do not move presenter slide construction into app UI code. Keep output
   rendering in `mindex.presenter.js`, and keep controller/service authoring in
@@ -65,7 +65,7 @@ Recommended extraction order:
 
 1. Move pure worship parsing and song lookup helpers out first.
 2. Move service dashboard/list rendering helpers only after the service-tab
-   smoke tests cover `금주 예배`, `전체 예배`, and direct service opening.
+   smoke tests cover `이번 주 예배`, `전체 예배`, and direct service opening.
 3. Split controller presenter-board helpers after Chrome output/reload smoke
    remains stable.
 4. Split CSS by module only when visual smoke screenshots or pixel checks cover
