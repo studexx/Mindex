@@ -625,9 +625,14 @@ body[data-module="praise"] .list-filter {
 .btn, .icon-btn {
   display: inline-flex; height: var(--h); align-items: center; justify-content: center; gap: var(--s2);
   border: 0; border-radius: var(--r); background: transparent; color: var(--ink-3);
-  font-size: 13px; font-weight: 500; line-height: 1; padding: 0 var(--s3); white-space: nowrap;
+  cursor: pointer; font-size: 13px; font-weight: 500; line-height: 1; padding: 0 var(--s3); white-space: nowrap;
 }
 .icon-btn { width: var(--ui-icon-btn-size); height: var(--ui-icon-btn-size); padding: 0; }
+.btn svg,
+.icon-btn svg {
+  display: block;
+  flex: 0 0 auto;
+}
 .topbar-actions {
   display: grid;
   grid-auto-flow: column;
@@ -693,6 +698,10 @@ body[data-module="praise"] .list-filter {
 .btn:hover, .icon-btn:hover { background: color-mix(in srgb, var(--panel-2) 58%, transparent); color: var(--ink-2); }
 .btn.primary, .icon-btn.primary { background: var(--accent); color: var(--accent-ink); }
 .btn.secondary, .icon-btn.secondary { background: color-mix(in srgb, var(--panel) 86%, var(--bg)); }
+.btn.subtle, .icon-btn.subtle { background: transparent; color: var(--ink-3); }
+.btn.subtle:hover, .icon-btn.subtle:hover { background: color-mix(in srgb, var(--panel-2) 42%, transparent); color: var(--ink-2); }
+.icon-btn.quiet { background: transparent; color: var(--ink-4); }
+.icon-btn.quiet:hover { background: color-mix(in srgb, var(--panel-2) 42%, transparent); color: var(--ink-2); }
 .btn.danger, .icon-btn.danger { color: var(--danger); }
 .btn:disabled, .icon-btn:disabled { background: transparent; box-shadow: none; color: var(--ink-4); }
 .btn:focus-visible, .icon-btn:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -1525,11 +1534,12 @@ body[data-module="calendar"] .detail-pane { overflow: hidden; }
   display: inline-flex;
   min-height: 30px;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   border: 0;
   border-radius: var(--r);
-  background: color-mix(in srgb, var(--accent-soft) 34%, transparent);
-  color: var(--accent);
+  background: color-mix(in srgb, var(--panel-2) 34%, transparent);
+  color: var(--ink-3);
   cursor: pointer;
   font: inherit;
   font-size: 12px;
@@ -1537,16 +1547,22 @@ body[data-module="calendar"] .detail-pane { overflow: hidden; }
   padding: 0 11px;
 }
 .reference-new-btn:hover {
-  background: color-mix(in srgb, var(--accent-soft) 54%, transparent);
-  color: var(--ink);
+  background: color-mix(in srgb, var(--panel-2) 58%, transparent);
+  color: var(--ink-2);
 }
 .reference-new-btn svg {
+  display: block;
+  flex: 0 0 16px;
   width: 16px;
   height: 16px;
 }
 .reference-new-btn.secondary {
-  background: color-mix(in srgb, var(--panel-2) 42%, transparent);
+  background: transparent;
   color: var(--ink-3);
+}
+.reference-new-btn.secondary:hover {
+  background: color-mix(in srgb, var(--panel-2) 42%, transparent);
+  color: var(--ink-2);
 }
 .reference-new-btn:disabled {
   cursor: default;
@@ -2797,17 +2813,10 @@ body[data-module="calendar"] .detail-pane { overflow: hidden; }
   color: var(--ink-4);
   padding: 0;
 }
-.version-add-btn {
-  color: color-mix(in srgb, var(--accent) 72%, var(--ink-4));
-}
 .version-add-btn:hover,
 .version-copy-btn:hover {
   background: color-mix(in srgb, var(--panel-2) 70%, transparent);
   color: var(--ink-2);
-}
-.version-add-btn:hover {
-  background: color-mix(in srgb, var(--accent-soft) 52%, transparent);
-  color: var(--accent);
 }
 .version-copy-btn:disabled {
   cursor: not-allowed;
@@ -3928,7 +3937,7 @@ body[data-module="presenter"] .detail-pane {
   color: var(--ink-3);
 }
 .svc-prep-editor-open.icon-btn:hover {
-  color: var(--accent);
+  color: var(--ink-2);
 }
 .svc-service-title {
   min-width: 0;
@@ -4065,8 +4074,8 @@ body[data-module="presenter"] .detail-pane {
   gap: 6px;
   border: 0;
   border-radius: var(--r);
-  background: color-mix(in srgb, var(--accent-soft) 34%, transparent);
-  color: var(--accent);
+  background: color-mix(in srgb, var(--panel-2) 34%, transparent);
+  color: var(--ink-3);
   cursor: pointer;
   font: inherit;
   font-size: 12px;
@@ -4077,8 +4086,8 @@ body[data-module="presenter"] .detail-pane {
 }
 .svc-output-action:hover,
 .svc-output-action:focus-visible {
-  background: color-mix(in srgb, var(--accent-soft) 54%, transparent);
-  color: var(--ink);
+  background: color-mix(in srgb, var(--panel-2) 58%, transparent);
+  color: var(--ink-2);
   outline: none;
 }
 .svc-output-action svg {
