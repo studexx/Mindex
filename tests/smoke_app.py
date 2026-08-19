@@ -2168,22 +2168,31 @@ def main() -> int:
                                 const service = {
                                   id: '__smoke_sunday_third_all_generation__',
                                   type_id: 'sunday-main',
-                                  date: '2026-07-26',
+                                  date: '2026-07-19',
                                   alias: '온세대 찬양예배',
                                   _worshipSourceRef: { sunday_main_variant: 'all_generations' },
                                 };
                                 try {
                                   state.calendarData = [
                                     ...(previousCalendarData || []),
-                                    { id: '__smoke_all_generation_scaffold__', date: '2026-07-26', church_schedule: '온세대 찬양예배' },
+                                    { id: '__smoke_all_generation_scaffold__', date: '2026-07-19', church_schedule: '온세대 찬양예배' },
                                   ];
                                   const scaffold = buildWorshipServiceScaffold(service.id, service.type_id, { service });
                                   const praiseSection = scaffold.sections.find((section) => section.section_key === 'praise');
                                   const specialSection = scaffold.sections.find((section) => section.section_key === 'special_song');
+                                  const offeringSection = scaffold.sections.find((section) => section.section_key === 'offering');
                                   return {
                                     sectionKeys: scaffold.sections.map((section) => section.section_key || ''),
                                     sectionTitles: scaffold.sections.map((section) => section.title || ''),
                                     specialSong: scaffold.elements.find((element) => element.section_id === specialSection?.id) || null,
+                                    offeringElements: scaffold.elements
+                                      .filter((element) => element.section_id === offeringSection?.id)
+                                      .map((element) => ({
+                                        type: element.element_type || '',
+                                        label: element.source_ref?.label || '',
+                                        outputMode: element.config?.outputMode || '',
+                                        assetUrl: element.config?.asset?.url || '',
+                                      })),
                                     praiseElements: scaffold.elements
                                       .filter((element) => element.section_id === praiseSection?.id)
                                       .map((element) => ({
@@ -3135,6 +3144,16 @@ def main() -> int:
                         and "special_song" in template_terms["sundayPublicScaffold"]["allGeneration"]["sectionKeys"]
                         and not (template_terms["sundayPublicScaffold"]["allGeneration"]["specialSong"].get("person") or "").strip()
                         and not (template_terms["sundayPublicScaffold"]["allGeneration"]["specialSong"].get("title") or "").strip()
+                        and template_terms["sundayPublicScaffold"]["allGeneration"]["offeringElements"] == [
+                            {"type": "praise", "label": "봉헌특송", "outputMode": "", "assetUrl": ""},
+                            {"type": "title_person", "label": "봉헌기도", "outputMode": "", "assetUrl": ""},
+                            {
+                                "type": "image",
+                                "label": "감사 이미지",
+                                "outputMode": "",
+                                "assetUrl": "assets/worship-templates/all-generations-2026-07-19-offering-thanks.png",
+                            },
+                        ]
                         and template_terms["sundayPublicScaffold"]["allGeneration"]["praiseElements"] == [
                             {"label": "환영", "title": "환영\n테힐라 찬양단"},
                             {"label": "찬양 1", "title": ""},

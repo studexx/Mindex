@@ -1795,7 +1795,7 @@ function parsePresenterCustomSlideBlock(block) {
   const first = lines[0];
   const bracketed = first.match(/^\[([^\]]+)\]$/)?.[1]?.trim();
   const markerCandidate = bracketed || first;
-  if (/^(Verse|Chorus|Pre[-\s]?Chorus|PC|Bridge|Coda|Lyrics)(?:\s+\d+)?$/i.test(markerCandidate)) {
+  if (/^(Verse|Chorus|Pre[-\s]?Chorus|PC|Bridge|Coda|Tag|Lyrics)(?:\s+\d+)?$/i.test(markerCandidate)) {
     return { marker: normalizePresenterCustomMarker(markerCandidate), text: lines.slice(1).join("\n") };
   }
   return { marker: "", text: lines.join("\n") };
@@ -1809,6 +1809,7 @@ function normalizePresenterCustomMarker(value) {
     .replace(/^chorus/i, "Chorus")
     .replace(/^bridge/i, "Bridge")
     .replace(/^coda/i, "Coda")
+    .replace(/^tag/i, "Tag")
     .replace(/^lyrics/i, "Lyrics");
 }
 

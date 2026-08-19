@@ -16767,6 +16767,12 @@ const PUBLIC_WORSHIP_CLOSING_IMAGE_ASSET = {
   url: "assets/worship-templates/public-closing.png",
 };
 
+const ALL_GENERATIONS_2026_07_19_OFFERING_THANKS_ASSET = {
+  kind: "image",
+  name: "꿈꾸는 어린이부 여름성경학교 안내",
+  url: "assets/worship-templates/all-generations-2026-07-19-offering-thanks.png",
+};
+
 const PUBLIC_WORSHIP_TEMPLATE_VERSIONS = {
   "sunday-first": [
     publicWorshipTemplateVersion((options = {}) => {
@@ -16783,11 +16789,15 @@ const PUBLIC_WORSHIP_TEMPLATE_VERSIONS = {
         specialSong: sundayThirdSpecialSongTemplateForDate(options.service?.date || options.service?.service_date || ""),
         introTeamName: serviceDefaultMainPraiseTeamName(options.service || {}),
         ...(isAllGenerationsWorshipService(options.service || {}) ? {
+          allGenerations: true,
           includeCommunityConfession: false,
           includeConfession: false,
           includeEntrancePraise: false,
           includeHymnPraise: false,
           includeCreed: false,
+          offeringThanksAsset: String(options.service?.date || options.service?.service_date || "").slice(0, 10) === "2026-07-19"
+            ? ALL_GENERATIONS_2026_07_19_OFFERING_THANKS_ASSET
+            : null,
           specialSong: {},
         } : {}),
       }),
@@ -16987,6 +16997,32 @@ function publicWorshipOfferingStep(options = {}) {
       { label: praiseLabel, name: praiseLabel, elementType: "praise", ...scoreOutputMode(score), ...(hiddenInPresentation ? { hiddenInPresentation: true } : {}) },
       { label: "봉헌기도", name: "봉헌기도", elementType: "title_person", person: prayerPerson, ...(hiddenInPresentation ? { hiddenInPresentation: true } : {}) },
     ],
+  };
+}
+
+function publicAllGenerationsOfferingStep(options = {}) {
+  const prayerPerson = cleanServiceAssignee(
+    options.prayerPerson || options.person || defaultServiceOfferingPrayerLeader("sunday-main"),
+  );
+  const elements = [
+    { label: "봉헌특송", name: "봉헌특송", elementType: "praise" },
+    { label: "봉헌기도", name: "봉헌기도", elementType: "title_person", person: prayerPerson },
+  ];
+  if (options.thanksAsset) {
+    elements.push({
+      label: "감사 이미지",
+      name: "감사 이미지",
+      elementType: "image",
+      asset: options.thanksAsset,
+    });
+  }
+  return {
+    label: "봉헌",
+    name: "봉헌",
+    required: true,
+    flex: false,
+    sectionKey: "offering",
+    elements,
   };
 }
 
@@ -17508,6 +17544,7 @@ function publicSundayThirdTemplate(options = {}) {
   const includeEntrancePraise = options.includeEntrancePraise !== false;
   const includeHymnPraise = options.includeHymnPraise !== false;
   const includeCreed = options.includeCreed !== false;
+  const allGenerations = Boolean(options.allGenerations || options.all_generations);
   return [
     publicWorshipReadyStep(),
     publicWorshipPraiseStep({
@@ -17532,7 +17569,9 @@ function publicSundayThirdTemplate(options = {}) {
       { label: "결단기도", name: "결단기도", elementType: "title_person" },
     ] },
     ...(includeCreed ? [publicWorshipCreedStep()] : []),
-    publicWorshipOfferingStep({ score: true, praiseLabel: "봉헌찬송", typeId }),
+    allGenerations
+      ? publicAllGenerationsOfferingStep({ thanksAsset: options.offeringThanksAsset })
+      : publicWorshipOfferingStep({ score: true, praiseLabel: "봉헌찬송", typeId }),
     publicSundayThirdAnnouncementsStep(),
     ...(includeCommunityConfession ? [publicWorshipCommunityConfessionStep()] : []),
     publicWorshipSendingStep({ typeId, doxology: false, extraElements: [publicSundayThirdSendingPraiseElement()] }),
