@@ -589,29 +589,29 @@ body[data-module="praise"] .list-filter {
 .sidebar-create-song-btn {
   display: inline-flex;
   flex: 0 0 auto;
+  width: 30px;
   height: 30px;
   align-items: center;
   justify-content: center;
-  gap: 6px;
   border: 0;
   border-radius: var(--r);
-  background: color-mix(in srgb, var(--accent-soft) 72%, transparent);
+  background: transparent;
   color: var(--accent);
-  font-size: 12px;
-  font-weight: 800;
   line-height: 1;
-  padding: 0 10px;
+  padding: 0;
 }
 .sidebar-create-song-btn[hidden] {
   display: none;
 }
 .sidebar-create-song-btn:hover {
-  background: color-mix(in srgb, var(--accent-soft) 92%, transparent);
+  background: color-mix(in srgb, var(--accent-soft) 40%, transparent);
   color: var(--accent);
 }
 .sidebar-create-song-btn svg {
   width: 15px;
   height: 15px;
+  display: block;
+  stroke-width: 2.4;
 }
 .field {
   color: var(--ink-4);
@@ -1765,8 +1765,10 @@ body[data-module="calendar"] .detail-pane { overflow: hidden; }
 }
 .praise-create-btn,
 .praise-empty-create-btn {
-  min-height: 34px;
+  display: inline-flex;
+  height: 34px;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   background: var(--accent);
   color: var(--accent-ink);
@@ -1786,6 +1788,8 @@ body[data-module="calendar"] .detail-pane { overflow: hidden; }
   color: inherit;
   display: block;
   flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
 }
 .praise-create-btn:hover,
 .praise-empty-create-btn:hover {
