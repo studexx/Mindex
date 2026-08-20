@@ -141,6 +141,16 @@ class WorshipRuleGuardTests(unittest.TestCase):
             load_worship.index("await ensureUpcomingPublicWorshipServices()"),
         )
 
+    def test_imported_setlists_stay_detached_from_live_template_projection(self) -> None:
+        grouping = function_block(self.source, "groupWorshipElements")
+        normalizer = function_block(self.source, "normalizeServiceItem")
+        hierarchy = function_block(self.source, "serviceTemplateHierarchyMetaForItem")
+        projection_key = function_block(self.source, "serviceItemTemplateProjectionKey")
+        self.assertIn("sourceRef.import_identity", grouping)
+        self.assertIn("_worshipTemplateDetached", normalizer)
+        self.assertIn("if (item._worshipTemplateDetached) return null", hierarchy)
+        self.assertIn('if (item._worshipTemplateDetached) return ""', projection_key)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -3997,6 +3997,12 @@ function groupWorshipElements(sections = [], elements = []) {
       _worshipElementOrder: Number(element.sort_order) || 0,
       _worshipSectionTemplateModified: Boolean(section.template_modified),
       _worshipElementTemplateModified: Boolean(element.template_modified),
+      _worshipTemplateDetached: Boolean(
+        sourceRef.import_identity
+        || sourceRef.importIdentity
+        || config.templateDetached
+        || config.template_detached,
+      ),
     }));
     return grouped;
   }, {});
@@ -18078,6 +18084,7 @@ function normalizeServiceItem(item = {}, index = 0) {
     _worshipElementTemplateModified: Boolean(item._worshipElementTemplateModified),
     _worshipTemplateProjected: Boolean(item._worshipTemplateProjected),
     _worshipTemplatePlaceholder: Boolean(item._worshipTemplatePlaceholder),
+    _worshipTemplateDetached: Boolean(item._worshipTemplateDetached),
     _worshipSharedContentDirty: Boolean(item._worshipSharedContentDirty),
   };
   return applyServicePreparationDefaults(normalized, normalized.service_id);
@@ -18446,6 +18453,7 @@ function countTemplateProjectionSections(items = []) {
 }
 
 function serviceItemTemplateProjectionKey(item = {}, options = {}) {
+  if (item._worshipTemplateDetached) return "";
   const sectionKey = templateProjectionSectionKey(item);
   if (options.sectionOnly) return sectionKey;
   if (options.includeElementOrder) return `${sectionKey}:${Number(item._worshipElementOrder) || 0}`;
@@ -18689,6 +18697,7 @@ const PUBLIC_TEMPLATE_SECTION_KEY_ALIASES = {
 };
 
 function serviceTemplateHierarchyMetaForItem(hierarchy, item = {}) {
+  if (item._worshipTemplateDetached) return null;
   const sectionKey = String(item._worshipSectionKey || item.sectionKey || item.section_key || "").trim();
   const labelKey = compactSearchValue(item.label || "");
   const exactElement = sectionKey && labelKey ? hierarchy.elementBySectionAndLabel.get(`${sectionKey}:${labelKey}`) : null;

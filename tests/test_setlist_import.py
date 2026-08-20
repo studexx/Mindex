@@ -108,6 +108,27 @@ class SetlistImportTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "wednesday 2026-06-17"):
             import_notion_setlist.deduplicate_service_plans(plans)
 
+    def test_date_move_records_correction_and_resolves_duplicate(self):
+        plans = build_plans(
+            """### 수요예배
+**06/17 김석범 목사님**
+주께 가까이
+**06/17 김석범 목사님**
+주 되심
+"""
+        )
+        import_notion_setlist.apply_date_move(
+            plans,
+            "wednesday:2026-06-17:1:2026-06-10",
+        )
+
+        unique = import_notion_setlist.deduplicate_service_plans(plans)
+        self.assertEqual([plan.source_id[1] for plan in unique], [date(2026, 6, 10), date(2026, 6, 17)])
+        self.assertEqual(
+            unique[0].service_row["source_ref"]["date_correction"],
+            {"from": "2026-06-17", "to": "2026-06-10", "occurrence": 1},
+        )
+
     def test_service_type_ids_use_database_candidates(self):
         plans = build_plans(
             """### 주일예배
@@ -183,6 +204,62 @@ class SetlistImportTest(unittest.TestCase):
         self.assertIsNone(element_payload["song_version_id"])
         self.assertEqual(element_payload["input_mode"], "praise_db")
         self.assertEqual(element_payload["config"]["inputMode"], "manual_praise")
+
+    def test_bulk_apply_merges_into_existing_service_without_deleting_it(self):
+        plan = build_plans(
+            """### 주일오후예배
+**07/05 박수경 집사님**
+주 되심
+"""
+        )[0]
+        requests = []
+
+        def fake_request(base_url, key, method, path, query=None, body=None, prefer=None):
+            requests.append({
+                "method": method,
+                "path": path,
+                "query": query,
+                "body": body,
+                "prefer": prefer,
+            })
+            if path == "mindex_worship_service_types":
+                return [{"id": "sunday-afternoon"}]
+            if method == "GET" and path == "mindex_worship_services":
+                return [{
+                    "id": "service-1",
+                    "service_type_id": "sunday-afternoon",
+                    "service_date": "2026-07-05",
+                    "service_date_end": None,
+                }]
+            if method == "GET" and path == "mindex_worship_sections":
+                return [{"id": "existing-section", "service_id": "service-1", "sort_order": 8}]
+            if method == "POST" and path in {"mindex_worship_sections", "mindex_worship_elements"}:
+                return {}
+            raise AssertionError(f"unexpected request: {method} {path}")
+
+        with patch.object(import_notion_setlist, "_api_request", side_effect=fake_request):
+            results = import_notion_setlist.apply_plans_bulk(
+                "https://example.invalid",
+                "key",
+                [plan],
+                merge_existing=True,
+            )
+
+        section_payload = next(
+            request["body"][0]
+            for request in requests
+            if request["method"] == "POST" and request["path"] == "mindex_worship_sections"
+        )
+        element_payload = next(
+            request["body"][0]
+            for request in requests
+            if request["method"] == "POST" and request["path"] == "mindex_worship_elements"
+        )
+        self.assertEqual(results[0]["status"], "merged")
+        self.assertEqual(section_payload["service_id"], "service-1")
+        self.assertEqual(section_payload["sort_order"], 9)
+        self.assertEqual(element_payload["title"], "주 되심")
+        self.assertFalse(any(request["method"] == "DELETE" for request in requests))
 
 
 if __name__ == "__main__":

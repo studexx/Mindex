@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import uuid
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -63,6 +64,8 @@ SERVICE_TYPE_ID_CANDIDATES = {
     "youth": ("youth",),
     "young-adult": ("young_adult", "young-adult"),
 }
+IMPORT_UUID_NAMESPACE = uuid.UUID("ec9743ab-53c7-43ac-b24c-3eeff1e24bc8")
+IMPORT_CHUNK_SIZE = 200
 
 
 def _read_env_file(path: Path) -> dict[str, str]:
@@ -173,6 +176,53 @@ class ServiceImportPlan:
     service_row: dict[str, Any]
     sections: list[PlannedSection]
     source_id: tuple[str, date, date | None]
+
+
+def apply_date_move(plans: list[ServiceImportPlan], raw_move: str) -> None:
+    parts = raw_move.split(":")
+    if len(parts) != 4:
+        raise ValueError(
+            "날짜 교정 형식은 TYPE:FROM_DATE:OCCURRENCE:TO_DATE 입니다: " + raw_move
+        )
+    type_id, raw_from, raw_occurrence, raw_to = parts
+    try:
+        from_date = date.fromisoformat(raw_from)
+        to_date = date.fromisoformat(raw_to)
+        occurrence = int(raw_occurrence)
+    except (TypeError, ValueError) as err:
+        raise ValueError("날짜 교정 값을 해석할 수 없습니다: " + raw_move) from err
+    if occurrence < 1:
+        raise ValueError("날짜 교정 occurrence는 1 이상이어야 합니다: " + raw_move)
+
+    matches = [
+        plan
+        for plan in plans
+        if plan.source_id[0] == type_id and plan.source_id[1] == from_date
+    ]
+    if occurrence > len(matches):
+        raise ValueError(
+            f"날짜 교정 대상을 찾지 못했습니다: {raw_move} (일치 {len(matches)}건)"
+        )
+    target = matches[occurrence - 1]
+    if any(
+        plan is not target
+        and plan.source_id[0] == type_id
+        and plan.source_id[1] == to_date
+        and plan.source_id[2] == target.source_id[2]
+        for plan in plans
+    ):
+        raise ValueError(f"날짜 교정 목적지에 이미 예배가 있습니다: {type_id} {to_date}")
+
+    original_type, original_date, original_end = target.source_id
+    target.source_id = (original_type, to_date, original_end)
+    target.service_row["service_date"] = to_date.isoformat()
+    source_ref = dict(target.service_row.get("source_ref") or {})
+    source_ref["date_correction"] = {
+        "from": original_date.isoformat(),
+        "to": to_date.isoformat(),
+        "occurrence": occurrence,
+    }
+    target.service_row["source_ref"] = source_ref
 
 
 def service_plan_signature(plan: ServiceImportPlan) -> str:
@@ -510,6 +560,244 @@ def apply_plans(base_url: str, key: str, plans: list[ServiceImportPlan], overwri
     return results
 
 
+def _chunks(rows: list[dict[str, Any]], size: int = IMPORT_CHUNK_SIZE):
+    for start in range(0, len(rows), size):
+        yield rows[start:start + size]
+
+
+def _service_row_key(row: dict[str, Any]) -> tuple[str, str, str | None]:
+    return (
+        str(row.get("service_type_id") or ""),
+        str(row.get("service_date") or ""),
+        str(row.get("service_date_end")) if row.get("service_date_end") else None,
+    )
+
+
+def _plan_db_key(
+    plan: ServiceImportPlan,
+    service_type_ids: dict[str, str],
+) -> tuple[str, str, str | None]:
+    type_id, svc_date, svc_end = plan.source_id
+    return (
+        service_type_ids[type_id],
+        svc_date.isoformat(),
+        svc_end.isoformat() if svc_end else None,
+    )
+
+
+def _import_identity(plan: ServiceImportPlan, db_type_id: str) -> str:
+    source_ref = plan.service_row.get("source_ref") or {}
+    source_name = str(source_ref.get("source_name") or "setlist")
+    _, svc_date, svc_end = plan.source_id
+    return "|".join([
+        source_name,
+        db_type_id,
+        svc_date.isoformat(),
+        svc_end.isoformat() if svc_end else "",
+    ])
+
+
+def apply_plans_bulk(
+    base_url: str,
+    key: str,
+    plans: list[ServiceImportPlan],
+    merge_existing: bool = False,
+) -> list[dict[str, Any]]:
+    service_type_ids = resolve_service_type_ids(plans, fetch_service_type_ids(base_url, key))
+    existing_rows = _api_request(
+        base_url,
+        key,
+        "GET",
+        "mindex_worship_services",
+        {"select": "id,service_type_id,service_date,service_date_end"},
+    )
+    existing_by_key: dict[tuple[str, str, str | None], dict[str, Any]] = {}
+    duplicate_keys: list[tuple[str, str, str | None]] = []
+    for row in existing_rows:
+        row_key = _service_row_key(row)
+        if row_key in existing_by_key:
+            duplicate_keys.append(row_key)
+        else:
+            existing_by_key[row_key] = row
+    if duplicate_keys:
+        raise ValueError(f"DB에 중복 예배 키가 있습니다: {duplicate_keys}")
+
+    new_plans = [plan for plan in plans if _plan_db_key(plan, service_type_ids) not in existing_by_key]
+    if new_plans:
+        service_rows = [
+            {
+                **plan.service_row,
+                "service_type_id": service_type_ids[plan.source_id[0]],
+            }
+            for plan in new_plans
+        ]
+        inserted_rows = _api_request(
+            base_url,
+            key,
+            "POST",
+            "mindex_worship_services",
+            query={"select": "id,service_type_id,service_date,service_date_end"},
+            body=service_rows,
+            prefer="return=representation",
+        )
+        for row in inserted_rows:
+            existing_by_key[_service_row_key(row)] = row
+
+    unresolved = [
+        _plan_db_key(plan, service_type_ids)
+        for plan in plans
+        if _plan_db_key(plan, service_type_ids) not in existing_by_key
+    ]
+    if unresolved:
+        raise RuntimeError(f"서비스 일괄 저장 후 ID를 찾지 못했습니다: {unresolved}")
+
+    actionable: list[tuple[ServiceImportPlan, str, str]] = []
+    results: list[dict[str, Any]] = []
+    new_plan_ids = {id(plan) for plan in new_plans}
+    for plan in plans:
+        db_key = _plan_db_key(plan, service_type_ids)
+        service_id = str(existing_by_key[db_key]["id"])
+        if id(plan) not in new_plan_ids and not merge_existing:
+            results.append({
+                "status": "skipped",
+                "reason": "already exists",
+                "service_type_id": db_key[0],
+                "service_date": db_key[1],
+                "service_date_end": db_key[2],
+                "service_id": service_id,
+            })
+            continue
+        status = "inserted" if id(plan) in new_plan_ids else "merged"
+        actionable.append((plan, service_id, status))
+
+    service_ids = sorted({service_id for _, service_id, _ in actionable})
+    existing_sections: list[dict[str, Any]] = []
+    if service_ids:
+        existing_sections = _api_request(
+            base_url,
+            key,
+            "GET",
+            "mindex_worship_sections",
+            {
+                "select": "id,service_id,sort_order",
+                "service_id": f"in.({','.join(service_ids)})",
+            },
+        )
+    max_section_order: dict[str, int] = {}
+    for row in existing_sections:
+        service_id = str(row.get("service_id") or "")
+        max_section_order[service_id] = max(
+            max_section_order.get(service_id, 0),
+            int(row.get("sort_order") or 0),
+        )
+
+    section_rows: list[dict[str, Any]] = []
+    element_rows: list[dict[str, Any]] = []
+    for plan, service_id, status in actionable:
+        db_type_id = service_type_ids[plan.source_id[0]]
+        import_identity = _import_identity(plan, db_type_id)
+        base_order = max_section_order.get(service_id, 0)
+        source_ref = plan.service_row.get("source_ref") or {}
+        source_name = str(source_ref.get("source_name") or "2026 찬양 콘티")
+        for section_idx, section in enumerate(plan.sections, start=1):
+            section_id = str(uuid.uuid5(
+                IMPORT_UUID_NAMESPACE,
+                f"{service_id}|{import_identity}|section|{section_idx}",
+            ))
+            section_rows.append({
+                "id": section_id,
+                "service_id": service_id,
+                "sort_order": base_order + section_idx,
+                "section_key": section.section_key,
+                "title": section.title,
+                "person": "",
+                "template_id": None,
+                "template_modified": False,
+                "source_kind": "import",
+                "source_ref": {
+                    "created_from": "notion",
+                    "source_name": source_name,
+                    "import_identity": import_identity,
+                    "section_index": section_idx,
+                },
+                "config": {},
+            })
+            for item_idx, item in enumerate(section.items, start=1):
+                title = str(item.get("title") or "").strip()
+                element_id = str(uuid.uuid5(
+                    IMPORT_UUID_NAMESPACE,
+                    f"{section_id}|element|{item_idx}",
+                ))
+                element_rows.append({
+                    "id": element_id,
+                    "section_id": section_id,
+                    "sort_order": item_idx,
+                    "element_type": "praise",
+                    "title": title,
+                    "person": "",
+                    "body": "",
+                    "song_id": None,
+                    "song_version_id": None,
+                    "scripture_id": None,
+                    "scripture_reference": "",
+                    "asset": {"url": "", "kind": "", "name": ""},
+                    "input_mode": "praise_db",
+                    "content_state": {
+                        "state": "filled" if title else "missing",
+                        "reason": "import_payload",
+                        "required": False,
+                        "inputMode": "manual_praise",
+                        "elementType": "praise",
+                    },
+                    "template_id": None,
+                    "template_modified": False,
+                    "source_kind": "import",
+                    "source_ref": {
+                        "created_from": "notion",
+                        "source_name": source_name,
+                        "import_identity": import_identity,
+                        "section": section.title,
+                        "label": str(item.get("label") or section.title).strip(),
+                    },
+                    "review_status": "draft",
+                    "config": {
+                        "inputMode": "manual_praise",
+                        "outputMode": "lyrics",
+                        "elementType": "praise",
+                    },
+                })
+
+        results.append({
+            "status": status,
+            "service_type_id": db_type_id,
+            "service_date": plan.source_id[1].isoformat(),
+            "service_date_end": plan.source_id[2].isoformat() if plan.source_id[2] else None,
+            "service_id": service_id,
+            "sections": len(plan.sections),
+            "elements": sum(len(section.items) for section in plan.sections),
+        })
+
+    for rows in _chunks(section_rows):
+        _api_request(
+            base_url,
+            key,
+            "POST",
+            "mindex_worship_sections",
+            body=rows,
+            prefer="resolution=ignore-duplicates,return=minimal",
+        )
+    for rows in _chunks(element_rows):
+        _api_request(
+            base_url,
+            key,
+            "POST",
+            "mindex_worship_elements",
+            body=rows,
+            prefer="resolution=ignore-duplicates,return=minimal",
+        )
+    return results
+
+
 def summarize(plans: list[ServiceImportPlan]) -> None:
     service_count = len(plans)
     section_count = sum(len(plan.sections) for plan in plans)
@@ -524,6 +812,18 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("input_path", help="Notion 붙여넣기 텍스트 파일 경로")
     parser.add_argument("--apply", action="store_true", help="DB 반영")
     parser.add_argument("--overwrite", action="store_true", help="기존 동일 타입/날짜면 덮어쓰기")
+    parser.add_argument(
+        "--merge-existing",
+        action="store_true",
+        help="기존 예배를 보존하고 import 섹션을 뒤에 병합",
+    )
+    parser.add_argument(
+        "--move-date",
+        action="append",
+        default=[],
+        metavar="TYPE:FROM:OCCURRENCE:TO",
+        help="중복 원문의 특정 순번 날짜를 교정 (여러 번 지정 가능)",
+    )
     parser.add_argument("--source-name", default="2026 찬양 콘티", help="source_ref에 남길 이름")
     return parser.parse_args()
 
@@ -537,6 +837,8 @@ def main() -> None:
 
     raw_plans = build_service_plans(parsed_sections, source_path=source_path, source_name=args.source_name)
     try:
+        for raw_move in args.move_date:
+            apply_date_move(raw_plans, raw_move)
         plans = deduplicate_service_plans(raw_plans)
     except ValueError as err:
         summarize(raw_plans)
@@ -551,7 +853,15 @@ def main() -> None:
         return
 
     base_url, key = read_config()
-    results = apply_plans(base_url, key, plans, overwrite=args.overwrite)
+    if args.overwrite:
+        results = apply_plans(base_url, key, plans, overwrite=True)
+    else:
+        results = apply_plans_bulk(
+            base_url,
+            key,
+            plans,
+            merge_existing=args.merge_existing,
+        )
     print("\n적용 결과")
     for row in results:
         print(json.dumps(row, ensure_ascii=False))
