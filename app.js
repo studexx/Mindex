@@ -764,6 +764,11 @@ const bibleBookLookupCache = {
   byName: new Map(),
   byReferenceName: new Map(),
 };
+const referenceBookNameNormalizationCache = new Map();
+const bibleBookReferenceResultCache = {
+  books: null,
+  byReferenceName: new Map(),
+};
 
 document.addEventListener("DOMContentLoaded", init);
 
@@ -16118,7 +16123,17 @@ function findBibleBookByCode(code) {
 function findBibleBookByReferenceName(name) {
   const value = normalizeReferenceBookName(name);
   if (!value) return null;
-  return getBibleBookLookups().byReferenceName.get(value) || fallbackBibleBookByReferenceName(value);
+  const lookups = getBibleBookLookups();
+  if (bibleBookReferenceResultCache.books !== lookups.books) {
+    bibleBookReferenceResultCache.books = lookups.books;
+    bibleBookReferenceResultCache.byReferenceName.clear();
+  }
+  if (bibleBookReferenceResultCache.byReferenceName.has(value)) {
+    return bibleBookReferenceResultCache.byReferenceName.get(value);
+  }
+  const book = lookups.byReferenceName.get(value) || fallbackBibleBookByReferenceName(value);
+  bibleBookReferenceResultCache.byReferenceName.set(value, book || null);
+  return book || null;
 }
 
 function getBibleBookReferenceNames(book) {
@@ -16137,11 +16152,18 @@ function getBibleBookReferenceNames(book) {
 }
 
 function normalizeReferenceBookName(value) {
-  return normalizeSearchValue(value)
+  const rawValue = String(value || "");
+  if (referenceBookNameNormalizationCache.has(rawValue)) {
+    return referenceBookNameNormalizationCache.get(rawValue);
+  }
+  const normalizedValue = normalizeSearchValue(rawValue)
     .replace(/^(first|i)\s+/, "1")
     .replace(/^(second|ii)\s+/, "2")
     .replace(/^(third|iii)\s+/, "3")
     .replace(/\s+/g, "");
+  if (referenceBookNameNormalizationCache.size >= 512) referenceBookNameNormalizationCache.clear();
+  referenceBookNameNormalizationCache.set(rawValue, normalizedValue);
+  return normalizedValue;
 }
 
 function fallbackBibleBookByReferenceName(normalizedName = "") {
