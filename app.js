@@ -12028,7 +12028,6 @@ const WORSHIP_BACKGROUND_STATIC_FILES = new Set([
   "26-S6.png",
 ]);
 function presenterServiceUsesChromakey(service) {
-  if (serviceIsFridayVariant(service, "3355")) return true;
   return serviceTypeUsesChromakey(service?.type_id);
 }
 

@@ -6936,7 +6936,7 @@ def main() -> int:
                         { type_id: 'young-adult', date: '2026-01-04', expected: '26-A1.png', defaultFile: '26-A1.png', seasonFile: '', chromakey: false },
                         { type_id: 'friday', date: '2026-03-06', expected: '26-B2.png', defaultFile: '26-B2.png', seasonFile: '', chromakey: false },
                         { type_id: 'friday', date: '2026-07-24', expected: '26-B4.png', defaultFile: '26-B4.png', seasonFile: '', chromakey: false },
-                        { type_id: 'friday', date: '2026-08-21', alias: '삼삼오오예배', sourceRef: { friday_variant: '3355', friday_variant_name: '삼삼오오예배' }, expected: '', defaultFile: '26-B4.png', seasonFile: '', chromakey: true },
+                        { type_id: 'friday', date: '2026-08-21', alias: '삼삼오오예배', sourceRef: { friday_variant: '3355', friday_variant_name: '삼삼오오예배' }, expected: '26-B4.png', defaultFile: '26-B4.png', seasonFile: '', chromakey: false },
                         { type_id: 'youth', date: '2026-01-04', expected: '26-B1.png', defaultFile: '26-B1.png', seasonFile: '', chromakey: false },
                         { type_id: 'children', date: '2026-01-04', expected: '26-C1.png', defaultFile: '26-C1.png', seasonFile: '', chromakey: false },
                         { type_id: 'sunday-first', date: '2026-03-29', calendarNote: '종려주일', expected: '26-S4.png', defaultFile: '26-A2.png', seasonFile: '26-S4.png', chromakey: false },
