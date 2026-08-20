@@ -80,7 +80,7 @@ function presenterSlidesWithScriptureReadingTitle(item = {}, section = {}, slide
 
 function presenterScriptureReadingTitleSlide(item = {}, section = {}, index = 0, reference = "") {
   const title = "성경봉독";
-  const assignee = String(reference || "").trim();
+  const assignee = presenterScriptureReadingDisplayReference(reference);
   return {
     id: `${item.id || index}:scripture-reading-title`,
     ...section,
@@ -96,6 +96,19 @@ function presenterScriptureReadingTitleSlide(item = {}, section = {}, index = 0,
     text: cleanList([title, assignee]).join("\n"),
     sort: index - 0.002,
   };
+}
+
+function presenterScriptureReadingDisplayReference(value = "") {
+  return String(value || "")
+    .split(";")
+    .map((part) => {
+      const text = part.trim();
+      const match = text.match(/^(.+?)\s+(\d{1,3}(?::|장|\s|$).*)$/);
+      if (!match) return text;
+      return [presenterScriptureReadingBookName(match[1]), match[2]].filter(Boolean).join(" ");
+    })
+    .filter(Boolean)
+    .join("; ");
 }
 
 function shouldIncludeSpecialSongSectionTitleSlide(item = {}, section = {}, slides = []) {
@@ -2672,66 +2685,6 @@ function presenterOutputUrl(options = {}) {
   url.searchParams.set("output", "presenter");
   url.hash = "";
   return url.toString();
-}
-
-function presenterScreenKey(screen) {
-  return `${screen.left ?? 0},${screen.top ?? 0}`;
-}
-
-function presenterScreenRect(screen) {
-  if (!screen) return null;
-  return {
-    left: screen.availLeft ?? screen.left ?? 0,
-    top: screen.availTop ?? screen.top ?? 0,
-    width: screen.availWidth || screen.width || 1280,
-    height: screen.availHeight || screen.height || 720,
-  };
-}
-
-async function requestPresenterScreens() {
-  if (!window.getScreenDetails || !window.isSecureContext) return;
-  try {
-    const details = await window.getScreenDetails();
-    const apply = () => {
-      state.presenter.screens = [...(details.screens || [])].map((screen, index) => ({
-        key: presenterScreenKey(screen),
-        label: screen.isPrimary ? `화면 ${index + 1} · 기본` : `화면 ${index + 1} · 외부`,
-        isPrimary: Boolean(screen.isPrimary),
-        isCurrent: screen === details.currentScreen,
-        rect: presenterScreenRect(screen),
-      }));
-      const selectedStillAvailable = state.presenter.screens.some((screen) => screen.key === state.presenter.selectedScreenId);
-      if (!selectedStillAvailable) {
-        state.presenter.selectedScreenId = state.presenter.screens.find((screen) => !screen.isCurrent && !screen.isPrimary)?.key
-          || state.presenter.screens.find((screen) => !screen.isPrimary)?.key
-          || state.presenter.screens[0]?.key
-          || null;
-      }
-      if (state.presenter.selectedScreenId) {
-        safeStorageSet("local", PRESENTER_TARGET_SCREEN_STORAGE_KEY, state.presenter.selectedScreenId);
-      } else {
-        safeStorageRemove("local", PRESENTER_TARGET_SCREEN_STORAGE_KEY);
-      }
-      if (state.presenter.serviceId) renderPresenterControlState(state.presenter.serviceId);
-    };
-    apply();
-    details.addEventListener?.("screenschange", apply);
-  } catch {
-    showToast("디스플레이 정보를 읽지 못했습니다. 브라우저 권한을 확인해 주세요.", "error");
-  }
-}
-
-function findPresenterTargetScreen(screens, currentScreen) {
-  const selectedKey = state.presenter.selectedScreenId;
-  return (selectedKey && screens.find((screen) => (screen.key || presenterScreenKey(screen)) === selectedKey))
-    || screens.find((screen) => !screen.isCurrent && !screen.isPrimary)
-    || screens.find((screen) => !screen.isPrimary)
-    || (currentScreen ? screens.find((screen) => screen !== currentScreen) : null);
-}
-
-function resolvePresenterTargetScreenRect() {
-  const target = findPresenterTargetScreen(state.presenter.screens || [], null);
-  return target?.rect || null;
 }
 
 function handlePresenterShortcut(event) {

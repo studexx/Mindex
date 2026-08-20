@@ -362,7 +362,8 @@ def select_service_with_slides(page) -> dict[str, Any] | None:
           state.selectedServiceId = service.id;
           render();
           const renderedSlides = presenterSlidesForService(service.id);
-          return { id: service.id, typeId: service.type_id, date: service.date, slides: renderedSlides.length, fixture };
+          const visibleThumbs = document.querySelectorAll('.svc-slide-thumb[data-presenter-index][data-service-id]').length;
+          return { id: service.id, typeId: service.type_id, date: service.date, slides: visibleThumbs || renderedSlides.length, fixture };
         })()
         """
     )

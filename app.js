@@ -32,7 +32,7 @@ let backgroundSongLoadScheduled = false;
 const serviceScriptureChapterLoadPromises = new Map();
 const DEFAULT_CONFIG_PRESET = "gwc";
 
-const { BIBLE_CHAPTER_COUNTS } = MINDEX_CONSTANTS;
+const { BIBLE_CHAPTER_COUNTS, KOREAN_BIBLE_BOOK_NAMES = {} } = MINDEX_CONSTANTS;
 
 const KOREAN_BIBLE_BOOK_ABBREVIATIONS = {
   GEN: "창",
@@ -16182,12 +16182,13 @@ function fallbackBibleBookByReferenceName(normalizedName = "") {
       ...(BIBLE_BOOK_ALIASES[code] || []),
     ];
     if (!names.some((name) => normalizeReferenceBookName(name) === normalizedName)) continue;
-    const koreanName = KOREAN_BIBLE_BOOK_ABBREVIATIONS[code] || code;
+    const koreanName = KOREAN_BIBLE_BOOK_NAMES[code] || KOREAN_BIBLE_BOOK_ABBREVIATIONS[code] || code;
+    const shortName = KOREAN_BIBLE_BOOK_ABBREVIATIONS[code] || koreanName;
     const englishName = ENGLISH_BIBLE_BOOK_ABBREVIATIONS[code] || code;
     return {
       code,
       koreanName,
-      shortName: koreanName,
+      shortName,
       englishName,
       canonicalEnglishTitle: englishName,
       chapterCount: Number(BIBLE_CHAPTER_COUNTS?.[code]) || 0,

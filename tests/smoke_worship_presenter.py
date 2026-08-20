@@ -945,7 +945,26 @@ def main() -> int:
                 fallback_state = page.evaluate(
                     """
                     (serviceId) => {
-                      const slides = buildServicePresenterSlides(serviceId);
+                      const modelServiceId = '__smoke_presenter_section_model_service__';
+                      const modelService = {
+                        id: modelServiceId,
+                        type_id: 'monthly',
+                        date: '2026-07-03',
+                        title: '월삭예배',
+                        leader: '',
+                        alias: '',
+                      };
+                      if (!state.serviceTypes.some((item) => item.id === 'monthly')) {
+                        state.serviceTypes.push({ id: 'monthly', name: '월삭예배', sort_order: 1 });
+                      }
+                      const scaffold = buildWorshipServiceScaffold(modelServiceId, 'monthly', { service: modelService });
+                      const modelItems = normalizeServiceItemsForTemplateHierarchy(
+                        modelService,
+                        groupWorshipElements(scaffold.sections, scaffold.elements)[modelServiceId] || [],
+                      );
+                      state.services = [modelService].concat(state.services.filter((item) => item.id !== modelServiceId));
+                      state.serviceItems[modelServiceId] = modelItems;
+                      const slides = buildServicePresenterSlides(modelServiceId);
                       return {
                         centerFallbacks: slides.filter((slide) =>
                           !isPresenterPraiseSectionMarkerSlide(slide)
@@ -966,7 +985,7 @@ def main() -> int:
                           layout: slides[0]?.layout || '',
                           type: slides[0]?.type || ''
                         },
-                        corporatePrayerGroups: groupPresenterSlidesBySection(slides, serviceId)
+                        corporatePrayerGroups: groupPresenterSlidesBySection(slides, modelServiceId)
                           .filter((group) => group.label === '공동기도')
                           .map((group) => ({
                             title: group.title,
@@ -976,7 +995,7 @@ def main() -> int:
                               slides: subgroup.slides.length
                             }))
                           })),
-                        mainPraiseGroups: groupPresenterSlidesBySection(slides, serviceId)
+                        mainPraiseGroups: groupPresenterSlidesBySection(slides, modelServiceId)
                           .filter((group) => group.kind === 'main-praise')
                           .map((group) => ({
                             label: group.label,
@@ -984,15 +1003,15 @@ def main() -> int:
                             subgroups: group.subgroups.length
                           })),
                         praiseSectionAssigneeBoardMeta: (() => {
-                          const service = state.services.find((item) => item.id === serviceId);
+                          const service = state.services.find((item) => item.id === modelServiceId);
                           if (!service) return [];
-                          const praiseItems = (state.serviceItems[serviceId] || []).filter((item) => isMainPraiseServiceItem(item, service));
+                          const praiseItems = (state.serviceItems[modelServiceId] || []).filter((item) => isMainPraiseServiceItem(item, service));
                           const previousAssignees = praiseItems.map((item) => item.assignee || '');
                           const previousLeader = service.leader || '';
                           praiseItems.forEach((item) => { item.assignee = '헤세드 찬양단'; });
                           service.leader = '김남영 목사';
-                          const teamSlides = buildServicePresenterSlides(serviceId);
-                          const groups = groupPresenterSlidesBySection(teamSlides, serviceId)
+                          const teamSlides = buildServicePresenterSlides(modelServiceId);
+                          const groups = groupPresenterSlidesBySection(teamSlides, modelServiceId)
                             .filter((group) => group.kind === 'main-praise')
                             .map((group) => group.meta);
                           praiseItems.forEach((item, index) => { item.assignee = previousAssignees[index]; });
@@ -1000,12 +1019,12 @@ def main() -> int:
                           return groups;
                         })(),
                         praiseLeaderNameBoardMeta: (() => {
-                          const service = state.services.find((item) => item.id === serviceId);
+                          const service = state.services.find((item) => item.id === modelServiceId);
                           if (!service) return [];
                           const previousLeader = service.leader || '';
                           service.leader = '헤세드 찬양단';
-                          const teamSlides = buildServicePresenterSlides(serviceId);
-                          const groups = groupPresenterSlidesBySection(teamSlides, serviceId)
+                          const teamSlides = buildServicePresenterSlides(modelServiceId);
+                          const groups = groupPresenterSlidesBySection(teamSlides, modelServiceId)
                             .filter((group) => group.kind === 'main-praise')
                             .map((group) => group.meta);
                           service.leader = previousLeader;
@@ -1040,7 +1059,7 @@ def main() -> int:
                             song_id: song.id,
                             version_id: '__smoke_main_praise_meta_version__',
                           }, service, 0);
-                          const group = groupPresenterSlidesBySection(slides, serviceId).find((item) => item.kind === 'main-praise');
+                          const group = groupPresenterSlidesBySection(slides, modelServiceId).find((item) => item.kind === 'main-praise');
                           const subgroup = group?.subgroups.find((item) =>
                             item.slides?.some(({ slide }) => slide.type === 'song-title')
                           ) || {};
@@ -1054,15 +1073,15 @@ def main() -> int:
                           };
                         })(),
                         praiseSectionAssigneeIntro: (() => {
-                          const service = state.services.find((item) => item.id === serviceId);
+                          const service = state.services.find((item) => item.id === modelServiceId);
                           if (!service) return null;
-                          const praiseItems = (state.serviceItems[serviceId] || []).filter((item) => isMainPraiseServiceItem(item, service));
+                          const praiseItems = (state.serviceItems[modelServiceId] || []).filter((item) => isMainPraiseServiceItem(item, service));
                           const previousAssignees = praiseItems.map((item) => item.assignee || '');
                           praiseItems.forEach((item) => { item.assignee = '글로리아 찬양단'; });
-                          const teamSlides = buildServicePresenterSlides(serviceId);
+                          const teamSlides = buildServicePresenterSlides(modelServiceId);
                           praiseItems.forEach((item, index) => { item.assignee = previousAssignees[index]; });
                           const intro = teamSlides.find((slide) => isPresenterPraiseSectionMarkerSlide(slide)) || {};
-                          const introGroup = groupPresenterSlidesBySection(teamSlides, serviceId)
+                          const introGroup = groupPresenterSlidesBySection(teamSlides, modelServiceId)
                             .find((group) => group.kind === 'main-praise') || {};
                           const introSubgroup = introGroup.subgroups?.find((subgroup) =>
                             subgroup.slides?.some(({ slide }) => slide.id === intro.id)
@@ -4505,8 +4524,8 @@ def main() -> int:
                 if (
                     scripture_context_state["readingTypes"][:2] == ["title-assignee", "scripture"]
                     and scripture_context_state["readingTitle"] == "성경봉독"
-                    and scripture_context_state["readingTitleAssignee"] == "출 23:14–19"
-                    and scripture_context_state["readingTitleText"] == "성경봉독\n출 23:14–19"
+                    and scripture_context_state["readingTitleAssignee"] == "출애굽기 23:14–19"
+                    and scripture_context_state["readingTitleText"] == "성경봉독\n출애굽기 23:14–19"
                     and
                     scripture_context_state["readingContext"] == "reading"
                     and scripture_context_state["readingElementTitle"] == "출애굽기 23:14–19"
@@ -4559,7 +4578,7 @@ def main() -> int:
                         "출 24:2   너 모세만 여호와께 가까이 나아오고",
                     ]
 	                    and scripture_context_state["citationBadge"] == "출 24:1"
-                    and scripture_context_state["citationNoNumberBadge"] == "출 24:1–2"
+                    and scripture_context_state["citationNoNumberBadge"] == "출애굽기 24:1–2"
 	                    and scripture_context_state["pendingType"] == "scripture-pending"
 	                    and scripture_context_state["pendingElementType"] == "blank"
 	                    and scripture_context_state["pendingLayout"] == "blank"
