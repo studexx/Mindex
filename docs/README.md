@@ -23,7 +23,6 @@ stale document in the same change.
 
 - `electron-packaging-plan.md`: packaging and auto-update plan.
 - `admin-access-security.md`: admin and access-control planning.
-- `youtube-live-automation.md`: livestream automation notes.
 - `young-adult-bulletin.md`: deferred young-adult bulletin plan. Do not expose
   bulletin UI or store arbitrary bulletin payloads until the feature is
   explicitly resumed.
