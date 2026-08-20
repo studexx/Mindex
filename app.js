@@ -769,6 +769,10 @@ const bibleBookReferenceResultCache = {
   books: null,
   byReferenceName: new Map(),
 };
+const referenceInputNormalizationCache = {
+  books: null,
+  values: new Map(),
+};
 
 document.addEventListener("DOMContentLoaded", init);
 
@@ -16360,7 +16364,15 @@ function parseBibleReferenceFromNormalizedText(text) {
 }
 
 function normalizeReferenceInput(value) {
-  return String(value || "")
+  const rawValue = String(value || "");
+  if (referenceInputNormalizationCache.books !== state.scriptureBooks) {
+    referenceInputNormalizationCache.books = state.scriptureBooks;
+    referenceInputNormalizationCache.values.clear();
+  }
+  if (referenceInputNormalizationCache.values.has(rawValue)) {
+    return referenceInputNormalizationCache.values.get(rawValue);
+  }
+  const normalizedValue = rawValue
     .normalize("NFKC")
     .trim()
     .replace(/[：.]/g, ":")
@@ -16392,6 +16404,9 @@ function normalizeReferenceInput(value) {
       return `${prefix} ${numberPart}`;
     })
     .replace(/\s+/g, " ");
+  if (referenceInputNormalizationCache.values.size >= 512) referenceInputNormalizationCache.values.clear();
+  referenceInputNormalizationCache.values.set(rawValue, normalizedValue);
+  return normalizedValue;
 }
 
 function uniqueList(values = []) {
