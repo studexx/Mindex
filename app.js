@@ -878,11 +878,12 @@ function renderCurrentServiceModuleDetail() {
 function capturePresenterViewportSnapshot(expectedServiceId = state.selectedServiceId) {
   if (state.module !== "presenter" || !refs.detailPane?.isConnected || !expectedServiceId) return null;
   const root = document.getElementById("servicePresenterControls");
-  if (!root?.isConnected) return null;
+  if (!root?.isConnected || root.dataset.serviceId !== String(expectedServiceId)) return null;
   const serviceSelector = CSS.escape(String(expectedServiceId));
   const pane = refs.detailPane;
-  const paneRect = pane.getBoundingClientRect();
   const scrollTop = pane.scrollTop;
+  if (scrollTop <= 0) return null;
+  const paneRect = pane.getBoundingClientRect();
   const candidates = [...root.querySelectorAll(`.svc-slide-thumb[data-service-id="${serviceSelector}"]`)];
   const anchor = candidates
     .map((thumb) => {
