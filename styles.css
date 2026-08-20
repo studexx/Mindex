@@ -3086,30 +3086,30 @@ body[data-module="calendar"] .detail-pane { overflow: hidden; }
   display: inline-flex;
   margin-left: auto;
   min-width: 0;
-  max-width: 140px;
-  min-height: 24px;
+  max-width: 78px;
+  min-height: 22px;
   align-items: center;
-  gap: 7px;
-  border: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
-  border-radius: calc(var(--r) - 2px);
-  background: color-mix(in srgb, var(--panel-2) 62%, transparent);
+  gap: 6px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   box-shadow: none;
-  color: var(--ink-2);
+  color: var(--ink-3);
   font-size: var(--ui-meta-size);
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1.2;
-  padding: 0 8px;
+  padding: 0;
   pointer-events: none;
 }
 .loading-status-dot {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   flex: 0 0 auto;
   border-radius: 999px;
-  border: 2px solid color-mix(in srgb, var(--ink-4) 28%, transparent);
-  border-top-color: var(--ink-2);
+  border: 1.5px solid color-mix(in srgb, var(--ink-4) 30%, transparent);
+  border-top-color: var(--ink-3);
   background: transparent;
-  animation: loading-status-spin .82s linear infinite;
+  animation: loading-status-spin 1s linear infinite;
 }
 .loading-status-text {
   min-width: 0;

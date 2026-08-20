@@ -12543,13 +12543,10 @@ function renderLoadingStatus() {
     el.innerHTML = "";
     return;
   }
-  const primary = items[0];
-  const extra = items.length > 1 ? ` 외 ${items.length - 1}` : "";
-  const visibleText = `불러오는 중 · ${primary}${extra}`;
   el.hidden = false;
   el.innerHTML = `
     <span class="loading-status-dot" aria-hidden="true"></span>
-    <span class="loading-status-text">${escapeHtml(visibleText)}</span>
+    <span class="loading-status-text">로딩 중</span>
   `;
   el.setAttribute("aria-label", `${items.join(", ")} 처리 중`);
 }
