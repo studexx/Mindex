@@ -25,17 +25,19 @@ SERVICE_TYPES = [
     {"id": "wednesday",        "name": "수요예배",       "sort_order": 5},
     {"id": "friday",           "name": "금요기도회",     "sort_order": 6},
     {"id": "monthly",          "name": "월삭예배",       "sort_order": 7},
-    {"id": "special",          "name": "특별예배",       "sort_order": 8},
-    {"id": "children",         "name": "어린이부 예배",  "sort_order": 9},
-    {"id": "youth",            "name": "청소년부 예배",  "sort_order": 10},
-    {"id": "young-adult",      "name": "청년부 예배",    "sort_order": 11},
+    {"id": "holy-week-dawn",   "name": "특별새벽기도회", "sort_order": 8},
+    {"id": "omer",              "name": "오멜세기기도회", "sort_order": 9},
+    {"id": "special",           "name": "특별예배",       "sort_order": 10},
+    {"id": "children",          "name": "어린이부 예배",  "sort_order": 11},
+    {"id": "youth",             "name": "청소년부 예배",  "sort_order": 12},
+    {"id": "young-adult",       "name": "청년부 예배",    "sort_order": 13},
 ]
 SECTION_NAME_TO_ID = {t["name"]: t["id"] for t in SERVICE_TYPES}
 SECTION_NAME_TO_ID.update({
     "주일예배": "sunday-main",
-    "새벽기도회": "special",
-    "특별새벽기도회": "special",
-    "오멜세기기도회": "special",
+    "새벽기도회": "holy-week-dawn",
+    "특별새벽기도회": "holy-week-dawn",
+    "오멜세기기도회": "omer",
 })
 
 def parse_date(mm_dd, base_year=2026):
@@ -78,6 +80,9 @@ DATE_RANGE = re.compile(r"^(\d{1,2}/\d{1,2})[–—-](\d{1,2}/\d{1,2})")
 MULTI_DATES = re.compile(r"^(\d{1,2}/\d{1,2}(?:\s*,\s*\d{1,2}/\d{1,2})+)\s+(.*)")
 SINGLE_DATE = re.compile(r"^(\d{1,2}/\d{1,2})\s+(.*)")
 ITEM_SCOPE = re.compile(r"^(.*?)\((\d{1,2})\)\s*$")
+FIXED_ITEM_CHANGE = re.compile(
+    r"^(.*?)\s*→\s*(?:(.+?)\s*/\s*)?(.+?)\s*\[(\d{1,2})-(\d{1,2})[–—-]\]\s*$"
+)
 
 def parse_date_header(raw):
     """
@@ -151,8 +156,6 @@ def parse_items(lines):
     Handles label/ format, blank lines, '-' entries, section separators '→'.
     """
     items = []
-    current_scope_day: int | None = None
-
     for line in lines:
         line = line.strip()
         if not line:
@@ -160,7 +163,6 @@ def parse_items(lines):
         if line == "→":
             # separator between two halves of same service (오멜세기기도회 05/14)
             items.append({"label": "—", "raw_title": "", "scope_day": None})
-            current_scope_day = None
             continue
         m = ITEM_LABEL.match(line)
         if m:
@@ -170,11 +172,45 @@ def parse_items(lines):
                 scope_match = ITEM_SCOPE.match(label)
                 item_scope_day = int(scope_match.group(2)) if scope_match else None
                 clean_label = scope_match.group(1).strip() if scope_match else label
-                current_scope_day = item_scope_day
                 items.append({"label": clean_label if clean_label else None, "raw_title": raw, "scope_day": item_scope_day})
         else:
-            items.append({"label": None, "raw_title": line, "scope_day": current_scope_day})
+            items.append({"label": None, "raw_title": line, "scope_day": None})
     return items
+
+
+def parse_fixed_item(label: str, raw_title: str, base_year: int = 2026) -> dict[str, Any]:
+    fixed = {
+        "label": label.strip(),
+        "raw_title": raw_title.strip(),
+        "changes": [],
+    }
+    match = FIXED_ITEM_CHANGE.match(raw_title.strip())
+    if not match:
+        return fixed
+
+    previous_title, changed_label, changed_title, month, day = match.groups()
+    fixed["raw_title"] = previous_title.strip()
+    fixed["changes"].append({
+        "effective_date": date(base_year, int(month), int(day)),
+        "label": (changed_label or label).strip(),
+        "raw_title": changed_title.strip(),
+    })
+    return fixed
+
+
+def fixed_item_for_date(item: dict[str, Any], service_date: date) -> dict[str, str]:
+    resolved = {
+        "label": str(item.get("label") or "").strip(),
+        "raw_title": str(item.get("raw_title") or "").strip(),
+    }
+    changes = sorted(item.get("changes") or [], key=lambda change: change["effective_date"])
+    for change in changes:
+        if change["effective_date"] <= service_date:
+            resolved = {
+                "label": str(change.get("label") or resolved["label"]).strip(),
+                "raw_title": str(change.get("raw_title") or "").strip(),
+            }
+    return resolved
 
 
 def item_applies_to_date(item: dict[str, Any], svc_date: date) -> bool:
@@ -263,11 +299,9 @@ def parse_text(text):
         if current_service_meta is None:
             m = ITEM_LABEL.match(line.strip())
             if m and line.strip():
-                current_section["fixed_items"].append({
-                    "sort_order": len(current_section["fixed_items"]) + 1,
-                    "label": m.group(1).strip(),
-                    "raw_title": m.group(2).strip(),
-                })
+                fixed_item = parse_fixed_item(m.group(1), m.group(2))
+                fixed_item["sort_order"] = len(current_section["fixed_items"]) + 1
+                current_section["fixed_items"].append(fixed_item)
             continue
 
         current_lines.append(line)

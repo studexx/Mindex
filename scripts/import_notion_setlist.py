@@ -45,8 +45,23 @@ SECTION_KEY_BY_LABEL = {
     "2부 특송": "special_song",
     "3부 특송": "special_song",
     "결단": "response_song",
-    "찬양": "response_song",
+    "찬양": "praise",
     "기도": "prayer",
+}
+SERVICE_TYPE_ID_CANDIDATES = {
+    "sunday-first": ("sun_1st", "sunday-first"),
+    "sunday-second": ("sun_2nd", "sunday-second"),
+    "sunday-main": ("sun_3rd", "sunday-main"),
+    "sunday-afternoon": ("sunday-afternoon",),
+    "wednesday": ("wed", "wednesday"),
+    "friday": ("fri", "friday"),
+    "monthly": ("monthly",),
+    "holy-week-dawn": ("holy_week_dawn", "holy-week-dawn"),
+    "omer": ("omer",),
+    "special": ("special",),
+    "children": ("children",),
+    "youth": ("youth",),
+    "young-adult": ("young_adult", "young-adult"),
 }
 
 
@@ -160,6 +175,80 @@ class ServiceImportPlan:
     source_id: tuple[str, date, date | None]
 
 
+def service_plan_signature(plan: ServiceImportPlan) -> str:
+    payload = {
+        "service_row": plan.service_row,
+        "sections": [
+            {
+                "title": section.title,
+                "section_key": section.section_key,
+                "items": section.items,
+            }
+            for section in plan.sections
+        ],
+    }
+    return json.dumps(payload, ensure_ascii=False, sort_keys=True, default=str)
+
+
+def deduplicate_service_plans(plans: list[ServiceImportPlan]) -> list[ServiceImportPlan]:
+    unique: list[ServiceImportPlan] = []
+    by_source_id: dict[tuple[str, date, date | None], ServiceImportPlan] = {}
+    conflicts: list[tuple[str, date, date | None]] = []
+
+    for plan in plans:
+        existing = by_source_id.get(plan.source_id)
+        if existing is None:
+            by_source_id[plan.source_id] = plan
+            unique.append(plan)
+            continue
+        if service_plan_signature(existing) != service_plan_signature(plan):
+            conflicts.append(plan.source_id)
+
+    if conflicts:
+        labels = [
+            f"{type_id} {svc_date.isoformat()}"
+            + (f"~{svc_end.isoformat()}" if svc_end else "")
+            for type_id, svc_date, svc_end in conflicts
+        ]
+        raise ValueError(
+            "같은 예배 종류/날짜에 서로 다른 원문이 있습니다: " + ", ".join(labels)
+        )
+    return unique
+
+
+def resolve_service_type_ids(
+    plans: list[ServiceImportPlan],
+    available_ids: set[str],
+) -> dict[str, str]:
+    resolved: dict[str, str] = {}
+    missing: list[str] = []
+    for type_id in sorted({plan.source_id[0] for plan in plans}):
+        candidates = SERVICE_TYPE_ID_CANDIDATES.get(type_id, (type_id,))
+        matched = next((candidate for candidate in candidates if candidate in available_ids), None)
+        if matched:
+            resolved[type_id] = matched
+        else:
+            missing.append(f"{type_id} ({', '.join(candidates)})")
+    if missing:
+        raise ValueError("DB에서 예배 종류 ID를 찾지 못했습니다: " + "; ".join(missing))
+    return resolved
+
+
+def fetch_service_type_ids(base_url: str, key: str) -> set[str]:
+    rows = _api_request(
+        base_url,
+        key,
+        "GET",
+        "mindex_worship_service_types",
+        {"select": "id"},
+    )
+    return {
+        str(row.get("id") or "").strip()
+        for row in rows
+        if isinstance(row, dict) and str(row.get("id") or "").strip()
+    }
+
+
 def build_service_plans(
     parsed_sections: list[dict[str, Any]],
     source_path: str,
@@ -192,40 +281,34 @@ def build_service_plans(
                 index_by_label[label] = idx
                 return planned
 
-            # fixed items before date headers
+            # Fixed roles are resolved to the value active on this service date.
             for fixed in fixed_items:
-                fixed_label = normalize_label(fixed.get("label")) or str(fixed.get("label") or "기타")
+                resolved_fixed = parse_setlists.fixed_item_for_date(fixed, svc_date)
+                fixed_label = normalize_label(resolved_fixed.get("label")) or str(resolved_fixed.get("label") or "기타")
+                fixed_title = str(resolved_fixed.get("raw_title") or "").strip()
+                if not fixed_title or fixed_title == "-":
+                    continue
                 sec = get_section(fixed_label)
-                sec.items.append({"title": (fixed.get("raw_title") or "").strip(), "body_lines": []})
-
-            # unlabeled lyric lines should attach to the last fixed item if exists.
-            current_section: PlannedSection | None = sections[0] if sections else None
-            current_item: dict[str, Any] | None = sections[0].items[-1] if sections and sections[0].items else None
+                sec.items.append({"label": fixed_label, "title": fixed_title})
 
             for item in raw_items:
                 raw_label = item.get("label")
                 raw_title = (item.get("raw_title") or "").strip()
+                if not raw_title or raw_title == "-":
+                    continue
 
                 if raw_label is None:
-                    if not current_item:
-                        # unexpected lyric line without context → create fallback section.
-                        fallback = get_section("기타")
-                        current_section = fallback
-                        current_item = {"title": "", "body_lines": []}
-                        fallback.items.append(current_item)
-                    if raw_title:
-                        current_item["body_lines"].append(raw_title)
+                    get_section("찬양").items.append({"label": "찬양", "title": raw_title})
                     continue
 
                 if raw_label == "—":
-                    current_section = None
-                    current_item = None
                     continue
 
                 normalized = normalize_label(raw_label) or str(raw_label).strip()
-                current_section = get_section(normalized)
-                current_item = {"title": raw_title, "body_lines": []}
-                current_section.items.append(current_item)
+                get_section(normalized).items.append({
+                    "label": str(raw_label).strip(),
+                    "title": raw_title,
+                })
 
             service_title = service_title_for_type(type_id, section_name)
             alias = ",".join(tags)
@@ -285,16 +368,18 @@ def get_existing_service_id(
 
 def apply_plans(base_url: str, key: str, plans: list[ServiceImportPlan], overwrite: bool = False) -> list[dict[str, Any]]:
     results: list[dict[str, Any]] = []
+    service_type_ids = resolve_service_type_ids(plans, fetch_service_type_ids(base_url, key))
 
     for plan in plans:
         svc_type, svc_date, svc_end = plan.source_id
-        existing = get_existing_service_id(base_url, key, svc_type, svc_date, svc_end)
+        db_svc_type = service_type_ids[svc_type]
+        existing = get_existing_service_id(base_url, key, db_svc_type, svc_date, svc_end)
 
         if existing and not overwrite:
             results.append({
                 "status": "skipped",
                 "reason": "already exists",
-                "service_type_id": svc_type,
+                "service_type_id": db_svc_type,
                 "service_date": svc_date.isoformat(),
                 "service_date_end": svc_end.isoformat() if svc_end else None,
                 "service_id": existing,
@@ -311,13 +396,14 @@ def apply_plans(base_url: str, key: str, plans: list[ServiceImportPlan], overwri
                 prefer="return=minimal",
             )
 
+        service_row = {**plan.service_row, "service_type_id": db_svc_type}
         inserted_service = _api_request(
             base_url,
             key,
             "POST",
             "mindex_worship_services",
             query={"select": "id,title"},
-            body=[plan.service_row],
+            body=[service_row],
             prefer="return=representation",
         )
         if not isinstance(inserted_service, list) or not inserted_service:
@@ -358,27 +444,29 @@ def apply_plans(base_url: str, key: str, plans: list[ServiceImportPlan], overwri
             if not sec_id:
                 continue
             for item_idx, item in enumerate(section.items, start=1):
-                body = "\n".join([line for line in item.get("body_lines", []) if str(line).strip()])
+                title = str(item.get("title") or "").strip()
                 element_rows.append(
                     {
                         "section_id": sec_id,
                         "sort_order": item_idx,
-                        "element_type": "plain_text",
-                        "title": (item.get("title") or "").strip(),
+                        "element_type": "praise",
+                        "title": title,
                         "person": "",
-                        "body": body,
+                        "body": "",
                         "song_id": None,
                         "song_version_id": None,
                         "scripture_id": None,
                         "scripture_reference": "",
                         "asset": {"url": "", "kind": "", "name": ""},
-                        "input_mode": "text",
+                        # The DB enum stores praise modes as praise_db. The
+                        # specific direct-entry mode lives in config/state.
+                        "input_mode": "praise_db",
                         "content_state": {
-                            "state": "filled" if (item.get("title") or body) else "missing",
+                            "state": "filled" if title else "missing",
                             "reason": "import_payload",
                             "required": False,
-                            "inputMode": "text",
-                            "elementType": "plain_text",
+                            "inputMode": "manual_praise",
+                            "elementType": "praise",
                         },
                         "template_id": None,
                         "template_modified": False,
@@ -386,9 +474,14 @@ def apply_plans(base_url: str, key: str, plans: list[ServiceImportPlan], overwri
                         "source_ref": {
                             "created_from": "notion",
                             "section": section.title,
+                            "label": str(item.get("label") or section.title).strip(),
                         },
                         "review_status": "draft",
-                        "config": {"inputMode": "text", "elementType": "plain_text"},
+                        "config": {
+                            "inputMode": "manual_praise",
+                            "outputMode": "lyrics",
+                            "elementType": "praise",
+                        },
                     }
                 )
 
@@ -406,7 +499,7 @@ def apply_plans(base_url: str, key: str, plans: list[ServiceImportPlan], overwri
         results.append(
             {
                 "status": "inserted",
-                "service_type_id": svc_type,
+                "service_type_id": db_svc_type,
                 "service_date": svc_date.isoformat(),
                 "service_date_end": svc_end.isoformat() if svc_end else None,
                 "service_id": service_id,
@@ -442,8 +535,16 @@ def main() -> None:
     text = Path(args.input_path).read_text(encoding="utf-8")
     parsed_sections = parse_setlists.parse_text(text)
 
-    plans = build_service_plans(parsed_sections, source_path=source_path, source_name=args.source_name)
+    raw_plans = build_service_plans(parsed_sections, source_path=source_path, source_name=args.source_name)
+    try:
+        plans = deduplicate_service_plans(raw_plans)
+    except ValueError as err:
+        summarize(raw_plans)
+        raise SystemExit(f"검증 실패: {err}") from err
     summarize(plans)
+    duplicate_count = len(raw_plans) - len(plans)
+    if duplicate_count:
+        print(f"동일 중복 제외: {duplicate_count}")
 
     if not args.apply:
         print("DRY-RUN: DB 반영하지 않았습니다.")
