@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
 """
-Import formatted Notion setlist text into Supabase worship tables.
+Archive formatted Notion setlist text in Supabase import review tables.
 
 Usage:
   python3 scripts/import_notion_setlist.py <path/to/text>
   python3 scripts/import_notion_setlist.py <path/to/text> --apply
 
-Dry-run is default. Use --apply to write data.
+Dry-run is default. Use --apply to write archive data only.
 """
 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import uuid
@@ -394,195 +395,9 @@ def build_service_plans(
     return plans
 
 
-def get_existing_service_id(
-    base_url: str,
-    key: str,
-    service_type_id: str,
-    svc_date: date,
-    svc_end: date | None,
-) -> str | None:
-    query = {
-        "select": "id",
-        "service_type_id": f"eq.{service_type_id}",
-        "service_date": f"eq.{svc_date.isoformat()}",
-    }
-    if svc_end is None:
-        query["service_date_end"] = "is.null"
-    else:
-        query["service_date_end"] = f"eq.{svc_end.isoformat()}"
-    rows = _api_request(base_url, key, "GET", "mindex_worship_services", query)
-    if isinstance(rows, list) and rows:
-        return rows[0].get("id")
-    return None
-
-
-def apply_plans(base_url: str, key: str, plans: list[ServiceImportPlan], overwrite: bool = False) -> list[dict[str, Any]]:
-    results: list[dict[str, Any]] = []
-    service_type_ids = resolve_service_type_ids(plans, fetch_service_type_ids(base_url, key))
-
-    for plan in plans:
-        svc_type, svc_date, svc_end = plan.source_id
-        db_svc_type = service_type_ids[svc_type]
-        existing = get_existing_service_id(base_url, key, db_svc_type, svc_date, svc_end)
-
-        if existing and not overwrite:
-            results.append({
-                "status": "skipped",
-                "reason": "already exists",
-                "service_type_id": db_svc_type,
-                "service_date": svc_date.isoformat(),
-                "service_date_end": svc_end.isoformat() if svc_end else None,
-                "service_id": existing,
-            })
-            continue
-
-        if existing and overwrite:
-            _api_request(
-                base_url,
-                key,
-                "DELETE",
-                "mindex_worship_services",
-                query={"id": f"eq.{existing}"},
-                prefer="return=minimal",
-            )
-
-        service_row = {**plan.service_row, "service_type_id": db_svc_type}
-        inserted_service = _api_request(
-            base_url,
-            key,
-            "POST",
-            "mindex_worship_services",
-            query={"select": "id,title"},
-            body=[service_row],
-            prefer="return=representation",
-        )
-        if not isinstance(inserted_service, list) or not inserted_service:
-            raise RuntimeError(f"서비스 저장 실패: {svc_type} {svc_date}")
-
-        service_id = inserted_service[0]["id"]
-
-        section_id_by_order: dict[int, str] = {}
-        for idx, section in enumerate(plan.sections):
-            section_row = {
-                "service_id": service_id,
-                "sort_order": idx + 1,
-                "section_key": section.section_key,
-                "title": section.title,
-                "person": "",
-                "template_id": None,
-                "template_modified": False,
-                "source_kind": "import",
-                "source_ref": {
-                    "created_from": "notion",
-                },
-                "config": {},
-            }
-            inserted_sections = _api_request(
-                base_url,
-                key,
-                "POST",
-                "mindex_worship_sections",
-                query={"select": "id"},
-                body=[section_row],
-                prefer="return=representation",
-            )
-            section_id_by_order[idx] = inserted_sections[0]["id"]
-
-        element_rows: list[dict[str, Any]] = []
-        for idx, section in enumerate(plan.sections):
-            sec_id = section_id_by_order.get(idx)
-            if not sec_id:
-                continue
-            for item_idx, item in enumerate(section.items, start=1):
-                title = str(item.get("title") or "").strip()
-                element_rows.append(
-                    {
-                        "section_id": sec_id,
-                        "sort_order": item_idx,
-                        "element_type": "praise",
-                        "title": title,
-                        "person": "",
-                        "body": "",
-                        "song_id": None,
-                        "song_version_id": None,
-                        "scripture_id": None,
-                        "scripture_reference": "",
-                        "asset": {"url": "", "kind": "", "name": ""},
-                        # The DB enum stores praise modes as praise_db. The
-                        # specific direct-entry mode lives in config/state.
-                        "input_mode": "praise_db",
-                        "content_state": {
-                            "state": "filled" if title else "missing",
-                            "reason": "import_payload",
-                            "required": False,
-                            "inputMode": "manual_praise",
-                            "elementType": "praise",
-                        },
-                        "template_id": None,
-                        "template_modified": False,
-                        "source_kind": "import",
-                        "source_ref": {
-                            "created_from": "notion",
-                            "section": section.title,
-                            "label": str(item.get("label") or section.title).strip(),
-                        },
-                        "review_status": "draft",
-                        "config": {
-                            "inputMode": "manual_praise",
-                            "outputMode": "lyrics",
-                            "elementType": "praise",
-                        },
-                    }
-                )
-
-        if element_rows:
-            _api_request(
-                base_url,
-                key,
-                "POST",
-                "mindex_worship_elements",
-                query={"select": "id"},
-                body=element_rows,
-                prefer="return=representation",
-            )
-
-        results.append(
-            {
-                "status": "inserted",
-                "service_type_id": db_svc_type,
-                "service_date": svc_date.isoformat(),
-                "service_date_end": svc_end.isoformat() if svc_end else None,
-                "service_id": service_id,
-                "sections": len(plan.sections),
-            }
-        )
-
-    return results
-
-
 def _chunks(rows: list[dict[str, Any]], size: int = IMPORT_CHUNK_SIZE):
     for start in range(0, len(rows), size):
         yield rows[start:start + size]
-
-
-def _service_row_key(row: dict[str, Any]) -> tuple[str, str, str | None]:
-    return (
-        str(row.get("service_type_id") or ""),
-        str(row.get("service_date") or ""),
-        str(row.get("service_date_end")) if row.get("service_date_end") else None,
-    )
-
-
-def _plan_db_key(
-    plan: ServiceImportPlan,
-    service_type_ids: dict[str, str],
-) -> tuple[str, str, str | None]:
-    type_id, svc_date, svc_end = plan.source_id
-    return (
-        service_type_ids[type_id],
-        svc_date.isoformat(),
-        svc_end.isoformat() if svc_end else None,
-    )
 
 
 def _import_identity(plan: ServiceImportPlan, db_type_id: str) -> str:
@@ -597,205 +412,182 @@ def _import_identity(plan: ServiceImportPlan, db_type_id: str) -> str:
     ])
 
 
-def apply_plans_bulk(
+def _archive_source_id(import_identity: str) -> str:
+    return str(uuid.uuid5(IMPORT_UUID_NAMESPACE, f"archive|{import_identity}"))
+
+
+def build_archive_rows(
+    plans: list[ServiceImportPlan],
+    service_type_ids: dict[str, str],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    source_rows: list[dict[str, Any]] = []
+    candidate_rows: list[dict[str, Any]] = []
+
+    for plan in plans:
+        source_type, svc_date, svc_end = plan.source_id
+        db_type_id = service_type_ids[source_type]
+        import_identity = _import_identity(plan, db_type_id)
+        source_id = _archive_source_id(import_identity)
+        source_ref = dict(plan.service_row.get("source_ref") or {})
+        source_name = str(source_ref.get("source_name") or "2026 찬양 콘티")
+        source_path = str(source_ref.get("source_path") or "")
+        archive_payload = {
+            "schema_version": 1,
+            "import_identity": import_identity,
+            "service": {
+                "service_type_id": db_type_id,
+                "service_date": svc_date.isoformat(),
+                "service_date_end": svc_end.isoformat() if svc_end else None,
+                "title": plan.service_row.get("title") or "",
+                "leader": plan.service_row.get("worship_leader") or "",
+                "tags": [
+                    value.strip()
+                    for value in str(plan.service_row.get("service_alias") or "").split(",")
+                    if value.strip()
+                ],
+            },
+            "sections": [
+                {
+                    "label": section.title,
+                    "section_key": section.section_key,
+                    "songs": [dict(item) for item in section.items],
+                }
+                for section in plan.sections
+            ],
+            "source_ref": source_ref,
+        }
+        encoded_payload = json.dumps(
+            archive_payload,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+        item_count = sum(len(section.items) for section in plan.sections)
+        source_rows.append({
+            "id": source_id,
+            "source_kind": "setlist",
+            "source_name": source_name,
+            "source_path": source_path,
+            "source_hash": hashlib.sha256(encoded_payload).hexdigest(),
+            "service_type_id": db_type_id,
+            "service_date": svc_date.isoformat(),
+            "status": "archived",
+            "raw_payload": archive_payload,
+            "parse_report": {
+                "schema_version": 1,
+                "section_count": len(plan.sections),
+                "song_count": item_count,
+                "service_date_end": svc_end.isoformat() if svc_end else None,
+            },
+        })
+
+        candidate_order = 0
+        for section_index, section in enumerate(plan.sections, start=1):
+            for item_index, item in enumerate(section.items, start=1):
+                candidate_order += 1
+                title = str(item.get("title") or "").strip()
+                label = str(item.get("label") or section.title).strip()
+                candidate_rows.append({
+                    "id": str(uuid.uuid5(
+                        IMPORT_UUID_NAMESPACE,
+                        f"archive|{import_identity}|{section_index}|{item_index}",
+                    )),
+                    "import_source_id": source_id,
+                    "sort_order": candidate_order,
+                    "candidate_level": "element",
+                    "candidate_key": section.section_key or "praise",
+                    "raw_label": label,
+                    "raw_title": title,
+                    "raw_body": "",
+                    "normalized_label": label,
+                    "normalized_title": title,
+                    "normalized_body": "",
+                    "suggested_type": "praise",
+                    "suggested_template_id": None,
+                    "suggested_song_id": None,
+                    "suggested_scripture_id": None,
+                    "confidence": 1,
+                    "review_status": "approved",
+                    "raw_payload": {
+                        "section_index": section_index,
+                        "item_index": item_index,
+                        "service_date_end": svc_end.isoformat() if svc_end else None,
+                    },
+                    "normalized_payload": {
+                        "title": title,
+                        "label": label,
+                        "section_key": section.section_key,
+                    },
+                    "notes": "Notion 2026 찬양 콘티 보존본",
+                })
+
+    return source_rows, candidate_rows
+
+
+def apply_archive(
     base_url: str,
     key: str,
     plans: list[ServiceImportPlan],
-    merge_existing: bool = False,
-) -> list[dict[str, Any]]:
+) -> dict[str, int]:
     service_type_ids = resolve_service_type_ids(plans, fetch_service_type_ids(base_url, key))
-    existing_rows = _api_request(
-        base_url,
-        key,
-        "GET",
-        "mindex_worship_services",
-        {"select": "id,service_type_id,service_date,service_date_end"},
-    )
-    existing_by_key: dict[tuple[str, str, str | None], dict[str, Any]] = {}
-    duplicate_keys: list[tuple[str, str, str | None]] = []
-    for row in existing_rows:
-        row_key = _service_row_key(row)
-        if row_key in existing_by_key:
-            duplicate_keys.append(row_key)
-        else:
-            existing_by_key[row_key] = row
-    if duplicate_keys:
-        raise ValueError(f"DB에 중복 예배 키가 있습니다: {duplicate_keys}")
+    source_rows, candidate_rows = build_archive_rows(plans, service_type_ids)
 
-    new_plans = [plan for plan in plans if _plan_db_key(plan, service_type_ids) not in existing_by_key]
-    if new_plans:
-        service_rows = [
-            {
-                **plan.service_row,
-                "service_type_id": service_type_ids[plan.source_id[0]],
-            }
-            for plan in new_plans
-        ]
-        inserted_rows = _api_request(
+    for rows in _chunks(source_rows):
+        _api_request(
             base_url,
             key,
             "POST",
-            "mindex_worship_services",
-            query={"select": "id,service_type_id,service_date,service_date_end"},
-            body=service_rows,
-            prefer="return=representation",
+            "mindex_worship_import_sources",
+            body=rows,
+            prefer="resolution=merge-duplicates,return=minimal",
         )
-        for row in inserted_rows:
-            existing_by_key[_service_row_key(row)] = row
+    for rows in _chunks(candidate_rows):
+        _api_request(
+            base_url,
+            key,
+            "POST",
+            "mindex_worship_import_candidates",
+            body=rows,
+            prefer="resolution=merge-duplicates,return=minimal",
+        )
 
-    unresolved = [
-        _plan_db_key(plan, service_type_ids)
-        for plan in plans
-        if _plan_db_key(plan, service_type_ids) not in existing_by_key
-    ]
-    if unresolved:
-        raise RuntimeError(f"서비스 일괄 저장 후 ID를 찾지 못했습니다: {unresolved}")
-
-    actionable: list[tuple[ServiceImportPlan, str, str]] = []
-    results: list[dict[str, Any]] = []
-    new_plan_ids = {id(plan) for plan in new_plans}
-    for plan in plans:
-        db_key = _plan_db_key(plan, service_type_ids)
-        service_id = str(existing_by_key[db_key]["id"])
-        if id(plan) not in new_plan_ids and not merge_existing:
-            results.append({
-                "status": "skipped",
-                "reason": "already exists",
-                "service_type_id": db_key[0],
-                "service_date": db_key[1],
-                "service_date_end": db_key[2],
-                "service_id": service_id,
-            })
-            continue
-        status = "inserted" if id(plan) in new_plan_ids else "merged"
-        actionable.append((plan, service_id, status))
-
-    service_ids = sorted({service_id for _, service_id, _ in actionable})
-    existing_sections: list[dict[str, Any]] = []
-    if service_ids:
-        existing_sections = _api_request(
+    stored_sources: list[dict[str, Any]] = []
+    stored_candidates: list[dict[str, Any]] = []
+    for rows in _chunks(source_rows):
+        ids = ",".join(str(row["id"]) for row in rows)
+        stored_sources.extend(_api_request(
             base_url,
             key,
             "GET",
-            "mindex_worship_sections",
-            {
-                "select": "id,service_id,sort_order",
-                "service_id": f"in.({','.join(service_ids)})",
-            },
-        )
-    max_section_order: dict[str, int] = {}
-    for row in existing_sections:
-        service_id = str(row.get("service_id") or "")
-        max_section_order[service_id] = max(
-            max_section_order.get(service_id, 0),
-            int(row.get("sort_order") or 0),
-        )
-
-    section_rows: list[dict[str, Any]] = []
-    element_rows: list[dict[str, Any]] = []
-    for plan, service_id, status in actionable:
-        db_type_id = service_type_ids[plan.source_id[0]]
-        import_identity = _import_identity(plan, db_type_id)
-        base_order = max_section_order.get(service_id, 0)
-        source_ref = plan.service_row.get("source_ref") or {}
-        source_name = str(source_ref.get("source_name") or "2026 찬양 콘티")
-        for section_idx, section in enumerate(plan.sections, start=1):
-            section_id = str(uuid.uuid5(
-                IMPORT_UUID_NAMESPACE,
-                f"{service_id}|{import_identity}|section|{section_idx}",
-            ))
-            section_rows.append({
-                "id": section_id,
-                "service_id": service_id,
-                "sort_order": base_order + section_idx,
-                "section_key": section.section_key,
-                "title": section.title,
-                "person": "",
-                "template_id": None,
-                "template_modified": False,
-                "source_kind": "import",
-                "source_ref": {
-                    "created_from": "notion",
-                    "source_name": source_name,
-                    "import_identity": import_identity,
-                    "section_index": section_idx,
-                },
-                "config": {},
-            })
-            for item_idx, item in enumerate(section.items, start=1):
-                title = str(item.get("title") or "").strip()
-                element_id = str(uuid.uuid5(
-                    IMPORT_UUID_NAMESPACE,
-                    f"{section_id}|element|{item_idx}",
-                ))
-                element_rows.append({
-                    "id": element_id,
-                    "section_id": section_id,
-                    "sort_order": item_idx,
-                    "element_type": "praise",
-                    "title": title,
-                    "person": "",
-                    "body": "",
-                    "song_id": None,
-                    "song_version_id": None,
-                    "scripture_id": None,
-                    "scripture_reference": "",
-                    "asset": {"url": "", "kind": "", "name": ""},
-                    "input_mode": "praise_db",
-                    "content_state": {
-                        "state": "filled" if title else "missing",
-                        "reason": "import_payload",
-                        "required": False,
-                        "inputMode": "manual_praise",
-                        "elementType": "praise",
-                    },
-                    "template_id": None,
-                    "template_modified": False,
-                    "source_kind": "import",
-                    "source_ref": {
-                        "created_from": "notion",
-                        "source_name": source_name,
-                        "import_identity": import_identity,
-                        "section": section.title,
-                        "label": str(item.get("label") or section.title).strip(),
-                    },
-                    "review_status": "draft",
-                    "config": {
-                        "inputMode": "manual_praise",
-                        "outputMode": "lyrics",
-                        "elementType": "praise",
-                    },
-                })
-
-        results.append({
-            "status": status,
-            "service_type_id": db_type_id,
-            "service_date": plan.source_id[1].isoformat(),
-            "service_date_end": plan.source_id[2].isoformat() if plan.source_id[2] else None,
-            "service_id": service_id,
-            "sections": len(plan.sections),
-            "elements": sum(len(section.items) for section in plan.sections),
-        })
-
-    for rows in _chunks(section_rows):
-        _api_request(
+            "mindex_worship_import_sources",
+            {"select": "id,source_hash,status", "id": f"in.({ids})"},
+        ))
+    for rows in _chunks(candidate_rows):
+        ids = ",".join(str(row["id"]) for row in rows)
+        stored_candidates.extend(_api_request(
             base_url,
             key,
-            "POST",
-            "mindex_worship_sections",
-            body=rows,
-            prefer="resolution=ignore-duplicates,return=minimal",
-        )
-    for rows in _chunks(element_rows):
-        _api_request(
-            base_url,
-            key,
-            "POST",
-            "mindex_worship_elements",
-            body=rows,
-            prefer="resolution=ignore-duplicates,return=minimal",
-        )
-    return results
+            "GET",
+            "mindex_worship_import_candidates",
+            {"select": "id,import_source_id,raw_title,review_status", "id": f"in.({ids})"},
+        ))
+
+    expected_hashes = {str(row["id"]): row["source_hash"] for row in source_rows}
+    actual_hashes = {str(row["id"]): row.get("source_hash") for row in stored_sources}
+    if actual_hashes != expected_hashes:
+        raise RuntimeError("archive source 검증 실패: ID 또는 payload hash가 일치하지 않습니다.")
+    expected_candidates = {
+        str(row["id"]): (str(row["import_source_id"]), row["raw_title"])
+        for row in candidate_rows
+    }
+    actual_candidates = {
+        str(row["id"]): (str(row.get("import_source_id") or ""), row.get("raw_title") or "")
+        for row in stored_candidates
+    }
+    if actual_candidates != expected_candidates:
+        raise RuntimeError("archive candidate 검증 실패: 곡 제목 또는 source 연결이 일치하지 않습니다.")
+
+    return {"sources": len(source_rows), "songs": len(candidate_rows)}
 
 
 def summarize(plans: list[ServiceImportPlan]) -> None:
@@ -810,13 +602,7 @@ def summarize(plans: list[ServiceImportPlan]) -> None:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("input_path", help="Notion 붙여넣기 텍스트 파일 경로")
-    parser.add_argument("--apply", action="store_true", help="DB 반영")
-    parser.add_argument("--overwrite", action="store_true", help="기존 동일 타입/날짜면 덮어쓰기")
-    parser.add_argument(
-        "--merge-existing",
-        action="store_true",
-        help="기존 예배를 보존하고 import 섹션을 뒤에 병합",
-    )
+    parser.add_argument("--apply", action="store_true", help="분리된 archive DB에 반영")
     parser.add_argument(
         "--move-date",
         action="append",
@@ -853,18 +639,9 @@ def main() -> None:
         return
 
     base_url, key = read_config()
-    if args.overwrite:
-        results = apply_plans(base_url, key, plans, overwrite=True)
-    else:
-        results = apply_plans_bulk(
-            base_url,
-            key,
-            plans,
-            merge_existing=args.merge_existing,
-        )
-    print("\n적용 결과")
-    for row in results:
-        print(json.dumps(row, ensure_ascii=False))
+    archive_result = apply_archive(base_url, key, plans)
+    print("\nArchive 적용 결과")
+    print(json.dumps(archive_result, ensure_ascii=False))
 
 
 if __name__ == "__main__":

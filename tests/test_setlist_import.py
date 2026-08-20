@@ -161,105 +161,85 @@ class SetlistImportTest(unittest.TestCase):
             {"holy-week-dawn": "holy_week_dawn", "omer": "omer"},
         )
 
-    def test_apply_stores_titles_as_unlinked_manual_praise(self):
+    def test_archive_rows_keep_service_metadata_and_song_roles_separate(self):
         plan = build_plans(
             """### 주일예배
 **01/04 이재희**
+2부 특송/ 502 빛의 사자들이여
 온 맘 다해
 """
         )[0]
-        requests = []
 
-        def fake_request(base_url, key, method, path, query=None, body=None, prefer=None):
-            requests.append({"method": method, "path": path, "query": query, "body": body})
-            if path == "mindex_worship_service_types":
-                return [{"id": "sun_3rd"}]
-            if method == "GET" and path == "mindex_worship_services":
-                return []
-            if path == "mindex_worship_services":
-                return [{"id": "service-1", "title": "주일예배 (3부)"}]
-            if path == "mindex_worship_sections":
-                return [{"id": "section-1"}]
-            if path == "mindex_worship_elements":
-                return [{"id": "element-1"}]
-            raise AssertionError(f"unexpected request: {method} {path}")
-
-        with patch.object(import_notion_setlist, "_api_request", side_effect=fake_request):
-            import_notion_setlist.apply_plans("https://example.invalid", "key", [plan])
-
-        service_payload = next(
-            request["body"][0]
-            for request in requests
-            if request["method"] == "POST" and request["path"] == "mindex_worship_services"
+        sources, candidates = import_notion_setlist.build_archive_rows(
+            [plan], {"sunday-main": "sun_3rd"}
         )
-        element_payload = next(
-            request["body"][0]
-            for request in requests
-            if request["method"] == "POST" and request["path"] == "mindex_worship_elements"
-        )
-        self.assertEqual(service_payload["service_type_id"], "sun_3rd")
-        self.assertEqual(element_payload["element_type"], "praise")
-        self.assertEqual(element_payload["title"], "온 맘 다해")
-        self.assertIsNone(element_payload["song_id"])
-        self.assertIsNone(element_payload["song_version_id"])
-        self.assertEqual(element_payload["input_mode"], "praise_db")
-        self.assertEqual(element_payload["config"]["inputMode"], "manual_praise")
 
-    def test_bulk_apply_merges_into_existing_service_without_deleting_it(self):
+        self.assertEqual(len(sources), 1)
+        self.assertEqual(sources[0]["source_kind"], "setlist")
+        self.assertEqual(sources[0]["status"], "archived")
+        self.assertEqual(sources[0]["service_type_id"], "sun_3rd")
+        self.assertEqual(sources[0]["service_date"], "2026-01-04")
+        self.assertEqual(sources[0]["parse_report"]["song_count"], 2)
+        self.assertEqual(
+            [(row["raw_label"], row["raw_title"]) for row in candidates],
+            [("2부 특송", "502 빛의 사자들이여"), ("찬양", "온 맘 다해")],
+        )
+        self.assertTrue(all(row["import_source_id"] == sources[0]["id"] for row in candidates))
+
+    def test_archive_apply_writes_only_archive_tables_and_verifies_rows(self):
         plan = build_plans(
-            """### 주일오후예배
-**07/05 박수경 집사님**
-주 되심
+            """### 수요예배
+**01/07 김석범 목사님**
+감사
 """
         )[0]
         requests = []
+        stored_sources = []
+        stored_candidates = []
 
         def fake_request(base_url, key, method, path, query=None, body=None, prefer=None):
-            requests.append({
-                "method": method,
-                "path": path,
-                "query": query,
-                "body": body,
-                "prefer": prefer,
-            })
+            requests.append({"method": method, "path": path, "body": body})
             if path == "mindex_worship_service_types":
-                return [{"id": "sunday-afternoon"}]
-            if method == "GET" and path == "mindex_worship_services":
-                return [{
-                    "id": "service-1",
-                    "service_type_id": "sunday-afternoon",
-                    "service_date": "2026-07-05",
-                    "service_date_end": None,
-                }]
-            if method == "GET" and path == "mindex_worship_sections":
-                return [{"id": "existing-section", "service_id": "service-1", "sort_order": 8}]
-            if method == "POST" and path in {"mindex_worship_sections", "mindex_worship_elements"}:
+                return [{"id": "wed"}]
+            if method == "POST" and path == "mindex_worship_import_sources":
+                stored_sources.extend(body)
                 return {}
+            if method == "POST" and path == "mindex_worship_import_candidates":
+                stored_candidates.extend(body)
+                return {}
+            if method == "GET" and path == "mindex_worship_import_sources":
+                return [
+                    {"id": row["id"], "source_hash": row["source_hash"], "status": row["status"]}
+                    for row in stored_sources
+                ]
+            if method == "GET" and path == "mindex_worship_import_candidates":
+                return [
+                    {
+                        "id": row["id"],
+                        "import_source_id": row["import_source_id"],
+                        "raw_title": row["raw_title"],
+                        "review_status": row["review_status"],
+                    }
+                    for row in stored_candidates
+                ]
             raise AssertionError(f"unexpected request: {method} {path}")
 
         with patch.object(import_notion_setlist, "_api_request", side_effect=fake_request):
-            results = import_notion_setlist.apply_plans_bulk(
-                "https://example.invalid",
-                "key",
-                [plan],
-                merge_existing=True,
+            result = import_notion_setlist.apply_archive(
+                "https://example.invalid", "key", [plan]
             )
 
-        section_payload = next(
-            request["body"][0]
+        self.assertEqual(result, {"sources": 1, "songs": 1})
+        written_tables = {
+            request["path"]
             for request in requests
-            if request["method"] == "POST" and request["path"] == "mindex_worship_sections"
-        )
-        element_payload = next(
-            request["body"][0]
-            for request in requests
-            if request["method"] == "POST" and request["path"] == "mindex_worship_elements"
-        )
-        self.assertEqual(results[0]["status"], "merged")
-        self.assertEqual(section_payload["service_id"], "service-1")
-        self.assertEqual(section_payload["sort_order"], 9)
-        self.assertEqual(element_payload["title"], "주 되심")
-        self.assertFalse(any(request["method"] == "DELETE" for request in requests))
+            if request["method"] == "POST"
+        }
+        self.assertEqual(written_tables, {
+            "mindex_worship_import_sources",
+            "mindex_worship_import_candidates",
+        })
+        self.assertFalse(any("mindex_worship_services" == request["path"] for request in requests))
 
 
 if __name__ == "__main__":
