@@ -407,6 +407,9 @@ Small visual polish that does not alter behavior does not need an entry.
 - 크로마키 lower-bar 성구는 하단 bar 안에 들어오는 것이 우선이다. 긴 절은
   presenter/thumbnail 공통 fit 로직으로 최대 32px까지 줄이고, bar 밖으로
   overflow시키지 않는다.
+- Presenter sidebar의 순서 row를 누르면 개별 thumb가 아니라 해당 element
+  subgroup의 시작점으로 board를 이동한다. 긴 찬양/지연 렌더 구간에서도
+  선택된 순서의 입력·thumb 영역이 빈 화면 없이 보이는 것이 우선이다.
 
 ## Service Auto-Schedule Rules
 - 어린이부 예배, 청소년부 예배, 청년부 예배는 주일 자동 생성 대상이다.

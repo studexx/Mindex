@@ -4580,15 +4580,17 @@ def main() -> int:
                                 behavior: options?.behavior || ''
                               };
                             }
+                            return window.__mindexOriginalScrollIntoView.call(this, options);
                           };
                           const rows = [...document.querySelectorAll('.service-outline-row[data-service-outline-slide]:not([disabled])')]
                             .filter((row) => Number(row.dataset.serviceOutlineSlide) > 0);
                           const row = rows[rows.length - 1] || null;
                           if (!row) return null;
                           row.dataset.smokeOutlineScroll = '1';
+                          const target = serviceOutlineSlideTarget(row) || {};
                           return {
                             serviceId: row.dataset.serviceOutlineService || '',
-                            index: Number(row.dataset.serviceOutlineSlide),
+                            index: Number(target.slideIndex ?? row.dataset.serviceOutlineSlide),
                             text: row.textContent.replace(/\\s+/g, ' ').trim()
                           };
                         }
@@ -4596,18 +4598,34 @@ def main() -> int:
                     )
                     if outline_scroll_seed:
                         page.click('[data-smoke-outline-scroll="1"]')
-                        page.wait_for_timeout(150)
+                        page.wait_for_timeout(350)
                         outline_scroll_state = page.evaluate(
                             """
                             (expected) => {
                               const target = window.__mindexOutlineScrollTarget || {};
+                              const activeThumb = document.querySelector(`.svc-slide-thumb.active[data-presenter-index="${expected.index}"]`);
+                              const targetThumb = document.querySelector(`.svc-slide-thumb[data-service-id="${expected.serviceId}"][data-presenter-index="${expected.index}"]`);
+                              const activeTarget = activeThumb?.closest('.svc-board-subgroup')
+                                || targetThumb?.closest('.svc-board-subgroup')
+                                || activeThumb
+                                || targetThumb;
+                              const pane = document.querySelector('.detail-pane');
+                              const targetRect = activeTarget?.getBoundingClientRect();
+                              const paneRect = pane?.getBoundingClientRect();
+                              const visible = Boolean(targetRect && paneRect
+                                && targetRect.top < paneRect.bottom
+                                && targetRect.bottom > paneRect.top
+                                && targetRect.left < paneRect.right
+                                && targetRect.right > paneRect.left);
                               Element.prototype.scrollIntoView = window.__mindexOriginalScrollIntoView;
                               return {
                                 expected,
                                 target,
                                 presenterIndex: state.presenter.index,
                                 activeThumbs: document.querySelectorAll(`.svc-slide-thumb.active[data-presenter-index="${expected.index}"]`).length,
-                                selectedThumbs: document.querySelectorAll(`.svc-slide-thumb.selected[data-presenter-index="${expected.index}"]`).length
+                                targetThumbs: document.querySelectorAll(`.svc-slide-thumb[data-service-id="${expected.serviceId}"][data-presenter-index="${expected.index}"]`).length,
+                                selectedThumbs: document.querySelectorAll(`.svc-slide-thumb.selected[data-presenter-index="${expected.index}"]`).length,
+                                visible
                               };
                             }
                             """,
@@ -4619,12 +4637,14 @@ def main() -> int:
                             or (
                                 scroll_target["serviceId"] == outline_scroll_seed["serviceId"]
                                 and scroll_target["index"] == outline_scroll_state["presenterIndex"]
-                                and scroll_target["block"] == "center"
-                                and scroll_target["behavior"] == "auto"
+                                and "svc-board-subgroup" in scroll_target["className"]
+                                and scroll_target["block"] == "start"
+                                and scroll_target["behavior"] in ("auto", "smooth")
                             )
                         )
                         if (
                             scroll_ok
+                            and outline_scroll_state["visible"]
                             and (
                                 outline_scroll_state["presenterIndex"] >= 0
                                 or outline_scroll_state["selectedThumbs"] >= 1

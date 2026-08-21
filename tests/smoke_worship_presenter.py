@@ -371,18 +371,22 @@ def main() -> int:
                       if (pane) pane.scrollTop = 260;
                       document.scrollingElement.scrollTop = 260;
                       await new Promise((resolve) => requestAnimationFrame(resolve));
-                      const afterHeader = header?.getBoundingClientRect();
-                      const afterTop = top?.getBoundingClientRect();
+                      const currentHeader = document.querySelector('.svc-header');
+                      const currentTop = document.querySelector('.svc-presenter-top');
+                      const currentTitle = document.querySelector('.svc-service-title');
+                      const currentDate = document.querySelector('.svc-date-text');
+                      const afterHeader = currentHeader?.getBoundingClientRect();
+                      const afterTop = currentTop?.getBoundingClientRect();
                       const beforeHeaderTop = Math.round(beforeHeader?.top || 0);
                       const afterHeaderTop = Math.round(afterHeader?.top || 0);
                       const beforeControlsTop = Math.round(beforeTop?.top || 0);
                       const afterControlsTop = Math.round(afterTop?.top || 0);
                       return {
-                        title: title?.textContent.trim() || '',
-                        date: date?.textContent.trim() || '',
-                        usesExistingHeader: Boolean(title?.closest('.svc-header') && !document.querySelector('.svc-presenter-title-row')),
-                        headerPosition: header ? getComputedStyle(header).position : '',
-                        controlsPosition: top ? getComputedStyle(top).position : '',
+                        title: currentTitle?.textContent.trim() || title?.textContent.trim() || '',
+                        date: currentDate?.textContent.trim() || date?.textContent.trim() || '',
+                        usesExistingHeader: Boolean((currentTitle || title)?.closest('.svc-header') && !document.querySelector('.svc-presenter-title-row')),
+                        headerPosition: currentHeader ? getComputedStyle(currentHeader).position : '',
+                        controlsPosition: currentTop ? getComputedStyle(currentTop).position : '',
                         beforeHeaderTop,
                         afterHeaderTop,
                         headerShift: Math.abs(afterHeaderTop - beforeHeaderTop),

@@ -1513,7 +1513,7 @@ function handleServiceOutlineSlideClick(serviceOutlineItem) {
     const outline = refs.songList?.querySelector(".service-outline-list");
     if (!outline?.contains(serviceOutlineItem)) renderServiceList();
   }
-  scrollPresenterBoardToIndex(target.serviceId, target.slideIndex, { force: true, behavior: "smooth" });
+  scrollPresenterBoardToIndex(target.serviceId, target.slideIndex, { force: true, behavior: "smooth", target: "subgroup", block: "start" });
 }
 
 function syncServiceOutlineSelection(serviceOutlineItem) {
@@ -26001,14 +26001,17 @@ function scrollPresenterBoardToIndex(serviceId, index, options = {}) {
       });
       return true;
     }
+    const scrollTarget = options.target === "subgroup"
+      ? thumb.closest(".svc-board-subgroup") || thumb.closest(".svc-slide-thumb-wrap") || thumb
+      : thumb.closest(".svc-slide-thumb-wrap") || thumb;
     const viewportRect = viewport.getBoundingClientRect();
-    const thumbRect = thumb.getBoundingClientRect();
+    const thumbRect = scrollTarget.getBoundingClientRect();
     const fullyVisible = thumbRect.top >= viewportRect.top
       && thumbRect.bottom <= viewportRect.bottom
       && thumbRect.left >= viewportRect.left
       && thumbRect.right <= viewportRect.right;
     if (fullyVisible && !options.force) return true;
-    thumb.scrollIntoView({
+    scrollTarget.scrollIntoView({
       block: options.block || "center",
       inline: "nearest",
       behavior: options.behavior || "auto",
