@@ -6079,11 +6079,17 @@ textarea.svc-presenter-input-control--multiline {
   z-index: 29;
   display: grid;
   min-width: 0;
-  grid-template-columns: auto auto minmax(0, max-content) minmax(0, 1fr);
-  gap: 5px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 8px;
   align-items: center;
   background: var(--bg);
   padding: 0 0 15px;
+}
+.svc-presenter-output-group {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 5px;
 }
 .svc-presenter-main {
   display: inline-flex;
@@ -6093,7 +6099,7 @@ textarea.svc-presenter-input-control--multiline {
   align-items: center;
   gap: 5px;
   border-radius: var(--r);
-  background: color-mix(in srgb, var(--panel-2) 24%, transparent);
+  background: color-mix(in srgb, var(--panel-2) 18%, transparent);
   padding: 2px;
 }
 .svc-presenter-state-group {
@@ -6298,7 +6304,7 @@ textarea.svc-presenter-input-control--multiline {
   min-width: 0;
   flex-wrap: nowrap;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: flex-end;
   gap: 4px;
 }
 .svc-presenter-actions .icon-btn { width: var(--ui-icon-btn-inline); height: var(--ui-icon-btn-inline); }
@@ -6386,6 +6392,7 @@ textarea.svc-presenter-input-control--multiline {
   padding: 2px;
 }
 .svc-presenter-action-group--nav {
+  flex: 0 0 auto;
   padding: 2px 3px;
 }
 .svc-music-player,
@@ -6509,6 +6516,7 @@ textarea.svc-presenter-input-control--multiline {
 .svc-presenter-launch { justify-self: start; }
 .svc-presenter-screen-select {
   display: inline-flex;
+  max-width: 158px;
   align-items: center;
   gap: 5px;
   height: 30px;
@@ -6519,6 +6527,7 @@ textarea.svc-presenter-input-control--multiline {
 }
 .svc-presenter-screen-select svg { width: 16px; height: 16px; }
 .svc-presenter-screen-select select {
+  min-width: 0;
   border: 0;
   background: transparent;
   color: inherit;
@@ -7163,6 +7172,7 @@ textarea.svc-presenter-input-control--multiline {
   box-shadow: 0 0 0 2px var(--accent);
 }
 body.is-chromium .svc-slide-thumb-wrap.active {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
   box-shadow: none;
 }
 .svc-slide-thumb-wrap.selected {
@@ -7177,6 +7187,12 @@ body.is-chromium .svc-slide-thumb-wrap:has(.svc-slide-thumb:hover),
 body.is-chromium .svc-slide-thumb-wrap:has(.svc-slide-thumb:focus-visible) {
   background: transparent;
 }
+.svc-slide-thumb-wrap.active:has(.svc-slide-thumb:hover),
+.svc-slide-thumb-wrap.active:has(.svc-slide-thumb:focus-visible),
+body.is-chromium .svc-slide-thumb-wrap.active:has(.svc-slide-thumb:hover),
+body.is-chromium .svc-slide-thumb-wrap.active:has(.svc-slide-thumb:focus-visible) {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
 .svc-slide-thumb-wrap:has(.svc-slide-thumb:hover) .svc-slide-thumb-no,
 .svc-slide-thumb-wrap:has(.svc-slide-thumb:focus-visible) .svc-slide-thumb-no {
   color: var(--accent);
@@ -7186,6 +7202,13 @@ body.is-chromium .svc-slide-thumb-wrap:has(.svc-slide-thumb:hover) .svc-slide-th
 body.is-chromium .svc-slide-thumb-wrap:has(.svc-slide-thumb:focus-visible) .svc-slide-thumb-no {
   color: var(--ink-3);
   font-weight: 700;
+}
+.svc-slide-thumb-wrap.active:has(.svc-slide-thumb:hover) .svc-slide-thumb-no,
+.svc-slide-thumb-wrap.active:has(.svc-slide-thumb:focus-visible) .svc-slide-thumb-no,
+body.is-chromium .svc-slide-thumb-wrap.active:has(.svc-slide-thumb:hover) .svc-slide-thumb-no,
+body.is-chromium .svc-slide-thumb-wrap.active:has(.svc-slide-thumb:focus-visible) .svc-slide-thumb-no {
+  color: var(--accent);
+  font-weight: 800;
 }
 .svc-slide-thumb-meta {
   display: flex;
@@ -7319,7 +7342,14 @@ body.is-chromium .svc-slide-thumb.selected .svc-slide-thumb-frame {
   box-shadow: none;
 }
 .svc-slide-thumb.active .svc-slide-thumb-frame {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, .10);
+}
+body.is-chromium .svc-slide-thumb.active .svc-slide-thumb-frame,
+body.is-chromium .svc-slide-thumb.active:hover .svc-slide-thumb-frame {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }
 .svc-slide-thumb.selected .svc-slide-thumb-frame {
   box-shadow:

@@ -24257,11 +24257,13 @@ function renderPresenterControlsTop(service, slides, active, index) {
   const launchIcon = anyOutputOpen ? "square" : "screen-share";
   return `
       <div class="svc-presenter-top">
-        <button class="svc-present-btn svc-presenter-launch${anyOutputOpen ? " is-stop" : ""}" type="button" data-presenter-action="${escapeAttr(launchAction)}" data-service-id="${escapeAttr(service.id)}" aria-label="${escapeAttr(launchLabel)}">
-          <i data-lucide="${escapeAttr(launchIcon)}"></i>
-          <span>${escapeHtml(launchLabel)}</span>
-        </button>
-        ${renderPresenterScreenControl()}
+        <div class="svc-presenter-output-group">
+          <button class="svc-present-btn svc-presenter-launch${anyOutputOpen ? " is-stop" : ""}" type="button" data-presenter-action="${escapeAttr(launchAction)}" data-service-id="${escapeAttr(service.id)}" aria-label="${escapeAttr(launchLabel)}">
+            <i data-lucide="${escapeAttr(launchIcon)}"></i>
+            <span>${escapeHtml(launchLabel)}</span>
+          </button>
+          ${renderPresenterScreenControl()}
+        </div>
         <div class="svc-presenter-main" aria-live="polite">
           <span class="svc-presenter-state-group">
             <span class="svc-presenter-status svc-presenter-status--${escapeAttr(statusTone)}" aria-label="${escapeAttr(uiText("presenter.aria.status", { status: statusLabel }))}">${escapeHtml(statusLabel)}</span>
@@ -24277,6 +24279,14 @@ function renderPresenterControlsTop(service, slides, active, index) {
               <span>${escapeHtml(uiText("presenter.action.jump"))}</span>
             </button>
           </span>
+          <span class="svc-presenter-action-group svc-presenter-action-group--nav" aria-label="${escapeAttr(uiText("presenter.aria.slideNav"))}">
+            <button class="icon-btn" type="button" data-presenter-action="prev" data-service-id="${escapeAttr(service.id)}" ${count ? "" : "disabled"} aria-label="${escapeAttr(uiText("presenter.action.prev"))}" title="${escapeAttr(uiText("presenter.action.prev"))}">
+              <i data-lucide="chevron-left"></i>
+            </button>
+            <button class="icon-btn" type="button" data-presenter-action="next" data-service-id="${escapeAttr(service.id)}" ${count ? "" : "disabled"} aria-label="${escapeAttr(uiText("presenter.action.next"))}" title="${escapeAttr(uiText("presenter.action.next"))}">
+              <i data-lucide="chevron-right"></i>
+            </button>
+          </span>
         </div>
         <div class="svc-presenter-actions">
           <span class="svc-presenter-action-group svc-presenter-action-group--music">
@@ -24286,14 +24296,6 @@ function renderPresenterControlsTop(service, slides, active, index) {
             <span class="svc-presenter-action-group svc-presenter-action-group--scripture">
               ${renderLiveScriptureControl(service.id)}
             </span>` : ""}
-          <span class="svc-presenter-action-group svc-presenter-action-group--nav" aria-label="${escapeAttr(uiText("presenter.aria.slideNav"))}">
-            <button class="icon-btn" type="button" data-presenter-action="prev" data-service-id="${escapeAttr(service.id)}" ${count ? "" : "disabled"} aria-label="${escapeAttr(uiText("presenter.action.prev"))}" title="${escapeAttr(uiText("presenter.action.prev"))}">
-              <i data-lucide="chevron-left"></i>
-            </button>
-            <button class="icon-btn" type="button" data-presenter-action="next" data-service-id="${escapeAttr(service.id)}" ${count ? "" : "disabled"} aria-label="${escapeAttr(uiText("presenter.action.next"))}" title="${escapeAttr(uiText("presenter.action.next"))}">
-              <i data-lucide="chevron-right"></i>
-            </button>
-          </span>
           ${renderPresenterHelpControl()}
         </div>
       </div>`;

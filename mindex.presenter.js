@@ -1974,8 +1974,8 @@ function isScriptureBodyServiceItem(item) {
     || label === "본문"
     || label === "성경본문"
     || label === "설교본문"
-    || ((scriptureReferenceLabel || elementType === "scripture_reading") && hasScriptureReference)
-    || (sectionKey === "scripture_reading" && (label === "성경봉독" || elementType === "scripture_body" || elementType === "scripture_reading"));
+    || (scriptureReferenceLabel && elementType !== "scripture_reading" && hasScriptureReference)
+    || (sectionKey === "scripture_reading" && elementType === "scripture_body");
 }
 
 function parsePresenterScriptureTextPayload(value) {

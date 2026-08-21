@@ -243,16 +243,16 @@
 .presenter-slide--ready .presenter-slide-text { align-items: center; font-size: var(--presenter-size-display); font-weight: var(--presenter-weight-display); text-align: center; }
 .presenter-ready-screen {
   display: flex;
-  width: min(68cqw, 1300px);
+  width: min(76cqw, 1480px);
   flex-direction: column;
-  gap: 3cqh;
+  gap: 3.4cqh;
   align-items: center;
   text-align: center;
 }
 .presenter-ready-screen-logo {
   display: block;
-  width: min(28cqw, 540px);
-  max-height: 9cqh;
+  width: min(34cqw, 620px);
+  max-height: 12cqh;
   object-fit: contain;
 }
 .presenter-ready-screen-copy {
@@ -263,7 +263,7 @@
 .presenter-ready-screen-kicker {
   margin: 0;
   color: color-mix(in srgb, var(--presenter-output-fg) 84%, transparent);
-  font-size: calc(38 * var(--presenter-stage-unit));
+  font-size: calc(34 * var(--presenter-stage-unit));
   font-weight: var(--presenter-weight-body);
   line-height: 1.2;
   text-shadow: 0 1px 8px rgba(255, 255, 255, .14);
@@ -271,7 +271,7 @@
 .presenter-ready-screen-message {
   margin: 0;
   color: var(--presenter-output-fg);
-  font-size: calc(54 * var(--presenter-stage-unit));
+  font-size: calc(66 * var(--presenter-stage-unit));
   font-weight: var(--presenter-weight-body);
   line-height: 1.16;
   text-shadow: 0 1px 9px rgba(255, 255, 255, .17);
