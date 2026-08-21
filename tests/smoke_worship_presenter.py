@@ -1500,6 +1500,12 @@ def main() -> int:
                           assignee: '인도자',
                           memo: serializeServiceItemMemo({ elementType: 'title_person' }),
                         },
+                        {
+                          id: '__smoke_fellowship_title__',
+                          label: '교제',
+                          raw_title: '박미루 집사',
+                          memo: serializeServiceItemMemo({ elementType: 'title_person' }),
+                        },
                       ];
                       const slides = items.map((item, index) => {
                         const slide = buildPresenterSlidesForServiceItem(item, service, index)[0] || {};
@@ -1537,6 +1543,16 @@ def main() -> int:
                       offeringHead.innerHTML = offeringHeadHtml;
                       return {
                         slides,
+                        fellowshipInputModel: (() => {
+                          const model = serviceItemEditorModel(items[4], { service });
+                          const spec = presenterServiceTextInputSpec(items[4], model, parseServiceItemMemo(items[4].memo));
+                          return {
+                            showTitle: Boolean(model.showTitle),
+                            showAssignee: Boolean(model.showAssignee),
+                            assigneeValue: model.assigneeValue || '',
+                            spec,
+                          };
+                        })(),
                         sermonTitleQuote: presenterTitleAssigneePerson(
                           { assignee: '김남영 목사' },
                           '설교 제목',
@@ -1597,7 +1613,26 @@ def main() -> int:
                             "text": "봉헌기도\n김남영 목사",
                             "html": title_assignee_state["slides"][3]["html"],
                         },
+                        {
+                            "elementType": "title_assignee",
+                            "layout": "lower_bar_text",
+                            "type": "title-assignee",
+                            "renderClass": "title-assignee",
+                            "title": "교제",
+                            "assignee": "박미루 집사",
+                            "text": "교제\n박미루 집사",
+                            "html": title_assignee_state["slides"][4]["html"],
+                        },
                     ]
+                    and title_assignee_state["fellowshipInputModel"] == {
+                        "showTitle": False,
+                        "showAssignee": True,
+                        "assigneeValue": "박미루 집사",
+                        "spec": {
+                            "needsTitle": False,
+                            "needsAssignee": True,
+                        },
+                    }
                     and all("presenter-title-assignee" in item["html"] for item in title_assignee_state["slides"])
                     and "presenter-title-assignee--missing" not in title_assignee_state["slides"][0]["html"]
                     and "presenter-title-assignee-title" in title_assignee_state["slides"][0]["html"]
@@ -1653,6 +1688,17 @@ def main() -> int:
                             "text": "봉헌기도\n김남영 목사",
                             "outputContext": "clean",
                             "html": title_assignee_state["cleanSlides"][3]["html"],
+                        },
+                        {
+                            "elementType": "title_content",
+                            "layout": "center_text",
+                            "type": "title-content",
+                            "renderClass": "title-content",
+                            "title": "교제",
+                            "bodyText": "박미루 집사",
+                            "text": "교제\n박미루 집사",
+                            "outputContext": "clean",
+                            "html": title_assignee_state["cleanSlides"][4]["html"],
                         },
                     ]
                     and all("presenter-title-content" in item["html"] for item in title_assignee_state["cleanSlides"][:2] + title_assignee_state["cleanSlides"][3:])

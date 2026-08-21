@@ -9743,6 +9743,7 @@ function serviceItemEditorModel(item = {}, options = {}) {
   const scripture = isScriptureBodyServiceItem(item) || isScriptureServiceLabel(item.label);
   const worshipLeaderItem = presenterTitleAssigneeUsesWorshipLeader(compactLabel);
   const genericRawTitle = presenterTitleAssigneeTitleIsGeneric(item.raw_title || "", item.label || "");
+  const rawTitleAssignee = titlePerson ? serviceTitlePersonRawTitleAssignee(item, parsed) : "";
   const strictSong = serviceItemRequiresSongSelection(item, service);
   const praiseInputMode = song ? servicePraiseInputMode(item, parsed, service) : "";
   const linkedSong = serviceItemLinkedSong(item);
@@ -9767,7 +9768,7 @@ function serviceItemEditorModel(item = {}, options = {}) {
         song
         || scripture
         || serviceTitlePersonNeedsTitleInput(item, parsed)
-        || (!worshipLeaderItem && !genericRawTitle && Boolean(String(item.raw_title || "").trim()))
+        || (!rawTitleAssignee && !worshipLeaderItem && !genericRawTitle && Boolean(String(item.raw_title || "").trim()))
       )
     );
   const scripturePayload = scriptureBody ? serviceScriptureTextPayload(item, parsed, service) : null;
@@ -9817,8 +9818,10 @@ function serviceTitlePersonNeedsTitleInput(item = {}, memo = parseServiceItemMem
   if (serviceMemoElementType(memo) !== "title_person") return false;
   const label = compactSearchValue(item.label || "");
   if (!label) return true;
-  if (["대표기도", "기도", "봉헌기도", "축도", "결단기도"].includes(label)) return false;
-  return true;
+  if (serviceTitlePersonRawTitleAssignee(item, memo)) return false;
+  const rawTitle = String(item.raw_title || item.title || "").trim();
+  if (rawTitle && !presenterTitleAssigneeTitleIsGeneric(rawTitle, item.label || "") && !looksLikePersonOrGroup(rawTitle)) return true;
+  return /설교|설교제목|특송|공동기도/.test(label);
 }
 
 function serviceItemEditorScriptureTitleValue(item = {}, parsed = parseServiceItemMemo(item.memo), service = null, scripturePayload = null) {
