@@ -4062,7 +4062,7 @@ function renderPresenterSectionSongTitleSlide(slide) {
   return `
     <div class="presenter-slide-text presenter-section-song-title">
       <span class="presenter-section-song-title-heading" style="--line-chars: ${escapeAttr(headingChars)}">${escapeHtml(heading)}</span>
-      <span class="presenter-section-song-title-name" style="--line-chars: ${escapeAttr(titleChars)}">${escapeHtml(title)}</span>
+      <span class="presenter-section-song-title-name" style="--line-chars: ${escapeAttr(titleChars)}">${renderPresenterSongText(title, slide)}</span>
     </div>
   `;
 }
@@ -4132,6 +4132,15 @@ function renderPresenterSlideText(slide) {
     .join("");
 }
 
+function renderPresenterSongText(text, slide) {
+  const raw = String(text || " ");
+  if (presenterSlideElementType(slide) !== PRESENTER_ELEMENT_TYPES.PRAISE) return escapePresenterSlideLine(raw, slide);
+  const match = raw.match(/^(\s*)(♪)(\s*)(.*)$/u);
+  if (!match) return renderPresenterHighlightedText(raw, slide);
+  const [, leading, note, spacing, rest] = match;
+  return `${escapeHtml(leading)}<span class="presenter-song-note" aria-hidden="true">${escapeHtml(note)}</span>${escapeHtml(spacing || " ")}${renderPresenterHighlightedText(rest || " ", slide)}`;
+}
+
 function presenterLyricVerseNumber(slide) {
   if (presenterSlideElementType(slide) !== PRESENTER_ELEMENT_TYPES.PRAISE) return "";
   if (presenterSlideLayout(slide) !== PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT) return "";
@@ -4146,6 +4155,9 @@ function escapePresenterSlideLine(line, slide) {
   const text = line || " ";
   if (presenterSlideElementType(slide) === PRESENTER_ELEMENT_TYPES.SCRIPTURE_TEXT) {
     return escapeHtml(text).replace(/ {2,}/g, (spaces) => "&nbsp;".repeat(spaces.length));
+  }
+  if (presenterSlideElementType(slide) === PRESENTER_ELEMENT_TYPES.PRAISE) {
+    return renderPresenterSongText(text, slide);
   }
   return renderPresenterHighlightedText(text, slide);
 }

@@ -209,6 +209,10 @@ Small visual polish that does not alter behavior does not need an entry.
   `입력 필요` placeholder도 실제 곡 입력 후와 같은 lower-bar song frame을
   사용한다. 담당자/기도 등 title-person 항목은 기존 center title-content
   placeholder를 유지한다.
+- 찬양 제목 앞 음표는 한글 제목 폰트를 바꾸지 않고 별도 inline glyph로
+  크기와 baseline만 보정한다. 풀스크린/clean output은 실제 송출 화면에만
+  250ms 이하의 약한 opacity/brightness dissolve를 적용할 수 있으며,
+  controller thumbnails와 chromakey/shared scripture output에는 적용하지 않는다.
 
 ### Public Worship Timing
 

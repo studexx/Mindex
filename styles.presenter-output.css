@@ -144,6 +144,26 @@
 .presenter-output-layer.is-next {
   z-index: 1;
 }
+.presenter-output-root.no-chromakey:not(.svc-slide-mini-canvas)
+  > .presenter-output-layer {
+  transition: none;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .presenter-output-root.no-chromakey:not(.svc-slide-mini-canvas)
+    > .presenter-output-layer {
+    transition:
+      opacity 250ms ease,
+      filter 250ms ease;
+  }
+  .presenter-output-root.no-chromakey:not(.svc-slide-mini-canvas)
+    > .presenter-output-layer.is-active {
+    filter: brightness(1);
+  }
+  .presenter-output-root.no-chromakey:not(.svc-slide-mini-canvas)
+    > .presenter-output-layer.is-next {
+    filter: brightness(.92);
+  }
+}
 .presenter-output-root.no-chromakey {
   --presenter-output-bg: #050807;
   --presenter-output-fg: #fff;
@@ -243,21 +263,21 @@
 .presenter-slide--ready .presenter-slide-text { align-items: center; font-size: var(--presenter-size-display); font-weight: var(--presenter-weight-display); text-align: center; }
 .presenter-ready-screen {
   display: flex;
-  width: min(76cqw, 1480px);
+  width: min(74cqw, 1420px);
   flex-direction: column;
-  gap: 3.4cqh;
+  gap: 4cqh;
   align-items: center;
   text-align: center;
 }
 .presenter-ready-screen-logo {
   display: block;
-  width: min(34cqw, 620px);
+  width: min(36cqw, 692px);
   max-height: 12cqh;
   object-fit: contain;
 }
 .presenter-ready-screen-copy {
   display: grid;
-  gap: 1.25cqh;
+  gap: 1.1cqh;
   justify-items: center;
 }
 .presenter-ready-screen-kicker {
@@ -271,7 +291,7 @@
 .presenter-ready-screen-message {
   margin: 0;
   color: var(--presenter-output-fg);
-  font-size: calc(66 * var(--presenter-stage-unit));
+  font-size: var(--presenter-size-body);
   font-weight: var(--presenter-weight-body);
   line-height: 1.16;
   text-shadow: 0 1px 9px rgba(255, 255, 255, .17);
@@ -500,6 +520,15 @@
   overflow-wrap: normal;
   text-shadow: none;
   word-break: keep-all;
+}
+.presenter-song-note {
+  display: inline-block;
+  font-family: var(--font-presenter);
+  font-size: .72em;
+  font-weight: var(--presenter-weight-body);
+  line-height: 1;
+  transform: translateY(-.04em);
+  vertical-align: baseline;
 }
 .presenter-slide--scripture .presenter-slide-text {
   align-items: flex-start;
