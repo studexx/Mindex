@@ -27503,6 +27503,22 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
     if (Array.isArray(titleContentSlide)) return withIntroAndSpecialTitle(titleContentSlide);
     if (titleContentSlide) return withIntroAndSpecialTitle([titleContentSlide]);
   }
+  if (isScriptureBodyServiceItem(item)) {
+    const scriptureTextSlides = buildPresenterScriptureTextSlides(item, section, index, service);
+    if (scriptureTextSlides.length) {
+      return withIntroAndSpecialTitle(presenterSlidesWithScriptureReadingTitle(item, section, scriptureTextSlides, index, service));
+    }
+    // Keep the element present while the async Bible lookup hydrates its verses.
+    // The same item is rebuilt in place as soon as the lookup completes.
+    if (service?.id) {
+      const sourceIndex = getServiceItems(service.id).findIndex((candidate) => String(candidate?.id || "") === String(item?.id || ""));
+      scheduleServiceScriptureBodyResolveWithOptions(service.id, sourceIndex >= 0 ? sourceIndex : index, { renderControls: false });
+    }
+    const pendingSlide = presenterPendingScriptureSlide(item, section, index, service);
+    return pendingSlide
+      ? withIntroAndSpecialTitle(presenterSlidesWithScriptureReadingTitle(item, section, [pendingSlide], index, service))
+      : [];
+  }
   const liturgicalSlides = buildPresenterLiturgicalBodySlides(item, section, index, service, memo, displayText);
   if (liturgicalSlides.length) return withIntroAndSpecialTitle(liturgicalSlides);
   const elementSlide = presenterElementSlideFromMemo(item, section, index, memo, displayText, service);
@@ -27537,23 +27553,6 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
 
   const customSlides = buildPresenterCustomSlides(item, section, index);
   if (customSlides.length) return withIntroAndSpecialTitle(customSlides);
-
-  const scriptureTextSlides = buildPresenterScriptureTextSlides(item, section, index, service);
-  if (scriptureTextSlides.length) {
-    return withIntroAndSpecialTitle(presenterSlidesWithScriptureReadingTitle(item, section, scriptureTextSlides, index, service));
-  }
-  if (isScriptureBodyServiceItem(item)) {
-    // Keep the element present while the async Bible lookup hydrates its verses.
-    // The same item is rebuilt in place as soon as the lookup completes.
-    if (service?.id) {
-      const sourceIndex = getServiceItems(service.id).findIndex((candidate) => String(candidate?.id || "") === String(item?.id || ""));
-      scheduleServiceScriptureBodyResolveWithOptions(service.id, sourceIndex >= 0 ? sourceIndex : index, { renderControls: false });
-    }
-    const pendingSlide = presenterPendingScriptureSlide(item, section, index, service);
-    return pendingSlide
-      ? withIntroAndSpecialTitle(presenterSlidesWithScriptureReadingTitle(item, section, [pendingSlide], index, service))
-      : [];
-  }
 
   const scoreOutput = !specialSongItem && (outputMode === "score" || requestedOutputMode === "score");
   if (scoreOutput && !linkedSongId && !song && !templateOwnedScoreSong) {
