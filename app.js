@@ -9698,10 +9698,30 @@ function preferredServiceSongVersion(song = null, item = {}, service = selectedS
 function serviceItemEditableAssigneeValue(item = {}, service = selectedServiceForEditor()) {
   const direct = String(item.assignee || "").trim();
   if (direct) return direct;
+  const rawTitleAssignee = serviceTitlePersonRawTitleAssignee(item);
+  if (rawTitleAssignee) return rawTitleAssignee;
   const templateDefault = serviceItemDefaultAssignee(item, service);
   if (templateDefault) return templateDefault;
   const compact = compactSearchValue(item.label || "");
   return presenterTitleAssigneeUsesWorshipLeader(compact) ? serviceWorshipLeaderLabel(service) : "";
+}
+
+function serviceTitlePersonRawTitleAssignee(item = {}, memo = parseServiceItemMemo(item.memo)) {
+  if (serviceMemoElementType(memo) !== "title_person") return "";
+  if (cleanServiceAssignee(item.assignee)) return "";
+  const rawTitle = String(item.raw_title || item.title || "").trim();
+  if (!rawTitle) return "";
+  if (!looksLikePersonOrGroup(rawTitle)) return "";
+  return cleanServiceAssignee(rawTitle);
+}
+
+function serviceTitlePersonEffectiveParts(item = {}, memo = parseServiceItemMemo(item.memo), service = selectedServiceForEditor()) {
+  const label = String(item.label || "").trim();
+  const rawTitle = String(item.raw_title || item.title || "").trim();
+  const rawTitleAssignee = serviceTitlePersonRawTitleAssignee(item, memo);
+  const assignee = cleanServiceAssignee(item.assignee) || rawTitleAssignee || (service ? serviceItemDefaultAssignee(item, service) : "");
+  const title = rawTitleAssignee ? label : rawTitle || label;
+  return { title, assignee, rawTitleAssignee };
 }
 
 function serviceItemEditorModel(item = {}, options = {}) {
@@ -9749,6 +9769,15 @@ function serviceItemEditorModel(item = {}, options = {}) {
   const scriptureTitleValue = scripture
     ? serviceItemEditorScriptureTitleValue(item, parsed, service, scripturePayload)
     : "";
+  const titlePersonParts = titlePerson ? serviceTitlePersonEffectiveParts(item, parsed, service) : null;
+  const titleValue = strictSong && linkedSong
+    ? songServiceOptionLabel(linkedSong)
+    : scripture
+      ? scriptureTitleValue
+      : titlePersonParts?.rawTitleAssignee
+        ? ""
+        : "";
+  const titleValueOverride = titlePersonParts?.rawTitleAssignee ? "" : undefined;
   return {
     service,
     parsed,
@@ -9765,7 +9794,8 @@ function serviceItemEditorModel(item = {}, options = {}) {
     showAssignee: editableAssignee,
     showTitle: editableTitle,
     assigneeValue: serviceItemEditableAssigneeValue(item, service),
-    titleValue: strictSong && linkedSong ? songServiceOptionLabel(linkedSong) : scriptureTitleValue,
+    titleValue,
+    titleValueOverride,
     titlePlaceholder: song
       ? (praiseInputMode === "manual_praise" ? "곡 제목" : "찬양 DB 곡 검색 후 선택")
       : scripture
@@ -21599,7 +21629,7 @@ function renderServiceEditorTitleControl(item, origIndex, attrs = {}, model = se
         type="text"
         ${fieldAttr}="raw_title"
         ${indexAttr}="${origIndex}"
-        value="${escapeAttr(model.titleValue || (model.strictSong ? "" : item.raw_title || ""))}"
+        value="${escapeAttr(model.titleValueOverride !== undefined ? model.titleValueOverride : model.titleValue || (model.strictSong ? "" : item.raw_title || ""))}"
         placeholder="${escapeAttr(model.titlePlaceholder)}"
         ${listAttr}
         ${songInputAttrs}
@@ -22208,6 +22238,13 @@ function serviceItemDisplayText(item) {
   item = serviceItemWithSharedSundayContent(item, service);
   const linkedSong = serviceItemLinkedSong(item);
   if (linkedSong) return songServiceOptionLabel(linkedSong) || cleanSongTitleForSave(linkedSong) || linkedSong.title || "";
+  const memo = parseServiceItemMemo(item?.memo);
+  if (serviceMemoElementType(memo) === "title_person") {
+    const { title, assignee, rawTitleAssignee } = serviceTitlePersonEffectiveParts(item, memo, service);
+    if (rawTitleAssignee) {
+      return normalizeServiceItemReferenceSpacing(cleanList([title, assignee]).join(" · "));
+    }
+  }
   const rawTitle = String(item?.raw_title || "").trim();
   if (rawTitle) {
     const contentTitle = serviceItemContentTitleWithoutElementName(item, rawTitle);
@@ -27199,7 +27236,10 @@ function resolvePresenterServiceItemContentState(item = {}, memo = emptyServiceI
   const effectiveInputMode = praiseInputMode || (requiresSongSelection ? "praise_db" : inputMode);
   const rawText = String(item?.raw_title || item?.title || "").trim();
   const labelKey = compactSearchValue(item?.label || "");
-  const assignee = cleanServiceAssignee(item?.assignee);
+  const titlePersonParts = serviceMemoElementType(memo) === "title_person"
+    ? serviceTitlePersonEffectiveParts(item, memo, service)
+    : null;
+  const assignee = titlePersonParts?.assignee || cleanServiceAssignee(item?.assignee);
   const asset = normalizeServiceAsset(memo?.asset);
   const hasCustomSlideText = (memo.slides || []).some((slide) => String(slide || "").trim());
   const result = (stateName, hasOutputContent, reason) => ({
@@ -27223,7 +27263,10 @@ function resolvePresenterServiceItemContentState(item = {}, memo = emptyServiceI
   if (isOptionalCitationScriptureServiceItem(item) && !serviceItemScriptureReferences(item, memo, service).length) {
     return filled("optional_citation_empty");
   }
-  if (item?._worshipTemplatePlaceholder) {
+  if (item?._worshipTemplatePlaceholder
+    && !rawText
+    && !hasServiceAsset(asset)
+    && !hasCustomSlideText) {
     return serviceItemsAreHydrating(service?.id)
       ? loading("service_items_hydrating")
       : missing("template_placeholder");
@@ -27253,13 +27296,15 @@ function resolvePresenterServiceItemContentState(item = {}, memo = emptyServiceI
       : missing(rawText ? "scripture_reference_invalid" : "scripture_empty");
   }
   if (elementType === "title_person") {
+    const titleText = titlePersonParts?.title || rawText;
     const { needsTitle, needsAssignee } = presenterServiceTextInputSpec(
       item,
       serviceItemEditorModel(item, { service }),
       memo,
     );
-    if (needsTitle && !rawText) return missing("title_empty");
+    if (needsTitle && !titleText) return missing("title_empty");
     if (needsAssignee && !assignee) return missing("assignee_empty");
+    return filled("title_person");
   }
   if (song || item?.song_id) return filled("song");
   if (rawText) return filled("raw_title");

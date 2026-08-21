@@ -2141,6 +2141,20 @@ def main() -> int:
                                   .map((node) => node.textContent.trim());
                                 const placeholders = [...host.querySelectorAll('input')]
                                   .map((node) => node.getAttribute('placeholder') || '');
+                                const legacyPersonInTitle = {
+                                  ...(fellowship || {}),
+                                  raw_title: '박미루 집사',
+                                  assignee: '',
+                                };
+                                const legacyMemo = parseServiceItemMemo(legacyPersonInTitle.memo);
+                                const legacyModel = serviceItemEditorModel(legacyPersonInTitle, { service });
+                                const legacyState = resolvePresenterServiceItemContentState(
+                                  legacyPersonInTitle,
+                                  legacyMemo,
+                                  null,
+                                  service,
+                                );
+                                const legacySlide = buildPresenterSlidesForServiceItem(legacyPersonInTitle, service, 0)[0] || {};
                                 return {
                                   label: fellowship?.label || '',
                                   showTitle: Boolean(model.showTitle),
@@ -2150,6 +2164,18 @@ def main() -> int:
                                   titlePlaceholder: model.titlePlaceholder || '',
                                   presenterFieldLabels: fieldLabels,
                                   presenterPlaceholders: placeholders,
+                                  legacyPersonInTitle: {
+                                    state: legacyState.state,
+                                    reason: legacyState.reason,
+                                    hasOutputContent: Boolean(legacyState.hasOutputContent),
+                                    displayText: serviceItemDisplayText(legacyPersonInTitle),
+                                    titleValue: legacyModel.titleValueOverride ?? legacyModel.titleValue ?? '',
+                                    assigneeValue: legacyModel.assigneeValue || '',
+                                    slideTitle: legacySlide.title || '',
+                                    slideAssignee: legacySlide.assignee || '',
+                                    slideText: legacySlide.text || '',
+                                    missingContent: Boolean(legacySlide.missingContent),
+                                  },
                                 };
                               })(),
                               praiseLabels: scaffold.elements
@@ -3157,6 +3183,18 @@ def main() -> int:
                             "titlePlaceholder": "순서 제목",
                             "presenterFieldLabels": ["순서 제목", "담당"],
                             "presenterPlaceholders": ["순서 제목", "담당"],
+                            "legacyPersonInTitle": {
+                                "state": "filled",
+                                "reason": "title_person",
+                                "hasOutputContent": True,
+                                "displayText": "교제 · 박미루 집사",
+                                "titleValue": "",
+                                "assigneeValue": "박미루 집사",
+                                "slideTitle": "교제",
+                                "slideAssignee": "박미루 집사",
+                                "slideText": "교제\n박미루 집사",
+                                "missingContent": False,
+                            },
                         }
                         and "입례찬양" not in template_terms["friday3355Scaffold"]["projectedSections"]
                         and "입례찬양" not in template_terms["friday3355Scaffold"]["projectedLabels"]

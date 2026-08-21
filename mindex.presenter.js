@@ -1447,8 +1447,12 @@ function presenterElementSlideFromMemoCore(item, section, index, memo, displayTe
     };
   }
   if (presenterMemoElementIsTitleSlide(elementType)) {
-    const titleText = presenterTitleAssigneeTitle(item, safeLabel, displayText, elementType);
-    const assigneeText = presenterTitleAssigneePerson(item, safeLabel, displayText, titleText, service);
+    const fallbackParts = typeof serviceTitlePersonEffectiveParts === "function"
+      ? serviceTitlePersonEffectiveParts(item, memo, service)
+      : null;
+    const legacyTitlePersonFallback = fallbackParts?.rawTitleAssignee ? fallbackParts : null;
+    const titleText = legacyTitlePersonFallback?.title || presenterTitleAssigneeTitle(item, safeLabel, displayText, elementType);
+    const assigneeText = legacyTitlePersonFallback?.assignee || presenterTitleAssigneePerson(item, safeLabel, displayText, titleText, service);
     const compactLabel = compactSearchValue(safeLabel);
     const orderTitle = String(section.sectionHeading || section.sectionTitle || section.sectionLabel || "").trim();
     const sermonTitle = section.sectionKey === "sermon" || ["설교", "설교제목"].includes(compactLabel);
@@ -1459,7 +1463,7 @@ function presenterElementSlideFromMemoCore(item, section, index, memo, displayTe
       : "";
     const slideTitle = sermonTitle ? contentTitle : titleText;
     const threePartAssignee = sermonTitle || compactLabel === "특송"
-      ? cleanPresenterAssignee(item.assignee)
+      ? cleanPresenterAssignee(item.assignee) || legacyTitlePersonFallback?.assignee || ""
       : assigneeText;
     const hasThreeParts = Boolean(orderTitle && contentTitle && threePartAssignee);
     const scriptureReading = isPresenterScriptureReadingSource({ elementType, label: safeLabel, sectionKey: section.sectionKey });
