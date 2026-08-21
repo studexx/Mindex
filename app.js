@@ -24521,9 +24521,12 @@ async function appendPresenterCitationReference(input) {
 function presenterSlideMatchesScriptureReference(slide = {}, targetReference = null) {
   if (!targetReference?.book?.code) return false;
   const slideReference = parseBibleReference(slide?.title || slide?.marker || "");
-  return slideReference?.book?.code === targetReference.book.code
-    && slideReference.chapter === targetReference.chapter
-    && slideReference.verse === targetReference.verse
+  if (slideReference?.book?.code !== targetReference.book.code) return false;
+  if (slideReference.chapter !== targetReference.chapter) return false;
+  if (targetReference.verse === null || targetReference.verse === undefined) {
+    return Boolean(slideReference.verse);
+  }
+  return slideReference.verse === targetReference.verse
     && (slideReference.verseEnd || slideReference.verse) === (targetReference.verseEnd || targetReference.verse);
 }
 
