@@ -2081,10 +2081,42 @@ def main() -> int:
                               _worshipSourceRef: { friday_variant: '3355', friday_variant_name: '삼삼오오예배' },
                             };
                             const scaffold = buildWorshipServiceScaffold(service.id, service.type_id, { service });
+                            const projectedWithLegacyPrayer = projectWorshipServiceItemsFromTemplate(service, [{
+                              id: '__smoke_friday_3355_legacy_entrance__',
+                              service_id: service.id,
+                              label: '입례찬양',
+                              raw_title: '입례찬양 곡',
+                              _worshipSectionKey: 'entrance_praise',
+                              _worshipSectionTitle: '입례찬양',
+                              _worshipElementTemplateModified: true,
+                            }, {
+                              id: '__smoke_friday_3355_legacy_prayer_song__',
+                              service_id: service.id,
+                              label: '기도 찬양 1',
+                              raw_title: '주여 이 시간',
+                              _worshipSectionKey: 'prayer_meeting_praise',
+                              _worshipSectionTitle: '기도회',
+                              _worshipElementTemplateModified: true,
+                            }, {
+                              id: '__smoke_friday_3355_legacy_free_prayer__',
+                              service_id: service.id,
+                              label: '자율기도',
+                              raw_title: '자율기도',
+                              _worshipSectionKey: 'prayer_meeting_praise',
+                              _worshipSectionTitle: '기도회',
+                              _worshipElementTemplateModified: true,
+                            }]);
                             return {
                               sections: scaffold.sections.map((section) => section.section_key || ''),
                               titles: scaffold.sections.map((section) => section.title || ''),
                               labels: scaffold.elements.map((element) => element.source_ref?.label || ''),
+                              elementTypes: scaffold.elements.map((element) => ({
+                                label: element.source_ref?.label || '',
+                                type: element.element_type || '',
+                                section: scaffold.sections.find((section) => section.id === element.section_id)?.section_key || '',
+                              })),
+                              projectedSections: [...new Set(projectedWithLegacyPrayer.map((item) => item._worshipSectionTitle || ''))],
+                              projectedLabels: projectedWithLegacyPrayer.map((item) => item.label || ''),
                               praiseLabels: scaffold.elements
                                 .filter((element) => scaffold.sections.find((section) => section.id === element.section_id)?.section_key === 'praise')
                                 .map((element) => element.source_ref?.label || ''),
@@ -3068,15 +3100,23 @@ def main() -> int:
                             "prayer",
                             "announcements",
                             "scripture_reading",
-                            "entrance_praise",
                             "sermon",
                             "response_song",
                             "sending",
                             "closing_visual",
+                            "fellowship",
                         ]
                         and template_terms["friday3355Scaffold"]["praiseLabels"] == ["찬양 1", "찬양 2", "찬양 3"]
                         and "특송" not in template_terms["friday3355Scaffold"]["titles"]
+                        and "입례찬양" not in template_terms["friday3355Scaffold"]["titles"]
                         and "기도회" not in template_terms["friday3355Scaffold"]["titles"]
+                        and template_terms["friday3355Scaffold"]["titles"][-2:] == ["폐회", "교제"]
+                        and {"label": "교제", "type": "title_person", "section": "fellowship"} in template_terms["friday3355Scaffold"]["elementTypes"]
+                        and "입례찬양" not in template_terms["friday3355Scaffold"]["projectedSections"]
+                        and "입례찬양" not in template_terms["friday3355Scaffold"]["projectedLabels"]
+                        and "기도회" not in template_terms["friday3355Scaffold"]["projectedSections"]
+                        and "기도 찬양 1" not in template_terms["friday3355Scaffold"]["projectedLabels"]
+                        and "자율기도" not in template_terms["friday3355Scaffold"]["projectedLabels"]
                         and template_terms["friday3355Scaffold"]["sending"] == [
                             {"label": "축도", "person": "김남영 목사"},
                         ]
@@ -3084,7 +3124,7 @@ def main() -> int:
                         and template_terms["monthlyScaffold"]["elements"] == 26
                         and template_terms["monthlyScaffold"]["firstSection"] == "준비"
                         and template_terms["monthlyScaffold"]["firstElementType"] == "video"
-                        and template_terms["monthlyScaffold"]["firstElementLabel"] == "대기 영상"
+                        and template_terms["monthlyScaffold"]["firstElementLabel"] == "대기 화면"
                         and template_terms["monthlyScaffold"]["firstElementTitle"] == ""
                         and "corporate_prayer" in template_terms["monthlyScaffold"]["sectionKeys"]
                         and "sending" in template_terms["monthlyScaffold"]["sectionKeys"]
@@ -3674,7 +3714,7 @@ def main() -> int:
                             "sermon", "response_song", "announcements", "lords_prayer", "fellowship",
                         ],
                         "labels": [
-                            "대기 영상", "사도신경", "찬양 1", "찬양 2", "찬양 3", "대표기도", "봉헌찬양", "봉헌기도",
+                            "대기 화면", "사도신경", "찬양 1", "찬양 2", "찬양 3", "대표기도", "봉헌찬양", "봉헌기도",
                             "성경봉독", "설교 제목", "설교 본문", "인용 구절", "결단기도", "청소년부 광고", "주기도문", "반별 모임",
                         ],
                         "offeringTitle": "",
@@ -3694,7 +3734,7 @@ def main() -> int:
                             "sermon", "response_song", "offering", "announcements", "sending", "fellowship",
                         ],
                         "youngAdultLabels": [
-                            "대기 영상", "사도신경", "대표기도", "찬양 1", "찬양 2", "찬양 3", "찬양 4",
+                            "대기 화면", "사도신경", "대표기도", "찬양 1", "찬양 2", "찬양 3", "찬양 4",
                             "성경봉독", "설교 제목", "설교 본문", "인용 구절", "결단찬양", "결단기도",
                             "봉헌찬양", "봉헌기도", "청년부 광고", "파송찬양", "축도", "셀 모임",
                         ],

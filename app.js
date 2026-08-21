@@ -281,6 +281,8 @@ const PRESENTER_ROLE_ALIASES = {
   wait_loop: "waiting_loop",
   loop: "waiting_loop",
   "대기": "waiting_loop",
+  "대기화면": "waiting_loop",
+  "대기 화면": "waiting_loop",
   "대기영상": "waiting_loop",
   "대기 영상": "waiting_loop",
   intro: "intro",
@@ -8874,7 +8876,7 @@ function servicePreparationElementLabel(role = "") {
   const normalized = normalizeServicePresenterRole(role);
   if (normalized === "intro") return "인트로";
   if (normalized === "still") return "첫 화면";
-  return "대기 영상";
+  return "대기 화면";
 }
 
 function servicePreparationElementTypeForRole(role = "", serviceId = state.selectedServiceId) {
@@ -8886,7 +8888,7 @@ function servicePreparationElementTypeForRole(role = "", serviceId = state.selec
 
 function presenterPreparationRoleLabel(role = "") {
   const normalized = normalizeServicePresenterRole(role);
-  if (normalized === "waiting_loop") return "대기 영상";
+  if (normalized === "waiting_loop") return "대기 화면";
   if (normalized === "intro") return "인트로";
   if (normalized === "still") return "첫 화면";
   return "준비";
@@ -8894,7 +8896,7 @@ function presenterPreparationRoleLabel(role = "") {
 
 function isPreparationRoleTitle(value = "") {
   const compact = compactSearchValue(value);
-  return ["대기영상", "인트로", "카운트다운", "시작영상", "첫화면", "정지화면"].includes(compact);
+  return ["대기화면", "대기영상", "인트로", "카운트다운", "시작영상", "첫화면", "정지화면"].includes(compact);
 }
 
 function isLegacyImportArtifactName(value) {
@@ -18046,16 +18048,6 @@ function publicFriday3355Template() {
     publicWorshipPrayerStep(),
     publicWorshipAnnouncementsStep(),
     publicWorshipScriptureReadingStep(),
-    {
-      label: "입례찬양",
-      name: "입례찬양",
-      required: true,
-      flex: false,
-      sectionKey: "entrance_praise",
-      elements: [
-        { label: "입례찬양", name: "입례찬양", elementType: "praise" },
-      ],
-    },
     publicWorshipSermonStep({ typeId: "friday" }),
     responseSectionTemplate(),
     publicWorshipSendingStep({
@@ -18065,6 +18057,16 @@ function publicFriday3355Template() {
       typeId: "friday",
     }),
     publicWorshipClosingStep(),
+    {
+      label: "교제",
+      name: "교제",
+      required: false,
+      flex: true,
+      sectionKey: "fellowship",
+      elements: [
+        { label: "교제", name: "교제", elementType: "title_person" },
+      ],
+    },
   ];
 }
 
@@ -18575,11 +18577,17 @@ function mergeTemplateProjectionMemo(templateMemo = "", existingMemo = "") {
 }
 
 function shouldDropUnmodifiedTemplateProjectionExtra(service = null, item = {}) {
+  if (shouldDropFriday3355ProjectionExtra(service, item)) return true;
   if (item._worshipSectionTemplateModified || item._worshipElementTemplateModified) return false;
   if (shouldDropAllGenerationsRegularThirdProjectionExtra(service, item)) return true;
   const parsed = parseServiceItemMemo(item.memo);
   const templateish = !String(item.raw_title || "").trim();
   return templateish && !item.song_id && !cleanServiceAssignee(item.assignee);
+}
+
+function shouldDropFriday3355ProjectionExtra(service = null, item = {}) {
+  if (!serviceIsFridayVariant(service, "3355")) return false;
+  return ["entrance_praise", "prayer_meeting_praise"].includes(templateProjectionSectionKey(item));
 }
 
 function shouldDropAllGenerationsRegularThirdProjectionExtra(service = null, item = {}) {
@@ -21894,7 +21902,7 @@ function renderPresenterRoleOptions(selectedRole = "") {
   const options = [
     ["", "자동"],
     ["ready", "준비"],
-    ["waiting_loop", "대기 영상"],
+    ["waiting_loop", "대기 화면"],
     ["intro", "인트로"],
     ["still", "첫 화면"],
   ];
@@ -27224,12 +27232,41 @@ function presenterServiceItemHasOutputContent(item = {}, memo = emptyServiceItem
   return resolvePresenterServiceItemContentState(item, memo, song, service).hasOutputContent;
 }
 
-function presenterMissingContentSlide(item = {}, section = {}, index = 0, contentState = null) {
+function presenterMissingContentSlide(item = {}, section = {}, index = 0, contentState = null, service = null) {
   const label = String(item.label || section.elementLabel || section.sectionLabel || "항목").trim();
   // A missing item must identify the actionable element, never its grouping section.
   const title = label || "항목";
   const loading = contentState?.state === "loading";
   const warning = loading ? "불러오는 중" : "입력 필요";
+  const cleanSongLike = service
+    && !presenterServiceUsesChromakey(service)
+    && (isSongServiceLabel(label) || isSpecialSongServiceItem(item));
+  if (cleanSongLike) {
+    const sectionHeading = presenterSongTitleSectionHeading(item, section);
+    return {
+      id: `${item.id || index}:${loading ? "loading-content" : "missing-content"}`,
+      ...section,
+      elementLabel: label,
+      elementTitle: title,
+      elementType: PRESENTER_ELEMENT_TYPES.PRAISE,
+      layout: PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT,
+      type: "song-title",
+      label,
+      title: warning,
+      marker: "",
+      sectionHeading,
+      text: warning,
+      warnings: [warning],
+      missingContent: !loading,
+      loadingContent: loading,
+      missingReason: contentState?.reason || "",
+      inputMode: contentState?.inputMode || "",
+      contentState: contentState?.state || "missing",
+      outputContext: "clean",
+      skipTrailingBlank: true,
+      sort: index,
+    };
+  }
   return {
     id: `${item.id || index}:${loading ? "loading-content" : "missing-content"}`,
     ...section,
@@ -27348,7 +27385,7 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
   const contentState = resolvePresenterServiceItemContentState(item, memo, song, service);
   const fixedTitle = presenterFixedTitleText(item);
   if (fixedTitle) return [presenterTitleOnlySlide(item, section, index, fixedTitle)];
-  if (contentState.state === "loading") return withIntroAndSpecialTitle([presenterMissingContentSlide(item, section, index, contentState)]);
+  if (contentState.state === "loading") return withIntroAndSpecialTitle([presenterMissingContentSlide(item, section, index, contentState, service)]);
   if (isOptionalCitationScriptureServiceItem(item)
     && !serviceItemScriptureReferences(item, memo, service).length
     && !serviceScriptureTextPayload(item, memo, service).verses.length) {
@@ -27358,7 +27395,7 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
     if (isPresenterReferenceMediaItem(item, memo)) {
       return [presenterReferenceMediaPendingSlide(item, section, index)];
     }
-    return withIntroAndSpecialTitle([presenterMissingContentSlide(item, section, index, contentState)]);
+    return withIntroAndSpecialTitle([presenterMissingContentSlide(item, section, index, contentState, service)]);
   }
   if (confessionPrayer) return [presenterConfessionPrayerSlide(item, section, index)];
   if (memoElementType === "title") return withIntroAndSpecialTitle([presenterTitleOnlySlide(item, section, index, displayText || label || "제목")]);

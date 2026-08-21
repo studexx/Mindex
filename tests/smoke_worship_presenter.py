@@ -1650,6 +1650,105 @@ def main() -> int:
                 else:
                     fail("presenter-title-assignee-slides", json.dumps(title_assignee_state, ensure_ascii=False))
 
+                fullscreen_missing_layout_state = page.evaluate(
+                    """
+                    () => {
+                      const originalSongs = state.songs;
+                      const service = {
+                        id: '__smoke_fullscreen_missing_layout_service__',
+                        type_id: 'friday',
+                        date: '2026-08-21',
+                      };
+                      const song = {
+                        id: '__smoke_fullscreen_missing_layout_song__',
+                        title: '꽃들도',
+                        versions: [{
+                          id: '__smoke_fullscreen_missing_layout_version__',
+                          name: '기본',
+                          is_primary: true,
+                          forms: [
+                            { id: '__smoke_fullscreen_missing_layout_form__', part_type: 'Lyrics', lyrics: '꽃들도 구름도\\n바람도 넓은 바다도', sort_order: 1 },
+                          ],
+                        }],
+                      };
+                      const baseItem = {
+                        id: '__smoke_fullscreen_missing_layout_praise__',
+                        service_id: service.id,
+                        label: '찬양 1',
+                        memo: serializeServiceItemMemo({ elementType: 'praise' }),
+                        _worshipSectionKey: 'praise',
+                        _worshipSectionTitle: '찬양',
+                      };
+                      try {
+                        state.songs = [song, ...originalSongs];
+                        const missingSlide = normalizePresenterSlidesForServiceOutput(
+                          buildPresenterSlidesForServiceItem({ ...baseItem, raw_title: '' }, service, 0),
+                          service,
+                        )[0] || {};
+                        const filledSlides = normalizePresenterSlidesForServiceOutput(
+                          buildPresenterSlidesForServiceItem({
+                            ...baseItem,
+                            raw_title: '',
+                            song_id: song.id,
+                            version_id: song.versions[0].id,
+                            song_version_id: song.versions[0].id,
+                          }, service, 0),
+                          service,
+                        );
+                        const filledSlide = filledSlides.find((slide) => presenterSlideElementType(slide) === PRESENTER_ELEMENT_TYPES.PRAISE) || {};
+                        return {
+                          missing: {
+                            elementType: missingSlide.elementType || '',
+                            layout: missingSlide.layout || '',
+                            type: missingSlide.type || '',
+                            renderClass: presenterSlideRenderClass(missingSlide),
+                            title: missingSlide.title || '',
+                            text: missingSlide.text || '',
+                            sectionHeading: missingSlide.sectionHeading || '',
+                            outputContext: presenterSlideOutputContext(missingSlide, false),
+                            missingContent: Boolean(missingSlide.missingContent),
+                            html: renderPresenterSlideFrame(missingSlide),
+                          },
+                          filled: {
+                            elementType: filledSlide.elementType || '',
+                            layout: filledSlide.layout || '',
+                            type: filledSlide.type || '',
+                            renderClass: presenterSlideRenderClass(filledSlide),
+                            title: filledSlide.title || '',
+                            text: filledSlide.text || '',
+                            sectionHeading: filledSlide.sectionHeading || '',
+                            outputContext: presenterSlideOutputContext(filledSlide, false),
+                            missingContent: Boolean(filledSlide.missingContent),
+                            html: renderPresenterSlideFrame(filledSlide),
+                          },
+                        };
+                      } finally {
+                        state.songs = originalSongs;
+                      }
+                    }
+                    """
+                )
+                if (
+                    fullscreen_missing_layout_state["missing"]["elementType"] == "praise"
+                    and fullscreen_missing_layout_state["missing"]["layout"] == "lower_bar_text"
+                    and fullscreen_missing_layout_state["missing"]["type"] == "song-title"
+                    and fullscreen_missing_layout_state["missing"]["renderClass"] == "song-title"
+                    and fullscreen_missing_layout_state["missing"]["title"] == "입력 필요"
+                    and fullscreen_missing_layout_state["missing"]["text"] == "입력 필요"
+                    and fullscreen_missing_layout_state["missing"]["outputContext"] == "clean"
+                    and fullscreen_missing_layout_state["missing"]["missingContent"] is True
+                    and fullscreen_missing_layout_state["filled"]["elementType"] == "praise"
+                    and fullscreen_missing_layout_state["filled"]["layout"] == "lower_bar_text"
+                    and fullscreen_missing_layout_state["filled"]["type"] in ["song-title", "lyrics"]
+                    and fullscreen_missing_layout_state["filled"]["renderClass"] in ["song-title", "lyrics"]
+                    and fullscreen_missing_layout_state["filled"]["outputContext"] == "clean"
+                    and fullscreen_missing_layout_state["filled"]["missingContent"] is False
+                    and "presenter-title-content" not in fullscreen_missing_layout_state["missing"]["html"]
+                ):
+                    pass_("presenter-fullscreen-missing-song-layout", json.dumps(fullscreen_missing_layout_state, ensure_ascii=False))
+                else:
+                    fail("presenter-fullscreen-missing-song-layout", json.dumps(fullscreen_missing_layout_state, ensure_ascii=False))
+
                 db_title_assignee_state = page.evaluate(
                     """
                     () => {
@@ -6930,7 +7029,7 @@ def main() -> int:
                     and friday_ready_default_state["layout"] == "media"
                     and friday_ready_default_state["imageSrc"] == ""
                     and friday_ready_default_state["videoSrc"] == ""
-                    and friday_ready_default_state["elementLabel"] == "대기 영상"
+                    and friday_ready_default_state["elementLabel"] == "대기 화면"
                     and friday_ready_default_state["readyServiceName"] == "금요기도회"
                 ):
                     pass_("presenter-friday-ready-default-image", json.dumps(friday_ready_default_state, ensure_ascii=False))

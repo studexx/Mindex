@@ -171,14 +171,20 @@ Small visual polish that does not alter behavior does not need an entry.
 - 2026년 8월부터 금요일 예배 자동 생성은 주차별 운영명을 따른다.
   첫째 금요일은 `월삭예배`로 만들고 월삭예배 템플릿을 사용한다.
   둘째 금요일은 `문화예배`로 만들되 영화 관람 등으로 집회가 없는 날이므로
-  금요기도회 송출 템플릿을 붙이지 않는다. 셋째 금요일 `삼삼오오예배`와
-  넷째 금요일 `구역연합예배`는 표시명만 바꾸고 기존 금요기도회 양식을
-  유지한다. 다섯째 금요일은 별도 지시가 없으면 기존 `금요기도회`로 둔다.
+  금요기도회 송출 템플릿을 붙이지 않는다. 셋째 금요일 `삼삼오오예배`는
+  찬양 3곡, 입례찬양 없음, 특송 없음, 기도회 없음, 파송 축도, 폐회 뒤
+  `교제`가 있는 별도 양식을 사용한다. `교제` 엘리먼트는 순서 제목+담당자
+  형식이다. 넷째 금요일 `구역연합예배`는 표시명만 바꾸고 기존 금요기도회
+  양식을 유지한다. 다섯째 금요일은 별도 지시가 없으면 기존 `금요기도회`로 둔다.
 - 금요일 저녁에 드리는 예배들은 UI에서 `금요예배` family로 묶고,
   `월삭예배`, `문화예배`, `삼삼오오예배`, `구역연합예배`, `금요기도회`는
   variant로 표시한다. DB service type은 월삭 템플릿과 금요 템플릿을 안정적으로
   유지하기 위해 기존 `monthly`/`friday`를 그대로 사용한다.
-- `삼삼오오예배`는 `friday` 계열 variant이지만 output은 크로마키로 송출한다.
+- `삼삼오오예배`는 `friday` 계열 variant이며 금요기도회와 같은 clean/fullscreen
+  output을 사용한다.
+- 풀스크린 예배의 준비 element 표시명은 `대기 화면`으로 둔다. 실제 준비 화면은
+  이미지/영상/기본 화면을 모두 쓸 수 있으므로 `대기 영상`처럼 특정 media type으로
+  고정해 부르지 않는다. 기존 `대기 영상` 저장값은 legacy alias로 계속 인식한다.
 - 출력 창은 BroadcastChannel 연결 시 이전 local payload를 재출력하지 않고
   현재 controller state를 기다린다. 따라서 풀스크린 예배 시작 시 이전
   크로마키 프레임이 잠깐 노출되지 않는다.
@@ -196,6 +202,10 @@ Small visual polish that does not alter behavior does not need an entry.
   새찬송가 score 전용 슬롯을 제외하고 입력 제목의 빈 Praise record를
   만들고 해당 예배 항목에 연결한다. 사용자는 나중에 Praise 탭에서
   가사와 버전을 채운다.
+- Fullscreen/clean output의 찬양·특송 등 song-like 항목은 입력 전
+  `입력 필요` placeholder도 실제 곡 입력 후와 같은 lower-bar song frame을
+  사용한다. 담당자/기도 등 title-person 항목은 기존 center title-content
+  placeholder를 유지한다.
 
 ### Public Worship Timing
 
