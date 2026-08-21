@@ -1157,6 +1157,7 @@ def main() -> int:
                             subgroupLabel: groups[0]?.subgroups?.[0]?.label || '',
                           };
                         })(),
+                        friday3355SectionOrder: publicFriday3355Template().map((step) => step.sectionKey || ''),
                         closingGroups: groupPresenterSlidesBySection(slides, serviceId)
                           .filter((group) => group.slides.some((entry) => entry.slide.sectionKey === 'closing_visual'))
                           .map((group) => ({
@@ -1351,6 +1352,17 @@ def main() -> int:
                         "title": "결단",
                         "subgroupLabel": "결단기도",
                     }
+                    and fallback_state["friday3355SectionOrder"] == [
+                        "praise",
+                        "prayer",
+                        "scripture_reading",
+                        "sermon",
+                        "response_song",
+                        "announcements",
+                        "sending",
+                        "closing_visual",
+                        "fellowship",
+                    ]
                     and len(fallback_state["closingGroups"]) == 1
                     and fallback_state["closingGroups"][0]["kind"] == "item"
                     and fallback_state["closingGroups"][0]["label"] == "폐회"

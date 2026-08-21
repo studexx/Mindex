@@ -2,6 +2,9 @@
 // Runtime order is constants -> presenter -> app. Shared controller helpers are
 // owned by app.js and must not be redeclared here; tests/solid_audit.py enforces it.
 
+const PRESENTER_SONG_NOTE = "♪";
+const PRESENTER_SONG_NOTE_PATTERN = /^[\u2669\u266A\u266B\u266C]\s*/u;
+
 function presenterSlidesWithIntroSlide(item = {}, section = {}, index = 0, memo = emptyServiceItemMemo(), slides = []) {
   const list = Array.isArray(slides) ? slides.filter(Boolean) : [];
   if (!list.length) return list;
@@ -177,13 +180,13 @@ function presenterSpecialSongSectionTitleSlide(item = {}, section = {}, index = 
 function presenterSpecialSongDisplayTitle(item = {}, songTitleSlide = null) {
   const rawTitle = String(item.raw_title || item.title || "").trim();
   const genericLabel = compactSearchValue(item.label || "특송");
-  const fromSlideText = String(songTitleSlide?.text || "").replace(/^♪\s*/, "").trim();
+  const fromSlideText = String(songTitleSlide?.text || "").replace(PRESENTER_SONG_NOTE_PATTERN, "").trim();
   if (fromSlideText && (rawTitle || compactSearchValue(fromSlideText) !== genericLabel)) return fromSlideText;
   const marker = String(songTitleSlide?.marker || "").trim();
   const title = String(songTitleSlide?.title || "").trim();
   const titleText = [marker, title].filter(Boolean).join(" ");
   if (titleText && (rawTitle || compactSearchValue(titleText) !== genericLabel)) return titleText;
-  return rawTitle.replace(/^♪\s*/, "").trim();
+  return rawTitle.replace(PRESENTER_SONG_NOTE_PATTERN, "").trim();
 }
 
 const PRESENTER_PUBLIC_LORDS_PRAYER_TEXT = `하늘에 계신 우리 아버지,
@@ -2057,7 +2060,7 @@ function presenterSongTitleSlide(item, section, song, version, displayText, inde
 }
 
 function presenterSongTitleContentText(displayTitle = "", sectionHeading = "") {
-  const titleKey = compactSearchValue(String(displayTitle || "").replace(/^♪\s*/, ""));
+  const titleKey = compactSearchValue(String(displayTitle || "").replace(PRESENTER_SONG_NOTE_PATTERN, ""));
   const headingKey = compactSearchValue(sectionHeading);
   if (!titleKey || (headingKey && titleKey === headingKey)) return "입력 필요";
   return formatPresenterSongTitleText(displayTitle);
@@ -2178,7 +2181,9 @@ function presenterSongTitleUsesSectionHeading(item = {}, section = {}) {
 function formatPresenterSongTitleText(title) {
   const cleanTitle = String(title || "").trim();
   if (!cleanTitle) return "";
-  return cleanTitle.startsWith("♪") ? cleanTitle : `♪ ${cleanTitle}`;
+  return PRESENTER_SONG_NOTE_PATTERN.test(cleanTitle)
+    ? cleanTitle.replace(PRESENTER_SONG_NOTE_PATTERN, `${PRESENTER_SONG_NOTE} `)
+    : `${PRESENTER_SONG_NOTE} ${cleanTitle}`;
 }
 
 function presenterPraiseTitle(song, fallbackText = "") {
@@ -4135,10 +4140,10 @@ function renderPresenterSlideText(slide) {
 function renderPresenterSongText(text, slide) {
   const raw = String(text || " ");
   if (presenterSlideElementType(slide) !== PRESENTER_ELEMENT_TYPES.PRAISE) return escapePresenterSlideLine(raw, slide);
-  const match = raw.match(/^(\s*)(♪)(\s*)(.*)$/u);
+  const match = raw.match(/^(\s*)([\u2669\u266A\u266B\u266C])(\s*)(.*)$/u);
   if (!match) return renderPresenterHighlightedText(raw, slide);
-  const [, leading, note, spacing, rest] = match;
-  return `${escapeHtml(leading)}<span class="presenter-song-note" aria-hidden="true">${escapeHtml(note)}</span>${escapeHtml(spacing || " ")}${renderPresenterHighlightedText(rest || " ", slide)}`;
+  const [, leading, , spacing, rest] = match;
+  return `${escapeHtml(leading)}<span class="presenter-song-note" aria-hidden="true">${escapeHtml(PRESENTER_SONG_NOTE)}</span>${escapeHtml(spacing || " ")}${renderPresenterHighlightedText(rest || " ", slide)}`;
 }
 
 function presenterLyricVerseNumber(slide) {

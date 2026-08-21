@@ -18111,10 +18111,10 @@ function publicFriday3355Template() {
       required: true,
     }),
     publicWorshipPrayerStep(),
-    publicWorshipAnnouncementsStep(),
     publicWorshipScriptureReadingStep(),
     publicWorshipSermonStep({ typeId: "friday" }),
     responseSectionTemplate(),
+    publicWorshipAnnouncementsStep(),
     publicWorshipSendingStep({
       doxology: false,
       benediction: true,
@@ -20039,22 +20039,13 @@ function renderPresenterSidebar(query, services, selectedService) {
 
 function renderPresenterSidebarPreparationInput(service) {
   if (!service?.id) return "";
-  const inputProgress = presenterServiceInputProgress(service);
   const draft = state.presenterPreparationDrafts[service.id] || "";
   const applying = state.presenterPreparationApplyingServiceIds.has(service.id);
   const examples = presenterPreparationPlaceholderForService(service);
-  const progressLabel = inputProgress.loading
-    ? "불러오는 중"
-    : inputProgress.missing
-      ? `${inputProgress.missing}개 입력 필요`
-      : inputProgress.total
-        ? "입력 완료"
-        : "입력 없음";
   return `
     <section class="service-sidebar-section service-sidebar-section--preparation-input" aria-label="예배 입력 붙여넣기">
       <div class="service-sidebar-head">
         <span>예배 입력</span>
-        <small>${escapeHtml(progressLabel)}</small>
       </div>
       <div class="svc-presenter-preparation-input svc-presenter-preparation-input--sidebar">
         <textarea class="svc-presenter-preparation-text svc-presenter-preparation-text--sidebar" data-presenter-preparation-input data-service-id="${escapeAttr(service.id)}" rows="4" placeholder="여기에 붙여넣기" aria-label="예배 입력 붙여넣기">${escapeHtml(draft)}</textarea>
@@ -20165,7 +20156,6 @@ function renderServiceCurrentSidebar(service) {
     <section class="service-sidebar-section service-sidebar-section--current">
       <div class="service-sidebar-head">
         <span>순서</span>
-        <small>시작</small>
       </div>
       <div class="service-outline-list">
         ${readyRow}
