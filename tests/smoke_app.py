@@ -2072,6 +2072,30 @@ def main() -> int:
                               })),
                             };
                           })(),
+                          friday3355Scaffold: (() => {
+                            const service = {
+                              id: '__smoke_friday_3355__',
+                              type_id: 'friday',
+                              date: '2026-08-21',
+                              alias: '삼삼오오예배',
+                              _worshipSourceRef: { friday_variant: '3355', friday_variant_name: '삼삼오오예배' },
+                            };
+                            const scaffold = buildWorshipServiceScaffold(service.id, service.type_id, { service });
+                            return {
+                              sections: scaffold.sections.map((section) => section.section_key || ''),
+                              titles: scaffold.sections.map((section) => section.title || ''),
+                              labels: scaffold.elements.map((element) => element.source_ref?.label || ''),
+                              praiseLabels: scaffold.elements
+                                .filter((element) => scaffold.sections.find((section) => section.id === element.section_id)?.section_key === 'praise')
+                                .map((element) => element.source_ref?.label || ''),
+                              sending: scaffold.elements
+                                .filter((element) => scaffold.sections.find((section) => section.id === element.section_id)?.section_key === 'sending')
+                                .map((element) => ({
+                                  label: element.source_ref?.label || '',
+                                  person: element.person || '',
+                                })),
+                            };
+                          })(),
                           monthlyScaffold: (() => {
                             const scaffold = buildWorshipServiceScaffold('__smoke_service__', 'monthly');
                             const sections = scaffold.sections.map((section) => ({
@@ -3038,6 +3062,24 @@ def main() -> int:
                             "scheduledYouthService": False,
                         }
                         and template_terms["monthlyFirst"] == {"label": "준비", "elementType": "video"}
+                        and template_terms["friday3355Scaffold"]["sections"] == [
+                            "ready",
+                            "praise",
+                            "prayer",
+                            "announcements",
+                            "scripture_reading",
+                            "entrance_praise",
+                            "sermon",
+                            "response_song",
+                            "sending",
+                            "closing_visual",
+                        ]
+                        and template_terms["friday3355Scaffold"]["praiseLabels"] == ["찬양 1", "찬양 2", "찬양 3"]
+                        and "특송" not in template_terms["friday3355Scaffold"]["titles"]
+                        and "기도회" not in template_terms["friday3355Scaffold"]["titles"]
+                        and template_terms["friday3355Scaffold"]["sending"] == [
+                            {"label": "축도", "person": "김남영 목사"},
+                        ]
                         and template_terms["monthlyScaffold"]["sections"] == 12
                         and template_terms["monthlyScaffold"]["elements"] == 26
                         and template_terms["monthlyScaffold"]["firstSection"] == "준비"
@@ -3916,6 +3958,12 @@ def main() -> int:
                             alias: '삼삼오오예배',
                             _worshipSourceRef: { friday_variant: '3355', friday_variant_name: '삼삼오오예배' },
                           }),
+                          fridayDetailTitle: serviceDisplayTypeName({
+                            type_id: 'friday',
+                            date: '2026-08-21',
+                            alias: '삼삼오오예배',
+                            _worshipSourceRef: { friday_variant: '3355', friday_variant_name: '삼삼오오예배' },
+                          }),
                           monthlyFamily: serviceFamilyDisplayName({
                             type_id: 'monthly',
                             title: '8월 월삭예배',
@@ -3956,6 +4004,7 @@ def main() -> int:
                         "youthDedicationAlias": "청소년부 제자헌신예배",
                         "fridayFamily": "금요예배",
                         "fridayVariant": "삼삼오오예배",
+                        "fridayDetailTitle": "삼삼오오예배",
                         "monthlyFamily": "금요예배",
                         "monthlyVariant": "월삭예배",
                         "normalizedRowTitle": "월삭예배",
@@ -5654,6 +5703,10 @@ def main() -> int:
                             const citations = items.filter(isPresenterPreparationCitationItem);
                             const citation = citations[0] || {};
                             const citationReferences = parseServiceItemMemo(citation.memo).scriptureReferences || [];
+                            if (!state.bibleTranslations.length) {
+                              state.bibleTranslations = [{ id: '__smoke_krv__', name: '개역개정', abbreviation: '개역개정', code: 'KRV' }];
+                              state.selectedBibleTranslationId = '__smoke_krv__';
+                            }
                             const translation = selectedPresenterBibleTranslation();
                             citationReferences.forEach((referenceText) => {
                               const reference = parseBibleReference(referenceText);

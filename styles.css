@@ -5851,15 +5851,18 @@ body[data-module="presenter"] .detail-pane {
   gap: 6px;
   border: 0;
   border-radius: var(--r);
-  background: var(--accent);
-  color: var(--accent-ink);
+  background: color-mix(in srgb, var(--panel-2) 42%, transparent);
+  color: var(--ink-2);
   cursor: pointer;
   font: inherit;
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 700;
   padding: 0 12px;
 }
-.svc-presenter-preparation-apply:hover { filter: brightness(1.05); }
+.svc-presenter-preparation-apply:hover {
+  background: color-mix(in srgb, var(--panel-2) 66%, transparent);
+  color: var(--ink);
+}
 .svc-presenter-preparation-apply i { width: 15px; height: 15px; stroke-width: 1.5; }
 .service-sidebar-section--preparation-input {
   padding-bottom: 12px;
@@ -6261,8 +6264,8 @@ textarea.svc-presenter-input-control--multiline {
   gap: 3px;
   border: 0;
   border-radius: var(--r);
-  background: color-mix(in srgb, var(--accent) 18%, transparent);
-  color: var(--accent);
+  background: color-mix(in srgb, var(--panel-2) 46%, transparent);
+  color: var(--ink-3);
   cursor: pointer;
   font: inherit;
   padding: 0 7px;
@@ -6277,10 +6280,11 @@ textarea.svc-presenter-input-control--multiline {
   letter-spacing: 0;
 }
 .svc-slide-jump-btn:hover {
-  background: color-mix(in srgb, var(--accent) 28%, transparent);
+  background: color-mix(in srgb, var(--panel-2) 70%, transparent);
+  color: var(--ink-2);
 }
 .svc-slide-jump-btn:focus-visible {
-  background: color-mix(in srgb, var(--accent) 28%, transparent);
+  background: color-mix(in srgb, var(--panel-2) 70%, transparent);
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }

@@ -3500,7 +3500,7 @@ const FRIDAY_SERVICE_VARIANTS = {
     title: "",
     alias: "삼삼오오예배",
     displayName: "삼삼오오예배",
-    templateNote: "friday_prayer",
+    templateNote: "friday_3355",
   },
   4: {
     key: "district-union",
@@ -17073,6 +17073,12 @@ const PUBLIC_WORSHIP_TEMPLATE_VERSIONS = {
   ],
   friday: [
     publicWorshipTemplateVersion(() => publicFridayTemplate()),
+    publicWorshipTemplateVersion(
+      () => publicFriday3355Template(),
+      "2026-q3-friday-3355",
+      FRIDAY_SERVICE_VARIANT_START_DATE,
+      (service = null) => serviceIsFridayVariant(service, "3355"),
+    ),
   ],
 };
 
@@ -18028,6 +18034,37 @@ function publicFridayTemplate() {
         { label: "자율기도", name: "자율기도", elementType: "title", default_text: "자율기도" },
       ],
     },
+  ];
+}
+
+function publicFriday3355Template() {
+  return [
+    publicWorshipPraiseStep({
+      count: 3,
+      required: true,
+    }),
+    publicWorshipPrayerStep(),
+    publicWorshipAnnouncementsStep(),
+    publicWorshipScriptureReadingStep(),
+    {
+      label: "입례찬양",
+      name: "입례찬양",
+      required: true,
+      flex: false,
+      sectionKey: "entrance_praise",
+      elements: [
+        { label: "입례찬양", name: "입례찬양", elementType: "praise" },
+      ],
+    },
+    publicWorshipSermonStep({ typeId: "friday" }),
+    responseSectionTemplate(),
+    publicWorshipSendingStep({
+      doxology: false,
+      benediction: true,
+      benedictionPerson: "김남영 목사",
+      typeId: "friday",
+    }),
+    publicWorshipClosingStep(),
   ];
 }
 
@@ -20754,6 +20791,12 @@ function renderPresenterDetail() {
   }
 
   const dateStr = formatServiceIsoDate(svc);
+  const serviceName = serviceDisplayTypeName(svc);
+  const variantName = serviceVariantDisplayName(svc);
+  const subtitle = cleanList([
+    dateStr,
+    variantName && compactSearchValue(variantName) !== compactSearchValue(serviceName) ? variantName : "",
+  ]).join(" · ");
   const presenterActive = state.presenter.serviceId === serviceId;
   const presenterSlides = presenterSlidesForService(serviceId);
   const presenterIndex = presenterActive ? clampPresenterIndex(state.presenter.index, presenterSlides.length) : 0;
@@ -20762,8 +20805,8 @@ function renderPresenterDetail() {
     <div class="service-viewer presenter-viewer">
       <div class="svc-header">
         <div class="svc-header-date">
-          <h2 class="svc-service-title">${escapeHtml(serviceFamilyDisplayName(svc))}</h2>
-          <span class="svc-date-text">${escapeHtml(cleanList([dateStr, serviceVariantDisplayName(svc)]).join(" · "))}</span>
+          <h2 class="svc-service-title">${escapeHtml(serviceName)}</h2>
+          <span class="svc-date-text">${escapeHtml(subtitle)}</span>
         </div>
         <div class="svc-header-actions">
           ${serviceSupportsBulletin(svc) ? `
@@ -21045,14 +21088,17 @@ function renderPresenterSectionEditorItem(item, localIndex, context) {
 function renderServicePrepEditorDialog(service) {
   const items = servicePrepEditorItems(service.id);
   const typeObj = serviceTypeById(service.type_id);
+  const serviceName = serviceDisplayTypeName(service);
+  const variantName = serviceVariantDisplayName(service);
+  const variantHint = variantName && compactSearchValue(variantName) !== compactSearchValue(serviceName) ? variantName : "";
   return `
     <div class="svc-prep-editor-layer" role="presentation">
       <section class="svc-prep-editor" role="dialog" aria-labelledby="svcPrepEditorTitle">
         <header class="svc-prep-editor-head">
           <div>
             <span class="svc-prep-editor-kicker">${escapeHtml(formatServiceIsoDate(service))}</span>
-            <h3 id="svcPrepEditorTitle">${escapeHtml(serviceFamilyDisplayName(service))}</h3>
-            ${serviceVariantDisplayName(service) ? `<small>${escapeHtml(serviceVariantDisplayName(service))}</small>` : ""}
+            <h3 id="svcPrepEditorTitle">${escapeHtml(serviceName)}</h3>
+            ${variantHint ? `<small>${escapeHtml(variantHint)}</small>` : ""}
           </div>
           <div class="svc-prep-editor-head-actions">
             <button class="reference-new-btn" type="button" data-service-item-action="add" data-service-item-index="${escapeAttr(getServiceItems(service.id).length)}" aria-label="순서 항목 추가">
