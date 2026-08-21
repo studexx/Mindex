@@ -2126,6 +2126,18 @@ def main() -> int:
                               projectedSections: [...new Set(projectedWithLegacyPrayer.map((item) => item._worshipSectionTitle || ''))],
                               projectedLabels: projectedWithLegacyPrayer.map((item) => item.label || ''),
                               firstProjectedLabel: projectedWithLegacyPrayer[0]?.label || '',
+                              fellowshipEditor: (() => {
+                                const fellowship = projectedWithLegacyPrayer.find((item) => item._worshipSectionKey === 'fellowship');
+                                const model = serviceItemEditorModel(fellowship || {}, { service });
+                                const spec = presenterServiceTextInputSpec(fellowship || {}, model, parseServiceItemMemo(fellowship?.memo));
+                                return {
+                                  label: fellowship?.label || '',
+                                  showTitle: Boolean(model.showTitle),
+                                  showAssignee: Boolean(model.showAssignee),
+                                  needsTitle: Boolean(spec.needsTitle),
+                                  needsAssignee: Boolean(spec.needsAssignee),
+                                };
+                              })(),
                               praiseLabels: scaffold.elements
                                 .filter((element) => scaffold.sections.find((section) => section.id === element.section_id)?.section_key === 'praise')
                                 .map((element) => element.source_ref?.label || ''),
@@ -3122,6 +3134,13 @@ def main() -> int:
                         and template_terms["friday3355Scaffold"]["titles"][-2:] == ["폐회", "교제"]
                         and {"label": "교제", "type": "title_person", "section": "fellowship"} in template_terms["friday3355Scaffold"]["elementTypes"]
                         and template_terms["friday3355Scaffold"]["firstProjectedLabel"] == "대기 화면"
+                        and template_terms["friday3355Scaffold"]["fellowshipEditor"] == {
+                            "label": "교제",
+                            "showTitle": True,
+                            "showAssignee": True,
+                            "needsTitle": True,
+                            "needsAssignee": True,
+                        }
                         and "입례찬양" not in template_terms["friday3355Scaffold"]["projectedSections"]
                         and "입례찬양" not in template_terms["friday3355Scaffold"]["projectedLabels"]
                         and "기도회" not in template_terms["friday3355Scaffold"]["projectedSections"]

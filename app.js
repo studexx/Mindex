@@ -9709,6 +9709,8 @@ function serviceItemEditorModel(item = {}, options = {}) {
   const isDefault = Boolean(options.isDefault || item._isDefault);
   const parsed = parseServiceItemMemo(item.memo);
   const preparation = isServicePreparationItem(item, parsed);
+  const elementType = serviceMemoElementType(parsed);
+  const titlePerson = elementType === "title_person";
   const compactLabel = compactSearchValue(item.label || "");
   const specialSong = isSpecialSongServiceItem(item);
   const song = isSongServiceLabel(item.label) || specialSong;
@@ -9727,6 +9729,7 @@ function serviceItemEditorModel(item = {}, options = {}) {
     && (!song || compactLabel === "특송" || specialSong)
     && (
       worshipLeaderItem
+      || titlePerson
       || ["대표기도", "기도", "성경봉독", "특송", "설교", "봉헌기도", "축도"].includes(compactLabel)
       || specialSong
       || Boolean(String(item.assignee || "").trim())
@@ -9738,6 +9741,7 @@ function serviceItemEditorModel(item = {}, options = {}) {
       && (
         song
         || scripture
+        || serviceTitlePersonNeedsTitleInput(item, parsed)
         || (!worshipLeaderItem && !genericRawTitle && Boolean(String(item.raw_title || "").trim()))
       )
     );
@@ -9770,6 +9774,14 @@ function serviceItemEditorModel(item = {}, options = {}) {
           ? "기본 내용"
           : "내용",
   };
+}
+
+function serviceTitlePersonNeedsTitleInput(item = {}, memo = parseServiceItemMemo(item.memo)) {
+  if (serviceMemoElementType(memo) !== "title_person") return false;
+  const label = compactSearchValue(item.label || "");
+  if (!label) return true;
+  if (["대표기도", "기도", "봉헌기도", "축도", "결단기도"].includes(label)) return false;
+  return true;
 }
 
 function serviceItemEditorScriptureTitleValue(item = {}, parsed = parseServiceItemMemo(item.memo), service = null, scripturePayload = null) {
@@ -23901,12 +23913,12 @@ function presenterServiceTextInputSpec(item, model, memo) {
   const genericTitle = presenterTitleAssigneeTitleIsGeneric(item.raw_title || "", item.label || "");
   const needsTitle = manualPraise
     || /설교제목|특송|공동기도/.test(label)
+    || serviceTitlePersonNeedsTitleInput(item, memo)
     || specialSong
     || ["청소년부광고", "청년부광고"].includes(label)
     || (Boolean(String(item.raw_title || "").trim()) && !genericTitle && elementType !== "title_person");
   const needsAssignee = (
     elementType === "title_person"
-    && /설교|기도|특송|축도/.test(label)
   ) || specialSong;
   return { needsTitle, needsAssignee };
 }
