@@ -6794,6 +6794,9 @@ def main() -> int:
                       const metaWrapStyle = metaStrong ? getComputedStyle(metaStrong) : null;
                       const metaHead = document.querySelector('.song-description-meta--head');
                       const metaHeadStyle = metaHead ? getComputedStyle(metaHead) : null;
+                      const metaSeparator = metaStrong
+                        ? getComputedStyle(metaStrong.closest('.meta-attribute'), '::after').content
+                        : '';
                       const linkedEntries = linkedSongVersionEntries(primary);
                       const linkedHtml = renderFormsTab(primary);
                       const titleHtml = renderVersionTitleContent(primary, primary.versions[0], primary.versions[0].forms, { active: true });
@@ -6856,6 +6859,7 @@ def main() -> int:
                           textOverflow: metaWrapStyle?.textOverflow || '',
                           headFlexWrap: metaHeadStyle?.flexWrap || '',
                           headOverflow: metaHeadStyle?.overflow || '',
+                          separator: metaSeparator,
                         },
                         draftTitle: draft.title,
                         draftVersions: draft.versions.length,
@@ -6916,6 +6920,7 @@ def main() -> int:
                     and praise_actions["metadataWrap"]["textOverflow"] == "clip"
                     and praise_actions["metadataWrap"]["headFlexWrap"] == "wrap"
                     and praise_actions["metadataWrap"]["headOverflow"] == "visible"
+                    and praise_actions["metadataWrap"]["separator"] in ("none", "normal", "")
                     and praise_actions["draftTitle"] == "테스트 새 찬양"
                     and praise_actions["draftVersions"] == 1
                     and praise_actions["draftPraiseType"] == "ccm"

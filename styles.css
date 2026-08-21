@@ -2173,7 +2173,7 @@ body[data-module="calendar"] .detail-pane { overflow: hidden; }
   min-width: 0;
   max-width: min(820px, 100%);
   flex-wrap: wrap;
-  gap: 2px 0;
+  gap: 2px 12px;
   align-items: center;
   color: var(--ink-4);
   font-size: 12px;
@@ -2208,11 +2208,6 @@ body[data-module="calendar"] .detail-pane { overflow: hidden; }
   border-radius: 0;
   background: transparent;
   padding: 0;
-}
-.song-description-meta > span:not(:last-child)::after {
-  content: "·";
-  color: var(--ink-4);
-  margin: 0 8px;
 }
 .song-description-meta .meta-attribute-label {
   color: color-mix(in srgb, var(--accent) 48%, var(--ink-4));
