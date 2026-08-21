@@ -27545,6 +27545,10 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
   if (isScriptureBodyServiceItem(item)) {
     // Keep the element present while the async Bible lookup hydrates its verses.
     // The same item is rebuilt in place as soon as the lookup completes.
+    if (service?.id) {
+      const sourceIndex = getServiceItems(service.id).findIndex((candidate) => String(candidate?.id || "") === String(item?.id || ""));
+      scheduleServiceScriptureBodyResolveWithOptions(service.id, sourceIndex >= 0 ? sourceIndex : index, { renderControls: false });
+    }
     const pendingSlide = presenterPendingScriptureSlide(item, section, index, service);
     return pendingSlide
       ? withIntroAndSpecialTitle(presenterSlidesWithScriptureReadingTitle(item, section, [pendingSlide], index, service))
