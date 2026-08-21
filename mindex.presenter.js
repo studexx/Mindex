@@ -1962,11 +1962,20 @@ function isScriptureBodyServiceItem(item) {
   const elementType = typeof normalizeWorshipElementType === "function"
     ? normalizeWorshipElementType(memo.elementType || item?.elementType || item?.element_type || "")
     : String(memo.elementType || item?.elementType || item?.element_type || "").trim().toLowerCase();
+  const directReferences = typeof serviceItemDirectScriptureReferences === "function"
+    ? serviceItemDirectScriptureReferences(item, memo)
+    : [];
+  const hasScriptureReference = Boolean(
+    directReferences.length
+    || String(memo.scriptureReference || memo.scripture_reference || item?.raw_title || item?.title || "").trim()
+  );
+  const scriptureReferenceLabel = ["성경봉독", "인용구절", "말씀", "성경"].includes(label);
   return elementType === "scripture_body"
     || label === "본문"
     || label === "성경본문"
     || label === "설교본문"
-    || (sectionKey === "scripture_reading" && (label === "성경봉독" || elementType === "scripture_body"));
+    || ((scriptureReferenceLabel || elementType === "scripture_reading") && hasScriptureReference)
+    || (sectionKey === "scripture_reading" && (label === "성경봉독" || elementType === "scripture_body" || elementType === "scripture_reading"));
 }
 
 function parsePresenterScriptureTextPayload(value) {
