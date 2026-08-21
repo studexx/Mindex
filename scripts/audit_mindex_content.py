@@ -162,6 +162,25 @@ def praise_type_signature(value: Any) -> tuple[str, ...]:
     return tuple(sorted({str(item).strip().casefold() for item in values if str(item).strip()}))
 
 
+def explained_canonical_variant_keys(
+    row: dict[str, Any],
+    *,
+    title_collision_count: int,
+    praise_types: set[str],
+) -> set[str]:
+    title_key = normalize_title_key(row.get("title") or "")
+    keys: set[str] = set()
+    for field in ("subtitle", "original_title", "hymn_no"):
+        key = normalize_title_key(row.get(field) or "")
+        if key and key != title_key:
+            keys.add(key)
+    if "children" in praise_types:
+        keys.add("children")
+    if title_collision_count > 1:
+        keys.update(praise_types)
+    return keys
+
+
 def audit(
     supa_url: str,
     supa_key: str,
@@ -194,6 +213,11 @@ def audit(
     worship_element_ids = {row["id"] for row in worship_elements}
     book_codes = {row["code"] for row in books}
     translation_ids = {row["id"] for row in translations}
+    praise_types_by_canonical_id: dict[str, set[str]] = {}
+    for row in song_versions:
+        canonical_id = row.get("canonical_song_id")
+        if canonical_id:
+            praise_types_by_canonical_id.setdefault(canonical_id, set()).update(praise_type_signature(row.get("praise_types")))
 
     if strict_schema:
         optional_columns = (
@@ -240,28 +264,56 @@ def audit(
                 "count": len(ids),
             })
 
+    canonical_title_key_rows: dict[str, list[dict[str, Any]]] = {}
+    for row in canonical_songs:
+        title_key = normalize_title_key(row.get("title") or "")
+        if title_key:
+            canonical_title_key_rows.setdefault(title_key, []).append(row)
+
     normalized_canonical_keys: dict[str, list[dict[str, Any]]] = {}
     for row in canonical_songs:
         row_id = row["id"]
         title = row.get("title") or ""
         normalized_title = row.get("normalized_title") or ""
+        expected_title_key = normalize_title_key(title)
         normalized_canonical_keys.setdefault(normalized_title, []).append(row)
         if not title:
             issues.append({"type": "canonical-song-title-missing", "id": row_id})
         if not normalized_title:
             issues.append({"type": "canonical-song-normalized-title-missing", "id": row_id, "title": title})
-        elif "::" not in normalized_title and normalized_title != normalize_title_key(title):
+        elif "::" not in normalized_title and normalized_title != expected_title_key:
             warnings.append({
                 "type": "canonical-normalized-title-differs-from-title",
                 "id": row_id,
                 "title": title,
                 "normalized_title": normalized_title,
-                "expected": normalize_title_key(title),
+                "expected": expected_title_key,
             })
         if "::" in normalized_title:
             base, variant = normalized_title.split("::", 1)
             if not base or not variant:
                 issues.append({"type": "canonical-variant-key-malformed", "id": row_id, "normalized_title": normalized_title})
+            elif base != expected_title_key:
+                issues.append({
+                    "type": "canonical-variant-key-base-mismatch",
+                    "id": row_id,
+                    "title": title,
+                    "normalized_title": normalized_title,
+                    "expected_base": expected_title_key,
+                })
+            elif normalize_title_key(variant) != variant:
+                issues.append({"type": "canonical-variant-key-malformed", "id": row_id, "normalized_title": normalized_title})
+            elif variant not in explained_canonical_variant_keys(
+                row,
+                title_collision_count=len(canonical_title_key_rows.get(expected_title_key, [])),
+                praise_types=praise_types_by_canonical_id.get(row_id, set()),
+            ):
+                warnings.append({
+                    "type": "canonical-variant-key-unexplained",
+                    "id": row_id,
+                    "title": title,
+                    "normalized_title": normalized_title,
+                })
         issues.extend(edge_text_issues(row, row_id, ("title", "subtitle", "original_title", "hymn_no", "normalized_title")))
 
     for normalized_title, rows in normalized_canonical_keys.items():
