@@ -2,7 +2,7 @@
 // Runtime order is constants -> presenter -> app. Shared controller helpers are
 // owned by app.js and must not be redeclared here; tests/solid_audit.py enforces it.
 
-const PRESENTER_SONG_NOTE = "♪";
+const PRESENTER_SONG_NOTE = "♬";
 const PRESENTER_SONG_NOTE_PATTERN = /^[\u2669\u266A\u266B\u266C]\s*/u;
 
 function presenterSlidesWithIntroSlide(item = {}, section = {}, index = 0, memo = emptyServiceItemMemo(), slides = []) {

@@ -1325,7 +1325,7 @@ def main() -> int:
                         "groupTitle": "찬양",
                         "subgroupTitle": "가서 제자 삼으라",
                         "outputTitle": "가서 제자 삼으라",
-                        "outputText": "♪ 가서 제자 삼으라",
+                        "outputText": "♬ 가서 제자 삼으라",
                     }
                     and fallback_state["praiseSectionAssigneeIntro"] == {
                         "type": "title-assignee",
@@ -3628,7 +3628,7 @@ def main() -> int:
                 )
                 if (
                     form_preset_state["hymnTypes"] == ["song-title", "lyrics", "lyrics", "lyrics", "lyrics", "blank", "lyrics", "lyrics"]
-                    and form_preset_state["hymnTitleTexts"] == ["♪ 999 특송 테스트"]
+                    and form_preset_state["hymnTitleTexts"] == ["♬ 999 특송 테스트"]
                     and form_preset_state["hymnMarkers"] == ["Verse 1", "Chorus", "Verse 2", "Chorus", "Verse 4", "Chorus"]
                     and form_preset_state["hymnTexts"] == [
                         "1절 첫 줄\n1절 둘째 줄",
@@ -3663,7 +3663,7 @@ def main() -> int:
                         "감사 후렴 첫 줄\n감사 후렴 둘째 줄",
                         "감사 코다 첫 줄\n감사 코다 둘째 줄",
                     ]
-                    and form_preset_state["unifiedHymnTitleText"] == "♪ 통 1 만복의 근원 하나님"
+                    and form_preset_state["unifiedHymnTitleText"] == "♬ 통 1 만복의 근원 하나님"
                     and form_preset_state["fallbackVersionTexts"] == ["하나님은 너를 지키시는 자\n너의 우편에 그늘 되시니"]
                     and form_preset_state["fallbackVersionWarnings"] == []
                     and form_preset_state["fallbackTitleTexts"] == ["하나님은 너를 지키시는 자\n너의 우편에 그늘 되시니"]
@@ -3681,9 +3681,9 @@ def main() -> int:
                         "아멘",
                     ]
                     and len(form_preset_state["scoreTitleSlides"]) == 1
-                    and form_preset_state["scoreTitleTexts"] == ["♪ 999 특송 테스트"]
-                    and form_preset_state["scoreManifestTitleTexts"] == ["♪ 5 이 천지간 만물들아"]
-                    and form_preset_state["scoreRawTitleTexts"] == ["♪ 5 이 천지간 만물들아"]
+                    and form_preset_state["scoreTitleTexts"] == ["♬ 999 특송 테스트"]
+                    and form_preset_state["scoreManifestTitleTexts"] == ["♬ 5 이 천지간 만물들아"]
+                    and form_preset_state["scoreRawTitleTexts"] == ["♬ 5 이 천지간 만물들아"]
                     and form_preset_state["scoreImageTitleSlides"]
                     and form_preset_state["scoreManifestTitleSlides"]
                     and form_preset_state["scoreRawTitleTitleSlides"] == ["5 이 천지간 만물들아"]
@@ -3703,7 +3703,7 @@ def main() -> int:
                             "type": "song-title",
                             "title": "999 특송 테스트",
                             "assignee": "",
-                            "text": "♪ 999 특송 테스트",
+                            "text": "♬ 999 특송 테스트",
                             "sectionKey": "special_song",
                         },
                     ]
@@ -5608,7 +5608,7 @@ def main() -> int:
                     and output_state["documentTitle"]
                     and (
                         output_state["slideClass"] != "presenter-slide--song-title"
-                        or output_state["text"].startswith("♪ ")
+                        or output_state["text"].startswith("♬ ")
                         or output_state["text"].endswith("입력 필요")
                     )
                     and output_state["frame"]["width"] == 1920
