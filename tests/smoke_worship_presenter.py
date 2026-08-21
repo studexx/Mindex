@@ -7035,15 +7035,23 @@ def main() -> int:
                       const kickerStyle = kicker ? getComputedStyle(kicker) : null;
                       const messageStyle = message ? getComputedStyle(message) : null;
                       const strongStyle = strong ? getComputedStyle(strong) : null;
+                      const logo = host.querySelector('.presenter-ready-screen-logo');
+                      const kickerRect = kicker?.getBoundingClientRect();
+                      const messageRect = message?.getBoundingClientRect();
+                      const logoRect = logo?.getBoundingClientRect();
                       const readyMessage = {
                         kickerText: kicker?.textContent || '',
                         kickerWeight: kickerStyle?.fontWeight || '',
                         kickerFontSize: parseFloat(kickerStyle?.fontSize || '0') || 0,
+                        kickerHeight: kickerRect?.height || 0,
                         text: message?.textContent || '',
                         messageFontSize: parseFloat(messageStyle?.fontSize || '0') || 0,
                         strongText: strong?.textContent || '',
                         messageWeight: messageStyle?.fontWeight || '',
                         strongWeight: strongStyle?.fontWeight || '',
+                        logoHeight: logoRect?.height || 0,
+                        gapAboveMessage: messageRect && kickerRect ? messageRect.top - kickerRect.bottom : 0,
+                        gapBelowMessage: logoRect && messageRect ? logoRect.top - messageRect.bottom : 0,
                       };
                       host.remove();
                       return {
@@ -7073,6 +7081,8 @@ def main() -> int:
                     and fullscreen_ready_state["text"] == "잠시 후\n금요기도회\n가 시작됩니다"
                     and fullscreen_ready_state["readyMessage"]["kickerText"] == "지금은 기도로 예배를 준비하는 시간입니다"
                     and fullscreen_ready_state["readyMessage"]["kickerFontSize"] < fullscreen_ready_state["readyMessage"]["messageFontSize"]
+                    and abs(fullscreen_ready_state["readyMessage"]["kickerHeight"] - fullscreen_ready_state["readyMessage"]["logoHeight"]) <= 10
+                    and abs(fullscreen_ready_state["readyMessage"]["gapAboveMessage"] - fullscreen_ready_state["readyMessage"]["gapBelowMessage"]) <= 2
                     and 70 <= fullscreen_ready_state["readyMessage"]["messageFontSize"] <= 80
                     and fullscreen_ready_state["readyMessage"]["text"] == "잠시 후 금요기도회가 시작됩니다"
                     and fullscreen_ready_state["readyMessage"]["strongText"] == "금요기도회"
