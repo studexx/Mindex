@@ -6822,6 +6822,21 @@ def main() -> int:
                       preparePresenterService(service.id);
                       const first = state.presenter.slides[0] || {};
                       const normalizedReadyItem = state.serviceItems[service.id]?.find((item) => item.id === '__smoke_fullscreen_ready_image_item__') || {};
+                      const host = document.createElement('div');
+                      host.className = 'presenter-output-root no-chromakey';
+                      host.innerHTML = renderPresenterFullscreenReadySlide(first);
+                      document.body.appendChild(host);
+                      const message = host.querySelector('.presenter-ready-screen-message');
+                      const strong = message?.querySelector('strong');
+                      const messageStyle = message ? getComputedStyle(message) : null;
+                      const strongStyle = strong ? getComputedStyle(strong) : null;
+                      const readyMessage = {
+                        text: message?.textContent || '',
+                        strongText: strong?.textContent || '',
+                        messageWeight: messageStyle?.fontWeight || '',
+                        strongWeight: strongStyle?.fontWeight || '',
+                      };
+                      host.remove();
                       return {
                         chromakey: presenterServiceUsesChromakey(service),
                         slideCount: state.presenter.slides.length,
@@ -6832,6 +6847,7 @@ def main() -> int:
                         title: first.title || '',
                         readyServiceName: first.readyServiceName || '',
                         text: first.text || '',
+                        readyMessage,
                         normalizedRawTitle: normalizedReadyItem.raw_title || '',
                       };
                     }
@@ -6846,6 +6862,9 @@ def main() -> int:
                     and fullscreen_ready_state["imageSrc"] == ""
                     and fullscreen_ready_state["readyServiceName"] == "금요기도회"
                     and fullscreen_ready_state["text"] == "잠시 후\n금요기도회\n가 시작됩니다"
+                    and fullscreen_ready_state["readyMessage"]["text"] == "잠시 후 금요기도회가 시작됩니다"
+                    and fullscreen_ready_state["readyMessage"]["strongText"] == "금요기도회"
+                    and int(fullscreen_ready_state["readyMessage"]["strongWeight"]) > int(fullscreen_ready_state["readyMessage"]["messageWeight"])
                     and fullscreen_ready_state["normalizedRawTitle"] == ""
                 ):
                     pass_("presenter-fullscreen-ready-image", json.dumps(fullscreen_ready_state, ensure_ascii=False))
