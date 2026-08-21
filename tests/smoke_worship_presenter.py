@@ -6969,6 +6969,7 @@ def main() -> int:
                     and fullscreen_ready_state["text"] == "잠시 후\n금요기도회\n가 시작됩니다"
                     and fullscreen_ready_state["readyMessage"]["kickerText"] == "지금은 기도로 예배를 준비하는 시간입니다"
                     and fullscreen_ready_state["readyMessage"]["kickerFontSize"] < fullscreen_ready_state["readyMessage"]["messageFontSize"]
+                    and fullscreen_ready_state["readyMessage"]["messageFontSize"] <= 60
                     and fullscreen_ready_state["readyMessage"]["text"] == "잠시 후 금요기도회가 시작됩니다"
                     and fullscreen_ready_state["readyMessage"]["strongText"] == "금요기도회"
                     and int(fullscreen_ready_state["readyMessage"]["strongWeight"]) > int(fullscreen_ready_state["readyMessage"]["messageWeight"])

@@ -185,6 +185,9 @@ Small visual polish that does not alter behavior does not need an entry.
 - 풀스크린 예배의 준비 element 표시명은 `대기 화면`으로 둔다. 실제 준비 화면은
   이미지/영상/기본 화면을 모두 쓸 수 있으므로 `대기 영상`처럼 특정 media type으로
   고정해 부르지 않는다. 기존 `대기 영상` 저장값은 legacy alias로 계속 인식한다.
+- 풀스크린 `대기 화면`의 기도 준비 문구는 안내 톤으로 작게 두고, `잠시 후
+  {예배명}가 시작됩니다`도 본문보다 과한 display scale을 쓰지 않는다. 예배 이름만
+  굵게 강조하고 전체 화면은 차분한 waiting screen으로 유지한다.
 - 출력 창은 BroadcastChannel 연결 시 이전 local payload를 재출력하지 않고
   현재 controller state를 기다린다. 따라서 풀스크린 예배 시작 시 이전
   크로마키 프레임이 잠깐 노출되지 않는다.

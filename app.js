@@ -8872,6 +8872,20 @@ function applyServicePreparationDefaults(item, serviceId = state.selectedService
   return item;
 }
 
+function presenterPreparationRole(item = {}, memo = parseServiceItemMemo(item.memo)) {
+  const explicitRole = normalizeServicePresenterRole(memo.presenterRole);
+  if (explicitRole) return explicitRole;
+  const labelRole = normalizeServicePresenterRole(item.label || item.raw_title || item._worshipSectionTitle || "");
+  if (labelRole) return labelRole;
+  const sectionKey = String(item._worshipSectionKey || item.sectionKey || item.section_key || "").trim();
+  if (sectionKey === "ready") return "ready";
+  return "";
+}
+
+function isServicePreparationItem(item = {}, memo = parseServiceItemMemo(item.memo)) {
+  return Boolean(presenterPreparationRole(item, memo));
+}
+
 function servicePreparationElementLabel(role = "") {
   const normalized = normalizeServicePresenterRole(role);
   if (normalized === "intro") return "인트로";
@@ -18497,6 +18511,10 @@ function templateProjectionSectionKey(item = {}) {
 function mergeTemplateProjectionItem(templateItem = {}, existingItem = {}) {
   const sectionModified = Boolean(existingItem._worshipSectionTemplateModified);
   const elementModified = Boolean(existingItem._worshipElementTemplateModified);
+  const templateLabel = String(templateItem.label || "").trim();
+  const existingLabel = String(existingItem.label || "").trim();
+  const isPreparation = isServicePreparationItem(templateItem, parseServiceItemMemo(templateItem.memo))
+    || isServicePreparationItem(existingItem, parseServiceItemMemo(existingItem.memo));
   const merged = {
     ...templateItem,
     id: existingItem.id || templateItem.id,
@@ -18522,7 +18540,9 @@ function mergeTemplateProjectionItem(templateItem = {}, existingItem = {}) {
     merged._worshipSectionOrder = existingItem._worshipSectionOrder || templateItem._worshipSectionOrder;
   }
   if (elementModified) {
-    merged.label = existingItem.label || templateItem.label;
+    merged.label = isPreparation
+      ? (templateLabel || servicePreparationElementLabel(presenterPreparationRole(existingItem, parseServiceItemMemo(existingItem.memo))))
+      : (existingLabel || templateLabel);
     merged._worshipElementOrder = existingItem._worshipElementOrder || templateItem._worshipElementOrder;
   }
   return merged;
@@ -18615,7 +18635,10 @@ function normalizeServiceItemsForTemplateHierarchy(service, items = [], options 
     }));
   }
 
-  const normalizedItems = normalizeSundayFirstSendingItems(service, items, options.referenceItems);
+  const normalizedItems = normalizeFriday3355VisibleItems(
+    service,
+    normalizeSundayFirstSendingItems(service, items, options.referenceItems),
+  );
   const hierarchy = serviceTemplateHierarchyIndex(appTypeId, {
     service,
     items: normalizedItems,
@@ -18644,6 +18667,11 @@ function normalizeServiceItemsForTemplateHierarchy(service, items = [], options 
     ...item,
     sort_order: index + 1,
   }));
+}
+
+function normalizeFriday3355VisibleItems(service = null, items = []) {
+  if (!serviceIsFridayVariant(service, "3355")) return items;
+  return items.filter((item) => !shouldDropFriday3355ProjectionExtra(service, item));
 }
 
 function normalizeSundayFirstSendingItems(service = null, items = [], referenceItems = null) {

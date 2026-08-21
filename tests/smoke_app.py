@@ -2082,6 +2082,14 @@ def main() -> int:
                             };
                             const scaffold = buildWorshipServiceScaffold(service.id, service.type_id, { service });
                             const projectedWithLegacyPrayer = projectWorshipServiceItemsFromTemplate(service, [{
+                              id: '__smoke_friday_3355_legacy_ready__',
+                              service_id: service.id,
+                              label: '대기 영상',
+                              raw_title: '대기 영상',
+                              _worshipSectionKey: 'ready',
+                              _worshipSectionTitle: '준비',
+                              _worshipElementTemplateModified: true,
+                            }, {
                               id: '__smoke_friday_3355_legacy_entrance__',
                               service_id: service.id,
                               label: '입례찬양',
@@ -2117,6 +2125,7 @@ def main() -> int:
                               })),
                               projectedSections: [...new Set(projectedWithLegacyPrayer.map((item) => item._worshipSectionTitle || ''))],
                               projectedLabels: projectedWithLegacyPrayer.map((item) => item.label || ''),
+                              firstProjectedLabel: projectedWithLegacyPrayer[0]?.label || '',
                               praiseLabels: scaffold.elements
                                 .filter((element) => scaffold.sections.find((section) => section.id === element.section_id)?.section_key === 'praise')
                                 .map((element) => element.source_ref?.label || ''),
@@ -3112,6 +3121,7 @@ def main() -> int:
                         and "기도회" not in template_terms["friday3355Scaffold"]["titles"]
                         and template_terms["friday3355Scaffold"]["titles"][-2:] == ["폐회", "교제"]
                         and {"label": "교제", "type": "title_person", "section": "fellowship"} in template_terms["friday3355Scaffold"]["elementTypes"]
+                        and template_terms["friday3355Scaffold"]["firstProjectedLabel"] == "대기 화면"
                         and "입례찬양" not in template_terms["friday3355Scaffold"]["projectedSections"]
                         and "입례찬양" not in template_terms["friday3355Scaffold"]["projectedLabels"]
                         and "기도회" not in template_terms["friday3355Scaffold"]["projectedSections"]
