@@ -3888,7 +3888,10 @@ function renderPresenterFullscreenReadySlide(slide) {
     || "예배";
   return `
     <div class="presenter-ready-screen">
-      <p class="presenter-ready-screen-message">잠시 후 <strong>${escapeHtml(serviceName)}</strong>가 시작됩니다</p>
+      <div class="presenter-ready-screen-copy">
+        <p class="presenter-ready-screen-kicker">지금은 기도로 예배를 준비하는 시간입니다</p>
+        <p class="presenter-ready-screen-message">잠시 후 <strong>${escapeHtml(serviceName)}</strong>가 시작됩니다</p>
+      </div>
       <img class="presenter-ready-screen-logo" src="${escapeAttr(PRESENTER_CHURCH_LOGO)}" alt="기형 검단우리교회" decoding="sync" loading="eager" fetchpriority="high" draggable="false" />
     </div>
   `;

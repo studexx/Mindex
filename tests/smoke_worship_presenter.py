@@ -6826,12 +6826,18 @@ def main() -> int:
                       host.className = 'presenter-output-root no-chromakey';
                       host.innerHTML = renderPresenterFullscreenReadySlide(first);
                       document.body.appendChild(host);
+                      const kicker = host.querySelector('.presenter-ready-screen-kicker');
                       const message = host.querySelector('.presenter-ready-screen-message');
                       const strong = message?.querySelector('strong');
+                      const kickerStyle = kicker ? getComputedStyle(kicker) : null;
                       const messageStyle = message ? getComputedStyle(message) : null;
                       const strongStyle = strong ? getComputedStyle(strong) : null;
                       const readyMessage = {
+                        kickerText: kicker?.textContent || '',
+                        kickerWeight: kickerStyle?.fontWeight || '',
+                        kickerFontSize: parseFloat(kickerStyle?.fontSize || '0') || 0,
                         text: message?.textContent || '',
+                        messageFontSize: parseFloat(messageStyle?.fontSize || '0') || 0,
                         strongText: strong?.textContent || '',
                         messageWeight: messageStyle?.fontWeight || '',
                         strongWeight: strongStyle?.fontWeight || '',
@@ -6862,6 +6868,8 @@ def main() -> int:
                     and fullscreen_ready_state["imageSrc"] == ""
                     and fullscreen_ready_state["readyServiceName"] == "금요기도회"
                     and fullscreen_ready_state["text"] == "잠시 후\n금요기도회\n가 시작됩니다"
+                    and fullscreen_ready_state["readyMessage"]["kickerText"] == "지금은 기도로 예배를 준비하는 시간입니다"
+                    and fullscreen_ready_state["readyMessage"]["kickerFontSize"] < fullscreen_ready_state["readyMessage"]["messageFontSize"]
                     and fullscreen_ready_state["readyMessage"]["text"] == "잠시 후 금요기도회가 시작됩니다"
                     and fullscreen_ready_state["readyMessage"]["strongText"] == "금요기도회"
                     and int(fullscreen_ready_state["readyMessage"]["strongWeight"]) > int(fullscreen_ready_state["readyMessage"]["messageWeight"])

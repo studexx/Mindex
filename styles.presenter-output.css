@@ -255,6 +255,19 @@
   max-height: 12cqh;
   object-fit: contain;
 }
+.presenter-ready-screen-copy {
+  display: grid;
+  gap: 1.1cqh;
+  justify-items: center;
+}
+.presenter-ready-screen-kicker {
+  margin: 0;
+  color: color-mix(in srgb, var(--presenter-output-fg) 84%, transparent);
+  font-size: calc(70 * var(--presenter-stage-unit));
+  font-weight: var(--presenter-weight-body);
+  line-height: 1.2;
+  text-shadow: 0 1px 8px rgba(255, 255, 255, .14);
+}
 .presenter-ready-screen-message {
   margin: 0;
   color: var(--presenter-output-fg);
