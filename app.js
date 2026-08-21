@@ -590,6 +590,7 @@ const state = {
   bibleTranslations: [],
   bibleBookVerses: [],
   bibleVerseCache: new Map(),
+  bibleVerseCacheVersion: 0,
   bibleTextSearchQuery: "",
   bibleTextSearchResults: [],
   bibleTextSearchLoading: false,
@@ -9942,6 +9943,7 @@ async function fetchServiceScriptureVerses(reference, requestedTranslation = nul
   const persistentCachedRows = readPersistentBibleChapterCache(translation.id, reference.book.code, reference.chapter);
   if (persistentCachedRows) {
     state.bibleVerseCache.set(cacheKey, persistentCachedRows);
+    state.bibleVerseCacheVersion = (Number(state.bibleVerseCacheVersion) || 0) + 1;
     return getCachedServiceScriptureVerses(reference, translation);
   }
   if (serviceScriptureChapterLoadPromises.has(cacheKey)) {
@@ -10275,6 +10277,7 @@ function cacheServiceScriptureVerses(reference, verses = [], translation = selec
     if (verse.verse) byVerse.set(verse.verse, verse);
   });
   state.bibleVerseCache.set(key, inferBibleVerseEndRanges([...byVerse.values()].sort(sortBibleVerseRows)));
+  state.bibleVerseCacheVersion = (Number(state.bibleVerseCacheVersion) || 0) + 1;
 }
 
 function inferBibleVerseEndRanges(verses = []) {
@@ -26680,6 +26683,7 @@ function presenterSlideBuildSourceSignature(serviceId) {
       service.type_id || "",
       service.date || service.service_date || "",
       service.updated_at || "",
+      state.bibleVerseCacheVersion || 0,
     ],
     items: items.map((item) => {
       const song = item.song_id ? songById(item.song_id) : null;
