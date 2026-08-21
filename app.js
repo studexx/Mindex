@@ -1507,10 +1507,13 @@ function handleServiceOutlineSlideClick(serviceOutlineItem) {
   } else {
     selectPresenterBoardSlide(target.serviceId, target.slideIndex);
   }
-  openPresenterSectionEditorForSlide(target.serviceId, target.slideIndex);
   syncServiceOutlineSelection(serviceOutlineItem);
-  if (selectionChanged) renderServiceList();
-  scrollPresenterBoardToIndexStable(target.serviceId, target.slideIndex, { force: true });
+  patchServiceOutlineActiveState(target.serviceId);
+  if (selectionChanged) {
+    const outline = refs.songList?.querySelector(".service-outline-list");
+    if (!outline?.contains(serviceOutlineItem)) renderServiceList();
+  }
+  scrollPresenterBoardToIndex(target.serviceId, target.slideIndex, { force: true, behavior: "smooth" });
 }
 
 function syncServiceOutlineSelection(serviceOutlineItem) {
@@ -7400,6 +7403,7 @@ function handleDetailKeydown(event) {
   if (serviceTextField && event.key === "Enter") {
     if (serviceTextField.matches("textarea")) return;
     event.preventDefault();
+    event.stopPropagation();
     if (isDeferredServiceTextInput(serviceTextField)) {
       commitDeferredServiceTextInput(serviceTextField, { save: true });
     } else {

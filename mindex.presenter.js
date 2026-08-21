@@ -2787,6 +2787,7 @@ function shouldKeepPresenterShortcutInFocusedControl(event) {
   if (target.closest("[data-presenter-jump-input]")) {
     return !["ArrowRight", "ArrowDown", "PageDown", " ", "ArrowLeft", "ArrowUp", "PageUp"].includes(event.key);
   }
+  if (target.closest("button, a, [role='button'], [tabindex]:not([tabindex='-1'])")) return true;
   return shouldKeepHorizontalNavigationInFocusedControl(target);
 }
 
