@@ -2036,6 +2036,18 @@ def main() -> int:
 	                        type_id: 'friday',
 	                        date: '2026-07-17',
 	                      };
+	                      const smokeTranslation = {
+	                        id: '__smoke_placeholder_ko__',
+	                        translationKey: 'SMOKE',
+	                        name: '스모크역',
+	                        abbreviation: '스모크',
+	                      };
+	                      if (!state.bibleTranslations.some((translation) => translation.id === smokeTranslation.id)) {
+	                        state.bibleTranslations.push(smokeTranslation);
+	                      }
+	                      cacheServiceScriptureVerses(parseBibleReference('출 23:14–19'), [
+	                        { book_code: 'EXO', chapter: 23, verse: 14, text: '너는 매년 세 번 내게 절기를 지킬지니라' },
+	                      ], smokeTranslation);
 	                      const sharedScriptureReadingItem = {
 	                        id: '__smoke_shared_scripture_reading__',
 	                        service_id: sharedScriptureService.id,
@@ -2045,6 +2057,7 @@ def main() -> int:
 	                          elementType: 'scripture_body',
 	                          inputMode: 'scripture',
 	                          scriptureReference: '출 23:14–19',
+	                          scriptureTranslationId: smokeTranslation.id,
 	                        }),
 	                        _worshipSectionKey: 'scripture_reading',
 	                        _worshipTemplatePlaceholder: false,
@@ -2058,8 +2071,23 @@ def main() -> int:
 	                          elementType: 'scripture_body',
 	                          inputMode: 'scripture',
 	                          scriptureReference: '출 23:14–19',
+	                          scriptureTranslationId: smokeTranslation.id,
 	                        }),
 	                        _worshipSectionKey: 'sermon',
+	                      };
+	                      const placeholderScriptureItem = {
+	                        id: '__smoke_placeholder_scripture_body__',
+	                        service_id: sharedScriptureService.id,
+	                        label: '성경봉독',
+	                        raw_title: '',
+	                        memo: serializeServiceItemMemo({
+	                          elementType: 'scripture_body',
+	                          inputMode: 'scripture',
+	                          scriptureReference: '출 23:14–19',
+	                        }),
+	                        _worshipSectionKey: 'scripture_reading',
+	                        _worshipSectionTitle: '성경봉독',
+	                        _worshipTemplatePlaceholder: true,
 	                      };
 	                      const optionalCitationItem = {
 	                        id: '__smoke_optional_citation__',
@@ -2092,6 +2120,17 @@ def main() -> int:
 	                        sharedScriptureReadingItem,
 	                        sharedScriptureService,
 	                        102
+	                      );
+	                      const placeholderScriptureState = resolvePresenterServiceItemContentState(
+	                        placeholderScriptureItem,
+	                        parseServiceItemMemo(placeholderScriptureItem.memo),
+	                        null,
+	                        sharedScriptureService
+	                      );
+	                      const placeholderScriptureSlides = buildPresenterSlidesForServiceItem(
+	                        placeholderScriptureItem,
+	                        sharedScriptureService,
+	                        102.5
 	                      );
 	                      const optionalCitationSlides = buildPresenterSlidesForServiceItem(
 	                        optionalCitationItem,
@@ -2339,6 +2378,9 @@ def main() -> int:
 	                          readingState: sharedScriptureReadingState,
 	                          readingInput: presenterServiceInputItem(sharedScriptureReadingItem, sharedScriptureService),
 	                          readingSlideCount: sharedScriptureReadingSlides.length,
+	                          placeholderState: placeholderScriptureState,
+	                          placeholderSlideTypes: placeholderScriptureSlides.map((slide) => slide.type || ''),
+	                          placeholderSlideTexts: placeholderScriptureSlides.map((slide) => slide.text || ''),
 	                          citationState: optionalCitationState,
 	                          citationInputMode: presenterServiceInputItem(optionalCitationItem, sharedScriptureService)?.mode || '',
 	                          citationSlides: optionalCitationSlides.map((slide) => ({
@@ -2471,8 +2513,12 @@ def main() -> int:
 	                    and title_and_liturgical_state["sharedScripture"]["readingReferences"] == ["출 23:14–19"]
 	                    and title_and_liturgical_state["sharedScripture"]["readingState"]["state"] == "filled"
 		                    and title_and_liturgical_state["sharedScripture"]["readingState"]["reason"] == "scripture_body"
-		                    and title_and_liturgical_state["sharedScripture"]["readingInput"] is not None
+                    and title_and_liturgical_state["sharedScripture"]["readingInput"] is not None
                     and title_and_liturgical_state["sharedScripture"]["readingSlideCount"] == 2
+                    and title_and_liturgical_state["sharedScripture"]["placeholderState"]["state"] == "filled"
+                    and title_and_liturgical_state["sharedScripture"]["placeholderState"]["reason"] == "scripture_body"
+                    and title_and_liturgical_state["sharedScripture"]["placeholderSlideTypes"][:2] == ["title-assignee", "scripture"]
+                    and "너는 매년 세 번 내게 절기를 지킬지니라" in "\n".join(title_and_liturgical_state["sharedScripture"]["placeholderSlideTexts"])
                     and title_and_liturgical_state["sharedScripture"]["citationState"]["state"] == "filled"
                     and title_and_liturgical_state["sharedScripture"]["citationState"]["reason"] == "optional_citation_empty"
                     and title_and_liturgical_state["sharedScripture"]["citationInputMode"] == "scripture"

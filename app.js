@@ -27242,6 +27242,8 @@ function resolvePresenterServiceItemContentState(item = {}, memo = emptyServiceI
   const assignee = titlePersonParts?.assignee || cleanServiceAssignee(item?.assignee);
   const asset = normalizeServiceAsset(memo?.asset);
   const hasCustomSlideText = (memo.slides || []).some((slide) => String(slide || "").trim());
+  const hasScriptureInput = isScriptureBodyServiceItem(item)
+    && Boolean(serviceItemScriptureReferences(item, memo, service).length || serviceScriptureTextPayload(item, memo, service).verses.length);
   const result = (stateName, hasOutputContent, reason) => ({
     state: stateName,
     hasOutputContent,
@@ -27266,15 +27268,14 @@ function resolvePresenterServiceItemContentState(item = {}, memo = emptyServiceI
   if (item?._worshipTemplatePlaceholder
     && !rawText
     && !hasServiceAsset(asset)
-    && !hasCustomSlideText) {
+    && !hasCustomSlideText
+    && !hasScriptureInput) {
     return serviceItemsAreHydrating(service?.id)
       ? loading("service_items_hydrating")
       : missing("template_placeholder");
   }
   if (isScriptureBodyServiceItem(item)) {
-    return serviceItemScriptureReferences(item, memo, service).length || serviceScriptureTextPayload(item, memo, service).verses.length
-      ? filled("scripture_body")
-      : missing(rawText ? "scripture_reference_invalid" : "scripture_body_empty");
+    return hasScriptureInput ? filled("scripture_body") : missing(rawText ? "scripture_reference_invalid" : "scripture_body_empty");
   }
   if (elementType === "blank") return filled("blank");
   if (elementType === "live_scripture" && compactSearchValue(item?.label || "").includes("실시간성구송출")) return filled("live_scripture");
