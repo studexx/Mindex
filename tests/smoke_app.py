@@ -3159,10 +3159,10 @@ def main() -> int:
                             "ready",
                             "praise",
                             "prayer",
-                            "announcements",
                             "scripture_reading",
                             "sermon",
                             "response_song",
+                            "announcements",
                             "sending",
                             "closing_visual",
                             "fellowship",
@@ -3176,13 +3176,13 @@ def main() -> int:
                         and template_terms["friday3355Scaffold"]["firstProjectedLabel"] == "대기 화면"
                         and template_terms["friday3355Scaffold"]["fellowshipEditor"] == {
                             "label": "교제",
-                            "showTitle": True,
+                            "showTitle": False,
                             "showAssignee": True,
-                            "needsTitle": True,
+                            "needsTitle": False,
                             "needsAssignee": True,
-                            "titlePlaceholder": "순서 제목",
-                            "presenterFieldLabels": ["순서 제목", "담당"],
-                            "presenterPlaceholders": ["순서 제목", "담당"],
+                            "titlePlaceholder": "내용",
+                            "presenterFieldLabels": ["담당"],
+                            "presenterPlaceholders": ["담당"],
                             "legacyPersonInTitle": {
                                 "state": "filled",
                                 "reason": "title_person",
@@ -4209,6 +4209,12 @@ def main() -> int:
                             }, '찬양 5');
                             return {
                               welcomeSidebar: serviceSidebarChildItemTitle(welcomeItem),
+                              welcomeSidebarParts: serviceSidebarChildItemDisplayParts(welcomeItem),
+                              praiseSidebarParts: serviceSidebarChildItemDisplayParts({
+                                label: '찬양 1',
+                                raw_title: '은혜 은혜',
+                                memo: serializeServiceItemMemo({ elementType: 'praise' }),
+                              }),
                               mainPraiseTitle,
                               entranceTitle,
                             };
@@ -4305,7 +4311,7 @@ def main() -> int:
                     )
                     if (
                         "순서" in presenter_terms["sidebarHeadings"]
-                        and presenter_terms["outlineHeaderTail"] == "시작"
+                        and presenter_terms["outlineHeaderTail"] == ""
                         and "편집" not in presenter_terms["sidebarHeadings"]
                         and "최근 예배" not in presenter_terms["sidebarHeadings"]
                         and presenter_terms["outlineRows"] >= 2
@@ -4325,6 +4331,8 @@ def main() -> int:
                         and presenter_terms["mainPraiseSubgroupLabels"] == ["환영", "찬양 1"]
                         and presenter_terms["elementNameTitleContract"] == {
                             "welcomeSidebar": "환영 · 헤세드 찬양단",
+                            "welcomeSidebarParts": {"meta": "환영", "title": "헤세드 찬양단"},
+                            "praiseSidebarParts": {"meta": "찬양 1", "title": "은혜 은혜"},
                             "mainPraiseTitle": "",
                             "entranceTitle": "",
                         }
@@ -4762,7 +4770,8 @@ def main() -> int:
                         and presenter_header_input["songFieldCount"] >= 5
                         and presenter_header_input["bulkInput"] == presenter_header_input["bulkButton"]
                         and (
-                            presenter_header_input["bulkStatus"] in ("불러오는 중", "입력 완료", "입력 없음")
+                            (not presenter_header_input["bulkInput"] and presenter_header_input["bulkStatus"] == "")
+                            or presenter_header_input["bulkStatus"] in ("불러오는 중", "입력 완료", "입력 없음")
                             or presenter_header_input["bulkStatus"].endswith("개 입력 필요")
                         )
                         and presenter_header_input["bulkDraft"] in ("", "찬양 1: 평화 하나님의 평강이")

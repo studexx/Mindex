@@ -3533,11 +3533,32 @@ body[data-module="presenter"] .detail-pane {
   border-radius: 5px;
   padding: 5px;
 }
+.service-outline-row--child .service-outline-main {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+.service-outline-kind {
+  min-width: 0;
+  overflow: hidden;
+  color: color-mix(in srgb, var(--accent) 74%, var(--sidebar-label));
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .service-outline-row--child strong {
   color: var(--sidebar-sub);
   font-size: 13px;
   font-weight: 650;
   line-height: 18px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.service-outline-row--child:has(.service-outline-kind) {
+  min-height: 42px;
 }
 .service-outline-row--child.selected:not(.active) {
   background: var(--sidebar-hover-bg);
@@ -3550,6 +3571,11 @@ body[data-module="presenter"] .detail-pane {
 .service-outline-row--child.selected strong,
 .service-outline-row--child.active strong {
   color: var(--sidebar-ink);
+}
+.service-outline-row--child:hover .service-outline-kind,
+.service-outline-row--child.selected .service-outline-kind,
+.service-outline-row--child.active .service-outline-kind {
+  color: var(--accent);
 }
 .service-outline-row.active .service-outline-no {
   color: var(--accent);

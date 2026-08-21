@@ -7403,7 +7403,7 @@ function handleDetailKeydown(event) {
   if (serviceTextField && event.key === "Enter") {
     if (serviceTextField.matches("textarea")) return;
     event.preventDefault();
-    event.stopPropagation();
+    event.stopPropagation?.();
     if (isDeferredServiceTextInput(serviceTextField)) {
       commitDeferredServiceTextInput(serviceTextField, { save: true });
     } else {
@@ -20255,6 +20255,7 @@ function renderServiceOutlineChildRow(service, item, index, selectedIndex, slide
   const activeSlide = state.presenter.serviceId === service.id && slideIndex >= 0 && presenterSlideBelongsToItem(state.presenter.slides[state.presenter.index], item);
   const selected = index === selectedIndex;
   const title = serviceSidebarChildItemTitle(item, service);
+  const titleParts = serviceSidebarChildItemDisplayParts(item, service);
   const interactionHint = presenterSlideInteractionHint(service.id, title);
   const missing = serviceOutlineMissingState(item, slides);
   return `
@@ -20267,7 +20268,8 @@ function renderServiceOutlineChildRow(service, item, index, selectedIndex, slide
       >
       <span class="service-outline-no"></span>
       <span class="service-outline-main">
-        <strong>${escapeHtml(title)}</strong>
+        ${titleParts.meta ? `<span class="service-outline-kind">${escapeHtml(titleParts.meta)}</span>` : ""}
+        <strong>${escapeHtml(titleParts.title)}</strong>
         ${renderServiceOutlineMissingBadge(missing)}
       </span>
       <span class="service-outline-start"></span>
@@ -20324,6 +20326,23 @@ function serviceSidebarChildItemTitle(item, service = null) {
   const titleCompact = compactSearchValue(title);
   if (labelCompact === titleCompact) return label;
   return `${label} · ${title}`;
+}
+
+function serviceSidebarChildItemDisplayParts(item, service = null) {
+  const label = String(item?.label || "").trim();
+  const fallback = serviceSidebarChildItemTitle(item, service);
+  if (!label || serviceSidebarUsesLabelOnly(item)) return { meta: "", title: fallback || "항목" };
+  const title = serviceItemDisplayText(item);
+  const personSummary = serviceSidebarPersonSummary(item, service);
+  if (personSummary) {
+    const parts = cleanList(String(personSummary).split(/[·/,]+/u));
+    return parts.length > 1
+      ? { meta: parts[0], title: parts.slice(1).join(" / ") }
+      : { meta: "", title: personSummary };
+  }
+  if (!title) return { meta: "", title: label };
+  if (compactSearchValue(label) === compactSearchValue(title)) return { meta: "", title: label };
+  return { meta: label, title };
 }
 
 function serviceSidebarPersonSummary(item = {}, service = null) {
