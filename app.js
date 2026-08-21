@@ -18684,7 +18684,11 @@ function normalizeServiceItemsForTemplateHierarchy(service, items = [], options 
 
   const normalizedItems = normalizeFriday3355VisibleItems(
     service,
-    normalizeSundayFirstSendingItems(service, items, options.referenceItems),
+    normalizeSundayFirstSendingItems(
+      service,
+      normalizeLegacyTemplateScriptureItems(service, items),
+      options.referenceItems,
+    ),
   );
   const hierarchy = serviceTemplateHierarchyIndex(appTypeId, {
     service,
@@ -18714,6 +18718,62 @@ function normalizeServiceItemsForTemplateHierarchy(service, items = [], options 
     ...item,
     sort_order: index + 1,
   }));
+}
+
+function normalizeLegacyTemplateScriptureItems(service = null, items = []) {
+  const appTypeId = worshipAppServiceTypeId(service?.type_id);
+  if (!TEMPLATE_PROJECTED_SERVICE_TYPES.has(appTypeId)) return items;
+  return items.map((item) => {
+    const memo = parseServiceItemMemo(item.memo);
+    const references = serviceItemDirectScriptureReferences(item, memo);
+    if (!references.length) return item;
+    const labelKey = compactSearchValue(item.label || item.raw_title || "");
+    const existingSectionKey = String(item._worshipSectionKey || item.sectionKey || item.section_key || "").trim();
+    const normalizedMemo = {
+      ...memo,
+      elementType: "scripture_body",
+      componentType: "scripture_body",
+      inputMode: memo.inputMode || "scripture",
+      scriptureReference: references[0],
+      scriptureReferences: references,
+      slides: [],
+    };
+
+    if (labelKey === "성경봉독" || (existingSectionKey === "scripture_reading" && normalizeWorshipElementType(memo.elementType) === "scripture_reading")) {
+      return {
+        ...item,
+        label: "성경봉독",
+        raw_title: formatServiceScriptureReferenceList(references),
+        memo: serializeServiceItemMemo(normalizedMemo),
+        _worshipSectionKey: "scripture_reading",
+        _worshipSectionTitle: "성경봉독",
+      };
+    }
+
+    if (["설교본문", "성경본문", "말씀본문", "본문", "말씀"].includes(labelKey)) {
+      return {
+        ...item,
+        label: labelKey === "말씀" ? "설교 본문" : item.label,
+        raw_title: formatServiceScriptureReferenceList(references),
+        memo: serializeServiceItemMemo(normalizedMemo),
+        _worshipSectionKey: "sermon",
+        _worshipSectionTitle: "설교",
+      };
+    }
+
+    if (/^인용구절\d*$/.test(labelKey) || labelKey === "인용구절") {
+      return {
+        ...item,
+        label: "인용 구절",
+        raw_title: formatServiceScriptureReferenceList(references),
+        memo: serializeServiceItemMemo(normalizedMemo),
+        _worshipSectionKey: "sermon",
+        _worshipSectionTitle: "설교",
+      };
+    }
+
+    return item;
+  });
 }
 
 function normalizeFriday3355VisibleItems(service = null, items = []) {
