@@ -3082,7 +3082,7 @@ body[data-module="calendar"] .detail-pane { overflow: hidden; }
   display: inline-flex;
   margin-left: auto;
   min-width: 0;
-  max-width: 78px;
+  max-width: 88px;
   min-height: 22px;
   align-items: center;
   gap: 6px;
@@ -3094,7 +3094,7 @@ body[data-module="calendar"] .detail-pane { overflow: hidden; }
   font-size: var(--ui-meta-size);
   font-weight: 600;
   line-height: 1.2;
-  padding: 0;
+  padding: 0 8px 0 0;
   pointer-events: none;
 }
 .loading-status-dot {
