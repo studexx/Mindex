@@ -9772,6 +9772,8 @@ function serviceItemEditorModel(item = {}, options = {}) {
         ? "성경 구절"
         : isDefault
           ? "기본 내용"
+          : serviceTitlePersonNeedsTitleInput(item, parsed)
+            ? "순서 제목"
           : "내용",
   };
 }
@@ -21563,6 +21565,7 @@ function renderServiceEditorAssigneeControl(item, origIndex, attrs = {}, model =
   if (!model.showAssignee) return `<span class="svc-edit-empty" aria-hidden="true"></span>`;
   const fieldAttr = attrs.fieldAttr || "data-service-item-field";
   const indexAttr = attrs.indexAttr || "data-service-item-index";
+  const placeholder = inferServiceItemAssignee(item) || serviceItemAssigneeInputLabel(item);
   return `
     <input
       class="svc-edit-assignee"
@@ -21570,7 +21573,7 @@ function renderServiceEditorAssigneeControl(item, origIndex, attrs = {}, model =
       ${fieldAttr}="assignee"
       ${indexAttr}="${origIndex}"
       value="${escapeAttr(model.assigneeValue || "")}"
-      placeholder="${escapeAttr(inferServiceItemAssignee(item))}"
+      placeholder="${escapeAttr(placeholder)}"
       aria-label="${attrs.isDefault ? "기본 항목 담당" : "항목 담당"}"
     />`;
 }
@@ -24076,8 +24079,11 @@ function renderPresenterServiceTextInputs(item, index, model, memo) {
   if (!needsTitle && !needsAssignee && !manualPraise) return "";
   const specialSong = isSpecialSongServiceItem(item);
   const announcementText = isAnnouncementTextInputItem(item);
-  const titleLabel = specialSong ? "곡" : "내용";
+  const titlePerson = serviceMemoElementType(memo) === "title_person";
+  const titleLabel = specialSong ? "곡" : titlePerson ? "순서 제목" : "내용";
+  const titlePlaceholder = specialSong ? "곡명" : titlePerson ? "순서 제목" : item.label || "내용";
   const assigneeLabel = serviceItemAssigneeInputLabel(item);
+  const assigneePlaceholder = inferServiceItemAssignee(item) || assigneeLabel;
   return `
     ${needsTitle ? `
       <label class="svc-presenter-input-field">
@@ -24087,7 +24093,7 @@ function renderPresenterServiceTextInputs(item, index, model, memo) {
             rows="4" placeholder="1. 다음 주 모임 안내&#10;같은 항목의 추가 내용&#10;2. 새가족 환영" aria-label="${escapeAttr(`${item.label || "항목"} ${titleLabel}`)}">${escapeHtml(item.raw_title || "")}</textarea>
           <small class="svc-presenter-input-hint">줄 맨 앞의 1., 2.마다 새 항목으로 표시됩니다. 번호 없는 다음 줄은 같은 항목에 포함됩니다.</small>` : `
           <input class="svc-presenter-input-control" type="text" data-service-item-field="raw_title" data-service-item-index="${index}"
-            value="${escapeAttr(item.raw_title || "")}" placeholder="${escapeAttr(specialSong ? "곡명" : item.label || "내용")}" ${specialSong ? `autocomplete="off" spellcheck="false"` : ""} aria-label="${escapeAttr(`${item.label || "항목"} ${titleLabel}`)}" />`}
+            value="${escapeAttr(item.raw_title || "")}" placeholder="${escapeAttr(titlePlaceholder)}" ${specialSong ? `autocomplete="off" spellcheck="false"` : ""} aria-label="${escapeAttr(`${item.label || "항목"} ${titleLabel}`)}" />`}
       </label>` : ""}
     ${manualPraise ? `
       <label class="svc-presenter-input-field svc-presenter-input-field--lyrics">
@@ -24099,7 +24105,7 @@ function renderPresenterServiceTextInputs(item, index, model, memo) {
       <label class="svc-presenter-input-field">
         <span>${escapeHtml(assigneeLabel)}</span>
         <input class="svc-presenter-input-control" type="text" data-service-item-field="assignee" data-service-item-index="${index}"
-          value="${escapeAttr(model.assigneeValue || "")}" placeholder="${escapeAttr(inferServiceItemAssignee(item))}" aria-label="${escapeAttr(`${item.label || "항목"} 담당`)}" />
+          value="${escapeAttr(model.assigneeValue || "")}" placeholder="${escapeAttr(assigneePlaceholder)}" aria-label="${escapeAttr(`${item.label || "항목"} 담당`)}" />
       </label>` : ""}`;
 }
 

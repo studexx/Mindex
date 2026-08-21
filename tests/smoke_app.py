@@ -2130,12 +2130,26 @@ def main() -> int:
                                 const fellowship = projectedWithLegacyPrayer.find((item) => item._worshipSectionKey === 'fellowship');
                                 const model = serviceItemEditorModel(fellowship || {}, { service });
                                 const spec = presenterServiceTextInputSpec(fellowship || {}, model, parseServiceItemMemo(fellowship?.memo));
+                                const host = document.createElement('div');
+                                host.innerHTML = renderPresenterServiceTextInputs(
+                                  fellowship || {},
+                                  projectedWithLegacyPrayer.findIndex((item) => item === fellowship),
+                                  model,
+                                  parseServiceItemMemo(fellowship?.memo),
+                                );
+                                const fieldLabels = [...host.querySelectorAll('.svc-presenter-input-field > span')]
+                                  .map((node) => node.textContent.trim());
+                                const placeholders = [...host.querySelectorAll('input')]
+                                  .map((node) => node.getAttribute('placeholder') || '');
                                 return {
                                   label: fellowship?.label || '',
                                   showTitle: Boolean(model.showTitle),
                                   showAssignee: Boolean(model.showAssignee),
                                   needsTitle: Boolean(spec.needsTitle),
                                   needsAssignee: Boolean(spec.needsAssignee),
+                                  titlePlaceholder: model.titlePlaceholder || '',
+                                  presenterFieldLabels: fieldLabels,
+                                  presenterPlaceholders: placeholders,
                                 };
                               })(),
                               praiseLabels: scaffold.elements
@@ -3140,6 +3154,9 @@ def main() -> int:
                             "showAssignee": True,
                             "needsTitle": True,
                             "needsAssignee": True,
+                            "titlePlaceholder": "순서 제목",
+                            "presenterFieldLabels": ["순서 제목", "담당"],
+                            "presenterPlaceholders": ["순서 제목", "담당"],
                         }
                         and "입례찬양" not in template_terms["friday3355Scaffold"]["projectedSections"]
                         and "입례찬양" not in template_terms["friday3355Scaffold"]["projectedLabels"]
