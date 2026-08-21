@@ -6760,6 +6760,12 @@ def main() -> int:
                       const primary = {
                         id: '__smoke_link_primary__',
                         title: '링크 원곡',
+                        metadata: {
+                          artist: '길고 긴 아티스트 이름과 예배팀 이름',
+                          lyricist: '아주 긴 작사자 이름과 공동 작사자 목록',
+                          composer: '아주 긴 작곡자 이름과 공동 작곡자 목록',
+                          album: '잘리지 않아야 하는 긴 앨범 메타데이터',
+                        },
                         related_song_ids: ['__smoke_link_related__'],
                         versions: [{
                           id: '__smoke_link_primary_v1__',
@@ -6783,6 +6789,11 @@ def main() -> int:
                       state.selectedSongId = primary.id;
                       state.selectedVersionId = primary.versions[0].id;
                       state.forms = normalizeForms(primary.versions[0].forms.map((form) => ({ ...form, song_id: primary.versions[0].id })));
+                      renderDetail();
+                      const metaStrong = document.querySelector('.song-description-meta--head .meta-attribute strong');
+                      const metaWrapStyle = metaStrong ? getComputedStyle(metaStrong) : null;
+                      const metaHead = document.querySelector('.song-description-meta--head');
+                      const metaHeadStyle = metaHead ? getComputedStyle(metaHead) : null;
                       const linkedEntries = linkedSongVersionEntries(primary);
                       const linkedHtml = renderFormsTab(primary);
                       const titleHtml = renderVersionTitleContent(primary, primary.versions[0], primary.versions[0].forms, { active: true });
@@ -6838,6 +6849,14 @@ def main() -> int:
                         editedVersionName: editedVersion.name,
                         editedVersionRawName: editedVersion.raw_section_name,
                         loadingCreateState,
+                        metadataWrap: {
+                          exists: Boolean(metaStrong),
+                          whiteSpace: metaWrapStyle?.whiteSpace || '',
+                          overflow: metaWrapStyle?.overflow || '',
+                          textOverflow: metaWrapStyle?.textOverflow || '',
+                          headFlexWrap: metaHeadStyle?.flexWrap || '',
+                          headOverflow: metaHeadStyle?.overflow || '',
+                        },
                         draftTitle: draft.title,
                         draftVersions: draft.versions.length,
                         draftPraiseType: draft.versions[0]?.praise_types?.[0] || '',
@@ -6891,6 +6910,12 @@ def main() -> int:
                     and not praise_actions["loadingCreateState"]["sidebarHidden"]
                     and praise_actions["loadingCreateState"]["sidebarDisabled"]
                     and praise_actions["loadingCreateState"]["detailButtonsHidden"]
+                    and praise_actions["metadataWrap"]["exists"]
+                    and praise_actions["metadataWrap"]["whiteSpace"] != "nowrap"
+                    and praise_actions["metadataWrap"]["overflow"] == "visible"
+                    and praise_actions["metadataWrap"]["textOverflow"] == "clip"
+                    and praise_actions["metadataWrap"]["headFlexWrap"] == "wrap"
+                    and praise_actions["metadataWrap"]["headOverflow"] == "visible"
                     and praise_actions["draftTitle"] == "테스트 새 찬양"
                     and praise_actions["draftVersions"] == 1
                     and praise_actions["draftPraiseType"] == "ccm"
