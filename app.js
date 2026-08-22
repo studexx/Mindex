@@ -5869,6 +5869,31 @@ async function syncSharedSundayContentToService(targetService, key, sourceItem, 
   await persistSharedSundayServiceItems(targetService, targetItems, options);
 }
 
+async function ensureWorshipServiceRowsLoadedForPersistence(serviceId = "") {
+  const id = String(serviceId || "").trim();
+  if (!id || !state.client || state.loadedWorshipServiceIds.has(id)) return;
+  const previousSectionIds = new Set(
+    state.worshipSections
+      .filter((section) => section.service_id === id)
+      .map((section) => section.id)
+      .filter(Boolean),
+  );
+  const { sections, elements } = await fetchWorshipRowsForServiceIds([id]);
+  const loadedSectionIds = new Set([
+    ...previousSectionIds,
+    ...sections.map((section) => section.id).filter(Boolean),
+  ]);
+  state.worshipSections = [
+    ...state.worshipSections.filter((section) => section.service_id !== id),
+    ...sections,
+  ];
+  state.worshipElements = [
+    ...state.worshipElements.filter((element) => !loadedSectionIds.has(element.section_id)),
+    ...elements,
+  ];
+  state.loadedWorshipServiceIds.add(id);
+}
+
 function applySharedSundayContentToItem(targetItem = {}, sourceItem = {}) {
   const key = sundaySharedContentKey(targetItem) || sundaySharedContentKey(sourceItem);
   const next = {
@@ -5934,6 +5959,7 @@ function applySharedSundayContentToItem(targetItem = {}, sourceItem = {}) {
 async function persistSharedSundayServiceItems(service, items = [], options = {}) {
   if (!state.client || !service?.id) return;
   const serviceId = service.id;
+  await ensureWorshipServiceRowsLoadedForPersistence(serviceId);
   const existingSections = state.worshipSections.filter((section) => section.service_id === serviceId);
   const existingElements = state.worshipElements.filter((element) =>
     existingSections.some((section) => section.id === element.section_id));
@@ -5959,6 +5985,26 @@ async function persistSharedSundayServiceItems(service, items = [], options = {}
     const { error } = await state.client
       .from("mindex_worship_elements")
       .upsert(rows.elements, { onConflict: "id" });
+    if (error) throw error;
+  }
+
+  const nextElementIds = new Set(rows.elements.map((element) => element.id));
+  const removedElementIds = existingElements.map((element) => element.id).filter((id) => !nextElementIds.has(id));
+  if (removedElementIds.length) {
+    const { error } = await state.client
+      .from("mindex_worship_elements")
+      .delete()
+      .in("id", removedElementIds);
+    if (error) throw error;
+  }
+
+  const nextSectionIds = new Set(rows.sections.map((section) => section.id));
+  const removedSectionIds = existingSections.map((section) => section.id).filter((id) => !nextSectionIds.has(id));
+  if (removedSectionIds.length) {
+    const { error } = await state.client
+      .from("mindex_worship_sections")
+      .delete()
+      .in("id", removedSectionIds);
     if (error) throw error;
   }
 
@@ -6057,10 +6103,29 @@ function sanitizeWorshipPersistenceRows(rows = {}, options = {}) {
       if (contentMode) element.content_state.inputMode = contentMode;
       delete element.content_state.input_mode;
     }
+    sanitizeSongContentStateWithoutSong(element.content_state, element);
+    sanitizeSongContentStateWithoutSong(element.config.contentState, element);
     if (hasInputModeColumn) element.input_mode = worshipDbInputModeForSave(element.input_mode || element.content_state?.inputMode || element.config.inputMode);
     else delete element.input_mode;
   });
   return rows;
+}
+
+function sanitizeSongContentStateWithoutSong(contentState = null, element = {}) {
+  if (!contentState || typeof contentState !== "object" || element?.song_id) return;
+  const inputMode = normalizeServiceInputMode(
+    contentState.inputMode
+    || contentState.input_mode
+    || element.input_mode
+    || element.config?.inputMode
+    || element.config?.input_mode,
+  );
+  if (!["praise_db", "score_db", "lyrics_db"].includes(inputMode)) return;
+  if (contentState.state !== "filled" || contentState.reason !== "song") return;
+  contentState.state = "missing";
+  contentState.reason = String(element.title || "").trim() ? "song_selection_required" : "song_empty";
+  contentState.inputMode = inputMode;
+  contentState.required = true;
 }
 
 function compactWorshipPersistenceRows(rows = {}) {

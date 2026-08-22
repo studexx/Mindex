@@ -134,6 +134,22 @@ class WorshipRuleGuardTests(unittest.TestCase):
         self.assertIn("worshipDbInputModeForSave", sanitizer)
         self.assertIn("element.song_version_id = null", sanitizer)
         self.assertIn("section.created_at = section.created_at || persistedAt", sanitizer)
+        self.assertIn("sanitizeSongContentStateWithoutSong(element.content_state", sanitizer)
+        self.assertIn("sanitizeSongContentStateWithoutSong(element.config.contentState", sanitizer)
+
+    def test_shared_sunday_sync_loads_and_replaces_target_rows(self) -> None:
+        helper = function_block(self.source, "ensureWorshipServiceRowsLoadedForPersistence")
+        shared = function_block(self.source, "persistSharedSundayServiceItems")
+        self.assertIn("fetchWorshipRowsForServiceIds([id])", helper)
+        self.assertIn("state.loadedWorshipServiceIds.add(id)", helper)
+        self.assertLess(
+            shared.index("await ensureWorshipServiceRowsLoadedForPersistence(serviceId)"),
+            shared.index("const existingSections"),
+        )
+        self.assertIn("removedElementIds", shared)
+        self.assertIn("removedSectionIds", shared)
+        self.assertIn('.from("mindex_worship_elements")', shared)
+        self.assertIn('.from("mindex_worship_sections")', shared)
 
     def test_calendar_load_precedes_auto_worship_generation(self) -> None:
         load_worship = function_block(self.source, "loadWorshipData")
