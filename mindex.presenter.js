@@ -2274,6 +2274,7 @@ function presenterSectionForServiceItem(item, index, displayText, song = null, v
   const label = String(item?.label || "").trim();
   const sectionLabel = presenterSectionLabelForServiceItem(item, label);
   const formHint = serviceItemFormHint(item);
+  const connectedPraise = serviceItemConnectedPraise(item);
   const { no, title } = splitHymnNo(displayText);
   const linkedSongTitle = song ? presenterSongTitleDisplayTitle(song, version, displayText) : "";
   const linkedElementTitle = linkedSongTitle || (song ? presenterPraiseElementTitle(song, version, displayText) : "");
@@ -2291,6 +2292,7 @@ function presenterSectionForServiceItem(item, index, displayText, song = null, v
     sectionTitle: sectionLabel,
     elementLabel: label,
     elementTitle,
+    ...(connectedPraise ? { connectedPraise } : {}),
     sectionAssignee: item?.assignee || "",
     sectionName: [sectionLabel || sectionLabelText, elementTitle].filter(Boolean).join(" / "),
   };

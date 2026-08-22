@@ -1086,6 +1086,44 @@ def main() -> int:
                             outputText: titleSlide.text || '',
                           };
                         })(),
+                        connectedPraiseMedleyBoard: (() => {
+                          const makeVersion = (id, lyrics) => ({
+                            id,
+                            name: 'Default',
+                            is_primary: true,
+                            forms: [{ id: `${id}-v`, part_type: 'Verse', part_number: 1, lyrics, sort_order: 1 }],
+                          });
+                          const songs = [
+                            { id: '__smoke_medley_a__', title: '함께 지어져 가네', versions: [makeVersion('__smoke_medley_a_v__', '함께 지어져 가네\\n주 안에서')] },
+                            { id: '__smoke_medley_b__', title: '성도의 노래', versions: [makeVersion('__smoke_medley_b_v__', '성도의 노래\\n주께 드리네')] },
+                          ];
+                          const previousSongs = state.songs;
+                          state.songs = state.songs.filter((song) => !songs.some((fixture) => fixture.id === song.id)).concat(songs);
+                          const connected = {
+                            groupId: '__smoke_medley_6_7__',
+                            title: '함께 지어져 가네 + 성도의 노래',
+                            orderTitle: '찬양 6–7',
+                            inputText: '함께 지어져 가네\\n성도의 노래',
+                          };
+                          const baseMemo = { elementType: 'praise', outputMode: 'lyrics', inputMode: 'lyrics_db' };
+                          const medleyService = { id: '__smoke_medley_service__', type_id: 'sunday-main', date: '2026-08-23' };
+                          const items = [
+                            { id: '__smoke_medley_6__', service_id: medleyService.id, label: '찬양 6', raw_title: '함께 지어져 가네', song_id: '__smoke_medley_a__', song_version_id: '__smoke_medley_a_v__', memo: JSON.stringify({ ...baseMemo, connectedPraise: { ...connected, role: 'primary', primaryItemId: '__smoke_medley_6__', secondaryItemIds: ['__smoke_medley_7__'], itemIds: ['__smoke_medley_6__', '__smoke_medley_7__'] } }), _worshipSectionKey: 'praise', _worshipSectionTitle: '찬양', _worshipSectionId: '__smoke_medley_praise_section__', _worshipSectionOrder: 2, _worshipElementOrder: 6 },
+                            { id: '__smoke_medley_7__', service_id: medleyService.id, label: '찬양 7', raw_title: '성도의 노래', song_id: '__smoke_medley_b__', song_version_id: '__smoke_medley_b_v__', memo: JSON.stringify({ ...baseMemo, connectedPraise: { ...connected, role: 'secondary', primaryItemId: '__smoke_medley_6__', itemIds: ['__smoke_medley_6__', '__smoke_medley_7__'] } }), _worshipSectionKey: 'praise', _worshipSectionTitle: '찬양', _worshipSectionId: '__smoke_medley_praise_section__', _worshipSectionOrder: 2, _worshipElementOrder: 7 },
+                          ];
+                          state.services = [medleyService].concat(state.services.filter((item) => item.id !== medleyService.id));
+                          state.serviceItems[medleyService.id] = items;
+                          const medleySlides = buildServicePresenterSlidesUncached(medleyService.id);
+                          const group = groupPresenterSlidesBySection(medleySlides, medleyService.id).find((item) => item.kind === 'main-praise') || {};
+                          const subgroup = group.subgroups?.find((item) => item.id === 'connected-praise:__smoke_medley_6_7__') || {};
+                          state.songs = previousSongs;
+                          return {
+                            label: subgroup.label || '',
+                            title: subgroup.title || '',
+                            titleSlides: (subgroup.slides || []).filter(({ slide }) => slide.type === 'song-title').map(({ slide }) => slide.title || ''),
+                            elementIds: [...new Set((subgroup.slides || []).map(({ slide }) => slide.elementId || '').filter(Boolean))],
+                          };
+                        })(),
                         praiseSectionAssigneeIntro: (() => {
                           const service = state.services.find((item) => item.id === modelServiceId);
                           if (!service) return null;
@@ -1340,6 +1378,12 @@ def main() -> int:
                         "subgroupTitle": "가서 제자 삼으라",
                         "outputTitle": "가서 제자 삼으라",
                         "outputText": "♬ 가서 제자 삼으라",
+                    }
+                    and fallback_state["connectedPraiseMedleyBoard"] == {
+                        "label": "6–7",
+                        "title": "찬양 6–7",
+                        "titleSlides": ["함께 지어져 가네 + 성도의 노래"],
+                        "elementIds": ["__smoke_medley_6__", "__smoke_medley_7__"],
                     }
                     and fallback_state["praiseSectionAssigneeIntro"] == {
                         "type": "title-assignee",

@@ -25491,7 +25491,10 @@ function serviceSectionDisplayTitle(sectionKey = "", title = "") {
 
 function addPresenterSlideToSubgroup(group, entry) {
   const { slide } = entry;
-  const id = slide.elementId || slide.sectionId || `${group.id}:slide:${entry.slideIndex}`;
+  const connected = normalizeServiceConnectedPraise(slide.connectedPraise || slide.connected_praise);
+  const id = connected?.groupId
+    ? `connected-praise:${connected.groupId}`
+    : slide.elementId || slide.sectionId || `${group.id}:slide:${entry.slideIndex}`;
   let subgroup = group.subgroups.find((item) => item.id === id);
   if (!subgroup) {
     const mainPraiseMarker = group.kind === "main-praise" && isPresenterPraiseSectionMarkerSlide(slide);
@@ -25512,6 +25515,32 @@ function addPresenterSlideToSubgroup(group, entry) {
     group.subgroups.push(subgroup);
   }
   subgroup.slides.push(entry);
+  if (connected?.groupId) updateConnectedPraiseSubgroupLabel(group, subgroup);
+}
+
+function updateConnectedPraiseSubgroupLabel(group = {}, subgroup = {}) {
+  if (group.kind !== "main-praise") return;
+  const entries = (subgroup.slides || []).filter(({ slide }) => !isPresenterPraiseSectionMarkerSlide(slide));
+  if (!entries.length) return;
+  const itemIds = [...new Set(entries.map(({ slide }) => String(slide.elementId || "").trim()).filter(Boolean))];
+  const itemCount = Math.max(1, itemIds.length);
+  const connected = normalizeServiceConnectedPraise(entries[0].slide.connectedPraise || entries[0].slide.connected_praise);
+  const connectedLabel = connectedPraiseSubgroupRangeLabel(connected);
+  const start = presenterMainPraiseSongSubgroupCount(group);
+  const end = start + itemCount - 1;
+  const label = connectedLabel || (itemCount > 1 ? `${start}–${end}` : presenterPraiseSubgroupLabel("", start));
+  subgroup.label = label;
+  const title = presenterBoardSubgroupContentTitle(entries[0].slide, label);
+  subgroup.title = title;
+  subgroup.name = presenterNameParts(label, title).join(" / ") || subgroup.name || label;
+}
+
+function connectedPraiseSubgroupRangeLabel(connected = null) {
+  const title = String(connected?.orderTitle || connected?.inputText || "").trim();
+  const match = title.match(/(?:찬양\s*)?(\d+)\s*[-–~]\s*(\d+)/);
+  if (match) return `${match[1]}–${match[2]}`;
+  const single = title.match(/^찬양\s*(\d+)$/);
+  return single ? `찬양 ${single[1]}` : "";
 }
 
 function presenterTitleAssigneeTitleIsGeneric(title = "", label = "") {
@@ -25533,6 +25562,8 @@ function presenterTitleAssigneeTitleIsGeneric(title = "", label = "") {
 
 function presenterBoardSubgroupContentTitle(slide = {}, label = "") {
   if (slide?._praiseIntroSlide) return "";
+  const connectedTitle = serviceItemConnectedPraiseTitle({ connectedPraise: slide.connectedPraise || slide.connected_praise }, "order");
+  if (connectedTitle) return connectedTitle;
   const linkedTitle = presenterBoardLinkedSongTitle(slide);
   if (linkedTitle) return linkedTitle;
   const sectionKey = String(slide.sectionKey || "").trim();
@@ -25804,7 +25835,10 @@ function renderPresenterBoardSubgroupInputControls(serviceId, subgroup = {}) {
 function presenterBoardSubgroupItemContext(serviceId, subgroup = {}) {
   const service = state.services.find((svc) => svc.id === serviceId);
   if (!service) return null;
-  const elementId = String(subgroup.id || subgroup.slides?.[0]?.slide?.elementId || "").trim();
+  const subgroupId = String(subgroup.id || "").trim();
+  const elementId = subgroupId.startsWith("connected-praise:")
+    ? String(subgroup.slides?.[0]?.slide?.elementId || "").trim()
+    : String(subgroupId || subgroup.slides?.[0]?.slide?.elementId || "").trim();
   if (!elementId) return null;
   const items = getServiceItems(serviceId);
   const itemIndex = items.findIndex((item) => String(item.id || "") === elementId);
