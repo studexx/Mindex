@@ -5714,6 +5714,7 @@ async function saveWorshipServiceInstance(service) {
   }
 
   sanitizeWorshipPersistenceRows(rows, { elementTypedStateColumns });
+  compactWorshipPersistenceRows(rows);
   validateWorshipPersistenceRows(rows, { serviceId });
   if (rows.sections.length) {
     const { error } = await state.client
@@ -5898,6 +5899,7 @@ async function persistSharedSundayServiceItems(service, items = [], options = {}
     options,
   );
   sanitizeWorshipPersistenceRows(rows, options);
+  compactWorshipPersistenceRows(rows);
   validateWorshipPersistenceRows(rows, { serviceId });
   if (rows.sections.length) {
     const { error } = await state.client
@@ -6010,6 +6012,21 @@ function sanitizeWorshipPersistenceRows(rows = {}, options = {}) {
     if (hasInputModeColumn) element.input_mode = worshipDbInputModeForSave(element.input_mode || element.content_state?.inputMode || element.config.inputMode);
     else delete element.input_mode;
   });
+  return rows;
+}
+
+function compactWorshipPersistenceRows(rows = {}) {
+  const compactById = (sourceRows = []) => {
+    const byId = new Map();
+    sourceRows.forEach((row) => {
+      const id = String(row?.id || "").trim();
+      if (!id) return;
+      byId.set(id, { ...(byId.get(id) || {}), ...row });
+    });
+    return [...byId.values()];
+  };
+  rows.sections = compactById(rows.sections);
+  rows.elements = compactById(rows.elements);
   return rows;
 }
 

@@ -3010,6 +3010,27 @@ def main() -> int:
                               elementCount: rows.elements.length,
                             };
                           })(),
+                          persistenceRowCompaction: (() => {
+                            const sectionId = 'cccccccc-3333-4333-8333-cccccccc3333';
+                            const elementId = 'dddddddd-4444-4444-8444-dddddddd4444';
+                            const rows = compactWorshipPersistenceRows({
+                              sections: [
+                                { id: sectionId, title: '특송', sort_order: 1 },
+                                { id: sectionId, title: '특송', sort_order: 2, config: { templateSuppressed: true } },
+                              ],
+                              elements: [
+                                { id: elementId, title: '이전 특송', sort_order: 1 },
+                                { id: elementId, title: '온세대 특송', sort_order: 2, config: { audioAsset: { kind: 'audio' } } },
+                              ],
+                            });
+                            return {
+                              sectionCount: rows.sections.length,
+                              elementCount: rows.elements.length,
+                              sectionSort: rows.sections[0]?.sort_order,
+                              elementTitle: rows.elements[0]?.title || '',
+                              audioKind: rows.elements[0]?.config?.audioAsset?.kind || '',
+                            };
+                          })(),
                           templateSuppressionProjection: (() => {
                             const service = { id: '__smoke_template_suppression__', type_id: 'friday', date: '2026-07-24' };
                             const scaffold = buildWorshipServiceScaffold(service.id, service.type_id, { service });
@@ -3998,6 +4019,13 @@ def main() -> int:
                         and template_terms["duplicatePersistenceIds"]["elementCount"] == 2
                         and template_terms["duplicatePersistenceIds"]["uniqueItemIds"] == 2
                         and template_terms["duplicatePersistenceIds"]["uniqueElementIds"] == 2
+                        and template_terms["persistenceRowCompaction"] == {
+                            "sectionCount": 1,
+                            "elementCount": 1,
+                            "sectionSort": 2,
+                            "elementTitle": "온세대 특송",
+                            "audioKind": "audio",
+                        }
                         and template_terms["sharedSundayContentProjection"]["secondPraiseStatic"] is True
                         and template_terms["sharedSundayContentProjection"]["secondPraiseMissing"] == "missing"
                         and template_terms["sharedSundayContentProjection"]["secondPraiseText"]
