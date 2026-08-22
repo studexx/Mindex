@@ -1516,7 +1516,9 @@ function handleServiceOutlineSlideClick(serviceOutlineItem) {
     const outline = refs.songList?.querySelector(".service-outline-list");
     if (!outline?.contains(serviceOutlineItem)) renderServiceList();
   }
-  scrollPresenterBoardToIndex(target.serviceId, target.slideIndex, { force: true, behavior: "smooth", target: "subgroup", block: "start" });
+  if (!scrollPresenterBoardToServiceItem(target.serviceId, target.itemIndex, { force: true, behavior: "smooth", block: "start" })) {
+    scrollPresenterBoardToIndex(target.serviceId, target.slideIndex, { force: true, behavior: "smooth", target: "subgroup", block: "start" });
+  }
 }
 
 function syncServiceOutlineSelection(serviceOutlineItem) {
@@ -18277,6 +18279,7 @@ function projectWorshipServiceItemsFromTemplate(service, items = []) {
   if (!TEMPLATE_PROJECTED_SERVICE_TYPES.has(appTypeId)) {
     return normalizeServiceItemsForTemplateHierarchy(service, items);
   }
+  const sourceItems = mergeRememberedTemplateSuppressionItems(service?.id, items);
 
   // Migrate legacy section ownership before hierarchy normalization. Otherwise
   // normalization recognizes the entrance-praise label but preserves its old
@@ -18286,7 +18289,7 @@ function projectWorshipServiceItemsFromTemplate(service, items = []) {
       collapseLegacyScriptureReadingItems(
         normalizeServiceItemsForTemplateHierarchy(
           service,
-          migrateLegacyFridayTemplateItems(service, items),
+          migrateLegacyFridayTemplateItems(service, sourceItems),
           { preserveSourceIndex: true },
         ),
       ),
@@ -18325,6 +18328,24 @@ function projectWorshipServiceItemsFromTemplate(service, items = []) {
   projected = normalizeSendingConclusionProjectionItems(projected);
 
   return normalizeServiceItemsForTemplateHierarchy(service, projected);
+}
+
+function mergeRememberedTemplateSuppressionItems(serviceId = "", items = []) {
+  const source = [...(items || [])];
+  const normalizedServiceId = String(serviceId || "").trim();
+  const seenIds = new Set(source.map((item) => item?.id).filter(Boolean));
+  source
+    .filter(isTemplateSuppressedServiceItem)
+    .forEach((item) => {
+      if (normalizedServiceId && item?.id) state.templateElementSuppressions.set(item.id, item);
+    });
+  if (!normalizedServiceId) return source;
+  state.templateElementSuppressions.forEach((item) => {
+    if (item?.service_id !== normalizedServiceId || !item.id || seenIds.has(item.id)) return;
+    source.push(item);
+    seenIds.add(item.id);
+  });
+  return source;
 }
 
 function migrateLegacyFridayTemplateItems(service = null, items = []) {
@@ -24904,6 +24925,27 @@ function hydrateDeferredPresenterBoardSectionForSlide(root, serviceId, slideInde
   return hydrateDeferredPresenterBoardSection(root, serviceId, slides, groupIndex);
 }
 
+function serviceOutlineItemForIndex(serviceId, itemIndex) {
+  const index = Number(itemIndex);
+  const service = state.services.find((svc) => svc.id === serviceId);
+  if (!service || !Number.isInteger(index) || index < 0) return null;
+  return getServiceOutlineItems(service).find((item, candidateIndex) => (
+    (Number.isInteger(item._serviceItemIndex) ? item._serviceItemIndex : candidateIndex) === index
+  )) || null;
+}
+
+function hydrateDeferredPresenterBoardSectionForServiceItem(root, serviceId, itemIndex) {
+  const item = serviceOutlineItemForIndex(serviceId, itemIndex);
+  if (!item) return false;
+  const slides = presenterSlidesForService(serviceId);
+  const itemId = String(item.id || "").trim();
+  const groupIndex = groupPresenterSlidesBySection(slides, serviceId).findIndex((group) =>
+    (group.subgroups || []).some((subgroup) => String(subgroup.id || "") === itemId)
+    || group.slides.some(({ slide }) => presenterSlideBelongsToItem(slide, item)));
+  if (groupIndex < 0) return false;
+  return hydrateDeferredPresenterBoardSection(root, serviceId, slides, groupIndex);
+}
+
 function presenterSlideElementKey(serviceId, slideIndex) {
   const slides = presenterSlidesForService(serviceId);
   const slide = slides[slideIndex];
@@ -25544,8 +25586,11 @@ function renderPresenterBoardSubgroup(subgroup, activeIndex, serviceId, options 
   const interactionLabel = presenterSlideInteractionHint(serviceId, subgroup.name || visibleLabel);
   const warnings = presenterWarningsForEntries(subgroup.slides);
   const inputControls = renderPresenterBoardSubgroupInputControls(serviceId, subgroup);
+  const context = presenterBoardSubgroupItemContext(serviceId, subgroup);
+  const itemIndexAttr = context ? ` data-service-item-index="${escapeAttr(String(context.index))}"` : "";
+  const elementIdAttr = context?.item?.id ? ` data-service-element-id="${escapeAttr(context.item.id)}"` : "";
   return `
-    <div class="svc-board-subgroup${active ? " active" : ""}${options.showHead ? "" : " collapsed-head"}">
+    <div class="svc-board-subgroup${active ? " active" : ""}${options.showHead ? "" : " collapsed-head"}"${itemIndexAttr}${elementIdAttr}>
       ${options.showHead ? `
         <header class="svc-board-subgroup-head-row">
           <button class="svc-board-subgroup-head" type="button"
@@ -26094,6 +26139,62 @@ function scrollPresenterBoardToIndex(serviceId, index, options = {}) {
     if (run()) return;
     window.setTimeout(run, 0);
   });
+}
+
+function findPresenterBoardSubgroupByItemIndex(root, serviceId, itemIndex) {
+  const targetIndex = Number(itemIndex);
+  if (!root?.querySelector || !serviceId || !Number.isInteger(targetIndex) || targetIndex < 0) return null;
+  const selector = `.svc-board-subgroup[data-service-item-index="${CSS.escape(String(targetIndex))}"]`;
+  return root.querySelector(selector);
+}
+
+function scrollPresenterBoardToServiceItem(serviceId, itemIndex, options = {}) {
+  const targetIndex = Number(itemIndex);
+  if (!serviceId || !Number.isInteger(targetIndex) || targetIndex < 0) return false;
+  if (!serviceOutlineItemForIndex(serviceId, targetIndex)) return false;
+  const run = () => {
+    const root = document.getElementById("servicePresenterControls");
+    if (!root?.isConnected) return false;
+    const viewport = refs.detailPane?.isConnected ? refs.detailPane : root;
+    const scrollTopBeforeHydration = viewport.scrollTop;
+    let subgroup = findPresenterBoardSubgroupByItemIndex(root, serviceId, targetIndex);
+    if (!subgroup) {
+      const overflowAnchor = viewport.style.overflowAnchor;
+      viewport.style.overflowAnchor = "none";
+      if (!hydrateDeferredPresenterBoardSectionForServiceItem(root, serviceId, targetIndex)) {
+        viewport.style.overflowAnchor = overflowAnchor;
+        return false;
+      }
+      viewport.scrollTop = scrollTopBeforeHydration;
+      window.requestAnimationFrame(() => {
+        viewport.scrollTop = scrollTopBeforeHydration;
+        run();
+        window.requestAnimationFrame(() => {
+          viewport.style.overflowAnchor = overflowAnchor;
+        });
+      });
+      return true;
+    }
+    const viewportRect = viewport.getBoundingClientRect();
+    const subgroupRect = subgroup.getBoundingClientRect();
+    const fullyVisible = subgroupRect.top >= viewportRect.top
+      && subgroupRect.bottom <= viewportRect.bottom
+      && subgroupRect.left >= viewportRect.left
+      && subgroupRect.right <= viewportRect.right;
+    if (fullyVisible && !options.force) return true;
+    subgroup.scrollIntoView({
+      block: options.block || "start",
+      inline: "nearest",
+      behavior: options.behavior || "auto",
+    });
+    return true;
+  };
+  if (run()) return true;
+  window.requestAnimationFrame(() => {
+    if (run()) return;
+    window.setTimeout(run, 0);
+  });
+  return true;
 }
 
 function scrollPresenterBoardToIndexStable(serviceId, index, options = {}) {

@@ -2852,6 +2852,48 @@ def main() -> int:
                                 })),
                             };
                           })(),
+                          templateSuppressionSurvivesRepeatedProjection: (() => {
+                            const service = { id: '__smoke_template_suppression_repeat__', type_id: 'sunday-main', date: '2026-08-23' };
+                            const scaffold = buildWorshipServiceScaffold(service.id, service.type_id, { service });
+                            const items = groupWorshipElements(scaffold.sections, scaffold.elements)[service.id] || [];
+                            const marker = (items.find((item) =>
+                              item._worshipSectionKey === 'offering' && item.label === '봉헌찬송'
+                            ) || {});
+                            const source = [
+                              ...items.filter((item) => !(item._worshipSectionKey === 'offering' && item.label === '봉헌찬송')),
+                              {
+                                ...marker,
+                                id: 'suppressed-offering-hymn',
+                                service_id: service.id,
+                                memo: serializeServiceItemMemo({
+                                  ...parseServiceItemMemo(marker.memo),
+                                  templateSuppressed: true,
+                                }),
+                                _worshipElementTemplateModified: true,
+                              },
+                              normalizeServiceItem({
+                                id: 'offering-video',
+                                service_id: service.id,
+                                label: '봉헌 영상',
+                                raw_title: '',
+                                memo: serializeServiceItemMemo({ elementType: 'video', inputMode: 'asset' }),
+                                _worshipSectionKey: 'offering',
+                                _worshipSectionTitle: '봉헌',
+                                _worshipElementOrder: 1,
+                                _worshipElementTemplateModified: true,
+                              }),
+                            ];
+                            const first = projectWorshipServiceItemsFromTemplate(service, source);
+                            const second = projectWorshipServiceItemsFromTemplate(service, first);
+                            state.templateElementSuppressions.delete('suppressed-offering-hymn');
+                            return {
+                              markerFound: Boolean(marker.id),
+                              firstHasOfferingHymn: first.some((item) => item.label === '봉헌찬송'),
+                              secondHasOfferingHymn: second.some((item) => item.label === '봉헌찬송'),
+                              firstHasVideo: first.some((item) => item.label === '봉헌 영상'),
+                              secondHasVideo: second.some((item) => item.label === '봉헌 영상'),
+                            };
+                          })(),
                           sundayFirstSendingPrune: (() => {
                             const sectionId = '66666666-6666-4666-8666-666666666666';
                             const item = (id, label, key, order, assignee = '') => normalizeServiceItem({
@@ -3682,6 +3724,13 @@ def main() -> int:
 	                                {"label": "기도 찬양 1", "sectionKey": "prayer_meeting_praise", "title": "입력:기도 찬양 1"},
 	                                {"label": "자율기도", "sectionKey": "prayer_meeting_praise", "title": "입력:자율기도"},
 	                            ],
+	                        }
+	                        and template_terms["templateSuppressionSurvivesRepeatedProjection"] == {
+	                            "markerFound": True,
+	                            "firstHasOfferingHymn": False,
+	                            "secondHasOfferingHymn": False,
+	                            "firstHasVideo": True,
+	                            "secondHasVideo": True,
 	                        }
 	                        and template_terms["templateVersionBaseline"] == {
 	                            "version": "2026-q3",
@@ -4678,6 +4727,7 @@ def main() -> int:
                                 : this.querySelector('.svc-slide-thumb[data-presenter-index][data-service-id]');
                               window.__mindexOutlineScrollTarget = {
                                 className: this.className || '',
+                                itemIndex: Number(this.dataset.serviceItemIndex ?? -1),
                                 serviceId: thumb?.dataset.serviceId || '',
                                 index: Number(thumb?.dataset.presenterIndex ?? -1),
                                 block: options?.block || '',
@@ -4688,12 +4738,19 @@ def main() -> int:
                           };
                           const rows = [...document.querySelectorAll('.service-outline-row[data-service-outline-slide]:not([disabled])')]
                             .filter((row) => Number(row.dataset.serviceOutlineSlide) > 0);
-                          const row = rows[rows.length - 1] || null;
+                          const praiseChild = rows.find((candidate) => (
+                            candidate.classList.contains('service-outline-row--child')
+                            && candidate.closest('.service-outline-group')
+                              ?.querySelector('.service-outline-row--section strong')
+                              ?.textContent.trim() === '찬양'
+                          ));
+                          const row = praiseChild || rows[rows.length - 1] || null;
                           if (!row) return null;
                           row.dataset.smokeOutlineScroll = '1';
                           const target = serviceOutlineSlideTarget(row) || {};
                           return {
                             serviceId: row.dataset.serviceOutlineService || '',
+                            itemIndex: Number(row.dataset.serviceOutlineItemIndex ?? -1),
                             index: Number(target.slideIndex ?? row.dataset.serviceOutlineSlide),
                             text: row.textContent.replace(/\\s+/g, ' ').trim()
                           };
@@ -4701,7 +4758,9 @@ def main() -> int:
                         """,
                     )
                     if outline_scroll_seed:
-                        page.click('[data-smoke-outline-scroll="1"]')
+                        page.evaluate(
+                            "() => document.querySelector('[data-smoke-outline-scroll=\"1\"]')?.click()"
+                        )
                         page.wait_for_timeout(350)
                         outline_scroll_state = page.evaluate(
                             """
@@ -4741,6 +4800,10 @@ def main() -> int:
                             or (
                                 scroll_target["serviceId"] == outline_scroll_seed["serviceId"]
                                 and scroll_target["index"] == outline_scroll_state["presenterIndex"]
+                                and (
+                                    outline_scroll_seed["itemIndex"] < 0
+                                    or scroll_target.get("itemIndex") == outline_scroll_seed["itemIndex"]
+                                )
                                 and "svc-board-subgroup" in scroll_target["className"]
                                 and scroll_target["block"] == "start"
                                 and scroll_target["behavior"] in ("auto", "smooth")
