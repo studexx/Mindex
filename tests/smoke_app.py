@@ -1610,6 +1610,55 @@ def main() -> int:
                 else:
                     fail("service-data-load", json.dumps(snapshot, ensure_ascii=False))
 
+                service_save_reentry = page.evaluate(
+                    """
+                    async () => {
+                      const originalClient = state.client;
+                      const originalServices = state.services;
+                      const originalSaving = state.saving;
+                      const originalDirtyService = state.dirty.service;
+                      const originalActivePromise = activeServiceSavePromise;
+                      const service = { id: '__smoke_service_save_reentry__', type_id: 'sunday-main', date: '2026-08-23', _isExpected: true };
+                      const startedAt = performance.now();
+                      try {
+                        state.client = state.client || {};
+                        state.services = [service, ...state.services.filter((item) => item.id !== service.id)];
+                        state.saving = true;
+                        state.dirty.service = true;
+                        activeServiceSavePromise = new Promise((resolve) => {
+                          window.setTimeout(() => {
+                            state.saving = false;
+                            resolve(true);
+                          }, 24);
+                        });
+                        const saved = await saveService(service.id, { silent: true, renderAfterSave: false });
+                        return {
+                          saved,
+                          waitedMs: Math.round(performance.now() - startedAt),
+                          saving: state.saving,
+                          activeCleared: activeServiceSavePromise === null,
+                        };
+                      } finally {
+                        state.client = originalClient;
+                        state.services = originalServices;
+                        state.saving = originalSaving;
+                        state.dirty.service = originalDirtyService;
+                        activeServiceSavePromise = originalActivePromise;
+                        updateSaveState();
+                      }
+                    }
+                    """
+                )
+                if (
+                    service_save_reentry["saved"]
+                    and service_save_reentry["waitedMs"] >= 16
+                    and service_save_reentry["saving"] is False
+                    and service_save_reentry["activeCleared"]
+                ):
+                    pass_("service-save-reentry-waits", json.dumps(service_save_reentry, ensure_ascii=False))
+                else:
+                    fail("service-save-reentry-waits", json.dumps(service_save_reentry, ensure_ascii=False))
+
                 page.fill("#searchInput", "창세기")
                 page.wait_for_selector(".global-search-section", timeout=5000)
                 global_search_state = page.evaluate(

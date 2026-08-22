@@ -14,6 +14,7 @@ const {
 const TABLE_COLUMN_SUPPORT_CACHE = new Map();
 let songLoadPromise = null;
 let serviceDataLoadPromise = null;
+let activeServiceSavePromise = null;
 let calendarLoadPromise = null;
 let scriptureBookLoadPromise = null;
 let bibleTranslationLoadPromise = null;
@@ -5561,20 +5562,48 @@ async function saveScripture() {
   }
 }
 
+function serviceSaveErrorMessage(error) {
+  const message = String(error?.message || error || "").trim();
+  if (/ON CONFLICT DO UPDATE command cannot affect row a second time/i.test(message)) {
+    return "예배 저장 항목이 겹쳐 저장하지 못했습니다. 항목을 정리한 뒤 다시 저장해 주세요.";
+  }
+  if (/duplicate key value violates unique constraint/i.test(message)) {
+    return "같은 항목이 이미 저장되어 있습니다. 화면을 새로고침한 뒤 다시 시도해 주세요.";
+  }
+  return message || "예배를 저장하지 못했습니다.";
+}
+
 async function saveService(serviceId = state.selectedServiceId, options = {}) {
-  if (!requireClient() || state.saving) return;
+  if (!requireClient()) return false;
+  if (state.saving) {
+    if (activeServiceSavePromise && !options._afterActiveServiceSave) {
+      try {
+        await activeServiceSavePromise;
+      } catch (_error) {
+        // The active save already reported its own failure. Retry once with the
+        // latest in-memory service state so uploads and deferred edits do not
+        // silently disappear behind the global saving guard.
+      }
+      return saveService(serviceId, { ...options, _afterActiveServiceSave: true });
+    }
+    const message = "다른 저장이 끝나는 중입니다. 잠시 후 다시 시도해 주세요.";
+    if (!options.silent) showToast(message, "error");
+    if (options.throwOnError) throw new Error(message);
+    return false;
+  }
   commitActiveDeferredServiceTextInput(serviceId);
 
   const service = state.services.find((svc) => svc.id === serviceId);
   const inputProblem = service ? serviceInputSaveProblem(service) : null;
   if (inputProblem) {
     showToast(inputProblem, "error");
-    return;
+    if (options.throwOnError) throw new Error(inputProblem);
+    return false;
   }
 
   state.saving = true;
   updateSaveState();
-  try {
+  const savePromise = (async () => {
     await saveDirtyServiceTypes();
     if (service && !service._isExpected) {
       await saveWorshipServiceInstance(service);
@@ -5586,10 +5615,18 @@ async function saveService(serviceId = state.selectedServiceId, options = {}) {
     // rebuilding the whole application after a small inline edit.
     if (options.renderAfterSave !== false) render();
     else renderServiceList();
+    return true;
+  })();
+  activeServiceSavePromise = savePromise;
+  try {
+    return await savePromise;
   } catch (error) {
-    if (!options.silent) showToast(error.message || "예배를 저장하지 못했습니다.", "error");
-    if (options.throwOnError) throw error;
+    const message = serviceSaveErrorMessage(error);
+    if (!options.silent) showToast(message, "error");
+    if (options.throwOnError) throw new Error(message);
+    return false;
   } finally {
+    if (activeServiceSavePromise === savePromise) activeServiceSavePromise = null;
     state.saving = false;
     updateSaveState();
   }
