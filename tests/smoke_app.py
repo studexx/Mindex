@@ -2510,13 +2510,20 @@ def main() -> int:
                               }]
                             });
                             const parsed = parseServiceItemMemo(memo);
-                            const badgeHtml = renderServiceFormPresetBadges({ memo });
+                            const badgeHtml = renderServiceEditorFormControls({ memo }, 0, { song: null, parsed }, { compact: true, placeholder: '송폼' });
                             const previousSongs = state.songs;
                             const song = {
                               id: '__form_meta_song__',
                               title: '송폼 메타 찬양',
                               metadata: { presenter_form: { forms: ['V1', 'V2', 'C', 'B', 'Coda'], hint: 'V1-V2-C-B-Coda' } },
                               versions: [{ id: '__form_meta_version__', forms: [] }]
+                            };
+                            const hymnSong = {
+                              id: '__form_hymn_song__',
+                              title: '1 만복의 근원 하나님',
+                              hymn_no: '1',
+                              praise_types: ['hymn'],
+                              versions: [{ id: '__form_hymn_version__', forms: [], praise_types: ['hymn'] }]
                             };
                             const explicitSequence = normalizeSongMetadata({
                               presenter_form: 'V-C-V-C-B-C-Coda',
@@ -2536,9 +2543,23 @@ def main() -> int:
                               version_id: '__form_meta_version__',
                               memo: serializeServiceItemMemo({ elementType: 'praise', inputMode: 'praise_db' })
                             });
-                            state.songs = [song];
+                            const hymnItem = normalizeServiceItem({
+                              id: '__form_hymn_item__',
+                              service_id: '__form_meta_service__',
+                              label: '특송',
+                              song_id: hymnSong.id,
+                              version_id: '__form_hymn_version__',
+                              memo: serializeServiceItemMemo({
+                                formPresetRules: [{
+                                  when: { songType: 'hymn' },
+                                  formPreset: { forms: ['1절', '2절', '간주', '마지막 절'], hint: '1절-2절-간주-마지막 절' }
+                                }]
+                              })
+                            });
+                            state.songs = [song, hymnSong];
                             const metadataValue = serviceItemEffectiveFormHint(item);
                             const inputHtml = renderServiceFormHintInput(item, 0, { compact: true, placeholder: '송폼' });
+                            const hymnInputHtml = renderServiceFormHintInput(hymnItem, 0, { compact: true, placeholder: '송폼' });
                             const disabledMemo = serializeServiceItemMemo({ ...parseServiceItemMemo(item.memo), formHint: '', formPreset: null, formPresetDisabled: true });
                             const disabledParsed = parseServiceItemMemo(disabledMemo);
                             const disabledValue = serviceItemEffectiveFormHint({ ...item, memo: disabledMemo });
@@ -2607,6 +2628,11 @@ def main() -> int:
                               inputValue: (() => {
                                 const node = document.createElement('div');
                                 node.innerHTML = inputHtml;
+                                return node.querySelector('input')?.value || '';
+                              })(),
+                              hymnInputValue: (() => {
+                                const node = document.createElement('div');
+                                node.innerHTML = hymnInputHtml;
                                 return node.querySelector('input')?.value || '';
                               })(),
                               disabledMemoKeepsOverride: disabledParsed.formPresetDisabled === true,
@@ -3568,6 +3594,7 @@ def main() -> int:
                             "legacyAugmentedSequenceValue": "V-C-V-C-B-C-Coda",
                             "legacyAugmentedSequenceForms": ["V", "C", "V", "C", "B", "C", "Coda"],
                             "inputValue": "V1-V2-C-B-Coda",
+                            "hymnInputValue": "1절-후렴-2절-후렴-간주-마지막 절-후렴",
                             "disabledMemoKeepsOverride": True,
                             "disabledValue": "",
                             "savedOverride": True,
@@ -3576,7 +3603,7 @@ def main() -> int:
                             "configHintDisabled": True,
                             "staleConfigCleaned": True,
                             "mergeKeepsOverride": True,
-                            "badgeText": "송폼 V2-C 찬송가 1절-후렴-2절-후렴-간주-마지막 절-후렴",
+                            "badgeText": "",
                         }
                         and template_terms["fridayNewServiceLeader"] == {
                             "formLeader": "이재희 청년",

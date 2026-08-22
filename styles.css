@@ -5213,37 +5213,6 @@ body[data-module="presenter"] .detail-pane {
   background: color-mix(in srgb, var(--accent-soft) 42%, transparent);
   color: var(--ink);
 }
-.svc-form-preset-badges {
-  display: inline-flex;
-  min-width: 0;
-  align-items: center;
-  gap: 4px;
-}
-.svc-form-preset-badge {
-  display: inline-flex;
-  max-width: 150px;
-  height: 20px;
-  align-items: center;
-  overflow: hidden;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--panel-3) 62%, transparent);
-  color: var(--ink-3);
-  font-size: 10px;
-  font-weight: 600;
-  padding: 0 7px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.svc-form-preset-badge.rule {
-  background: color-mix(in srgb, var(--accent-soft) 24%, transparent);
-  color: var(--accent);
-}
-.svc-form-preset-badges.compact .svc-form-preset-badge {
-  max-width: 122px;
-  height: 18px;
-  font-size: 9px;
-  padding: 0 6px;
-}
 .svc-editor-items { gap: 4px; }
 .svc-editor-header {
   display: grid;
@@ -7046,12 +7015,6 @@ textarea.svc-presenter-input-control--multiline {
   width: 138px;
   flex-basis: 138px;
   height: 30px;
-}
-.svc-presenter-form-control .svc-form-preset-badges {
-  min-width: 0;
-}
-.svc-presenter-form-control .svc-form-preset-badge {
-  max-width: min(320px, 100%);
 }
 .svc-board-subgroup-controls .svc-song-picker[role="listbox"] {
   display: flex;

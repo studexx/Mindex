@@ -19535,38 +19535,32 @@ function serviceItemMetadataFormPreset(item = {}) {
   return versionMeta.presenter_form || songMeta.presenter_form || null;
 }
 
+function serviceItemApplicableFormPresetRule(item = {}) {
+  const song = serviceItemLinkedSong(item);
+  if (!song) return null;
+  const version = serviceItemLinkedVersion(item, song);
+  const songTypes = new Set(versionEffectivePraiseTypes(song, version));
+  if (!songTypes.size) return null;
+  return serviceItemFormPresetRules(item).find((rule) => {
+    const when = rule.when && typeof rule.when === "object" ? rule.when : {};
+    const ruleTypes = normalizePraiseTypes(when.songType || when.song_type || when.praiseType || when.praise_type);
+    return ruleTypes.length && ruleTypes.some((type) => songTypes.has(type));
+  }) || null;
+}
+
 function serviceItemEffectiveFormHint(item = {}) {
   const parsed = parseServiceItemMemo(item?.memo);
   if (parsed.formPresetDisabled) return "";
-  return parsed.formHint || serviceFormPresetSummary(serviceItemMetadataFormPreset(item));
+  return parsed.formHint
+    || serviceFormPresetSummary(parsed.formPreset)
+    || serviceFormPresetSummary(serviceItemMetadataFormPreset(item))
+    || serviceFormPresetSummary(serviceItemApplicableFormPresetRule(item)?.formPreset);
 }
 
 function serviceFormPresetSummary(preset) {
   const normalized = normalizeServiceFormPreset(preset);
   if (!normalized) return "";
   return normalized.hint || (normalized.forms || []).join("-");
-}
-
-function serviceFormPresetRuleSummary(rule = {}) {
-  const presetText = serviceFormPresetSummary(rule.formPreset || rule.form_preset || rule.preset);
-  if (!presetText) return "";
-  const when = rule.when && typeof rule.when === "object" ? rule.when : {};
-  const types = normalizePraiseTypes(when.songType || when.song_type || when.praiseType || when.praise_type);
-  const condition = types.includes("hymn") ? "찬송가" : types.includes("ccm") ? "CCM" : types.includes("children") ? "어린이" : "";
-  return cleanList([condition, presetText]).join(" ");
-}
-
-function renderServiceFormPresetBadges(item, options = {}) {
-  if (!item || item._isDefault) return "";
-  const presetText = serviceFormPresetSummary(serviceItemFormPreset(item));
-  const ruleTexts = serviceItemFormPresetRules(item)
-    .map(serviceFormPresetRuleSummary)
-    .filter(Boolean);
-  if (!presetText && !ruleTexts.length) return "";
-  return `<span class="svc-form-preset-badges${options.compact ? " compact" : ""}">` + [
-    presetText ? `<span class="svc-form-preset-badge">송폼 ${escapeHtml(presetText)}</span>` : "",
-    ...ruleTexts.map((text) => `<span class="svc-form-preset-badge rule">${escapeHtml(text)}</span>`),
-  ].filter(Boolean).join(" ") + `</span>`;
 }
 
 function renderServiceFormHintInput(item, index, options = {}) {
@@ -21672,8 +21666,7 @@ function renderServiceEditorFormControls(item, origIndex, model = serviceItemEdi
   const hasFormData = Boolean(parsed.formHint || parsed.formPreset || parsed.formPresetRules?.length);
   if (!model.song && !hasFormData) return "";
   return `
-    ${renderServiceFormHintInput(item, origIndex, options)}
-    ${renderServiceFormPresetBadges(item, options)}`;
+    ${renderServiceFormHintInput(item, origIndex, options)}`;
 }
 
 function renderServiceEditorAssigneeControl(item, origIndex, attrs = {}, model = serviceItemEditorModel(item, attrs)) {
