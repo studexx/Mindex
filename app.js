@@ -17765,6 +17765,7 @@ function youngAdultWorshipTemplate() {
     },
     youngAdultWorshipAnnouncementsStep(),
     publicWorshipSendingStep({
+      typeId: "young-adult",
       doxology: false,
       extraElements: [{
         label: "파송찬양",
