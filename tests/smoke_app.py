@@ -4383,6 +4383,19 @@ def main() -> int:
                                 raw_title: '은혜 은혜',
                                 memo: serializeServiceItemMemo({ elementType: 'praise' }),
                               }),
+                              connectedPraiseSidebarParts: serviceSidebarChildItemDisplayParts({
+                                label: '찬양 6',
+                                raw_title: '함께 지어져 가네',
+                                memo: serializeServiceItemMemo({
+                                  elementType: 'praise',
+                                  connectedPraise: {
+                                    groupId: '__smoke_sidebar_medley__',
+                                    role: 'primary',
+                                    title: '함께 지어져 가네 + 성도의 노래',
+                                    orderTitle: '찬양 6–7',
+                                  },
+                                }),
+                              }),
                               mainPraiseTitle,
                               entranceTitle,
                             };
@@ -4509,6 +4522,7 @@ def main() -> int:
                             "welcomeSidebar": "환영 · 헤세드 찬양단",
                             "welcomeSidebarParts": {"meta": "환영", "title": "헤세드 찬양단"},
                             "praiseSidebarParts": {"meta": "찬양 1", "title": "은혜 은혜"},
+                            "connectedPraiseSidebarParts": {"meta": "찬양 6–7", "title": "함께 지어져 가네 + 성도의 노래"},
                             "mainPraiseTitle": "",
                             "entranceTitle": "",
                         }

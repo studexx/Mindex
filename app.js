@@ -20496,8 +20496,9 @@ function isServiceSidebarSectionMarkerItem(item, group = {}) {
 }
 
 function serviceSidebarChildItemTitle(item, service = null) {
-  const connectedTitle = serviceItemConnectedPraiseTitle(item, "order");
-  if (connectedTitle) return connectedTitle;
+  const connectedOrderTitle = serviceItemConnectedPraiseTitle(item, "order");
+  const connectedSongTitle = serviceItemConnectedPraiseTitle(item, "title");
+  if (connectedOrderTitle || connectedSongTitle) return cleanList([connectedOrderTitle, connectedSongTitle]).join(" · ");
   const label = String(item?.label || "").trim();
   if (serviceSidebarUsesLabelOnly(item)) return label || "항목";
   const title = serviceItemDisplayText(item);
@@ -20512,8 +20513,14 @@ function serviceSidebarChildItemTitle(item, service = null) {
 }
 
 function serviceSidebarChildItemDisplayParts(item, service = null) {
-  const connectedTitle = serviceItemConnectedPraiseTitle(item, "order");
-  if (connectedTitle) return { meta: String(item?.label || "").trim(), title: connectedTitle };
+  const connectedOrderTitle = serviceItemConnectedPraiseTitle(item, "order");
+  const connectedSongTitle = serviceItemConnectedPraiseTitle(item, "title");
+  if (connectedOrderTitle || connectedSongTitle) {
+    return {
+      meta: connectedOrderTitle || String(item?.label || "").trim(),
+      title: connectedSongTitle || serviceItemDisplayText(item) || connectedOrderTitle,
+    };
+  }
   const label = String(item?.label || "").trim();
   const fallback = serviceSidebarChildItemTitle(item, service);
   if (!label) return { meta: "", title: fallback || "항목" };
