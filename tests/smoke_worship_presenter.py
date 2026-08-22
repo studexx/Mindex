@@ -5424,6 +5424,61 @@ def main() -> int:
                     else:
                         fail("presenter-controller-music-survives-presenter-flow", json.dumps(music_flow_state, ensure_ascii=False))
 
+                    page.evaluate(
+                        f"""
+                        (() => {{
+                          const serviceId = {json.dumps(service["id"])};
+                          preparePresenterService(serviceId);
+                          window.__mindexPreviousMusic = {{ ...state.serviceMusic }};
+                          window.__mindexMusicPauseCalls = 0;
+                          state.serviceMusic = {{
+                            ...state.serviceMusic,
+                            audio: {{
+                              pause() {{ window.__mindexMusicPauseCalls += 1; }},
+                              removeAttribute() {{}},
+                            }},
+                            objectUrl: '',
+                            fileName: '',
+                            mode: 'presenter-audio',
+                            sourceKey: 'assets/audio/focused-button.mp3',
+                            sourceLabel: '포커스 음악',
+                            playing: true,
+                            volumeLevel: 3,
+                          }};
+                          state.presenter.index = 0;
+                          renderPresenterControlState(serviceId);
+                        }})()
+                        """
+                    )
+                    page.locator(".svc-music-toggle").focus()
+                    page.keyboard.press("Space")
+                    page.wait_for_timeout(100)
+                    music_space_state = page.evaluate(
+                        """
+                        (() => {
+                          const result = {
+                            pauseCalls: window.__mindexMusicPauseCalls || 0,
+                            playing: state.serviceMusic.playing,
+                            index: state.presenter.index,
+                            activeElement: document.activeElement?.className || '',
+                          };
+                          state.serviceMusic = window.__mindexPreviousMusic;
+                          delete window.__mindexPreviousMusic;
+                          delete window.__mindexMusicPauseCalls;
+                          renderPresenterControlState(state.presenter.serviceId);
+                          return result;
+                        })()
+                        """
+                    )
+                    if (
+                        music_space_state["pauseCalls"] == 0
+                        and music_space_state["playing"]
+                        and music_space_state["index"] == 0
+                    ):
+                        pass_("presenter-controller-music-space-does-not-stop", json.dumps(music_space_state, ensure_ascii=False))
+                    else:
+                        fail("presenter-controller-music-space-does-not-stop", json.dumps(music_space_state, ensure_ascii=False))
+
                     page.click(f'.svc-presenter-launch[data-service-id="{service["id"]}"]')
                     page.wait_for_function("() => (window.__mindexPresenterOpenCalls || 0) === 2", timeout=5000)
 

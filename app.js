@@ -1397,6 +1397,16 @@ function bindStaticEvents() {
   });
 
   window.addEventListener("keydown", (event) => {
+    if (
+      state.module === "presenter"
+      && event.key === " "
+      && event.target?.closest?.("[data-service-music-action]")
+    ) {
+      event.preventDefault();
+      event.target.blur?.();
+      return;
+    }
+
     const isThemeToggle =
       (event.metaKey || event.ctrlKey) &&
       event.shiftKey &&
