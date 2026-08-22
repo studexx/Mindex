@@ -9312,9 +9312,26 @@ function isServiceConnectedPraiseSecondaryItem(item = {}, memo = parseServiceIte
 function serviceItemConnectedPraiseTitle(item = {}, mode = "title", memo = parseServiceItemMemo(item?.memo)) {
   const connected = serviceItemConnectedPraise(item, memo);
   if (!connected || connected.role === "secondary") return "";
-  if (mode === "order") return connected.orderTitle || connected.title || "";
+  if (mode === "order") return serviceItemConnectedPraiseOrderTitle(item, connected);
   if (mode === "input") return connected.inputText || connected.orderTitle || connected.title || "";
   return connected.title || connected.orderTitle || "";
+}
+
+function serviceItemConnectedPraiseOrderTitle(item = {}, connected = null) {
+  const rawTitle = String(connected?.orderTitle || "").trim();
+  if (/^찬양\s*\d+(?:\s*[-–~]\s*\d+)?$/u.test(rawTitle)) return rawTitle;
+  const label = String(item?.label || item?.source_ref?.label || "").trim();
+  const startMatch = label.match(/^찬양\s*(\d+)$/u);
+  const connectedCount = Math.max(
+    Array.isArray(connected?.itemIds) ? connected.itemIds.length : 0,
+    1 + (Array.isArray(connected?.secondaryItemIds) ? connected.secondaryItemIds.length : 0),
+  );
+  if (startMatch && connectedCount > 1) {
+    const start = Number(startMatch[1]);
+    return `찬양 ${start}–${start + connectedCount - 1}`;
+  }
+  if (startMatch) return `찬양 ${startMatch[1]}`;
+  return rawTitle || connected?.title || "";
 }
 
 function parseServiceItemMemo(value) {
