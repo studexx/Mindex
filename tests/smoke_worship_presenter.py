@@ -5371,6 +5371,59 @@ def main() -> int:
                     else:
                         fail("presenter-show-stop-toggle", json.dumps(stop_state, ensure_ascii=False))
 
+                    music_flow_state = page.evaluate(
+                        f"""
+                        (() => {{
+                          const serviceId = {json.dumps(service["id"])};
+                          preparePresenterService(serviceId);
+                          const previousMusic = {{ ...state.serviceMusic }};
+                          let pauseCalls = 0;
+                          let removeSourceCalls = 0;
+                          state.serviceMusic = {{
+                            ...state.serviceMusic,
+                            audio: {{
+                              pause() {{ pauseCalls += 1; }},
+                              removeAttribute(name) {{
+                                if (name === 'src') removeSourceCalls += 1;
+                              }},
+                            }},
+                            objectUrl: '',
+                            fileName: '',
+                            mode: 'presenter-audio',
+                            sourceKey: 'assets/audio/keep-playing.mp3',
+                            sourceLabel: '계속 재생',
+                            playing: true,
+                            volumeLevel: 3,
+                          }};
+                          state.presenter.index = 0;
+                          movePresenterSlide(1);
+                          refreshPresenterForService(serviceId, {{ publish: false, renderControls: false }});
+                          stopPresenterOutput(serviceId);
+                          const result = {{
+                            pauseCalls,
+                            removeSourceCalls,
+                            playing: state.serviceMusic.playing,
+                            mode: state.serviceMusic.mode,
+                            sourceKey: state.serviceMusic.sourceKey,
+                            sourceLabel: state.serviceMusic.sourceLabel,
+                          }};
+                          state.serviceMusic = previousMusic;
+                          return result;
+                        }})()
+                        """
+                    )
+                    if (
+                        music_flow_state["pauseCalls"] == 0
+                        and music_flow_state["removeSourceCalls"] == 0
+                        and music_flow_state["playing"]
+                        and music_flow_state["mode"] == "presenter-audio"
+                        and music_flow_state["sourceKey"] == "assets/audio/keep-playing.mp3"
+                        and music_flow_state["sourceLabel"] == "계속 재생"
+                    ):
+                        pass_("presenter-controller-music-survives-presenter-flow", json.dumps(music_flow_state, ensure_ascii=False))
+                    else:
+                        fail("presenter-controller-music-survives-presenter-flow", json.dumps(music_flow_state, ensure_ascii=False))
+
                     page.click(f'.svc-presenter-launch[data-service-id="{service["id"]}"]')
                     page.wait_for_function("() => (window.__mindexPresenterOpenCalls || 0) === 2", timeout=5000)
 

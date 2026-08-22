@@ -716,6 +716,7 @@ const state = {
     fileName: "",
     mode: "manual",
     sourceKey: "",
+    sourceLabel: "",
     playing: false,
     volumeLevel: 3,
   },
@@ -24809,8 +24810,9 @@ function presenterControllerMode(service, context = {}) {
 function renderServiceMusicPlayer() {
   const music = state.serviceMusic;
   const context = currentPresenterAudioContext();
-  const fileLabel = context.label || (music.fileName ? music.fileName : uiText("presenter.music.default"));
-  const hasSource = Boolean(context.source || music.objectUrl);
+  const activeLabel = music.sourceLabel && music.sourceKey ? music.sourceLabel : "";
+  const fileLabel = activeLabel || context.label || (music.fileName ? music.fileName : uiText("presenter.music.default"));
+  const hasSource = Boolean(music.sourceKey || context.source || music.objectUrl);
   const volumeOptions = Array.from({ length: 6 }, (_, level) =>
     `<option value="${level}"${level === music.volumeLevel ? " selected" : ""}>${level}</option>`).join("");
   return `
@@ -24867,18 +24869,28 @@ function getServiceMusicAudio() {
   if (!state.serviceMusic.audio) {
     const audio = new Audio();
     audio.preload = "auto";
+    audio.addEventListener("ended", () => {
+      state.serviceMusic.playing = false;
+      if (state.serviceMusic.mode === "presenter-audio") {
+        state.serviceMusic.sourceKey = "";
+        state.serviceMusic.sourceLabel = "";
+        state.serviceMusic.mode = "manual";
+      }
+      renderPresenterControlState();
+    });
     state.serviceMusic.audio = audio;
   }
   state.serviceMusic.audio.volume = state.serviceMusic.volumeLevel / 5;
   return state.serviceMusic.audio;
 }
 
-function setServiceMusicSource(audio, source, mode, playback = null) {
+function setServiceMusicSource(audio, source, mode, playback = null, label = "") {
   if (state.serviceMusic.sourceKey === source && state.serviceMusic.mode === mode) return;
   audio.pause();
   audio.src = source;
-  audio.loop = mode === "manual" ? true : Boolean(playback?.loop);
+  audio.loop = Boolean(playback?.loop);
   state.serviceMusic.sourceKey = source;
+  state.serviceMusic.sourceLabel = label || "";
   state.serviceMusic.mode = mode;
   state.serviceMusic.playing = false;
 }
@@ -24890,12 +24902,16 @@ function stopServiceMusicPlayback(options = {}) {
     if (options.clearSource) audio.removeAttribute("src");
   }
   state.serviceMusic.playing = false;
-  if (options.clearSource) state.serviceMusic.sourceKey = "";
+  if (options.clearSource) {
+    state.serviceMusic.sourceKey = "";
+    state.serviceMusic.sourceLabel = "";
+  }
   if (options.mode) state.serviceMusic.mode = options.mode;
   if (options.render !== false) renderPresenterControlState();
 }
 
 function syncServiceMusicWithPresenterContext(serviceId = state.presenter.serviceId, options = {}) {
+  if (state.serviceMusic.playing) return;
   const context = currentPresenterAudioContext(serviceId);
   if (context.source && state.serviceMusic.mode === "presenter-audio" && state.serviceMusic.sourceKey === context.source) return;
   if (state.serviceMusic.mode !== "presenter-audio") return;
@@ -24910,21 +24926,28 @@ function runServiceMusicAction(action) {
   if (action !== "toggle") return;
   const audio = getServiceMusicAudio();
   const context = currentPresenterAudioContext();
-  const source = context.source || state.serviceMusic.objectUrl;
-  const mode = context.source ? "presenter-audio" : "manual";
-  if (!source) {
-    showToast("음악 파일을 먼저 선택해 주세요.", "error");
-    return;
-  }
-  if (context.source && presenterMediaSourceIsYoutube(context.source)) {
-    showToast("YouTube 링크는 아직 컨트롤러 내 재생 대신 별도 영상/오디오 파일로 등록해 주세요.", "error");
-    return;
-  }
-  setServiceMusicSource(audio, source, mode, context.playback);
   if (state.serviceMusic.playing) {
     stopServiceMusicPlayback({ render: true });
     return;
   }
+  const manualSource = state.serviceMusic.mode === "manual"
+    ? state.serviceMusic.sourceKey || state.serviceMusic.objectUrl
+    : state.serviceMusic.objectUrl;
+  const source = manualSource || context.source;
+  const mode = manualSource ? "manual" : "presenter-audio";
+  const playback = manualSource ? { loop: false } : context.playback;
+  const label = manualSource
+    ? state.serviceMusic.sourceLabel || state.serviceMusic.fileName || ""
+    : context.label || "";
+  if (!source) {
+    showToast("음악 파일을 먼저 선택해 주세요.", "error");
+    return;
+  }
+  if (!manualSource && context.source && presenterMediaSourceIsYoutube(context.source)) {
+    showToast("YouTube 링크는 아직 컨트롤러 내 재생 대신 별도 영상/오디오 파일로 등록해 주세요.", "error");
+    return;
+  }
+  setServiceMusicSource(audio, source, mode, playback, label);
   audio.play()
     .then(() => {
       state.serviceMusic.playing = true;
@@ -24939,7 +24962,7 @@ function loadServiceMusicFile(file) {
   if (state.serviceMusic.objectUrl) URL.revokeObjectURL(state.serviceMusic.objectUrl);
   state.serviceMusic.objectUrl = URL.createObjectURL(file);
   state.serviceMusic.fileName = file.name || "음악";
-  setServiceMusicSource(audio, state.serviceMusic.objectUrl, "manual", { loop: true });
+  setServiceMusicSource(audio, state.serviceMusic.objectUrl, "manual", { loop: false }, state.serviceMusic.fileName);
   audio.volume = state.serviceMusic.volumeLevel / 5;
   renderPresenterControlState();
 }
@@ -26735,7 +26758,9 @@ function stopPresenterOutput(serviceId = state.presenter.serviceId) {
     slide: null,
   };
   state.presenter.livePraise = emptyLivePraiseState(state.presenter.livePraise?.draft || state.presenter.livePraise?.query || "");
-  stopServiceMusicPlayback({ clearSource: true, mode: "manual", render: false });
+  if (!state.serviceMusic.playing) {
+    stopServiceMusicPlayback({ clearSource: true, mode: "manual", render: false });
+  }
   state.presenter.outputWindow = null;
   state.presenter.outputConnectedAt = 0;
   state.presenter.outputPendingAt = 0;
@@ -27216,7 +27241,9 @@ function preparePresenterService(serviceId = state.selectedServiceId) {
   const slides = buildServicePresenterSlides(serviceId);
   if (previousServiceId !== serviceId) {
     state.presenter.restorePayload = null;
-    stopServiceMusicPlayback({ clearSource: true, mode: "manual", render: false });
+    if (!state.serviceMusic.playing) {
+      stopServiceMusicPlayback({ clearSource: true, mode: "manual", render: false });
+    }
     state.presenter.index = 0;
     state.presenter.safetyBlank = false;
     state.presenter.jumpDraft = "";
