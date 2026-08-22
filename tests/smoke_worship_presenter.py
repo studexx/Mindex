@@ -5450,10 +5450,12 @@ def main() -> int:
                         }})()
                         """
                     )
-                    page.locator(".svc-music-toggle").focus()
-                    page.keyboard.press("Space")
+                    blocked_music_keys = ["Enter", "Space", "ArrowRight", "PageDown", "ArrowLeft", "Home", "End"]
+                    for key_name in blocked_music_keys:
+                        page.locator(".svc-music-toggle").focus()
+                        page.keyboard.press(key_name)
                     page.wait_for_timeout(100)
-                    music_space_state = page.evaluate(
+                    music_key_state = page.evaluate(
                         """
                         (() => {
                           const result = {
@@ -5471,13 +5473,13 @@ def main() -> int:
                         """
                     )
                     if (
-                        music_space_state["pauseCalls"] == 0
-                        and music_space_state["playing"]
-                        and music_space_state["index"] == 0
+                        music_key_state["pauseCalls"] == 0
+                        and music_key_state["playing"]
+                        and music_key_state["index"] == 0
                     ):
-                        pass_("presenter-controller-music-space-does-not-stop", json.dumps(music_space_state, ensure_ascii=False))
+                        pass_("presenter-controller-music-nav-keys-do-not-stop", json.dumps(music_key_state, ensure_ascii=False))
                     else:
-                        fail("presenter-controller-music-space-does-not-stop", json.dumps(music_space_state, ensure_ascii=False))
+                        fail("presenter-controller-music-nav-keys-do-not-stop", json.dumps(music_key_state, ensure_ascii=False))
 
                     page.click(f'.svc-presenter-launch[data-service-id="{service["id"]}"]')
                     page.wait_for_function("() => (window.__mindexPresenterOpenCalls || 0) === 2", timeout=5000)

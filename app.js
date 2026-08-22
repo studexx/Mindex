@@ -1397,16 +1397,16 @@ function bindStaticEvents() {
   });
 
   window.addEventListener("keydown", (event) => {
-    if (
-      state.module === "presenter"
-      && event.key === " "
-      && event.target?.closest?.("[data-service-music-action]")
-    ) {
+    if (shouldBlockPresenterMusicControlNavigationKeydown(event)) {
       event.preventDefault();
       event.target.blur?.();
+      event.stopImmediatePropagation?.();
+      event.stopPropagation?.();
       return;
     }
+  }, { capture: true });
 
+  window.addEventListener("keydown", (event) => {
     const isThemeToggle =
       (event.metaKey || event.ctrlKey) &&
       event.shiftKey &&
@@ -8009,6 +8009,14 @@ function syncBibleVerseSelectionClasses() {
 
 function isPresenterAdvanceShortcutKey(key = "") {
   return ["Enter", "ArrowRight", "ArrowDown", "PageDown", " ", "ArrowLeft", "ArrowUp", "PageUp"].includes(key);
+}
+
+function shouldBlockPresenterMusicControlNavigationKeydown(event) {
+  if (state.module !== "presenter") return false;
+  if (event.metaKey || event.ctrlKey || event.altKey) return false;
+  if (!event.target?.closest?.("[data-service-music-action]")) return false;
+  if (presenterKeyboardActionForJumpInput(event.key)) return true;
+  return event.key === "Enter";
 }
 
 function presenterKeyboardActionForJumpInput(key = "") {
