@@ -5659,10 +5659,10 @@ async function saveWorshipServiceInstance(service) {
     existingSections.some((section) => section.id === element.section_id));
   const existingSectionById = Object.fromEntries(existingSections.map((section) => [section.id, section]));
   const existingElementById = Object.fromEntries(existingElements.map((element) => [element.id, element]));
-  const items = normalizeServiceItemsForTemplateHierarchy(
+  const items = ensureUniqueServiceItemPersistenceIds(normalizeServiceItemsForTemplateHierarchy(
     service,
     normalizeServiceItemsInCurrentOrder(getServiceItems(serviceId)),
-  ).filter((item) => !isUnmodifiedTemplatePlaceholder(item));
+  )).filter((item) => !isUnmodifiedTemplatePlaceholder(item));
   const elementTypedStateColumns = {
     inputMode: await detectTableColumnSupport("mindex_worship_elements", "input_mode"),
     contentState: await detectTableColumnSupport("mindex_worship_elements", "content_state"),
@@ -5892,7 +5892,7 @@ async function persistSharedSundayServiceItems(service, items = [], options = {}
   const existingElementById = Object.fromEntries(existingElements.map((element) => [element.id, element]));
   const rows = buildWorshipPersistenceRows(
     service,
-    items.filter((item) => !isUnmodifiedTemplatePlaceholder(item)),
+    ensureUniqueServiceItemPersistenceIds(items.filter((item) => !isUnmodifiedTemplatePlaceholder(item))),
     existingSectionById,
     existingElementById,
     options,
@@ -6022,12 +6022,32 @@ function isUnmodifiedTemplatePlaceholder(item = {}) {
   );
 }
 
+function ensureUniqueServiceItemPersistenceIds(items = []) {
+  const seen = new Set();
+  return items.map((item) => {
+    const id = String(item?.id || "").trim();
+    if (!isUuid(id) || !seen.has(id)) {
+      if (id) seen.add(id);
+      return item;
+    }
+    const next = {
+      ...item,
+      id: createUuid(),
+      _worshipElementTemplateModified: true,
+      _worshipTemplatePlaceholder: false,
+    };
+    seen.add(next.id);
+    return next;
+  });
+}
+
 function buildWorshipPersistenceRows(service, items, existingSectionById = {}, existingElementById = {}, options = {}) {
   const sectionRows = [];
   const elementRows = [];
   const sectionSort = new Map();
   const sectionElementCounts = new Map();
   const generatedSectionIds = new Map();
+  const usedElementIds = new Set();
   const persistedAt = new Date().toISOString();
 
   items.forEach((item, index) => {
@@ -6062,7 +6082,9 @@ function buildWorshipPersistenceRows(service, items, existingSectionById = {}, e
     const deterministicElementId = item._worshipTemplateProjected && service?.id
       ? createDeterministicUuid(`worship:${service.id}:element:${projectedSectionKey}:${Number(item._worshipElementOrder) || 0}`)
       : "";
-    const elementId = existingElement?.id || deterministicElementId || createUuid();
+    let elementId = existingElement?.id || deterministicElementId || createUuid();
+    if (usedElementIds.has(elementId)) elementId = createUuid();
+    usedElementIds.add(elementId);
     if (!sectionSort.has(sectionId)) sectionSort.set(sectionId, sectionSort.size + 1);
     sectionElementCounts.set(sectionId, (sectionElementCounts.get(sectionId) || 0) + 1);
 

@@ -2960,6 +2960,56 @@ def main() -> int:
                               deterministicIds: JSON.stringify(ids(firstRows)) === JSON.stringify(ids(secondRows)),
                             };
                           })(),
+                          duplicatePersistenceIds: (() => {
+                            const service = { id: '__smoke_duplicate_persistence__', type_id: 'sunday-main', date: '2026-08-23' };
+                            const duplicateId = 'aaaaaaaa-1111-4111-8111-aaaaaaaa1111';
+                            const sectionId = 'bbbbbbbb-2222-4222-8222-bbbbbbbb2222';
+                            const items = ['특송', '특송'].map((label, index) => normalizeServiceItem({
+                              id: duplicateId,
+                              service_id: service.id,
+                              sort_order: index + 1,
+                              label,
+                              raw_title: index === 0 ? '첫 번째 특송' : '두 번째 특송',
+                              _worshipSectionId: sectionId,
+                              _worshipSectionKey: 'special_song',
+                              _worshipSectionTitle: '특송',
+                              _worshipSectionOrder: 5,
+                              _worshipElementOrder: index + 1,
+                              _worshipElementTemplateModified: true,
+                              memo: serializeServiceItemMemo({ elementType: 'praise', inputMode: 'manual_praise' })
+                            }));
+                            const uniqueItems = ensureUniqueServiceItemPersistenceIds(items);
+                            const rows = buildWorshipPersistenceRows(service, uniqueItems, {
+                              [sectionId]: {
+                                id: sectionId,
+                                service_id: service.id,
+                                created_at: '2026-08-23T00:00:00.000Z',
+                                updated_at: '2026-08-23T00:00:00.000Z',
+                                section_key: 'special_song',
+                                title: '특송',
+                                source_ref: {},
+                                config: {},
+                              },
+                            }, {
+                              [duplicateId]: {
+                                id: duplicateId,
+                                section_id: sectionId,
+                                created_at: '2026-08-23T00:00:00.000Z',
+                                updated_at: '2026-08-23T00:00:00.000Z',
+                                element_type: 'praise',
+                                title: '첫 번째 특송',
+                                source_ref: {},
+                                config: {},
+                              },
+                            });
+                            return {
+                              itemIds: uniqueItems.map((item) => item.id),
+                              elementIds: rows.elements.map((element) => element.id),
+                              uniqueItemIds: new Set(uniqueItems.map((item) => item.id)).size,
+                              uniqueElementIds: new Set(rows.elements.map((element) => element.id)).size,
+                              elementCount: rows.elements.length,
+                            };
+                          })(),
                           templateSuppressionProjection: (() => {
                             const service = { id: '__smoke_template_suppression__', type_id: 'friday', date: '2026-07-24' };
                             const scaffold = buildWorshipServiceScaffold(service.id, service.type_id, { service });
@@ -3945,6 +3995,9 @@ def main() -> int:
                             "presenterCount": 1,
                             "presenterPeople": ["김남영 목사"],
                         }
+                        and template_terms["duplicatePersistenceIds"]["elementCount"] == 2
+                        and template_terms["duplicatePersistenceIds"]["uniqueItemIds"] == 2
+                        and template_terms["duplicatePersistenceIds"]["uniqueElementIds"] == 2
                         and template_terms["sharedSundayContentProjection"]["secondPraiseStatic"] is True
                         and template_terms["sharedSundayContentProjection"]["secondPraiseMissing"] == "missing"
                         and template_terms["sharedSundayContentProjection"]["secondPraiseText"]
