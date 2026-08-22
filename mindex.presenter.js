@@ -3315,14 +3315,10 @@ function commitPresenterOutputFrame(root, payload, slide, frameState, token, opt
     fitPresenterSermonTitleText(nextLayer);
     nextLayer.classList.add("is-next");
     applyPresenterOutputFrameState(root, frameState);
-    layers.active.classList.remove("is-active");
-    layers.active.classList.remove("is-next");
-    nextLayer.classList.add("is-active");
-    nextLayer.classList.remove("is-next");
-    layers.active.innerHTML = "";
-    layers.active.removeAttribute("data-presenter-frame-token");
+    activatePresenterOutputLayer(root, layers.active, nextLayer, frameState, token, () => {
+      bindPresenterOutputAutoAdvance(root, payload, slide, options, token);
+    });
     warmPresenterOutputImages(payload, slide || null);
-    bindPresenterOutputAutoAdvance(root, payload, slide, options, token);
   };
   if (!activeImageSource) {
     commit();
@@ -3343,6 +3339,41 @@ function commitPresenterOutputFrame(root, payload, slide, frameState, token, opt
       root.removeAttribute("aria-busy");
       commit();
     });
+}
+
+function activatePresenterOutputLayer(root, activeLayer, nextLayer, frameState = {}, token = presenterOutputRenderState.token, onActivated = null) {
+  if (!activeLayer || !nextLayer) return;
+  const animated = presenterOutputShouldAnimateFrameTransition(root, frameState);
+  const swap = () => {
+    if (token !== presenterOutputRenderState.token) return;
+    activeLayer.classList.remove("is-active");
+    activeLayer.classList.remove("is-next");
+    nextLayer.classList.add("is-active");
+    nextLayer.classList.remove("is-next");
+    root?.prepend?.(nextLayer);
+    root?.append?.(activeLayer);
+    onActivated?.();
+    const clearPreviousLayer = () => {
+      if (token !== presenterOutputRenderState.token) return;
+      if (activeLayer.classList.contains("is-active")) return;
+      activeLayer.innerHTML = "";
+      activeLayer.removeAttribute("data-presenter-frame-token");
+    };
+    if (animated) window.setTimeout(clearPreviousLayer, 280);
+    else clearPreviousLayer();
+  };
+  if (!animated) {
+    swap();
+    return;
+  }
+  nextLayer.getBoundingClientRect();
+  swap();
+}
+
+function presenterOutputShouldAnimateFrameTransition(root, frameState = {}) {
+  if (!frameState.cleanOutput) return false;
+  if (root?.classList?.contains("svc-slide-mini-canvas")) return false;
+  return !window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
 }
 
 function fitPresenterChromakeyScriptureText(host, frameState = {}) {

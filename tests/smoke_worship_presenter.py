@@ -562,8 +562,18 @@ def main() -> int:
                 else:
                     fail("presenter-outline-follows-live-transition", json.dumps(outline_follow_state, ensure_ascii=False))
 
-                hover_frame = page.locator(f'.svc-slide-thumb[data-service-id="{service["id"]}"][data-presenter-index="1"] .svc-slide-thumb-frame')
-                hover_frame.scroll_into_view_if_needed()
+                page.evaluate(
+                    """
+                    (serviceId) => {
+                      document
+                        .querySelector(`.svc-slide-thumb[data-service-id="${serviceId}"][data-presenter-index="1"] .svc-slide-thumb-frame`)
+                        ?.scrollIntoView({ block: 'center', inline: 'nearest' });
+                    }
+                    """,
+                    service["id"],
+                )
+                page.wait_for_timeout(80)
+                hover_frame = page.locator(f'.svc-slide-thumb[data-service-id="{service["id"]}"][data-presenter-index="1"] .svc-slide-thumb-frame').first
                 hover_frame.hover()
                 page.wait_for_timeout(120)
                 hover_state = page.evaluate(
