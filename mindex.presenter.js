@@ -270,7 +270,14 @@ function serviceItemOutputMode(item = {}, memo = parseServiceItemMemo(item?.memo
 
 function presenterServiceItemUsesScoreInputMode(item = {}, memo = {}) {
   const raw = String(memo.inputMode || memo.input_mode || item.inputMode || item.input_mode || "").trim().toLowerCase();
-  return ["score_db", "score", "music_score", "sheet_music", "악보"].includes(raw);
+  if (["score_db", "score", "music_score", "sheet_music", "악보"].includes(raw)) return true;
+  return normalizeServiceOutputMode(
+    memo.outputMode
+    || item.outputMode
+    || item.output_mode
+    || item.renderMode
+    || item.render_mode,
+  ) === "score";
 }
 
 function presenterScoreSlidesForServiceItem(

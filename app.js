@@ -8811,7 +8811,14 @@ function serviceMemoInputMode(memo = {}, item = {}) {
 }
 
 function serviceItemUsesScoreInputMode(item = {}, memo = parseServiceItemMemo(item?.memo)) {
-  return serviceMemoInputMode(memo, item) === "score_db";
+  if (serviceMemoInputMode(memo, item) === "score_db") return true;
+  return normalizeServiceOutputMode(
+    memo.outputMode
+    || item.outputMode
+    || item.output_mode
+    || item.renderMode
+    || item.render_mode,
+  ) === "score";
 }
 
 function servicePraiseInputMode(item = {}, memo = parseServiceItemMemo(item?.memo), service = selectedServiceForEditor()) {
@@ -21779,7 +21786,7 @@ function renderServiceSongPicker(item, index, model = serviceItemEditorModel(ite
       <div class="svc-song-picker svc-song-picker--linked">
         ${versionPicker}
         ${typeWarning}
-        <button class="svc-song-clear" type="button" data-service-song-clear="${index}" aria-label="곡 연결 해제">변경</button>
+        <button class="svc-song-clear icon-btn" type="button" data-service-song-clear="${index}" aria-label="곡 연결 해제" title="곡 연결 해제"><i data-lucide="x"></i></button>
       </div>`;
   }
   if (!query) {

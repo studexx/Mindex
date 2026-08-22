@@ -5395,20 +5395,23 @@ body[data-module="presenter"] .detail-pane {
   background: color-mix(in srgb, var(--accent-soft) 24%, transparent);
 }
 .svc-song-clear {
-  height: 22px;
+  width: 24px;
+  height: 24px;
   border: 0;
-  border-radius: var(--r);
+  border-radius: calc(var(--r) - 2px);
   background: transparent;
   color: var(--ink-4);
   cursor: pointer;
-  font: inherit;
-  font-size: 9px;
-  font-weight: 800;
-  padding: 0 5px;
+  padding: 0;
 }
 .svc-song-clear:hover {
   background: color-mix(in srgb, var(--panel-2) 40%, transparent);
   color: var(--ink);
+}
+.svc-song-clear svg {
+  width: var(--ui-icon-sm);
+  height: var(--ui-icon-sm);
+  stroke-width: 2.25;
 }
 .svc-edit-actions { display: flex; align-items: center; justify-content: flex-end; gap: 4px; opacity: .58; }
 .svc-edit-item:hover .svc-edit-actions, .svc-edit-item:focus-within .svc-edit-actions { opacity: 1; }
@@ -7043,6 +7046,7 @@ textarea.svc-presenter-input-control--multiline {
   font-size: var(--ui-label-size);
 }
 .svc-board-subgroup-controls .svc-song-clear {
+  flex: 0 0 24px;
   height: 24px;
 }
 @media (max-width: 760px) {
