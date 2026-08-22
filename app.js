@@ -17604,7 +17604,6 @@ function publicAllGenerationsOfferingStep(options = {}) {
   const praiseLabel = options.specialOffering || options.special_offering || mediaSpec?.specialOffering ? "봉헌특송" : "봉헌찬송";
   const elements = [
     { label: praiseLabel, name: praiseLabel, elementType: "praise" },
-    { label: "봉헌기도", name: "봉헌기도", elementType: "title_person", person: prayerPerson },
   ];
   if (mediaSpec) {
     const mediaLabel = String(mediaSpec.label || "봉헌 영상").trim();
@@ -17616,6 +17615,7 @@ function publicAllGenerationsOfferingStep(options = {}) {
       asset: mediaSpec.asset || null,
     });
   }
+  elements.push({ label: "봉헌기도", name: "봉헌기도", elementType: "title_person", person: prayerPerson });
   return {
     label: "봉헌",
     name: "봉헌",

@@ -3676,18 +3676,18 @@ def main() -> int:
                         and not (template_terms["sundayPublicScaffold"]["allGeneration"]["specialSong"].get("title") or "").strip()
                         and template_terms["sundayPublicScaffold"]["allGeneration"]["offeringElements"] == [
                             {"type": "praise", "label": "봉헌특송", "outputMode": "", "assetUrl": ""},
-                            {"type": "title_person", "label": "봉헌기도", "outputMode": "", "assetUrl": ""},
                             {
                                 "type": "image",
                                 "label": "감사 이미지",
                                 "outputMode": "",
                                 "assetUrl": "assets/worship-templates/all-generations-2026-07-19-offering-thanks.png",
                             },
+                            {"type": "title_person", "label": "봉헌기도", "outputMode": "", "assetUrl": ""},
                         ]
                         and template_terms["sundayPublicScaffold"]["allGenerationRegular"] == [
                             {"type": "praise", "label": "봉헌찬송", "outputMode": "", "assetUrl": ""},
-                            {"type": "title_person", "label": "봉헌기도", "outputMode": "", "assetUrl": ""},
                             {"type": "video", "label": "봉헌 영상", "outputMode": "", "assetUrl": ""},
+                            {"type": "title_person", "label": "봉헌기도", "outputMode": "", "assetUrl": ""},
                         ]
                         and template_terms["sundayPublicScaffold"]["allGeneration"]["praiseElements"] == [
                             {"label": "환영", "title": "환영\n테힐라 찬양단"},
