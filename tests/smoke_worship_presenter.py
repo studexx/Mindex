@@ -1118,14 +1118,27 @@ def main() -> int:
                           const subgroup = group.subgroups?.find((item) => item.id === 'connected-praise:__smoke_medley_6_7__') || {};
                           const controlsHost = document.createElement('div');
                           controlsHost.innerHTML = renderPresenterBoardSubgroupInputControls(medleyService.id, subgroup);
+                          const primaryOnlySubgroup = {
+                            ...subgroup,
+                            slides: (subgroup.slides || []).filter(({ slide }) => slide.elementId === '__smoke_medley_6__'),
+                          };
+                          const primaryOnlyControlsHost = document.createElement('div');
+                          primaryOnlyControlsHost.innerHTML = renderPresenterBoardSubgroupInputControls(medleyService.id, primaryOnlySubgroup);
+                          const boardHost = document.createElement('div');
+                          boardHost.innerHTML = renderPresenterBoardSubgroup(subgroup, -1, medleyService.id, { showHead: true });
                           state.songs = previousSongs;
                           return {
                             label: subgroup.label || '',
                             title: subgroup.title || '',
+                            renderedLabel: boardHost.querySelector('.svc-board-subgroup-head span')?.textContent.trim() || '',
+                            renderedTitle: boardHost.querySelector('.svc-board-subgroup-head strong')?.textContent.trim() || '',
                             titleSlides: (subgroup.slides || []).filter(({ slide }) => slide.type === 'song-title').map(({ slide }) => slide.title || ''),
                             elementIds: [...new Set((subgroup.slides || []).map(({ slide }) => slide.elementId || '').filter(Boolean))],
                             inputLabels: [...controlsHost.querySelectorAll('.svc-board-subgroup-control-label')].map((node) => node.textContent.trim()),
+                            primaryOnlyInputLabels: [...primaryOnlyControlsHost.querySelectorAll('.svc-board-subgroup-control-label')].map((node) => node.textContent.trim()),
                             songFieldCount: controlsHost.querySelectorAll('.svc-presenter-input-field--song').length,
+                            primaryOnlySongFieldCount: primaryOnlyControlsHost.querySelectorAll('.svc-presenter-input-field--song').length,
+                            stacked: controlsHost.querySelector('.svc-board-subgroup-controls')?.classList.contains('svc-board-subgroup-controls--stacked') || false,
                             readonlyTextareas: controlsHost.querySelectorAll('textarea[readonly]').length,
                           };
                         })(),
@@ -1387,10 +1400,15 @@ def main() -> int:
                     and fallback_state["connectedPraiseMedleyBoard"] == {
                         "label": "찬양 6–7",
                         "title": "함께 지어져 가네 + 성도의 노래",
+                        "renderedLabel": "찬양 6–7",
+                        "renderedTitle": "함께 지어져 가네 + 성도의 노래",
                         "titleSlides": ["함께 지어져 가네 + 성도의 노래"],
                         "elementIds": ["__smoke_medley_6__", "__smoke_medley_7__"],
                         "inputLabels": ["찬양 6", "찬양 7"],
+                        "primaryOnlyInputLabels": ["찬양 6", "찬양 7"],
                         "songFieldCount": 2,
+                        "primaryOnlySongFieldCount": 2,
+                        "stacked": True,
                         "readonlyTextareas": 0,
                     }
                     and fallback_state["praiseSectionAssigneeIntro"] == {

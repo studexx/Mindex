@@ -25991,8 +25991,9 @@ function renderPresenterBoardSubgroup(subgroup, activeIndex, serviceId, options 
   const active = subgroup.slides.some(({ slideIndex }) => slideIndex === activeIndex);
   const firstIndex = subgroup.slides[0]?.slideIndex ?? 0;
   const slides = options.slides || annotatePresenterFormStarts(subgroup.slides).entries;
-  const rawLabel = subgroup.label || "항목";
-  const rawTitle = subgroup.title || subgroup.name;
+  const display = presenterBoardSubgroupDisplay(serviceId, subgroup);
+  const rawLabel = display.label || subgroup.label || "항목";
+  const rawTitle = display.title || subgroup.title || subgroup.name;
   const firstSlide = subgroup.slides[0]?.slide || slides[0]?.slide;
   const visibleTitle = isPresenterPreparationSlide(firstSlide)
     ? ""
@@ -26071,9 +26072,50 @@ function renderPresenterBoardSubgroupInputControls(serviceId, subgroup = {}) {
   if (!blocks.length) return "";
   const first = contexts[0];
   return `
-    <div class="svc-board-subgroup-controls" aria-label="${escapeAttr(`${first?.item?.label || "항목"} 입력`)}">
+    <div class="svc-board-subgroup-controls${blocks.length > 1 ? " svc-board-subgroup-controls--stacked" : ""}" aria-label="${escapeAttr(`${first?.item?.label || "항목"} 입력`)}">
       ${blocks.join("")}
     </div>`;
+}
+
+function presenterBoardSubgroupDisplay(serviceId, subgroup = {}) {
+  const fallback = {
+    label: String(subgroup.label || "").trim(),
+    title: String(subgroup.title || "").trim(),
+  };
+  const contexts = presenterBoardSubgroupInputContexts(serviceId, subgroup);
+  const connectedContexts = contexts.filter((context) =>
+    context?.item && serviceItemConnectedPraise(context.item));
+  if (connectedContexts.length < 2) return fallback;
+  const connected = serviceItemConnectedPraise(connectedContexts[0].item);
+  const label = serviceItemConnectedPraiseOrderTitle(connectedContexts[0].item, connected)
+    || fallback.label;
+  const connectedTitle = String(connected?.title || "").trim();
+  const title = connectedTitle || presenterBoardConnectedPraiseItemTitles(connectedContexts).join(" + ");
+  return {
+    label: label || fallback.label,
+    title: title || fallback.title,
+  };
+}
+
+function presenterBoardConnectedPraiseItemTitles(contexts = []) {
+  const seen = new Set();
+  return contexts
+    .map((context) => {
+      const item = context?.item || {};
+      const linkedTitle = String(serviceItemLinkedSong(item)?.title || "").trim();
+      const rawTitle = String(item.raw_title || "")
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .find(Boolean) || "";
+      return linkedTitle || rawTitle;
+    })
+    .map((title) => String(title || "").trim())
+    .filter((title) => {
+      const key = compactSearchValue(title);
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
 }
 
 function renderPresenterBoardItemAudioControls(serviceId, context = {}) {
@@ -26129,7 +26171,16 @@ function presenterBoardSubgroupInputContexts(serviceId, subgroup = {}) {
   if (!service) return [];
   const items = getServiceItems(serviceId);
   const ids = [...new Set((subgroup.slides || [])
-    .map(({ slide }) => String(slide?.elementId || "").trim())
+    .flatMap(({ slide }) => {
+      const connected = normalizeServiceConnectedPraise(slide?.connectedPraise || slide?.connected_praise);
+      return [
+        slide?.elementId,
+        connected?.primaryItemId,
+        ...(connected?.itemIds || []),
+        ...(connected?.secondaryItemIds || []),
+      ];
+    })
+    .map((id) => String(id || "").trim())
     .filter(Boolean))];
   if (!ids.length) {
     const context = presenterBoardSubgroupInputContext(serviceId, subgroup);

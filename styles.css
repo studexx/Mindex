@@ -6935,6 +6935,18 @@ textarea.svc-presenter-input-control--multiline {
   align-items: end;
   gap: 8px;
 }
+.svc-board-subgroup-controls--stacked {
+  gap: 10px;
+}
+.svc-board-subgroup-controls--stacked .svc-board-subgroup-control-item {
+  grid-template-columns: minmax(0, 1fr) max-content;
+}
+.svc-board-subgroup-controls--stacked .svc-presenter-input-field--assignee {
+  grid-column: 1;
+}
+.svc-board-subgroup-controls--stacked .svc-board-subgroup-audio {
+  grid-column: 2;
+}
 .svc-board-subgroup-control-label {
   grid-column: 1 / -1;
   color: var(--accent);
