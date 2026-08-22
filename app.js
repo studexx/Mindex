@@ -720,6 +720,8 @@ const state = {
     playing: false,
     volumeLevel: 3,
     intentionalPauseUntil: 0,
+    resumeTimer: null,
+    resumeAttempts: 0,
   },
   servicePrepEditorOpenId: null,
   calendarData: [],
@@ -1389,8 +1391,9 @@ function bindStaticEvents() {
     });
   }
   window.addEventListener("visibilitychange", () => {
-    if (document.visibilityState !== "visible" || state.module !== "presenter") return;
-    schedulePresenterPreviewLayoutUpdate(refs.detailPane);
+    if (document.visibilityState !== "visible") return;
+    if (state.module === "presenter") schedulePresenterPreviewLayoutUpdate(refs.detailPane);
+    scheduleServiceMusicResume("visibility");
   });
 
   SYSTEM_THEME_QUERY?.addEventListener("change", () => {
@@ -1398,6 +1401,7 @@ function bindStaticEvents() {
   });
 
   window.addEventListener("keydown", (event) => {
+    scheduleServiceMusicResume("keydown");
     if (shouldBlockPresenterMusicControlNavigationKeydown(event)) {
       event.preventDefault();
       event.target.blur?.();
@@ -1405,6 +1409,10 @@ function bindStaticEvents() {
       event.stopPropagation?.();
       return;
     }
+  }, { capture: true });
+
+  window.addEventListener("pointerup", () => {
+    scheduleServiceMusicResume("pointerup");
   }, { capture: true });
 
   window.addEventListener("keydown", (event) => {
@@ -24954,18 +24962,10 @@ function getServiceMusicAudio() {
     const audio = new Audio();
     audio.preload = "auto";
     audio.addEventListener("pause", () => {
-      if (!shouldResumeInterruptedServiceMusic(audio)) return;
-      audio.play()
-        .then(() => {
-          state.serviceMusic.playing = true;
-          renderPresenterControlState();
-        })
-        .catch(() => {
-          state.serviceMusic.playing = false;
-          renderPresenterControlState();
-        });
+      scheduleServiceMusicResume("pause");
     });
     audio.addEventListener("ended", () => {
+      clearServiceMusicResumeTimer();
       state.serviceMusic.playing = false;
       if (state.serviceMusic.mode === "presenter-audio") {
         state.serviceMusic.sourceKey = "";
@@ -24988,6 +24988,12 @@ function allowIntentionalServiceMusicPause(durationMs = 800) {
   state.serviceMusic.intentionalPauseUntil = Date.now() + durationMs;
 }
 
+function clearServiceMusicResumeTimer() {
+  if (!state.serviceMusic.resumeTimer) return;
+  clearTimeout(state.serviceMusic.resumeTimer);
+  state.serviceMusic.resumeTimer = null;
+}
+
 function shouldResumeInterruptedServiceMusic(audio) {
   if (!audio || audio.ended) return false;
   if (serviceMusicPauseIsIntentional()) return false;
@@ -24995,8 +25001,43 @@ function shouldResumeInterruptedServiceMusic(audio) {
   return Boolean(state.serviceMusic.sourceKey || state.serviceMusic.objectUrl || audio.currentSrc || audio.src);
 }
 
+function scheduleServiceMusicResume(reason = "", delayMs = 0) {
+  const audio = state.serviceMusic.audio;
+  if (!audio || !shouldResumeInterruptedServiceMusic(audio)) return;
+  if (!audio.paused && !audio.ended) return;
+  clearServiceMusicResumeTimer();
+  state.serviceMusic.resumeTimer = setTimeout(() => {
+    state.serviceMusic.resumeTimer = null;
+    resumeServiceMusicAfterInterruption(reason);
+  }, Math.max(0, Number(delayMs) || 0));
+}
+
+function resumeServiceMusicAfterInterruption(reason = "") {
+  const audio = state.serviceMusic.audio;
+  if (!audio || !shouldResumeInterruptedServiceMusic(audio)) {
+    state.serviceMusic.resumeAttempts = 0;
+    return;
+  }
+  audio.play()
+    .then(() => {
+      state.serviceMusic.resumeAttempts = 0;
+      state.serviceMusic.playing = true;
+      renderPresenterControlState();
+    })
+    .catch(() => {
+      if (!shouldResumeInterruptedServiceMusic(audio)) {
+        state.serviceMusic.resumeAttempts = 0;
+        return;
+      }
+      state.serviceMusic.resumeAttempts += 1;
+      if (state.serviceMusic.resumeAttempts > 8) return;
+      scheduleServiceMusicResume(reason, 200 + (state.serviceMusic.resumeAttempts * 150));
+    });
+}
+
 function setServiceMusicSource(audio, source, mode, playback = null, label = "") {
   if (state.serviceMusic.sourceKey === source && state.serviceMusic.mode === mode) return;
+  clearServiceMusicResumeTimer();
   allowIntentionalServiceMusicPause();
   audio.pause();
   audio.src = source;
@@ -25017,6 +25058,7 @@ function serviceMusicHasActivePlayback() {
 
 function stopServiceMusicPlayback(options = {}) {
   const audio = state.serviceMusic.audio;
+  clearServiceMusicResumeTimer();
   if (audio) {
     allowIntentionalServiceMusicPause();
     audio.pause();

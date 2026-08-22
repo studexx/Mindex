@@ -5530,22 +5530,26 @@ def main() -> int:
                           state.serviceMusic.mode = 'presenter-audio';
                           state.serviceMusic.playing = true;
                           state.serviceMusic.intentionalPauseUntil = 0;
+                          state.serviceMusic.resumeAttempts = 0;
                           audio.dispatchEvent(new Event('pause'));
-                          await Promise.resolve();
+                          await new Promise((resolve) => setTimeout(resolve, 20));
                           const accidental = {
                             playCalls,
                             playing: state.serviceMusic.playing,
+                            resumeAttempts: state.serviceMusic.resumeAttempts,
                             sourceKey: state.serviceMusic.sourceKey,
                           };
                           allowIntentionalServiceMusicPause(1000);
                           audio.dispatchEvent(new Event('pause'));
-                          await Promise.resolve();
+                          await new Promise((resolve) => setTimeout(resolve, 20));
                           const intentional = {
                             playCalls,
                             playing: state.serviceMusic.playing,
+                            resumeAttempts: state.serviceMusic.resumeAttempts,
                             sourceKey: state.serviceMusic.sourceKey,
                           };
                           audio.play = previousPlay;
+                          clearServiceMusicResumeTimer();
                           state.serviceMusic = previousMusic;
                           return { accidental, intentional };
                         })()
@@ -5554,12 +5558,56 @@ def main() -> int:
                     if (
                         music_pause_guard_state["accidental"]["playCalls"] == 1
                         and music_pause_guard_state["accidental"]["playing"]
+                        and music_pause_guard_state["accidental"]["resumeAttempts"] == 0
                         and music_pause_guard_state["accidental"]["sourceKey"] == "assets/audio/click-survive.mp3"
                         and music_pause_guard_state["intentional"]["playCalls"] == 1
                     ):
                         pass_("presenter-controller-music-resumes-accidental-pause", json.dumps(music_pause_guard_state, ensure_ascii=False))
                     else:
                         fail("presenter-controller-music-resumes-accidental-pause", json.dumps(music_pause_guard_state, ensure_ascii=False))
+
+                    music_pause_retry_state = page.evaluate(
+                        """
+                        (async () => {
+                          const previousMusic = { ...state.serviceMusic };
+                          const audio = getServiceMusicAudio();
+                          const previousPlay = audio.play;
+                          let playCalls = 0;
+                          audio.play = () => {
+                            playCalls += 1;
+                            if (playCalls === 1) return Promise.reject(new Error('temporary interruption'));
+                            return Promise.resolve();
+                          };
+                          state.serviceMusic.sourceKey = 'assets/audio/retry-survive.mp3';
+                          state.serviceMusic.sourceLabel = '재시도 보호 음악';
+                          state.serviceMusic.mode = 'presenter-audio';
+                          state.serviceMusic.playing = true;
+                          state.serviceMusic.intentionalPauseUntil = 0;
+                          state.serviceMusic.resumeAttempts = 0;
+                          audio.dispatchEvent(new Event('pause'));
+                          await new Promise((resolve) => setTimeout(resolve, 420));
+                          const result = {
+                            playCalls,
+                            playing: state.serviceMusic.playing,
+                            resumeAttempts: state.serviceMusic.resumeAttempts,
+                            sourceKey: state.serviceMusic.sourceKey,
+                          };
+                          audio.play = previousPlay;
+                          clearServiceMusicResumeTimer();
+                          state.serviceMusic = previousMusic;
+                          return result;
+                        })()
+                        """
+                    )
+                    if (
+                        music_pause_retry_state["playCalls"] >= 2
+                        and music_pause_retry_state["playing"]
+                        and music_pause_retry_state["resumeAttempts"] == 0
+                        and music_pause_retry_state["sourceKey"] == "assets/audio/retry-survive.mp3"
+                    ):
+                        pass_("presenter-controller-music-retries-accidental-pause", json.dumps(music_pause_retry_state, ensure_ascii=False))
+                    else:
+                        fail("presenter-controller-music-retries-accidental-pause", json.dumps(music_pause_retry_state, ensure_ascii=False))
 
                     page.evaluate(
                         f"""
