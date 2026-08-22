@@ -5514,6 +5514,53 @@ def main() -> int:
                     else:
                         fail("presenter-controller-music-survives-output-open-navigation", json.dumps(music_open_nav_state, ensure_ascii=False))
 
+                    music_pause_guard_state = page.evaluate(
+                        """
+                        (async () => {
+                          const previousMusic = { ...state.serviceMusic };
+                          const audio = getServiceMusicAudio();
+                          const previousPlay = audio.play;
+                          let playCalls = 0;
+                          audio.play = () => {
+                            playCalls += 1;
+                            return Promise.resolve();
+                          };
+                          state.serviceMusic.sourceKey = 'assets/audio/click-survive.mp3';
+                          state.serviceMusic.sourceLabel = '클릭 보호 음악';
+                          state.serviceMusic.mode = 'presenter-audio';
+                          state.serviceMusic.playing = true;
+                          state.serviceMusic.intentionalPauseUntil = 0;
+                          audio.dispatchEvent(new Event('pause'));
+                          await Promise.resolve();
+                          const accidental = {
+                            playCalls,
+                            playing: state.serviceMusic.playing,
+                            sourceKey: state.serviceMusic.sourceKey,
+                          };
+                          allowIntentionalServiceMusicPause(1000);
+                          audio.dispatchEvent(new Event('pause'));
+                          await Promise.resolve();
+                          const intentional = {
+                            playCalls,
+                            playing: state.serviceMusic.playing,
+                            sourceKey: state.serviceMusic.sourceKey,
+                          };
+                          audio.play = previousPlay;
+                          state.serviceMusic = previousMusic;
+                          return { accidental, intentional };
+                        })()
+                        """
+                    )
+                    if (
+                        music_pause_guard_state["accidental"]["playCalls"] == 1
+                        and music_pause_guard_state["accidental"]["playing"]
+                        and music_pause_guard_state["accidental"]["sourceKey"] == "assets/audio/click-survive.mp3"
+                        and music_pause_guard_state["intentional"]["playCalls"] == 1
+                    ):
+                        pass_("presenter-controller-music-resumes-accidental-pause", json.dumps(music_pause_guard_state, ensure_ascii=False))
+                    else:
+                        fail("presenter-controller-music-resumes-accidental-pause", json.dumps(music_pause_guard_state, ensure_ascii=False))
+
                     page.evaluate(
                         f"""
                         (() => {{

@@ -719,6 +719,7 @@ const state = {
     sourceLabel: "",
     playing: false,
     volumeLevel: 3,
+    intentionalPauseUntil: 0,
   },
   servicePrepEditorOpenId: null,
   calendarData: [],
@@ -24952,6 +24953,18 @@ function getServiceMusicAudio() {
   if (!state.serviceMusic.audio) {
     const audio = new Audio();
     audio.preload = "auto";
+    audio.addEventListener("pause", () => {
+      if (!shouldResumeInterruptedServiceMusic(audio)) return;
+      audio.play()
+        .then(() => {
+          state.serviceMusic.playing = true;
+          renderPresenterControlState();
+        })
+        .catch(() => {
+          state.serviceMusic.playing = false;
+          renderPresenterControlState();
+        });
+    });
     audio.addEventListener("ended", () => {
       state.serviceMusic.playing = false;
       if (state.serviceMusic.mode === "presenter-audio") {
@@ -24967,8 +24980,24 @@ function getServiceMusicAudio() {
   return state.serviceMusic.audio;
 }
 
+function serviceMusicPauseIsIntentional() {
+  return Date.now() < (Number(state.serviceMusic.intentionalPauseUntil) || 0);
+}
+
+function allowIntentionalServiceMusicPause(durationMs = 800) {
+  state.serviceMusic.intentionalPauseUntil = Date.now() + durationMs;
+}
+
+function shouldResumeInterruptedServiceMusic(audio) {
+  if (!audio || audio.ended) return false;
+  if (serviceMusicPauseIsIntentional()) return false;
+  if (!state.serviceMusic.playing) return false;
+  return Boolean(state.serviceMusic.sourceKey || state.serviceMusic.objectUrl || audio.currentSrc || audio.src);
+}
+
 function setServiceMusicSource(audio, source, mode, playback = null, label = "") {
   if (state.serviceMusic.sourceKey === source && state.serviceMusic.mode === mode) return;
+  allowIntentionalServiceMusicPause();
   audio.pause();
   audio.src = source;
   audio.loop = Boolean(playback?.loop);
@@ -24989,6 +25018,7 @@ function serviceMusicHasActivePlayback() {
 function stopServiceMusicPlayback(options = {}) {
   const audio = state.serviceMusic.audio;
   if (audio) {
+    allowIntentionalServiceMusicPause();
     audio.pause();
     if (options.clearSource) audio.removeAttribute("src");
   }
