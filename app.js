@@ -1040,6 +1040,7 @@ async function loadHymnScoreManifest({ silent = false } = {}) {
       const data = await response.json();
       state.hymnScoreManifest = data && typeof data === "object" && !Array.isArray(data) ? data : {};
       state.hymnScoreManifestLoaded = true;
+      presenterSlideBuildCache.clear();
       if (isServiceDataModule()) render();
     } catch (err) {
       if (!Object.keys(state.hymnScoreManifest || {}).length) state.hymnScoreManifest = {};
@@ -26832,6 +26833,7 @@ function presenterSlideBuildSourceSignature(serviceId) {
       service.date || service.service_date || "",
       service.updated_at || "",
       state.bibleVerseCacheVersion || 0,
+      state.hymnScoreManifestLoaded ? Object.keys(state.hymnScoreManifest || {}).length : 0,
     ],
     items: items.map((item) => {
       const song = item.song_id ? songById(item.song_id) : null;
