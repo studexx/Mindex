@@ -78,7 +78,7 @@ SECTION_HEADER = re.compile(r"^###\s+(.+)$")
 ITEM_LABEL = re.compile(r"^(.+?)\s*/\s*(.*)")
 DATE_RANGE = re.compile(r"^(\d{1,2}/\d{1,2})[–—-](\d{1,2}/\d{1,2})")
 MULTI_DATES = re.compile(r"^(\d{1,2}/\d{1,2}(?:\s*,\s*\d{1,2}/\d{1,2})+)\s+(.*)")
-SINGLE_DATE = re.compile(r"^(\d{1,2}/\d{1,2})\s+(.*)")
+SINGLE_DATE = re.compile(r"^(\d{1,2}/\d{1,2})(?:\s+(.*))?$")
 ITEM_SCOPE = re.compile(r"^(.*?)\((\d{1,2})\)\s*$")
 FIXED_ITEM_CHANGE = re.compile(
     r"^(.*?)\s*→\s*(?:(.+?)\s*/\s*)?(.+?)\s*\[(\d{1,2})-(\d{1,2})[–—-]\]\s*$"
@@ -145,7 +145,7 @@ def parse_date_header(raw):
     sd = SINGLE_DATE.match(raw)
     if sd:
         d = parse_date(sd.group(1))
-        leader = sd.group(2).strip() or None
+        leader = (sd.group(2) or "").strip() or None
         return {"dates": [d], "date_end": None, "leader": leader, "tags": tags}
 
     return None
