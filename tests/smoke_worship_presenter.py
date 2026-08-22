@@ -5400,6 +5400,8 @@ def main() -> int:
                           state.serviceMusic = {{
                             ...state.serviceMusic,
                             audio: {{
+                              paused: false,
+                              ended: false,
                               pause() {{ pauseCalls += 1; }},
                               removeAttribute(name) {{
                                 if (name === 'src') removeSourceCalls += 1;
@@ -5441,6 +5443,76 @@ def main() -> int:
                         pass_("presenter-controller-music-survives-presenter-flow", json.dumps(music_flow_state, ensure_ascii=False))
                     else:
                         fail("presenter-controller-music-survives-presenter-flow", json.dumps(music_flow_state, ensure_ascii=False))
+
+                    music_open_nav_state = page.evaluate(
+                        f"""
+                        (() => {{
+                          const serviceId = {json.dumps(service["id"])};
+                          const previousMusic = {{ ...state.serviceMusic }};
+                          const previousOpen = window.open;
+                          const previousChannel = state.presenter.channel;
+                          let pauseCalls = 0;
+                          let removeSourceCalls = 0;
+                          window.open = () => ({{
+                            closed: false,
+                            focus() {{}},
+                            addEventListener() {{}},
+                            postMessage() {{}},
+                          }});
+                          state.presenter.channel = {{
+                            postMessage() {{}},
+                          }};
+                          state.serviceMusic = {{
+                            ...state.serviceMusic,
+                            audio: {{
+                              paused: false,
+                              ended: false,
+                              pause() {{ pauseCalls += 1; }},
+                              removeAttribute(name) {{
+                                if (name === 'src') removeSourceCalls += 1;
+                              }},
+                            }},
+                            objectUrl: '',
+                            fileName: '',
+                            mode: 'presenter-audio',
+                            sourceKey: 'assets/audio/open-nav.mp3',
+                            sourceLabel: '송출 중 음악',
+                            playing: false,
+                            volumeLevel: 3,
+                          }};
+                          runPresenterAction('open', serviceId);
+                          runPresenterAction('next', serviceId);
+                          refreshPresenterForService(serviceId, {{ publish: false, renderControls: false }});
+                          const result = {{
+                            pauseCalls,
+                            removeSourceCalls,
+                            playing: state.serviceMusic.playing,
+                            mode: state.serviceMusic.mode,
+                            sourceKey: state.serviceMusic.sourceKey,
+                            sourceLabel: state.serviceMusic.sourceLabel,
+                          }};
+                          window.open = previousOpen;
+                          state.presenter.channel = previousChannel;
+                          state.serviceMusic = previousMusic;
+                          state.presenter.outputWindow = null;
+                          state.presenter.outputConnectedAt = 0;
+                          state.presenter.outputPendingAt = 0;
+                          stopPresenterOutputWindowMonitor();
+                          return result;
+                        }})()
+                        """
+                    )
+                    if (
+                        music_open_nav_state["pauseCalls"] == 0
+                        and music_open_nav_state["removeSourceCalls"] == 0
+                        and music_open_nav_state["playing"]
+                        and music_open_nav_state["mode"] == "presenter-audio"
+                        and music_open_nav_state["sourceKey"] == "assets/audio/open-nav.mp3"
+                        and music_open_nav_state["sourceLabel"] == "송출 중 음악"
+                    ):
+                        pass_("presenter-controller-music-survives-output-open-navigation", json.dumps(music_open_nav_state, ensure_ascii=False))
+                    else:
+                        fail("presenter-controller-music-survives-output-open-navigation", json.dumps(music_open_nav_state, ensure_ascii=False))
 
                     page.evaluate(
                         f"""

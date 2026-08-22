@@ -24978,6 +24978,14 @@ function setServiceMusicSource(audio, source, mode, playback = null, label = "")
   state.serviceMusic.playing = false;
 }
 
+function serviceMusicHasActivePlayback() {
+  const audio = state.serviceMusic.audio;
+  return Boolean(
+    state.serviceMusic.playing
+    || (audio && !audio.paused && !audio.ended)
+  );
+}
+
 function stopServiceMusicPlayback(options = {}) {
   const audio = state.serviceMusic.audio;
   if (audio) {
@@ -24994,7 +25002,10 @@ function stopServiceMusicPlayback(options = {}) {
 }
 
 function syncServiceMusicWithPresenterContext(serviceId = state.presenter.serviceId, options = {}) {
-  if (state.serviceMusic.playing) return;
+  if (serviceMusicHasActivePlayback()) {
+    state.serviceMusic.playing = true;
+    return;
+  }
   const context = currentPresenterAudioContext(serviceId);
   if (context.source && state.serviceMusic.mode === "presenter-audio" && state.serviceMusic.sourceKey === context.source) return;
   if (state.serviceMusic.mode !== "presenter-audio") return;
