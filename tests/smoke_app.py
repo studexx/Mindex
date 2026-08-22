@@ -4274,6 +4274,14 @@ def main() -> int:
                             presenterFormGroupLabel({ formLabel: 'Chorus B' }),
                             presenterFormGroupLabel({ marker: 'C B' }),
                           ],
+                          formBadgeRenderContract: (() => {
+                            const html = renderPresenterSlideThumb({ type: 'image', formKey: 'cb' }, 108, -1, '__service__', 'CB');
+                            return {
+                              hasDisplay: html.includes('Chorus B'),
+                              hasRaw: html.includes('>CB<'),
+                              aria: html.includes('aria-label="Chorus B"'),
+                            };
+                          })(),
                           elementNameTitleContract: (() => {
                             const welcomeItem = {
                               label: '환영',
@@ -4424,6 +4432,7 @@ def main() -> int:
                         and presenter_terms["collapsedBoardSubgroups"] == 0
                         and presenter_terms["mainPraiseSubgroupLabels"] == ["환영", "찬양 1"]
                         and presenter_terms["formBadgeLabelContract"] == ["Chorus B", "Chorus B", "Chorus B"]
+                        and presenter_terms["formBadgeRenderContract"] == {"hasDisplay": True, "hasRaw": False, "aria": True}
                         and presenter_terms["elementNameTitleContract"] == {
                             "welcomeSidebar": "환영 · 헤세드 찬양단",
                             "welcomeSidebarParts": {"meta": "환영", "title": "헤세드 찬양단"},

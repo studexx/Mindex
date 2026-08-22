@@ -25703,7 +25703,8 @@ function renderPresenterSlideThumb(slide, slideIndex, activeIndex, serviceId, fo
   const selected = state.presenterBoardSelection.serviceId === serviceId
     && state.presenterBoardSelection.elementKey === elementKey
     && (state.presenterBoardSelection.indexes || []).map(Number).includes(slideIndex);
-  const visibleFormLabel = presenterLabelDuplicatesSlideText(formLabel, slide) ? "" : formLabel;
+  const normalizedFormLabel = songFormPresetDisplayLabel(formLabel) || String(formLabel || "").trim();
+  const visibleFormLabel = presenterLabelDuplicatesSlideText(normalizedFormLabel, slide) ? "" : normalizedFormLabel;
   const ariaPrefix = presenterSlideInteractionHint(serviceId, `${slideIndex + 1}번 슬라이드${hidden ? " · 숨김" : ""}`);
   const slideNumber = slideIndex + 1;
   const formBadge = visibleFormLabel ? `
