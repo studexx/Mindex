@@ -15892,19 +15892,11 @@ function songSupportMetaItems(song) {
   const structuredCreditItems = songCreditMetaItems(metadata);
   return [
     metaAttribute("성구", cleanList(song?.scripture).join(" · ") || null),
-    songArtistAlbumMetaItem(metadata),
+    metaAttribute("아티스트", metadata.artist),
+    metaAttribute("앨범", formatAlbumMeta(metadata)),
     ...structuredCreditItems,
     metaAttribute("번역", metadata.translator),
   ].filter(Boolean);
-}
-
-function songArtistAlbumMetaItem(metadata) {
-  const artist = String(metadata?.artist || "").trim();
-  const album = formatAlbumMeta(metadata);
-  if (artist && album) return metaAttribute("아티스트/앨범", `${artist} – ${album}`);
-  if (artist) return metaAttribute("아티스트", artist);
-  if (album) return metaAttribute("앨범", album);
-  return null;
 }
 
 function songCreditMetaItems(metadata) {

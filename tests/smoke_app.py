@@ -7078,6 +7078,10 @@ def main() -> int:
                       const metaWrapStyle = metaStrong ? getComputedStyle(metaStrong) : null;
                       const metaHead = document.querySelector('.song-description-meta--head');
                       const metaHeadStyle = metaHead ? getComputedStyle(metaHead) : null;
+                      const metaItems = [...document.querySelectorAll('.song-description-meta--head .meta-attribute')].map((node) => ({
+                        label: node.querySelector('.meta-attribute-label')?.textContent.trim() || '',
+                        value: node.querySelector('strong')?.textContent.trim() || '',
+                      }));
                       const metaSeparator = metaStrong
                         ? getComputedStyle(metaStrong.closest('.meta-attribute'), '::after').content
                         : '';
@@ -7138,6 +7142,8 @@ def main() -> int:
                         loadingCreateState,
                         metadataWrap: {
                           exists: Boolean(metaStrong),
+                          labels: metaItems.map((item) => item.label),
+                          values: metaItems.map((item) => item.value),
                           whiteSpace: metaWrapStyle?.whiteSpace || '',
                           overflow: metaWrapStyle?.overflow || '',
                           textOverflow: metaWrapStyle?.textOverflow || '',
@@ -7199,6 +7205,11 @@ def main() -> int:
                     and praise_actions["loadingCreateState"]["sidebarDisabled"]
                     and praise_actions["loadingCreateState"]["detailButtonsHidden"]
                     and praise_actions["metadataWrap"]["exists"]
+                    and "아티스트/앨범" not in praise_actions["metadataWrap"]["labels"]
+                    and "아티스트" in praise_actions["metadataWrap"]["labels"]
+                    and "앨범" in praise_actions["metadataWrap"]["labels"]
+                    and "길고 긴 아티스트 이름과 예배팀 이름" in praise_actions["metadataWrap"]["values"]
+                    and "잘리지 않아야 하는 긴 앨범 메타데이터" in praise_actions["metadataWrap"]["values"]
                     and praise_actions["metadataWrap"]["whiteSpace"] != "nowrap"
                     and praise_actions["metadataWrap"]["overflow"] == "visible"
                     and praise_actions["metadataWrap"]["textOverflow"] == "clip"
