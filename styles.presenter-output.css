@@ -977,10 +977,12 @@
 /* Controller thumbnails show the finished transition frame without spending
    compositor work on an animation that only matters on the output display. */
 .svc-slide-mini-canvas.presenter-output-root.no-chromakey.is-blank .presenter-slide--blank::before {
+  width: calc(12 * var(--presenter-stage-unit));
   animation: none;
   transform: translateX(-50%) scaleY(1);
 }
 .svc-slide-mini-canvas.presenter-output-root.no-chromakey.is-blank .presenter-slide--blank::after {
+  height: calc(12 * var(--presenter-stage-unit));
   animation: none;
   transform: translateY(-50%) scaleX(1);
 }

@@ -6587,6 +6587,20 @@ def main() -> int:
                       const horizontalAnimation = horizontal.animationName;
                       const horizontalDelay = horizontal.animationDelay;
                       const horizontalOrigin = horizontal.transformOrigin;
+                      const mini = document.createElement('span');
+                      mini.className = 'svc-slide-mini-canvas presenter-output-root no-chromakey is-blank';
+                      mini.innerHTML = renderPresenterSlideFrame({
+                        id: '__smoke_blank_thumb_cross__',
+                        elementType: 'blank',
+                        layout: 'blank',
+                        type: 'blank',
+                        title: '빈 화면',
+                        text: '',
+                      }, { noChromakey: true, previewStage: true });
+                      document.body.appendChild(mini);
+                      const miniSlide = mini.querySelector('.presenter-slide--blank');
+                      const miniVertical = getComputedStyle(miniSlide, '::before');
+                      const miniHorizontal = getComputedStyle(miniSlide, '::after');
                       renderPresenterOutput({
                         serviceType: 'sunday-second',
                         chromakey: true,
@@ -6615,6 +6629,10 @@ def main() -> int:
                         horizontalAnimation,
                         horizontalDelay,
                         horizontalOrigin,
+                        miniVerticalWidth: miniVertical.width,
+                        miniVerticalTransform: miniVertical.transform,
+                        miniHorizontalHeight: miniHorizontal.height,
+                        miniHorizontalTransform: miniHorizontal.transform,
                         chromakeyVerticalAnimation: chromakeyVertical.animationName,
                         chromakeyHorizontalAnimation: chromakeyHorizontal.animationName,
                         verseRange,
@@ -6630,6 +6648,10 @@ def main() -> int:
                     and blank_cross_animation["horizontalAnimation"] == "presenter-blank-cross-horizontal"
                     and blank_cross_animation["horizontalDelay"] == "0.55s"
                     and blank_cross_animation["horizontalOrigin"].startswith("0px ")
+                    and blank_cross_animation["miniVerticalWidth"] == "12px"
+                    and blank_cross_animation["miniVerticalTransform"] != "none"
+                    and blank_cross_animation["miniHorizontalHeight"] == "12px"
+                    and blank_cross_animation["miniHorizontalTransform"] != "none"
                     and blank_cross_animation["chromakeyVerticalAnimation"] not in ["presenter-blank-cross-vertical"]
                     and blank_cross_animation["chromakeyHorizontalAnimation"] not in ["presenter-blank-cross-horizontal"]
                     and blank_cross_animation["verseRange"] == "18–19"
