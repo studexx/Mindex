@@ -7211,6 +7211,7 @@ def main() -> int:
                         { type_id: 'sunday-first', date: '2027-01-03', expected: '', defaultFile: '27-A1.png', seasonFile: '', chromakey: false },
                         { type_id: 'sunday-second', date: '2026-07-05', expected: '', defaultFile: '26-A4.png', seasonFile: '26-SH.png', chromakey: true },
                         { type_id: 'sunday-main', date: '2026-07-05', expected: '', defaultFile: '26-A4.png', seasonFile: '26-SH.png', chromakey: true },
+                        { type_id: 'sunday-main', date: '2026-08-23', alias: '온세대 찬양예배', sourceRef: { sunday_main_variant: 'all_generations' }, expected: '26-A4.png', defaultFile: '26-A4.png', seasonFile: '', chromakey: false },
                         { type_id: 'wednesday', date: '2026-07-08', expected: '', defaultFile: '', seasonFile: '', chromakey: true },
                         { type_id: 'monthly', date: '2026-07-03', expected: '', defaultFile: '', seasonFile: '', chromakey: true },
                       ];
@@ -7252,6 +7253,61 @@ def main() -> int:
                     pass_("presenter-default-background-groups", json.dumps(default_background_state, ensure_ascii=False))
                 else:
                     fail("presenter-default-background-groups", json.dumps(default_background_state, ensure_ascii=False))
+
+                all_generations_preview_state = page.evaluate(
+                    """
+                    () => {
+                      const service = {
+                        id: '__smoke_all_generations_clean_preview__',
+                        type_id: 'sunday-main',
+                        date: '2026-08-23',
+                        title: '온세대 찬양예배',
+                        alias: '온세대 찬양예배',
+                        _worshipSourceRef: { sunday_main_variant: 'all_generations' },
+                      };
+                      state.services = [
+                        service,
+                        ...state.services.filter((item) => item.id !== service.id),
+                      ];
+                      const slide = {
+                        id: '__smoke_all_generations_bongheon_song_title__',
+                        type: 'song-title',
+                        elementType: 'praise',
+                        layout: 'lower_bar_text',
+                        sectionKey: 'offering',
+                        sectionLabel: '봉헌',
+                        title: '말할 수 없는 영광스러운 즐거움으로',
+                        text: '말할 수 없는 영광스러운 즐거움으로',
+                      };
+                      const mount = document.createElement('div');
+                      mount.innerHTML = renderPresenterSlideMiniPreview(slide, service.id);
+                      document.body.append(mount);
+                      const frame = mount.querySelector('.svc-slide-mini-output');
+                      const root = mount.querySelector('.presenter-output-root');
+                      const title = mount.querySelector('.presenter-slide--song-title');
+                      const beforeContent = title ? getComputedStyle(title, '::before').content : '';
+                      const result = {
+                        chromakey: presenterServiceUsesChromakey(service),
+                        frameNoChromakey: frame?.classList.contains('no-chromakey') || false,
+                        rootNoChromakey: root?.classList.contains('no-chromakey') || false,
+                        hasBackground: frame?.classList.contains('has-background') || false,
+                        beforeContent,
+                      };
+                      mount.remove();
+                      return result;
+                    }
+                    """
+                )
+                if (
+                    all_generations_preview_state["chromakey"] is False
+                    and all_generations_preview_state["frameNoChromakey"] is True
+                    and all_generations_preview_state["rootNoChromakey"] is True
+                    and all_generations_preview_state["hasBackground"] is True
+                    and all_generations_preview_state["beforeContent"] == "none"
+                ):
+                    pass_("presenter-all-generations-clean-preview", json.dumps(all_generations_preview_state, ensure_ascii=False))
+                else:
+                    fail("presenter-all-generations-clean-preview", json.dumps(all_generations_preview_state, ensure_ascii=False))
 
                 friday_legacy_background_state = page.evaluate(
                     """

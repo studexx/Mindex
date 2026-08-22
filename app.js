@@ -12122,7 +12122,21 @@ const WORSHIP_BACKGROUND_STATIC_FILES = new Set([
   "26-S6.png",
 ]);
 function presenterServiceUsesChromakey(service) {
+  if (serviceUsesAllGenerationsCleanOutput(service)) return false;
   return serviceTypeUsesChromakey(service?.type_id);
+}
+
+function serviceUsesAllGenerationsCleanOutput(service = null) {
+  if (!service || typeof service !== "object") return false;
+  const typeId = worshipAppServiceTypeId(service?.type_id || service?.service_type_id || service?.typeId || "");
+  if (typeId !== "sunday-main") return false;
+  const sourceRef = serviceSourceRef(service);
+  const variant = String(sourceRef.sunday_main_variant || "").trim().toLowerCase();
+  if (variant === "all_generations") return true;
+  const serviceLabel = [service.alias, service.service_alias, service.title, service.service_title]
+    .filter(Boolean)
+    .join(" ");
+  return isAllGenerationsWorshipContext(serviceLabel);
 }
 
 function serviceTypeUsesChromakey(typeId) {
