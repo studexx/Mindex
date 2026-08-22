@@ -2908,7 +2908,7 @@ def main() -> int:
                         version_id: '__smoke_explicit_tag_version__',
                         memo: serializeServiceItemMemo({
                           elementType: 'praise',
-                          formPreset: { forms: ['V', 'C', 'V', 'C', 'Tag'], hint: 'V-C-V-C-Tag', strength: 'manual' }
+                          formPreset: { forms: ['V', 'C', 'V', 'C', 'Tags'], hint: 'V-C-V-C-Tags', strength: 'manual' }
                         })
                       };
                       const explicitGenericItem = {
@@ -3650,10 +3650,10 @@ def main() -> int:
                     and form_preset_state["ccmMarkers"] == ["Verse 1", "Chorus", "Chorus"]
                     and form_preset_state["ccmTexts"] == ["V1 첫 줄\nV1 둘째 줄", "C 첫 줄\nC 둘째 줄", "C 첫 줄\nC 둘째 줄"]
                     and len(set(form_preset_state["ccmFormKeys"])) == 3
-                    and form_preset_state["explicitTagMarkers"] == ["Verse 1", "Chorus 1", "Verse 2", "Chorus 2", "Tag"]
+                    and form_preset_state["explicitTagMarkers"] == ["Verse 1", "Chorus 1", "Verse 2", "Chorus 2", "Tags"]
                     and "B 첫 줄" not in "\n".join(form_preset_state["explicitTagTexts"])
                     and form_preset_state["explicitTagTexts"][3] == "C2 첫 줄\nC2 둘째 줄"
-                    and form_preset_state["explicitTagTexts"][-1] == "C 둘째 줄"
+                    and form_preset_state["explicitTagTexts"][-1] == "C 둘째 줄\nC 둘째 줄"
                     and form_preset_state["explicitGenericMarkers"] == ["Verse 1", "Chorus 1", "Verse 2", "Chorus 2"]
                     and "B 첫 줄" not in "\n".join(form_preset_state["explicitGenericTexts"])
                     and form_preset_state["defaultFormMetadataSummary"] == "V1-V2-C-V3-Coda"

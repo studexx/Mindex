@@ -814,12 +814,13 @@ function presenterVirtualFormPresetItem(label = "", target = {}, lyrics = "", in
   const partType = presenterFormPartTypeForPresetTarget(target);
   const partNumber = target.number || null;
   const cleanLabel = String(label || "").trim();
+  const repeatedLyrics = presenterRepeatLyricsForPresetTarget(lyrics, target);
   return {
     _presenterVirtual: true,
     id: `preset-form:${target.key || compactSearchValue(cleanLabel) || index}`,
     part_type: partType,
     part_number: partNumber,
-    lyrics,
+    lyrics: repeatedLyrics,
     label: cleanLabel || (partNumber ? `${partType} ${partNumber}` : partType),
   };
 }
@@ -869,7 +870,7 @@ function presenterTagFormPresetItem(label = "", target = {}, form = {}) {
     .split(/\n+/)
     .map((line) => line.trim())
     .filter(Boolean);
-  const lyrics = lines[lines.length - 1] || "";
+  const lyrics = presenterRepeatLyricsForPresetTarget(lines[lines.length - 1] || "", target);
   if (!lyrics) return null;
   const cleanLabel = String(label || "").trim() || "Tag";
   const baseId = String(form._localId || form.id || target.key || "tag");
@@ -883,6 +884,13 @@ function presenterTagFormPresetItem(label = "", target = {}, form = {}) {
     lyrics,
     label: cleanLabel,
   };
+}
+
+function presenterRepeatLyricsForPresetTarget(lyrics = "", target = {}) {
+  const text = normalizeLyricsForCopy(lyrics);
+  const repeat = Number(target?.repeat) || 1;
+  if (!text || repeat <= 1) return text;
+  return Array.from({ length: Math.min(repeat, 12) }, () => text).join("\n");
 }
 
 function findPresenterFormForPresetTarget(forms = [], target = {}) {
@@ -988,7 +996,12 @@ function normalizePresenterFormPresetLabel(value = "") {
   if (/^(간주|interlude|instrumental)\s*[a-z]?$/i.test(raw)) {
     return { key: "instrumental", type: "instrumental", number: 0, blank: true };
   }
-  if (/^(tag)\s*[a-z]?$/i.test(raw)) {
+  const tags = raw.match(/^(tags)$/i);
+  if (tags) {
+    return { key: "tag", type: "tag", number: 0, repeat: 2 };
+  }
+  const tag = raw.match(/^(tag)\s*[a-z]?$/i);
+  if (tag) {
     return { key: "tag", type: "tag", number: 0 };
   }
   const display = raw.match(/^([A-Za-z][A-Za-z -]*?)(?:\s+(\d+))?(?:\s+([a-z]))?$/);

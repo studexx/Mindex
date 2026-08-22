@@ -9111,6 +9111,10 @@ function normalizeSongFormPresetLabel(value = "") {
   if (instrumental) {
     return { key: "instrumental", type: "instrumental" };
   }
+  const tags = raw.match(/^(?:tags)$/i);
+  if (tags) {
+    return { key: "tag", type: "tag", repeat: 2 };
+  }
   const tag = raw.match(/^(?:tag)\s*[a-z]?$/i);
   if (tag) {
     return { key: "tag", type: "tag" };
