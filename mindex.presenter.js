@@ -2978,6 +2978,23 @@ function initPresenterOutputCore() {
       applyPayload(null);
     }
   };
+  const handleOutputSignalMessage = (message = {}) => {
+    if (message?.type === "presenter-state") {
+      applyInitialPresenterState(message.payload);
+      return;
+    }
+    if (message?.type === "presenter-controller-ready") {
+      sendControllerMessage({ type: "presenter-ready", clientId: outputClientId });
+      postHeartbeat();
+      return;
+    }
+    if (message?.type === "presenter-output-close") {
+      window.setTimeout(() => {
+        closeOutputChannel();
+        window.close();
+      }, 40);
+    }
+  };
 
   if ("BroadcastChannel" in window) {
     try {
@@ -3033,6 +3050,7 @@ function initPresenterOutputCore() {
     if (event.key !== PRESENTER_SIGNAL_KEY || !event.newValue) return;
     try {
       const message = JSON.parse(event.newValue);
+      handleOutputSignalMessage(message);
     } catch {
       // Ignore malformed cross-window presenter signals.
     }
@@ -3329,7 +3347,10 @@ function commitPresenterOutputFrame(root, payload, slide, frameState, token, opt
   const commitToken = ++presenterOutputRenderState.commitToken;
   root.setAttribute("aria-busy", "true");
   const layers = presenterOutputLayers(root);
-  if (!layers) return;
+  if (!layers) {
+    root.removeAttribute("aria-busy");
+    return;
+  }
   layers.next.innerHTML = html;
   layers.next.dataset.presenterFrameToken = String(token);
   layers.next.classList.add("is-next");

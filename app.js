@@ -26505,12 +26505,30 @@ function scrollPresenterBoardToServiceItem(serviceId, itemIndex, options = {}) {
   return true;
 }
 
+let presenterBoardStableScrollRaf = 0;
+let presenterBoardStableScrollTimeout = 0;
+
+function clearPresenterBoardStableScrollRequest() {
+  if (presenterBoardStableScrollRaf) {
+    window.cancelAnimationFrame(presenterBoardStableScrollRaf);
+    presenterBoardStableScrollRaf = 0;
+  }
+  if (presenterBoardStableScrollTimeout) {
+    window.clearTimeout(presenterBoardStableScrollTimeout);
+    presenterBoardStableScrollTimeout = 0;
+  }
+}
+
 function scrollPresenterBoardToIndexStable(serviceId, index, options = {}) {
-  scrollPresenterBoardToIndex(serviceId, index, { ...options, behavior: options.behavior || "auto" });
-  window.requestAnimationFrame(() => {
-    scrollPresenterBoardToIndex(serviceId, index, { ...options, behavior: options.behavior || "auto" });
-    window.setTimeout(() => {
-      scrollPresenterBoardToIndex(serviceId, index, { ...options, behavior: options.behavior || "auto" });
+  clearPresenterBoardStableScrollRequest();
+  const scrollOptions = { ...options, behavior: options.behavior || "auto" };
+  scrollPresenterBoardToIndex(serviceId, index, scrollOptions);
+  presenterBoardStableScrollRaf = window.requestAnimationFrame(() => {
+    presenterBoardStableScrollRaf = 0;
+    scrollPresenterBoardToIndex(serviceId, index, scrollOptions);
+    presenterBoardStableScrollTimeout = window.setTimeout(() => {
+      presenterBoardStableScrollTimeout = 0;
+      scrollPresenterBoardToIndex(serviceId, index, scrollOptions);
     }, 60);
   });
 }
