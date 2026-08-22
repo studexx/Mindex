@@ -4,6 +4,7 @@ import json
 import os
 import re
 import argparse
+from collections import Counter
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote
@@ -181,11 +182,213 @@ def explained_canonical_variant_keys(
     return keys
 
 
+def normalize_service_input_mode(value: Any) -> str:
+    value = str(value or "").strip()
+    aliases = {
+        "song": "praise_db",
+        "song_db": "praise_db",
+        "praise": "praise_db",
+        "score": "score_db",
+        "lyrics": "lyrics_db",
+        "manual": "manual_praise",
+        "manual_song": "manual_praise",
+    }
+    return aliases.get(value, value)
+
+
+def source_ref_value(row: dict[str, Any], key: str) -> Any:
+    source_ref = row.get("source_ref")
+    if isinstance(source_ref, dict):
+        return source_ref.get(key)
+    return None
+
+
+def input_modes_compatible(left: str, right: str) -> bool:
+    if left == right:
+        return True
+    praise_db_modes = {"praise_db", "lyrics_db", "score_db"}
+    return left in praise_db_modes and right in praise_db_modes
+
+
+def extend_structural_warnings(
+    warnings: list[dict[str, Any]],
+    *,
+    worship_services: list[dict[str, Any]],
+    worship_sections: list[dict[str, Any]],
+    worship_elements: list[dict[str, Any]],
+    worship_slides: list[dict[str, Any]],
+    song_versions: list[dict[str, Any]],
+) -> None:
+    services_by_id = {row.get("id"): row for row in worship_services}
+    sections_by_id = {row.get("id"): row for row in worship_sections}
+    sections_by_service: dict[str, list[dict[str, Any]]] = {}
+    elements_by_section: dict[str, list[dict[str, Any]]] = {}
+    slides_by_element: dict[str, list[dict[str, Any]]] = {}
+    for row in worship_sections:
+        if row.get("service_id"):
+            sections_by_service.setdefault(row["service_id"], []).append(row)
+    for row in worship_elements:
+        if row.get("section_id"):
+            elements_by_section.setdefault(row["section_id"], []).append(row)
+    for row in worship_slides:
+        if row.get("element_id"):
+            slides_by_element.setdefault(row["element_id"], []).append(row)
+
+    def service_summary(service_id: Any) -> dict[str, Any]:
+        service = services_by_id.get(service_id) or {}
+        return {
+            "service_id": service_id,
+            "service_type_id": service.get("service_type_id"),
+            "service_date": service.get("service_date"),
+            "title": service.get("title"),
+            "service_alias": service.get("service_alias"),
+        }
+
+    def section_summary(section_id: Any) -> dict[str, Any]:
+        section = sections_by_id.get(section_id) or {}
+        return {
+            **service_summary(section.get("service_id")),
+            "section_id": section_id,
+            "section_key": section.get("section_key"),
+            "section_title": section.get("title"),
+        }
+
+    section_order_counts = Counter(
+        (row.get("service_id"), row.get("sort_order"))
+        for row in worship_sections
+        if row.get("service_id") and row.get("sort_order") is not None
+    )
+    for (service_id, sort_order), count in sorted(section_order_counts.items(), key=lambda item: (str(item[0][0]), item[0][1] or 0)):
+        if count <= 1:
+            continue
+        rows = [
+            row for row in worship_sections
+            if row.get("service_id") == service_id and row.get("sort_order") == sort_order
+        ]
+        warnings.append({
+            "type": "duplicate-worship-section-order",
+            **service_summary(service_id),
+            "sort_order": sort_order,
+            "count": count,
+            "section_ids": [row.get("id") for row in rows],
+            "section_keys": [row.get("section_key") for row in rows],
+            "section_titles": [row.get("title") for row in rows],
+        })
+
+    element_order_counts = Counter(
+        (row.get("section_id"), row.get("sort_order"))
+        for row in worship_elements
+        if row.get("section_id") and row.get("sort_order") is not None
+    )
+    for (section_id, sort_order), count in sorted(element_order_counts.items(), key=lambda item: (str(item[0][0]), item[0][1] or 0)):
+        if count <= 1:
+            continue
+        rows = [
+            row for row in worship_elements
+            if row.get("section_id") == section_id and row.get("sort_order") == sort_order
+        ]
+        warnings.append({
+            "type": "duplicate-worship-element-order",
+            **section_summary(section_id),
+            "sort_order": sort_order,
+            "count": count,
+            "element_ids": [row.get("id") for row in rows],
+            "element_types": [row.get("element_type") for row in rows],
+            "element_titles": [row.get("title") for row in rows],
+        })
+
+    slide_order_counts = Counter(
+        (row.get("element_id"), row.get("sort_order"))
+        for row in worship_slides
+        if row.get("element_id") and row.get("sort_order") is not None
+    )
+    for (element_id, sort_order), count in sorted(slide_order_counts.items(), key=lambda item: (str(item[0][0]), item[0][1] or 0)):
+        if count <= 1:
+            continue
+        rows = [
+            row for row in worship_slides
+            if row.get("element_id") == element_id and row.get("sort_order") == sort_order
+        ]
+        warnings.append({
+            "type": "duplicate-worship-slide-order",
+            "element_id": element_id,
+            "sort_order": sort_order,
+            "count": count,
+            "slide_ids": [row.get("id") for row in rows],
+            "slide_types": [row.get("slide_type") for row in rows],
+        })
+
+    for service in worship_services:
+        if source_ref_value(service, "no_gathering"):
+            continue
+        if not sections_by_service.get(service.get("id")):
+            warnings.append({
+                "type": "worship-service-without-sections",
+                **service_summary(service.get("id")),
+                "created_from": source_ref_value(service, "created_from"),
+                "auto_generated": bool(source_ref_value(service, "auto_generated")),
+            })
+
+    for section in worship_sections:
+        if not elements_by_section.get(section.get("id")):
+            warnings.append({
+                "type": "worship-section-without-elements",
+                **section_summary(section.get("id")),
+                "sort_order": section.get("sort_order"),
+            })
+
+    version_source_by_id = {
+        row.get("id"): row.get("source_song_id")
+        for row in song_versions
+        if row.get("id")
+    }
+    for element in worship_elements:
+        input_mode = normalize_service_input_mode(element.get("input_mode"))
+        content_state = element.get("content_state") if isinstance(element.get("content_state"), dict) else {}
+        content_mode = normalize_service_input_mode(content_state.get("inputMode") or content_state.get("input_mode"))
+        if input_mode and content_mode and not input_modes_compatible(input_mode, content_mode):
+            warnings.append({
+                "type": "worship-element-input-mode-state-mismatch",
+                **section_summary(element.get("section_id")),
+                "element_id": element.get("id"),
+                "element_type": element.get("element_type"),
+                "element_title": element.get("title"),
+                "input_mode": input_mode,
+                "content_state_input_mode": content_mode,
+            })
+
+        song_id = element.get("song_id")
+        version_id = element.get("song_version_id")
+        if song_id and version_id:
+            version_source_id = version_source_by_id.get(version_id)
+            if version_source_id and version_source_id != song_id:
+                warnings.append({
+                    "type": "worship-element-song-version-source-mismatch",
+                    **section_summary(element.get("section_id")),
+                    "element_id": element.get("id"),
+                    "element_title": element.get("title"),
+                    "song_id": song_id,
+                    "song_version_id": version_id,
+                    "version_source_song_id": version_source_id,
+                })
+        if input_mode in {"praise_db", "lyrics_db", "score_db"} and song_id and not version_id:
+            warnings.append({
+                "type": "worship-element-linked-song-without-version",
+                **section_summary(element.get("section_id")),
+                "element_id": element.get("id"),
+                "element_type": element.get("element_type"),
+                "element_title": element.get("title"),
+                "song_id": song_id,
+                "input_mode": input_mode,
+            })
+
+
 def audit(
     supa_url: str,
     supa_key: str,
     *,
     strict_schema: bool = False,
+    structural: bool = False,
 ) -> tuple[dict[str, int], list[dict[str, Any]], list[dict[str, Any]]]:
     songs = fetch_rows(supa_url, supa_key, "mindex_songs")
     canonical_songs = fetch_rows(supa_url, supa_key, "mindex_canonical_songs")
@@ -411,6 +614,16 @@ def audit(
         issues.extend(edge_text_issues(row, row_id, ("slide_type", "title", "marker")))
         warnings.extend(block_text_issues(row, row_id, ("body",)))
 
+    if structural:
+        extend_structural_warnings(
+            warnings,
+            worship_services=worship_services,
+            worship_sections=worship_sections,
+            worship_elements=worship_elements,
+            worship_slides=worship_slides,
+            song_versions=song_versions,
+        )
+
     for row in translations:
         row_id = row["id"]
         if not row.get("translation_key") or not row.get("name"):
@@ -440,9 +653,10 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Audit Mindex Supabase content for residue and reference issues.")
     parser.add_argument("--json", action="store_true", help="Print all issues and warnings as JSON.")
     parser.add_argument("--strict-schema", action="store_true", help="Warn about optional schema columns that the app can otherwise tolerate.")
+    parser.add_argument("--structural", action="store_true", help="Also warn about operational data-structure drift, such as duplicate worship ordering.")
     args = parser.parse_args()
 
-    counts, issues, warnings = audit(*read_config(), strict_schema=args.strict_schema)
+    counts, issues, warnings = audit(*read_config(), strict_schema=args.strict_schema, structural=args.structural)
     if args.json:
         print(json.dumps({"counts": counts, "issues": issues, "warnings": warnings}, ensure_ascii=False, indent=2))
     else:
