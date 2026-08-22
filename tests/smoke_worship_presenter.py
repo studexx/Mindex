@@ -3390,6 +3390,31 @@ def main() -> int:
                           contentState: slide.contentState || '',
                           warnings: slide.warnings || [],
                         }));
+                      const missingSermonBodySlides = buildPresenterSlidesForServiceItem({
+                        id: '__smoke_missing_sermon_body_item__',
+                        label: '설교 본문',
+                        raw_title: '',
+                        song_id: '',
+                        assignee: '',
+                        _worshipSectionId: '__smoke_missing_sermon_section__',
+                        _worshipSectionKey: 'sermon',
+                        _worshipSectionTitle: '설교',
+                        memo: serializeServiceItemMemo({ elementType: 'scripture_body' })
+                      }, { ...service, type_id: 'sunday-main' }, 8.75)
+                        .map((slide) => ({
+                          type: slide.type,
+                          elementType: slide.elementType || '',
+                          layout: slide.layout || '',
+                          title: slide.title || '',
+                          assignee: slide.assignee || '',
+                          text: slide.text || '',
+                          sectionKey: slide.sectionKey || '',
+                          missingContent: Boolean(slide.missingContent),
+                          missingReason: slide.missingReason || '',
+                          inputMode: slide.inputMode || '',
+                          contentState: slide.contentState || '',
+                          warnings: slide.warnings || [],
+                        }));
                       const defaultTemplateInputSlides = buildPresenterSlidesForServiceItem({
                         id: '__smoke_default_template_input_item__',
                         label: '대표기도',
@@ -3616,6 +3641,7 @@ def main() -> int:
                         thirdTitlePersonSpecialSlides,
                         specialInputModes,
                         emptyTemplateInputSlides,
+                        missingSermonBodySlides,
                         defaultTemplateInputSlides,
                         persistenceStateRows,
                         sectionSongTitleSlides,
@@ -3871,8 +3897,8 @@ def main() -> int:
                         "elementType": "title_assignee",
                         "layout": "lower_bar_text",
                         "title": "특송",
-                        "assignee": "입력 필요",
-                        "text": "특송\n입력 필요",
+                        "assignee": "",
+                        "text": "특송",
                         "sectionKey": "special_song",
                         "body": form_preset_state["specialSectionTitleSlides"][0]["body"],
                     }]
@@ -3882,8 +3908,8 @@ def main() -> int:
                         "elementType": "title_assignee",
                         "layout": "lower_bar_text",
                         "title": "특송",
-                        "assignee": "입력 필요",
-                        "text": "특송\n입력 필요",
+                        "assignee": "",
+                        "text": "특송",
                         "sectionKey": "special_song",
                     }]
                     and form_preset_state["thirdEmptySpecialMissingSlides"] == [{
@@ -3891,8 +3917,8 @@ def main() -> int:
                         "elementType": "title_assignee",
                         "layout": "lower_bar_text",
                         "title": "특송",
-                        "assignee": "입력 필요",
-                        "text": "특송\n입력 필요",
+                        "assignee": "",
+                        "text": "특송",
                         "sectionKey": "special_song",
                         "missingContent": True,
                         "missingReason": "manual_praise_empty",
@@ -3940,6 +3966,20 @@ def main() -> int:
                         "inputMode": "text",
                         "contentState": "loading",
                         "warnings": ["불러오는 중"],
+                    }]
+                    and form_preset_state["missingSermonBodySlides"] == [{
+                        "type": "title-assignee",
+                        "elementType": "title_assignee",
+                        "layout": "lower_bar_text",
+                        "title": "설교 본문",
+                        "assignee": "",
+                        "text": "설교 본문",
+                        "sectionKey": "sermon",
+                        "missingContent": True,
+                        "missingReason": "scripture_body_empty",
+                        "inputMode": "scripture",
+                        "contentState": "missing",
+                        "warnings": ["입력 필요"],
                     }]
 	                    and form_preset_state["defaultTemplateInputSlides"] == [{
 	                        "type": "title-assignee",
