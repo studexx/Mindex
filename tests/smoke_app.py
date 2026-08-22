@@ -4234,6 +4234,17 @@ def main() -> int:
                             .filter((group) => group.querySelector('.service-outline-row--section strong')?.textContent.trim() === '찬양')
                             .flatMap((group) => [...group.querySelectorAll('.service-outline-row--child strong')].map((node) => node.textContent.trim()))
                             .filter((text) => text === '찬양').length,
+                          praiseChildTargetContract: [...document.querySelectorAll('.service-outline-group')]
+                            .filter((group) => group.querySelector('.service-outline-row--section strong')?.textContent.trim() === '찬양')
+                            .flatMap((group) => [...group.querySelectorAll('.service-outline-row--child[data-service-outline-slide]')]
+                              .map((row) => {
+                                const target = serviceOutlineSlideTarget(row) || {};
+                                return {
+                                  label: row.querySelector('.service-outline-kind')?.textContent.trim() || '',
+                                  dataSlide: Number(row.dataset.serviceOutlineSlide),
+                                  targetSlide: Number(target.slideIndex ?? -1),
+                                };
+                              })),
                           outlineCountText: [...document.querySelectorAll('.service-outline-row small')]
                             .map((node) => node.textContent.replace(/\\s+/g, ' ').trim())
                             .filter((text) => /슬라이드|항목|곡/.test(text)),
@@ -4390,6 +4401,12 @@ def main() -> int:
                         and presenter_terms["outlineGroups"] >= 1
                         and presenter_terms["multiOutlineGroups"] >= 1
                         and presenter_terms["childPraiseMarkers"] == 0
+                        and presenter_terms["praiseChildTargetContract"]
+                        and all(
+                            item["label"].startswith("찬양")
+                            and item["dataSlide"] == item["targetSlide"]
+                            for item in presenter_terms["praiseChildTargetContract"]
+                        )
                         and presenter_terms["outlineCountText"] == []
                         and all(
                             (
@@ -6888,8 +6905,11 @@ def main() -> int:
                               return {
                                 standaloneRows: document.querySelectorAll('.service-outline-list > .service-outline-row:not(.service-outline-row--ready)').length,
                                 sections: groups.map((group) => group.querySelector('.service-outline-row--section strong')?.textContent.trim() || ''),
-                                elements: groups.map((group) => [...group.querySelectorAll('.service-outline-row--child strong')]
+                                elements: groups.map((group) => [...group.querySelectorAll('.service-outline-row--child .service-outline-kind')]
                                   .map((node) => node.textContent.trim())),
+                                labelOnlyBodyTexts: [...document.querySelectorAll('.service-outline-row--child')]
+                                  .filter((row) => row.querySelector('.service-outline-kind') && !row.querySelector('strong'))
+                                  .map((row) => row.querySelector('.service-outline-kind')?.textContent.trim() || ''),
                                 emptySections: groups.filter((group) => !group.querySelector('.service-outline-row--section strong')?.textContent.trim()).length,
                               };
                             })()
@@ -6900,6 +6920,7 @@ def main() -> int:
                             and hierarchy_state["sections"]
                             and not hierarchy_state["emptySections"]
                             and all(elements for elements in hierarchy_state["elements"])
+                            and hierarchy_state["labelOnlyBodyTexts"]
                         ):
                             pass_("presenter-sidebar-section-element-hierarchy", json.dumps(hierarchy_state, ensure_ascii=False))
                         else:

@@ -1467,8 +1467,10 @@ function serviceOutlineSlideTarget(serviceOutlineItem) {
   const currentItem = Number.isFinite(itemIndex)
     ? outlineItems.find((item, index) => (Number.isInteger(item._serviceItemIndex) ? item._serviceItemIndex : index) === itemIndex)
     : null;
-  const currentSlideIndex = currentItem ? firstPresenterSlideIndexForServiceItem(currentItem, slides) : -1;
-  if (currentSlideIndex >= 0) slideIndex = currentSlideIndex;
+  if (!Number.isFinite(slideIndex) || slideIndex < 0) {
+    const currentSlideIndex = currentItem ? firstPresenterSlideIndexForServiceItem(currentItem, slides) : -1;
+    if (currentSlideIndex >= 0) slideIndex = currentSlideIndex;
+  }
   if (!Number.isFinite(slideIndex) || slideIndex < 0 || !serviceId) return null;
   if (slideIndex >= slides.length) slideIndex = Math.max(slides.length - 1, 0);
   return { itemIndex, serviceId, slideIndex };
@@ -20265,7 +20267,7 @@ function renderServiceOutlineChildRow(service, item, index, selectedIndex, slide
       <span class="service-outline-no"></span>
       <span class="service-outline-main">
         ${titleParts.meta ? `<span class="service-outline-kind">${escapeHtml(titleParts.meta)}</span>` : ""}
-        <strong>${escapeHtml(titleParts.title)}</strong>
+        ${titleParts.title ? `<strong>${escapeHtml(titleParts.title)}</strong>` : ""}
         ${renderServiceOutlineMissingBadge(missing)}
       </span>
       <span class="service-outline-start"></span>
@@ -20327,17 +20329,16 @@ function serviceSidebarChildItemTitle(item, service = null) {
 function serviceSidebarChildItemDisplayParts(item, service = null) {
   const label = String(item?.label || "").trim();
   const fallback = serviceSidebarChildItemTitle(item, service);
-  if (!label || serviceSidebarUsesLabelOnly(item)) return { meta: "", title: fallback || "항목" };
+  if (!label) return { meta: "", title: fallback || "항목" };
   const title = serviceItemDisplayText(item);
   const personSummary = serviceSidebarPersonSummary(item, service);
   if (personSummary) {
     const parts = cleanList(String(personSummary).split(/[·/,]+/u));
     return parts.length > 1
       ? { meta: parts[0], title: parts.slice(1).join(" / ") }
-      : { meta: "", title: personSummary };
+      : { meta: label, title: compactSearchValue(personSummary) === compactSearchValue(label) ? "" : personSummary };
   }
-  if (!title) return { meta: "", title: label };
-  if (compactSearchValue(label) === compactSearchValue(title)) return { meta: "", title: label };
+  if (!title || compactSearchValue(label) === compactSearchValue(title)) return { meta: label, title: "" };
   return { meta: label, title };
 }
 
