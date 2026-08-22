@@ -7543,6 +7543,7 @@ body.is-chromium .svc-slide-thumb.active:hover .svc-slide-thumb-frame {
   background: color-mix(in srgb, var(--panel) 96%, #000 4%);
   box-shadow: 0 16px 40px rgba(0, 0, 0, .24);
   pointer-events: auto;
+  animation: presenter-section-editor-in .12s ease-out both;
 }
 .presenter-section-editor-head {
   display: flex;
@@ -7639,6 +7640,17 @@ body.is-chromium .svc-slide-thumb.active:hover .svc-slide-thumb-frame {
   .presenter-section-editor-item,
   .presenter-section-editor-add {
     grid-template-columns: 1fr;
+  }
+}
+
+@keyframes presenter-section-editor-in {
+  from {
+    opacity: .88;
+    transform: translateY(6px) scale(.992);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
 

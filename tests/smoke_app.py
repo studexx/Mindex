@@ -4713,12 +4713,75 @@ def main() -> int:
                     else:
                         fail("presenter-sorter-and-editor", json.dumps(sorter_state, ensure_ascii=False))
 
+                    context_menu_state = page.evaluate(
+                        """
+                        async (serviceId) => {
+                          state.presenter.outputWindow = null;
+                          state.presenter.outputConnectedAt = 0;
+                          state.presenter.serviceId = null;
+                          state.presenterSectionEditor = null;
+                          state.presenterBoardSelection = {
+                            serviceId: null,
+                            elementKey: '',
+                            indexes: [],
+                            anchorIndex: null,
+                            drag: null,
+                            clipboard: null
+                          };
+                          renderPresenterDetail();
+                          const thumbs = [...document.querySelectorAll('.svc-slide-thumb[data-presenter-index][data-service-id]')];
+                          const target = thumbs.find((thumb) => Number(thumb.dataset.presenterIndex) > 0) || thumbs[0] || null;
+                          target?.dispatchEvent(new MouseEvent('contextmenu', {
+                            bubbles: true,
+                            cancelable: true,
+                            button: 2,
+                            clientX: 80,
+                            clientY: 80,
+                          }));
+                          const selectedImmediately = [...document.querySelectorAll('.svc-slide-thumb.selected')]
+                            .map((thumb) => Number(thumb.dataset.presenterIndex));
+                          await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+                          const editor = document.querySelector('[data-presenter-section-editor]');
+                          const result = {
+                            targetIndex: Number(target?.dataset.presenterIndex ?? -1),
+                            selectedImmediately,
+                            selectedAfterOpen: [...document.querySelectorAll('.svc-slide-thumb.selected')]
+                              .map((thumb) => Number(thumb.dataset.presenterIndex)),
+                            activeAfterOpen: document.querySelectorAll('.svc-slide-thumb.active').length,
+                            editorOpen: Boolean(editor),
+                            editorTitle: editor?.querySelector('.presenter-section-editor-head h3')?.textContent.trim() || '',
+                            transition: getComputedStyle(editor?.querySelector('.presenter-section-editor') || document.body).animationName || '',
+                          };
+                          state.presenterSectionEditor = null;
+                          renderPresenterDetail();
+                          return result;
+                        }
+                        """,
+                        service_for_slides["id"],
+                    )
+                    if (
+                        context_menu_state["targetIndex"] >= 0
+                        and context_menu_state["selectedImmediately"] == [context_menu_state["targetIndex"]]
+                        and context_menu_state["selectedAfterOpen"] == [context_menu_state["targetIndex"]]
+                        and context_menu_state["activeAfterOpen"] == 0
+                        and context_menu_state["editorOpen"]
+                        and context_menu_state["editorTitle"]
+                        and context_menu_state["transition"] == "presenter-section-editor-in"
+                    ):
+                        pass_("presenter-context-menu-flow", json.dumps(context_menu_state, ensure_ascii=False))
+                    else:
+                        fail("presenter-context-menu-flow", json.dumps(context_menu_state, ensure_ascii=False))
+
                     outline_scroll_seed = page.evaluate(
                         """
                         () => {
                           delete window.__mindexOutlineScrollTarget;
+                          delete window.__mindexOutlineScrollTo;
                           if (!window.__mindexOriginalScrollIntoView) {
                             window.__mindexOriginalScrollIntoView = Element.prototype.scrollIntoView;
+                          }
+                          if (!window.__mindexOriginalDetailScrollTo) {
+                            window.__mindexOriginalDetailScrollTo = Element.prototype.scrollTo;
                           }
                           Element.prototype.scrollIntoView = function(options) {
                             if (this.matches?.('.svc-board-subgroup, .svc-slide-thumb')) {
@@ -4735,6 +4798,15 @@ def main() -> int:
                               };
                             }
                             return window.__mindexOriginalScrollIntoView.call(this, options);
+                          };
+                          Element.prototype.scrollTo = function(options) {
+                            if (this.matches?.('.detail-pane')) {
+                              window.__mindexOutlineScrollTo = {
+                                top: Number(options?.top ?? -1),
+                                behavior: options?.behavior || ''
+                              };
+                            }
+                            return window.__mindexOriginalDetailScrollTo.call(this, options);
                           };
                           const rows = [...document.querySelectorAll('.service-outline-row[data-service-outline-slide]:not([disabled])')]
                             .filter((row) => Number(row.dataset.serviceOutlineSlide) > 0);
@@ -4781,9 +4853,16 @@ def main() -> int:
                                 && targetRect.left < paneRect.right
                                 && targetRect.right > paneRect.left);
                               Element.prototype.scrollIntoView = window.__mindexOriginalScrollIntoView;
+                              Element.prototype.scrollTo = window.__mindexOriginalDetailScrollTo;
+                              const activeSubgroup = activeTarget?.closest?.('.svc-board-subgroup') || activeTarget;
                               return {
                                 expected,
                                 target,
+                                scrollTo: window.__mindexOutlineScrollTo || {},
+                                activeTarget: {
+                                  className: activeSubgroup?.className || '',
+                                  itemIndex: Number(activeSubgroup?.dataset?.serviceItemIndex ?? -1),
+                                },
                                 presenterIndex: state.presenter.index,
                                 activeThumbs: document.querySelectorAll(`.svc-slide-thumb.active[data-presenter-index="${expected.index}"]`).length,
                                 targetThumbs: document.querySelectorAll(`.svc-slide-thumb[data-service-id="${expected.serviceId}"][data-presenter-index="${expected.index}"]`).length,
@@ -4795,8 +4874,18 @@ def main() -> int:
                             outline_scroll_seed,
                         )
                         scroll_target = outline_scroll_state["target"]
+                        active_target = outline_scroll_state["activeTarget"]
+                        scroll_to = outline_scroll_state["scrollTo"]
                         scroll_ok = (
-                            not scroll_target
+                            (
+                                not scroll_target
+                                and scroll_to.get("behavior") in ("auto", "smooth")
+                                and "svc-board-subgroup" in active_target["className"]
+                                and (
+                                    outline_scroll_seed["itemIndex"] < 0
+                                    or active_target.get("itemIndex") == outline_scroll_seed["itemIndex"]
+                                )
+                            )
                             or (
                                 scroll_target["serviceId"] == outline_scroll_seed["serviceId"]
                                 and scroll_target["index"] == outline_scroll_state["presenterIndex"]

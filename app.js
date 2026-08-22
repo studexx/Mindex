@@ -1555,15 +1555,18 @@ function handleDetailContextMenu(event) {
   if (!presenterThumb && !sectionEditButton) return;
   event.preventDefault();
   if (sectionEditButton) {
-    openPresenterSectionEditor(sectionEditButton.dataset.serviceId || state.selectedServiceId, {
+    requestPresenterSectionEditor(sectionEditButton.dataset.serviceId || state.selectedServiceId, {
       sectionKey: sectionEditButton.dataset.presenterSectionEdit,
     });
     return;
   }
-  openPresenterSectionEditorForSlide(
-    presenterThumb.dataset.serviceId,
-    Number(presenterThumb.dataset.presenterIndex),
-  );
+  const serviceId = presenterThumb.dataset.serviceId;
+  const index = Number(presenterThumb.dataset.presenterIndex);
+  if (!serviceId || !Number.isFinite(index)) return;
+  selectPresenterBoardSlide(serviceId, index, {
+    elementKey: presenterThumb.dataset.presenterElementKey || presenterSlideElementKey(serviceId, index),
+  });
+  requestPresenterSectionEditorForSlide(serviceId, index);
 }
 
 function handlePresenterBoardPointerDown(event) {
@@ -4805,7 +4808,7 @@ async function loadBibleBookVerses({ silent = false } = {}) {
   try {
     const { data, error } = await state.client
       .from("mindex_bible_verses")
-      .select("book_code,chapter,verse,verse_end,text,section_title")
+      .select("book_code,chapter,verse,verse_end,text")
       .eq("is_active", true)
       .eq("translation_id", selectedTranslationId)
       .eq("book_code", selectedBookCode)
@@ -4926,7 +4929,7 @@ async function fetchBibleTextSearchRowsByBook(query, translationId, page = 0) {
   const requestedEnd = requestedStart + pageSize - 1;
   const { data, error, count } = await state.client
     .from("mindex_bible_verses")
-    .select("id,book_code,chapter,verse,verse_end,text,section_title", { count: "estimated" })
+    .select("id,book_code,chapter,verse,verse_end,text", { count: "estimated" })
     .eq("is_active", true)
     .eq("translation_id", translationId)
     .ilike("text", `%${escapePostgrestLikePattern(query)}%`)
@@ -9988,7 +9991,7 @@ async function fetchServiceScriptureVerses(reference, requestedTranslation = nul
   const requestPromise = (async () => {
     const { data, error } = await state.client
       .from("mindex_bible_verses")
-      .select("book_code,chapter,verse,verse_end,text,section_title")
+      .select("book_code,chapter,verse,verse_end,text")
       .eq("is_active", true)
       .eq("translation_id", translation.id)
       .eq("book_code", reference.book.code)
@@ -21184,6 +21187,18 @@ function openPresenterSectionEditorForSlide(serviceId, slideIndex) {
   });
 }
 
+function requestPresenterSectionEditorForSlide(serviceId, slideIndex) {
+  window.requestAnimationFrame(() => {
+    openPresenterSectionEditorForSlide(serviceId, slideIndex);
+  });
+}
+
+function requestPresenterSectionEditor(serviceId = state.selectedServiceId, options = {}) {
+  window.requestAnimationFrame(() => {
+    openPresenterSectionEditor(serviceId, options);
+  });
+}
+
 function openPresenterSectionEditor(serviceId = state.selectedServiceId, options = {}) {
   if (!serviceId) return;
   state.presenterSectionEditor = {
@@ -26067,11 +26082,7 @@ function scrollPresenterBoardToTop(serviceId = state.selectedServiceId) {
     if (!root?.isConnected) return;
     const firstThumb = root.querySelector(`.svc-slide-thumb[data-service-id="${CSS.escape(serviceId)}"][data-presenter-index="0"]`);
     const target = firstThumb?.closest(".svc-board-section") || root;
-    target.scrollIntoView({
-      block: "start",
-      inline: "nearest",
-      behavior: "auto",
-    });
+    scrollWithinPresenterViewport(target, { block: "start", behavior: "auto" });
   };
   window.requestAnimationFrame(run);
 }
@@ -26127,9 +26138,8 @@ function scrollPresenterBoardToIndex(serviceId, index, options = {}) {
       && thumbRect.left >= viewportRect.left
       && thumbRect.right <= viewportRect.right;
     if (fullyVisible && !options.force) return true;
-    scrollTarget.scrollIntoView({
+    scrollWithinPresenterViewport(scrollTarget, {
       block: options.block || "center",
-      inline: "nearest",
       behavior: options.behavior || "auto",
     });
     return true;
@@ -26182,9 +26192,8 @@ function scrollPresenterBoardToServiceItem(serviceId, itemIndex, options = {}) {
       && subgroupRect.left >= viewportRect.left
       && subgroupRect.right <= viewportRect.right;
     if (fullyVisible && !options.force) return true;
-    subgroup.scrollIntoView({
+    scrollWithinPresenterViewport(subgroup, {
       block: options.block || "start",
-      inline: "nearest",
       behavior: options.behavior || "auto",
     });
     return true;
@@ -26205,6 +26214,44 @@ function scrollPresenterBoardToIndexStable(serviceId, index, options = {}) {
       scrollPresenterBoardToIndex(serviceId, index, { ...options, behavior: options.behavior || "auto" });
     }, 60);
   });
+}
+
+function scrollWithinPresenterViewport(target, options = {}) {
+  if (!target?.getBoundingClientRect) return false;
+  const viewport = refs.detailPane?.isConnected ? refs.detailPane : target.closest(".detail-pane");
+  if (!viewport?.getBoundingClientRect || typeof viewport.scrollTo !== "function") {
+    target.scrollIntoView({
+      block: options.block || "nearest",
+      inline: "nearest",
+      behavior: options.behavior || "auto",
+    });
+    return true;
+  }
+  const block = options.block || "nearest";
+  const behavior = options.behavior || "auto";
+  const targetRect = target.getBoundingClientRect();
+  const viewportRect = viewport.getBoundingClientRect();
+  const currentTop = viewport.scrollTop;
+  const targetTop = targetRect.top - viewportRect.top + currentTop;
+  const targetBottom = targetRect.bottom - viewportRect.top + currentTop;
+  const padding = Number(options.padding) || 18;
+  let top = currentTop;
+  if (block === "start") {
+    top = targetTop - padding;
+  } else if (block === "center") {
+    top = targetTop - Math.max(0, (viewport.clientHeight - targetRect.height) / 2);
+  } else if (targetRect.top < viewportRect.top + padding) {
+    top = targetTop - padding;
+  } else if (targetRect.bottom > viewportRect.bottom - padding) {
+    top = targetBottom - viewport.clientHeight + padding;
+  } else {
+    return true;
+  }
+  const maxTop = Math.max(0, viewport.scrollHeight - viewport.clientHeight);
+  const nextTop = Math.max(0, Math.min(maxTop, top));
+  if (Math.abs(nextTop - currentTop) < 2) return true;
+  viewport.scrollTo({ top: nextTop, behavior });
+  return true;
 }
 
 function scrollPresenterOutlineToActive(serviceId = state.presenter.serviceId) {
