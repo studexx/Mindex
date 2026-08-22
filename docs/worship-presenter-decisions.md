@@ -185,6 +185,9 @@ Small visual polish that does not alter behavior does not need an entry.
   `월삭예배`, `문화예배`, `삼삼오오예배`, `구역연합예배`, `금요기도회`는
   variant로 표시한다. DB service type은 월삭 템플릿과 금요 템플릿을 안정적으로
   유지하기 위해 기존 `monthly`/`friday`를 그대로 사용한다.
+- 교회력 `church_schedule`에 `설 연휴`가 있는 주는 정규 예배 찬양 콘티가
+  없어도 archive completeness 누락으로 보지 않는다. 이 주의 금요예배가
+  문화예배/영화 관람 등으로 대체된 경우에도 빈 콘티가 정상 상태다.
 - `삼삼오오예배`는 `friday` 계열 variant이며 금요기도회와 같은 clean/fullscreen
   output을 사용한다.
 - 풀스크린 예배의 준비 element 표시명은 `대기 화면`으로 둔다. 실제 준비 화면은
