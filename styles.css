@@ -115,7 +115,7 @@
   --topbar-btn-size: 40px;
   --shell-face-inset: 8px;
   --sidebar-icon-size: 16px;
-  --rail-motion: 160ms ease;
+  --rail-motion: 120ms cubic-bezier(.2, 0, .2, 1);
   --module-tab-w: 180px;
   --topbar-compact-w: calc((var(--topbar-btn-size) * 2) + (var(--shell-edge-inset) * 2));
   --font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
