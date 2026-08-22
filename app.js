@@ -10804,13 +10804,14 @@ function serviceAssetFileKindLabel(kind = "") {
 }
 
 function presenterMediaMaxBytesForKind(kind = "") {
-  return String(kind || "").trim().toLowerCase() === "video"
+  const normalized = String(kind || "").trim().toLowerCase();
+  return ["video", "audio"].includes(normalized)
     ? PRESENTER_VIDEO_MEDIA_MAX_BYTES
     : PRESENTER_REFERENCE_MEDIA_MAX_BYTES;
 }
 
 function presenterMediaMaxSizeLabel(kind = "") {
-  return String(kind || "").trim().toLowerCase() === "video" ? "500MB" : "50MB";
+  return ["video", "audio"].includes(String(kind || "").trim().toLowerCase()) ? "500MB" : "50MB";
 }
 
 function serviceItemAcceptsMediaAssetFile(item = {}, memo = parseServiceItemMemo(item?.memo), kind = "") {
@@ -10991,8 +10992,8 @@ async function uploadServiceItemAudioAsset(input) {
     input.value = "";
     return false;
   }
-  if (Number(file.size) > PRESENTER_REFERENCE_MEDIA_MAX_BYTES) {
-    showToast("음원 파일은 50MB 이하로 올려 주세요.", "error");
+  if (Number(file.size) > presenterMediaMaxBytesForKind("audio")) {
+    showToast(`음원 파일은 ${presenterMediaMaxSizeLabel("audio")} 이하로 올려 주세요.`, "error");
     input.value = "";
     return false;
   }

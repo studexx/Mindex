@@ -35,6 +35,13 @@
     legacyShellStep: 4,
   });
 
+  const MOTION = Object.freeze({
+    shell: Object.freeze({
+      duration: "120ms",
+      easing: "cubic-bezier(.2, 0, .2, 1)",
+    }),
+  });
+
   const SERVICE_NAVIGATION = Object.freeze({
     homeWeekTitle: "이번 주 예배",
     serviceWeekTitle: "이번 주 예배",
@@ -50,11 +57,12 @@
   });
 
   window.MINDEX_DESIGN_TOKENS = Object.freeze({
-    version: "2026-08-19",
+    version: "2026-08-23",
     typography: TYPOGRAPHY,
     icons: ICONS,
     tabs: TABS,
     buttons: BUTTONS,
+    motion: MOTION,
     spacing: SPACING,
     serviceNavigation: SERVICE_NAVIGATION,
     buttonIntent: BUTTON_INTENT,

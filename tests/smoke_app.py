@@ -6020,6 +6020,106 @@ def main() -> int:
                     else:
                         fail("presenter-praise-header-audio-guard", json.dumps(presenter_praise_header_audio_guard, ensure_ascii=False))
 
+                    presenter_praise_header_audio_upload_limit = page.evaluate(
+                        """
+                        async () => {
+                          const serviceId = '__smoke_praise_header_audio_upload__';
+                          const originalClient = state.client;
+                          const originalItems = state.serviceItems[serviceId];
+                          const originalSaveService = saveService;
+                          const originalRenderCurrentServiceModuleDetail = renderCurrentServiceModuleDetail;
+                          const originalRenderServiceList = renderServiceList;
+                          const uploads = [];
+                          let saved = false;
+                          let rendered = false;
+                          const item = normalizeServiceItem({
+                            service_id: serviceId,
+                            label: '특송',
+                            raw_title: '온세대 특송',
+                            memo: serializeServiceItemMemo({
+                              elementType: 'praise',
+                              inputMode: 'manual_praise',
+                              slides: ['특송 자막'],
+                            }),
+                            _worshipSectionKey: 'special_song',
+                            _worshipSectionTitle: '특송',
+                            _worshipElementTemplateModified: true,
+                            _worshipTemplatePlaceholder: false,
+                          }, 0);
+                          const file = {
+                            name: 'special-large.mp3',
+                            type: 'audio/mpeg',
+                            size: 75 * 1024 * 1024,
+                          };
+                          const input = {
+                            files: [file],
+                            dataset: { serviceId, serviceItemIndex: '0' },
+                            disabled: false,
+                            value: 'special-large.mp3',
+                          };
+                          try {
+                            state.serviceItems[serviceId] = [item];
+                            state.client = {
+                              storage: {
+                                from(bucket) {
+                                  return {
+                                    upload: async (path, uploadedFile, options) => {
+                                      uploads.push({ bucket, path, fileName: uploadedFile.name, size: uploadedFile.size, contentType: options?.contentType || '' });
+                                      return { error: null };
+                                    },
+                                    getPublicUrl: (path) => ({ data: { publicUrl: `https://cdn.example.test/${path}` } }),
+                                    remove: async () => ({ error: null }),
+                                  };
+                                },
+                              },
+                            };
+                            saveService = async () => { saved = true; return true; };
+                            renderCurrentServiceModuleDetail = () => { rendered = true; };
+                            renderServiceList = () => {};
+                            const uploaded = await uploadServiceItemAudioAsset(input);
+                            const memo = parseServiceItemMemo(item.memo);
+                            return {
+                              uploaded,
+                              saved,
+                              rendered,
+                              uploads,
+                              inputDisabled: input.disabled,
+                              inputValue: input.value,
+                              audioLimitLabel: presenterMediaMaxSizeLabel('audio'),
+                              audioLimitLargerThanImage: presenterMediaMaxBytesForKind('audio') > presenterMediaMaxBytesForKind('image'),
+                              audioAsset: memo.audioAsset || {},
+                            };
+                          } finally {
+                            if (originalItems === undefined) delete state.serviceItems[serviceId];
+                            else state.serviceItems[serviceId] = originalItems;
+                            state.client = originalClient;
+                            saveService = originalSaveService;
+                            renderCurrentServiceModuleDetail = originalRenderCurrentServiceModuleDetail;
+                            renderServiceList = originalRenderServiceList;
+                          }
+                        }
+                        """
+                    )
+                    if (
+                        presenter_praise_header_audio_upload_limit["uploaded"]
+                        and presenter_praise_header_audio_upload_limit["saved"]
+                        and presenter_praise_header_audio_upload_limit["rendered"]
+                        and len(presenter_praise_header_audio_upload_limit["uploads"]) == 1
+                        and presenter_praise_header_audio_upload_limit["uploads"][0]["fileName"] == "special-large.mp3"
+                        and presenter_praise_header_audio_upload_limit["uploads"][0]["size"] == 75 * 1024 * 1024
+                        and presenter_praise_header_audio_upload_limit["uploads"][0]["contentType"] == "audio/mpeg"
+                        and presenter_praise_header_audio_upload_limit["inputDisabled"] is False
+                        and presenter_praise_header_audio_upload_limit["inputValue"] == ""
+                        and presenter_praise_header_audio_upload_limit["audioLimitLabel"] == "500MB"
+                        and presenter_praise_header_audio_upload_limit["audioLimitLargerThanImage"]
+                        and presenter_praise_header_audio_upload_limit["audioAsset"].get("kind") == "audio"
+                        and presenter_praise_header_audio_upload_limit["audioAsset"].get("name") == "special-large.mp3"
+                        and presenter_praise_header_audio_upload_limit["audioAsset"].get("url", "").startswith("https://cdn.example.test/services/")
+                    ):
+                        pass_("presenter-praise-header-audio-upload-limit", json.dumps(presenter_praise_header_audio_upload_limit, ensure_ascii=False))
+                    else:
+                        fail("presenter-praise-header-audio-upload-limit", json.dumps(presenter_praise_header_audio_upload_limit, ensure_ascii=False))
+
                     presenter_response_prayer_input_guard = page.evaluate(
                         """
                         (() => {
