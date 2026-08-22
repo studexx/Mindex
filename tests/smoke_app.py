@@ -2373,6 +2373,8 @@ def main() -> int:
                               .map((slide) => ({ type: slide.type || '', title: slide.title || '', text: slide.text || '' }));
                             return {
                               first: summarize('sunday-first'),
+                              firstLayRotation: summarize('sunday-first', { id: '__smoke_sunday_first_lay_rotation__', type_id: 'sunday-first', date: '2026-08-23' }),
+                              firstPastorRotation: summarize('sunday-first', { id: '__smoke_sunday_first_pastor_rotation__', type_id: 'sunday-first', date: '2026-08-30' }),
                               firstPastor: summarize('sunday-first', { id: '__smoke_sunday_first_pastor__', type_id: 'sunday-first', worshipLeader: '김남영 목사' }),
                               second: summarize('sunday-second'),
                               third: summarize('sunday-main'),
@@ -3425,6 +3427,24 @@ def main() -> int:
                             {"type": "praise", "label": "송영", "outputMode": "score"},
                             {"type": "body", "label": "주기도문", "introTitle": "주기도문", "outputMode": ""},
                         ]
+                        and template_terms["sundayPublicScaffold"]["firstLayRotation"]["sermonElements"] == [
+                            {"type": "title_person", "label": "설교 제목", "person": "김광한 전도사", "outputMode": ""},
+                            {"type": "scripture_body", "label": "설교 본문", "outputMode": ""},
+                            {"type": "scripture_body", "label": "인용 구절", "outputMode": ""},
+                        ]
+                        and template_terms["sundayPublicScaffold"]["firstLayRotation"]["sendingElements"] == [
+                            {"type": "praise", "label": "송영", "outputMode": "score"},
+                            {"type": "body", "label": "주기도문", "introTitle": "주기도문", "outputMode": ""},
+                        ]
+                        and template_terms["sundayPublicScaffold"]["firstPastorRotation"]["sermonElements"] == [
+                            {"type": "title_person", "label": "설교 제목", "person": "김석범 목사", "outputMode": ""},
+                            {"type": "scripture_body", "label": "설교 본문", "outputMode": ""},
+                            {"type": "scripture_body", "label": "인용 구절", "outputMode": ""},
+                        ]
+                        and template_terms["sundayPublicScaffold"]["firstPastorRotation"]["sendingElements"] == [
+                            {"type": "praise", "label": "송영", "outputMode": "score"},
+                            {"type": "title_person", "label": "축도", "person": "김석범 목사", "outputMode": ""},
+                        ]
                         and template_terms["sundayPublicScaffold"]["firstPastor"]["sendingElements"] == [
                             {"type": "praise", "label": "송영", "outputMode": "score"},
                             {"type": "title_person", "label": "축도", "person": "김석범 목사", "outputMode": ""},
@@ -3863,6 +3883,7 @@ def main() -> int:
                             const announcement = projected.find((item) => item.label === '청소년부 광고');
                             const youngAdultPrayer = youngAdultProjected.find((item) => item.label === '대표기도');
                             const youngAdultAnnouncement = youngAdultProjected.find((item) => item.label === '청년부 광고');
+                            const youngAdultBenediction = youngAdultProjected.find((item) => item.label === '축도');
                             const offeringSong = presenterSongForServiceItem(
                               offering,
                               serviceItemDisplayText(offering),
@@ -3897,6 +3918,7 @@ def main() -> int:
                               fellowshipContent: fellowshipContent.reason,
                               youngAdultPrayerAssignee: serviceItemEditableAssigneeValue(youngAdultPrayer, youngAdultService),
                               youngAdultPrayerSidebarTitle: serviceSidebarChildItemTitle(youngAdultPrayer, youngAdultService),
+                              youngAdultBenedictionAssignee: serviceItemEditableAssigneeValue(youngAdultBenediction, youngAdultService),
                               announcementEditable: presenterServiceInputItem(announcement, service)?.mode === 'text',
                               youngAdultAnnouncementEditable: presenterServiceInputItem(youngAdultAnnouncement, youngAdultService)?.mode === 'text',
                               youngAdultSections: youngAdultTemplate.map((step) => step.sectionKey || step.label),
@@ -3932,6 +3954,7 @@ def main() -> int:
                         "fellowshipContent": "fixed_title",
                         "youngAdultPrayerAssignee": "정선분 권사",
                         "youngAdultPrayerSidebarTitle": "대표기도 · 정선분 권사",
+                        "youngAdultBenedictionAssignee": "김석범 목사",
                         "announcementEditable": True,
                         "youngAdultAnnouncementEditable": True,
                         "youngAdultSections": [

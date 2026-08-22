@@ -75,6 +75,7 @@ class WorshipRuleGuardTests(unittest.TestCase):
             ('"sunday-main"', "offeringPrayer", "김남영 목사"),
             ('"young-adult"', "sermon", "김석범 목사"),
             ('"young-adult"', "offeringPrayer", "김석범 목사"),
+            ('"young-adult"', "benediction", "김석범 목사"),
         ]
         for service_type, key, value in expectations:
             pattern = rf"{re.escape(service_type)}:[^}}]+{key}:\s*\"{re.escape(value)}\""

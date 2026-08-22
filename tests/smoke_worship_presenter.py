@@ -1990,7 +1990,7 @@ def main() -> int:
                       const scaffold = buildWorshipServiceScaffold(scaffoldService.id, scaffoldService.type_id);
                       state.serviceItems[scaffoldService.id] = groupWorshipElements(scaffold.sections, scaffold.elements)[scaffoldService.id] || [];
                       const scaffoldAllSlides = buildServicePresenterSlides(scaffoldService.id);
-                      const lordsPrayerService = { id: '__smoke_public_lords_prayer_scaffold__', type_id: 'sunday-first', date: '2026-07-05', service_date: '2026-07-05' };
+                      const lordsPrayerService = { id: '__smoke_public_lords_prayer_scaffold__', type_id: 'sunday-first', date: '2026-08-23', service_date: '2026-08-23' };
                       state.services = state.services.filter((service) => service.id !== lordsPrayerService.id);
                       state.services.push(lordsPrayerService);
                       const lordsPrayerScaffold = buildWorshipServiceScaffold(lordsPrayerService.id, lordsPrayerService.type_id);
@@ -2304,9 +2304,9 @@ def main() -> int:
 	                        }));
 	                      const lordsPrayerFullscreenSlides = normalizePresenterSlidesForServiceOutput(buildPresenterSlidesForServiceItem(
 	                        lordsPrayerItem,
-	                        { id: '__smoke_lords_prayer_fullscreen_service__', type_id: 'sunday-first', date: '2026-07-05' },
+	                        { id: '__smoke_lords_prayer_fullscreen_service__', type_id: 'sunday-first', date: '2026-08-23' },
 	                        1
-	                      ), { id: '__smoke_lords_prayer_fullscreen_service__', type_id: 'sunday-first', date: '2026-07-05' })
+	                      ), { id: '__smoke_lords_prayer_fullscreen_service__', type_id: 'sunday-first', date: '2026-08-23' })
 	                        .map((slide) => ({
 	                          layout: slide.layout || '',
 	                          type: slide.type || '',

@@ -93,7 +93,11 @@ Default ministers are materialized into generated worship elements, not inferred
 at render time. Current operational defaults:
 
 - `sunday-second` and `sunday-main`: offering prayer person is `김남영 목사`.
-- `young-adult`: sermon person and offering prayer person are `김석범 목사`.
+- `sunday-first`: sermon/worship leader rotates weekly from `2026-08-23`
+  (`김광한 전도사`) and then `김석범 목사`. `김광한 전도사` weeks use
+  `주기도문`; `김석범 목사` weeks use `축도`.
+- `young-adult`: sermon person, offering prayer person, and benediction person
+  are `김석범 목사`.
 
 ## Runtime Projection Tree
 

@@ -3626,7 +3626,7 @@ function autoWorshipServicePayload(target = {}) {
     updated_at: persistedAt,
     title: String(target.title || "").trim(),
     status: "draft",
-    worship_leader: defaultServiceWorshipLeader(typeId),
+    worship_leader: defaultServiceWorshipLeader(typeId, target.date),
     praise_leader: serviceUsesPraiseLeader(typeId) ? defaultServicePraiseLeader(typeId) : "",
     source_kind: "mindex",
     source_ref: {
@@ -11141,19 +11141,55 @@ const SERVICE_MINISTER_DEFAULTS = Object.freeze({
   wednesday: { sermon: "김남영 목사", benediction: "김남영 목사" },
   friday: { sermon: "김남영 목사" },
   monthly: { sermon: "김남영 목사", benediction: "김남영 목사" },
-  "young-adult": { sermon: "김석범 목사", offeringPrayer: "김석범 목사" },
+  "young-adult": { sermon: "김석범 목사", offeringPrayer: "김석범 목사", benediction: "김석범 목사" },
 });
 
-function serviceMinisterDefaults(typeId = "") {
-  return SERVICE_MINISTER_DEFAULTS[worshipAppServiceTypeId(typeId)] || {};
+const SUNDAY_FIRST_ROTATION_ANCHOR_DATE = "2026-08-23";
+const SUNDAY_FIRST_ROTATION_ANCHOR_LEADER = "김광한 전도사";
+const SUNDAY_FIRST_ROTATION_NEXT_LEADER = "김석범 목사";
+
+function dateOnlyUtcTime(value = "") {
+  const match = String(value || "").trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) return NaN;
+  return Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
 }
 
-function defaultServiceSermonLeader(typeId = "") {
-  return serviceMinisterDefaults(typeId).sermon || "";
+function serviceDateString(serviceOrDate = null) {
+  if (typeof serviceOrDate === "string") return serviceOrDate.slice(0, 10);
+  return String(serviceOrDate?.date || serviceOrDate?.service_date || "").slice(0, 10);
 }
 
-function defaultServiceBenedictionLeader(typeId = "") {
-  return serviceMinisterDefaults(typeId).benediction || "";
+function sundayFirstRotationLeaderForDate(dateValue = "") {
+  const targetTime = dateOnlyUtcTime(dateValue);
+  const anchorTime = dateOnlyUtcTime(SUNDAY_FIRST_ROTATION_ANCHOR_DATE);
+  if (!Number.isFinite(targetTime) || !Number.isFinite(anchorTime)) return "";
+  const weekIndex = Math.floor((targetTime - anchorTime) / (7 * 24 * 60 * 60 * 1000));
+  const parity = ((weekIndex % 2) + 2) % 2;
+  return parity === 0 ? SUNDAY_FIRST_ROTATION_ANCHOR_LEADER : SUNDAY_FIRST_ROTATION_NEXT_LEADER;
+}
+
+function sundayFirstMinisterDefaultsForService(serviceOrDate = null) {
+  const leader = sundayFirstRotationLeaderForDate(serviceDateString(serviceOrDate));
+  if (!leader) return SERVICE_MINISTER_DEFAULTS["sunday-first"];
+  const pastor = compactSearchValue(leader).includes("목사");
+  return {
+    sermon: leader,
+    benediction: pastor ? leader : "",
+  };
+}
+
+function serviceMinisterDefaults(typeId = "", serviceOrDate = null) {
+  const appTypeId = worshipAppServiceTypeId(typeId);
+  if (appTypeId === "sunday-first") return sundayFirstMinisterDefaultsForService(serviceOrDate);
+  return SERVICE_MINISTER_DEFAULTS[appTypeId] || {};
+}
+
+function defaultServiceSermonLeader(typeId = "", serviceOrDate = null) {
+  return serviceMinisterDefaults(typeId, serviceOrDate).sermon || "";
+}
+
+function defaultServiceBenedictionLeader(typeId = "", serviceOrDate = null) {
+  return serviceMinisterDefaults(typeId, serviceOrDate).benediction || "";
 }
 
 function defaultServiceOfferingPrayerLeader(typeId = "") {
@@ -11198,9 +11234,9 @@ function defaultServiceOfferingPrayerLeaderForService(service = null) {
 function serviceItemDefaultAssignee(item = {}, service = selectedServiceForEditor()) {
   const label = compactSearchValue(item?.label || "");
   if (label === "대표기도" || label === "기도") return defaultServicePrayerLeader(service);
-  if (label === "설교" || label === "설교제목") return defaultServiceSermonLeader(service?.type_id);
+  if (label === "설교" || label === "설교제목") return defaultServiceSermonLeader(service?.type_id, service);
   if (label === "봉헌기도") return defaultServiceOfferingPrayerLeaderForService(service);
-  if (label === "축도") return defaultServiceBenedictionLeader(service?.type_id);
+  if (label === "축도") return defaultServiceBenedictionLeader(service?.type_id, service);
   return "";
 }
 
@@ -11208,8 +11244,11 @@ function defaultServicePraiseLeader(typeId) {
   return String(typeId || "") === "friday" ? "이재희 청년" : "";
 }
 
-function defaultServiceWorshipLeader(typeId) {
-  return worshipAppServiceTypeId(typeId) === "monthly" ? "김남영 목사" : "";
+function defaultServiceWorshipLeader(typeId, serviceOrDate = null) {
+  const appTypeId = worshipAppServiceTypeId(typeId);
+  if (appTypeId === "monthly") return "김남영 목사";
+  if (appTypeId === "sunday-first") return defaultServiceSermonLeader(appTypeId, serviceOrDate);
+  return "";
 }
 
 function canonicalWorshipServiceTypeId(typeId) {
@@ -17220,7 +17259,12 @@ const PUBLIC_WORSHIP_TEMPLATE_VERSIONS = {
   "sunday-first": [
     publicWorshipTemplateVersion((options = {}) => {
         const pastorLeader = serviceHasPastorSermonLeader(options.service, options.items);
-        return publicSundayFirstTemplate({ score: true, benediction: pastorLeader, lordsPrayer: !pastorLeader });
+        return publicSundayFirstTemplate({
+          score: true,
+          service: options.service,
+          benediction: pastorLeader,
+          lordsPrayer: !pastorLeader,
+        });
       }),
   ],
   "sunday-second": [
@@ -17597,7 +17641,7 @@ function publicWorshipScriptureReadingStep() {
 
 function publicWorshipSermonStep(options = {}) {
   const defaultPerson = cleanServiceAssignee(
-    options.defaultPerson || options.person || defaultServiceSermonLeader(options.typeId || options.type_id),
+    options.defaultPerson || options.person || defaultServiceSermonLeader(options.typeId || options.type_id, options.service),
   );
   const includeSermonBody = options.includeSermonBody !== undefined
     ? Boolean(options.includeSermonBody)
@@ -17619,7 +17663,7 @@ function publicWorshipSermonStep(options = {}) {
 
 function publicWorshipThirdSermonStep(options = {}) {
   const defaultPerson = cleanServiceAssignee(
-    options.defaultPerson || options.person || defaultServiceSermonLeader(options.typeId || options.type_id),
+    options.defaultPerson || options.person || defaultServiceSermonLeader(options.typeId || options.type_id, options.service),
   );
   return {
     label: "설교",
@@ -17844,7 +17888,7 @@ function publicWorshipBenedictionElement(options = {}) {
     options.defaultPerson
     || options.person
     || options.benedictionPerson
-    || defaultServiceBenedictionLeader(options.typeId || options.type_id),
+    || defaultServiceBenedictionLeader(options.typeId || options.type_id, options.service),
   );
   return {
     label: "축도",
@@ -17949,17 +17993,18 @@ function publicSundayFirstTemplate(options = {}) {
   const score = Boolean(options.score);
   const benediction = Boolean(options.benediction);
   const lordsPrayer = options.lordsPrayer !== undefined ? Boolean(options.lordsPrayer) : !benediction;
+  const leader = defaultServiceSermonLeader(typeId, options.service);
   return [
     publicWorshipReadyStep(),
     publicWorshipCreedStep(),
     publicWorshipPraiseStep({ score, count: 3 }),
     publicWorshipConfessionStep(),
     publicWorshipScriptureReadingStep(),
-    publicWorshipSermonStep({ typeId }),
+    publicWorshipSermonStep({ typeId, service: options.service, person: leader }),
     publicWorshipResponseStep(),
     publicWorshipOfferingStep({ score, typeId }),
     publicWorshipAnnouncementsStep(),
-    publicWorshipSendingStep({ score, benediction, lordsPrayer, typeId }),
+    publicWorshipSendingStep({ score, benediction, lordsPrayer, typeId, service: options.service, benedictionPerson: leader }),
     publicWorshipClosingStep(),
   ];
 }
@@ -19478,7 +19523,7 @@ function serviceHasPastorSermonLeader(service = null, items = []) {
   const sermonMinister = cleanServiceAssignee(sermonTitle?.assignee || sermonTitle?.person || "");
   const resolvedMinister = sermonMinister
     || serviceWorshipLeaderLabel(service)
-    || defaultServiceSermonLeader(service?.type_id);
+    || defaultServiceSermonLeader(service?.type_id, service);
   return compactSearchValue(resolvedMinister).includes("목사");
 }
 
@@ -19490,7 +19535,7 @@ function serviceSermonLeaderLabel(service = null, items = []) {
   });
   return cleanServiceAssignee(sermonTitle?.assignee || sermonTitle?.person || "")
     || serviceWorshipLeaderLabel(service)
-    || defaultServiceSermonLeader(service?.type_id);
+    || defaultServiceSermonLeader(service?.type_id, service);
 }
 
 function serviceHasPastorWorshipLeader(service = null) {
@@ -28074,7 +28119,7 @@ async function createService() {
     updated_at: persistedAt,
     title: "",
     status: "draft",
-    worship_leader: defaultServiceWorshipLeader(typeId),
+    worship_leader: defaultServiceWorshipLeader(typeId, { date }),
     praise_leader: serviceUsesPraiseLeader(typeId) ? String(form.leader || "").trim() : "",
     source_kind: "mindex",
     source_ref: { created_from: "mindex_template", app_service_type_id: typeId },

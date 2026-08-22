@@ -234,10 +234,14 @@ Small visual polish that does not alter behavior does not need an entry.
 
 - Default sermon/benediction ministers are template defaults, not missing
   preparation inputs. A per-service edit may override them.
-- 주일예배 [1부] defaults to 김석범 목사 for sermon and benediction.
+- 주일예배 [1부] rotates weekly from `2026-08-23` (`김광한 전도사`), then
+  `김석범 목사`. `김광한 전도사` weeks use `주기도문` instead of `축도`;
+  `김석범 목사` weeks use `축도` 담당 `김석범 목사`.
 - 주일예배 [2부], [3부], 주일오후예배, 수요예배, and 월삭예배 default to
   김남영 목사 for sermon and benediction when those elements exist.
 - 금요기도회 defaults to 김남영 목사 for sermon. It has no benediction element.
+- 청년부 예배 defaults to 김석범 목사 for sermon, offering prayer, and
+  benediction.
 - In the sending section, `축도` and `주기도문` are mutually exclusive in the
   presenter/order projection. If both legacy/persisted items exist, keep `축도`
   and drop `주기도문`.
