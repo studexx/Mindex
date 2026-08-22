@@ -188,6 +188,10 @@ Small visual polish that does not alter behavior does not need an entry.
 - 교회력 `church_schedule`에 `설 연휴`가 있는 주는 정규 예배 찬양 콘티가
   없어도 archive completeness 누락으로 보지 않는다. 이 주의 금요예배가
   문화예배/영화 관람 등으로 대체된 경우에도 빈 콘티가 정상 상태다.
+- 예전 찬양 콘티 archive completeness audit에서는 사무총회/사무총회 속회,
+  온세대/통합예배, 부서 헌신예배 때문에 해당 부서가 주일오후예배와 연합한
+  날짜를 누락으로 보지 않는다. 2026년 상반기 audit 기준으로 실제 확인이
+  필요한 누락 후보는 `2026-06-10` 수요예배와 `2026-06-17` 수요예배다.
 - `삼삼오오예배`는 `friday` 계열 variant이며 금요기도회와 같은 clean/fullscreen
   output을 사용한다.
 - 풀스크린 예배의 준비 element 표시명은 `대기 화면`으로 둔다. 실제 준비 화면은
