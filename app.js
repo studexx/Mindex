@@ -6142,10 +6142,13 @@ function serviceElementContentStateForSave(item = {}, parsed = parseServiceItemM
     serviceItemLinkedSong(item),
     service,
   );
+  const inputMode = contentState.inputMode === "manual_praise" && !serviceItemAllowsManualSongText(item, service)
+    ? "lyrics_db"
+    : contentState.inputMode;
   return {
     state: contentState.state,
     reason: contentState.reason,
-    inputMode: contentState.inputMode,
+    inputMode,
     elementType: contentState.elementType,
     required: Boolean(contentState.required),
   };
@@ -8399,9 +8402,20 @@ async function resolveAndSaveCommittedServiceItem(serviceId, index, options = {}
 }
 
 async function resolveServiceSongSelectionBeforeSave(serviceId, index) {
+  const service = state.services.find((candidate) => candidate.id === serviceId);
+  const rawItems = state.serviceItems[serviceId] || [];
+  const rawItem = rawItems[index];
+  if (rawItem && (isSongServiceLabel(rawItem.label) || isSpecialSongServiceItem(rawItem))) {
+    const rawMemo = parseServiceItemMemo(rawItem.memo);
+    if (servicePraiseInputMode(rawItem, rawMemo, service) === "manual_praise") {
+      rawItem.song_id = null;
+      rawItem.version_id = null;
+      rawItem.song_version_id = null;
+      return false;
+    }
+  }
   const items = getServiceItems(serviceId);
   const item = items[index];
-  const service = state.services.find((candidate) => candidate.id === serviceId);
   if (!item || !service) return false;
   if (!isSongServiceLabel(item.label) && !isSpecialSongServiceItem(item)) return false;
   const memo = parseServiceItemMemo(item.memo);
@@ -17121,6 +17135,7 @@ const PUBLIC_WORSHIP_TEMPLATE_VERSIONS = {
           includeEntrancePraise: false,
           includeHymnPraise: false,
           includeCreed: false,
+          includeClosingHymn: false,
           offeringSpecial: String(options.service?.date || options.service?.service_date || "").slice(0, 10) === "2026-07-19",
           offeringThanksAsset: String(options.service?.date || options.service?.service_date || "").slice(0, 10) === "2026-07-19"
             ? ALL_GENERATIONS_2026_07_19_OFFERING_THANKS_ASSET
@@ -17878,6 +17893,7 @@ function publicSundayThirdTemplate(options = {}) {
   const includeEntrancePraise = options.includeEntrancePraise !== false;
   const includeHymnPraise = options.includeHymnPraise !== false;
   const includeCreed = options.includeCreed !== false;
+  const includeClosingHymn = options.includeClosingHymn !== false;
   const allGenerations = Boolean(options.allGenerations || options.all_generations);
   return [
     publicWorshipReadyStep(),
@@ -17912,7 +17928,7 @@ function publicSundayThirdTemplate(options = {}) {
     publicSundayThirdAnnouncementsStep(),
     ...(includeCommunityConfession ? [publicWorshipCommunityConfessionStep()] : []),
     publicWorshipSendingStep({ typeId, doxology: false, extraElements: [publicSundayThirdSendingPraiseElement()] }),
-    publicSundayThirdClosingStep(),
+    includeClosingHymn ? publicSundayThirdClosingStep() : publicWorshipClosingStep(),
   ];
 }
 
@@ -18677,6 +18693,7 @@ function shouldDropAllGenerationsRegularThirdProjectionExtra(service = null, ite
   if (regularOnlySections.has(sectionKey)) return true;
   if (sectionKey === "praise" && labelKey === "입례찬양") return true;
   if (sectionKey === "offering" && labelKey === "봉헌찬송") return true;
+  if (sectionKey === "closing_visual" && labelKey === "폐회찬송") return true;
   return false;
 }
 

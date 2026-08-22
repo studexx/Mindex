@@ -158,6 +158,7 @@ Small visual polish that does not alter behavior does not need an entry.
   기본 담당자/곡을 자동 주입하지 않는다. 특송은 매 예배마다 입력 가능한
   일반 특송 슬롯으로 유지한다. 온세대 variant의 큰 순서는
   `준비 → 찬양 → 대표기도 → 성경봉독 → 특송 → 설교 → 결단 → 봉헌 → 교회소식 → 파송 → 폐회`다.
+  `폐회`에는 표어/마무리 이미지만 두고 `폐회찬송`은 만들지 않는다.
   일반 3부의 `참회기도`, 중간 `찬송`, `신앙고백`, `공동체고백`은 온세대에서
   자동 생성하지 않는다.
 - 온세대 variant의 봉헌은 일반 3부의 `봉헌찬송` score slot을 쓰지 않고
@@ -421,6 +422,6 @@ Small visual polish that does not alter behavior does not need an entry.
 - 이미 일반 3부 template으로 materialized 된 3부 예배가 나중에 교회력상
   온세대 찬양예배로 판정되면, projection 단계에서 수정되지 않은 일반
   3부 전용 항목(`참회기도`, `찬송`, `입례찬양`, `사도신경`, `공동체고백`,
-  기존 `봉헌찬송`)은 제거한다. `새가족환영`은 3부 공통 안내 slot으로
+  기존 `봉헌찬송`, `폐회찬송`)은 제거한다. `새가족환영`은 3부 공통 안내 slot으로
   유지한다. 사용자가 수정한 항목은
   `template_modified`를 존중해 보존한다.

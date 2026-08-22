@@ -2394,6 +2394,7 @@ def main() -> int:
                                   const praiseSection = scaffold.sections.find((section) => section.section_key === 'praise');
                                   const specialSection = scaffold.sections.find((section) => section.section_key === 'special_song');
                                   const offeringSection = scaffold.sections.find((section) => section.section_key === 'offering');
+                                  const closingSection = scaffold.sections.find((section) => section.section_key === 'closing_visual');
                                   return {
                                     sectionKeys: scaffold.sections.map((section) => section.section_key || ''),
                                     sectionTitles: scaffold.sections.map((section) => section.title || ''),
@@ -2411,6 +2412,27 @@ def main() -> int:
                                       .map((element) => ({
                                         label: element.source_ref?.label || '',
                                         title: element.title || state.songs.find((song) => song.id === element.song_id)?.title || '',
+                                      })),
+                                    closingElements: scaffold.elements
+                                      .filter((element) => element.section_id === closingSection?.id)
+                                      .map((element) => ({
+                                        type: element.element_type || '',
+                                        label: element.source_ref?.label || '',
+                                        outputMode: element.config?.outputMode || '',
+                                        assetUrl: element.config?.asset?.url || '',
+                                      })),
+                                    closingHymnDefaults: scaffold.elements
+                                      .filter((element) =>
+                                        element.section_id === closingSection?.id
+                                        && element.source_ref?.label === '폐회찬송'
+                                      )
+                                      .map((element) => ({
+                                        type: element.element_type || '',
+                                        label: element.source_ref?.label || '',
+                                        title: element.title || '',
+                                        formHint: element.config?.formHint || '',
+                                        forms: element.config?.formPreset?.forms || [],
+                                        strength: element.config?.defaultStrength || element.config?.formPreset?.strength || ''
                                       })),
                                   };
                                 } finally {
@@ -3454,6 +3476,11 @@ def main() -> int:
                             {"label": "찬양 3", "title": ""},
                             {"label": "찬양 4", "title": ""},
                         ]
+                        and [
+                            item["label"]
+                            for item in template_terms["sundayPublicScaffold"]["allGeneration"]["closingElements"]
+                        ] == ["마무리"]
+                        and template_terms["sundayPublicScaffold"]["allGeneration"]["closingHymnDefaults"] == []
                         and template_terms["sundayPublicScaffold"]["third"]["praiseElements"][-1] == {
                             "type": "praise",
                             "label": "입례찬양",
@@ -4944,7 +4971,7 @@ def main() -> int:
                         """
                         (() => {
                           const service = { id: '__smoke_praise_input_modes__', type_id: 'sunday-first', date: '2026-08-02' };
-                          const makeItem = (label, inputMode, index) => normalizeServiceItem({
+                          const makeItem = (label, inputMode, index, sectionKey = 'praise', sectionTitle = '찬양') => normalizeServiceItem({
                             service_id: service.id,
                             label,
                             raw_title: inputMode === 'manual_praise' ? `${label} 직접 입력` : '',
@@ -4955,8 +4982,8 @@ def main() -> int:
                               outputMode: servicePraiseInputModeOutputMode(inputMode),
                               slides: inputMode === 'manual_praise' ? ['가사 한 줄'] : [],
                             }),
-                            _worshipSectionKey: 'praise',
-                            _worshipSectionTitle: '찬양',
+                            _worshipSectionKey: sectionKey,
+                            _worshipSectionTitle: sectionTitle,
                             _worshipElementTemplateModified: true,
                             _worshipTemplatePlaceholder: false,
                           }, index);
@@ -4964,6 +4991,7 @@ def main() -> int:
                             makeItem('찬양 1', 'score_db', 0),
                             makeItem('찬양 2', 'lyrics_db', 1),
                             makeItem('찬양 3', 'manual_praise', 2),
+                            makeItem('특송', 'manual_praise', 3, 'special_song', '특송'),
                           ], {}, {}, { elementTypedStateColumns: { inputMode: true, contentState: true } });
                           return rows.elements.map((row) => ({
                             label: row.source_ref?.label || '',
@@ -4979,7 +5007,8 @@ def main() -> int:
                     if presenter_praise_input_mode_persistence == [
                         {"label": "찬양 1", "inputMode": "praise_db", "contentInputMode": "score_db", "configInputMode": "score_db", "songId": "__smoke_song_0__", "body": ""},
                         {"label": "찬양 2", "inputMode": "praise_db", "contentInputMode": "lyrics_db", "configInputMode": "lyrics_db", "songId": "__smoke_song_1__", "body": ""},
-                        {"label": "찬양 3", "inputMode": "praise_db", "contentInputMode": "manual_praise", "configInputMode": "manual_praise", "songId": "", "body": "가사 한 줄"},
+                        {"label": "찬양 3", "inputMode": "praise_db", "contentInputMode": "lyrics_db", "configInputMode": "lyrics_db", "songId": "", "body": "가사 한 줄"},
+                        {"label": "특송", "inputMode": "praise_db", "contentInputMode": "manual_praise", "configInputMode": "manual_praise", "songId": "", "body": "가사 한 줄"},
                     ]:
                         pass_("presenter-praise-input-mode-persistence", json.dumps(presenter_praise_input_mode_persistence, ensure_ascii=False))
                     else:
@@ -5011,7 +5040,7 @@ def main() -> int:
                             state.selectedServiceId = service.id;
                             const item = normalizeServiceItem({
                               service_id: service.id,
-                              label: '찬양 1',
+                              label: '특송',
                               raw_title: '',
                               song_id: null,
                               version_id: null,
@@ -5022,8 +5051,8 @@ def main() -> int:
                                 outputMode: 'lyrics',
                                 slides: ['직접 입력한 가사'],
                               }),
-                              _worshipSectionKey: 'praise',
-                              _worshipSectionTitle: '찬양',
+                              _worshipSectionKey: 'special_song',
+                              _worshipSectionTitle: '특송',
                               _worshipElementTemplateModified: true,
                               _worshipTemplatePlaceholder: false,
                             }, 0);
@@ -6113,8 +6142,11 @@ def main() -> int:
                                 songCount: allGenerationPraiseItems.filter((entry) => entry.song_id).length,
                                 maxElementOrder: Math.max(...allGenerationPraiseItems.map((entry) => Number(entry._worshipElementOrder) || 0)),
                                 projectedFromRegularSections: allGenerationProjectedSections,
-                                projectedFromRegularBlockedLabels: ["입례찬양", "찬송", "사도신경", "공동체고백"]
+                                projectedFromRegularBlockedLabels: ["입례찬양", "찬송", "사도신경", "공동체고백", "폐회찬송"]
                                   .filter((label) => allGenerationProjectedLabels.includes(label)),
+                                projectedFromRegularClosingLabels: allGenerationProjectedFromRegular
+                                  .filter((entry) => (entry._worshipSectionKey || '') === 'closing_visual')
+                                  .map((entry) => entry.label || ''),
                                 draftCleared: !state.presenterPreparationDrafts[allGenerationService.id],
                               },
                               connectedSongInput: {
@@ -6242,6 +6274,7 @@ def main() -> int:
                                 "closing_visual",
                             ],
                             "projectedFromRegularBlockedLabels": [],
+                            "projectedFromRegularClosingLabels": ["마무리"],
                             "draftCleared": True,
                         }
                         and presenter_preparation_paste["connectedSongInput"] == {
