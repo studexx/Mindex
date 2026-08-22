@@ -5166,11 +5166,15 @@ def main() -> int:
                           const special = makeItem('특송', { elementType: 'praise', inputMode: 'manual_praise', slides: ['특송 가사'] }, { raw_title: '은혜', assignee: '청년부' });
                           const specialMemo = parseServiceItemMemo(special.memo);
                           const specialModel = serviceItemEditorModel(special, { service });
+                          const announcement = makeItem('청소년부 광고', { elementType: 'body_text' }, { raw_title: '1. 광고 내용' });
+                          const announcementMemo = parseServiceItemMemo(announcement.memo);
+                          const announcementModel = serviceItemEditorModel(announcement, { service });
                           const labels = {
                             praise: collectLabels(renderPresenterServicePraiseInput(praise, 0, praiseModel)),
                             scripture: collectLabels(renderPresenterServiceScriptureInput(scripture, 1, scriptureMemo)),
                             title: collectLabels(renderPresenterServiceTextInputs(title, 2, titleModel, titleMemo)),
                             special: collectLabels(renderPresenterServiceTextInputs(special, 3, specialModel, specialMemo)),
+                            announcement: collectLabels(renderPresenterServiceTextInputs(announcement, 4, announcementModel, announcementMemo)),
                           };
                           return {
                             ...labels,
@@ -5184,7 +5188,8 @@ def main() -> int:
                         and presenter_input_label_vocabulary["scripture"] == ["말씀"]
                         and presenter_input_label_vocabulary["title"] == ["제목", "담당"]
                         and presenter_input_label_vocabulary["special"] == ["찬양", "가사", "담당"]
-                        and all(label in ["찬양", "말씀", "제목", "가사", "담당"] for label in presenter_input_label_vocabulary["all"])
+                        and presenter_input_label_vocabulary["announcement"] == ["내용"]
+                        and all(label in ["찬양", "말씀", "제목", "내용", "가사", "담당"] for label in presenter_input_label_vocabulary["all"])
                     ):
                         pass_("presenter-input-label-vocabulary", json.dumps(presenter_input_label_vocabulary, ensure_ascii=False))
                     else:

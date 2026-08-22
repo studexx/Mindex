@@ -10063,6 +10063,7 @@ async function fetchServiceScriptureVerses(reference, requestedTranslation = nul
   if (!state.bibleTranslations.length && !state.bibleReaderError) await loadBibleTranslations({ silent: true });
   const translation = requestedTranslation || selectedPresenterBibleTranslation();
   if (!translation?.id) return [];
+  if (state.client?.auth && !isUuid(translation.id)) return [];
   const cacheKey = bibleVerseCacheKey(translation.id, reference.book.code, reference.chapter);
   if (state.bibleVerseCache.has(cacheKey)) return getCachedServiceScriptureVerses(reference, translation);
   const persistentCachedRows = readPersistentBibleChapterCache(translation.id, reference.book.code, reference.chapter);
@@ -24462,6 +24463,7 @@ function renderPresenterServiceTextInputs(item, index, model, memo) {
 function presenterServiceTitleInputLabel(item = {}, memo = parseServiceItemMemo(item?.memo), options = {}) {
   if (isSpecialSongServiceItem(item) || options.manualPraise) return "찬양";
   if (isScriptureBodyServiceItem(item) || isScriptureServiceLabel(item?.label || "")) return "말씀";
+  if (isAnnouncementTextInputItem(item)) return "내용";
   return "제목";
 }
 
