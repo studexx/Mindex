@@ -27443,6 +27443,7 @@ function resolvePresenterServiceItemContentState(item = {}, memo = emptyServiceI
     return hasServiceAsset(asset) ? filled("asset") : missing("asset_empty");
   }
   if (["praise_db", "score_db", "lyrics_db"].includes(effectiveInputMode) || requiresSongSelection) {
+    if (item?.song_id && !song && songNeedsRelationalHydration(item.song_id)) return loading("song_hydrating");
     if (song && !serviceItemSongSelectionInvalid(item, service, song)) return filled("song");
     if (item?.song_id && !serviceItemSongSelectionInvalid(item, service, song)) return filled("song");
     if (!requiresSongSelection && (rawText || hasCustomSlideText)) return filled("manual_praise");

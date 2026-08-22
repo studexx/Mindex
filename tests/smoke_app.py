@@ -5000,6 +5000,61 @@ def main() -> int:
                     else:
                         fail("presenter-input-completion-guard", json.dumps(presenter_input_completion_guard, ensure_ascii=False))
 
+                    presenter_linked_song_loading_guard = page.evaluate(
+                        """
+                        (() => {
+                          const originalSongs = state.songs;
+                          const service = { id: '__smoke_linked_song_loading__', type_id: 'sunday-first', date: '2026-08-02' };
+                          const item = normalizeServiceItem({
+                            id: '__smoke_linked_song_loading_item__',
+                            service_id: service.id,
+                            label: '찬양 1',
+                            raw_title: '이미 선택된 찬양',
+                            song_id: '11111111-2222-4333-8444-555555555555',
+                            song_version_id: '22222222-3333-4444-8555-666666666666',
+                            memo: serializeServiceItemMemo({
+                              elementType: 'praise',
+                              inputMode: 'lyrics_db',
+                              outputMode: 'lyrics',
+                            }),
+                            _worshipSectionKey: 'praise',
+                            _worshipSectionTitle: '찬양',
+                            _worshipElementTemplateModified: true,
+                            _worshipTemplatePlaceholder: false,
+                          }, 0);
+                          try {
+                            state.songs = [];
+                            clearSearchCaches();
+                            const memo = parseServiceItemMemo(item.memo);
+                            const content = resolvePresenterServiceItemContentState(item, memo, null, service);
+                            const slide = presenterMissingContentSlide(item, {}, 0, content, service);
+                            return {
+                              state: content.state,
+                              reason: content.reason,
+                              hasOutputContent: content.hasOutputContent,
+                              loadingContent: Boolean(slide.loadingContent),
+                              missingContent: Boolean(slide.missingContent),
+                              warning: slide.warnings?.[0] || '',
+                            };
+                          } finally {
+                            state.songs = originalSongs;
+                            clearSearchCaches();
+                          }
+                        })()
+                        """
+                    )
+                    if (
+                        presenter_linked_song_loading_guard["state"] == "loading"
+                        and presenter_linked_song_loading_guard["reason"] == "song_hydrating"
+                        and not presenter_linked_song_loading_guard["hasOutputContent"]
+                        and presenter_linked_song_loading_guard["loadingContent"]
+                        and not presenter_linked_song_loading_guard["missingContent"]
+                        and presenter_linked_song_loading_guard["warning"] == "불러오는 중"
+                    ):
+                        pass_("presenter-linked-song-loading-guard", json.dumps(presenter_linked_song_loading_guard, ensure_ascii=False))
+                    else:
+                        fail("presenter-linked-song-loading-guard", json.dumps(presenter_linked_song_loading_guard, ensure_ascii=False))
+
                     presenter_linked_song_hydration = page.evaluate(
                         """
                         (() => {
