@@ -3691,9 +3691,9 @@ def main() -> int:
                             "sectionKey": "offering",
                             "beforeTitle": "",
                             "afterTitle": "봉헌특송",
-                            "outputMode": "",
-                            "effectiveOutputMode": "",
-                            "legacyEffectiveOutputMode": "",
+                            "outputMode": "score",
+                            "effectiveOutputMode": "score",
+                            "legacyEffectiveOutputMode": "score",
                             "templateTitle": "",
                             "templateLabel": "봉헌찬송",
                         }
@@ -3840,10 +3840,6 @@ def main() -> int:
                           const youngAdultService = { id: '__smoke_young_adult_template__', type_id: 'young-adult', date: '2026-07-26' };
                           const childrenService = { id: '__smoke_children_template__', type_id: 'children', date: '2026-07-26' };
                           const previousCalendarData = state.calendarData;
-                          const template = serviceOrderTemplate('youth', { service });
-                          const projected = projectWorshipServiceItemsFromTemplate(service, []);
-                          const youngAdultTemplate = serviceOrderTemplate('young-adult', { service: youngAdultService });
-                          const youngAdultProjected = projectWorshipServiceItemsFromTemplate(youngAdultService, []);
                           try {
                             state.calendarData = [
                               {
@@ -3856,6 +3852,10 @@ def main() -> int:
                               },
                               ...(previousCalendarData || []).filter((row) => row.date !== '2026-07-26'),
                             ];
+                            const template = serviceOrderTemplate('youth', { service });
+                            const projected = projectWorshipServiceItemsFromTemplate(service, []);
+                            const youngAdultTemplate = serviceOrderTemplate('young-adult', { service: youngAdultService });
+                            const youngAdultProjected = projectWorshipServiceItemsFromTemplate(youngAdultService, []);
                             const offering = projected.find((item) => item.label === '봉헌찬양');
                             const prayer = projected.find((item) => item.label === '대표기도');
                             const offeringPrayer = projected.find((item) => item.label === '봉헌기도');
