@@ -25549,7 +25549,10 @@ function updateConnectedPraiseSubgroupLabel(group = {}, subgroup = {}) {
   const itemIds = [...new Set(entries.map(({ slide }) => String(slide.elementId || "").trim()).filter(Boolean))];
   const itemCount = Math.max(1, itemIds.length);
   const connected = normalizeServiceConnectedPraise(entries[0].slide.connectedPraise || entries[0].slide.connected_praise);
-  const connectedLabel = connectedPraiseSubgroupRangeLabel(connected);
+  const fallbackItem = {
+    label: entries[0].slide.elementLabel || entries[0].slide.label || "",
+  };
+  const connectedLabel = connectedPraiseSubgroupRangeLabel(connected, fallbackItem);
   const start = presenterMainPraiseSongSubgroupCount(group);
   const end = start + itemCount - 1;
   const label = connectedLabel || (itemCount > 1 ? `${start}–${end}` : presenterPraiseSubgroupLabel("", start));
@@ -25559,8 +25562,8 @@ function updateConnectedPraiseSubgroupLabel(group = {}, subgroup = {}) {
   subgroup.name = presenterNameParts(label, title).join(" / ") || subgroup.name || label;
 }
 
-function connectedPraiseSubgroupRangeLabel(connected = null) {
-  const title = String(connected?.orderTitle || connected?.inputText || "").trim();
+function connectedPraiseSubgroupRangeLabel(connected = null, fallbackItem = {}) {
+  const title = serviceItemConnectedPraiseOrderTitle(fallbackItem, connected);
   const match = title.match(/(?:찬양\s*)?(\d+)\s*[-–~]\s*(\d+)/);
   if (match) return `${match[1]}–${match[2]}`;
   const single = title.match(/^찬양\s*(\d+)$/);
@@ -25586,7 +25589,10 @@ function presenterTitleAssigneeTitleIsGeneric(title = "", label = "") {
 
 function presenterBoardSubgroupContentTitle(slide = {}, label = "") {
   if (slide?._praiseIntroSlide) return "";
-  const connectedTitle = serviceItemConnectedPraiseTitle({ connectedPraise: slide.connectedPraise || slide.connected_praise }, "order");
+  const connectedTitle = serviceItemConnectedPraiseTitle({
+    label: slide.elementLabel || slide.label || "",
+    connectedPraise: slide.connectedPraise || slide.connected_praise,
+  }, "order");
   if (connectedTitle) return connectedTitle;
   const linkedTitle = presenterBoardLinkedSongTitle(slide);
   if (linkedTitle) return linkedTitle;
