@@ -4832,6 +4832,59 @@ def main() -> int:
                     else:
                         fail("presenter-header-input-controls", json.dumps(presenter_header_input, ensure_ascii=False))
 
+                    presenter_input_label_vocabulary = page.evaluate(
+                        """
+                        (() => {
+                          const service = { id: '__smoke_presenter_input_labels__', type_id: 'friday', date: '2026-08-21' };
+                          const makeItem = (label, memo, extra = {}) => normalizeServiceItem({
+                            id: `__smoke_presenter_input_labels_${label}__`,
+                            service_id: service.id,
+                            label,
+                            raw_title: '',
+                            memo: serializeServiceItemMemo(memo),
+                            ...extra,
+                          });
+                          const collectLabels = (html) => {
+                            const host = document.createElement('div');
+                            host.innerHTML = html;
+                            return [...host.querySelectorAll('.svc-presenter-input-field > span')]
+                              .map((node) => node.textContent.trim())
+                              .filter(Boolean);
+                          };
+                          const praise = makeItem('찬양 1', { elementType: 'praise', inputMode: 'lyrics_db' });
+                          const praiseModel = serviceItemEditorModel(praise, { service });
+                          const scripture = makeItem('성경봉독', { elementType: 'scripture_body', scriptureReference: '요 3:16' }, { raw_title: '요 3:16' });
+                          const scriptureMemo = parseServiceItemMemo(scripture.memo);
+                          const title = makeItem('설교 제목', { elementType: 'title_person' }, { raw_title: '선택 가이드', assignee: '김남영 목사' });
+                          const titleMemo = parseServiceItemMemo(title.memo);
+                          const titleModel = serviceItemEditorModel(title, { service });
+                          const special = makeItem('특송', { elementType: 'praise', inputMode: 'manual_praise', slides: ['특송 가사'] }, { raw_title: '은혜', assignee: '청년부' });
+                          const specialMemo = parseServiceItemMemo(special.memo);
+                          const specialModel = serviceItemEditorModel(special, { service });
+                          const labels = {
+                            praise: collectLabels(renderPresenterServicePraiseInput(praise, 0, praiseModel)),
+                            scripture: collectLabels(renderPresenterServiceScriptureInput(scripture, 1, scriptureMemo)),
+                            title: collectLabels(renderPresenterServiceTextInputs(title, 2, titleModel, titleMemo)),
+                            special: collectLabels(renderPresenterServiceTextInputs(special, 3, specialModel, specialMemo)),
+                          };
+                          return {
+                            ...labels,
+                            all: Object.values(labels).flat(),
+                          };
+                        })()
+                        """
+                    )
+                    if (
+                        presenter_input_label_vocabulary["praise"] == ["찬양"]
+                        and presenter_input_label_vocabulary["scripture"] == ["말씀"]
+                        and presenter_input_label_vocabulary["title"] == ["제목", "담당"]
+                        and presenter_input_label_vocabulary["special"] == ["찬양", "가사", "담당"]
+                        and all(label in ["찬양", "말씀", "제목", "가사", "담당"] for label in presenter_input_label_vocabulary["all"])
+                    ):
+                        pass_("presenter-input-label-vocabulary", json.dumps(presenter_input_label_vocabulary, ensure_ascii=False))
+                    else:
+                        fail("presenter-input-label-vocabulary", json.dumps(presenter_input_label_vocabulary, ensure_ascii=False))
+
                     presenter_input_completion_guard = page.evaluate(
                         """
                         (() => {

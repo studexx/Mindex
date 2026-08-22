@@ -24087,10 +24087,10 @@ function presenterServiceInputHasEditableField(item, service) {
 }
 
 function renderPresenterServicePraiseInput(item, index, model) {
-  const assigneeLabel = serviceItemAssigneeInputLabel(item);
+  const assigneeLabel = presenterServiceAssigneeInputLabel(item);
   return `
     <label class="svc-presenter-input-field svc-presenter-input-field--song">
-      <span>곡</span>
+      <span>찬양</span>
       ${renderServiceEditorTitleControl(item, index, { service: model.service }, model)}
     </label>
     ${model.showAssignee ? `
@@ -24152,7 +24152,7 @@ function renderPresenterServiceScriptureInput(item, index, memo) {
     </details>` : "";
   return `
     <label class="svc-presenter-input-field">
-      <span>구절</span>
+      <span>말씀</span>
       <div class="svc-presenter-input-control-wrap">
         <input class="svc-presenter-input-control${serviceItemScriptureInputInvalid(item) ? " is-invalid" : ""}" type="text"
           data-service-item-field="raw_title" data-service-item-index="${index}"
@@ -24227,9 +24227,9 @@ function renderPresenterServiceTextInputs(item, index, model, memo) {
   const specialSong = isSpecialSongServiceItem(item);
   const announcementText = isAnnouncementTextInputItem(item);
   const titlePerson = serviceMemoElementType(memo) === "title_person";
-  const titleLabel = specialSong ? "곡" : titlePerson ? "순서 제목" : "내용";
-  const titlePlaceholder = specialSong ? "곡명" : titlePerson ? "순서 제목" : item.label || "내용";
-  const assigneeLabel = serviceItemAssigneeInputLabel(item);
+  const titleLabel = presenterServiceTitleInputLabel(item, memo, { manualPraise });
+  const titlePlaceholder = presenterServiceTitleInputPlaceholder(item, memo, titleLabel);
+  const assigneeLabel = presenterServiceAssigneeInputLabel(item);
   const assigneePlaceholder = inferServiceItemAssignee(item) || assigneeLabel;
   return `
     ${needsTitle ? `
@@ -24254,6 +24254,23 @@ function renderPresenterServiceTextInputs(item, index, model, memo) {
         <input class="svc-presenter-input-control" type="text" data-service-item-field="assignee" data-service-item-index="${index}"
           value="${escapeAttr(model.assigneeValue || "")}" placeholder="${escapeAttr(assigneePlaceholder)}" aria-label="${escapeAttr(`${item.label || "항목"} 담당`)}" />
       </label>` : ""}`;
+}
+
+function presenterServiceTitleInputLabel(item = {}, memo = parseServiceItemMemo(item?.memo), options = {}) {
+  if (isSpecialSongServiceItem(item) || options.manualPraise) return "찬양";
+  if (isScriptureBodyServiceItem(item) || isScriptureServiceLabel(item?.label || "")) return "말씀";
+  return "제목";
+}
+
+function presenterServiceTitleInputPlaceholder(item = {}, memo = parseServiceItemMemo(item?.memo), label = presenterServiceTitleInputLabel(item, memo)) {
+  if (label === "찬양") return "곡명";
+  if (label === "말씀") return "성경 구절";
+  if (isAnnouncementTextInputItem(item)) return "내용을 입력";
+  return "제목";
+}
+
+function presenterServiceAssigneeInputLabel() {
+  return "담당";
 }
 
 function serviceItemAssigneeInputLabel(item = {}) {
