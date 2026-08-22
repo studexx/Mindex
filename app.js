@@ -6348,6 +6348,13 @@ function serviceElementConfigForSave(existingConfig = {}, parsed = emptyServiceI
 function serviceElementSourceRefForSave(existingSourceRef = {}, item = {}, parsed = emptyServiceItemMemo(), manualBody = false) {
   const sourceRef = { ...(existingSourceRef && typeof existingSourceRef === "object" ? existingSourceRef : {}) };
   sourceRef.label = String(item.label || sourceRef.label || "").trim();
+  if (parsed.connectedPraise) {
+    sourceRef.connectedPraise = parsed.connectedPraise;
+    delete sourceRef.connected_praise;
+  } else {
+    delete sourceRef.connectedPraise;
+    delete sourceRef.connected_praise;
+  }
   if (manualBody) {
     sourceRef.content_source = sourceRef.content_source || "manual_worship_element_body";
     sourceRef.note = sourceRef.note || "일회성 예배 본문은 Praise DB가 아니라 Worship element body에 보관";
