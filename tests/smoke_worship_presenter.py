@@ -3656,15 +3656,13 @@ def main() -> int:
                     and form_preset_state["explicitTagTexts"][-1] == "C 둘째 줄"
                     and form_preset_state["explicitGenericMarkers"] == ["Verse 1", "Chorus 1", "Verse 2", "Chorus 2"]
                     and "B 첫 줄" not in "\n".join(form_preset_state["explicitGenericTexts"])
-                    and form_preset_state["defaultFormMetadataSummary"] == "V1-C-V2-C-V3-C-Coda"
-                    and form_preset_state["defaultFormMarkers"] == ["Verse 1", "Chorus", "Verse 2", "Chorus", "Verse 3", "Chorus", "Coda"]
+                    and form_preset_state["defaultFormMetadataSummary"] == "V1-V2-C-V3-Coda"
+                    and form_preset_state["defaultFormMarkers"] == ["Verse 1", "Verse 2", "Chorus", "Verse 3", "Coda"]
                     and form_preset_state["defaultFormTexts"] == [
                         "감사 1절 첫 줄\n감사 1절 둘째 줄",
-                        "감사 후렴 첫 줄\n감사 후렴 둘째 줄",
                         "감사 2절 첫 줄\n감사 2절 둘째 줄",
                         "감사 후렴 첫 줄\n감사 후렴 둘째 줄",
                         "감사 3절 첫 줄\n감사 3절 둘째 줄",
-                        "감사 후렴 첫 줄\n감사 후렴 둘째 줄",
                         "감사 코다 첫 줄\n감사 코다 둘째 줄",
                     ]
                     and form_preset_state["unifiedHymnTitleText"] == "♬ 통 1 만복의 근원 하나님"
@@ -7211,7 +7209,7 @@ def main() -> int:
                         { type_id: 'sunday-first', date: '2027-01-03', expected: '', defaultFile: '27-A1.png', seasonFile: '', chromakey: false },
                         { type_id: 'sunday-second', date: '2026-07-05', expected: '', defaultFile: '26-A4.png', seasonFile: '26-SH.png', chromakey: true },
                         { type_id: 'sunday-main', date: '2026-07-05', expected: '', defaultFile: '26-A4.png', seasonFile: '26-SH.png', chromakey: true },
-                        { type_id: 'sunday-main', date: '2026-08-23', alias: '온세대 찬양예배', sourceRef: { sunday_main_variant: 'all_generations' }, expected: '26-A4.png', defaultFile: '26-A4.png', seasonFile: '', chromakey: false },
+                        { type_id: 'sunday-main', date: '2026-08-23', alias: '온세대 찬양예배', sourceRef: { sunday_main_variant: 'all_generations' }, expected: '', defaultFile: '26-A4.png', seasonFile: '', chromakey: true },
                         { type_id: 'wednesday', date: '2026-07-08', expected: '', defaultFile: '', seasonFile: '', chromakey: true },
                         { type_id: 'monthly', date: '2026-07-03', expected: '', defaultFile: '', seasonFile: '', chromakey: true },
                       ];
@@ -7258,7 +7256,7 @@ def main() -> int:
                     """
                     () => {
                       const service = {
-                        id: '__smoke_all_generations_clean_preview__',
+                        id: '__smoke_all_generations_chromakey_preview__',
                         type_id: 'sunday-main',
                         date: '2026-08-23',
                         title: '온세대 찬양예배',
@@ -7299,15 +7297,15 @@ def main() -> int:
                     """
                 )
                 if (
-                    all_generations_preview_state["chromakey"] is False
-                    and all_generations_preview_state["frameNoChromakey"] is True
-                    and all_generations_preview_state["rootNoChromakey"] is True
-                    and all_generations_preview_state["hasBackground"] is True
-                    and all_generations_preview_state["beforeContent"] == "none"
+                    all_generations_preview_state["chromakey"] is True
+                    and all_generations_preview_state["frameNoChromakey"] is False
+                    and all_generations_preview_state["rootNoChromakey"] is False
+                    and all_generations_preview_state["hasBackground"] is False
+                    and all_generations_preview_state["beforeContent"] in ["none", '""']
                 ):
-                    pass_("presenter-all-generations-clean-preview", json.dumps(all_generations_preview_state, ensure_ascii=False))
+                    pass_("presenter-all-generations-chromakey-preview", json.dumps(all_generations_preview_state, ensure_ascii=False))
                 else:
-                    fail("presenter-all-generations-clean-preview", json.dumps(all_generations_preview_state, ensure_ascii=False))
+                    fail("presenter-all-generations-chromakey-preview", json.dumps(all_generations_preview_state, ensure_ascii=False))
 
                 friday_legacy_background_state = page.evaluate(
                     """

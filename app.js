@@ -9074,50 +9074,6 @@ function normalizeServiceFormPresetForms(value) {
     .filter(Boolean);
 }
 
-function normalizeSongDefaultFormPreset(preset) {
-  const normalized = normalizeServiceFormPreset(preset, "", "song-default");
-  if (!normalized?.forms?.length) return normalized;
-  const forms = cleanList(normalized.forms);
-  const entries = forms.map((label) => ({ label, target: normalizeSongFormPresetLabel(label) }));
-  const verseEntries = entries.filter(({ target }) => target.type === "verse");
-  const chorusEntry = entries.find(({ target }) => target.type === "chorus");
-  if (!verseEntries.length || !chorusEntry) return normalized;
-
-  const cycleForms = [];
-  const seenVerses = new Set();
-  verseEntries.forEach(({ label, target }, index) => {
-    const key = target.key || `verse:${index + 1}`;
-    if (seenVerses.has(key)) return;
-    seenVerses.add(key);
-    cycleForms.push(label);
-    cycleForms.push(chorusEntry.label);
-  });
-
-  const tailForms = [];
-  const codaForms = [];
-  const seenTail = new Set();
-  entries.forEach(({ label, target }) => {
-    if (target.type === "verse" || target.type === "chorus") return;
-    const key = target.key || compactSearchValue(label);
-    if (!key || seenTail.has(key)) return;
-    seenTail.add(key);
-    if (target.type === "coda") codaForms.push(label);
-    else tailForms.push(label);
-  });
-
-  const nextForms = [...cycleForms, ...tailForms, ...codaForms];
-  if (!nextForms.length || (nextForms.length === forms.length && nextForms.every((label, index) => label === forms[index]))) {
-    return normalized;
-  }
-  return {
-    ...normalized,
-    forms: nextForms,
-    sourceForms: forms,
-    hint: nextForms.join("-"),
-    strength: normalized.strength || "song-default",
-  };
-}
-
 function normalizeSongFormPresetLabel(value = "") {
   const raw = String(value || "").trim();
   const compact = compactSearchValue(raw);
@@ -9160,6 +9116,25 @@ function normalizeSongFormPresetLabel(value = "") {
     return { key: "tag", type: "tag" };
   }
   return { key: compact, type: compact };
+}
+
+function normalizeSongMetadataPresenterForm(value) {
+  const source = parseObjectPayload(value);
+  if (source && Array.isArray(source.sourceForms) && source.sourceForms.length) {
+    const sourceForms = normalizeServiceFormPresetForms(source.sourceForms);
+    if (sourceForms.length) {
+      return normalizeServiceFormPreset(
+        {
+          ...source,
+          forms: sourceForms,
+          hint: firstNonBlankString(source.sourceHint, source.source_hint, sourceForms.join("-")),
+        },
+        sourceForms.join("-"),
+        "song-default",
+      );
+    }
+  }
+  return normalizeServiceFormPreset(value, "", "song-default");
 }
 
 function normalizeServiceFormPresetRules(value) {
@@ -12122,11 +12097,11 @@ const WORSHIP_BACKGROUND_STATIC_FILES = new Set([
   "26-S6.png",
 ]);
 function presenterServiceUsesChromakey(service) {
-  if (serviceUsesAllGenerationsCleanOutput(service)) return false;
+  if (serviceUsesAllGenerationsChromakeyOutput(service)) return true;
   return serviceTypeUsesChromakey(service?.type_id);
 }
 
-function serviceUsesAllGenerationsCleanOutput(service = null) {
+function serviceUsesAllGenerationsChromakeyOutput(service = null) {
   if (!service || typeof service !== "object") return false;
   const typeId = worshipAppServiceTypeId(service?.type_id || service?.service_type_id || service?.typeId || "");
   if (typeId !== "sunday-main") return false;
@@ -16845,7 +16820,7 @@ function normalizeSongMetadata(value) {
     source.default_form,
   );
   const presenterForm = presenterFormSource
-    ? normalizeSongDefaultFormPreset(presenterFormSource)
+    ? normalizeSongMetadataPresenterForm(presenterFormSource)
     : null;
   const metadata = {
     artist: nullIfBlank(source.artist || source.performer),

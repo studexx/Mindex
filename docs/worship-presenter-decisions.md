@@ -168,6 +168,9 @@ Small visual polish that does not alter behavior does not need an entry.
 - 일반 3부 특송은 할렐루야 찬양대 운용 때문에 clean/fullscreen output 예외를
   탈 수 있지만, 온세대 찬양예배 특송은 할렐루야 고정 특송이 아니므로 그 예외를
   적용하지 않는다.
+- 온세대 찬양예배는 주일 3부 variant이지만 출력 방식은 일반 주일 3부처럼
+  chromakey를 사용한다. 온세대 감지는 순서/템플릿 projection에만 쓰고,
+  service-wide clean/fullscreen 전환 조건으로 쓰지 않는다.
 - 금요기도회는 `성경봉독 → 입례찬양 → 설교` 순서로 진행한다.
 - 2026년 8월부터 금요일 예배 자동 생성은 주차별 운영명을 따른다.
   첫째 금요일은 `월삭예배`로 만들고 월삭예배 템플릿을 사용한다.

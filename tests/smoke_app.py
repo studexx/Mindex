@@ -2518,6 +2518,16 @@ def main() -> int:
                               metadata: { presenter_form: { forms: ['V1', 'V2', 'C', 'B', 'Coda'], hint: 'V1-V2-C-B-Coda' } },
                               versions: [{ id: '__form_meta_version__', forms: [] }]
                             };
+                            const explicitSequence = normalizeSongMetadata({
+                              presenter_form: 'V-C-V-C-B-C-Coda',
+                            }).presenter_form || {};
+                            const legacyAugmentedSequence = normalizeSongMetadata({
+                              presenter_form: {
+                                forms: ['V', 'C', 'B', 'Coda'],
+                                hint: 'V-C-B-Coda',
+                                sourceForms: ['V', 'C', 'V', 'C', 'B', 'C', 'Coda'],
+                              },
+                            }).presenter_form || {};
                             const item = normalizeServiceItem({
                               id: '__form_meta_item__',
                               service_id: '__form_meta_service__',
@@ -2590,6 +2600,10 @@ def main() -> int:
                               forms: parsed.formPreset?.forms || [],
                               strength: parsed.formPreset?.strength || '',
                               metadataValue,
+                              explicitSequenceValue: serviceFormPresetSummary(explicitSequence),
+                              explicitSequenceForms: explicitSequence.forms || [],
+                              legacyAugmentedSequenceValue: serviceFormPresetSummary(legacyAugmentedSequence),
+                              legacyAugmentedSequenceForms: legacyAugmentedSequence.forms || [],
                               inputValue: (() => {
                                 const node = document.createElement('div');
                                 node.innerHTML = inputHtml;
@@ -3548,8 +3562,12 @@ def main() -> int:
                             "formHint": "V2-C",
                             "forms": ["V2", "C"],
                             "strength": "manual",
-                            "metadataValue": "V1-C-V2-C-B-Coda",
-                            "inputValue": "V1-C-V2-C-B-Coda",
+                            "metadataValue": "V1-V2-C-B-Coda",
+                            "explicitSequenceValue": "V-C-V-C-B-C-Coda",
+                            "explicitSequenceForms": ["V", "C", "V", "C", "B", "C", "Coda"],
+                            "legacyAugmentedSequenceValue": "V-C-V-C-B-C-Coda",
+                            "legacyAugmentedSequenceForms": ["V", "C", "V", "C", "B", "C", "Coda"],
+                            "inputValue": "V1-V2-C-B-Coda",
                             "disabledMemoKeepsOverride": True,
                             "disabledValue": "",
                             "savedOverride": True,
