@@ -27862,6 +27862,7 @@ function resolvePresenterServiceItemContentState(item = {}, memo = emptyServiceI
   const filled = (reason) => result("filled", true, reason);
   const missing = (reason) => result("missing", false, reason);
   const loading = (reason) => result("loading", false, reason);
+  if (memo.hiddenInPresentation) return filled("hidden_in_presentation");
   if (presenterFixedTitleText(item)) return filled("fixed_title");
   if (elementType === "title_content" && labelKey === "환영") return filled("title_content");
   if (isLiturgicalBodyServiceItem(item)) {

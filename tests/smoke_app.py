@@ -2417,6 +2417,7 @@ def main() -> int:
                             const compact = (value) => String(value || '').replace(/\\s+/g, '');
                             const summarize = (typeId, service = null) => {
                               const serviceId = service?.id || `__smoke_${typeId}__`;
+                              const serviceForSummary = service || { id: serviceId, type_id: typeId };
                               const scaffold = buildWorshipServiceScaffold(serviceId, typeId, service ? { service } : {});
                               const sections = scaffold.sections.map((section) => ({
                                 id: section.id || '',
@@ -2434,9 +2435,11 @@ def main() -> int:
                                     ...(element.config?.formHint ? { formHint: element.config.formHint } : {}),
                                     ...(element.config?.formPreset?.forms ? { forms: element.config.formPreset.forms } : {}),
                                     ...(element.config?.defaultStrength || element.config?.formPreset?.strength ? { strength: element.config.defaultStrength || element.config.formPreset.strength } : {}),
-                                    outputMode: element.config?.outputMode || ''
+                                    outputMode: element.config?.outputMode || '',
+                                    ...(element.config?.hiddenInPresentation ? { hidden: true } : {}),
                                   }))
                               }));
+                              const groupedItems = groupWorshipElements(scaffold.sections, scaffold.elements)[serviceId] || [];
                               return {
                                 sections: sections.length,
                                 elements: scaffold.elements.length,
@@ -2455,6 +2458,20 @@ def main() -> int:
                                 announcementsElements: sections.find((section) => section.key === 'announcements')?.elements || [],
                                 sendingElements: sections.find((section) => section.key === 'sending')?.elements || [],
                                 closingElements: sections.find((section) => section.key === 'closing_visual')?.elements || [],
+                                hiddenContentStates: groupedItems
+                                  .filter((item) => ['special_song', 'offering'].includes(item._worshipSectionKey || ''))
+                                  .map((item) => {
+                                    const memo = parseServiceItemMemo(item.memo);
+                                    const state = resolvePresenterServiceItemContentState(item, memo, serviceItemLinkedSong(item), serviceForSummary);
+                                    return {
+                                      sectionKey: item._worshipSectionKey || '',
+                                      label: item.label || '',
+                                      hidden: Boolean(memo.hiddenInPresentation),
+                                      state: state.state || '',
+                                      reason: state.reason || '',
+                                      required: Boolean(state.required),
+                                    };
+                                  }),
                                 closingHymnDefaults: scaffold.elements
                                   .filter((element) =>
                                     element.section_id === sections.find((section) => section.key === 'closing_visual')?.id
@@ -3619,8 +3636,13 @@ def main() -> int:
                             {"type": "scripture_body", "label": "인용 구절", "outputMode": ""},
                         ]
                         and template_terms["sundayPublicScaffold"]["afternoon"]["offeringElements"] == [
-                            {"type": "praise", "label": "봉헌찬송", "outputMode": "score"},
-                            {"type": "title_person", "label": "봉헌기도", "outputMode": ""},
+                            {"type": "praise", "label": "봉헌찬송", "outputMode": "score", "hidden": True},
+                            {"type": "title_person", "label": "봉헌기도", "outputMode": "", "hidden": True},
+                        ]
+                        and template_terms["sundayPublicScaffold"]["afternoon"]["hiddenContentStates"] == [
+                            {"sectionKey": "special_song", "label": "특송", "hidden": True, "state": "filled", "reason": "hidden_in_presentation", "required": False},
+                            {"sectionKey": "offering", "label": "봉헌찬송", "hidden": True, "state": "filled", "reason": "hidden_in_presentation", "required": False},
+                            {"sectionKey": "offering", "label": "봉헌기도", "hidden": True, "state": "filled", "reason": "hidden_in_presentation", "required": False},
                         ]
                         and template_terms["sundayPublicScaffold"]["afternoon"]["sendingElements"] == [
                             {"type": "praise", "label": "송영", "outputMode": "score"},
