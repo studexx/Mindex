@@ -4409,6 +4409,19 @@ def main() -> int:
                                   },
                                 }),
                               }),
+                              connectedThreePraiseSidebarParts: serviceSidebarChildItemDisplayParts({
+                                label: '찬양 3',
+                                raw_title: '온 맘 다해',
+                                memo: serializeServiceItemMemo({
+                                  elementType: 'praise',
+                                  connectedPraise: {
+                                    groupId: '__smoke_sidebar_medley_three__',
+                                    role: 'primary',
+                                    title: '온 맘 다해 + 주님 마음 내게 주소서 + 주께 가까이',
+                                    orderTitle: '찬양 3–5',
+                                  },
+                                }),
+                              }),
                               mainPraiseTitle,
                               entranceTitle,
                             };
@@ -4535,8 +4548,9 @@ def main() -> int:
                             "welcomeSidebar": "환영 · 헤세드 찬양단",
                             "welcomeSidebarParts": {"meta": "환영", "title": "헤세드 찬양단"},
                             "praiseSidebarParts": {"meta": "찬양 1", "title": "은혜 은혜"},
-                            "connectedPraiseSidebarParts": {"meta": "찬양", "title": "함께 지어져 가네 + 성도의 노래"},
-                            "connectedPraiseSidebar": "찬양 · 함께 지어져 가네 + 성도의 노래",
+                            "connectedPraiseSidebarParts": {"meta": "찬양 6–7", "title": "함께 지어져 가네 + 성도의 노래"},
+                            "connectedPraiseSidebar": "찬양 6–7 · 함께 지어져 가네 + 성도의 노래",
+                            "connectedThreePraiseSidebarParts": {"meta": "찬양 3–5", "title": "온 맘 다해 + 주님 마음 내게 주소서 + 주께 가까이"},
                             "mainPraiseTitle": "",
                             "entranceTitle": "",
                         }

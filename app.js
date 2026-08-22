@@ -20498,9 +20498,7 @@ function isServiceSidebarSectionMarkerItem(item, group = {}) {
 function serviceSidebarChildItemTitle(item, service = null) {
   const connectedOrderTitle = serviceItemConnectedPraiseTitle(item, "order");
   const connectedSongTitle = serviceItemConnectedPraiseTitle(item, "title");
-  if (connectedOrderTitle || connectedSongTitle) {
-    return cleanList([serviceSidebarConnectedElementTitle(item), connectedSongTitle || connectedOrderTitle]).join(" · ");
-  }
+  if (connectedOrderTitle || connectedSongTitle) return cleanList([connectedOrderTitle, connectedSongTitle]).join(" · ");
   const label = String(item?.label || "").trim();
   if (serviceSidebarUsesLabelOnly(item)) return label || "항목";
   const title = serviceItemDisplayText(item);
@@ -20514,18 +20512,12 @@ function serviceSidebarChildItemTitle(item, service = null) {
   return `${label} · ${title}`;
 }
 
-function serviceSidebarConnectedElementTitle(item = {}) {
-  const label = String(item?.label || "").trim();
-  const base = label.replace(/\s*\d+(?:\s*[-–~]\s*\d+)?\s*$/, "").trim();
-  return base || "찬양";
-}
-
 function serviceSidebarChildItemDisplayParts(item, service = null) {
   const connectedOrderTitle = serviceItemConnectedPraiseTitle(item, "order");
   const connectedSongTitle = serviceItemConnectedPraiseTitle(item, "title");
   if (connectedOrderTitle || connectedSongTitle) {
     return {
-      meta: serviceSidebarConnectedElementTitle(item),
+      meta: connectedOrderTitle || String(item?.label || "").trim(),
       title: connectedSongTitle || serviceItemDisplayText(item) || connectedOrderTitle,
     };
   }
