@@ -265,7 +265,12 @@ function serviceItemOutputMode(item = {}, memo = parseServiceItemMemo(item?.memo
   );
   const flexibleOffering = typeof serviceItemUsesFlexibleOfferingSlot === "function"
     && serviceItemUsesFlexibleOfferingSlot(item);
-  return flexibleOffering && mode === "score" ? "" : mode;
+  return flexibleOffering && mode === "score" && !presenterServiceItemUsesScoreInputMode(item, memo) ? "" : mode;
+}
+
+function presenterServiceItemUsesScoreInputMode(item = {}, memo = {}) {
+  const raw = String(memo.inputMode || memo.input_mode || item.inputMode || item.input_mode || "").trim().toLowerCase();
+  return ["score_db", "score", "music_score", "sheet_music", "악보"].includes(raw);
 }
 
 function presenterScoreSlidesForServiceItem(

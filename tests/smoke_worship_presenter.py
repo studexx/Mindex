@@ -3023,6 +3023,20 @@ def main() -> int:
                           outputMode: 'score'
                         })
                       };
+                      const flexibleOfferingScoreItem = {
+                        id: '__smoke_flexible_offering_score_item__',
+                        label: '봉헌찬송',
+                        raw_title: '봉헌특송',
+                        song_id: hymnScoreSong.id,
+                        version_id: '__smoke_hymn_version__',
+                        _worshipSectionId: '__smoke_flexible_offering_section__',
+                        _worshipSectionKey: 'offering',
+                        memo: serializeServiceItemMemo({
+                          elementType: 'praise',
+                          inputMode: 'score_db',
+                          outputMode: 'score'
+                        })
+                      };
                       const specialScoreItem = {
                         id: '__smoke_special_score_item__',
                         label: '특송',
@@ -3124,6 +3138,7 @@ def main() -> int:
                       const scoreRawTitleAllSlides = buildPresenterSlidesForServiceItem(scoreRawTitleItem, service, 6);
                       const scoreRawTitleSlides = scoreRawTitleAllSlides.filter((slide) => slide.sourceType === 'score');
                       const offeringScoreSlides = buildPresenterSlidesForServiceItem(offeringScoreItem, service, 7);
+                      const flexibleOfferingScoreSlides = buildPresenterSlidesForServiceItem(flexibleOfferingScoreItem, service, 7.1);
                       const specialScoreSlides = buildPresenterSlidesForServiceItem(specialScoreItem, service, 8);
                       const specialLinkedScoreSlides = buildPresenterSlidesForServiceItem(specialLinkedScoreItem, service, 8.1);
                       const allGenerationSpecialSlides = buildPresenterSlidesForServiceItem({
@@ -3530,6 +3545,19 @@ def main() -> int:
                           sectionTitle: slide.sectionTitle,
                           label: slide.label
                         })),
+                        flexibleOfferingScoreMode: serviceItemOutputMode(
+                          flexibleOfferingScoreItem,
+                          parseServiceItemMemo(flexibleOfferingScoreItem.memo)
+                        ),
+                        flexibleOfferingScoreSlides: flexibleOfferingScoreSlides.filter((slide) => slide.sourceType === 'score').map((slide) => ({
+                          type: slide.type,
+                          layout: slide.layout,
+                          elementType: slide.elementType,
+                          sourceType: slide.sourceType,
+                          componentType: slide.componentType,
+                          marker: slide.marker,
+                          imageSrc: slide.imageSrc
+                        })),
                         specialScoreTitleSlides: specialScoreSlides.filter((slide) => slide.type === 'song-title').map((slide) => ({
                           title: slide.title,
                           sectionTitle: slide.sectionTitle,
@@ -3690,6 +3718,27 @@ def main() -> int:
                     and form_preset_state["scoreManifestTitleSlides"]
                     and form_preset_state["scoreRawTitleTitleSlides"] == ["5 이 천지간 만물들아"]
                     and len(form_preset_state["offeringScoreTitleSlides"]) == 0
+                    and form_preset_state["flexibleOfferingScoreMode"] == "score"
+                    and form_preset_state["flexibleOfferingScoreSlides"] == [
+                        {
+                            "type": "image",
+                            "layout": "media",
+                            "elementType": "image",
+                            "sourceType": "score",
+                            "componentType": "score",
+                            "marker": "",
+                            "imageSrc": "assets/hymn-scores/5/slide-01.webp",
+                        },
+                        {
+                            "type": "image",
+                            "layout": "media",
+                            "elementType": "image",
+                            "sourceType": "score",
+                            "componentType": "score",
+                            "marker": "",
+                            "imageSrc": "assets/hymn-scores/5/slide-02.webp",
+                        },
+                    ]
                     and form_preset_state["specialScoreTitleSlides"] == []
                     and form_preset_state["specialScoreSourceCount"] == 0
                     and form_preset_state["specialLinkedScoreSourceCount"] == 0

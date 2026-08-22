@@ -1042,8 +1042,8 @@ async function loadHymnScoreManifest({ silent = false } = {}) {
       state.hymnScoreManifestLoaded = true;
       if (isServiceDataModule()) render();
     } catch (err) {
-      state.hymnScoreManifest = {};
-      state.hymnScoreManifestLoaded = true;
+      if (!Object.keys(state.hymnScoreManifest || {}).length) state.hymnScoreManifest = {};
+      state.hymnScoreManifestLoaded = false;
       if (!silent) console.warn("[Presenter] hymn score manifest unavailable:", err);
     } finally {
       hymnScoreManifestLoadPromise = null;
@@ -6195,7 +6195,9 @@ function serviceElementTitleForSave(item = {}, elementType = "") {
 
 function serviceElementConfigForSave(existingConfig = {}, parsed = emptyServiceItemMemo(), options = {}) {
   const config = { ...(existingConfig && typeof existingConfig === "object" ? existingConfig : {}) };
-  const outputMode = serviceItemUsesFlexibleOfferingSlot(options.item) ? "" : parsed.outputMode;
+  const outputMode = serviceItemUsesFlexibleOfferingSlot(options.item) && !serviceItemUsesScoreInputMode(options.item, parsed)
+    ? ""
+    : parsed.outputMode;
   const contentState = serviceElementContentStateForSave(options.item || {}, parsed, options.service || null);
   delete config.slides;
   delete config.slideOverrides;
@@ -8502,7 +8504,7 @@ function updateServiceItemField(field, options = {}) {
         const bodyText = String(item.raw_title || "").trim();
         parsed.slides = bodyText ? [bodyText] : [];
       }
-      if (serviceItemUsesFlexibleOfferingSlot(item)) parsed.outputMode = "";
+      if (serviceItemUsesFlexibleOfferingSlot(item) && !serviceItemUsesScoreInputMode(item, parsed)) parsed.outputMode = "";
       item.memo = serializeServiceItemMemo(parsed);
       if (options.resolveSongSelection !== false) applyServiceSongSelectionWithService(item, service);
       scheduleServiceScriptureBodyResolve(serviceId, index);
@@ -8807,6 +8809,10 @@ function serviceInputModeForElementType(elementType = "") {
 function serviceMemoInputMode(memo = {}, item = {}) {
   const explicit = normalizeServiceInputMode(memo.inputMode || memo.input_mode || item.inputMode || item.input_mode);
   return explicit || serviceInputModeForElementType(serviceMemoElementType(memo));
+}
+
+function serviceItemUsesScoreInputMode(item = {}, memo = parseServiceItemMemo(item?.memo)) {
+  return serviceMemoInputMode(memo, item) === "score_db";
 }
 
 function servicePraiseInputMode(item = {}, memo = parseServiceItemMemo(item?.memo), service = selectedServiceForEditor()) {
@@ -10033,6 +10039,16 @@ async function hydratePresenterServiceData(serviceId = state.selectedServiceId) 
     const outputItems = getServiceOutputItems(targetServiceId);
     const songIds = outputItems.map((item) => item.song_id).filter(Boolean);
     await loadSongsForIds(songIds);
+    if (
+      !state.hymnScoreManifestLoaded
+      && presenterServiceNeedsHymnScoreManifest(targetServiceId)
+    ) {
+      try {
+        await (hymnScoreManifestLoadPromise || loadHymnScoreManifest({ silent: true }));
+      } catch (error) {
+        console.warn("Could not load hymn score manifest before presenter hydration.", error);
+      }
+    }
     refreshPresenterForService(targetServiceId, { renderControls: false });
     void preloadPresenterServiceScripturesBeforeOutput(targetServiceId).then((loaded) => {
       if (loaded) schedulePresenterRefreshForService(targetServiceId);
