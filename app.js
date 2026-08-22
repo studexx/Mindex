@@ -25466,15 +25466,17 @@ function renderPresenterReferenceMediaQuickAdd(sectionKey, serviceId) {
       <div class="svc-reference-media-quick-add-copy">
         <strong>${escapeHtml(sectionLabel)}</strong>
       </div>
-      <button class="svc-reference-media-add" type="button" data-presenter-reference-media-add
-        data-presenter-reference-media-section="${escapeAttr(sectionKey)}" data-service-id="${escapeAttr(serviceId)}">
-        <i data-lucide="plus"></i><span>화면 추가</span>
-      </button>
-      <label class="svc-reference-media-upload">
-        <input type="file" accept="${PRESENTER_REFERENCE_MEDIA_ACCEPT}" data-presenter-reference-media-direct-file
-          data-presenter-reference-media-section="${escapeAttr(sectionKey)}" data-service-id="${escapeAttr(serviceId)}" />
-        <i data-lucide="upload"></i><span>파일 추가</span>
-      </label>
+      <div class="svc-reference-media-quick-add-actions">
+        <button class="svc-reference-media-add" type="button" data-presenter-reference-media-add
+          data-presenter-reference-media-section="${escapeAttr(sectionKey)}" data-service-id="${escapeAttr(serviceId)}">
+          <i data-lucide="plus"></i><span>화면 추가</span>
+        </button>
+        <label class="svc-reference-media-upload">
+          <input type="file" accept="${PRESENTER_REFERENCE_MEDIA_ACCEPT}" data-presenter-reference-media-direct-file
+            data-presenter-reference-media-section="${escapeAttr(sectionKey)}" data-service-id="${escapeAttr(serviceId)}" />
+          <i data-lucide="upload"></i><span>파일 추가</span>
+        </label>
+      </div>
     </div>`;
 }
 

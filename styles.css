@@ -6626,6 +6626,13 @@ textarea.svc-presenter-input-control--multiline {
   font-size: 12px;
   font-weight: 800;
 }
+.svc-reference-media-quick-add-actions {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
 .svc-reference-media-input {
   display: grid;
   grid-column: 1 / -1;
