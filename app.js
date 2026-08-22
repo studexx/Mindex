@@ -480,6 +480,7 @@ const PRESENTER_REFERENCE_MEDIA_SECTION_KEYS = new Set(["sermon", "announcements
 const PRESENTER_REFERENCE_MEDIA_ACCEPT = "image/*,video/*,audio/*";
 const SERVICE_ITEM_AUDIO_ACCEPT = "audio/*";
 const PRESENTER_REFERENCE_MEDIA_MAX_BYTES = 50 * 1024 * 1024;
+const PRESENTER_VIDEO_MEDIA_MAX_BYTES = 500 * 1024 * 1024;
 const SERVICE_FUTURE_LOOKAHEAD_DAYS = 7;
 const SERVICE_WEEK_PANEL_ID = "__week";
 const SERVICE_LIST_PANEL_ID = "__list";
@@ -7699,6 +7700,12 @@ function handleDetailChange(event) {
     return;
   }
 
+  const serviceItemAssetFile = event.target.closest("[data-service-item-asset-file]");
+  if (serviceItemAssetFile) {
+    void uploadServiceItemAssetFile(serviceItemAssetFile);
+    return;
+  }
+
   const serviceItemAudioFile = event.target.closest("[data-service-item-audio-file]");
   if (serviceItemAudioFile) {
     void uploadServiceItemAudioAsset(serviceItemAudioFile);
@@ -10758,6 +10765,41 @@ function presenterReferenceMediaKindForFile(file) {
   return "";
 }
 
+function serviceAssetFileAcceptForKind(kind = "") {
+  const normalized = String(kind || "").trim().toLowerCase();
+  if (normalized === "image") return "image/*";
+  if (normalized === "video") return "video/*";
+  if (normalized === "audio") return "audio/*";
+  return PRESENTER_REFERENCE_MEDIA_ACCEPT;
+}
+
+function serviceAssetFileKindLabel(kind = "") {
+  const normalized = String(kind || "").trim().toLowerCase();
+  if (normalized === "image") return "이미지";
+  if (normalized === "video") return "영상";
+  if (normalized === "audio") return "음원";
+  return "파일";
+}
+
+function presenterMediaMaxBytesForKind(kind = "") {
+  return String(kind || "").trim().toLowerCase() === "video"
+    ? PRESENTER_VIDEO_MEDIA_MAX_BYTES
+    : PRESENTER_REFERENCE_MEDIA_MAX_BYTES;
+}
+
+function presenterMediaMaxSizeLabel(kind = "") {
+  return String(kind || "").trim().toLowerCase() === "video" ? "500MB" : "50MB";
+}
+
+function serviceItemAcceptsMediaAssetFile(item = {}, memo = parseServiceItemMemo(item?.memo), kind = "") {
+  if (isPresenterReferenceMediaItem(item, memo)) return true;
+  if (serviceMemoInputMode(memo, item) !== "asset") return false;
+  const elementType = serviceMemoElementType(memo);
+  if (!["image", "video", "audio", "file"].includes(elementType)) return false;
+  if (!kind || elementType === "file") return true;
+  return elementType === kind;
+}
+
 function presenterReferenceMediaUploadPath(serviceId, item, file) {
   const safeName = String(file?.name || "media")
     .normalize("NFKD")
@@ -10779,6 +10821,18 @@ async function uploadPresenterReferenceMediaFile(input) {
   });
 }
 
+async function uploadServiceItemAssetFile(input) {
+  const file = input?.files?.[0];
+  const serviceId = input?.dataset?.serviceId || state.selectedServiceId;
+  const index = Number(input?.dataset?.serviceItemIndex);
+  return uploadPresenterReferenceMediaAsset({
+    file,
+    serviceId,
+    item: getServiceItems(serviceId)[index],
+    input,
+  });
+}
+
 function currentServiceItemForMutation(serviceId, item) {
   if (!item) return null;
   const itemId = String(item.id || "").trim();
@@ -10789,13 +10843,19 @@ function currentServiceItemForMutation(serviceId, item) {
 async function uploadPresenterReferenceMediaAsset({ file, serviceId, item, input = null } = {}) {
   const targetItem = currentServiceItemForMutation(serviceId, item);
   const kind = presenterReferenceMediaKindForFile(file);
-  if (!file || !targetItem || !isPresenterReferenceMediaItem(targetItem) || !kind) {
-    showToast("이미지, 영상, 음원 파일만 참고 화면에 넣을 수 있습니다.", "error");
+  const memo = parseServiceItemMemo(targetItem?.memo);
+  const referenceMedia = isPresenterReferenceMediaItem(targetItem, memo);
+  if (!file || !targetItem || !kind || !serviceItemAcceptsMediaAssetFile(targetItem, memo, kind)) {
+    const expectedKind = serviceMemoElementType(memo);
+    const expectedLabel = serviceAssetFileKindLabel(expectedKind);
+    showToast(referenceMedia || !["image", "video", "audio"].includes(expectedKind)
+      ? "이미지, 영상, 음원 파일만 넣을 수 있습니다."
+      : `${expectedLabel} 항목에는 ${expectedLabel} 파일만 넣을 수 있습니다.`, "error");
     if (input) input.value = "";
     return false;
   }
-  if (Number(file.size) > PRESENTER_REFERENCE_MEDIA_MAX_BYTES) {
-    showToast("참고 화면 파일은 50MB 이하로 올려 주세요.", "error");
+  if (Number(file.size) > presenterMediaMaxBytesForKind(kind)) {
+    showToast(`${serviceAssetFileKindLabel(kind)} 파일은 ${presenterMediaMaxSizeLabel(kind)} 이하로 올려 주세요.`, "error");
     if (input) input.value = "";
     return false;
   }
@@ -10818,7 +10878,6 @@ async function uploadPresenterReferenceMediaAsset({ file, serviceId, item, input
     const url = String(data?.publicUrl || "").trim();
     if (!url) throw new Error("업로드한 파일의 공개 주소를 만들지 못했습니다.");
 
-    const memo = parseServiceItemMemo(targetItem.memo);
     memo.elementType = kind;
     memo.componentType = kind;
     memo.inputMode = "asset";
@@ -10832,7 +10891,8 @@ async function uploadPresenterReferenceMediaAsset({ file, serviceId, item, input
     await saveService(serviceId, { silent: true, renderAfterSave: false, throwOnError: true });
     renderCurrentServiceModuleDetail();
     renderServiceList();
-    showToast(`${kind === "image" ? "이미지" : kind === "video" ? "영상" : "음원"}을 참고 화면에 추가했습니다.`);
+    const destination = referenceMedia ? "참고 화면" : String(targetItem.label || targetItem.raw_title || "항목").trim();
+    showToast(`${serviceAssetFileKindLabel(kind)}을 ${destination}에 추가했습니다.`);
     return true;
   } catch (error) {
     if (uploadedPath && state.client?.storage?.from) {
@@ -10842,7 +10902,7 @@ async function uploadPresenterReferenceMediaAsset({ file, serviceId, item, input
         console.warn("Failed to clean up uploaded reference media after save failure.", cleanupError);
       }
     }
-    showToast(error?.message || "참고 화면 파일을 올리지 못했습니다.", "error");
+    showToast(error?.message || "미디어 파일을 올리지 못했습니다.", "error");
     return false;
   } finally {
     if (input) {
@@ -10863,8 +10923,8 @@ async function addAndUploadPresenterReferenceMedia(input) {
     input.value = "";
     return;
   }
-  if (Number(file.size) > PRESENTER_REFERENCE_MEDIA_MAX_BYTES) {
-    showToast("참고 화면 파일은 50MB 이하로 올려 주세요.", "error");
+  if (Number(file.size) > presenterMediaMaxBytesForKind(kind)) {
+    showToast(`${serviceAssetFileKindLabel(kind)} 파일은 ${presenterMediaMaxSizeLabel(kind)} 이하로 올려 주세요.`, "error");
     input.value = "";
     return;
   }
@@ -24395,10 +24455,10 @@ function renderPresenterServiceScriptureInput(item, index, memo) {
 
 function renderPresenterServiceAssetInput(item, index, memo) {
   const asset = normalizeServiceAsset(memo.asset);
+  const elementType = serviceMemoElementType(memo);
+  const serviceId = item.service_id || state.selectedServiceId;
   if (isPresenterReferenceMediaItem(item, memo)) {
-    const elementType = serviceMemoElementType(memo);
     const kind = ["image", "video", "audio"].includes(elementType) ? elementType : "image";
-    const serviceId = item.service_id || state.selectedServiceId;
     return `
       <div class="svc-reference-media-input">
         <div class="svc-reference-media-toolbar">
@@ -24428,22 +24488,33 @@ function renderPresenterServiceAssetInput(item, index, memo) {
         ${renderPresenterReferenceMediaPreview(asset, kind)}
       </div>`;
   }
+  const kind = ["image", "video", "audio"].includes(elementType) ? elementType : "";
+  const typeLabel = serviceAssetFileKindLabel(kind || asset.kind || elementType);
   return `
-    <label class="svc-presenter-input-field">
-      <span>이름</span>
-      <input class="svc-presenter-input-control" type="text" data-service-item-field="asset_name" data-service-item-index="${index}"
-        value="${escapeAttr(asset.name)}" placeholder="영상 또는 이미지 이름" aria-label="${escapeAttr(`${item.label || "파일"} 이름`)}" />
-    </label>
-    <label class="svc-presenter-input-field">
-      <span>파일/링크</span>
-      <input class="svc-presenter-input-control" type="text" data-service-item-field="asset_url" data-service-item-index="${index}"
-        value="${escapeAttr(asset.url)}" placeholder="assets/... 또는 YouTube 링크" aria-label="${escapeAttr(`${item.label || "파일"} 링크`)}" />
-    </label>`;
+    <div class="svc-reference-media-input">
+      <div class="svc-reference-media-toolbar svc-reference-media-toolbar--asset">
+        <label class="svc-reference-media-upload">
+          <input type="file" accept="${escapeAttr(serviceAssetFileAcceptForKind(kind))}" data-service-item-asset-file data-service-id="${escapeAttr(serviceId)}" data-service-item-index="${index}" />
+          <i data-lucide="upload"></i><span>${escapeHtml(typeLabel)} 선택</span>
+        </label>
+      </div>
+      <label class="svc-presenter-input-field">
+        <span>이름</span>
+        <input class="svc-presenter-input-control" type="text" data-service-item-field="asset_name" data-service-item-index="${index}" data-service-id="${escapeAttr(serviceId)}"
+          value="${escapeAttr(asset.name)}" placeholder="${escapeAttr(`${typeLabel} 이름`)}" aria-label="${escapeAttr(`${item.label || "파일"} 이름`)}" />
+      </label>
+      <label class="svc-presenter-input-field">
+        <span>파일/링크</span>
+        <input class="svc-presenter-input-control" type="text" data-service-item-field="asset_url" data-service-item-index="${index}" data-service-id="${escapeAttr(serviceId)}"
+          value="${escapeAttr(asset.url)}" placeholder="파일을 선택하거나 공개 URL 입력" aria-label="${escapeAttr(`${item.label || "파일"} 링크`)}" />
+      </label>
+      ${renderPresenterReferenceMediaPreview(asset, kind || asset.kind, "파일을 선택하면 이 항목에 바로 연결됩니다.")}
+    </div>`;
 }
 
-function renderPresenterReferenceMediaPreview(asset, kind) {
+function renderPresenterReferenceMediaPreview(asset, kind, emptyMessage = "파일을 선택하면 이 예배의 참고 화면으로 바로 송출됩니다.") {
   const source = String(asset?.url || "").trim();
-  if (!source) return `<div class="svc-reference-media-preview is-empty"><i data-lucide="image-plus"></i><span>파일을 선택하면 이 예배의 참고 화면으로 바로 송출됩니다.</span></div>`;
+  if (!source) return `<div class="svc-reference-media-preview is-empty"><i data-lucide="image-plus"></i><span>${escapeHtml(emptyMessage)}</span></div>`;
   if (kind === "video") return `<div class="svc-reference-media-preview"><video src="${escapeAttr(source)}" muted playsinline preload="metadata"></video></div>`;
   if (kind === "audio") return `<div class="svc-reference-media-preview svc-reference-media-preview--audio"><i data-lucide="audio-lines"></i><strong>${escapeHtml(asset.name || "음원")}</strong><audio controls preload="metadata" src="${escapeAttr(source)}"></audio></div>`;
   return `<div class="svc-reference-media-preview"><img src="${escapeAttr(source)}" alt="${escapeAttr(asset.name || "참고 화면")}" loading="lazy" /></div>`;

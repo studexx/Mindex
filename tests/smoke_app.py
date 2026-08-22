@@ -5798,6 +5798,103 @@ def main() -> int:
                     else:
                         fail("presenter-media-persistence-guard", json.dumps(presenter_media_persistence_guard, ensure_ascii=False))
 
+                    presenter_generic_asset_upload_guard = page.evaluate(
+                        """
+                        async () => {
+                          const serviceId = '__smoke_generic_video_asset_upload__';
+                          const item = normalizeServiceItem({
+                            id: '__smoke_generic_video_asset_item__',
+                            service_id: serviceId,
+                            label: '봉헌 영상',
+                            raw_title: '',
+                            memo: serializeServiceItemMemo({
+                              elementType: 'video',
+                              componentType: 'video',
+                              inputMode: 'asset',
+                              asset: { kind: 'video', name: '봉헌 영상', url: '' },
+                            }),
+                          }, 0);
+                          const originalItems = state.serviceItems[serviceId];
+                          const originalClient = state.client;
+                          const originalSaveService = saveService;
+                          const originalRenderCurrentServiceModuleDetail = renderCurrentServiceModuleDetail;
+                          const originalRenderServiceList = renderServiceList;
+                          const uploads = [];
+                          let saved = false;
+                          let rendered = false;
+                          try {
+                            state.serviceItems[serviceId] = [item];
+                            state.client = {
+                              storage: {
+                                from(bucket) {
+                                  return {
+                                    upload: async (path, file, options) => {
+                                      uploads.push({ bucket, path, fileName: file.name, contentType: options?.contentType || '' });
+                                      return { error: null };
+                                    },
+                                    getPublicUrl: (path) => ({ data: { publicUrl: `https://cdn.example.test/${path}` } }),
+                                    remove: async () => ({ error: null }),
+                                  };
+                                },
+                              },
+                            };
+                            saveService = async () => { saved = true; return true; };
+                            renderCurrentServiceModuleDetail = () => { rendered = true; };
+                            renderServiceList = () => {};
+                            const html = renderPresenterServiceAssetInput(item, 0, parseServiceItemMemo(item.memo));
+                            const uploaded = await uploadPresenterReferenceMediaAsset({
+                              file: new File(['video-data'], 'offering.mp4', { type: 'video/mp4' }),
+                              serviceId,
+                              item,
+                            });
+                            const memo = parseServiceItemMemo(item.memo);
+                            return {
+                              hasFileInput: html.includes('data-service-item-asset-file'),
+                              acceptVideoOnly: html.includes('accept="video/*"'),
+                              uploaded,
+                              saved,
+                              rendered,
+                              uploads,
+                              elementType: memo.elementType || '',
+                              inputMode: memo.inputMode || '',
+                              asset: memo.asset || {},
+                              modified: Boolean(item._worshipElementTemplateModified),
+                              videoLimitLarger: presenterMediaMaxBytesForKind('video') > presenterMediaMaxBytesForKind('image'),
+                              videoLimitLabel: presenterMediaMaxSizeLabel('video'),
+                            };
+                          } finally {
+                            if (originalItems === undefined) delete state.serviceItems[serviceId];
+                            else state.serviceItems[serviceId] = originalItems;
+                            state.client = originalClient;
+                            saveService = originalSaveService;
+                            renderCurrentServiceModuleDetail = originalRenderCurrentServiceModuleDetail;
+                            renderServiceList = originalRenderServiceList;
+                          }
+                        }
+                        """
+                    )
+                    if (
+                        presenter_generic_asset_upload_guard["hasFileInput"]
+                        and presenter_generic_asset_upload_guard["acceptVideoOnly"]
+                        and presenter_generic_asset_upload_guard["uploaded"]
+                        and presenter_generic_asset_upload_guard["saved"]
+                        and presenter_generic_asset_upload_guard["rendered"]
+                        and len(presenter_generic_asset_upload_guard["uploads"]) == 1
+                        and presenter_generic_asset_upload_guard["uploads"][0]["fileName"] == "offering.mp4"
+                        and presenter_generic_asset_upload_guard["uploads"][0]["contentType"] == "video/mp4"
+                        and presenter_generic_asset_upload_guard["elementType"] == "video"
+                        and presenter_generic_asset_upload_guard["inputMode"] == "asset"
+                        and presenter_generic_asset_upload_guard["asset"].get("kind") == "video"
+                        and presenter_generic_asset_upload_guard["asset"].get("name") == "offering.mp4"
+                        and presenter_generic_asset_upload_guard["asset"].get("url", "").startswith("https://cdn.example.test/services/")
+                        and presenter_generic_asset_upload_guard["modified"]
+                        and presenter_generic_asset_upload_guard["videoLimitLarger"]
+                        and presenter_generic_asset_upload_guard["videoLimitLabel"] == "500MB"
+                    ):
+                        pass_("presenter-generic-asset-upload-guard", json.dumps(presenter_generic_asset_upload_guard, ensure_ascii=False))
+                    else:
+                        fail("presenter-generic-asset-upload-guard", json.dumps(presenter_generic_asset_upload_guard, ensure_ascii=False))
+
                     presenter_praise_header_audio_guard = page.evaluate(
                         """
                         (() => {
