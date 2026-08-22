@@ -6207,6 +6207,11 @@ def main() -> int:
                             );
                             const allGenerationProjectedLabels = allGenerationProjectedFromRegular.map((entry) => entry.label || '');
                             const allGenerationProjectedSections = [...new Set(allGenerationProjectedFromRegular.map((entry) => entry._worshipSectionKey || ''))];
+                            const allGenerationSharedMainPraiseIndex = sundaySharedContentItemIndex(
+                              allGenerationItems,
+                              'main-praise:3',
+                              allGenerationService
+                            );
                             return {
                               songIds: ['찬양 1', '찬양 2', '찬양 3', '찬양 4', '결단찬양'].map((label) => byLabel(label).song_id || ''),
                               versionIds: ['찬양 1', '찬양 2', '찬양 3'].map((label) => byLabel(label).version_id || byLabel(label).song_version_id || ''),
@@ -6277,6 +6282,7 @@ def main() -> int:
                                 projectedFromRegularClosingLabels: allGenerationProjectedFromRegular
                                   .filter((entry) => (entry._worshipSectionKey || '') === 'closing_visual')
                                   .map((entry) => entry.label || ''),
+                                sharedMainPraiseIndex: allGenerationSharedMainPraiseIndex,
                                 draftCleared: !state.presenterPreparationDrafts[allGenerationService.id],
                               },
                               connectedSongInput: {
@@ -6405,6 +6411,7 @@ def main() -> int:
                             ],
                             "projectedFromRegularBlockedLabels": [],
                             "projectedFromRegularClosingLabels": ["마무리"],
+                            "sharedMainPraiseIndex": -1,
                             "draftCleared": True,
                         }
                         and presenter_preparation_paste["connectedSongInput"] == {

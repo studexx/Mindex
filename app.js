@@ -22556,6 +22556,7 @@ function isSundayMainHymnPraiseSharedItem(item = {}) {
 
 function sundaySharedContentItemIndex(items = [], key = "", service = null) {
   const typeId = worshipAppServiceTypeId(service?.type_id);
+  if (key.startsWith("main-praise:") && isAllGenerationsWorshipService(service)) return -1;
   if (key === "main-praise:3" && typeId === "sunday-main") {
     const hymnIndex = items.findIndex((item) => isSundayMainHymnPraiseSharedItem(item));
     if (hymnIndex >= 0) return hymnIndex;
