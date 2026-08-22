@@ -4269,6 +4269,11 @@ def main() -> int:
                             });
                             return group.subgroups.map((subgroup) => subgroup.label);
                           })(),
+                          formBadgeLabelContract: [
+                            presenterFormGroupLabel({ marker: 'CB' }),
+                            presenterFormGroupLabel({ formLabel: 'Chorus B' }),
+                            presenterFormGroupLabel({ marker: 'C B' }),
+                          ],
                           elementNameTitleContract: (() => {
                             const welcomeItem = {
                               label: '환영',
@@ -4418,6 +4423,7 @@ def main() -> int:
                         )
                         and presenter_terms["collapsedBoardSubgroups"] == 0
                         and presenter_terms["mainPraiseSubgroupLabels"] == ["환영", "찬양 1"]
+                        and presenter_terms["formBadgeLabelContract"] == ["Chorus B", "Chorus B", "Chorus B"]
                         and presenter_terms["elementNameTitleContract"] == {
                             "welcomeSidebar": "환영 · 헤세드 찬양단",
                             "welcomeSidebarParts": {"meta": "환영", "title": "헤세드 찬양단"},

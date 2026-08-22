@@ -3514,6 +3514,11 @@ def main() -> int:
                         explicitTagTexts: explicitTagSlides.map((slide) => slide.text),
                         explicitGenericMarkers: explicitGenericSlides.map((slide) => slide.marker),
                         explicitGenericTexts: explicitGenericSlides.map((slide) => slide.text),
+                        groupedLetterMarkers: [
+                          presenterFormMarker({ part_type: 'Chorus', part_number: null, label: 'CB' }),
+                          presenterFormMarker({ part_type: 'Chorus', part_number: null, label: 'Chorus B' }),
+                          normalizePresenterScoreFormLabel('C B'),
+                        ],
                         defaultFormMetadataSummary: serviceFormPresetSummary(normalizeSongMetadata(defaultFormSong.metadata).presenter_form),
                         defaultFormMarkers: defaultFormSlides.map((slide) => slide.marker),
                         defaultFormTexts: defaultFormSlides.map((slide) => slide.text),
@@ -3684,6 +3689,7 @@ def main() -> int:
                     and form_preset_state["explicitTagTexts"][-1] == "C 둘째 줄\nC 둘째 줄"
                     and form_preset_state["explicitGenericMarkers"] == ["Verse 1", "Chorus 1", "Verse 2", "Chorus 2"]
                     and "B 첫 줄" not in "\n".join(form_preset_state["explicitGenericTexts"])
+                    and form_preset_state["groupedLetterMarkers"] == ["Chorus B", "Chorus B", "Chorus B"]
                     and form_preset_state["defaultFormMetadataSummary"] == "V1-V2-C-V3-Coda"
                     and form_preset_state["defaultFormMarkers"] == ["Verse 1", "Verse 2", "Chorus", "Verse 3", "Coda"]
                     and form_preset_state["defaultFormTexts"] == [

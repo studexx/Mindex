@@ -4182,9 +4182,8 @@ function inferWorshipSlideMarker(row = {}, elementType = "") {
 
 function normalizeImportedPraiseMarker(value = "") {
   const raw = String(value || "").trim();
-  if (normalizeSongFormPresetLabel(raw).type === "pre-chorus") return "Pre-Chorus";
   if (/^(ending|엔딩)(?:\s+\d+)?$/i.test(raw)) return "Coda";
-  return raw;
+  return songFormPresetDisplayLabel(raw) || raw;
 }
 
 function worshipPresenterElementType(elementType, slideType) {
@@ -9128,6 +9127,23 @@ function normalizeSongFormPresetLabel(value = "") {
     return { key: "tag", type: "tag" };
   }
   return { key: compact, type: compact };
+}
+
+function songFormPresetDisplayLabel(value = "") {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  const target = normalizeSongFormPresetLabel(raw);
+  const group = String(target.group || "").trim().toUpperCase();
+  const suffix = target.number ? ` ${target.number}` : group ? ` ${group}` : "";
+  if (target.type === "verse") return `Verse${suffix}`;
+  if (target.type === "chorus") return `Chorus${suffix}`;
+  if (target.type === "bridge") return `Bridge${suffix}`;
+  if (target.type === "pre-chorus") return `Pre-Chorus${suffix}`;
+  if (target.type === "coda") return "Coda";
+  if (target.type === "tag") return target.repeat > 1 ? "Tags" : "Tag";
+  if (target.type === "instrumental") return "Instrumental";
+  if (target.type === "lyrics") return "";
+  return raw;
 }
 
 function normalizeSongMetadataPresenterForm(value) {
@@ -25655,7 +25671,8 @@ function presenterSlideSupportsFormGrouping(slide) {
 
 function presenterFormGroupLabel(slide) {
   const label = String(slide?.formLabel || slide?.marker || "").trim();
-  return isGenericPresenterFormLabel(label) ? "" : label;
+  if (isGenericPresenterFormLabel(label)) return "";
+  return songFormPresetDisplayLabel(label) || label;
 }
 
 function presenterLabelDuplicatesSlideText(label, slide) {

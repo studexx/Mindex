@@ -420,14 +420,7 @@ function presenterScoreFormLabelFromAssetSlide(slide = {}) {
 function normalizePresenterScoreFormLabel(value = "") {
   const raw = String(value || "").trim();
   if (!raw) return "";
-  const target = normalizePresenterFormPresetLabel(raw);
-  if (target.type === "lyrics") return "";
-  if (target.type === "verse" && target.number) return `Verse ${target.number}`;
-  if (target.key === "chorus") return "Chorus";
-  if (target.key === "bridge") return "Bridge";
-  if (target.key === "pre-chorus") return "Pre-Chorus";
-  if (target.key === "coda") return "Coda";
-  return "";
+  return presenterFormPresetDisplayLabel(raw);
 }
 
 function presenterHymnScoreAssetSlides(song = null, version = null, displayText = "") {
@@ -1037,6 +1030,24 @@ function normalizePresenterFormType(value = "") {
   if (/^lyrics$/i.test(compact)) return "lyrics";
   if (/^(interlude|instrumental|간주)$/i.test(compact)) return "instrumental";
   return compact;
+}
+
+function presenterFormPresetDisplayLabel(value = "") {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  const target = normalizePresenterFormPresetLabel(raw);
+  const group = String(target.group || "").trim().toUpperCase();
+  const suffix = target.number ? ` ${target.number}` : group ? ` ${group}` : "";
+  if (target.lastVerse) return "Last Verse";
+  if (target.type === "verse") return `Verse${suffix}`;
+  if (target.type === "chorus") return `Chorus${suffix}`;
+  if (target.type === "bridge") return `Bridge${suffix}`;
+  if (target.type === "pre-chorus") return `Pre-Chorus${suffix}`;
+  if (target.type === "coda") return "Coda";
+  if (target.type === "tag") return target.repeat > 1 ? "Tags" : "Tag";
+  if (target.type === "instrumental") return "Instrumental";
+  if (target.type === "lyrics") return "";
+  return raw;
 }
 
 function normalizePresenterMissingFormLabel(value = "") {
@@ -2240,7 +2251,8 @@ function presenterPraiseMarker(song, fallbackText = "") {
 
 function presenterFormMarker(form) {
   const label = presenterFormDisplayLabel(form);
-  return isGenericPresenterFormLabel(label) ? "" : label;
+  if (isGenericPresenterFormLabel(label)) return "";
+  return presenterFormPresetDisplayLabel(label) || label;
 }
 
 function isGenericPresenterFormLabel(value) {
