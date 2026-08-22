@@ -3968,6 +3968,9 @@ function groupWorshipElements(sections = [], elements = []) {
       config.introSlide || config.intro_slide || config.titleSlide || config.title_slide
       || sourceRef.introSlide || sourceRef.intro_slide || sourceRef.titleSlide || sourceRef.title_slide,
     );
+    const connectedPraise = normalizeServiceConnectedPraise(
+      config.connectedPraise || config.connected_praise || sourceRef.connectedPraise || sourceRef.connected_praise,
+    );
     const manualSlides = serviceElementManualSlides(element, config, { section, sourceRef });
     grouped[serviceId].push(normalizeServiceItem({
       id: element.id,
@@ -3998,6 +4001,7 @@ function groupWorshipElements(sections = [], elements = []) {
         audioAsset,
         playback,
         presenterRole,
+        connectedPraise,
         hiddenInPresentation: Boolean(config.hiddenInPresentation || config.hidden_in_presentation),
         templateSuppressed: Boolean(config.templateSuppressed || config.template_suppressed),
         reviewStatus: element.review_status,
@@ -6327,6 +6331,13 @@ function serviceElementConfigForSave(existingConfig = {}, parsed = emptyServiceI
     delete config.presenterRole;
     delete config.presenter_role;
     delete config.role;
+  }
+  if (parsed.connectedPraise) {
+    config.connectedPraise = parsed.connectedPraise;
+    delete config.connected_praise;
+  } else {
+    delete config.connectedPraise;
+    delete config.connected_praise;
   }
   if (parsed.hiddenInPresentation) config.hiddenInPresentation = true;
   else delete config.hiddenInPresentation;
@@ -9245,9 +9256,58 @@ function emptyServiceItemMemo(rawNote = "") {
     audioAsset: { kind: "", name: "", url: "" },
     playback: null,
     presenterRole: "",
+    connectedPraise: null,
     hiddenInPresentation: false,
     templateSuppressed: false,
   };
+}
+
+function normalizeServiceConnectedPraise(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const groupId = firstNonBlankString(value.groupId, value.group_id, value.id);
+  const roleRaw = String(value.role || value.position || "").trim().toLowerCase();
+  const role = roleRaw === "secondary" || roleRaw === "primary" ? roleRaw : "";
+  const title = firstNonBlankString(value.title, value.titleSlideTitle, value.title_slide_title);
+  const orderTitle = firstNonBlankString(value.orderTitle, value.order_title, value.outlineTitle, value.outline_title);
+  const inputText = firstNonBlankString(value.inputText, value.input_text, value.editorText, value.editor_text);
+  const primaryItemId = firstNonBlankString(value.primaryItemId, value.primary_item_id);
+  const secondaryItemIds = (Array.isArray(value.secondaryItemIds) ? value.secondaryItemIds : value.secondary_item_ids)
+    ?.map((id) => String(id || "").trim())
+    .filter(Boolean) || [];
+  const itemIds = (Array.isArray(value.itemIds) ? value.itemIds : value.item_ids)
+    ?.map((id) => String(id || "").trim())
+    .filter(Boolean) || [];
+  if (!groupId && !role && !title && !orderTitle && !inputText && !primaryItemId && !secondaryItemIds.length && !itemIds.length) return null;
+  return {
+    ...(groupId ? { groupId } : {}),
+    ...(role ? { role } : {}),
+    ...(title ? { title } : {}),
+    ...(orderTitle ? { orderTitle } : {}),
+    ...(inputText ? { inputText } : {}),
+    ...(primaryItemId ? { primaryItemId } : {}),
+    ...(secondaryItemIds.length ? { secondaryItemIds } : {}),
+    ...(itemIds.length ? { itemIds } : {}),
+  };
+}
+
+function serviceItemConnectedPraise(item = {}, memo = parseServiceItemMemo(item?.memo)) {
+  return normalizeServiceConnectedPraise(memo.connectedPraise || memo.connected_praise || item.connectedPraise || item.connected_praise);
+}
+
+function serviceItemConnectedPraiseRole(item = {}, memo = parseServiceItemMemo(item?.memo)) {
+  return serviceItemConnectedPraise(item, memo)?.role || "";
+}
+
+function isServiceConnectedPraiseSecondaryItem(item = {}, memo = parseServiceItemMemo(item?.memo)) {
+  return serviceItemConnectedPraiseRole(item, memo) === "secondary";
+}
+
+function serviceItemConnectedPraiseTitle(item = {}, mode = "title", memo = parseServiceItemMemo(item?.memo)) {
+  const connected = serviceItemConnectedPraise(item, memo);
+  if (!connected || connected.role === "secondary") return "";
+  if (mode === "order") return connected.orderTitle || connected.title || "";
+  if (mode === "input") return connected.inputText || connected.orderTitle || connected.title || "";
+  return connected.title || connected.orderTitle || "";
 }
 
 function parseServiceItemMemo(value) {
@@ -9261,6 +9321,7 @@ function parseServiceItemMemo(value) {
       const audioAsset = normalizeServiceAudioAsset(parsed.audioAsset || parsed.audio_asset || parsed.audio || parsed.mr);
       const presenterRole = normalizeServicePresenterRole(parsed.presenterRole || parsed.presenter_role || parsed.role);
       const introSlide = normalizeServiceIntroSlide(parsed.introSlide || parsed.intro_slide || parsed.titleSlide || parsed.title_slide);
+      const connectedPraise = normalizeServiceConnectedPraise(parsed.connectedPraise || parsed.connected_praise);
       return {
         note: String(parsed.note || parsed.memo || "").trim(),
         slides: Array.isArray(parsed.slides)
@@ -9287,6 +9348,7 @@ function parseServiceItemMemo(value) {
         audioAsset,
         playback: normalizeServicePlaybackConfig(parsed.playback, elementType),
         presenterRole,
+        connectedPraise,
         hiddenInPresentation: Boolean(parsed.hiddenInPresentation || parsed.hidden_in_presentation || parsed.hidden),
         templateSuppressed: Boolean(parsed.templateSuppressed || parsed.template_suppressed),
       };
@@ -9521,11 +9583,12 @@ function serializeServiceItemMemo(value = {}) {
   const audioAsset = normalizeServiceAudioAsset(value.audioAsset || value.audio_asset || value.audio || value.mr);
   const playback = normalizeServicePlaybackConfig(value.playback, elementType);
   const presenterRole = normalizeServicePresenterRole(value.presenterRole || value.presenter_role || value.role);
+  const connectedPraise = normalizeServiceConnectedPraise(value.connectedPraise || value.connected_praise);
   const hiddenInPresentation = Boolean(value.hiddenInPresentation || value.hidden_in_presentation || value.hidden);
   const templateSuppressed = Boolean(value.templateSuppressed || value.template_suppressed);
   const defaultAssetKind = serviceAssetKindForElementType(elementType);
   if (!asset.kind && defaultAssetKind && hasServiceAsset(asset)) asset.kind = defaultAssetKind;
-  if (!slides.length && !scriptureReference && !scriptureReferences.length && !scriptureTranslationId && !scriptureReferencePayloads.length && !manualScripture && !hasServiceIntroSlide(introSlide) && !formHint && !formPreset && !formPresetDisabled && !formPresetRules.length && !templateKey && !templateVariant && !elementType && !outputMode && !inputMode && !textHighlights.length && !hasServiceAsset(asset) && !hasServiceAsset(audioAsset) && !hasServicePlaybackConfig(playback) && !presenterRole && !hiddenInPresentation && !templateSuppressed) return note;
+  if (!slides.length && !scriptureReference && !scriptureReferences.length && !scriptureTranslationId && !scriptureReferencePayloads.length && !manualScripture && !hasServiceIntroSlide(introSlide) && !formHint && !formPreset && !formPresetDisabled && !formPresetRules.length && !templateKey && !templateVariant && !elementType && !outputMode && !inputMode && !textHighlights.length && !hasServiceAsset(asset) && !hasServiceAsset(audioAsset) && !hasServicePlaybackConfig(playback) && !presenterRole && !connectedPraise && !hiddenInPresentation && !templateSuppressed) return note;
   const payload = { note };
   if (scriptureReference) payload.scriptureReference = scriptureReference;
   if (scriptureReferences.length) payload.scriptureReferences = scriptureReferences;
@@ -9544,6 +9607,7 @@ function serializeServiceItemMemo(value = {}) {
   if (inputMode) payload.inputMode = inputMode;
   if (textHighlights.length) payload.textHighlights = textHighlights;
   if (presenterRole) payload.presenterRole = presenterRole;
+  if (connectedPraise) payload.connectedPraise = connectedPraise;
   if (hiddenInPresentation) payload.hiddenInPresentation = true;
   if (templateSuppressed) payload.templateSuppressed = true;
   if (hasServiceAsset(asset)) payload.asset = asset;
@@ -20282,7 +20346,9 @@ function renderServiceReadyOutlineRow(service, slides = [], items = getServiceIt
 function renderServiceOutlineGroup(service, group, groupIndex, selectedIndex, slides = []) {
   if (!group?.items?.length) return "";
   const firstEntry = group.items[0];
-  const childEntries = group.items.filter(({ item }) => !isServiceSidebarSectionMarkerItem(item, group));
+  const childEntries = group.items.filter(({ item }) =>
+    !isServiceSidebarSectionMarkerItem(item, group)
+    && !isServiceConnectedPraiseSecondaryItem(item));
   const firstSlideEntry = group.items.find(({ item }) => firstPresenterSlideIndexForServiceItem(item, slides) >= 0) || firstEntry;
   const firstSlideIndex = firstPresenterSlideIndexForServiceItem(firstSlideEntry.item, slides);
   const selected = group.items.some(({ index }) => index === selectedIndex);
@@ -20377,6 +20443,8 @@ function isServiceSidebarSectionMarkerItem(item, group = {}) {
 }
 
 function serviceSidebarChildItemTitle(item, service = null) {
+  const connectedTitle = serviceItemConnectedPraiseTitle(item, "order");
+  if (connectedTitle) return connectedTitle;
   const label = String(item?.label || "").trim();
   if (serviceSidebarUsesLabelOnly(item)) return label || "항목";
   const title = serviceItemDisplayText(item);
@@ -20391,6 +20459,8 @@ function serviceSidebarChildItemTitle(item, service = null) {
 }
 
 function serviceSidebarChildItemDisplayParts(item, service = null) {
+  const connectedTitle = serviceItemConnectedPraiseTitle(item, "order");
+  if (connectedTitle) return { meta: String(item?.label || "").trim(), title: connectedTitle };
   const label = String(item?.label || "").trim();
   const fallback = serviceSidebarChildItemTitle(item, service);
   if (!label) return { meta: "", title: fallback || "항목" };
@@ -24130,6 +24200,20 @@ function presenterServiceInputHasEditableField(item, service) {
 
 function renderPresenterServicePraiseInput(item, index, model) {
   const assigneeLabel = presenterServiceAssigneeInputLabel(item);
+  const connectedInputText = serviceItemConnectedPraiseTitle(item, "input");
+  if (connectedInputText) {
+    return `
+    <label class="svc-presenter-input-field svc-presenter-input-field--song">
+      <span>찬양</span>
+      <textarea class="svc-presenter-input-control svc-presenter-input-control--multiline" rows="2" readonly aria-label="${escapeAttr(`${item.label || "찬양"} 연결 곡`)}">${escapeHtml(connectedInputText)}</textarea>
+    </label>
+    ${model.showAssignee ? `
+      <label class="svc-presenter-input-field svc-presenter-input-field--assignee">
+        <span>${escapeHtml(assigneeLabel)}</span>
+        <input class="svc-presenter-input-control" type="text" data-service-item-field="assignee" data-service-item-index="${index}"
+          value="${escapeAttr(model.assigneeValue || "")}" placeholder="${escapeAttr(inferServiceItemAssignee(item))}" aria-label="${escapeAttr(`${item.label || "항목"} 담당`)}" />
+      </label>` : ""}`;
+  }
   return `
     <label class="svc-presenter-input-field svc-presenter-input-field--song">
       <span>찬양</span>

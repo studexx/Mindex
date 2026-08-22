@@ -1840,7 +1840,7 @@ function buildPresenterCustomSlides(item, section, index) {
   }).filter((slide) => String(slide.text || "").trim());
   if (!songLikeItem || !shouldIncludeSongTitleSlide(item, label)) return lyricSlides;
   return [
-    presenterSongTitleSlide(item, section, null, null, serviceItemDisplayText(item), index),
+    presenterSongTitleSlide(item, section, null, null, serviceItemConnectedPraiseTitle(item, "title") || serviceItemDisplayText(item), index),
     ...lyricSlides,
   ];
 }
@@ -2060,7 +2060,9 @@ function parsePresenterInlineScriptureText(line) {
 }
 
 function shouldIncludeSongTitleSlide(item, label) {
+  if (isServiceConnectedPraiseSecondaryItem(item)) return false;
   const displayText = serviceItemDisplayText(item);
+  if (serviceItemConnectedPraiseTitle(item, "title")) return true;
   if (!displayText) return false;
   return Boolean(
     item?.song_id
@@ -2071,9 +2073,11 @@ function shouldIncludeSongTitleSlide(item, label) {
 }
 
 function presenterSongTitleSlide(item, section, song, version, displayText, index) {
+  const connectedTitle = serviceItemConnectedPraiseTitle(item, "title");
+  const effectiveDisplayText = connectedTitle || displayText;
   const marker = presenterPraiseMarker(song, displayText);
   const sectionHeading = presenterSongTitleSectionHeading(item, section);
-  const displayTitle = presenterSongTitleDisplayTitle(song, version, displayText, sectionHeading);
+  const displayTitle = presenterSongTitleDisplayTitle(connectedTitle ? null : song, connectedTitle ? null : version, effectiveDisplayText, sectionHeading);
   const titleText = presenterSongTitleContentText(displayTitle, sectionHeading);
   if (sectionHeading) {
     return presenterOrderContentTitleSlide(item, section, index, sectionHeading, titleText);
@@ -2086,7 +2090,7 @@ function presenterSongTitleSlide(item, section, song, version, displayText, inde
     type: "song-title",
     label: item.label || "",
     title: displayTitle,
-    subtitle: versionDisplayName(song, version),
+    subtitle: connectedTitle ? "" : versionDisplayName(song, version),
     marker,
     sectionHeading,
     bodyText: "",
