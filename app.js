@@ -24440,20 +24440,6 @@ function presenterServiceInputHasEditableField(item, service) {
 
 function renderPresenterServicePraiseInput(item, index, model) {
   const assigneeLabel = presenterServiceAssigneeInputLabel(item);
-  const connectedInputText = serviceItemConnectedPraiseTitle(item, "input");
-  if (connectedInputText) {
-    return `
-    <label class="svc-presenter-input-field svc-presenter-input-field--song">
-      <span>찬양</span>
-      <textarea class="svc-presenter-input-control svc-presenter-input-control--multiline" rows="2" readonly aria-label="${escapeAttr(`${item.label || "찬양"} 연결 곡`)}">${escapeHtml(connectedInputText)}</textarea>
-    </label>
-    ${model.showAssignee ? `
-      <label class="svc-presenter-input-field svc-presenter-input-field--assignee">
-        <span>${escapeHtml(assigneeLabel)}</span>
-        <input class="svc-presenter-input-control" type="text" data-service-item-field="assignee" data-service-item-index="${index}"
-          value="${escapeAttr(model.assigneeValue || "")}" placeholder="${escapeAttr(inferServiceItemAssignee(item))}" aria-label="${escapeAttr(`${item.label || "항목"} 담당`)}" />
-      </label>` : ""}`;
-  }
   return `
     <label class="svc-presenter-input-field svc-presenter-input-field--song">
       <span>찬양</span>
@@ -25740,7 +25726,7 @@ function updateConnectedPraiseSubgroupLabel(group = {}, subgroup = {}) {
 function connectedPraiseSubgroupRangeLabel(connected = null, fallbackItem = {}) {
   const title = serviceItemConnectedPraiseOrderTitle(fallbackItem, connected);
   const match = title.match(/(?:찬양\s*)?(\d+)\s*[-–~]\s*(\d+)/);
-  if (match) return `${match[1]}–${match[2]}`;
+  if (match) return `찬양 ${match[1]}–${match[2]}`;
   const single = title.match(/^찬양\s*(\d+)$/);
   return single ? `찬양 ${single[1]}` : "";
 }
@@ -25767,7 +25753,7 @@ function presenterBoardSubgroupContentTitle(slide = {}, label = "") {
   const connectedTitle = serviceItemConnectedPraiseTitle({
     label: slide.elementLabel || slide.label || "",
     connectedPraise: slide.connectedPraise || slide.connected_praise,
-  }, "order");
+  }, "title");
   if (connectedTitle) return connectedTitle;
   const linkedTitle = presenterBoardLinkedSongTitle(slide);
   if (linkedTitle) return linkedTitle;
@@ -26025,15 +26011,50 @@ function renderPresenterBoardSubgroupAudioControls(serviceId, subgroup = {}) {
 }
 
 function renderPresenterBoardSubgroupInputControls(serviceId, subgroup = {}) {
-  const context = presenterBoardSubgroupInputContext(serviceId, subgroup);
-  if (!context) return "";
-  const controls = presenterServiceInputControls(context.item, context.index, context.service);
-  if (!controls) return "";
-  const audioControls = renderPresenterBoardSubgroupAudioControls(serviceId, subgroup);
+  const contexts = presenterBoardSubgroupInputContexts(serviceId, subgroup);
+  if (!contexts.length) return "";
+  const blocks = contexts.map((context) => {
+    const controls = presenterServiceInputControls(context.item, context.index, context.service);
+    if (!controls) return "";
+    const audioControls = serviceItemSupportsHeaderAudio(context.item)
+      ? renderPresenterBoardItemAudioControls(serviceId, context)
+      : "";
+    const label = String(context.item.label || "항목").trim();
+    return `
+      <div class="svc-board-subgroup-control-item" data-service-item-index="${escapeAttr(String(context.index))}">
+        ${label ? `<span class="svc-board-subgroup-control-label">${escapeHtml(label)}</span>` : ""}
+        ${controls}
+        ${audioControls}
+      </div>`;
+  }).filter(Boolean);
+  if (!blocks.length) return "";
+  const first = contexts[0];
   return `
-    <div class="svc-board-subgroup-controls" aria-label="${escapeAttr(`${context.item.label || "항목"} 입력`)}">
-      ${controls}
-      ${audioControls}
+    <div class="svc-board-subgroup-controls" aria-label="${escapeAttr(`${first?.item?.label || "항목"} 입력`)}">
+      ${blocks.join("")}
+    </div>`;
+}
+
+function renderPresenterBoardItemAudioControls(serviceId, context = {}) {
+  if (!context || !serviceItemSupportsHeaderAudio(context.item)) return "";
+  const memo = parseServiceItemMemo(context.item.memo);
+  const audioAsset = normalizeServiceAudioAsset(memo.audioAsset);
+  const source = String(audioAsset.url || "").trim();
+  const label = audioAsset.name || "연결된 음원";
+  return `
+    <div class="svc-board-subgroup-audio${source ? " has-audio" : ""}" aria-label="${escapeAttr(`${context.item.label || "찬양"} 음원`)}">
+      ${source ? `
+        <audio controls preload="metadata" src="${escapeAttr(source)}"></audio>
+        <strong title="${escapeAttr(label)}">${escapeHtml(label)}</strong>
+        <button class="icon-btn" type="button" data-service-item-audio-clear
+          data-service-id="${escapeAttr(serviceId)}" data-service-item-index="${context.index}"
+          aria-label="음원 연결 해제" title="음원 연결 해제"><i data-lucide="x"></i></button>` : `
+        <span><i data-lucide="audio-lines"></i>음원</span>`}
+      <label class="svc-board-subgroup-audio-upload" title="${source ? "음원 교체" : "음원 추가"}">
+        <input type="file" accept="${SERVICE_ITEM_AUDIO_ACCEPT}" data-service-item-audio-file
+          data-service-id="${escapeAttr(serviceId)}" data-service-item-index="${context.index}" />
+        <i data-lucide="${source ? "refresh-cw" : "upload"}"></i><span>${source ? "교체" : "추가"}</span>
+      </label>
     </div>`;
 }
 
@@ -26060,6 +26081,32 @@ function presenterBoardSubgroupInputContext(serviceId, subgroup = {}) {
   const context = presenterBoardSubgroupItemContext(serviceId, subgroup);
   if (!context || !presenterServiceInputHasEditableField(context.item, context.service)) return null;
   return context;
+}
+
+function presenterBoardSubgroupInputContexts(serviceId, subgroup = {}) {
+  const service = state.services.find((svc) => svc.id === serviceId);
+  if (!service) return [];
+  const items = getServiceItems(serviceId);
+  const ids = [...new Set((subgroup.slides || [])
+    .map(({ slide }) => String(slide?.elementId || "").trim())
+    .filter(Boolean))];
+  if (!ids.length) {
+    const context = presenterBoardSubgroupInputContext(serviceId, subgroup);
+    return context ? [context] : [];
+  }
+  return ids
+    .map((id) => {
+      const itemIndex = items.findIndex((item) => String(item.id || "") === id);
+      if (itemIndex < 0) return null;
+      const item = items[itemIndex];
+      const context = {
+        service,
+        item,
+        index: Number.isInteger(item._origIndex) ? item._origIndex : itemIndex,
+      };
+      return presenterServiceInputHasEditableField(item, service) ? context : null;
+    })
+    .filter(Boolean);
 }
 
 function presenterWarningsForEntries(entries = []) {

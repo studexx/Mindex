@@ -6916,7 +6916,7 @@ textarea.svc-presenter-input-control--multiline {
 }
 .svc-board-subgroup-controls {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(160px, 0.24fr) max-content;
+  grid-template-columns: minmax(0, 1fr);
   width: 100%;
   margin: 0 0 10px;
   padding: 9px 10px;
@@ -6927,6 +6927,21 @@ textarea.svc-presenter-input-control--multiline {
   max-width: 100%;
   align-items: end;
   gap: 8px;
+}
+.svc-board-subgroup-control-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(160px, 0.24fr) max-content;
+  min-width: 0;
+  align-items: end;
+  gap: 8px;
+}
+.svc-board-subgroup-control-label {
+  grid-column: 1 / -1;
+  color: var(--accent);
+  font-size: var(--ui-label-size);
+  font-weight: var(--ui-label-weight);
+  line-height: 14px;
+  padding-left: 2px;
 }
 .svc-board-subgroup-controls .svc-presenter-input-field {
   display: grid;
@@ -7058,6 +7073,10 @@ textarea.svc-presenter-input-control--multiline {
 }
 @media (max-width: 760px) {
   .svc-board-subgroup-controls {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+  }
+  .svc-board-subgroup-control-item {
     grid-template-columns: minmax(0, 1fr);
     align-items: stretch;
   }

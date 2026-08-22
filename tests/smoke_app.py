@@ -4830,8 +4830,8 @@ def main() -> int:
                             "connectedPraiseSidebarParts": {"meta": "찬양 6–7", "title": "함께 지어져 가네 + 성도의 노래"},
                             "connectedPraiseSidebar": "찬양 6–7 · 함께 지어져 가네 + 성도의 노래",
                             "connectedThreePraiseSidebarParts": {"meta": "찬양 3–5", "title": "온 맘 다해 + 주님 마음 내게 주소서 + 주께 가까이"},
-                            "connectedThreePraiseBoardTitle": "찬양 3–5",
-                            "connectedThreePraiseBoardLabel": "3–5",
+                            "connectedThreePraiseBoardTitle": "온 맘 다해 + 주님 마음 내게 주소서 + 주께 가까이",
+                            "connectedThreePraiseBoardLabel": "찬양 3–5",
                             "mainPraiseTitle": "",
                             "entranceTitle": "",
                         }

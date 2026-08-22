@@ -1116,12 +1116,17 @@ def main() -> int:
                           const medleySlides = buildServicePresenterSlidesUncached(medleyService.id);
                           const group = groupPresenterSlidesBySection(medleySlides, medleyService.id).find((item) => item.kind === 'main-praise') || {};
                           const subgroup = group.subgroups?.find((item) => item.id === 'connected-praise:__smoke_medley_6_7__') || {};
+                          const controlsHost = document.createElement('div');
+                          controlsHost.innerHTML = renderPresenterBoardSubgroupInputControls(medleyService.id, subgroup);
                           state.songs = previousSongs;
                           return {
                             label: subgroup.label || '',
                             title: subgroup.title || '',
                             titleSlides: (subgroup.slides || []).filter(({ slide }) => slide.type === 'song-title').map(({ slide }) => slide.title || ''),
                             elementIds: [...new Set((subgroup.slides || []).map(({ slide }) => slide.elementId || '').filter(Boolean))],
+                            inputLabels: [...controlsHost.querySelectorAll('.svc-board-subgroup-control-label')].map((node) => node.textContent.trim()),
+                            songFieldCount: controlsHost.querySelectorAll('.svc-presenter-input-field--song').length,
+                            readonlyTextareas: controlsHost.querySelectorAll('textarea[readonly]').length,
                           };
                         })(),
                         praiseSectionAssigneeIntro: (() => {
@@ -1380,10 +1385,13 @@ def main() -> int:
                         "outputText": "♬ 가서 제자 삼으라",
                     }
                     and fallback_state["connectedPraiseMedleyBoard"] == {
-                        "label": "6–7",
-                        "title": "찬양 6–7",
+                        "label": "찬양 6–7",
+                        "title": "함께 지어져 가네 + 성도의 노래",
                         "titleSlides": ["함께 지어져 가네 + 성도의 노래"],
                         "elementIds": ["__smoke_medley_6__", "__smoke_medley_7__"],
+                        "inputLabels": ["찬양 6", "찬양 7"],
+                        "songFieldCount": 2,
+                        "readonlyTextareas": 0,
                     }
                     and fallback_state["praiseSectionAssigneeIntro"] == {
                         "type": "title-assignee",
