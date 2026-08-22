@@ -622,6 +622,123 @@ def main() -> int:
             else:
                 fail("unsaved-warning-uses-actual-diff", json.dumps(actual_dirty_diff, ensure_ascii=False))
 
+            passive_service_scripture_dirty = page.evaluate(
+                """
+                (async () => {
+                  if (
+                    typeof state === 'undefined'
+                    || typeof normalizeServiceItem !== 'function'
+                    || typeof serializeServiceItemMemo !== 'function'
+                    || typeof parseBibleReference !== 'function'
+                    || typeof cacheServiceScriptureVerses !== 'function'
+                    || typeof resolveServiceScriptureBodyReference !== 'function'
+                    || typeof captureCleanFingerprint !== 'function'
+                    || typeof hasDirtyChanges !== 'function'
+                  ) return { ready: false };
+                  const original = {
+                    services: state.services,
+                    serviceItems: state.serviceItems,
+                    selectedServiceId: state.selectedServiceId,
+                    selectedServiceTypeId: state.selectedServiceTypeId,
+                    dirty: { ...state.dirty },
+                    cleanFingerprints: { ...state.cleanFingerprints },
+                    client: state.client,
+                    bibleTranslations: state.bibleTranslations,
+                    selectedBibleTranslationId: state.selectedBibleTranslationId,
+                    bibleVerseCache: state.bibleVerseCache,
+                  };
+                  const service = { id: '__smoke_passive_scripture_service__', type_id: 'wednesday', date: '2099-01-01', title: '' };
+                  const makeScriptureItem = () => normalizeServiceItem({
+                    id: '__smoke_passive_scripture_item__',
+                    service_id: service.id,
+                    label: '성경봉독',
+                    raw_title: '요 3:16',
+                    memo: serializeServiceItemMemo({
+                      elementType: 'scripture_body',
+                      inputMode: 'scripture',
+                      scriptureReference: '요 3:16',
+                      scriptureReferences: ['요 3:16'],
+                      slides: [],
+                    }),
+                  }, 0);
+                  try {
+                    const reference = parseBibleReference('요 3:16');
+                    if (!reference) return { ready: false, reason: 'reference' };
+                    const translation = { id: '__smoke_passive_translation__', name: '개역개정', translationKey: 'KRV' };
+                    state.services = [service];
+                    state.serviceItems = { [service.id]: [makeScriptureItem()] };
+                    state.selectedServiceId = service.id;
+                    state.selectedServiceTypeId = service.type_id;
+                    state.client = {};
+                    state.bibleTranslations = [translation];
+                    state.selectedBibleTranslationId = translation.id;
+                    state.bibleVerseCache = new Map();
+                    cacheServiceScriptureVerses(reference, [{
+                      book_code: reference.book.code,
+                      chapter: 3,
+                      verse: 16,
+                      text: '하나님이 세상을 이처럼 사랑하사 독생자를 주셨으니',
+                    }], translation);
+
+                    captureCleanFingerprint('service');
+                    state.dirty.service = false;
+                    await resolveServiceScriptureBodyReference(service.id, 0, {
+                      itemId: '__smoke_passive_scripture_item__',
+                      markDirty: false,
+                      renderControls: false,
+                      renderDetail: false,
+                    });
+                    const passiveDirty = state.dirty.service;
+                    const passiveHasDirty = hasDirtyChanges({ reconcile: true });
+
+                    state.serviceItems = { [service.id]: [makeScriptureItem()] };
+                    captureCleanFingerprint('service');
+                    state.dirty.service = false;
+                    await resolveServiceScriptureBodyReference(service.id, 0, {
+                      itemId: '__smoke_passive_scripture_item__',
+                      renderControls: false,
+                      renderDetail: false,
+                    });
+                    const explicitDirty = state.dirty.service;
+
+                    if (typeof scheduledPresenterRefreshes !== 'undefined') {
+                      scheduledPresenterRefreshes.forEach((entry) => {
+                        if (entry?.timer) window.clearTimeout(entry.timer);
+                      });
+                      scheduledPresenterRefreshes.clear();
+                    }
+                    return { ready: true, passiveDirty, passiveHasDirty, explicitDirty };
+                  } finally {
+                    if (typeof scheduledPresenterRefreshes !== 'undefined') {
+                      scheduledPresenterRefreshes.forEach((entry) => {
+                        if (entry?.timer) window.clearTimeout(entry.timer);
+                      });
+                      scheduledPresenterRefreshes.clear();
+                    }
+                    state.services = original.services;
+                    state.serviceItems = original.serviceItems;
+                    state.selectedServiceId = original.selectedServiceId;
+                    state.selectedServiceTypeId = original.selectedServiceTypeId;
+                    Object.assign(state.dirty, original.dirty);
+                    state.cleanFingerprints = original.cleanFingerprints;
+                    state.client = original.client;
+                    state.bibleTranslations = original.bibleTranslations;
+                    state.selectedBibleTranslationId = original.selectedBibleTranslationId;
+                    state.bibleVerseCache = original.bibleVerseCache;
+                  }
+                })()
+                """
+            )
+            if passive_service_scripture_dirty == {
+                "ready": True,
+                "passiveDirty": False,
+                "passiveHasDirty": False,
+                "explicitDirty": True,
+            }:
+                pass_("passive-service-scripture-resolve-keeps-clean", json.dumps(passive_service_scripture_dirty, ensure_ascii=False))
+            else:
+                fail("passive-service-scripture-resolve-keeps-clean", json.dumps(passive_service_scripture_dirty, ensure_ascii=False))
+
             icon_metrics = page.evaluate(
                 """
                 [...document.querySelectorAll('#sidebarToggleBtn,#themeBtn,#saveAllBtn')]
@@ -3570,6 +3687,7 @@ def main() -> int:
                         and template_terms["sundayPublicScaffold"]["allGenerationRegular"] == [
                             {"type": "praise", "label": "봉헌찬송", "outputMode": "", "assetUrl": ""},
                             {"type": "title_person", "label": "봉헌기도", "outputMode": "", "assetUrl": ""},
+                            {"type": "video", "label": "봉헌 영상", "outputMode": "", "assetUrl": ""},
                         ]
                         and template_terms["sundayPublicScaffold"]["allGeneration"]["praiseElements"] == [
                             {"label": "환영", "title": "환영\n테힐라 찬양단"},

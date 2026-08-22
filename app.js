@@ -9985,10 +9985,10 @@ function clearScheduledServiceScriptureResolve(serviceId, index) {
   serviceScriptureResolveTimers.delete(key);
 }
 
-function scheduleServiceScriptureBodyResolve(serviceId = state.selectedServiceId, index = -1) {
+function scheduleServiceScriptureBodyResolve(serviceId = state.selectedServiceId, index = -1, options = {}) {
   const item = getServiceItems(serviceId)[index];
   const quiet = item && serviceItemScriptureResolveShouldStayInPlace(item);
-  scheduleServiceScriptureBodyResolveWithOptions(serviceId, index, { renderDetail: !quiet });
+  scheduleServiceScriptureBodyResolveWithOptions(serviceId, index, { renderDetail: !quiet, ...options });
 }
 
 function scheduleServiceScriptureBodyResolveWithOptions(serviceId = state.selectedServiceId, index = -1, options = {}) {
@@ -10047,7 +10047,14 @@ async function resolveServiceScriptureBodyReference(serviceId, index, options = 
     item.raw_title = formatServiceScriptureReferenceList(references);
     item.memo = serializeServiceItemMemo(parsed);
     state.serviceItems[serviceId] = normalizeServiceItemsInCurrentOrder(items);
-    state.dirty.service = true;
+    const shouldMarkDirty = options.markDirty !== false;
+    const wasDirty = Boolean(state.dirty.service);
+    if (shouldMarkDirty) {
+      state.dirty.service = true;
+    } else if (!wasDirty && state.selectedServiceId === serviceId) {
+      captureCleanFingerprint("service");
+      reconcileDirtyState();
+    }
     schedulePresenterRefreshForService(serviceId, { renderControls: options.renderControls !== false });
     if (options.renderDetail !== false) renderCurrentServiceModuleDetail();
     else renderPresenterControlState(serviceId);
@@ -17273,6 +17280,25 @@ const ALL_GENERATIONS_2026_07_19_OFFERING_THANKS_ASSET = {
   url: "assets/worship-templates/all-generations-2026-07-19-offering-thanks.png",
 };
 
+const ALL_GENERATIONS_OFFERING_MEDIA_BY_DATE = {
+  "2026-07-19": {
+    label: "감사 이미지",
+    elementType: "image",
+    asset: ALL_GENERATIONS_2026_07_19_OFFERING_THANKS_ASSET,
+    specialOffering: true,
+  },
+  "2026-08-23": {
+    label: "봉헌 영상",
+    elementType: "video",
+    asset: { kind: "video", name: "봉헌 영상", url: "" },
+  },
+};
+
+function allGenerationsOfferingMediaSpec(service = null) {
+  const date = String(service?.date || service?.service_date || "").slice(0, 10);
+  return ALL_GENERATIONS_OFFERING_MEDIA_BY_DATE[date] || null;
+}
+
 const PUBLIC_WORSHIP_TEMPLATE_VERSIONS = {
   "sunday-first": [
     publicWorshipTemplateVersion((options = {}) => {
@@ -17301,10 +17327,7 @@ const PUBLIC_WORSHIP_TEMPLATE_VERSIONS = {
           includeHymnPraise: false,
           includeCreed: false,
           includeClosingHymn: false,
-          offeringSpecial: String(options.service?.date || options.service?.service_date || "").slice(0, 10) === "2026-07-19",
-          offeringThanksAsset: String(options.service?.date || options.service?.service_date || "").slice(0, 10) === "2026-07-19"
-            ? ALL_GENERATIONS_2026_07_19_OFFERING_THANKS_ASSET
-            : null,
+          offeringMedia: allGenerationsOfferingMediaSpec(options.service),
           specialSong: {},
         } : {}),
       }),
@@ -17517,17 +17540,20 @@ function publicAllGenerationsOfferingStep(options = {}) {
   const prayerPerson = cleanServiceAssignee(
     options.prayerPerson || options.person || defaultServiceOfferingPrayerLeader("sunday-main"),
   );
-  const praiseLabel = options.specialOffering || options.special_offering ? "봉헌특송" : "봉헌찬송";
+  const mediaSpec = options.offeringMedia || options.offering_media || null;
+  const praiseLabel = options.specialOffering || options.special_offering || mediaSpec?.specialOffering ? "봉헌특송" : "봉헌찬송";
   const elements = [
     { label: praiseLabel, name: praiseLabel, elementType: "praise" },
     { label: "봉헌기도", name: "봉헌기도", elementType: "title_person", person: prayerPerson },
   ];
-  if (options.thanksAsset) {
+  if (mediaSpec) {
+    const mediaLabel = String(mediaSpec.label || "봉헌 영상").trim();
+    const mediaType = normalizeServiceElementType(mediaSpec.elementType || mediaSpec.element_type || mediaSpec.asset?.kind) || "video";
     elements.push({
-      label: "감사 이미지",
-      name: "감사 이미지",
-      elementType: "image",
-      asset: options.thanksAsset,
+      label: mediaLabel,
+      name: mediaLabel,
+      elementType: mediaType,
+      asset: mediaSpec.asset || null,
     });
   }
   return {
@@ -18088,8 +18114,7 @@ function publicSundayThirdTemplate(options = {}) {
     ...(includeCreed ? [publicWorshipCreedStep()] : []),
     allGenerations
       ? publicAllGenerationsOfferingStep({
-        specialOffering: options.offeringSpecial,
-        thanksAsset: options.offeringThanksAsset,
+        offeringMedia: options.offeringMedia,
       })
       : publicWorshipOfferingStep({ score: true, praiseLabel: "봉헌찬송", typeId }),
     publicSundayThirdAnnouncementsStep(),
@@ -27006,7 +27031,7 @@ function schedulePendingServiceScriptureResolves(serviceId) {
     const memo = parseServiceItemMemo(item.memo);
     if (!serviceItemScriptureReferences(item, memo, service).length) return;
     if (serviceScriptureTextPayload(item, memo, service).verses.length) return;
-    scheduleServiceScriptureBodyResolve(serviceId, index);
+    scheduleServiceScriptureBodyResolve(serviceId, index, { markDirty: false });
   });
 }
 
@@ -28017,7 +28042,10 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
     // The same item is rebuilt in place as soon as the lookup completes.
     if (service?.id) {
       const sourceIndex = getServiceItems(service.id).findIndex((candidate) => String(candidate?.id || "") === String(item?.id || ""));
-      scheduleServiceScriptureBodyResolveWithOptions(service.id, sourceIndex >= 0 ? sourceIndex : index, { renderControls: false });
+      scheduleServiceScriptureBodyResolveWithOptions(service.id, sourceIndex >= 0 ? sourceIndex : index, {
+        markDirty: false,
+        renderControls: false,
+      });
     }
     const pendingSlide = presenterPendingScriptureSlide(item, section, index, service);
     return pendingSlide
