@@ -12637,10 +12637,10 @@ function scheduleSearchRender(delay = 180) {
 
 function renderSearchResultsForCurrentModule() {
   renderSongList();
+  if (isServiceDataModule()) return;
   if (state.module === "home") renderDetail();
   if (state.module === "scripture") renderDetail();
   if (state.module === "references") renderDetail();
-  if (isServiceDataModule()) renderCurrentServiceModuleDetail();
 }
 
 function renderSongList() {
@@ -25973,6 +25973,21 @@ function scrollPresenterBoardToTop(serviceId = state.selectedServiceId) {
   window.requestAnimationFrame(run);
 }
 
+function presenterBoardThumbSelector(serviceId, index) {
+  if (!serviceId || !Number.isFinite(Number(index))) return "";
+  return `.svc-slide-thumb[data-service-id="${CSS.escape(String(serviceId))}"][data-presenter-index="${CSS.escape(String(Number(index)))}"]`;
+}
+
+function findPresenterBoardThumbByIndex(root, serviceId, index) {
+  if (!root?.querySelector || !serviceId || !Number.isFinite(Number(index))) return null;
+  const serviceIds = [...new Set([serviceId, state.selectedServiceId].filter(Boolean))];
+  for (const candidateServiceId of serviceIds) {
+    const thumb = root.querySelector(presenterBoardThumbSelector(candidateServiceId, index));
+    if (thumb) return thumb;
+  }
+  return null;
+}
+
 function scrollPresenterBoardToIndex(serviceId, index, options = {}) {
   const targetIndex = Number(index);
   if (!serviceId || !Number.isFinite(targetIndex) || targetIndex < 0) return;
@@ -25981,9 +25996,7 @@ function scrollPresenterBoardToIndex(serviceId, index, options = {}) {
     if (!root?.isConnected) return false;
     const viewport = refs.detailPane?.isConnected ? refs.detailPane : root;
     const scrollTopBeforeHydration = viewport.scrollTop;
-    const serviceIds = [...new Set([serviceId, state.selectedServiceId].filter(Boolean))];
-    let thumb = [...root.querySelectorAll(".svc-slide-thumb[data-presenter-index][data-service-id]")]
-      .find((node) => serviceIds.includes(node.dataset.serviceId) && Number(node.dataset.presenterIndex) === targetIndex);
+    let thumb = findPresenterBoardThumbByIndex(root, serviceId, targetIndex);
     if (!thumb) {
       const overflowAnchor = viewport.style.overflowAnchor;
       viewport.style.overflowAnchor = "none";
