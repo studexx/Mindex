@@ -7205,7 +7205,7 @@ def main() -> int:
                     and praise_actions["loadingCreateState"]["sidebarDisabled"]
                     and praise_actions["loadingCreateState"]["detailButtonsHidden"]
                     and praise_actions["metadataWrap"]["exists"]
-                    and "아티스트/앨범" not in praise_actions["metadataWrap"]["labels"]
+                    and praise_actions["metadataWrap"]["labels"][:2] == ["아티스트", "앨범"]
                     and "아티스트" in praise_actions["metadataWrap"]["labels"]
                     and "앨범" in praise_actions["metadataWrap"]["labels"]
                     and "길고 긴 아티스트 이름과 예배팀 이름" in praise_actions["metadataWrap"]["values"]
