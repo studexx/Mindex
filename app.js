@@ -9263,12 +9263,15 @@ const PUBLIC_SPECIAL_HYMN_FORM_PRESET_HINT = "1절-후렴-2절-후렴-간주-마
 
 function normalizeServiceFormPreset(value, fallbackHint = "", fallbackStrength = "") {
   const source = parseObjectPayload(value);
+  const sourceHint = source
+    ? firstNonBlankString(source.hint, source.formHint, source.form_hint, source.label, fallbackHint)
+    : fallbackHint;
   const forms = Array.isArray(value)
     ? normalizeServiceFormPresetForms(value)
     : typeof value === "string"
       ? normalizeServiceFormPresetForms(value)
       : source
-        ? normalizeServiceFormPresetForms(source.forms || source.form || source.sequence || source.labels || source.items)
+        ? normalizeServiceFormPresetForms(source.forms || source.form || source.sequence || source.labels || source.items || sourceHint)
         : [];
   const hint = firstNonBlankString(
     source?.hint,
