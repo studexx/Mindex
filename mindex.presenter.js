@@ -3984,7 +3984,10 @@ function renderPresenterSlideBody(slide, options = {}) {
   const elementType = presenterSlideElementType(slide);
   if (slide?.type === "ready" && options.noChromakey) return renderPresenterFullscreenReadySlide(slide);
   if (elementType === PRESENTER_ELEMENT_TYPES.AUDIO) return "";
-  if (layout === PRESENTER_SLIDE_LAYOUTS.MEDIA && elementType === PRESENTER_ELEMENT_TYPES.VIDEO) return renderPresenterVideoSlide(slide, options);
+  if (layout === PRESENTER_SLIDE_LAYOUTS.MEDIA && elementType === PRESENTER_ELEMENT_TYPES.VIDEO) {
+    if (options.staticVideoPreview) return renderPresenterStaticVideoPreviewSlide(slide);
+    return renderPresenterVideoSlide(slide, options);
+  }
   if (layout === PRESENTER_SLIDE_LAYOUTS.MEDIA && elementType === PRESENTER_ELEMENT_TYPES.IMAGE) return renderPresenterImageSlide(slide, options);
   if (layout === PRESENTER_SLIDE_LAYOUTS.FILE) return renderPresenterFileSlide(slide);
   if (elementType === PRESENTER_ELEMENT_TYPES.SCRIPTURE_TEXT && presenterScriptureContextUsesReadingForm(slide?.scriptureContext)) return renderPresenterScriptureReadingSlide(slide);
@@ -4080,6 +4083,11 @@ function renderPresenterVideoSlide(slide, options = {}) {
   return `
     <video ${attrs}></video>
   `;
+}
+
+function renderPresenterStaticVideoPreviewSlide(slide) {
+  const title = presenterFileDisplayTitle(slide, "동영상");
+  return `<div class="presenter-static-media-preview" aria-label="${escapeAttr(title)}"></div>`;
 }
 
 function renderPresenterImageSlide(slide, options = {}) {

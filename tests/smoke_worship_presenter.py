@@ -6191,21 +6191,25 @@ def main() -> int:
                       const videoPreview = renderPresenterSlideMiniPreview(video);
                       const audioPreview = renderPresenterSlideMiniPreview(audio);
                       return {
-                        videoUsesOutputElement: videoPreview.includes('presenter-video'),
+                        videoUsesOutputElement: videoPreview.includes('<video'),
                         videoUsesPlaceholder: videoPreview.includes('presenter-slide-file'),
+                        videoUsesStaticPreview: videoPreview.includes('presenter-static-media-preview'),
+                        videoElementCount: document.querySelectorAll('.svc-slide-thumb video').length,
                         audioUsesPlaceholder: audioPreview.includes('presenter-slide-file'),
                       };
                     })()
                     """
                 )
                 if (
-                    preview_renderer_state["videoUsesOutputElement"]
+                    not preview_renderer_state["videoUsesOutputElement"]
                     and not preview_renderer_state["videoUsesPlaceholder"]
+                    and preview_renderer_state["videoUsesStaticPreview"]
+                    and preview_renderer_state["videoElementCount"] == 0
                     and not preview_renderer_state["audioUsesPlaceholder"]
                 ):
-                    pass_("presenter-preview-uses-output-renderer", json.dumps(preview_renderer_state, ensure_ascii=False))
+                    pass_("presenter-preview-uses-static-video", json.dumps(preview_renderer_state, ensure_ascii=False))
                 else:
-                    fail("presenter-preview-uses-output-renderer", json.dumps(preview_renderer_state, ensure_ascii=False))
+                    fail("presenter-preview-uses-static-video", json.dumps(preview_renderer_state, ensure_ascii=False))
 
                 output_viewport_shot = output_page.screenshot()
                 fixed_viewport_pixels = {
