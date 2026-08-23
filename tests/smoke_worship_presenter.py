@@ -127,11 +127,33 @@ def main() -> int:
                     "() => document.querySelector('#servicePresenterControls') && document.querySelector('.svc-slide-thumb')",
                     timeout=10000,
                 )
-                slide_count = page.locator(".svc-slide-thumb").count()
-                if slide_count == service["slides"]:
-                    pass_("presenter-slides", json.dumps(service, ensure_ascii=False))
+                board_slide_state = page.evaluate(
+                    """
+                    (serviceId) => {
+                      const slides = presenterSlidesForService(serviceId);
+                      const domIndexes = [...document.querySelectorAll('.svc-slide-thumb[data-presenter-index][data-service-id]')]
+                        .filter((thumb) => thumb.dataset.serviceId === serviceId)
+                        .map((thumb) => Number(thumb.dataset.presenterIndex))
+                        .filter(Number.isFinite)
+                        .sort((a, b) => a - b);
+                      const missing = slides.map((_, index) => index).filter((index) => !domIndexes.includes(index));
+                      return {
+                        stateSlides: slides.length,
+                        domSlides: domIndexes.length,
+                        missing,
+                      };
+                    }
+                    """,
+                    service["id"],
+                )
+                if (
+                    board_slide_state["stateSlides"] > 0
+                    and board_slide_state["domSlides"] == board_slide_state["stateSlides"]
+                    and not board_slide_state["missing"]
+                ):
+                    pass_("presenter-slides", json.dumps({**service, **board_slide_state}, ensure_ascii=False))
                 else:
-                    fail("presenter-slides", f"dom={slide_count} state={service}")
+                    fail("presenter-slides", json.dumps({**service, **board_slide_state}, ensure_ascii=False))
 
                 section_edit_buttons = page.locator("[data-presenter-section-edit]")
                 section_editor_rows = []
