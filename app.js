@@ -17564,6 +17564,7 @@ const PUBLIC_WORSHIP_TEMPLATE_VERSIONS = {
           includeHymnPraise: false,
           includeCreed: false,
           includeClosingHymn: false,
+          mainPraiseCount: 7,
           offeringMedia: allGenerationsOfferingMediaSpec(options.service),
           specialSong: {},
         } : {}),

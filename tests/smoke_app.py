@@ -3837,6 +3837,9 @@ def main() -> int:
                             {"label": "찬양 2", "title": ""},
                             {"label": "찬양 3", "title": ""},
                             {"label": "찬양 4", "title": ""},
+                            {"label": "찬양 5", "title": ""},
+                            {"label": "찬양 6", "title": ""},
+                            {"label": "찬양 7", "title": ""},
                         ]
                         and [
                             item["label"]
