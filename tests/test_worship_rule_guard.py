@@ -93,6 +93,17 @@ class WorshipRuleGuardTests(unittest.TestCase):
 
     def test_sunday_shared_content_contract_stays_linked(self) -> None:
         shared = function_block(self.source, "sundaySharedContentTypesForItem")
+        sync_after_save = function_block(self.source, "syncSharedSundayContentAfterSave")
+        sync_to_service = function_block(self.source, "syncSharedSundayContentToService")
+        source_lookup = function_block(self.source, "sharedSundayContentSourceItem")
+        participant_guard = function_block(self.source, "worshipServiceParticipatesInSharedSundayContent")
+        self.assertIn("!isAllGenerationsWorshipService(service)", participant_guard)
+        self.assertIn("worshipServiceParticipatesInSharedSundayContent(service)", shared)
+        self.assertIn("worshipServiceParticipatesInSharedSundayContent(sourceService)", sync_after_save)
+        self.assertIn("worshipServiceParticipatesInSharedSundayContent(service)", sync_after_save)
+        self.assertIn("worshipServiceParticipatesInSharedSundayContent(targetService)", sync_to_service)
+        self.assertIn("worshipServiceParticipatesInSharedSundayContent(service)", source_lookup)
+        self.assertIn("worshipServiceParticipatesInSharedSundayContent(candidate)", source_lookup)
         self.assertIn('key === "main-praise:3"', shared)
         self.assertIn('["sunday-first", "sunday-second", "sunday-main"]', shared)
         self.assertRegex(shared, r'"scripture-reading",\s*"sermon-title",\s*"sermon-scripture"')

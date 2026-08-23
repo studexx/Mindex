@@ -3627,6 +3627,10 @@ function isAllGenerationsWorshipService(service = null) {
     || isAllGenerationsWorshipDate(service?._worshipServiceDate || serviceDate);
 }
 
+function worshipServiceParticipatesInSharedSundayContent(service = null) {
+  return !isAllGenerationsWorshipService(service);
+}
+
 function worshipServiceExistsForTarget(target = {}) {
   const targetTypeId = worshipAppServiceTypeId(target.typeId);
   const targetDate = String(target.date || "").trim();
@@ -5826,6 +5830,7 @@ async function saveWorshipServiceInstance(service) {
 
 async function syncSharedSundayContentAfterSave(sourceService, sourceItems = [], options = {}) {
   if (!state.client || !sourceService?.id) return;
+  if (!worshipServiceParticipatesInSharedSundayContent(sourceService)) return;
   const serviceDate = String(sourceService.date || "").trim();
   if (!serviceDate) return;
   const changedSharedItems = sourceItems
@@ -5841,7 +5846,8 @@ async function syncSharedSundayContentAfterSave(sourceService, sourceItems = [],
     const targetServices = state.services.filter((service) =>
       service.id !== sourceService.id
       && String(service.date || "").trim() === serviceDate
-      && targetTypeIds.includes(worshipAppServiceTypeId(service.type_id)));
+      && targetTypeIds.includes(worshipAppServiceTypeId(service.type_id))
+      && worshipServiceParticipatesInSharedSundayContent(service));
     for (const targetService of targetServices) {
       const update = targetUpdates.get(targetService.id) || {
         service: targetService,
@@ -5868,6 +5874,7 @@ async function syncSharedSundayContentAfterSave(sourceService, sourceItems = [],
 }
 
 async function syncSharedSundayContentToService(targetService, key, sourceItem, options = {}) {
+  if (!worshipServiceParticipatesInSharedSundayContent(targetService)) return;
   const targetItems = normalizeServiceItemsForTemplateHierarchy(
     targetService,
     normalizeServiceItemsInCurrentOrder(getServiceItems(targetService.id)),
@@ -22968,6 +22975,7 @@ function sundaySharedContentKey(item = {}) {
 }
 
 function sundaySharedContentTypesForItem(item = {}, service = null) {
+  if (!worshipServiceParticipatesInSharedSundayContent(service)) return [];
   const typeId = worshipAppServiceTypeId(service?.type_id);
   const key = sundaySharedContentKey(item);
   if (!key) return [];
@@ -23032,6 +23040,7 @@ function serviceItemHasDirectSundaySharedContent(item = {}, service = null) {
 }
 
 function sharedSundayContentSourceItem(item = {}, service = null) {
+  if (!worshipServiceParticipatesInSharedSundayContent(service)) return null;
   const key = sundaySharedContentKey(item);
   const serviceDate = String(service?.date || "").trim();
   const sharedTypes = sundaySharedContentTypesForItem(item, service);
@@ -23041,7 +23050,8 @@ function sharedSundayContentSourceItem(item = {}, service = null) {
     .filter((typeId) => typeId !== currentType)
     .flatMap((typeId) => state.services.filter((candidate) =>
       worshipAppServiceTypeId(candidate.type_id) === typeId
-      && String(candidate.date || "").trim() === serviceDate))
+      && String(candidate.date || "").trim() === serviceDate
+      && worshipServiceParticipatesInSharedSundayContent(candidate)))
     .map((candidateService) => {
       const candidateItems = state.serviceItems[candidateService.id] || [];
       const sourceIndex = sundaySharedContentItemIndex(candidateItems, key, candidateService);
