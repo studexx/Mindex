@@ -605,6 +605,7 @@ def main() -> int:
                       return {
                         exists: Boolean(frame),
                         hovered: Boolean(frame?.matches(':hover')),
+                        filter: frame ? getComputedStyle(frame).filter : '',
                         shadow: frame ? getComputedStyle(frame).boxShadow : '',
                         outline: frame ? getComputedStyle(frame).outlineStyle : '',
                         outlineWidth: frame ? getComputedStyle(frame).outlineWidth : '',
@@ -613,11 +614,11 @@ def main() -> int:
                     """,
                     service["id"],
                 )
-                expected_hover_width = "1px" if page.evaluate("() => document.body.classList.contains('is-chromium')") else "2px"
-                if hover_state["outline"] == "solid" and hover_state["outlineWidth"] == expected_hover_width:
-                    pass_("presenter-thumb-hover-ring", json.dumps(hover_state, ensure_ascii=False))
+                hover_has_no_ring = hover_state["outline"] == "none" or hover_state["outlineWidth"] == "0px"
+                if hover_state["exists"] and hover_state["hovered"] and hover_has_no_ring and "brightness" in hover_state["filter"]:
+                    pass_("presenter-thumb-hover-brightness", json.dumps(hover_state, ensure_ascii=False))
                 else:
-                    fail("presenter-thumb-hover-ring", json.dumps(hover_state, ensure_ascii=False))
+                    fail("presenter-thumb-hover-brightness", json.dumps(hover_state, ensure_ascii=False))
                 page.mouse.move(0, 0)
 
                 page.evaluate(
