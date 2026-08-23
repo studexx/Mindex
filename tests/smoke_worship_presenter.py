@@ -7392,6 +7392,40 @@ def main() -> int:
                 else:
                     fail("presenter-keyboard-active-service", json.dumps(active_keyboard_state, ensure_ascii=False))
 
+                page.evaluate(
+                    """
+                    () => {
+                      const thumb = document.querySelector('.svc-slide-thumb[data-presenter-index="1"][data-service-id]');
+                      thumb?.focus();
+                    }
+                    """
+                )
+                page.keyboard.press("ArrowRight")
+                output_page.wait_for_function(
+                    "() => JSON.parse(localStorage.getItem('mindex.presenter.state') || '{}').index === 2",
+                    timeout=5000,
+                )
+                thumb_focus_keyboard_state = page.evaluate(
+                    """
+                    (() => {
+                      const payload = JSON.parse(localStorage.getItem('mindex.presenter.state') || '{}');
+                      return {
+                        presenterIndex: state.presenter.index,
+                        outputIndex: payload.index,
+                        focusedThumb: document.activeElement?.matches('.svc-slide-thumb[data-presenter-index][data-service-id]') || false,
+                      };
+                    })()
+                    """
+                )
+                if (
+                    thumb_focus_keyboard_state["presenterIndex"] == 2
+                    and thumb_focus_keyboard_state["outputIndex"] == 2
+                    and thumb_focus_keyboard_state["focusedThumb"]
+                ):
+                    pass_("presenter-keyboard-thumb-focus-advances", json.dumps(thumb_focus_keyboard_state, ensure_ascii=False))
+                else:
+                    fail("presenter-keyboard-thumb-focus-advances", json.dumps(thumb_focus_keyboard_state, ensure_ascii=False))
+
                 next_prep_state = page.evaluate(
                     """
                     (() => {

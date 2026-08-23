@@ -2835,8 +2835,19 @@ function shouldKeepPresenterShortcutInFocusedControl(event) {
   if (target.closest("[data-presenter-jump-input]")) {
     return !["ArrowRight", "ArrowDown", "PageDown", " ", "ArrowLeft", "ArrowUp", "PageUp"].includes(event.key);
   }
+  if (target.closest("[data-service-music-action]")) return true;
+  if (
+    presenterControllerNavigationKey(event.key)
+    && target.closest(".svc-slide-thumb[data-presenter-index][data-service-id], .svc-slide-thumb-wrap[data-presenter-index][data-service-id]")
+  ) {
+    return false;
+  }
   if (target.closest("button, a, [role='button'], [tabindex]:not([tabindex='-1'])")) return true;
   return shouldKeepHorizontalNavigationInFocusedControl(target);
+}
+
+function presenterControllerNavigationKey(key = "") {
+  return ["Enter", "ArrowRight", "ArrowDown", "PageDown", " ", "ArrowLeft", "ArrowUp", "PageUp", "Home", "End"].includes(key);
 }
 
 function isPresenterOutputRoute() {
