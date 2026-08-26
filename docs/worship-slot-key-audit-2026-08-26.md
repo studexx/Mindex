@@ -32,6 +32,19 @@ Duplicate-looking scripture rows were intentionally kept because some contain
 valid `scriptureReferences`; they need a separate scripture-safe merge or
 manual approval.
 
+Follow-up scripture cleanup:
+
+- The 2026-07-31 Friday `창 1:1` citation rows were confirmed as test data and
+  removed:
+  - `266cd9fe-cb7d-4ea3-a27f-6945179eca42`
+  - `ae5bc26d-8056-4bfb-b115-d425df06c2e0`
+  - `c5e283c0-b895-49eb-93c4-533625e26d89`
+  - `f82e72a1-2afa-49fa-ad79-44c2224aa581`
+- The 2026-08-02 youth duplicate `창 28:10–17` row with
+  `templateSuppressed: true` was removed:
+  - `ee152b0f-750f-4462-a789-571b603735af`
+- The non-suppressed youth row `faa6c837-0a6f-47cc-bdc0-9d5589fc1776` remains.
+
 ## Key Findings
 
 `mindex_worship_template_items.slot_key` is available in the schema but has no
@@ -73,7 +86,7 @@ a need to revive `대기 영상`.
 | --- | ---: |
 | unmapped / needs review | 0 |
 | medium-confidence legacy label-derived rows | 514 |
-| duplicate derived slot rows | 6 rows in 2 groups |
+| duplicate derived slot rows | 0 rows in 0 groups |
 | `offering.praise` rows | 47 |
 
 The 47 `offering.praise` rows are not all-generation 2026-08-23 rows. They are
@@ -82,11 +95,7 @@ not be treated as automatic corruption by themselves.
 
 ## Duplicate Slot Groups
 
-Duplicates that still block singleton unique constraints for now:
-
-- 2026-07-31 금요기도회: four `sermon.citation.1` rows with the same section,
-  sort order, label, and reference.
-- 2026-08-02 청소년부: duplicate `sermon.citation.1` rows.
+No duplicate slot groups remain in the current production audit.
 
 Resolved duplicate false positives:
 
@@ -99,6 +108,8 @@ Resolved duplicate false positives:
 - 2026-08-02 주일 3부 `offering.praise`, `offering.prayer`, and
   `special.song` placeholder duplicates were removed while preserving the linked
   praise/manual special-song/assignee rows.
+- 2026-07-31 Friday test citation rows were removed.
+- 2026-08-02 youth duplicate citation was reduced to the non-suppressed row.
 
 ## Coverage Added
 
