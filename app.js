@@ -22973,7 +22973,7 @@ function renderServiceWeekDay(date, services) {
 }
 
 function renderServiceWeekCard(service) {
-  const preview = serviceItemPreview(service.id);
+  const preview = serviceItemPreviewParts(service.id);
   const variant = serviceVariantDisplayName(service);
   const serviceName = serviceDisplayTypeName(service);
   return `
@@ -22984,12 +22984,12 @@ function renderServiceWeekCard(service) {
     >
       <strong>${escapeHtml(serviceName)}</strong>
       ${variant && compactSearchValue(variant) !== compactSearchValue(serviceName) ? `<span class="service-week-card-preview">${escapeHtml(variant)}</span>` : ""}
-      ${preview ? `<span class="service-week-card-preview">${escapeHtml(preview)}</span>` : ""}
+      ${preview.text ? renderServiceCardPreviewHtml(preview, "service-week-card-preview") : ""}
     </button>`;
 }
 
 function renderServiceDateCard(service, options = {}) {
-  const preview = serviceItemPreview(service.id);
+  const preview = serviceItemPreviewParts(service.id);
   const calendarRow = (state.calendarData || []).find((row) => String(row?.date || "").trim() === String(service?.date || "").trim());
   const variant = serviceVariantDisplayName(service);
   const serviceName = serviceDisplayTypeName(service);
@@ -23011,7 +23011,7 @@ function renderServiceDateCard(service, options = {}) {
       </span>
       ${options.showType ? `<span class="service-date-card-type">${escapeHtml(serviceName)}</span>` : ""}
       ${note ? `<span class="service-date-card-note">${escapeHtml(note)}</span>` : ""}
-      ${preview ? `<span class="service-date-card-preview">${escapeHtml(preview)}</span>` : ""}
+      ${preview.text ? renderServiceCardPreviewHtml(preview, "service-date-card-preview") : ""}
     </button>`;
 }
 
@@ -23075,10 +23075,14 @@ function formatServiceIsoDatePart(value) {
 }
 
 function serviceItemPreview(serviceId) {
+  return serviceItemPreviewParts(serviceId).text;
+}
+
+function serviceItemPreviewParts(serviceId) {
   const service = state.services.find((candidate) => candidate.id === serviceId) || null;
   const items = getServiceOutputItems(serviceId)
     .filter((item) => serviceItemDisplayText(item) && serviceItemDisplayText(item) !== "-")
-  if (!items.length) return "";
+  if (!items.length) return { text: "", title: "", reference: "" };
   const sermonTitleItem = items.find((item) => isPresenterPreparationSermonTitleItem(item));
   const sermonBodyItem = items.find((item) => isSermonScriptureBodyServiceItem(item));
   const sermonTitle = sermonTitleItem
@@ -23089,8 +23093,27 @@ function serviceItemPreview(serviceId) {
     ? serviceItemScriptureReferences(sermonBodyItem, parseServiceItemMemo(sermonBodyItem.memo), service)
     : [];
   const sermonReference = formatServiceScriptureReferenceList(sermonReferences);
-  if (sermonTitle) return sermonReference ? `${sermonTitle} (${sermonReference})` : sermonTitle;
-  return "";
+  if (sermonTitle) {
+    return {
+      text: sermonReference ? `${sermonTitle} (${sermonReference})` : sermonTitle,
+      title: sermonTitle,
+      reference: sermonReference,
+    };
+  }
+  return { text: "", title: "", reference: "" };
+}
+
+function renderServiceCardPreviewHtml(preview = {}, className = "service-date-card-preview") {
+  const title = String(preview.title || "").trim();
+  const reference = String(preview.reference || "").trim();
+  if (title && reference) {
+    return `
+      <span class="${escapeAttr(className)} service-card-sermon-preview">
+        <span class="service-card-sermon-title">${escapeHtml(title)}</span>
+        <span class="service-card-sermon-reference">${escapeHtml(reference)}</span>
+      </span>`;
+  }
+  return preview.text ? `<span class="${escapeAttr(className)}">${escapeHtml(preview.text)}</span>` : "";
 }
 
 function homeServicePrepSummary(serviceId) {

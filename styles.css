@@ -3861,6 +3861,30 @@ body[data-module="presenter"] .detail-pane {
 .service-date-card:focus-visible .service-date-card-open { color: var(--accent); opacity: 1; }
 .service-date-card-type { color: var(--accent); font-size: var(--ui-meta-size); font-weight: 700; letter-spacing: 0; }
 .service-date-card-preview { display: -webkit-box; overflow: hidden; color: var(--ink-3); font-size: var(--ui-meta-size); font-weight: var(--ui-row-weight); line-height: 18px; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.service-card-sermon-preview {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+  -webkit-line-clamp: unset;
+}
+.service-card-sermon-title,
+.service-card-sermon-reference {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.service-card-sermon-title {
+  color: var(--ink-2);
+  font-size: var(--ui-meta-size);
+  font-weight: var(--ui-row-weight);
+  line-height: 1.32;
+}
+.service-card-sermon-reference {
+  color: var(--ink-4);
+  font-size: var(--ui-label-size);
+  font-weight: var(--ui-meta-weight);
+  line-height: 1.25;
+}
 .service-week-board {
   display: grid;
   grid-template-columns: repeat(7, minmax(120px, 1fr));
@@ -3943,6 +3967,22 @@ body[data-module="presenter"] .detail-pane {
   font-weight: var(--ui-meta-weight);
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 1;
+}
+.service-week-card-preview.service-card-sermon-preview {
+  display: flex;
+  gap: 2px;
+  -webkit-line-clamp: unset;
+}
+.service-week-card-preview .service-card-sermon-title {
+  color: var(--ink-3);
+  font-size: var(--ui-meta-size);
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.service-week-card-preview .service-card-sermon-reference {
+  font-size: 11px;
+  line-height: 1.15;
+  white-space: nowrap;
 }
 .service-week-empty {
   min-height: 28px;
