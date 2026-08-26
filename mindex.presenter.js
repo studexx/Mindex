@@ -4088,10 +4088,11 @@ function renderPresenterGeneratedWaitingLoopSlide(slide) {
   return `
     <div class="presenter-waiting-loop" aria-label="${escapeAttr(`${serviceName} 대기 화면`)}">
       <div class="presenter-waiting-loop-field" aria-hidden="true"></div>
+      <div class="presenter-waiting-loop-cross" aria-hidden="true"></div>
       <div class="presenter-waiting-loop-copy">
-        <p class="presenter-waiting-loop-script">영과 진리로</p>
+        <p class="presenter-waiting-loop-script">영과 진리로 예배하는 자</p>
         <p class="presenter-waiting-loop-title"><strong>${escapeHtml(serviceName)}</strong></p>
-        <p class="presenter-waiting-loop-message">예배가 곧 시작됩니다</p>
+        <p class="presenter-waiting-loop-message">예배가 곧 시작됩니다<br>기도로 예배를 준비해 주세요</p>
       </div>
     </div>
   `;

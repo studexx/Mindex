@@ -307,8 +307,9 @@
   overflow: hidden;
   color: #fff;
   background:
-    radial-gradient(ellipse at 50% 64%, rgba(30, 90, 150, .22) 0 10%, transparent 42%),
-    linear-gradient(180deg, #08111f 0%, #111c2e 48%, #050914 100%);
+    radial-gradient(ellipse at 50% 87%, rgba(50, 104, 170, .3) 0 12%, transparent 44%),
+    radial-gradient(ellipse at 50% 46%, rgba(255, 255, 255, .06) 0 4%, transparent 27%),
+    linear-gradient(180deg, #07101e 0%, #111c2f 47%, #050914 100%);
   isolation: isolate;
 }
 .presenter-waiting-loop::before,
@@ -321,30 +322,63 @@
 }
 .presenter-waiting-loop::before {
   background:
-    linear-gradient(90deg, transparent 0 38%, rgba(103, 156, 211, .08) 49%, rgba(255, 255, 255, .1) 50%, rgba(103, 156, 211, .08) 51%, transparent 62%),
-    radial-gradient(ellipse at 50% 94%, rgba(70, 120, 176, .24) 0 12%, transparent 43%);
-  opacity: .82;
-  animation: presenter-waiting-loop-haze 13s ease-in-out infinite alternate;
+    linear-gradient(90deg, transparent 0 37%, rgba(76, 130, 192, .08) 45%, rgba(235, 244, 255, .16) 50%, rgba(76, 130, 192, .08) 55%, transparent 63%),
+    radial-gradient(ellipse at 50% 95%, rgba(70, 120, 176, .26) 0 12%, transparent 44%);
+  opacity: .86;
+  animation: presenter-waiting-loop-haze 15s ease-in-out infinite alternate;
 }
 .presenter-waiting-loop::after {
   background:
-    radial-gradient(ellipse at 34% 32%, rgba(255, 255, 255, .045) 0 9%, transparent 31%),
-    radial-gradient(ellipse at 65% 36%, rgba(85, 130, 186, .07) 0 10%, transparent 34%);
-  opacity: .76;
-  animation: presenter-waiting-loop-drift 18s ease-in-out infinite alternate;
+    radial-gradient(ellipse at 42% 35%, rgba(255, 255, 255, .04) 0 8%, transparent 31%),
+    radial-gradient(ellipse at 59% 38%, rgba(88, 139, 198, .065) 0 10%, transparent 34%);
+  opacity: .7;
+  animation: presenter-waiting-loop-drift 20s ease-in-out infinite alternate;
 }
 .presenter-waiting-loop-field {
   background:
-    linear-gradient(180deg, rgba(0, 0, 0, .18), transparent 22%, transparent 72%, rgba(0, 0, 0, .32));
+    linear-gradient(180deg, rgba(0, 0, 0, .2), transparent 22%, transparent 70%, rgba(0, 0, 0, .36));
+}
+.presenter-waiting-loop-cross {
+  position: absolute;
+  top: 15.5%;
+  left: 50%;
+  z-index: 1;
+  width: min(18cqw, 345px);
+  height: min(31cqh, 335px);
+  transform: translateX(-50%) rotate(-5deg);
+  opacity: .44;
+  pointer-events: none;
+}
+.presenter-waiting-loop-cross::before,
+.presenter-waiting-loop-cross::after {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  content: "";
+  background:
+    linear-gradient(90deg, transparent 0 3%, rgba(225, 230, 235, .38) 17%, rgba(255, 255, 255, .6) 48%, rgba(220, 226, 232, .36) 83%, transparent 100%);
+  border-radius: 999px;
+  filter: blur(calc(.32 * var(--presenter-stage-unit)));
+}
+.presenter-waiting-loop-cross::before {
+  width: 19%;
+  height: 100%;
+  transform: translate(-50%, -50%);
+}
+.presenter-waiting-loop-cross::after {
+  width: 78%;
+  height: 15%;
+  transform: translate(-50%, -31%);
 }
 .presenter-waiting-loop-copy {
   position: relative;
   z-index: 2;
   display: grid;
-  width: min(64cqw, 1220px);
-  gap: 2.1cqh;
+  width: min(74cqw, 1420px);
+  gap: 1.75cqh;
   justify-items: center;
   text-align: center;
+  transform: translateY(4.5cqh);
 }
 .presenter-waiting-loop-script,
 .presenter-waiting-loop-title,
@@ -352,34 +386,34 @@
   margin: 0;
 }
 .presenter-waiting-loop-script {
-  color: rgba(255, 255, 255, .92);
+  color: rgba(255, 255, 255, .93);
   font-family: "AppleMyungjo", "Nanum Myeongjo", "Batang", serif;
-  font-size: calc(96 * var(--presenter-stage-unit));
+  font-size: calc(92 * var(--presenter-stage-unit));
   font-weight: 400;
-  line-height: 1.08;
+  line-height: 1.12;
 }
 .presenter-waiting-loop-title {
-  color: rgba(255, 255, 255, .82);
-  font-size: calc(34 * var(--presenter-stage-unit));
-  font-weight: 650;
+  color: rgba(255, 255, 255, .72);
+  font-size: calc(28 * var(--presenter-stage-unit));
+  font-weight: 500;
   line-height: 1.16;
 }
 .presenter-waiting-loop-title strong {
   font-weight: inherit;
 }
 .presenter-waiting-loop-message {
-  color: rgba(255, 255, 255, .76);
-  font-size: calc(34 * var(--presenter-stage-unit));
-  font-weight: 600;
-  line-height: 1.22;
+  color: rgba(255, 255, 255, .78);
+  font-size: calc(32 * var(--presenter-stage-unit));
+  font-weight: 500;
+  line-height: 1.32;
 }
 @keyframes presenter-waiting-loop-haze {
-  from { opacity: .62; transform: scaleX(.98); }
-  to { opacity: .9; transform: scaleX(1.02); }
+  from { opacity: .72; transform: scaleX(.985); }
+  to { opacity: .92; transform: scaleX(1.015); }
 }
 @keyframes presenter-waiting-loop-drift {
-  from { transform: translate3d(-1%, -.6%, 0); }
-  to { transform: translate3d(1%, .6%, 0); }
+  from { transform: translate3d(-.7%, -.45%, 0); }
+  to { transform: translate3d(.7%, .45%, 0); }
 }
 @media (prefers-reduced-motion: reduce) {
   .presenter-waiting-loop::before,
