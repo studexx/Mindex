@@ -23,6 +23,115 @@ mindex_worship_services
       > mindex_worship_slides
 ```
 
+## Module And Slot Contract Draft
+
+This is a UX/Presenter-facing draft for the next data review. It does not add a
+new visible hierarchy above sections by itself. A module is a behavior contract:
+it owns which section/element slots are allowed, which inputs are required,
+which Presenter rules apply, and how legacy records normalize.
+
+Keep the user-facing controller mostly section/element based. The module/slot
+layer should stabilize behavior internally so labels can change without moving
+or reviving the wrong worship element.
+
+```text
+Service Type
+└─ Module[] (internal behavior unit)
+   └─ Section[] (visible order grouping)
+      └─ Element[] (visible/editable item)
+         └─ Slot identity (stable behavioral identity)
+```
+
+Proposed runtime fields:
+
+```text
+moduleKey
+├─ internal behavior group, e.g. ready, praise, word, offering, sending
+└─ optional at first; can be derived from section_key while migrating
+
+slotKey
+├─ stable element identity, e.g. offering.media, sermon.scripture
+├─ should not depend on Korean display labels
+└─ should become the primary projection/migration match key
+
+label
+└─ user-facing display name only, e.g. 봉헌 영상, 설교 본문
+
+elementType / inputMode / outputMode
+└─ keep their current meanings; slotKey explains why the element behaves that way
+```
+
+Initial slot examples:
+
+| slotKey | Default label | section_key | elementType | inputMode | outputMode | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| `ready.waiting` | 대기 화면 | `ready` | `video` or `image` | `asset` | media | Label must not regress to `대기 영상`. |
+| `praise.welcome` | 환영 | `praise` | `title_content` | `text` | lyrics/clean | Optional in public-style praise blocks. |
+| `praise.song.N` | 찬양 N | `praise` | `praise` | `lyrics_db` / `score_db` / `manual_praise` | lyrics/score | Consecutive praise slots can be visually grouped. |
+| `prayer.representative` | 대표기도 | `prayer` | `title_person` | `text` | title-assignee | 담당자 중심. |
+| `word.reading` | 성경봉독 | `scripture_reading` | `scripture_body` | `scripture` | scripture | Must load normalized references before Presenter output. |
+| `sermon.title` | 설교 제목 | `sermon` | `title_person` | `text` | title-assignee | 제목 + 담당자. |
+| `sermon.scripture` | 설교 본문 | `sermon` | `scripture_body` | `scripture` | scripture | Same scripture loader as reading, but sermon context. |
+| `sermon.citation` | 인용 구절 | `sermon` | `scripture_body` | `scripture` | live/optional scripture | Optional; empty is not a required warning. |
+| `sermon.media` | 자료화면 | `sermon` | `image` / `video` / `file` | `asset` | media/file | Optional dated/manual slot for sermon visuals. |
+| `response.song` | 결단찬양 | `response_song` | `praise` | `lyrics_db` / `score_db` / `manual_praise` | lyrics/score | Optional by service type. |
+| `response.prayer` | 결단기도 | `response_song` | `title_person` or `title` | `text` | title-assignee/title | Service templates decide whether 담당자 is needed. |
+| `offering.praise` | 봉헌찬송 | `offering` | `praise` | `score_db` / `lyrics_db` | score/lyrics | Regular public services only unless explicitly enabled. |
+| `offering.special` | 봉헌특송 | `offering` | `praise` | `lyrics_db` / `manual_praise` / `score_db` | lyrics/score | Optional dated/manual slot. |
+| `offering.media` | 봉헌 영상 | `offering` | `video` / `image` | `asset` | media | Optional dated/manual slot; must not imply `offering.praise`. |
+| `offering.prayer` | 봉헌기도 | `offering` | `title_person` | `text` | title-assignee | Usually required when offering module exists. |
+| `announcements.main` | 교회소식 | `announcements` | `title` / `title_content` | `text` | title/body | For announcements, content fields should say 내용, not 제목. |
+| `sending.doxology` | 송영 | `sending` | `praise` | `score_db` / `lyrics_db` | score/lyrics | Fixed by service type where applicable. |
+| `sending.benediction` | 축도 | `sending` | `title_person` | `text` | title-assignee | 담당자 중심. |
+| `closing.visual` | 마무리 | `closing_visual` | `image` | `asset` | media | Closing image/default visual. |
+| `closing.hymn` | 폐회찬송 | `closing_visual` | `praise` | `score_db` / `lyrics_db` | score/lyrics | Optional public 3rd-service-style slot. |
+| `fellowship.person` | 교제 | `fellowship` | `title_person` | `text` | title-assignee | 담당자 only in the current 3355 UX. |
+
+Module options should handle occasional custom worship needs without turning
+them into ad hoc label exceptions:
+
+```text
+OfferingModule
+├─ praise: on/off
+├─ special: on/off
+├─ media: on/off
+└─ prayer: on/off
+
+SermonModule
+├─ title: required
+├─ scripture: optional/required by service type
+├─ citation: optional
+└─ media: optional
+```
+
+For intergenerational worship (`sunday-main` service with all-generation
+schedule/alias), date-specific customizations should choose module options, not
+patch display labels. Examples:
+
+```text
+2026-07-19 all-generation offering
+├─ offering.special
+├─ offering.media (감사 이미지)
+└─ offering.prayer
+
+2026-08-23 all-generation offering
+├─ offering.media (봉헌 영상)
+└─ offering.prayer
+```
+
+The 2026-08-23 shape must not generate `offering.praise` / `봉헌찬송`.
+
+Migration/adapter priority:
+
+1. Derive `slotKey` at runtime from `section_key`, `source_ref.label`,
+   `element_type`, `input_mode`, and config/memo without changing schema.
+2. Use `slotKey` before labels for projection matching, missing-content
+   decisions, Presenter behavior, and template suppression.
+3. Add a DB column or template-item field only after Data validates existing
+   production rows and conflict constraints.
+4. Backfill legacy records conservatively. Preserve manually curated input,
+   linked Praise songs, linked Scripture references, and uploaded assets.
+
 ## Data Structure
 
 ```text
