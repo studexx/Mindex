@@ -24690,8 +24690,9 @@ function renderPresenterServiceAssetInput(item, index, memo) {
   }
   const kind = ["image", "video", "audio"].includes(elementType) ? elementType : "";
   const typeLabel = serviceAssetFileKindLabel(kind || asset.kind || elementType);
+  const assetKind = kind || asset.kind || elementType || "file";
   return `
-    <div class="svc-reference-media-input">
+    <div class="svc-reference-media-input svc-reference-media-input--asset svc-reference-media-input--${escapeAttr(assetKind)}">
       <div class="svc-reference-media-toolbar svc-reference-media-toolbar--asset">
         <label class="svc-reference-media-upload">
           <input type="file" accept="${escapeAttr(serviceAssetFileAcceptForKind(kind))}" data-service-item-asset-file data-service-id="${escapeAttr(serviceId)}" data-service-item-index="${index}" />
@@ -24701,23 +24702,34 @@ function renderPresenterServiceAssetInput(item, index, memo) {
       <label class="svc-presenter-input-field">
         <span>이름</span>
         <input class="svc-presenter-input-control" type="text" data-service-item-field="asset_name" data-service-item-index="${index}" data-service-id="${escapeAttr(serviceId)}"
-          value="${escapeAttr(asset.name)}" placeholder="${escapeAttr(`${typeLabel} 이름`)}" aria-label="${escapeAttr(`${item.label || "파일"} 이름`)}" />
+          value="${escapeAttr(asset.name)}" placeholder="${escapeAttr(`${typeLabel} 이름`)}" aria-label="${escapeAttr(`${item.label || "파일"} 이름`)}" title="${escapeAttr(asset.name)}" />
       </label>
       <label class="svc-presenter-input-field">
         <span>파일/링크</span>
         <input class="svc-presenter-input-control" type="text" data-service-item-field="asset_url" data-service-item-index="${index}" data-service-id="${escapeAttr(serviceId)}"
-          value="${escapeAttr(asset.url)}" placeholder="파일을 선택하거나 공개 URL 입력" aria-label="${escapeAttr(`${item.label || "파일"} 링크`)}" />
+          value="${escapeAttr(asset.url)}" placeholder="파일을 선택하거나 공개 URL 입력" aria-label="${escapeAttr(`${item.label || "파일"} 링크`)}" title="${escapeAttr(asset.url)}" />
       </label>
-      ${renderPresenterReferenceMediaPreview(asset, kind || asset.kind, "파일을 선택하면 이 항목에 바로 연결됩니다.")}
+      ${renderPresenterReferenceMediaPreview(asset, assetKind, "파일을 선택하면 이 항목에 바로 연결됩니다.")}
     </div>`;
 }
 
 function renderPresenterReferenceMediaPreview(asset, kind, emptyMessage = "파일을 선택하면 이 예배의 참고 화면으로 바로 송출됩니다.") {
   const source = String(asset?.url || "").trim();
   if (!source) return `<div class="svc-reference-media-preview is-empty"><i data-lucide="image-plus"></i><span>${escapeHtml(emptyMessage)}</span></div>`;
-  if (kind === "video") return `<div class="svc-reference-media-preview"><video src="${escapeAttr(source)}" muted playsinline preload="metadata"></video></div>`;
+  if (kind === "video") return renderPresenterStaticAssetPreview(asset, "file-video", "영상 연결됨");
   if (kind === "audio") return `<div class="svc-reference-media-preview svc-reference-media-preview--audio"><i data-lucide="audio-lines"></i><strong>${escapeHtml(asset.name || "음원")}</strong><audio controls preload="metadata" src="${escapeAttr(source)}"></audio></div>`;
+  if (kind === "file") return renderPresenterStaticAssetPreview(asset, "file", "파일 연결됨");
   return `<div class="svc-reference-media-preview"><img src="${escapeAttr(source)}" alt="${escapeAttr(asset.name || "참고 화면")}" loading="lazy" /></div>`;
+}
+
+function renderPresenterStaticAssetPreview(asset, icon, statusLabel) {
+  const name = String(asset?.name || "").trim() || statusLabel;
+  return `
+    <div class="svc-reference-media-preview svc-reference-media-preview--file">
+      <i data-lucide="${escapeAttr(icon)}"></i>
+      <strong title="${escapeAttr(name)}">${escapeHtml(name)}</strong>
+      <span>${escapeHtml(statusLabel)}</span>
+    </div>`;
 }
 
 function renderPresenterServiceTextInputs(item, index, model, memo) {

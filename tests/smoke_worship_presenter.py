@@ -6831,7 +6831,7 @@ def main() -> int:
                     timeout=5000,
                 )
                 output_page.wait_for_function(
-                    "() => document.querySelector('.presenter-slide')?.classList.contains('presenter-slide--video')",
+                    "() => document.querySelector('.presenter-waiting-loop')",
                     timeout=5000,
                 )
                 ready_output_shot = output_page.locator("#presenterOutputRoot").screenshot()
@@ -6844,6 +6844,8 @@ def main() -> int:
                         elementType: slide?.dataset.elementType || '',
                         layout: slide?.dataset.slideLayout || '',
                         text: slide?.innerText.trim() || '',
+                        title: slide?.querySelector('.presenter-waiting-loop-title')?.textContent.trim() || '',
+                        loopLabel: slide?.querySelector('.presenter-waiting-loop')?.getAttribute('aria-label') || '',
                       };
                     })()
                     """
@@ -6853,12 +6855,14 @@ def main() -> int:
                     "presenter-slide--video" in ready_output_state["slideClass"]
                     and ready_output_state["elementType"] == "video"
                     and ready_output_state["layout"] == "media"
-                    and ready_output_state["text"] == ""
-                    and is_chromakey_green(tuple(ready_output_state["centerPixel"]))
+                    and ready_output_state["title"] == "월삭예배"
+                    and "잠시 후 예배가 시작됩니다" in ready_output_state["text"]
+                    and "월삭예배 대기 영상" in ready_output_state["loopLabel"]
+                    and not is_chromakey_green(tuple(ready_output_state["centerPixel"]))
                 ):
-                    pass_("presenter-ready-output-raw-chromakey", json.dumps(ready_output_state, ensure_ascii=False))
+                    pass_("presenter-ready-output-generated-waiting-loop", json.dumps(ready_output_state, ensure_ascii=False))
                 else:
-                    fail("presenter-ready-output-raw-chromakey", json.dumps(ready_output_state, ensure_ascii=False))
+                    fail("presenter-ready-output-generated-waiting-loop", json.dumps(ready_output_state, ensure_ascii=False))
 
                 jump_input.fill("0")
                 jump_input.press("Enter")

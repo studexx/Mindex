@@ -3994,6 +3994,7 @@ function renderPresenterSlideBody(slide, options = {}) {
   const layout = presenterSlideLayout(slide);
   const elementType = presenterSlideElementType(slide);
   if (slide?.type === "ready" && options.noChromakey) return renderPresenterFullscreenReadySlide(slide);
+  if (presenterSlideUsesGeneratedWaitingLoop(slide, options)) return renderPresenterGeneratedWaitingLoopSlide(slide);
   if (elementType === PRESENTER_ELEMENT_TYPES.AUDIO) return "";
   if (layout === PRESENTER_SLIDE_LAYOUTS.MEDIA && elementType === PRESENTER_ELEMENT_TYPES.VIDEO) {
     if (options.staticVideoPreview) return renderPresenterStaticVideoPreviewSlide(slide);
@@ -4010,10 +4011,37 @@ function renderPresenterSlideBody(slide, options = {}) {
   return `<div class="presenter-slide-text">${renderPresenterSlideText(slide)}</div>`;
 }
 
-function renderPresenterFullscreenReadySlide(slide) {
-  const serviceName = String(slide?.readyServiceName || "").trim()
+function presenterSlideUsesGeneratedWaitingLoop(slide, options = {}) {
+  if (options.noChromakey || options.staticVideoPreview) return false;
+  if (slide?.type !== "ready") return false;
+  if (normalizeServicePresenterRole(slide.presenterRole) !== "waiting_loop") return false;
+  if (normalizePresenterMediaSource(slide.videoSrc || slide.imageSrc || slide.text)) return false;
+  return presenterSlideOutputContext(slide, true) === "chromakey";
+}
+
+function renderPresenterGeneratedWaitingLoopSlide(slide) {
+  const serviceName = presenterReadySlideServiceName(slide);
+  return `
+    <div class="presenter-waiting-loop" aria-label="${escapeAttr(`${serviceName} 대기 영상`)}">
+      <div class="presenter-waiting-loop-field" aria-hidden="true"></div>
+      <div class="presenter-waiting-loop-cross" aria-hidden="true"></div>
+      <div class="presenter-waiting-loop-copy">
+        <p class="presenter-waiting-loop-kicker">기도로 준비하는 예배</p>
+        <p class="presenter-waiting-loop-title"><strong>${escapeHtml(serviceName)}</strong></p>
+        <p class="presenter-waiting-loop-message">잠시 후 예배가 시작됩니다<br>마음을 모아 준비해 주세요</p>
+      </div>
+    </div>
+  `;
+}
+
+function presenterReadySlideServiceName(slide) {
+  return String(slide?.readyServiceName || "").trim()
     || String(slide?.text || "").split("\n").map((line) => line.trim()).filter(Boolean)[1]
     || "예배";
+}
+
+function renderPresenterFullscreenReadySlide(slide) {
+  const serviceName = presenterReadySlideServiceName(slide);
   return `
     <div class="presenter-ready-screen">
       <div class="presenter-ready-screen-copy">

@@ -6003,9 +6003,12 @@ def main() -> int:
                               item,
                             });
                             const memo = parseServiceItemMemo(item.memo);
+                            const uploadedHtml = renderPresenterServiceAssetInput(item, 0, memo);
                             return {
                               hasFileInput: html.includes('data-service-item-asset-file'),
                               acceptVideoOnly: html.includes('accept="video/*"'),
+                              compactVideoStatus: uploadedHtml.includes('svc-reference-media-preview--file') && uploadedHtml.includes('영상 연결됨'),
+                              noVideoPreviewElement: !uploadedHtml.includes('<video'),
                               uploaded,
                               saved,
                               rendered,
@@ -6031,6 +6034,8 @@ def main() -> int:
                     if (
                         presenter_generic_asset_upload_guard["hasFileInput"]
                         and presenter_generic_asset_upload_guard["acceptVideoOnly"]
+                        and presenter_generic_asset_upload_guard["compactVideoStatus"]
+                        and presenter_generic_asset_upload_guard["noVideoPreviewElement"]
                         and presenter_generic_asset_upload_guard["uploaded"]
                         and presenter_generic_asset_upload_guard["saved"]
                         and presenter_generic_asset_upload_guard["rendered"]
