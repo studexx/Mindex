@@ -551,7 +551,7 @@ body[data-theme="dark"] .top-module-entry.active {
   padding: 4px var(--sidebar-item-end) 7px var(--sidebar-item-x);
 }
 body[data-module="praise"] .list-filter {
-  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(50px, 1fr));
 }
 .filter-tab {
   height: 28px;

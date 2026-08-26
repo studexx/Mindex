@@ -399,6 +399,17 @@ const HANGUL_INITIALS = ["ㄱ", "ㄲ", "ㄴ", "ㄷ", "ㄸ", "ㄹ", "ㅁ", "ㅂ",
 const CONTENT_MODULES = ["service", "presenter", "scripture", "praise", "calendar", "references"];
 const ROUTE_MODULES = ["home", ...CONTENT_MODULES];
 const SERVICE_FILTERS = ["all", "public", "ministry", "special"];
+const PRAISE_LIST_FILTERS = [
+  ["all", "전체"],
+  ["hymns", "찬송가"],
+  ["ccm", "CCM"],
+  ["children", "어린이"],
+  ["empty", "빈곡"],
+  ["attention-pink", "분홍 !"],
+  ["attention-blue", "파랑 !"],
+  ["attention-yellow", "노랑 !"],
+];
+const PRAISE_LIST_FILTER_KEYS = PRAISE_LIST_FILTERS.map(([key]) => key);
 const MINDEX_TAB_STATE_STORAGE_KEY = "mindex.pageTabs.v1";
 const HOME_PAGE_TAB_ID = "tab-home";
 const HYMN_SCORE_MANIFEST_URL = "assets/hymn-scores/manifest.json";
@@ -1866,7 +1877,7 @@ function readUiState() {
   const bibleCopyReference = safeStorageGet("session", STORAGE.bibleCopyReference);
 
   if (ROUTE_MODULES.includes(moduleName)) state.module = moduleName;
-  if (["all", "hymns", "ccm", "children"].includes(praiseFilter)) state.praiseFilter = praiseFilter;
+  if (isPraiseListFilterKey(praiseFilter)) state.praiseFilter = praiseFilter;
   if (["all", "old", "new"].includes(scriptureFilter)) state.scriptureFilter = scriptureFilter;
   if (SERVICE_FILTERS.includes(serviceFilter)) state.serviceFilter = serviceFilter;
 
@@ -2090,7 +2101,7 @@ async function applyBrowserHistorySnapshot(snapshot) {
     state.module = ROUTE_MODULES.includes(snapshot.module) ? snapshot.module : "home";
     state.search = snapshot.search || "";
     refs.searchInput.value = state.search;
-    if (["all", "hymns", "ccm", "children"].includes(snapshot.praiseFilter)) state.praiseFilter = snapshot.praiseFilter;
+    if (isPraiseListFilterKey(snapshot.praiseFilter)) state.praiseFilter = snapshot.praiseFilter;
     if (["all", "old", "new"].includes(snapshot.scriptureFilter)) state.scriptureFilter = snapshot.scriptureFilter;
     if (SERVICE_FILTERS.includes(snapshot.serviceFilter)) state.serviceFilter = snapshot.serviceFilter;
     state.selectedSongId = snapshot.selectedSongId || null;
@@ -2252,7 +2263,7 @@ function linkStateFromParams(params) {
   if (search) snapshot.search = search;
 
   const praiseFilter = firstParam(params, ["praiseFilter"]);
-  if (["all", "hymns", "ccm", "children"].includes(praiseFilter)) snapshot.praiseFilter = praiseFilter;
+  if (isPraiseListFilterKey(praiseFilter)) snapshot.praiseFilter = praiseFilter;
   const scriptureFilter = firstParam(params, ["scriptureFilter"]);
   if (["all", "old", "new"].includes(scriptureFilter)) snapshot.scriptureFilter = scriptureFilter;
   const serviceFilter = firstParam(params, ["serviceFilter"]);
@@ -13201,7 +13212,7 @@ function renderListFilter() {
   refs.listFilter.setAttribute("aria-label", state.module === "scripture" ? "말씀 필터" : "찬양 필터");
   const filters = state.module === "scripture"
     ? [["all", "전체"], ["old", "구약"], ["new", "신약"]]
-    : [["all", "전체"], ["hymns", "찬송가"], ["ccm", "CCM"], ["children", "어린이"]];
+    : PRAISE_LIST_FILTERS;
   const activeFilter = state.module === "scripture" ? state.scriptureFilter : state.praiseFilter;
   refs.listFilterButtons.forEach((button, index) => {
     if (index < filters.length) {
@@ -13216,6 +13227,10 @@ function renderListFilter() {
       button.hidden = true;
     }
   });
+}
+
+function isPraiseListFilterKey(value) {
+  return PRAISE_LIST_FILTER_KEYS.includes(value);
 }
 
 function renderConnectionStatus() {
@@ -14943,14 +14958,27 @@ function renderSongAttentionIcon(song) {
   if (needsReview) labels.push("Review");
   if (!labels.length) return "";
   const detailLabel = songAttentionLabel(song, labels);
-  const tone = emptyStatus === "all-empty"
-    ? "all-empty"
-    : needsReview && songAllVersionsNeedReview(song)
-      ? "all-needs-review"
-      : needsReview
-        ? (songNeedsReviewFromImport(song) ? "needs-review" : "needs-review-original")
-        : "some-empty";
+  const tone = songAttentionTone(song);
   return renderAttentionIcon(detailLabel, tone);
+}
+
+function songAttentionTone(song) {
+  const emptyStatus = songEmptyStatus(song);
+  const needsReview = songNeedsReview(song);
+  if (emptyStatus === "all-empty") return "all-empty";
+  if (needsReview && songAllVersionsNeedReview(song)) return "all-needs-review";
+  if (needsReview) return songNeedsReviewFromImport(song) ? "needs-review" : "needs-review-original";
+  if (emptyStatus === "some-empty") return "some-empty";
+  return "";
+}
+
+function songMatchesPraiseStatusFilter(song, filterKey) {
+  if (filterKey === "empty") return songEmptyStatus(song) === "all-empty";
+  const tone = songAttentionTone(song);
+  if (filterKey === "attention-pink") return tone === "all-empty" || tone === "all-needs-review";
+  if (filterKey === "attention-blue") return tone === "needs-review-original";
+  if (filterKey === "attention-yellow") return tone === "some-empty" || tone === "needs-review";
+  return false;
 }
 
 function songAttentionLabel(song, summaryLabels) {
@@ -16694,6 +16722,9 @@ function getSongsForPraiseFilter() {
   if (state.praiseFilter === "hymns") return state.songs.filter((song) => songHasPraiseType(song, "hymn"));
   if (state.praiseFilter === "ccm") return state.songs.filter((song) => songHasPraiseType(song, "ccm"));
   if (state.praiseFilter === "children") return state.songs.filter((song) => songHasPraiseType(song, "children"));
+  if (["empty", "attention-pink", "attention-blue", "attention-yellow"].includes(state.praiseFilter)) {
+    return state.songs.filter((song) => songMatchesPraiseStatusFilter(song, state.praiseFilter));
+  }
   return state.songs;
 }
 

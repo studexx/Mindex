@@ -7948,6 +7948,102 @@ def main() -> int:
                 else:
                     fail("praise-module-placeholder", placeholder or praise_placeholder)
                 page.wait_for_selector("[data-song-id]", state="attached", timeout=5000)
+                praise_filter_state = page.evaluate(
+                    """
+                    (() => {
+                      const originalSongs = state.songs;
+                      const originalFilter = state.praiseFilter;
+                      const originalSearch = state.search;
+                      const originalSelectedSongId = state.selectedSongId;
+                      const originalSelectedVersionId = state.selectedVersionId;
+                      const originalSongList = refs.songList.innerHTML;
+                      const fixtures = [
+                        {
+                          id: '__filter_empty__',
+                          title: '빈곡 테스트',
+                          versions: [{ id: '__filter_empty_v__', name: 'Default', forms: [] }]
+                        },
+                        {
+                          id: '__filter_pink__',
+                          title: '분홍 검토 테스트',
+                          versions: [
+                            {
+                              id: '__filter_pink_v1__',
+                              name: 'Default',
+                              forms: [{ id: '__filter_pink_f1__', part_type: 'Verse', lyrics: '가사', review_status: 'needs_review' }]
+                            },
+                            {
+                              id: '__filter_pink_v2__',
+                              name: 'Alt',
+                              forms: [{ id: '__filter_pink_f2__', part_type: 'Verse', lyrics: '가사', review_status: 'needs_review' }]
+                            }
+                          ]
+                        },
+                        {
+                          id: '__filter_blue__',
+                          title: '파랑 검토 테스트',
+                          versions: [{
+                            id: '__filter_blue_v__',
+                            name: 'Default',
+                            forms: [{ id: '__filter_blue_f__', part_type: 'Verse', lyrics: '가사', review_status: 'needs_review' }]
+                          }]
+                        },
+                        {
+                          id: '__filter_yellow_empty__',
+                          title: '노랑 일부 빈곡 테스트',
+                          versions: [
+                            { id: '__filter_yellow_v1__', name: 'Default', forms: [{ id: '__filter_yellow_f1__', part_type: 'Verse', lyrics: '가사' }] },
+                            { id: '__filter_yellow_v2__', name: 'Alt', forms: [] }
+                          ]
+                        },
+                        {
+                          id: '__filter_clean__',
+                          title: '정상 테스트',
+                          versions: [{ id: '__filter_clean_v__', name: 'Default', forms: [{ id: '__filter_clean_f__', part_type: 'Verse', lyrics: '가사' }] }]
+                        }
+                      ];
+                      state.songs = fixtures;
+                      state.search = '';
+                      state.selectedSongId = null;
+                      state.selectedVersionId = null;
+                      const results = {};
+                      for (const filter of ['empty', 'attention-pink', 'attention-blue', 'attention-yellow']) {
+                        state.praiseFilter = filter;
+                        results[filter] = getSongsForPraiseFilter().map((song) => song.id);
+                      }
+                      renderListFilter();
+                      const filterButtons = [...document.querySelectorAll('[data-list-filter]:not([hidden])')]
+                        .map((button) => ({ key: button.dataset.listFilter, label: button.textContent.trim() }));
+                      state.songs = originalSongs;
+                      state.praiseFilter = originalFilter;
+                      state.search = originalSearch;
+                      state.selectedSongId = originalSelectedSongId;
+                      state.selectedVersionId = originalSelectedVersionId;
+                      refs.songList.innerHTML = originalSongList;
+                      renderListFilter();
+                      return { results, filterButtons };
+                    })()
+                    """
+                )
+                if (
+                    praise_filter_state["results"]["empty"] == ["__filter_empty__"]
+                    and praise_filter_state["results"]["attention-pink"] == ["__filter_empty__", "__filter_pink__"]
+                    and praise_filter_state["results"]["attention-blue"] == ["__filter_blue__"]
+                    and praise_filter_state["results"]["attention-yellow"] == ["__filter_yellow_empty__"]
+                    and [item["key"] for item in praise_filter_state["filterButtons"]] == [
+                        "all",
+                        "hymns",
+                        "ccm",
+                        "children",
+                        "empty",
+                        "attention-pink",
+                        "attention-blue",
+                        "attention-yellow",
+                    ]
+                ):
+                    pass_("praise-status-filters", json.dumps(praise_filter_state, ensure_ascii=False))
+                else:
+                    fail("praise-status-filters", json.dumps(praise_filter_state, ensure_ascii=False))
                 page.click("[data-song-id]")
                 page.wait_for_selector(".version-compare-title", state="attached", timeout=5000)
                 praise_actions = page.evaluate(
