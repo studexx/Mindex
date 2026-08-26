@@ -2355,6 +2355,24 @@ def main() -> int:
                                 })),
                             };
                           })(),
+                          fridayDistrictUnionScaffold: (() => {
+                            const service = {
+                              id: '__smoke_friday_district_union__',
+                              type_id: 'friday',
+                              date: '2026-08-28',
+                              alias: '구역연합예배',
+                              _worshipSourceRef: { friday_variant: 'district-union', friday_variant_name: '구역연합예배' },
+                            };
+                            const scaffold = buildWorshipServiceScaffold(service.id, service.type_id, { service });
+                            const readySection = scaffold.sections.find((section) => section.section_key === 'ready') || {};
+                            const readyElement = scaffold.elements.find((element) => element.section_id === readySection.id) || {};
+                            return {
+                              chromakey: presenterServiceUsesChromakey(service),
+                              firstElementType: readyElement.element_type || '',
+                              firstElementLabel: readyElement.source_ref?.label || '',
+                              firstElementRole: readyElement.config?.presenterRole || '',
+                            };
+                          })(),
                           monthlyScaffold: (() => {
                             const scaffold = buildWorshipServiceScaffold('__smoke_service__', 'monthly');
                             const sections = scaffold.sections.map((section) => ({
@@ -3574,6 +3592,12 @@ def main() -> int:
                         and template_terms["friday3355Scaffold"]["sending"] == [
                             {"label": "축도", "person": "김남영 목사"},
                         ]
+                        and template_terms["fridayDistrictUnionScaffold"] == {
+                            "chromakey": True,
+                            "firstElementType": "video",
+                            "firstElementLabel": "대기 화면",
+                            "firstElementRole": "waiting_loop",
+                        }
                         and template_terms["monthlyScaffold"]["sections"] == 12
                         and template_terms["monthlyScaffold"]["elements"] == 26
                         and template_terms["monthlyScaffold"]["firstSection"] == "준비"

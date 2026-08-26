@@ -9341,9 +9341,16 @@ function servicePreparationDefaultRoleForType(role = "", typeId = "") {
   return serviceTypeUsesChromakey(typeId) ? "waiting_loop" : (normalized || "ready");
 }
 
+function servicePreparationDefaultRoleForService(role = "", service = null, fallbackTypeId = "") {
+  const normalized = normalizeServicePresenterRole(role);
+  if (normalized === "intro" || normalized === "still" || normalized === "waiting_loop") return normalized;
+  const candidate = service || { type_id: fallbackTypeId };
+  return presenterServiceUsesChromakey(candidate) ? "waiting_loop" : (normalized || "ready");
+}
+
 function servicePreparationDefaultRoleForServiceId(role = "", serviceId = state.selectedServiceId) {
   const service = state.services.find((svc) => svc.id === serviceId);
-  return servicePreparationDefaultRoleForType(role, service?.type_id || state.selectedServiceTypeId);
+  return servicePreparationDefaultRoleForService(role, service, service?.type_id || state.selectedServiceTypeId);
 }
 
 function servicePreparationElementTypeForRole(role = "", serviceId = state.selectedServiceId) {
@@ -11756,7 +11763,7 @@ function buildWorshipServiceScaffold(serviceId, typeId, options = {}) {
     const ready = isReadyServiceTemplateLabel(label);
     const sectionKey = worshipTemplateSectionKey(label, index, step);
     const elementSteps = worshipTemplateElementSteps(step, label);
-    const readyRole = ready ? servicePreparationDefaultRoleForType(step.presenterRole || step.presenter_role || "ready", typeId) : "";
+    const readyRole = ready ? servicePreparationDefaultRoleForService(step.presenterRole || step.presenter_role || "ready", service, typeId) : "";
     sections.push({
       id: sectionId,
       service_id: serviceId,
@@ -11770,12 +11777,12 @@ function buildWorshipServiceScaffold(serviceId, typeId, options = {}) {
     });
     elementSteps.forEach((elementStep, elementIndex) => {
       const elementReadyRole = ready
-        ? servicePreparationDefaultRoleForType(elementStep.presenterRole || elementStep.presenter_role || readyRole || "ready", typeId)
+        ? servicePreparationDefaultRoleForService(elementStep.presenterRole || elementStep.presenter_role || readyRole || "ready", service, typeId)
         : "";
       const elementLabel = ready
         ? servicePreparationElementLabel(elementReadyRole, typeId)
         : String(elementStep.label || elementStep.name || label).trim() || label;
-      const elementType = ready ? servicePreparationElementTypeForType(typeId) : worshipTemplateElementType(elementStep, elementLabel);
+      const elementType = ready ? servicePreparationElementTypeForService(service, typeId) : worshipTemplateElementType(elementStep, elementLabel);
       const defaultStrength = String(elementStep.defaultStrength || elementStep.default_strength || "").trim();
       const formPreset = normalizeServiceFormPreset(
         elementStep.formPreset || elementStep.form_preset,
@@ -12754,7 +12761,15 @@ const WORSHIP_BACKGROUND_STATIC_FILES = new Set([
 ]);
 function presenterServiceUsesChromakey(service) {
   if (serviceUsesAllGenerationsChromakeyOutput(service)) return true;
+  if (serviceUsesDistrictUnionChromakeyOutput(service)) return true;
   return serviceTypeUsesChromakey(service?.type_id);
+}
+
+function serviceUsesDistrictUnionChromakeyOutput(service = null) {
+  if (!service || typeof service !== "object") return false;
+  const typeId = worshipAppServiceTypeId(service?.type_id || service?.service_type_id || service?.typeId || "");
+  if (typeId !== "friday") return false;
+  return serviceFridayVariantKey(service) === "district-union";
 }
 
 function serviceUsesAllGenerationsChromakeyOutput(service = null) {
@@ -12788,9 +12803,13 @@ function servicePreparationElementTypeForType(typeId) {
   return serviceTypeUsesChromakey(typeId) ? "video" : "image";
 }
 
+function servicePreparationElementTypeForService(service = null, fallbackTypeId = "") {
+  return presenterServiceUsesChromakey(service || { type_id: fallbackTypeId }) ? "video" : "image";
+}
+
 function servicePreparationElementTypeForServiceId(serviceId) {
   const service = state.services.find((svc) => svc.id === serviceId);
-  return servicePreparationElementTypeForType(service?.type_id || state.selectedServiceTypeId);
+  return servicePreparationElementTypeForService(service, service?.type_id || state.selectedServiceTypeId);
 }
 
 function presenterOutputTheme(typeId) {
