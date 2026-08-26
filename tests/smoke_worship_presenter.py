@@ -725,6 +725,7 @@ def main() -> int:
 	                      return {
 	                        firstPreparationMedia: Boolean(first?.querySelector('.svc-slide-thumb-frame--video[data-element-type="video"][data-slide-layout="media"]')),
 	                        firstPreviewText: first?.querySelector('.svc-slide-mini-output')?.innerText.trim() || '',
+	                        firstGeneratedWaitingLoop: Boolean(first?.querySelector('.presenter-waiting-loop')),
 	                        numberBadges: document.querySelectorAll('.svc-slide-thumb-no').length,
 	                        firstNumber: firstNumber?.textContent.trim() || '',
 	                        secondNumber: second?.closest('.svc-slide-thumb-wrap')?.querySelector('.svc-slide-thumb-no')?.textContent.trim() || '',
@@ -737,7 +738,9 @@ def main() -> int:
                 )
                 if (
                     ready_thumb_state["firstPreparationMedia"]
-                    and ready_thumb_state["firstPreviewText"] == ""
+                    and ready_thumb_state["firstGeneratedWaitingLoop"]
+                    and "월삭예배" in ready_thumb_state["firstPreviewText"]
+                    and "잠시 후 예배가 시작됩니다" in ready_thumb_state["firstPreviewText"]
                     and ready_thumb_state["numberBadges"] >= 2
 	                    and ready_thumb_state["firstNumber"] == "1"
 	                    and ready_thumb_state["secondNumber"] == "2"
@@ -6215,6 +6218,9 @@ def main() -> int:
                       const audioPreview = renderPresenterSlideMiniPreview(audio);
                       return {
                         videoUsesOutputElement: videoPreview.includes('<video'),
+                        videoUsesMetadataPreload: videoPreview.includes('preload="metadata"'),
+                        videoUsesFirstFrameOffset: videoPreview.includes('#t=0.001'),
+                        videoMuted: videoPreview.includes('muted'),
                         videoUsesPlaceholder: videoPreview.includes('presenter-slide-file'),
                         videoUsesStaticPreview: videoPreview.includes('presenter-static-media-preview'),
                         videoElementCount: document.querySelectorAll('.svc-slide-thumb video').length,
@@ -6224,9 +6230,12 @@ def main() -> int:
                     """
                 )
                 if (
-                    not preview_renderer_state["videoUsesOutputElement"]
+                    preview_renderer_state["videoUsesOutputElement"]
+                    and preview_renderer_state["videoUsesMetadataPreload"]
+                    and preview_renderer_state["videoUsesFirstFrameOffset"]
+                    and preview_renderer_state["videoMuted"]
                     and not preview_renderer_state["videoUsesPlaceholder"]
-                    and preview_renderer_state["videoUsesStaticPreview"]
+                    and not preview_renderer_state["videoUsesStaticPreview"]
                     and preview_renderer_state["videoElementCount"] == 0
                     and not preview_renderer_state["audioUsesPlaceholder"]
                 ):

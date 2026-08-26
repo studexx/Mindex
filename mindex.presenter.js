@@ -4012,7 +4012,7 @@ function renderPresenterSlideBody(slide, options = {}) {
 }
 
 function presenterSlideUsesGeneratedWaitingLoop(slide, options = {}) {
-  if (options.noChromakey || options.staticVideoPreview) return false;
+  if (options.noChromakey) return false;
   if (slide?.type !== "ready") return false;
   if (normalizeServicePresenterRole(slide.presenterRole) !== "waiting_loop") return false;
   if (normalizePresenterMediaSource(slide.videoSrc || slide.imageSrc || slide.text)) return false;
@@ -4125,8 +4125,19 @@ function renderPresenterVideoSlide(slide, options = {}) {
 }
 
 function renderPresenterStaticVideoPreviewSlide(slide) {
+  const source = presenterStaticVideoPreviewSource(slide);
+  if (source) {
+    return `<video class="presenter-video presenter-video--static-preview" src="${escapeAttr(source)}" muted playsinline preload="metadata"></video>`;
+  }
   const title = presenterFileDisplayTitle(slide, "동영상");
   return `<div class="presenter-static-media-preview" aria-label="${escapeAttr(title)}"></div>`;
+}
+
+function presenterStaticVideoPreviewSource(slide) {
+  const source = normalizePresenterMediaSource(slide.videoSrc || slide.asset?.url || slide.text);
+  if (!source) return "";
+  if (source.includes("#")) return source;
+  return `${source}#t=0.001`;
 }
 
 function renderPresenterImageSlide(slide, options = {}) {
