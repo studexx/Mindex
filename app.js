@@ -3939,23 +3939,41 @@ function serviceTypeUsesCanonicalTitle(typeId) {
 
 const WORSHIP_SLOT_KEYS = new Set([
   "ready.waiting",
+  "prayer.silent",
+  "faith.creed",
+  "confession.prayer",
+  "confession.assurance",
   "praise.welcome",
+  "praise.main",
+  "praise.entrance",
   "prayer.representative",
   "word.reading",
+  "word.body",
+  "hymn.main",
+  "special.song",
   "sermon.title",
   "sermon.scripture",
   "sermon.media",
+  "sermon.live_scripture",
   "response.song",
   "response.prayer",
+  "prayer.corporate.song",
+  "prayer.meeting.free",
   "offering.praise",
   "offering.special",
   "offering.media",
   "offering.prayer",
   "announcements.main",
+  "announcements.department",
+  "announcements.media",
+  "announcements.new_family",
+  "new_family.welcome",
   "sending.doxology",
   "sending.benediction",
+  "sending.lords_prayer",
   "closing.visual",
   "closing.hymn",
+  "community.confession",
   "fellowship.person",
 ]);
 
@@ -3964,6 +3982,8 @@ function normalizeWorshipSlotKey(value = "") {
   if (!text) return "";
   if (/^praise\.song\.[1-9]\d*$/.test(text)) return text;
   if (/^sermon\.citation(?:\.[1-9]\d*)?$/.test(text)) return text;
+  if (/^prayer\.corporate\.[1-9]\d*$/.test(text)) return text;
+  if (/^prayer\.meeting\.song\.[1-9]\d*$/.test(text)) return text;
   return WORSHIP_SLOT_KEYS.has(text) ? text : "";
 }
 
@@ -3992,16 +4012,30 @@ function deriveWorshipSlotKey(context = {}) {
     || "",
   );
   const hasAsset = hasServiceAsset(normalizeServiceAsset(context.asset || context.parsed?.asset || context.config?.asset || context.element?.asset));
+  const elementOrder = Number(context.element?.sort_order || context.item?._worshipElementOrder || context.item?.elementOrder || 0) || 0;
 
   if (sectionKey === "ready") return "ready.waiting";
-  if (sectionKey === "scripture_reading") return "word.reading";
+  if (sectionKey === "silent_prayer") return "prayer.silent";
+  if (sectionKey === "creed") return "faith.creed";
+  if (sectionKey === "confession") return label === "사죄의선언" ? "confession.assurance" : "confession.prayer";
+  if (sectionKey === "scripture_reading") {
+    if (elementType === "scripture_body" || ["성경본문", "성경 본문", "본문"].includes(label)) return "word.body";
+    return "word.reading";
+  }
   if (sectionKey === "praise") {
     if (label === "환영") return "praise.welcome";
+    if (["입례찬양", "입례 찬양"].includes(label)) return "praise.entrance";
     const match = label.match(/^찬양(\d+)$/);
     if (match) return `praise.song.${Number(match[1])}`;
+    if (label === "찬양" && elementOrder > 0) return `praise.song.${elementOrder}`;
+    return "praise.main";
   }
+  if (["entrance_praise", "pre_scripture_praise"].includes(sectionKey)) return "praise.entrance";
   if (sectionKey === "prayer") return "prayer.representative";
+  if (sectionKey === "hymn_praise") return "hymn.main";
+  if (sectionKey === "special_song") return "special.song";
   if (sectionKey === "sermon") {
+    if (label === "실시간성구송출") return "sermon.live_scripture";
     if (["설교", "설교제목"].includes(label)) return "sermon.title";
     if (/^인용구절(\d*)$/.test(label)) {
       const match = label.match(/^인용구절(\d*)$/);
@@ -4012,21 +4046,43 @@ function deriveWorshipSlotKey(context = {}) {
   }
   if (sectionKey === "response_song") return elementType === "praise" || inputMode.includes("db") || inputMode === "manual_praise" ? "response.song" : "response.prayer";
   if (sectionKey === "response_prayer") return "response.prayer";
+  if (sectionKey === "corporate_prayer") {
+    const match = label.match(/^공동기도(\d+)$/);
+    if (match) return `prayer.corporate.${Number(match[1])}`;
+    if (elementType === "praise" || inputMode.includes("db") || inputMode === "manual_praise") return "prayer.corporate.song";
+    return "prayer.corporate.1";
+  }
+  if (sectionKey === "prayer_meeting_praise") {
+    const match = label.match(/^기도찬양(\d+)$/);
+    if (match) return `prayer.meeting.song.${Number(match[1])}`;
+    if (label === "자율기도") return "prayer.meeting.free";
+    if (elementType === "praise" || inputMode.includes("db") || inputMode === "manual_praise") return "prayer.meeting.song.1";
+    return "prayer.meeting.free";
+  }
   if (sectionKey === "offering") {
     if (hasAsset || ["image", "video", "ppt", "pdf"].includes(elementType) || inputMode === "asset") return "offering.media";
     if (["봉헌기도", "기도"].includes(label) || elementType === "title_person") return "offering.prayer";
     if (["특송", "봉헌특송"].includes(label)) return "offering.special";
     if (["봉헌찬송", "찬송"].includes(label) || elementType === "praise") return "offering.praise";
   }
-  if (sectionKey === "announcements") return "announcements.main";
+  if (sectionKey === "new_family") return "new_family.welcome";
+  if (sectionKey === "announcements") {
+    if (label === "새가족환영") return "announcements.new_family";
+    if (label === "참고화면" || hasAsset || ["image", "video", "ppt", "pdf"].includes(elementType) || inputMode === "asset") return "announcements.media";
+    if (["청소년부광고", "청년부광고"].includes(label)) return "announcements.department";
+    return "announcements.main";
+  }
   if (sectionKey === "sending") {
     if (label === "송영" || elementType === "praise") return "sending.doxology";
     if (label === "축도") return "sending.benediction";
+    if (label === "주기도문") return "sending.lords_prayer";
   }
+  if (sectionKey === "lords_prayer") return "sending.lords_prayer";
   if (sectionKey === "closing_visual") {
     if (label === "폐회찬송" || elementType === "praise") return "closing.hymn";
     return "closing.visual";
   }
+  if (sectionKey === "community_confession") return "community.confession";
   if (sectionKey === "fellowship") return "fellowship.person";
   return "";
 }
@@ -23124,11 +23180,12 @@ function markServiceItemSharedContentDirty(item = {}, service = null) {
 function sundaySharedContentKey(item = {}) {
   const slotKey = normalizeWorshipSlotKey(item?._worshipSlotKey || item?.slotKey || item?.slot_key);
   if (/^praise\.song\.[1-3]$/.test(slotKey)) return `main-praise:${slotKey.split(".").pop()}`;
-  if (slotKey === "word.reading") return "scripture-reading";
+  if (slotKey === "word.reading" || slotKey === "word.body") return "scripture-reading";
   if (slotKey === "sermon.title") return "sermon-title";
   if (slotKey === "sermon.scripture") return "sermon-scripture";
   if (slotKey.startsWith("sermon.citation")) return `sermon-citation:${Number(slotKey.split(".").pop()) || 1}`;
   if (slotKey === "offering.praise") return "offering-hymn";
+  if (slotKey === "hymn.main") return "main-praise:3";
   const sectionKey = String(item?._worshipSectionKey || item?.sectionKey || item?.section_key || "").trim();
   const label = compactSearchValue(item?.label || item?.raw_title || "");
   const praiseMatch = label.match(/^찬양(\d+)$/);

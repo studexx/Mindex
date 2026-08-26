@@ -17,7 +17,9 @@ Scope:
   - `mindex_worship_templates`: 0 rows
   - `mindex_worship_template_items`: 0 rows
 
-No schema or production data was changed by this audit.
+No schema or production data was changed by this audit. A destructive cleanup
+attempt was intentionally not completed after safety review because some
+duplicate-looking scripture rows still contained valid `scriptureReferences`.
 
 ## Key Findings
 
@@ -26,10 +28,13 @@ production rows yet, so live behavior currently depends on instance element
 normalization. Instance rows therefore need a persisted slot identity before DB
 constraints can safely protect the data.
 
-The current JS path already derives `_worshipSlotKey` at hydration time and
-persists a normalized value into `mindex_worship_elements.source_ref.slotKey`
-when saving. The audit found no existing explicit `source_ref.slotKey` values in
-production, so a backfill would be the first production-wide materialization.
+The current JS path derives `_worshipSlotKey` at hydration time and persists a
+normalized value into `mindex_worship_elements.source_ref.slotKey` when saving.
+The adapter now covers all current production section keys, including legacy
+faith/confession, hymn, special song, prayer-meeting, announcement media, and
+split scripture body rows. The audit found no existing explicit
+`source_ref.slotKey` values in production, so a backfill would be the first
+production-wide materialization.
 
 The 2026-08-23 all-generation offering shape is correct under the adapter:
 
@@ -55,9 +60,9 @@ a need to revive `대기 영상`.
 
 | bucket | count |
 | --- | ---: |
-| unmapped / needs review | 173 |
-| medium-confidence legacy label-derived rows | 200 |
-| duplicate derived slot rows | 33 rows in 15 groups |
+| unmapped / needs review | 0 |
+| medium-confidence legacy label-derived rows | 514 |
+| duplicate derived slot rows | 12 rows in 5 groups |
 | `offering.praise` rows | 47 |
 
 The 47 `offering.praise` rows are not all-generation 2026-08-23 rows. They are
@@ -66,54 +71,54 @@ not be treated as automatic corruption by themselves.
 
 ## Duplicate Slot Groups
 
-Duplicates that should block singleton unique constraints for now:
+Duplicates that still block singleton unique constraints for now:
 
 - 2026-07-31 금요기도회: four `sermon.citation.1` rows with the same section,
   sort order, label, and reference.
 - 2026-08-02 주일 3부: duplicate `offering.praise` rows and duplicate
   `offering.prayer` rows in the same offering section.
 - 2026-08-02 청소년부: duplicate `sermon.citation.1` rows.
-- 2026-07-05 public services: `scripture_reading` sections contain both a
-  `scripture_reading` row and a `scripture_body` row, both deriving
-  `word.reading`.
+- 2026-08-02 주일 3부: duplicate `special.song` rows.
 
-Duplicates that are probably legitimate repeatable content but need more
-specific slotting before constraints:
+Resolved duplicate false positives:
 
-- Multiple announcement rows in one `announcements` section currently all
-  derive `announcements.main`.
+- 2026-07-05 `scripture_reading` dual rows now split into `word.reading` and
+  `word.body`.
+- Legacy bare `찬양` rows now derive order-based `praise.song.N`.
+- Announcement rows now split into `announcements.main`,
+  `announcements.department`, `announcements.media`, and
+  `announcements.new_family` where possible.
 
-## Unmapped Coverage Gaps
+## Coverage Added
 
-Common unmapped legacy sections/elements:
+The adapter and audit SQL now map the previously unmapped production coverage:
 
-- `creed` / 사도신경
-- `confession` / 참회기도, 사죄의 선언
-- `silent_prayer` / 묵도
-- `special_song` / 특송
-- `hymn_praise` / 찬송
-- `corporate_prayer` / 공동기도
-- `community_confession` / 공동체고백
-- `prayer_meeting_praise` / 기도회, 기도 찬양, 자율기도
-- `lords_prayer` / 주기도문
-- `entrance_praise` and `pre_scripture_praise`
-- `new_family` / 새가족환영
-- `sermon` rows labeled 실시간 성구 송출
-
-These are adapter coverage gaps, not proof that the underlying worship content
-is wrong. They should be mapped deliberately before any non-null `slot_key`
-column or check constraint is introduced.
+- `prayer.silent`
+- `faith.creed`
+- `confession.prayer`
+- `confession.assurance`
+- `praise.main`
+- `praise.entrance`
+- `word.body`
+- `hymn.main`
+- `special.song`
+- `sermon.live_scripture`
+- `prayer.corporate.N`
+- `prayer.corporate.song`
+- `prayer.meeting.song.N`
+- `prayer.meeting.free`
+- `announcements.department`
+- `announcements.media`
+- `announcements.new_family`
+- `new_family.welcome`
+- `sending.lords_prayer`
+- `community.confession`
 
 ## Legacy Label Risk
 
 Medium-confidence rows rely heavily on label/type inference:
 
-- `sermon.title`: 63
-- `response.prayer`: 61
-- `offering.praise`: 47
-- `response.song`: 24
-- `sermon.scripture`: 4
-- `offering.special`: 1
+- count after coverage expansion: 514 rows.
 
 These should not be bulk-backfilled blindly. Backfill should either preserve the
 adapter confidence in an audit table/report, or only write rows that are

@@ -64,11 +64,26 @@ derived as (
       nullif(explicit_slot_key, ''),
       case
         when section_key = 'ready' then 'ready.waiting'
+        when section_key = 'silent_prayer' then 'prayer.silent'
+        when section_key = 'creed' then 'faith.creed'
+        when section_key = 'confession' and label_key = '사죄의선언' then 'confession.assurance'
+        when section_key = 'confession' then 'confession.prayer'
+        when section_key = 'scripture_reading'
+          and (element_type = 'scripture_body' or label_key in ('성경본문', '본문'))
+          then 'word.body'
         when section_key = 'scripture_reading' then 'word.reading'
         when section_key = 'praise' and label_key = '환영' then 'praise.welcome'
+        when section_key = 'praise' and label_key in ('입례찬양', '입례 찬양') then 'praise.entrance'
         when section_key = 'praise' and label_key ~ '^찬양[0-9]+$'
           then 'praise.song.' || substring(label_key from '찬양([0-9]+)')
+        when section_key = 'praise' and label_key = '찬양' and element_order > 0
+          then 'praise.song.' || element_order::text
+        when section_key = 'praise' then 'praise.main'
+        when section_key in ('entrance_praise', 'pre_scripture_praise') then 'praise.entrance'
         when section_key = 'prayer' then 'prayer.representative'
+        when section_key = 'hymn_praise' then 'hymn.main'
+        when section_key = 'special_song' then 'special.song'
+        when section_key = 'sermon' and label_key = '실시간성구송출' then 'sermon.live_scripture'
         when section_key = 'sermon' and label_key in ('설교', '설교제목') then 'sermon.title'
         when section_key = 'sermon' and label_key ~ '^인용구절[0-9]*$'
           then 'sermon.citation.' || coalesce(nullif(substring(label_key from '인용구절([0-9]+)'), ''), '1')
@@ -86,6 +101,19 @@ derived as (
           and (element_type = 'praise' or normalized_input_mode in ('praise_db', 'score_db', 'lyrics_db', 'manual_praise'))
           then 'response.song'
         when section_key in ('response_song', 'response_prayer') then 'response.prayer'
+        when section_key = 'corporate_prayer' and label_key ~ '^공동기도[0-9]+$'
+          then 'prayer.corporate.' || substring(label_key from '공동기도([0-9]+)')
+        when section_key = 'corporate_prayer'
+          and (element_type = 'praise' or normalized_input_mode in ('praise_db', 'score_db', 'lyrics_db', 'manual_praise'))
+          then 'prayer.corporate.song'
+        when section_key = 'corporate_prayer' then 'prayer.corporate.1'
+        when section_key = 'prayer_meeting_praise' and label_key ~ '^기도찬양[0-9]+$'
+          then 'prayer.meeting.song.' || substring(label_key from '기도찬양([0-9]+)')
+        when section_key = 'prayer_meeting_praise' and label_key = '자율기도' then 'prayer.meeting.free'
+        when section_key = 'prayer_meeting_praise'
+          and (element_type = 'praise' or normalized_input_mode in ('praise_db', 'score_db', 'lyrics_db', 'manual_praise'))
+          then 'prayer.meeting.song.1'
+        when section_key = 'prayer_meeting_praise' then 'prayer.meeting.free'
         when section_key = 'offering'
           and (has_asset or element_type in ('image', 'video', 'ppt', 'pdf') or normalized_input_mode = 'asset')
           then 'offering.media'
@@ -94,11 +122,25 @@ derived as (
         when section_key = 'offering' and label_key in ('특송', '봉헌특송') then 'offering.special'
         when section_key = 'offering' and (label_key in ('봉헌찬송', '찬송') or element_type = 'praise')
           then 'offering.praise'
+        when section_key = 'new_family' then 'new_family.welcome'
+        when section_key = 'announcements' and label_key = '새가족환영' then 'announcements.new_family'
+        when section_key = 'announcements'
+          and (
+            label_key = '참고화면'
+            or has_asset
+            or element_type in ('image', 'video', 'ppt', 'pdf')
+            or normalized_input_mode = 'asset'
+          )
+          then 'announcements.media'
+        when section_key = 'announcements' and label_key in ('청소년부광고', '청년부광고') then 'announcements.department'
         when section_key = 'announcements' then 'announcements.main'
         when section_key = 'sending' and (label_key = '송영' or element_type = 'praise') then 'sending.doxology'
         when section_key = 'sending' and label_key = '축도' then 'sending.benediction'
+        when section_key = 'sending' and label_key = '주기도문' then 'sending.lords_prayer'
+        when section_key = 'lords_prayer' then 'sending.lords_prayer'
         when section_key = 'closing_visual' and (label_key = '폐회찬송' or element_type = 'praise') then 'closing.hymn'
         when section_key = 'closing_visual' then 'closing.visual'
+        when section_key = 'community_confession' then 'community.confession'
         when section_key = 'fellowship' then 'fellowship.person'
         else ''
       end
@@ -111,7 +153,25 @@ classified as (
     case
       when explicit_slot_key is not null and explicit_slot_key <> '' then 'explicit'
       when derived_slot_key = '' then 'needs_review'
-      when section_key in ('ready', 'scripture_reading', 'prayer', 'announcements', 'closing_visual', 'fellowship') then 'high'
+      when section_key in (
+        'ready',
+        'silent_prayer',
+        'creed',
+        'confession',
+        'scripture_reading',
+        'prayer',
+        'hymn_praise',
+        'special_song',
+        'corporate_prayer',
+        'prayer_meeting_praise',
+        'new_family',
+        'announcements',
+        'sending',
+        'lords_prayer',
+        'closing_visual',
+        'community_confession',
+        'fellowship'
+      ) then 'high'
       when normalized_input_mode in ('scripture', 'asset') or has_asset then 'high'
       else 'medium'
     end as confidence
@@ -165,15 +225,52 @@ derived as (
       nullif(source_ref->>'slotKey', ''),
       case
         when section_key = 'ready' then 'ready.waiting'
+        when section_key = 'silent_prayer' then 'prayer.silent'
+        when section_key = 'creed' then 'faith.creed'
+        when section_key = 'confession' and label_key = '사죄의선언' then 'confession.assurance'
+        when section_key = 'confession' then 'confession.prayer'
+        when section_key = 'scripture_reading' and (element_type = 'scripture_body' or label_key in ('성경본문', '본문')) then 'word.body'
         when section_key = 'scripture_reading' then 'word.reading'
+        when section_key = 'praise' and label_key = '환영' then 'praise.welcome'
+        when section_key = 'praise' and label_key in ('입례찬양', '입례 찬양') then 'praise.entrance'
+        when section_key = 'praise' and label_key ~ '^찬양[0-9]+$' then 'praise.song.' || substring(label_key from '찬양([0-9]+)')
+        when section_key = 'praise' and label_key = '찬양' and element_order > 0 then 'praise.song.' || element_order::text
+        when section_key = 'praise' then 'praise.main'
+        when section_key in ('entrance_praise', 'pre_scripture_praise') then 'praise.entrance'
+        when section_key = 'prayer' then 'prayer.representative'
+        when section_key = 'hymn_praise' then 'hymn.main'
+        when section_key = 'special_song' then 'special.song'
+        when section_key = 'sermon' and label_key = '실시간성구송출' then 'sermon.live_scripture'
         when section_key = 'sermon' and label_key in ('설교', '설교제목') then 'sermon.title'
         when section_key = 'sermon' and label_key ~ '^인용구절[0-9]*$' then 'sermon.citation.' || coalesce(nullif(substring(label_key from '인용구절([0-9]+)'), ''), '1')
         when section_key = 'sermon' and (label_key in ('설교본문', '본문', '성경본문', '말씀본문', '말씀') or normalized_input_mode = 'scripture' or element_type = 'scripture_body') then 'sermon.scripture'
         when section_key = 'sermon' and (has_asset or element_type in ('image', 'video', 'ppt', 'pdf') or normalized_input_mode = 'asset') then 'sermon.media'
+        when section_key = 'response_song' and (element_type = 'praise' or normalized_input_mode in ('praise_db', 'score_db', 'lyrics_db', 'manual_praise')) then 'response.song'
+        when section_key in ('response_song', 'response_prayer') then 'response.prayer'
+        when section_key = 'corporate_prayer' and label_key ~ '^공동기도[0-9]+$' then 'prayer.corporate.' || substring(label_key from '공동기도([0-9]+)')
+        when section_key = 'corporate_prayer' and (element_type = 'praise' or normalized_input_mode in ('praise_db', 'score_db', 'lyrics_db', 'manual_praise')) then 'prayer.corporate.song'
+        when section_key = 'corporate_prayer' then 'prayer.corporate.1'
+        when section_key = 'prayer_meeting_praise' and label_key ~ '^기도찬양[0-9]+$' then 'prayer.meeting.song.' || substring(label_key from '기도찬양([0-9]+)')
+        when section_key = 'prayer_meeting_praise' and label_key = '자율기도' then 'prayer.meeting.free'
+        when section_key = 'prayer_meeting_praise' and (element_type = 'praise' or normalized_input_mode in ('praise_db', 'score_db', 'lyrics_db', 'manual_praise')) then 'prayer.meeting.song.1'
+        when section_key = 'prayer_meeting_praise' then 'prayer.meeting.free'
         when section_key = 'offering' and (has_asset or element_type in ('image', 'video', 'ppt', 'pdf') or normalized_input_mode = 'asset') then 'offering.media'
         when section_key = 'offering' and (label_key in ('봉헌기도', '기도') or element_type = 'title_person') then 'offering.prayer'
         when section_key = 'offering' and label_key in ('특송', '봉헌특송') then 'offering.special'
         when section_key = 'offering' and (label_key in ('봉헌찬송', '찬송') or element_type = 'praise') then 'offering.praise'
+        when section_key = 'new_family' then 'new_family.welcome'
+        when section_key = 'announcements' and label_key = '새가족환영' then 'announcements.new_family'
+        when section_key = 'announcements' and (label_key = '참고화면' or has_asset or element_type in ('image', 'video', 'ppt', 'pdf') or normalized_input_mode = 'asset') then 'announcements.media'
+        when section_key = 'announcements' and label_key in ('청소년부광고', '청년부광고') then 'announcements.department'
+        when section_key = 'announcements' then 'announcements.main'
+        when section_key = 'sending' and (label_key = '송영' or element_type = 'praise') then 'sending.doxology'
+        when section_key = 'sending' and label_key = '축도' then 'sending.benediction'
+        when section_key = 'sending' and label_key = '주기도문' then 'sending.lords_prayer'
+        when section_key = 'lords_prayer' then 'sending.lords_prayer'
+        when section_key = 'closing_visual' and (label_key = '폐회찬송' or element_type = 'praise') then 'closing.hymn'
+        when section_key = 'closing_visual' then 'closing.visual'
+        when section_key = 'community_confession' then 'community.confession'
+        when section_key = 'fellowship' then 'fellowship.person'
         else ''
       end
     ) as derived_slot_key

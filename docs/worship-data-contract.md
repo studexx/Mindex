@@ -66,25 +66,45 @@ Initial slot examples:
 | slotKey | Default label | section_key | elementType | inputMode | outputMode | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
 | `ready.waiting` | 대기 화면 | `ready` | `video` or `image` | `asset` | media | Label must not regress to `대기 영상`. |
+| `prayer.silent` | 묵도 | `silent_prayer` | `plain_text` / `body` | `text` | body | Silent/opening prayer. |
+| `faith.creed` | 사도신경 | `creed` | `body` | `text` | body | Fixed confession text. |
+| `confession.prayer` | 참회기도 | `confession` | `plain_text` / `body` | `text` | body | Public-service repentance prayer. |
+| `confession.assurance` | 사죄의 선언 | `confession` | `plain_text` / `body` | `text` | body | Optional paired element after confession. |
 | `praise.welcome` | 환영 | `praise` | `title_content` | `text` | lyrics/clean | Optional in public-style praise blocks. |
+| `praise.main` | 찬양 | `praise` | `praise` | `lyrics_db` / `score_db` / `manual_praise` | lyrics/score | Legacy bare praise slot when numbered praise is absent. |
+| `praise.entrance` | 입례찬양 | `praise`, `entrance_praise`, `pre_scripture_praise` | `praise` | `lyrics_db` / `score_db` | lyrics/score | Entrance/pre-scripture praise. |
 | `praise.song.N` | 찬양 N | `praise` | `praise` | `lyrics_db` / `score_db` / `manual_praise` | lyrics/score | Consecutive praise slots can be visually grouped. |
 | `prayer.representative` | 대표기도 | `prayer` | `title_person` | `text` | title-assignee | 담당자 중심. |
 | `word.reading` | 성경봉독 | `scripture_reading` | `scripture_body` | `scripture` | scripture | Must load normalized references before Presenter output. |
+| `word.body` | 성경 본문 | `scripture_reading` | `scripture_body` | `scripture` | scripture | Legacy split body row paired with `word.reading`; uses the same scripture loader. |
+| `hymn.main` | 찬송 | `hymn_praise` | `praise` | `score_db` / `lyrics_db` | score/lyrics | Shared public-service hymn slot. |
+| `special.song` | 특송 | `special_song` | `praise` | `lyrics_db` / `score_db` / `manual_praise` | lyrics/score | Non-offering special song. |
 | `sermon.title` | 설교 제목 | `sermon` | `title_person` | `text` | title-assignee | 제목 + 담당자. |
 | `sermon.scripture` | 설교 본문 | `sermon` | `scripture_body` | `scripture` | scripture | Same scripture loader as reading, but sermon context. |
 | `sermon.citation` | 인용 구절 | `sermon` | `scripture_body` | `scripture` | live/optional scripture | Optional; empty is not a required warning. |
 | `sermon.media` | 자료화면 | `sermon` | `image` / `video` / `file` | `asset` | media/file | Optional dated/manual slot for sermon visuals. |
+| `sermon.live_scripture` | 실시간 성구 송출 | `sermon` | `plain_text` | `config` / empty | live scripture | Controller helper slot; normally hidden from saved presentation flow. |
 | `response.song` | 결단찬양 | `response_song` | `praise` | `lyrics_db` / `score_db` / `manual_praise` | lyrics/score | Optional by service type. |
 | `response.prayer` | 결단기도 | `response_song` | `title_person` or `title` | `text` | title-assignee/title | Service templates decide whether 담당자 is needed. |
+| `prayer.corporate.N` | 공동기도 N | `corporate_prayer` | `title_person` | `text` | title-assignee | Repeatable monthly prayer slots. |
+| `prayer.corporate.song` | 기도 찬양 | `corporate_prayer` | `praise` | `lyrics_db` / `score_db` | lyrics/score | Monthly prayer praise within corporate prayer. |
+| `prayer.meeting.song.N` | 기도 찬양 N | `prayer_meeting_praise` | `praise` | `lyrics_db` / `score_db` | lyrics/score | Friday/prayer-meeting praise slots. |
+| `prayer.meeting.free` | 자율기도 | `prayer_meeting_praise` | `plain_text` / `title_person` | `text` | title/body | Free prayer slot. |
 | `offering.praise` | 봉헌찬송 | `offering` | `praise` | `score_db` / `lyrics_db` | score/lyrics | Regular public services only unless explicitly enabled. |
 | `offering.special` | 봉헌특송 | `offering` | `praise` | `lyrics_db` / `manual_praise` / `score_db` | lyrics/score | Optional dated/manual slot. |
 | `offering.media` | 봉헌 영상 | `offering` | `video` / `image` | `asset` | media | Optional dated/manual slot; must not imply `offering.praise`. |
 | `offering.prayer` | 봉헌기도 | `offering` | `title_person` | `text` | title-assignee | Usually required when offering module exists. |
 | `announcements.main` | 교회소식 | `announcements` | `title` / `title_content` | `text` | title/body | For announcements, content fields should say 내용, not 제목. |
+| `announcements.department` | 부서 광고 | `announcements` | `body` | `text` | body | Youth/young-adult department announcement body. |
+| `announcements.media` | 참고 화면 | `announcements` | `image` / `video` / `ppt` | `asset` | media | Announcement reference image/video. |
+| `announcements.new_family` | 새가족환영 | `announcements` | `plain_text` | `text` | title/body | New-family welcome when stored inside announcements. |
+| `new_family.welcome` | 새가족환영 | `new_family` | `plain_text` | `text` | title/body | Dedicated welcome slot when separated from announcements. |
 | `sending.doxology` | 송영 | `sending` | `praise` | `score_db` / `lyrics_db` | score/lyrics | Fixed by service type where applicable. |
 | `sending.benediction` | 축도 | `sending` | `title_person` | `text` | title-assignee | 담당자 중심. |
+| `sending.lords_prayer` | 주기도문 | `sending`, `lords_prayer` | `body` | `text` | body | Used when benediction is omitted or service type requires it. |
 | `closing.visual` | 마무리 | `closing_visual` | `image` | `asset` | media | Closing image/default visual. |
 | `closing.hymn` | 폐회찬송 | `closing_visual` | `praise` | `score_db` / `lyrics_db` | score/lyrics | Optional public 3rd-service-style slot. |
+| `community.confession` | 공동체고백 | `community_confession` | `body` | `text` | body | Department/community confession text. |
 | `fellowship.person` | 교제 | `fellowship` | `title_person` | `text` | title-assignee | 담당자 only in the current 3355 UX. |
 
 Module options should handle occasional custom worship needs without turning
