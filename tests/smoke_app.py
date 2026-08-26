@@ -3568,7 +3568,7 @@ def main() -> int:
                         and template_terms["monthlyScaffold"]["elements"] == 26
                         and template_terms["monthlyScaffold"]["firstSection"] == "준비"
                         and template_terms["monthlyScaffold"]["firstElementType"] == "video"
-                        and template_terms["monthlyScaffold"]["firstElementLabel"] == "대기 화면"
+                        and template_terms["monthlyScaffold"]["firstElementLabel"] == "대기 영상"
                         and template_terms["monthlyScaffold"]["firstElementTitle"] == ""
                         and "corporate_prayer" in template_terms["monthlyScaffold"]["sectionKeys"]
                         and "sending" in template_terms["monthlyScaffold"]["sectionKeys"]

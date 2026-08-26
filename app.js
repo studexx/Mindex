@@ -9097,12 +9097,15 @@ function normalizeServiceAssetSlides(value) {
 function applyServicePreparationDefaults(item, serviceId = state.selectedServiceId) {
   const parsed = parseServiceItemMemo(item?.memo);
   if (!isServicePreparationItem(item, parsed)) return item;
-  const role = normalizeServicePresenterRole(parsed.presenterRole) || presenterPreparationRole(item, parsed);
+  const role = servicePreparationDefaultRoleForServiceId(
+    normalizeServicePresenterRole(parsed.presenterRole) || presenterPreparationRole(item, parsed),
+    serviceId,
+  );
   const elementType = servicePreparationElementTypeForRole(role, serviceId);
   const asset = normalizeServiceAsset(parsed.asset);
   asset.kind = elementType;
   const rawTitle = String(item.raw_title || "").trim();
-  item.label = servicePreparationElementLabel(role);
+  item.label = servicePreparationElementLabel(role, serviceId);
   if (!rawTitle || isReadyServiceTemplateLabel(rawTitle) || isPreparationRoleTitle(rawTitle)) item.raw_title = "";
   parsed.elementType = elementType;
   parsed.componentType = elementType;
@@ -9126,11 +9129,29 @@ function isServicePreparationItem(item = {}, memo = parseServiceItemMemo(item.me
   return Boolean(presenterPreparationRole(item, memo));
 }
 
-function servicePreparationElementLabel(role = "") {
+function servicePreparationContextUsesChromakey(contextId = "") {
+  const id = String(contextId || "").trim();
+  const service = id ? state.services.find((svc) => svc.id === id) : null;
+  return serviceTypeUsesChromakey(service?.type_id || id || state.selectedServiceTypeId);
+}
+
+function servicePreparationElementLabel(role = "", contextId = "") {
   const normalized = normalizeServicePresenterRole(role);
   if (normalized === "intro") return "인트로";
   if (normalized === "still") return "첫 화면";
-  return "대기 화면";
+  if (normalized === "waiting_loop") return "대기 영상";
+  return servicePreparationContextUsesChromakey(contextId) ? "대기 영상" : "대기 화면";
+}
+
+function servicePreparationDefaultRoleForType(role = "", typeId = "") {
+  const normalized = normalizeServicePresenterRole(role);
+  if (normalized === "intro" || normalized === "still" || normalized === "waiting_loop") return normalized;
+  return serviceTypeUsesChromakey(typeId) ? "waiting_loop" : (normalized || "ready");
+}
+
+function servicePreparationDefaultRoleForServiceId(role = "", serviceId = state.selectedServiceId) {
+  const service = state.services.find((svc) => svc.id === serviceId);
+  return servicePreparationDefaultRoleForType(role, service?.type_id || state.selectedServiceTypeId);
 }
 
 function servicePreparationElementTypeForRole(role = "", serviceId = state.selectedServiceId) {
@@ -9142,7 +9163,7 @@ function servicePreparationElementTypeForRole(role = "", serviceId = state.selec
 
 function presenterPreparationRoleLabel(role = "") {
   const normalized = normalizeServicePresenterRole(role);
-  if (normalized === "waiting_loop") return "대기 화면";
+  if (normalized === "waiting_loop") return "대기 영상";
   if (normalized === "intro") return "인트로";
   if (normalized === "still") return "첫 화면";
   return "준비";
@@ -11540,6 +11561,7 @@ function buildWorshipServiceScaffold(serviceId, typeId, options = {}) {
     const sectionId = createUuid();
     const ready = isReadyServiceTemplateLabel(label);
     const elementSteps = worshipTemplateElementSteps(step, label);
+    const readyRole = ready ? servicePreparationDefaultRoleForType(step.presenterRole || step.presenter_role || "ready", typeId) : "";
     sections.push({
       id: sectionId,
       service_id: serviceId,
@@ -11549,11 +11571,14 @@ function buildWorshipServiceScaffold(serviceId, typeId, options = {}) {
       person: "",
       source_kind: "mindex",
       source_ref: { label, template: true, placeholder: true, ...(templateVersion ? { template_version: templateVersion } : {}) },
-      config: ready ? { presenterRole: "ready" } : {},
+      config: ready ? { presenterRole: readyRole } : {},
     });
     elementSteps.forEach((elementStep, elementIndex) => {
+      const elementReadyRole = ready
+        ? servicePreparationDefaultRoleForType(elementStep.presenterRole || elementStep.presenter_role || readyRole || "ready", typeId)
+        : "";
       const elementLabel = ready
-        ? servicePreparationElementLabel(elementStep.presenterRole || elementStep.presenter_role || "ready")
+        ? servicePreparationElementLabel(elementReadyRole, typeId)
         : String(elementStep.label || elementStep.name || label).trim() || label;
       const elementType = ready ? servicePreparationElementTypeForType(typeId) : worshipTemplateElementType(elementStep, elementLabel);
       const defaultStrength = String(elementStep.defaultStrength || elementStep.default_strength || "").trim();
@@ -11593,7 +11618,7 @@ function buildWorshipServiceScaffold(serviceId, typeId, options = {}) {
           ...(textHighlights.length ? { textHighlights } : {}),
           ...(asset.url ? { asset: { ...asset, kind: asset.kind || elementType } } : {}),
           ...(elementStep.hiddenInPresentation || elementStep.hidden_in_presentation ? { hiddenInPresentation: true } : {}),
-          ...(ready ? { presenterRole: "ready" } : {}),
+          ...(ready ? { presenterRole: elementReadyRole } : {}),
         },
       });
     });
@@ -19063,7 +19088,10 @@ function mergeTemplateProjectionItem(templateItem = {}, existingItem = {}) {
   }
   if (elementModified) {
     merged.label = isPreparation
-      ? (templateLabel || servicePreparationElementLabel(presenterPreparationRole(existingItem, parseServiceItemMemo(existingItem.memo))))
+      ? (templateLabel || servicePreparationElementLabel(
+        presenterPreparationRole(existingItem, parseServiceItemMemo(existingItem.memo)),
+        existingItem.service_id || templateItem.service_id || state.selectedServiceId,
+      ))
       : (existingLabel || templateLabel);
     merged._worshipElementOrder = existingItem._worshipElementOrder || templateItem._worshipElementOrder;
   }
@@ -22540,7 +22568,7 @@ function renderPresenterRoleOptions(selectedRole = "") {
   const options = [
     ["", "자동"],
     ["ready", "준비"],
-    ["waiting_loop", "대기 화면"],
+    ["waiting_loop", "대기 영상"],
     ["intro", "인트로"],
     ["still", "첫 화면"],
   ];
