@@ -3937,6 +3937,100 @@ function serviceTypeUsesCanonicalTitle(typeId) {
   return SERVICE_CATEGORIES.public.includes(appTypeId);
 }
 
+const WORSHIP_SLOT_KEYS = new Set([
+  "ready.waiting",
+  "praise.welcome",
+  "prayer.representative",
+  "word.reading",
+  "sermon.title",
+  "sermon.scripture",
+  "sermon.media",
+  "response.song",
+  "response.prayer",
+  "offering.praise",
+  "offering.special",
+  "offering.media",
+  "offering.prayer",
+  "announcements.main",
+  "sending.doxology",
+  "sending.benediction",
+  "closing.visual",
+  "closing.hymn",
+  "fellowship.person",
+]);
+
+function normalizeWorshipSlotKey(value = "") {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  if (/^praise\.song\.[1-9]\d*$/.test(text)) return text;
+  if (/^sermon\.citation(?:\.[1-9]\d*)?$/.test(text)) return text;
+  return WORSHIP_SLOT_KEYS.has(text) ? text : "";
+}
+
+function explicitWorshipSlotKey(...sources) {
+  for (const source of sources) {
+    if (!source || typeof source !== "object") continue;
+    const slotKey = normalizeWorshipSlotKey(source.slotKey || source.slot_key);
+    if (slotKey) return slotKey;
+  }
+  return "";
+}
+
+function deriveWorshipSlotKey(context = {}) {
+  const explicit = explicitWorshipSlotKey(context.element, context.sourceRef, context.config, context.item, context.parsed);
+  if (explicit) return explicit;
+  const sectionKey = String(context.sectionKey || context.section?.section_key || context.item?._worshipSectionKey || "").trim();
+  const elementType = normalizeWorshipElementType(context.elementType || context.element?.element_type || context.parsed?.elementType || context.parsed?.componentType);
+  const inputMode = normalizeServiceInputMode(context.inputMode || context.element?.input_mode || context.contentState?.inputMode || context.config?.inputMode || context.config?.input_mode || context.parsed?.inputMode);
+  const label = compactSearchValue(
+    context.label
+    || context.sourceRef?.label
+    || context.item?.label
+    || context.element?.title
+    || context.section?.title
+    || context.item?.raw_title
+    || "",
+  );
+  const hasAsset = hasServiceAsset(normalizeServiceAsset(context.asset || context.parsed?.asset || context.config?.asset || context.element?.asset));
+
+  if (sectionKey === "ready") return "ready.waiting";
+  if (sectionKey === "scripture_reading") return "word.reading";
+  if (sectionKey === "praise") {
+    if (label === "환영") return "praise.welcome";
+    const match = label.match(/^찬양(\d+)$/);
+    if (match) return `praise.song.${Number(match[1])}`;
+  }
+  if (sectionKey === "prayer") return "prayer.representative";
+  if (sectionKey === "sermon") {
+    if (["설교", "설교제목"].includes(label)) return "sermon.title";
+    if (/^인용구절(\d*)$/.test(label)) {
+      const match = label.match(/^인용구절(\d*)$/);
+      return `sermon.citation.${match?.[1] ? Number(match[1]) : 1}`;
+    }
+    if (["설교본문", "본문", "성경본문", "말씀본문", "말씀"].includes(label) || inputMode === "scripture" || elementType === "scripture_body") return "sermon.scripture";
+    if (hasAsset || ["image", "video", "ppt", "pdf"].includes(elementType) || inputMode === "asset") return "sermon.media";
+  }
+  if (sectionKey === "response_song") return elementType === "praise" || inputMode.includes("db") || inputMode === "manual_praise" ? "response.song" : "response.prayer";
+  if (sectionKey === "response_prayer") return "response.prayer";
+  if (sectionKey === "offering") {
+    if (hasAsset || ["image", "video", "ppt", "pdf"].includes(elementType) || inputMode === "asset") return "offering.media";
+    if (["봉헌기도", "기도"].includes(label) || elementType === "title_person") return "offering.prayer";
+    if (["특송", "봉헌특송"].includes(label)) return "offering.special";
+    if (["봉헌찬송", "찬송"].includes(label) || elementType === "praise") return "offering.praise";
+  }
+  if (sectionKey === "announcements") return "announcements.main";
+  if (sectionKey === "sending") {
+    if (label === "송영" || elementType === "praise") return "sending.doxology";
+    if (label === "축도") return "sending.benediction";
+  }
+  if (sectionKey === "closing_visual") {
+    if (label === "폐회찬송" || elementType === "praise") return "closing.hymn";
+    return "closing.visual";
+  }
+  if (sectionKey === "fellowship") return "fellowship.person";
+  return "";
+}
+
 function groupWorshipElements(sections = [], elements = []) {
   const sectionById = Object.fromEntries(sections.map((section) => [section.id, section]));
   return elements.reduce((grouped, element) => {
@@ -3998,6 +4092,18 @@ function groupWorshipElements(sections = [], elements = []) {
       config.connectedPraise || config.connected_praise || sourceRef.connectedPraise || sourceRef.connected_praise,
     );
     const manualSlides = serviceElementManualSlides(element, config, { section, sourceRef });
+    const slotKey = deriveWorshipSlotKey({
+      element,
+      section,
+      sectionKey,
+      sourceRef,
+      config,
+      label: elementLabel,
+      elementType,
+      inputMode,
+      asset,
+      contentState: element.content_state,
+    });
     grouped[serviceId].push(normalizeServiceItem({
       id: element.id,
       service_id: serviceId,
@@ -4039,6 +4145,7 @@ function groupWorshipElements(sections = [], elements = []) {
       _worshipSectionTitle: section.title || "",
       _worshipSectionOrder: Number(section.sort_order) || 0,
       _worshipElementOrder: Number(element.sort_order) || 0,
+      _worshipSlotKey: slotKey,
       _worshipSectionTemplateModified: Boolean(section.template_modified),
       _worshipElementTemplateModified: Boolean(element.template_modified),
     }));
@@ -6104,6 +6211,12 @@ function sanitizeWorshipPersistenceRows(rows = {}, options = {}) {
     element.asset = normalizeServiceAsset(element.asset || element.config?.asset);
     element.source_ref = element.source_ref && typeof element.source_ref === "object" ? element.source_ref : {};
     element.config = element.config && typeof element.config === "object" ? element.config : {};
+    const sourceSlotKey = normalizeWorshipSlotKey(element.source_ref.slotKey || element.source_ref.slot_key);
+    if (sourceSlotKey) element.source_ref.slotKey = sourceSlotKey;
+    delete element.source_ref.slot_key;
+    const configSlotKey = normalizeWorshipSlotKey(element.config.slotKey || element.config.slot_key);
+    if (configSlotKey) element.config.slotKey = configSlotKey;
+    delete element.config.slot_key;
     if (Object.prototype.hasOwnProperty.call(element.config, "input_mode")) {
       const configMode = normalizeServiceInputMode(element.config.input_mode);
       if (configMode) element.config.inputMode = configMode;
@@ -6272,8 +6385,22 @@ function buildWorshipPersistenceRows(service, items, existingSectionById = {}, e
       omitSlides: Boolean(manualBody) || scriptureBody,
     });
     const asset = normalizeServiceAsset(parsed.asset || existingElement?.asset || existingConfig.asset);
-    const sourceRef = serviceElementSourceRefForSave(existingSourceRef, item, parsed, Boolean(manualBody));
+    const sourceRefBase = serviceElementSourceRefForSave(existingSourceRef, item, parsed, Boolean(manualBody));
     const contentState = serviceElementContentStateForSave(item, parsed, service);
+    const slotKey = deriveWorshipSlotKey({
+      item,
+      parsed,
+      element: existingElement,
+      sourceRef: sourceRefBase,
+      config,
+      sectionKey: item._worshipSectionKey || existingSection?.section_key || "",
+      label: item.label,
+      elementType,
+      inputMode: contentState.inputMode,
+      asset,
+      contentState,
+    });
+    const sourceRef = slotKey ? { ...sourceRefBase, slotKey } : sourceRefBase;
     const scriptureReferences = scriptureBody
       ? serviceItemScriptureReferences(item, parsed, service)
       : [];
@@ -11556,13 +11683,14 @@ function buildWorshipServiceScaffold(serviceId, typeId, options = {}) {
     if (!label) return;
     const sectionId = createUuid();
     const ready = isReadyServiceTemplateLabel(label);
+    const sectionKey = worshipTemplateSectionKey(label, index, step);
     const elementSteps = worshipTemplateElementSteps(step, label);
     const readyRole = ready ? servicePreparationDefaultRoleForType(step.presenterRole || step.presenter_role || "ready", typeId) : "";
     sections.push({
       id: sectionId,
       service_id: serviceId,
       sort_order: index + 1,
-      section_key: worshipTemplateSectionKey(label, index, step),
+      section_key: sectionKey,
       title: label,
       person: "",
       source_kind: "mindex",
@@ -11591,6 +11719,16 @@ function buildWorshipServiceScaffold(serviceId, typeId, options = {}) {
       const asset = worshipTemplateElementAsset(elementStep, elementLabel);
       const defaultSong = worshipTemplateDefaultSong(elementStep, elementType);
       const defaultSongVersionId = defaultSong?.version?._worshipVersionPersisted ? defaultSong.version.id : null;
+      const inputMode = normalizeServiceInputMode(elementStep.inputMode || elementStep.input_mode);
+      const slotKey = deriveWorshipSlotKey({
+        sourceRef: elementStep.source_ref,
+        config: elementStep.config,
+        sectionKey,
+        label: elementLabel,
+        elementType,
+        inputMode,
+        asset,
+      });
       elements.push({
         id: createUuid(),
         section_id: sectionId,
@@ -11603,7 +11741,7 @@ function buildWorshipServiceScaffold(serviceId, typeId, options = {}) {
         song_id: defaultSong?.song.id || null,
         song_version_id: defaultSongVersionId,
         source_kind: "mindex",
-        source_ref: { label: elementLabel, template: true, placeholder: !ready, ...(templateVersion ? { template_version: templateVersion } : {}) },
+        source_ref: { label: elementLabel, ...(slotKey ? { slotKey } : {}), template: true, placeholder: !ready, ...(templateVersion ? { template_version: templateVersion } : {}) },
         config: {
           ...(formHint ? { formHint } : {}),
           ...(formPreset ? { formPreset } : {}),
@@ -22984,6 +23122,13 @@ function markServiceItemSharedContentDirty(item = {}, service = null) {
 }
 
 function sundaySharedContentKey(item = {}) {
+  const slotKey = normalizeWorshipSlotKey(item?._worshipSlotKey || item?.slotKey || item?.slot_key);
+  if (/^praise\.song\.[1-3]$/.test(slotKey)) return `main-praise:${slotKey.split(".").pop()}`;
+  if (slotKey === "word.reading") return "scripture-reading";
+  if (slotKey === "sermon.title") return "sermon-title";
+  if (slotKey === "sermon.scripture") return "sermon-scripture";
+  if (slotKey.startsWith("sermon.citation")) return `sermon-citation:${Number(slotKey.split(".").pop()) || 1}`;
+  if (slotKey === "offering.praise") return "offering-hymn";
   const sectionKey = String(item?._worshipSectionKey || item?.sectionKey || item?.section_key || "").trim();
   const label = compactSearchValue(item?.label || item?.raw_title || "");
   const praiseMatch = label.match(/^찬양(\d+)$/);

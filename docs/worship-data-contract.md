@@ -132,6 +132,24 @@ Migration/adapter priority:
 4. Backfill legacy records conservatively. Preserve manually curated input,
    linked Praise songs, linked Scripture references, and uploaded assets.
 
+Adapter-first implementation note:
+
+- Template blueprints may use `mindex_worship_template_items.slot_key` where
+  present, but live instance rows are normalized through an adapter first.
+- Until `mindex_worship_elements.slot_key` is reviewed and added, the client
+  derives `_worshipSlotKey` at hydration time and persists the resolved value
+  into `mindex_worship_elements.source_ref.slotKey`.
+- `source_ref.slotKey` is transitional metadata. It must not overwrite curated
+  lyrics/manual slides, `song_id`, `song_version_id`, Scripture references, or
+  uploaded media assets.
+- Audit production rows with `migrations/2026-08-26-worship-slot-key-audit.sql` before any
+  DB backfill or unique constraint migration.
+- The eventual DB guard should prevent duplicate singleton slots per section
+  while allowing repeatable materialized slots such as `praise.song.1` and
+  `sermon.citation.1`. Date-specific media slots such as `offering.media` and
+  `sermon.media` must remain valid even when they are absent from the base
+  template.
+
 ## Data Structure
 
 ```text
