@@ -6200,6 +6200,99 @@ def main() -> int:
                     else:
                         fail("presenter-praise-header-audio-upload-limit", json.dumps(presenter_praise_header_audio_upload_limit, ensure_ascii=False))
 
+                    presenter_praise_header_audio_clear_confirm = page.evaluate(
+                        """
+                        async () => {
+                          const serviceId = '__smoke_praise_header_audio_clear__';
+                          const originalItems = state.serviceItems[serviceId];
+                          const originalConfirm = window.confirm;
+                          const originalSaveService = saveService;
+                          const originalRefreshPresenterForService = refreshPresenterForService;
+                          const originalRenderCurrentServiceModuleDetail = renderCurrentServiceModuleDetail;
+                          const originalRenderServiceList = renderServiceList;
+                          const originalShowToast = showToast;
+                          const prompts = [];
+                          const saves = [];
+                          let refreshCount = 0;
+                          let detailRenderCount = 0;
+                          let listRenderCount = 0;
+                          const toasts = [];
+                          const makeItem = () => normalizeServiceItem({
+                            service_id: serviceId,
+                            label: '특송',
+                            raw_title: '온세대 특송',
+                            memo: serializeServiceItemMemo({
+                              elementType: 'praise',
+                              inputMode: 'manual_praise',
+                              slides: ['특송 자막'],
+                              audioAsset: { kind: 'audio', name: '특송 MR.mp3', url: 'https://example.test/special.mp3' },
+                            }),
+                            _worshipSectionKey: 'special_song',
+                            _worshipSectionTitle: '특송',
+                            _worshipElementTemplateModified: true,
+                            _worshipTemplatePlaceholder: false,
+                          }, 0);
+                          try {
+                            saveService = async (savedServiceId) => { saves.push(savedServiceId); return true; };
+                            refreshPresenterForService = () => { refreshCount += 1; };
+                            renderCurrentServiceModuleDetail = () => { detailRenderCount += 1; };
+                            renderServiceList = () => { listRenderCount += 1; };
+                            showToast = (message) => { toasts.push(message); };
+
+                            state.serviceItems[serviceId] = [makeItem()];
+                            window.confirm = (message) => {
+                              prompts.push({ message, response: false });
+                              return false;
+                            };
+                            await clearServiceItemAudioAsset(serviceId, 0);
+                            const afterCancel = parseServiceItemMemo(state.serviceItems[serviceId][0].memo).audioAsset || {};
+
+                            state.serviceItems[serviceId] = [makeItem()];
+                            window.confirm = (message) => {
+                              prompts.push({ message, response: true });
+                              return true;
+                            };
+                            await clearServiceItemAudioAsset(serviceId, 0);
+                            const afterConfirm = parseServiceItemMemo(state.serviceItems[serviceId][0].memo).audioAsset || {};
+
+                            return {
+                              prompts,
+                              afterCancel,
+                              afterConfirm,
+                              saves,
+                              refreshCount,
+                              detailRenderCount,
+                              listRenderCount,
+                              toasts,
+                            };
+                          } finally {
+                            if (originalItems === undefined) delete state.serviceItems[serviceId];
+                            else state.serviceItems[serviceId] = originalItems;
+                            window.confirm = originalConfirm;
+                            saveService = originalSaveService;
+                            refreshPresenterForService = originalRefreshPresenterForService;
+                            renderCurrentServiceModuleDetail = originalRenderCurrentServiceModuleDetail;
+                            renderServiceList = originalRenderServiceList;
+                            showToast = originalShowToast;
+                          }
+                        }
+                        """
+                    )
+                    if (
+                        len(presenter_praise_header_audio_clear_confirm["prompts"]) == 2
+                        and "특송 MR.mp3" in presenter_praise_header_audio_clear_confirm["prompts"][0]["message"]
+                        and presenter_praise_header_audio_clear_confirm["afterCancel"].get("kind") == "audio"
+                        and presenter_praise_header_audio_clear_confirm["afterCancel"].get("name") == "특송 MR.mp3"
+                        and presenter_praise_header_audio_clear_confirm["afterConfirm"] == {"kind": "", "name": "", "url": ""}
+                        and presenter_praise_header_audio_clear_confirm["saves"] == ["__smoke_praise_header_audio_clear__"]
+                        and presenter_praise_header_audio_clear_confirm["refreshCount"] == 1
+                        and presenter_praise_header_audio_clear_confirm["detailRenderCount"] == 1
+                        and presenter_praise_header_audio_clear_confirm["listRenderCount"] == 1
+                    ):
+                        pass_("presenter-praise-header-audio-clear-confirm", json.dumps(presenter_praise_header_audio_clear_confirm, ensure_ascii=False))
+                    else:
+                        fail("presenter-praise-header-audio-clear-confirm", json.dumps(presenter_praise_header_audio_clear_confirm, ensure_ascii=False))
+
                     presenter_response_prayer_input_guard = page.evaluate(
                         """
                         (() => {

@@ -11227,6 +11227,8 @@ async function clearServiceItemAudioAsset(serviceId = state.selectedServiceId, i
   const item = items[index];
   if (!item || !serviceItemSupportsHeaderAudio(item)) return;
   const memo = parseServiceItemMemo(item.memo);
+  const audioName = normalizeServiceAudioAsset(memo.audioAsset).name || "연결된 음원";
+  if (!window.confirm(`"${audioName}" 음원 연결을 해제할까요?`)) return;
   memo.audioAsset = { kind: "", name: "", url: "" };
   item.memo = serializeServiceItemMemo(memo);
   item._worshipElementTemplateModified = true;
