@@ -5738,6 +5738,61 @@ def main() -> int:
                     else:
                         fail("presenter-praise-input-mode-persistence", json.dumps(presenter_praise_input_mode_persistence, ensure_ascii=False))
 
+                    worship_slot_key_column_adapter = page.evaluate(
+                        """
+                        (() => {
+                          const service = { id: '__smoke_slot_key_service__', type_id: 'sunday-main', date: '2026-08-30' };
+                          const item = normalizeServiceItem({
+                            service_id: service.id,
+                            label: '설교 본문',
+                            raw_title: '마 16:13–20',
+                            memo: serializeServiceItemMemo({ elementType: 'scripture_body', inputMode: 'scripture' }),
+                            _worshipSectionKey: 'sermon',
+                            _worshipSectionTitle: '설교',
+                            _worshipElementTemplateModified: true,
+                            _worshipTemplatePlaceholder: false,
+                          }, 0);
+                          const withoutColumn = buildWorshipPersistenceRows(service, [item], {}, {}).elements[0];
+                          const withColumnRows = buildWorshipPersistenceRows(service, [item], {}, {}, {
+                            elementTypedStateColumns: { inputMode: true, contentState: true, slotKey: true }
+                          });
+                          sanitizeWorshipPersistenceRows(withColumnRows, {
+                            elementTypedStateColumns: { inputMode: true, contentState: true, slotKey: true }
+                          });
+                          const withColumn = withColumnRows.elements[0];
+                          const hydrated = groupWorshipElements([
+                            { id: '__smoke_slot_section__', service_id: service.id, section_key: 'sermon', title: '설교', sort_order: 1 }
+                          ], [{
+                            id: '__smoke_slot_element__',
+                            section_id: '__smoke_slot_section__',
+                            sort_order: 1,
+                            element_type: 'title_person',
+                            title: '설교 제목처럼 보이는 기존 제목',
+                            source_ref: { label: '설교 제목' },
+                            config: {},
+                            slot_key: 'sermon.scripture',
+                          }])[service.id]?.[0];
+                          return {
+                            omittedWithoutColumn: !Object.prototype.hasOwnProperty.call(withoutColumn, 'slot_key'),
+                            columnSlotKey: withColumn.slot_key || '',
+                            sourceSlotKey: withColumn.source_ref?.slotKey || '',
+                            hydratedSlotKey: hydrated?._worshipSlotKey || '',
+                            hydratedLabel: hydrated?.label || '',
+                          };
+                        })()
+                        """
+                    )
+                    if worship_slot_key_column_adapter == {
+                        "omittedWithoutColumn": True,
+                        "columnSlotKey": "sermon.scripture",
+                        "sourceSlotKey": "sermon.scripture",
+                        "hydratedSlotKey": "sermon.scripture",
+                        "hydratedLabel": "설교 제목",
+                    }:
+                        pass_("worship-slot-key-column-adapter", json.dumps(worship_slot_key_column_adapter, ensure_ascii=False))
+                    else:
+                        fail("worship-slot-key-column-adapter", json.dumps(worship_slot_key_column_adapter, ensure_ascii=False))
+
                     presenter_manual_title_match_guard = page.evaluate(
                         """
                         (async () => {

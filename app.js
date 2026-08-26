@@ -3155,7 +3155,7 @@ const WORSHIP_SECTION_LIST_SELECT = [
   "created_at",
   "updated_at",
 ].join(",");
-const WORSHIP_ELEMENT_LIST_SELECT = [
+const WORSHIP_ELEMENT_BASE_LIST_SELECT = [
   "id",
   "section_id",
   "sort_order",
@@ -3179,6 +3179,11 @@ const WORSHIP_ELEMENT_LIST_SELECT = [
   "created_at",
   "updated_at",
 ].join(",");
+
+async function worshipElementListSelect() {
+  const hasSlotKey = await detectTableColumnSupport("mindex_worship_elements", "slot_key");
+  return hasSlotKey ? `${WORSHIP_ELEMENT_BASE_LIST_SELECT},slot_key` : WORSHIP_ELEMENT_BASE_LIST_SELECT;
+}
 
 function staticSupabaseCacheKey(table, select = "*") {
   return `${SUPABASE_STATIC_CACHE_PREFIX}${table}:${select}`;
@@ -3346,8 +3351,9 @@ async function fetchWorshipServiceListRows() {
   }
 }
 
-function worshipRowsCacheKey(serviceIds = []) {
-  return `service-rows:${serviceIds.slice().sort().join(",")}`;
+function worshipRowsCacheKey(serviceIds = [], elementSelect = WORSHIP_ELEMENT_BASE_LIST_SELECT) {
+  const slotKeyMode = String(elementSelect || "").split(",").includes("slot_key") ? "slot-key" : "base";
+  return `service-rows:${slotKeyMode}:${serviceIds.slice().sort().join(",")}`;
 }
 
 async function loadEmergencyWorshipSnapshot(date = localDateStringWithOffset(new Date(), 0)) {
@@ -3394,7 +3400,8 @@ async function fetchWorshipRowsForServiceIds(serviceIds = []) {
   const ids = [...new Set(serviceIds.map((id) => String(id || "").trim()).filter(Boolean))];
   if (!ids.length) return { sections: [], elements: [] };
 
-  const cacheKey = worshipRowsCacheKey(ids);
+  const elementSelect = await worshipElementListSelect();
+  const cacheKey = worshipRowsCacheKey(ids, elementSelect);
   try {
     const sections = [];
     for (const batch of chunkArray(ids, 80)) {
@@ -3409,7 +3416,7 @@ async function fetchWorshipRowsForServiceIds(serviceIds = []) {
     const sectionIds = sections.map((section) => section.id).filter(Boolean);
     const elements = [];
     for (const batch of chunkArray(sectionIds, 80)) {
-      const rows = await fetchSupabasePaged("mindex_worship_elements", WORSHIP_ELEMENT_LIST_SELECT, (query) =>
+      const rows = await fetchSupabasePaged("mindex_worship_elements", elementSelect, (query) =>
         query
           .in("section_id", batch)
           .order("section_id", { ascending: true })
@@ -5883,6 +5890,14 @@ async function saveDirtyServiceTypes() {
   state.dirtyServiceTypeIds.clear();
 }
 
+async function worshipElementTypedStateColumns() {
+  return {
+    inputMode: await detectTableColumnSupport("mindex_worship_elements", "input_mode"),
+    contentState: await detectTableColumnSupport("mindex_worship_elements", "content_state"),
+    slotKey: await detectTableColumnSupport("mindex_worship_elements", "slot_key"),
+  };
+}
+
 async function saveWorshipServiceInstance(service) {
   const serviceId = service.id;
   const canonicalTypeId = canonicalWorshipServiceTypeId(service.type_id);
@@ -5919,10 +5934,7 @@ async function saveWorshipServiceInstance(service) {
     service,
     normalizeServiceItemsInCurrentOrder(getServiceItems(serviceId)),
   )).filter((item) => !isUnmodifiedTemplatePlaceholder(item));
-  const elementTypedStateColumns = {
-    inputMode: await detectTableColumnSupport("mindex_worship_elements", "input_mode"),
-    contentState: await detectTableColumnSupport("mindex_worship_elements", "content_state"),
-  };
+  const elementTypedStateColumns = await worshipElementTypedStateColumns();
   const rows = buildWorshipPersistenceRows(service, items, existingSectionById, existingElementById, {
     elementTypedStateColumns,
   });
@@ -6283,6 +6295,7 @@ function validateWorshipPersistenceRows(rows = {}, context = {}) {
 function sanitizeWorshipPersistenceRows(rows = {}, options = {}) {
   const persistedAt = new Date().toISOString();
   const hasInputModeColumn = Boolean(options.elementTypedStateColumns?.inputMode);
+  const hasSlotKeyColumn = Boolean(options.elementTypedStateColumns?.slotKey);
   (rows.sections || []).forEach((section) => {
     if (!section || typeof section !== "object") return;
     section.created_at = section.created_at || persistedAt;
@@ -6305,6 +6318,9 @@ function sanitizeWorshipPersistenceRows(rows = {}, options = {}) {
     const configSlotKey = normalizeWorshipSlotKey(element.config.slotKey || element.config.slot_key);
     if (configSlotKey) element.config.slotKey = configSlotKey;
     delete element.config.slot_key;
+    const columnSlotKey = normalizeWorshipSlotKey(element.slot_key || sourceSlotKey || configSlotKey);
+    if (hasSlotKeyColumn) element.slot_key = columnSlotKey || null;
+    else delete element.slot_key;
     if (Object.prototype.hasOwnProperty.call(element.config, "input_mode")) {
       const configMode = normalizeServiceInputMode(element.config.input_mode);
       if (configMode) element.config.inputMode = configMode;
@@ -6519,6 +6535,7 @@ function buildWorshipPersistenceRows(service, items, existingSectionById = {}, e
       review_status: existingElement?.review_status || (manualBody ? "needs_review" : "draft"),
       config,
     };
+    if (options.elementTypedStateColumns?.slotKey) elementRow.slot_key = slotKey || null;
     if (options.elementTypedStateColumns?.inputMode) elementRow.input_mode = worshipDbInputModeForSave(contentState.inputMode);
     if (options.elementTypedStateColumns?.contentState) elementRow.content_state = contentState;
     elementRows.push(elementRow);
@@ -18917,6 +18934,7 @@ function normalizeServiceItem(item = {}, index = 0) {
     _worshipSectionTitle: item._worshipSectionTitle || "",
     _worshipSectionOrder: Number(item._worshipSectionOrder) || 0,
     _worshipElementOrder: Number(item._worshipElementOrder) || 0,
+    _worshipSlotKey: normalizeWorshipSlotKey(item._worshipSlotKey || item.slotKey || item.slot_key),
     _worshipSectionTemplateModified: Boolean(item._worshipSectionTemplateModified),
     _worshipElementTemplateModified: Boolean(item._worshipElementTemplateModified),
     _worshipTemplateProjected: Boolean(item._worshipTemplateProjected),

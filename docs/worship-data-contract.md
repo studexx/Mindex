@@ -159,6 +159,10 @@ Adapter-first implementation note:
 - Until `mindex_worship_elements.slot_key` is reviewed and added, the client
   derives `_worshipSlotKey` at hydration time and persists the resolved value
   into `mindex_worship_elements.source_ref.slotKey`.
+- When `mindex_worship_elements.slot_key` is present, the client must read and
+  write that column in parallel with `source_ref.slotKey`; deployments without
+  the column must keep using `source_ref.slotKey` without selecting a missing
+  DB column.
 - `source_ref.slotKey` is transitional metadata. It must not overwrite curated
   lyrics/manual slides, `song_id`, `song_version_id`, Scripture references, or
   uploaded media assets.
