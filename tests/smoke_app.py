@@ -8007,11 +8007,12 @@ def main() -> int:
                       state.selectedSongId = null;
                       state.selectedVersionId = null;
                       const results = {};
-                      for (const filter of ['empty', 'partial-empty', 'all-review', 'review']) {
+                      for (const filter of ['empty', 'partial-empty', 'review']) {
                         state.praiseFilter = filter;
                         results[filter] = getSongsForPraiseFilter().map((song) => song.id);
                       }
                       const aliases = {
+                        allReview: normalizePraiseListFilterKey('all-review'),
                         pink: normalizePraiseListFilterKey('attention-pink'),
                         blue: normalizePraiseListFilterKey('attention-blue'),
                         yellow: normalizePraiseListFilterKey('attention-yellow'),
@@ -8033,10 +8034,10 @@ def main() -> int:
                 if (
                     praise_filter_state["results"]["empty"] == ["__filter_empty__"]
                     and praise_filter_state["results"]["partial-empty"] == ["__filter_yellow_empty__"]
-                    and praise_filter_state["results"]["all-review"] == ["__filter_pink__"]
-                    and praise_filter_state["results"]["review"] == ["__filter_blue__"]
+                    and praise_filter_state["results"]["review"] == ["__filter_pink__", "__filter_blue__"]
                     and praise_filter_state["aliases"] == {
-                        "pink": "all-review",
+                        "allReview": "review",
+                        "pink": "review",
                         "blue": "review",
                         "yellow": "partial-empty",
                     }
@@ -8047,7 +8048,6 @@ def main() -> int:
                         "children",
                         "empty",
                         "partial-empty",
-                        "all-review",
                         "review",
                     ]
                     and [item["label"] for item in praise_filter_state["filterButtons"]] == [
@@ -8057,7 +8057,6 @@ def main() -> int:
                         "어린이",
                         "빈 곡",
                         "일부 빈 곡",
-                        "전체 검토",
                         "검토 필요",
                     ]
                 ):
