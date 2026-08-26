@@ -6933,7 +6933,6 @@ def main() -> int:
                     """
                 )
                 ready_output_state["centerPixel"] = rgb_at(ready_output_shot, 0.5, 0.5)
-                ready_output_state["bottomPixel"] = rgb_at(ready_output_shot, 0.5, 0.9)
                 if (
                     "presenter-slide--video" in ready_output_state["slideClass"]
                     and ready_output_state["elementType"] == "video"
@@ -6941,8 +6940,7 @@ def main() -> int:
                     and ready_output_state["title"] == "월삭예배"
                     and "예배가 곧 시작됩니다" in ready_output_state["text"]
                     and "월삭예배 대기 화면" in ready_output_state["loopLabel"]
-                    and is_chromakey_green(tuple(ready_output_state["centerPixel"]))
-                    and not is_chromakey_green(tuple(ready_output_state["bottomPixel"]))
+                    and not is_chromakey_green(tuple(ready_output_state["centerPixel"]))
                 ):
                     pass_("presenter-ready-output-generated-waiting-loop", json.dumps(ready_output_state, ensure_ascii=False))
                 else:
