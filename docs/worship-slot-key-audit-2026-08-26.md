@@ -17,9 +17,20 @@ Scope:
   - `mindex_worship_templates`: 0 rows
   - `mindex_worship_template_items`: 0 rows
 
-No schema or production data was changed by this audit. A destructive cleanup
-attempt was intentionally not completed after safety review because some
-duplicate-looking scripture rows still contained valid `scriptureReferences`.
+No schema was changed by this audit. After the adapter coverage pass, three
+non-scripture placeholder duplicates were removed from production because the
+kept rows preserved the actual worship content:
+
+- `c7142ccc-d8f9-4a93-94fb-448d314cd2c6`: empty duplicate 2026-08-02
+  `offering.praise`
+- `1f48c203-44ac-41a4-b152-e669c4f568c4`: duplicate 2026-08-02
+  `offering.prayer`
+- `a5aa3c95-cbe7-4bf9-802e-cfe9fa271d88`: empty duplicate 2026-08-02
+  `special.song`
+
+Duplicate-looking scripture rows were intentionally kept because some contain
+valid `scriptureReferences`; they need a separate scripture-safe merge or
+manual approval.
 
 ## Key Findings
 
@@ -62,7 +73,7 @@ a need to revive `대기 영상`.
 | --- | ---: |
 | unmapped / needs review | 0 |
 | medium-confidence legacy label-derived rows | 514 |
-| duplicate derived slot rows | 12 rows in 5 groups |
+| duplicate derived slot rows | 6 rows in 2 groups |
 | `offering.praise` rows | 47 |
 
 The 47 `offering.praise` rows are not all-generation 2026-08-23 rows. They are
@@ -75,10 +86,7 @@ Duplicates that still block singleton unique constraints for now:
 
 - 2026-07-31 금요기도회: four `sermon.citation.1` rows with the same section,
   sort order, label, and reference.
-- 2026-08-02 주일 3부: duplicate `offering.praise` rows and duplicate
-  `offering.prayer` rows in the same offering section.
 - 2026-08-02 청소년부: duplicate `sermon.citation.1` rows.
-- 2026-08-02 주일 3부: duplicate `special.song` rows.
 
 Resolved duplicate false positives:
 
@@ -88,6 +96,9 @@ Resolved duplicate false positives:
 - Announcement rows now split into `announcements.main`,
   `announcements.department`, `announcements.media`, and
   `announcements.new_family` where possible.
+- 2026-08-02 주일 3부 `offering.praise`, `offering.prayer`, and
+  `special.song` placeholder duplicates were removed while preserving the linked
+  praise/manual special-song/assignee rows.
 
 ## Coverage Added
 
