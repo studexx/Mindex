@@ -17803,10 +17803,10 @@ function publicAllGenerationsOfferingStep(options = {}) {
     options.prayerPerson || options.person || defaultServiceOfferingPrayerLeader("sunday-main"),
   );
   const mediaSpec = options.offeringMedia || options.offering_media || null;
-  const praiseLabel = options.specialOffering || options.special_offering || mediaSpec?.specialOffering ? "봉헌특송" : "봉헌찬송";
-  const elements = [
-    { label: praiseLabel, name: praiseLabel, elementType: "praise" },
-  ];
+  const hasSpecialOfferingPraise = Boolean(options.specialOffering || options.special_offering || mediaSpec?.specialOffering);
+  const elements = hasSpecialOfferingPraise
+    ? [{ label: "봉헌특송", name: "봉헌특송", elementType: "praise" }]
+    : [];
   if (mediaSpec) {
     const mediaLabel = String(mediaSpec.label || "봉헌 영상").trim();
     const mediaType = normalizeServiceElementType(mediaSpec.elementType || mediaSpec.element_type || mediaSpec.asset?.kind) || "video";

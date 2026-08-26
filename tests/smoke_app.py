@@ -3112,9 +3112,19 @@ def main() -> int:
                             const service = { id: '__smoke_template_suppression_repeat__', type_id: 'sunday-main', date: '2026-08-23' };
                             const scaffold = buildWorshipServiceScaffold(service.id, service.type_id, { service });
                             const items = groupWorshipElements(scaffold.sections, scaffold.elements)[service.id] || [];
-                            const marker = (items.find((item) =>
+                            const scaffoldMarker = items.find((item) =>
                               item._worshipSectionKey === 'offering' && item.label === '봉헌찬송'
-                            ) || {});
+                            );
+                            const marker = scaffoldMarker || normalizeServiceItem({
+                              id: 'legacy-offering-hymn',
+                              service_id: service.id,
+                              label: '봉헌찬송',
+                              raw_title: '',
+                              memo: serializeServiceItemMemo({ elementType: 'praise', outputMode: 'score' }),
+                              _worshipSectionKey: 'offering',
+                              _worshipSectionTitle: '봉헌',
+                              _worshipElementOrder: 1,
+                            });
                             const source = [
                               ...items.filter((item) => !(item._worshipSectionKey === 'offering' && item.label === '봉헌찬송')),
                               {
@@ -3143,7 +3153,7 @@ def main() -> int:
                             const second = projectWorshipServiceItemsFromTemplate(service, first);
                             state.templateElementSuppressions.delete('suppressed-offering-hymn');
                             return {
-                              markerFound: Boolean(marker.id),
+                              scaffoldHasOfferingHymn: Boolean(scaffoldMarker?.id),
                               firstHasOfferingHymn: first.some((item) => item.label === '봉헌찬송'),
                               secondHasOfferingHymn: second.some((item) => item.label === '봉헌찬송'),
                               firstHasVideo: first.some((item) => item.label === '봉헌 영상'),
@@ -3827,7 +3837,6 @@ def main() -> int:
                             {"type": "title_person", "label": "봉헌기도", "outputMode": "", "assetUrl": ""},
                         ]
                         and template_terms["sundayPublicScaffold"]["allGenerationRegular"] == [
-                            {"type": "praise", "label": "봉헌찬송", "outputMode": "", "assetUrl": ""},
                             {"type": "video", "label": "봉헌 영상", "outputMode": "", "assetUrl": ""},
                             {"type": "title_person", "label": "봉헌기도", "outputMode": "", "assetUrl": ""},
                         ]
@@ -4009,7 +4018,7 @@ def main() -> int:
 	                            ],
 	                        }
 	                        and template_terms["templateSuppressionSurvivesRepeatedProjection"] == {
-	                            "markerFound": True,
+	                            "scaffoldHasOfferingHymn": False,
 	                            "firstHasOfferingHymn": False,
 	                            "secondHasOfferingHymn": False,
 	                            "firstHasVideo": True,
