@@ -2137,7 +2137,7 @@ async function applyBrowserHistorySnapshot(snapshot) {
       await loadServiceData({ silent: true });
     }
     if (state.module === "presenter" && !state.serviceError) {
-      await loadWorshipPresenterSlides(state.selectedServiceId || state.presenter.serviceId);
+      await loadWorshipPresenterSlides(presenterViewServiceId());
     }
     if (state.module === "calendar" && !state.calendarLoaded && !state.calendarLoading && !state.calendarError) {
       await loadCalendarData({ silent: true });
@@ -2559,7 +2559,7 @@ function runModuleEntryLoads(moduleName) {
     }
 
     if (moduleName === "presenter" && !state.serviceError) {
-      await loadWorshipPresenterSlides(state.selectedServiceId || state.presenter.serviceId);
+      await loadWorshipPresenterSlides(presenterViewServiceId());
     }
 
     if (moduleName === "calendar" && !state.calendarLoaded && !state.calendarLoading && !state.calendarError) {
@@ -3079,7 +3079,7 @@ async function loadServiceDataOnce({ silent = false } = {}) {
     }
     restorePresenterControllerSession();
     if (state.module === "presenter") {
-      await loadWorshipPresenterSlides(state.selectedServiceId || state.presenter.serviceId, { renderControls: false });
+      await loadWorshipPresenterSlides(presenterViewServiceId(), { renderControls: false });
     }
     state.dirtyServiceTypeIds.clear();
     state.dirty.service = false;
@@ -12291,9 +12291,13 @@ function renderPageTabTitle() {
   renderPageTabs();
 }
 
+function presenterViewServiceId() {
+  return String(state.selectedServiceId || state.presenter.serviceId || "").trim();
+}
+
 function currentPageTabTitle() {
   if (state.module === "presenter") {
-    const service = state.services.find((svc) => svc.id === state.presenter.serviceId || svc.id === state.selectedServiceId);
+    const service = state.services.find((svc) => svc.id === presenterViewServiceId());
     return service ? serviceDisplayTypeName(service) : "예배";
   }
   if (state.module === "service") {
@@ -12369,7 +12373,8 @@ function normalizePageTabsState(tabs = [], activeIndex = 0) {
 function pageTabTitleForSnapshot(snapshot = {}) {
   const moduleName = snapshot.module || "home";
   if (moduleName === "presenter") {
-    const service = state.services.find((svc) => svc.id === snapshot.selectedServiceId);
+    const serviceId = snapshot.selectedServiceId || state.presenter.serviceId;
+    const service = state.services.find((svc) => svc.id === serviceId);
     return service ? serviceDisplayTypeName(service) : "예배";
   }
   if (moduleName === "service") {
@@ -21709,7 +21714,7 @@ function renderPresenterDetail() {
     return;
   }
 
-  const serviceId = state.selectedServiceId;
+  const serviceId = presenterViewServiceId();
   const svc = state.services.find((s) => s.id === serviceId);
   if (!svc) {
     renderPresenterDashboard();
@@ -23852,7 +23857,7 @@ async function requestPresenterScreens() {
     } else {
       safeStorageRemove("local", PRESENTER_TARGET_SCREEN_STORAGE_KEY);
     }
-    renderPresenterControlState(state.selectedServiceId || state.presenter.serviceId);
+    renderPresenterControlState(presenterViewServiceId());
     showToast(screens.length > 1 ? "출력 화면을 감지했습니다." : "감지된 외부 화면이 없습니다.", screens.length > 1 ? "success" : "info");
     return screens;
   } catch (error) {

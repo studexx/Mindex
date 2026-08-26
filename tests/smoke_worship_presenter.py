@@ -155,6 +155,61 @@ def main() -> int:
                 else:
                     fail("presenter-slides", json.dumps({**service, **board_slide_state}, ensure_ascii=False))
 
+                session_navigation_state = page.evaluate(
+                    """
+                    (serviceId) => {
+                      const service = state.services.find((item) => item.id === serviceId) || {};
+                      const previousPresenter = {
+                        serviceId: state.presenter.serviceId,
+                        slides: state.presenter.slides,
+                        sourceItems: state.presenter.sourceItems,
+                        sourceSignature: state.presenter.sourceSignature,
+                        index: state.presenter.index,
+                        safetyBlank: state.presenter.safetyBlank,
+                        jumpDraft: state.presenter.jumpDraft,
+                        liveScripture: state.presenter.liveScripture,
+                        livePraise: state.presenter.livePraise,
+                      };
+                      const previousSelectedServiceId = state.selectedServiceId;
+                      const previousSelectedServiceItemIndex = state.selectedServiceItemIndex;
+                      preparePresenterService(serviceId);
+                      state.module = 'presenter';
+                      state.selectedServiceId = null;
+                      state.selectedServiceItemIndex = null;
+                      renderPresenterDetail();
+                      const controls = document.querySelector('#servicePresenterControls');
+                      const title = document.querySelector('.presenter-viewer .svc-service-title')?.textContent?.trim() || '';
+                      const thumbs = [...document.querySelectorAll('.svc-slide-thumb[data-service-id]')]
+                        .filter((thumb) => thumb.dataset.serviceId === serviceId)
+                        .length;
+                      const selectedWasCleared = !state.selectedServiceId;
+                      Object.assign(state.presenter, previousPresenter);
+                      state.selectedServiceId = previousSelectedServiceId;
+                      state.selectedServiceItemIndex = previousSelectedServiceItemIndex;
+                      renderPresenterDetail();
+                      return {
+                        sessionServiceId: serviceId,
+                        selectedWasCleared,
+                        title,
+                        expectedTitle: serviceDisplayTypeName(service),
+                        hasControls: Boolean(controls),
+                        thumbs,
+                      };
+                    }
+                    """,
+                    service["id"],
+                )
+                if (
+                    session_navigation_state["sessionServiceId"] == service["id"]
+                    and session_navigation_state["selectedWasCleared"]
+                    and session_navigation_state["title"] == session_navigation_state["expectedTitle"]
+                    and session_navigation_state["hasControls"]
+                    and session_navigation_state["thumbs"] > 0
+                ):
+                    pass_("presenter-session-survives-navigation-selection-clear", json.dumps(session_navigation_state, ensure_ascii=False))
+                else:
+                    fail("presenter-session-survives-navigation-selection-clear", json.dumps(session_navigation_state, ensure_ascii=False))
+
                 section_edit_buttons = page.locator("[data-presenter-section-edit]")
                 section_editor_rows = []
                 for section_index in range(section_edit_buttons.count()):
