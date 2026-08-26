@@ -740,7 +740,7 @@ def main() -> int:
                     ready_thumb_state["firstPreparationMedia"]
                     and ready_thumb_state["firstGeneratedWaitingLoop"]
                     and "월삭예배" in ready_thumb_state["firstPreviewText"]
-                    and "잠시 후 예배가 시작됩니다" in ready_thumb_state["firstPreviewText"]
+                    and "예배가 곧 시작됩니다" in ready_thumb_state["firstPreviewText"]
                     and ready_thumb_state["numberBadges"] >= 2
 	                    and ready_thumb_state["firstNumber"] == "1"
 	                    and ready_thumb_state["secondNumber"] == "2"
@@ -6865,7 +6865,7 @@ def main() -> int:
                     and ready_output_state["elementType"] == "video"
                     and ready_output_state["layout"] == "media"
                     and ready_output_state["title"] == "월삭예배"
-                    and "잠시 후 예배가 시작됩니다" in ready_output_state["text"]
+                    and "예배가 곧 시작됩니다" in ready_output_state["text"]
                     and "월삭예배 대기 화면" in ready_output_state["loopLabel"]
                     and not is_chromakey_green(tuple(ready_output_state["centerPixel"]))
                 ):

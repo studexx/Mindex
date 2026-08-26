@@ -354,7 +354,8 @@ function presenterScoreImageSlidesFromAsset(
     .filter((slide) => slide.url && presenterMediaSourceIsImage(slide.url));
   const count = imageSources.length;
   const scoreForms = presenterScoreFormsFromImageSources(imageSources);
-  return imageSources.map((slide, slideIndex) => {
+  const sequenced = presenterScoreImageSourcesForFormSequence(imageSources, scoreForms, forms);
+  return sequenced.imageSources.map((slide, slideIndex) => {
     return {
       id: `${item.id || index}:score-image:${slideIndex}`,
       ...section,
@@ -372,13 +373,61 @@ function presenterScoreImageSlidesFromAsset(
       text: slide.name || title,
       imageSrc: slide.url,
       asset: { ...asset, kind: asset.kind || "score", url: slide.url, name: slide.name || asset.name || "" },
-      ...presenterScoreFormMetadata(scoreForms, slideIndex, formWarnings),
+      ...presenterScoreFormMetadata(sequenced.scoreForms, slideIndex, formWarnings),
       scoreBackground: true,
       sourceType: "score",
       componentType: "score",
       sort: index + slideIndex / 100,
     };
   });
+}
+
+function presenterScoreImageSourcesForFormSequence(imageSources = [], scoreForms = [], forms = []) {
+  const planTargets = normalizeForms(forms || [])
+    .filter((form) => !form?._presenterBlank)
+    .map((form) => normalizePresenterFormPresetLabel(presenterFormDisplayLabel(form)))
+    .filter((target) => target.key && target.type !== "lyrics");
+  const scoreTargets = (scoreForms || []).map((form) =>
+    form ? normalizePresenterFormPresetLabel(presenterFormDisplayLabel(form)) : null,
+  );
+  if (!planTargets.length || !scoreTargets.some((target) => target?.key)) {
+    return { imageSources, scoreForms };
+  }
+
+  const groups = [];
+  imageSources.forEach((source, index) => {
+    const target = scoreTargets[index];
+    const startsGroup = Boolean(target?.key);
+    if (startsGroup || !groups.length) {
+      groups.push({ target: target || null, sources: [], forms: [] });
+    }
+    const group = groups[groups.length - 1];
+    group.sources.push(source);
+    group.forms.push(scoreForms[index] || null);
+  });
+
+  const selected = [];
+  const lastMatchedByKey = new Map();
+  let cursor = 0;
+  planTargets.forEach((target) => {
+    const matchIndex = groups.findIndex((group, index) =>
+      index >= cursor && group.target && presenterFormTargetsMatch(target, group.target),
+    );
+    const group = matchIndex >= 0
+      ? groups[matchIndex]
+      : lastMatchedByKey.get(target.key)
+        || (target.type ? lastMatchedByKey.get(target.type) : null);
+    if (!group) return;
+    selected.push(group);
+    lastMatchedByKey.set(target.key, group);
+    if (target.type) lastMatchedByKey.set(target.type, group);
+    if (matchIndex >= 0) cursor = matchIndex + 1;
+  });
+  if (!selected.length) return { imageSources, scoreForms };
+  return {
+    imageSources: selected.flatMap((group) => group.sources),
+    scoreForms: selected.flatMap((group) => group.forms),
+  };
 }
 
 function presenterScoreFormMetadata(forms = [], slideIndex = 0, formWarnings = []) {
@@ -4024,11 +4073,9 @@ function renderPresenterGeneratedWaitingLoopSlide(slide) {
   return `
     <div class="presenter-waiting-loop" aria-label="${escapeAttr(`${serviceName} 대기 화면`)}">
       <div class="presenter-waiting-loop-field" aria-hidden="true"></div>
-      <div class="presenter-waiting-loop-cross" aria-hidden="true"></div>
       <div class="presenter-waiting-loop-copy">
-        <p class="presenter-waiting-loop-kicker">기도로 준비하는 예배</p>
         <p class="presenter-waiting-loop-title"><strong>${escapeHtml(serviceName)}</strong></p>
-        <p class="presenter-waiting-loop-message">잠시 후 예배가 시작됩니다<br>마음을 모아 준비해 주세요</p>
+        <p class="presenter-waiting-loop-message">예배가 곧 시작됩니다</p>
       </div>
     </div>
   `;
