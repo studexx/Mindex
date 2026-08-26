@@ -354,7 +354,7 @@ function presenterScoreImageSlidesFromAsset(
     .filter((slide) => slide.url && presenterMediaSourceIsImage(slide.url));
   const count = imageSources.length;
   const scoreForms = presenterScoreFormsFromImageSources(imageSources);
-  const sequenced = presenterScoreImageSourcesForFormSequence(imageSources, scoreForms, forms);
+  const sequenced = presenterScoreImageSourcesForFormSequence(imageSources, scoreForms, forms, item, song, version);
   return sequenced.imageSources.map((slide, slideIndex) => {
     return {
       id: `${item.id || index}:score-image:${slideIndex}`,
@@ -382,10 +382,10 @@ function presenterScoreImageSlidesFromAsset(
   });
 }
 
-function presenterScoreImageSourcesForFormSequence(imageSources = [], scoreForms = [], forms = []) {
-  const planTargets = normalizeForms(forms || [])
-    .filter((form) => !form?._presenterBlank)
-    .map((form) => normalizePresenterFormPresetLabel(presenterFormDisplayLabel(form)))
+function presenterScoreImageSourcesForFormSequence(imageSources = [], scoreForms = [], forms = [], item = {}, song = null, version = null) {
+  const presetLabels = presenterScoreFormPresetLabels(item, song, version);
+  const planTargets = presetLabels
+    .map((label) => normalizePresenterFormPresetLabel(label))
     .filter((target) => target.key && target.type !== "lyrics");
   const scoreTargets = (scoreForms || []).map((form) =>
     form ? normalizePresenterFormPresetLabel(presenterFormDisplayLabel(form)) : null,
@@ -416,7 +416,7 @@ function presenterScoreImageSourcesForFormSequence(imageSources = [], scoreForms
     const group = matchIndex >= 0
       ? groups[matchIndex]
       : lastMatchedByKey.get(target.key)
-        || (target.type ? lastMatchedByKey.get(target.type) : null);
+        || (!target.number && target.type ? lastMatchedByKey.get(target.type) : null);
     if (!group) return;
     selected.push(group);
     lastMatchedByKey.set(target.key, group);
@@ -428,6 +428,21 @@ function presenterScoreImageSourcesForFormSequence(imageSources = [], scoreForms
     imageSources: selected.flatMap((group) => group.sources),
     scoreForms: selected.flatMap((group) => group.forms),
   };
+}
+
+function presenterScoreFormPresetLabels(item = {}, song = null, version = null) {
+  if (typeof serviceItemFormPresetDisabled === "function" && serviceItemFormPresetDisabled(item)) return [];
+  const itemPreset = typeof serviceItemFormPreset === "function" ? serviceItemFormPreset(item) : null;
+  const matchedRule = typeof matchedServiceItemFormPresetRule === "function"
+    ? matchedServiceItemFormPresetRule(item, song, version)
+    : null;
+  const songDefaultPreset = presenterSongDefaultFormPreset(song, version);
+  return cleanList(
+    itemPreset?.forms
+    || matchedRule?.formPreset?.forms
+    || songDefaultPreset?.forms
+    || [],
+  );
 }
 
 function presenterScoreFormMetadata(forms = [], slideIndex = 0, formWarnings = []) {

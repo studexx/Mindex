@@ -2950,6 +2950,18 @@ def main() -> int:
                         title: '이 천지간 만물들아',
                         hymn_no: '5',
                       };
+                      const hymnScoreSequenceSong = {
+                        ...hymnSong,
+                        id: '__smoke_hymn_score_sequence_song__',
+                        title: '천성을 향해 가는 성도들아',
+                        hymn_no: '359',
+                        versions: [{
+                          id: '__smoke_hymn_score_sequence_version__',
+                          name: '새찬송가 악보',
+                          is_primary: true,
+                          forms: []
+                        }],
+                      };
                       const offeringSong = {
                         ...hymnSong,
                         id: '__smoke_offering_song__',
@@ -2963,8 +2975,25 @@ def main() -> int:
                             { src: 'assets/hymn-scores/5/slide-02.webp', sourceSlide: 2 },
                           ],
                         },
+                        '359': {
+                          title: '천성을 향해 가는 성도들아',
+                          slides: [
+                            { src: 'assets/hymn-scores/359/slide-01.webp', scoreFormLabel: 'Verse 1' },
+                            { src: 'assets/hymn-scores/359/slide-02.webp' },
+                            { src: 'assets/hymn-scores/359/slide-03.webp', scoreFormLabel: 'Chorus' },
+                            { src: 'assets/hymn-scores/359/slide-04.webp' },
+                            { src: 'assets/hymn-scores/359/slide-05.webp', scoreFormLabel: 'Verse 2' },
+                            { src: 'assets/hymn-scores/359/slide-06.webp' },
+                            { src: 'assets/hymn-scores/359/slide-07.webp', scoreFormLabel: 'Chorus' },
+                            { src: 'assets/hymn-scores/359/slide-08.webp' },
+                            { src: 'assets/hymn-scores/359/slide-09.webp', scoreFormLabel: 'Verse 3' },
+                            { src: 'assets/hymn-scores/359/slide-10.webp' },
+                            { src: 'assets/hymn-scores/359/slide-11.webp', scoreFormLabel: 'Chorus' },
+                            { src: 'assets/hymn-scores/359/slide-12.webp' },
+                          ],
+                        },
                       };
-                      state.songs = state.songs.filter((song) => !String(song.id || '').startsWith('__smoke_')).concat([hymnSong, hymnScoreSong, offeringSong, ccmSong, explicitTagSong, defaultFormSong, fallbackSong]);
+                      state.songs = state.songs.filter((song) => !String(song.id || '').startsWith('__smoke_')).concat([hymnSong, hymnScoreSong, hymnScoreSequenceSong, offeringSong, ccmSong, explicitTagSong, defaultFormSong, fallbackSong]);
                       const service = { id: '__smoke_form_service__', type_id: 'sunday-main', date: '2026-07-04' };
                       const hymnItem = {
                         id: '__smoke_hymn_item__',
@@ -3104,6 +3133,18 @@ def main() -> int:
                         memo: serializeServiceItemMemo({
                           elementType: 'praise',
                           outputMode: 'score'
+                        })
+                      };
+                      const scoreSequenceItem = {
+                        id: '__smoke_score_sequence_item__',
+                        label: '파송찬송',
+                        raw_title: '359 천성을 향해 가는 성도들아',
+                        song_id: hymnScoreSequenceSong.id,
+                        version_id: '__smoke_hymn_score_sequence_version__',
+                        memo: serializeServiceItemMemo({
+                          elementType: 'praise',
+                          outputMode: 'score',
+                          formPreset: { forms: ['V1', 'V2', 'C', '간주', 'V3', 'C', 'C'], hint: 'V1-V2-C-간주-V3-C-C', strength: 'manual' }
                         })
                       };
                       const scoreRawTitleItem = {
@@ -3255,6 +3296,8 @@ def main() -> int:
                       ];
                       const scoreManifestAllSlides = buildPresenterSlidesForServiceItem(scoreManifestItem, service, 5);
                       const scoreManifestSlides = scoreManifestAllSlides.filter((slide) => slide.sourceType === 'score');
+                      const scoreSequenceSlides = buildPresenterSlidesForServiceItem(scoreSequenceItem, service, 5.5)
+                        .filter((slide) => slide.sourceType === 'score');
                       const scoreRawTitleAllSlides = buildPresenterSlidesForServiceItem(scoreRawTitleItem, service, 6);
                       const scoreRawTitleSlides = scoreRawTitleAllSlides.filter((slide) => slide.sourceType === 'score');
                       const offeringScoreSlides = buildPresenterSlidesForServiceItem(offeringScoreItem, service, 7);
@@ -3778,6 +3821,8 @@ def main() -> int:
                           marker: slide.marker,
                           imageSrc: slide.imageSrc
                         })),
+                        scoreSequenceImages: scoreSequenceSlides.map((slide) => slide.imageSrc),
+                        scoreSequenceBadges: scoreSequenceSlides.map((slide) => slide.formLabel || ''),
                         scoreRawTitleSlides: scoreRawTitleSlides.map((slide) => ({
                           type: slide.type,
                           layout: slide.layout,
@@ -4203,6 +4248,34 @@ def main() -> int:
                             "marker": "",
                             "imageSrc": "assets/hymn-scores/5/slide-02.webp",
                         },
+                    ]
+                    and form_preset_state["scoreSequenceImages"] == [
+                        "assets/hymn-scores/359/slide-01.webp",
+                        "assets/hymn-scores/359/slide-02.webp",
+                        "assets/hymn-scores/359/slide-05.webp",
+                        "assets/hymn-scores/359/slide-06.webp",
+                        "assets/hymn-scores/359/slide-07.webp",
+                        "assets/hymn-scores/359/slide-08.webp",
+                        "assets/hymn-scores/359/slide-09.webp",
+                        "assets/hymn-scores/359/slide-10.webp",
+                        "assets/hymn-scores/359/slide-11.webp",
+                        "assets/hymn-scores/359/slide-12.webp",
+                        "assets/hymn-scores/359/slide-11.webp",
+                        "assets/hymn-scores/359/slide-12.webp",
+                    ]
+                    and form_preset_state["scoreSequenceBadges"] == [
+                        "Verse 1",
+                        "",
+                        "Verse 2",
+                        "",
+                        "Chorus",
+                        "",
+                        "Verse 3",
+                        "",
+                        "Chorus",
+                        "",
+                        "Chorus",
+                        "",
                     ]
                     and form_preset_state["scoreRawTitleSlides"] == [
                         {
