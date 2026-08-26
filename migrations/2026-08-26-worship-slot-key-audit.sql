@@ -48,10 +48,10 @@ with element_context as (
       nullif(el.config->>'input_mode', '')
     ) as normalized_input_mode,
     (
-      coalesce(el.asset, '{}'::jsonb) <> '{}'::jsonb
-      or el.config ? 'asset'
-      or el.config ? 'media'
-      or el.source_ref ? 'asset'
+      nullif(coalesce(el.asset->>'url', ''), '') is not null
+      or nullif(coalesce(el.config->'asset'->>'url', ''), '') is not null
+      or nullif(coalesce(el.config->'media'->>'url', ''), '') is not null
+      or nullif(coalesce(el.source_ref->'asset'->>'url', ''), '') is not null
     ) as has_asset
   from public.mindex_worship_services svc
   join public.mindex_worship_sections sec on sec.service_id = svc.id
@@ -148,7 +148,12 @@ with element_context as (
     el.content_state,
     regexp_replace(coalesce(nullif(el.source_ref->>'label', ''), nullif(el.title, ''), nullif(sec.title, ''), ''), '\s+', '', 'g') as label_key,
     coalesce(nullif(el.input_mode, ''), nullif(el.content_state->>'inputMode', ''), nullif(el.config->>'inputMode', '')) as normalized_input_mode,
-    (coalesce(el.asset, '{}'::jsonb) <> '{}'::jsonb or el.config ? 'asset' or el.config ? 'media') as has_asset
+    (
+      nullif(coalesce(el.asset->>'url', ''), '') is not null
+      or nullif(coalesce(el.config->'asset'->>'url', ''), '') is not null
+      or nullif(coalesce(el.config->'media'->>'url', ''), '') is not null
+      or nullif(coalesce(el.source_ref->'asset'->>'url', ''), '') is not null
+    ) as has_asset
   from public.mindex_worship_services svc
   join public.mindex_worship_sections sec on sec.service_id = svc.id
   join public.mindex_worship_elements el on el.section_id = sec.id

@@ -33,6 +33,8 @@ stale document in the same change.
 
 - `hymn-reference-audit-2026-08-19.md`: read-only hymn audit and verified
   repair record. Use only as data review evidence, not as app behavior.
+- `worship-slot-key-audit-2026-08-26.md`: read-only Worship slotKey adapter
+  audit and migration-risk review before adding DB slot constraints.
 
 ## Retired Notes
 
