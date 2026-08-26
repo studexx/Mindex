@@ -8007,10 +8007,15 @@ def main() -> int:
                       state.selectedSongId = null;
                       state.selectedVersionId = null;
                       const results = {};
-                      for (const filter of ['empty', 'attention-pink', 'attention-blue', 'attention-yellow']) {
+                      for (const filter of ['empty', 'partial-empty', 'all-review', 'review']) {
                         state.praiseFilter = filter;
                         results[filter] = getSongsForPraiseFilter().map((song) => song.id);
                       }
+                      const aliases = {
+                        pink: normalizePraiseListFilterKey('attention-pink'),
+                        blue: normalizePraiseListFilterKey('attention-blue'),
+                        yellow: normalizePraiseListFilterKey('attention-yellow'),
+                      };
                       renderListFilter();
                       const filterButtons = [...document.querySelectorAll('[data-list-filter]:not([hidden])')]
                         .map((button) => ({ key: button.dataset.listFilter, label: button.textContent.trim() }));
@@ -8021,24 +8026,39 @@ def main() -> int:
                       state.selectedVersionId = originalSelectedVersionId;
                       refs.songList.innerHTML = originalSongList;
                       renderListFilter();
-                      return { results, filterButtons };
+                      return { results, aliases, filterButtons };
                     })()
                     """
                 )
                 if (
                     praise_filter_state["results"]["empty"] == ["__filter_empty__"]
-                    and praise_filter_state["results"]["attention-pink"] == ["__filter_empty__", "__filter_pink__"]
-                    and praise_filter_state["results"]["attention-blue"] == ["__filter_blue__"]
-                    and praise_filter_state["results"]["attention-yellow"] == ["__filter_yellow_empty__"]
+                    and praise_filter_state["results"]["partial-empty"] == ["__filter_yellow_empty__"]
+                    and praise_filter_state["results"]["all-review"] == ["__filter_pink__"]
+                    and praise_filter_state["results"]["review"] == ["__filter_blue__"]
+                    and praise_filter_state["aliases"] == {
+                        "pink": "all-review",
+                        "blue": "review",
+                        "yellow": "partial-empty",
+                    }
                     and [item["key"] for item in praise_filter_state["filterButtons"]] == [
                         "all",
                         "hymns",
                         "ccm",
                         "children",
                         "empty",
-                        "attention-pink",
-                        "attention-blue",
-                        "attention-yellow",
+                        "partial-empty",
+                        "all-review",
+                        "review",
+                    ]
+                    and [item["label"] for item in praise_filter_state["filterButtons"]] == [
+                        "전체",
+                        "찬송가",
+                        "CCM",
+                        "어린이",
+                        "빈 곡",
+                        "일부 빈 곡",
+                        "전체 검토",
+                        "검토 필요",
                     ]
                 ):
                     pass_("praise-status-filters", json.dumps(praise_filter_state, ensure_ascii=False))

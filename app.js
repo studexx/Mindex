@@ -404,12 +404,17 @@ const PRAISE_LIST_FILTERS = [
   ["hymns", "찬송가"],
   ["ccm", "CCM"],
   ["children", "어린이"],
-  ["empty", "빈곡"],
-  ["attention-pink", "분홍 !"],
-  ["attention-blue", "파랑 !"],
-  ["attention-yellow", "노랑 !"],
+  ["empty", "빈 곡"],
+  ["partial-empty", "일부 빈 곡"],
+  ["all-review", "전체 검토"],
+  ["review", "검토 필요"],
 ];
 const PRAISE_LIST_FILTER_KEYS = PRAISE_LIST_FILTERS.map(([key]) => key);
+const PRAISE_LIST_FILTER_ALIASES = {
+  "attention-pink": "all-review",
+  "attention-blue": "review",
+  "attention-yellow": "partial-empty",
+};
 const MINDEX_TAB_STATE_STORAGE_KEY = "mindex.pageTabs.v1";
 const HOME_PAGE_TAB_ID = "tab-home";
 const HYMN_SCORE_MANIFEST_URL = "assets/hymn-scores/manifest.json";
@@ -1877,7 +1882,7 @@ function readUiState() {
   const bibleCopyReference = safeStorageGet("session", STORAGE.bibleCopyReference);
 
   if (ROUTE_MODULES.includes(moduleName)) state.module = moduleName;
-  if (isPraiseListFilterKey(praiseFilter)) state.praiseFilter = praiseFilter;
+  state.praiseFilter = normalizePraiseListFilterKey(praiseFilter, state.praiseFilter);
   if (["all", "old", "new"].includes(scriptureFilter)) state.scriptureFilter = scriptureFilter;
   if (SERVICE_FILTERS.includes(serviceFilter)) state.serviceFilter = serviceFilter;
 
@@ -2101,7 +2106,7 @@ async function applyBrowserHistorySnapshot(snapshot) {
     state.module = ROUTE_MODULES.includes(snapshot.module) ? snapshot.module : "home";
     state.search = snapshot.search || "";
     refs.searchInput.value = state.search;
-    if (isPraiseListFilterKey(snapshot.praiseFilter)) state.praiseFilter = snapshot.praiseFilter;
+    state.praiseFilter = normalizePraiseListFilterKey(snapshot.praiseFilter, state.praiseFilter);
     if (["all", "old", "new"].includes(snapshot.scriptureFilter)) state.scriptureFilter = snapshot.scriptureFilter;
     if (SERVICE_FILTERS.includes(snapshot.serviceFilter)) state.serviceFilter = snapshot.serviceFilter;
     state.selectedSongId = snapshot.selectedSongId || null;
@@ -2263,7 +2268,8 @@ function linkStateFromParams(params) {
   if (search) snapshot.search = search;
 
   const praiseFilter = firstParam(params, ["praiseFilter"]);
-  if (isPraiseListFilterKey(praiseFilter)) snapshot.praiseFilter = praiseFilter;
+  const normalizedPraiseFilter = normalizePraiseListFilterKey(praiseFilter);
+  if (normalizedPraiseFilter) snapshot.praiseFilter = normalizedPraiseFilter;
   const scriptureFilter = firstParam(params, ["scriptureFilter"]);
   if (["all", "old", "new"].includes(scriptureFilter)) snapshot.scriptureFilter = scriptureFilter;
   const serviceFilter = firstParam(params, ["serviceFilter"]);
@@ -13233,6 +13239,12 @@ function isPraiseListFilterKey(value) {
   return PRAISE_LIST_FILTER_KEYS.includes(value);
 }
 
+function normalizePraiseListFilterKey(value, fallback = "") {
+  if (isPraiseListFilterKey(value)) return value;
+  const alias = PRAISE_LIST_FILTER_ALIASES[value];
+  return isPraiseListFilterKey(alias) ? alias : fallback;
+}
+
 function renderConnectionStatus() {
   const hasClient = Boolean(state.client);
   const hasDirty = hasDirtyChanges();
@@ -14974,10 +14986,9 @@ function songAttentionTone(song) {
 
 function songMatchesPraiseStatusFilter(song, filterKey) {
   if (filterKey === "empty") return songEmptyStatus(song) === "all-empty";
-  const tone = songAttentionTone(song);
-  if (filterKey === "attention-pink") return tone === "all-empty" || tone === "all-needs-review";
-  if (filterKey === "attention-blue") return tone === "needs-review-original";
-  if (filterKey === "attention-yellow") return tone === "some-empty" || tone === "needs-review";
+  if (filterKey === "partial-empty") return songEmptyStatus(song) === "some-empty";
+  if (filterKey === "all-review") return songAllVersionsNeedReview(song);
+  if (filterKey === "review") return songNeedsReview(song) && !songAllVersionsNeedReview(song);
   return false;
 }
 
@@ -16722,7 +16733,7 @@ function getSongsForPraiseFilter() {
   if (state.praiseFilter === "hymns") return state.songs.filter((song) => songHasPraiseType(song, "hymn"));
   if (state.praiseFilter === "ccm") return state.songs.filter((song) => songHasPraiseType(song, "ccm"));
   if (state.praiseFilter === "children") return state.songs.filter((song) => songHasPraiseType(song, "children"));
-  if (["empty", "attention-pink", "attention-blue", "attention-yellow"].includes(state.praiseFilter)) {
+  if (["empty", "partial-empty", "all-review", "review"].includes(state.praiseFilter)) {
     return state.songs.filter((song) => songMatchesPraiseStatusFilter(song, state.praiseFilter));
   }
   return state.songs;
