@@ -306,49 +306,15 @@
   place-items: center;
   overflow: hidden;
   color: #fff;
-  background:
-    radial-gradient(circle at 50% 44%, rgba(255, 255, 255, .08) 0 2%, transparent 26%),
-    linear-gradient(180deg, #182235 0%, #101827 58%, #0b111d 100%);
-  isolation: isolate;
-}
-.presenter-waiting-loop::before,
-.presenter-waiting-loop::after,
-.presenter-waiting-loop-field {
-  position: absolute;
-  inset: 0;
-  content: "";
-  pointer-events: none;
-}
-.presenter-waiting-loop::before {
-  background:
-    radial-gradient(ellipse at 48% 76%, rgba(100, 153, 214, .22) 0 10%, transparent 44%),
-    radial-gradient(ellipse at 58% 18%, rgba(255, 255, 255, .08) 0 8%, transparent 38%);
-  animation: presenter-waiting-loop-breathe 7.5s ease-in-out infinite;
-}
-.presenter-waiting-loop::after {
-  background:
-    linear-gradient(115deg, transparent 0 20%, rgba(255, 255, 255, .035) 38%, transparent 58%),
-    linear-gradient(250deg, transparent 0 28%, rgba(117, 159, 209, .055) 46%, transparent 72%);
-  mix-blend-mode: screen;
-  opacity: .68;
-  animation: presenter-waiting-loop-drift 18s ease-in-out infinite alternate;
-}
-.presenter-waiting-loop-field {
-  z-index: 1;
-  background:
-    radial-gradient(ellipse at 50% 96%, rgba(40, 88, 148, .3) 0 12%, transparent 38%);
-  opacity: .72;
-  animation: presenter-waiting-loop-glow 10s ease-in-out infinite;
+  background: #000;
 }
 .presenter-waiting-loop-copy {
   position: relative;
-  z-index: 3;
   display: grid;
   width: min(64cqw, 1220px);
-  gap: 2.2cqh;
+  gap: 2cqh;
   justify-items: center;
   text-align: center;
-  text-shadow: 0 calc(3 * var(--presenter-stage-unit)) calc(16 * var(--presenter-stage-unit)) rgba(0, 0, 0, .38);
 }
 .presenter-waiting-loop-title,
 .presenter-waiting-loop-message {
@@ -356,37 +322,18 @@
 }
 .presenter-waiting-loop-title {
   color: #fff;
-  font-size: calc(88 * var(--presenter-stage-unit));
+  font-size: calc(82 * var(--presenter-stage-unit));
   font-weight: var(--presenter-weight-display);
-  line-height: 1.08;
+  line-height: 1.1;
 }
 .presenter-waiting-loop-title strong {
   font-weight: inherit;
 }
 .presenter-waiting-loop-message {
-  color: rgba(241, 246, 255, .78);
-  font-size: calc(38 * var(--presenter-stage-unit));
+  color: rgba(255, 255, 255, .72);
+  font-size: calc(36 * var(--presenter-stage-unit));
   font-weight: 650;
   line-height: 1.22;
-}
-@keyframes presenter-waiting-loop-breathe {
-  0%, 100% { opacity: .72; transform: scale(1); }
-  50% { opacity: .96; transform: scale(1.018); }
-}
-@keyframes presenter-waiting-loop-drift {
-  from { transform: translate3d(-1.2%, -.6%, 0); }
-  to { transform: translate3d(1.2%, .6%, 0); }
-}
-@keyframes presenter-waiting-loop-glow {
-  0%, 100% { opacity: .58; transform: translateY(0) scaleX(.98); }
-  50% { opacity: .78; transform: translateY(-.8%) scaleX(1.02); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .presenter-waiting-loop::before,
-  .presenter-waiting-loop::after,
-  .presenter-waiting-loop-field {
-    animation: none;
-  }
 }
 .presenter-slide--title .presenter-slide-text {
   align-items: center;
