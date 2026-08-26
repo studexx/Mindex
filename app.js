@@ -9129,18 +9129,12 @@ function isServicePreparationItem(item = {}, memo = parseServiceItemMemo(item.me
   return Boolean(presenterPreparationRole(item, memo));
 }
 
-function servicePreparationContextUsesChromakey(contextId = "") {
-  const id = String(contextId || "").trim();
-  const service = id ? state.services.find((svc) => svc.id === id) : null;
-  return serviceTypeUsesChromakey(service?.type_id || id || state.selectedServiceTypeId);
-}
-
 function servicePreparationElementLabel(role = "", contextId = "") {
   const normalized = normalizeServicePresenterRole(role);
   if (normalized === "intro") return "인트로";
   if (normalized === "still") return "첫 화면";
-  if (normalized === "waiting_loop") return "대기 영상";
-  return servicePreparationContextUsesChromakey(contextId) ? "대기 영상" : "대기 화면";
+  if (normalized === "waiting_loop") return "대기 화면";
+  return "대기 화면";
 }
 
 function servicePreparationDefaultRoleForType(role = "", typeId = "") {
@@ -9163,7 +9157,7 @@ function servicePreparationElementTypeForRole(role = "", serviceId = state.selec
 
 function presenterPreparationRoleLabel(role = "") {
   const normalized = normalizeServicePresenterRole(role);
-  if (normalized === "waiting_loop") return "대기 영상";
+  if (normalized === "waiting_loop") return "대기 화면";
   if (normalized === "intro") return "인트로";
   if (normalized === "still") return "첫 화면";
   return "준비";
@@ -22570,7 +22564,7 @@ function renderPresenterRoleOptions(selectedRole = "") {
   const options = [
     ["", "자동"],
     ["ready", "준비"],
-    ["waiting_loop", "대기 영상"],
+    ["waiting_loop", "대기 화면"],
     ["intro", "인트로"],
     ["still", "첫 화면"],
   ];

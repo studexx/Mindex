@@ -4022,7 +4022,7 @@ function presenterSlideUsesGeneratedWaitingLoop(slide, options = {}) {
 function renderPresenterGeneratedWaitingLoopSlide(slide) {
   const serviceName = presenterReadySlideServiceName(slide);
   return `
-    <div class="presenter-waiting-loop" aria-label="${escapeAttr(`${serviceName} 대기 영상`)}">
+    <div class="presenter-waiting-loop" aria-label="${escapeAttr(`${serviceName} 대기 화면`)}">
       <div class="presenter-waiting-loop-field" aria-hidden="true"></div>
       <div class="presenter-waiting-loop-cross" aria-hidden="true"></div>
       <div class="presenter-waiting-loop-copy">
