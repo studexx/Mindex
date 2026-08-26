@@ -4087,6 +4087,21 @@ function deriveWorshipSlotKey(context = {}) {
   return "";
 }
 
+function serviceItemSlotKey(item = {}, memo = null) {
+  const explicit = normalizeWorshipSlotKey(item?._worshipSlotKey || item?.slotKey || item?.slot_key);
+  if (explicit) return explicit;
+  const parsed = memo || parseServiceItemMemo(item?.memo);
+  return deriveWorshipSlotKey({
+    item,
+    parsed,
+    sectionKey: item?._worshipSectionKey || item?.sectionKey || item?.section_key || "",
+    label: item?.label || "",
+    elementType: serviceMemoElementType(parsed) || item?.element_type || item?.elementType || item?.component_type || item?.componentType || "",
+    inputMode: serviceMemoInputMode(parsed, item),
+    asset: parsed?.asset,
+  });
+}
+
 function groupWorshipElements(sections = [], elements = []) {
   const sectionById = Object.fromEntries(sections.map((section) => [section.id, section]));
   return elements.reduce((grouped, element) => {
@@ -23167,7 +23182,9 @@ function expandServiceScriptureReferenceText(value = "") {
 }
 
 function serviceItemSupportsScriptureReferenceList(item = {}) {
-  return compactSearchValue(item.label || "") === "인용구절"
+  const slotKey = serviceItemSlotKey(item);
+  return slotKey.startsWith("sermon.citation")
+    || compactSearchValue(item.label || "") === "인용구절"
     || isSermonScriptureBodyServiceItem(item)
     || isSharedScriptureReadingServiceItem(item);
 }
@@ -23178,7 +23195,7 @@ function markServiceItemSharedContentDirty(item = {}, service = null) {
 }
 
 function sundaySharedContentKey(item = {}) {
-  const slotKey = normalizeWorshipSlotKey(item?._worshipSlotKey || item?.slotKey || item?.slot_key);
+  const slotKey = serviceItemSlotKey(item);
   if (/^praise\.song\.[1-3]$/.test(slotKey)) return `main-praise:${slotKey.split(".").pop()}`;
   if (slotKey === "word.reading" || slotKey === "word.body") return "scripture-reading";
   if (slotKey === "sermon.title") return "sermon-title";
@@ -23335,11 +23352,16 @@ function serviceItemWithSharedSundayContent(item = {}, service = null) {
 }
 
 function isSharedScriptureReadingServiceItem(item = {}) {
+  const slotKey = serviceItemSlotKey(item);
+  if (slotKey === "word.reading" || slotKey === "word.body") return true;
   return String(item?._worshipSectionKey || "").trim() === "scripture_reading"
     && compactSearchValue(item?.label || "") === "성경봉독";
 }
 
 function isSermonScriptureBodyServiceItem(item = {}) {
+  const slotKey = serviceItemSlotKey(item);
+  if (slotKey === "sermon.scripture") return true;
+  if (slotKey.startsWith("sermon.citation")) return false;
   const sectionKey = String(item?._worshipSectionKey || item?.sectionKey || item?.section_key || "").trim();
   const label = compactSearchValue(item?.label || "");
   const memo = parseServiceItemMemo(item?.memo);
@@ -23352,6 +23374,8 @@ function isSermonScriptureBodyServiceItem(item = {}) {
 }
 
 function isOptionalCitationScriptureServiceItem(item = {}) {
+  const slotKey = serviceItemSlotKey(item);
+  if (slotKey.startsWith("sermon.citation")) return true;
   return /^인용구절\d*$/.test(compactSearchValue(item?.label || ""));
 }
 
@@ -24124,12 +24148,18 @@ function normalizePresenterPreparationInputLabel(label = "") {
 function presenterPreparationSermonBodyTargetLabel(service = null) {
   const items = service?.id ? servicePrepEditorItems(service.id) : [];
   const hasSermonBody = items.some((item) =>
-    String(item?._worshipSectionKey || "").trim() === "sermon"
-    && ["설교본문", "본문", "성경본문"].includes(compactSearchValue(item?.label || "")));
+    serviceItemSlotKey(item) === "sermon.scripture"
+    || (
+      String(item?._worshipSectionKey || "").trim() === "sermon"
+      && ["설교본문", "본문", "성경본문"].includes(compactSearchValue(item?.label || ""))
+    ));
   if (hasSermonBody) return "설교 본문";
   const hasScriptureReading = items.some((item) =>
-    String(item?._worshipSectionKey || "").trim() === "scripture_reading"
-    && compactSearchValue(item?.label || "") === "성경봉독");
+    ["word.reading", "word.body"].includes(serviceItemSlotKey(item))
+    || (
+      String(item?._worshipSectionKey || "").trim() === "scripture_reading"
+      && compactSearchValue(item?.label || "") === "성경봉독"
+    ));
   return hasScriptureReading ? "성경봉독" : "설교 본문";
 }
 
@@ -24142,6 +24172,7 @@ function presenterPreparationContentLooksAssignee(value = "") {
 }
 
 function isPresenterPreparationSermonTitleItem(item = {}) {
+  if (serviceItemSlotKey(item) === "sermon.title") return true;
   return String(item?._worshipSectionKey || "").trim() === "sermon"
     && ["설교", "설교제목"].includes(compactSearchValue(item?.label || ""));
 }
@@ -24200,13 +24231,19 @@ function findPresenterPreparationProjectedItem(service, label) {
   }
   if (labelKey === "봉헌찬송") {
     return items.find((item) =>
-      String(item._worshipSectionKey || "") === "offering"
-      && ["봉헌찬송", "봉헌찬양"].includes(compactSearchValue(item.label || "")));
+      serviceItemSlotKey(item) === "offering.praise"
+      || (
+        String(item._worshipSectionKey || "") === "offering"
+        && ["봉헌찬송", "봉헌찬양"].includes(compactSearchValue(item.label || ""))
+      ));
   }
   if (labelKey === "설교제목") {
     return items.find((item) =>
-      String(item._worshipSectionKey || "") === "sermon"
-      && ["설교", "설교제목"].includes(compactSearchValue(item.label || "")));
+      serviceItemSlotKey(item) === "sermon.title"
+      || (
+        String(item._worshipSectionKey || "") === "sermon"
+        && ["설교", "설교제목"].includes(compactSearchValue(item.label || ""))
+      ));
   }
   return null;
 }
@@ -24404,12 +24441,14 @@ async function createBlankPraiseSongForServiceInput(value, service = selectedSer
 }
 
 function isPresenterPreparationCitationItem(item = {}) {
+  const slotKey = serviceItemSlotKey(item);
+  if (slotKey.startsWith("sermon.citation")) return true;
   return String(item._worshipSectionKey || "") === "sermon"
     && /^인용구절\d*$/.test(compactSearchValue(item.label || ""));
 }
 
 function presenterPreparationCitationItems(service, items, references) {
-  const sermonBody = items.find((item) => compactSearchValue(item.label || "") === "설교본문")
+  const sermonBody = items.find((item) => serviceItemSlotKey(item) === "sermon.scripture" || compactSearchValue(item.label || "") === "설교본문")
     || (() => {
       const projected = findPresenterPreparationProjectedItem(service, "설교 본문");
       if (!projected) return null;
@@ -24452,6 +24491,7 @@ function presenterPreparationCitationItems(service, items, references) {
     _worshipSectionTitle: anchor._worshipSectionTitle || "설교",
     _worshipSectionOrder: Number(anchor._worshipSectionOrder) || 0,
     _worshipElementOrder: baseOrder + 0.01,
+    _worshipSlotKey: "sermon.citation.1",
     _worshipElementTemplateModified: true,
     _worshipSharedContentDirty: true,
     _worshipTemplateProjected: false,
