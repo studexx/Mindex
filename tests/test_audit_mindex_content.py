@@ -33,6 +33,14 @@ class AuditMindexContentTest(unittest.TestCase):
                     "source_ref": {"created_from": "mindex_auto_schedule", "auto_generated": True},
                 },
                 {
+                    "id": "svc-future-empty",
+                    "service_type_id": "sun_1st",
+                    "service_date": "2026-08-30",
+                    "title": "주일예배 [1부]",
+                    "service_alias": "",
+                    "source_ref": {"created_from": "mindex_auto_schedule", "auto_generated": True},
+                },
+                {
                     "id": "svc-no-gathering",
                     "service_type_id": "fri",
                     "service_date": "2026-08-14",
@@ -54,7 +62,7 @@ class AuditMindexContentTest(unittest.TestCase):
                     "element_type": "praise",
                     "title": "찬양",
                     "input_mode": "praise_db",
-                    "content_state": {"inputMode": "manual_praise"},
+                    "content_state": {"inputMode": "text"},
                 },
                 {
                     "id": "el-2",
@@ -69,6 +77,7 @@ class AuditMindexContentTest(unittest.TestCase):
             ],
             worship_slides=[],
             song_versions=[],
+            today="2026-08-27",
         )
 
         warning_types = [warning["type"] for warning in warnings]
@@ -78,6 +87,7 @@ class AuditMindexContentTest(unittest.TestCase):
         self.assertIn("worship-section-without-elements", warning_types)
         self.assertIn("worship-element-input-mode-state-mismatch", warning_types)
         self.assertIn("worship-element-linked-song-without-version", warning_types)
+        self.assertTrue(audit_mindex_content.input_modes_compatible("praise_db", "manual_praise"))
 
         empty_services = [
             warning for warning in warnings

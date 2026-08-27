@@ -4,6 +4,7 @@ import json
 import os
 import re
 import argparse
+from datetime import date
 from collections import Counter
 from pathlib import Path
 from typing import Any
@@ -206,8 +207,19 @@ def source_ref_value(row: dict[str, Any], key: str) -> Any:
 def input_modes_compatible(left: str, right: str) -> bool:
     if left == right:
         return True
-    praise_db_modes = {"praise_db", "lyrics_db", "score_db"}
+    praise_db_modes = {"praise_db", "lyrics_db", "score_db", "manual_praise"}
     return left in praise_db_modes and right in praise_db_modes
+
+
+def is_future_auto_placeholder_service(service: dict[str, Any], today: str | None) -> bool:
+    if not today:
+        return False
+    service_date = str(service.get("service_date") or "").strip()
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", service_date):
+        return False
+    source_ref = service.get("source_ref") if isinstance(service.get("source_ref"), dict) else {}
+    auto_generated = bool(source_ref.get("auto_generated") or source_ref.get("created_from") == "mindex_auto_schedule")
+    return auto_generated and service_date > today
 
 
 def extend_structural_warnings(
@@ -218,6 +230,7 @@ def extend_structural_warnings(
     worship_elements: list[dict[str, Any]],
     worship_slides: list[dict[str, Any]],
     song_versions: list[dict[str, Any]],
+    today: str | None = None,
 ) -> None:
     services_by_id = {row.get("id"): row for row in worship_services}
     sections_by_id = {row.get("id"): row for row in worship_sections}
@@ -321,6 +334,8 @@ def extend_structural_warnings(
     for service in worship_services:
         if source_ref_value(service, "no_gathering"):
             continue
+        if is_future_auto_placeholder_service(service, today):
+            continue
         if not sections_by_service.get(service.get("id")):
             warnings.append({
                 "type": "worship-service-without-sections",
@@ -389,6 +404,7 @@ def audit(
     *,
     strict_schema: bool = False,
     structural: bool = False,
+    today: str | None = None,
 ) -> tuple[dict[str, int], list[dict[str, Any]], list[dict[str, Any]]]:
     songs = fetch_rows(supa_url, supa_key, "mindex_songs")
     canonical_songs = fetch_rows(supa_url, supa_key, "mindex_canonical_songs")
@@ -622,6 +638,7 @@ def audit(
             worship_elements=worship_elements,
             worship_slides=worship_slides,
             song_versions=song_versions,
+            today=today,
         )
 
     for row in translations:
@@ -654,9 +671,10 @@ def main() -> int:
     parser.add_argument("--json", action="store_true", help="Print all issues and warnings as JSON.")
     parser.add_argument("--strict-schema", action="store_true", help="Warn about optional schema columns that the app can otherwise tolerate.")
     parser.add_argument("--structural", action="store_true", help="Also warn about operational data-structure drift, such as duplicate worship ordering.")
+    parser.add_argument("--today", default=date.today().isoformat(), help="YYYY-MM-DD boundary for future auto-generated placeholder services.")
     args = parser.parse_args()
 
-    counts, issues, warnings = audit(*read_config(), strict_schema=args.strict_schema, structural=args.structural)
+    counts, issues, warnings = audit(*read_config(), strict_schema=args.strict_schema, structural=args.structural, today=args.today)
     if args.json:
         print(json.dumps({"counts": counts, "issues": issues, "warnings": warnings}, ensure_ascii=False, indent=2))
     else:
