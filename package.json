@@ -9,7 +9,8 @@
   "scripts": {
     "dev:web": "python3 serve.py",
     "electron:dev": "electron .",
-    "electron:pack": "electron-builder --dir",
+    "electron:pack": "electron-builder --dir && node scripts/clear-local-quarantine.mjs",
+    "electron:pack:raw": "electron-builder --dir",
     "electron:dist": "electron-builder",
     "electron:release": "node scripts/verify-release.mjs && electron-builder --publish always"
   },

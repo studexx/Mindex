@@ -44,7 +44,14 @@ publishing unless all of these are configured:
    `APPLE_API_ISSUER`), Apple ID/app-specific password, or a keychain profile.
 
 The macOS artifact must be Developer ID signed and notarized. A local
-`electron:pack` build is for testing only and must not be distributed.
+`electron:pack` build is for testing only and must not be distributed. The local
+pack script clears the quarantine attribute from `dist/mac-arm64/Mindex.app`
+after building, which reduces Gatekeeper trash/block prompts on the developer
+machine. It is not a substitute for signing and notarization; shared or
+downloaded builds still need `pnpm electron:release`.
+
+Use `pnpm electron:pack:raw` only when the unsigned app bundle needs to be
+inspected exactly as electron-builder produced it.
 
 ## Release Versioning
 
