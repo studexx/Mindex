@@ -382,6 +382,89 @@ function presenterScoreImageSlidesFromAsset(
   });
 }
 
+function presenterImportedDeckSlidesFromAsset(asset, item, section, index, title, label) {
+  if (asset?.kind !== "imported_deck") return [];
+  const sources = normalizeServiceAssetSlides(asset.slides || asset.images || asset.pages || asset.files || asset.items);
+  return sources
+    .map((slide, slideIndex) => {
+      const source = normalizePresenterMediaSource(slide.url);
+      if (!source || !presenterMediaSourceIsImage(source)) return null;
+      return {
+        id: `${item.id || index}:imported-deck:${slideIndex}`,
+        ...section,
+        sectionLabel: section.sectionLabel || label || "자료",
+        sectionTitle: section.sectionTitle || section.sectionLabel || label || "자료",
+        sectionName: presenterNameParts(section.sectionLabel || label, title).join(" / ") || title,
+        elementTitle: title,
+        elementType: PRESENTER_ELEMENT_TYPES.IMAGE,
+        layout: PRESENTER_SLIDE_LAYOUTS.MEDIA,
+        type: "image",
+        label,
+        title,
+        marker: slide.name || `Stage ${slideIndex + 1}`,
+        text: slide.name || title,
+        imageSrc: source,
+        asset: { ...asset, url: source, name: slide.name || asset.name || "" },
+        importedDeck: {
+          manifestUrl: asset.manifestUrl || "",
+          fingerprint: asset.fingerprint || "",
+          stage: Number(slide.order) || slideIndex + 1,
+        },
+        sourceType: "imported_deck",
+        componentType: "imported_deck",
+        sort: index + slideIndex / 100,
+      };
+    })
+    .filter(Boolean);
+}
+
+function presenterSyncedLyricsConfigFromAsset(asset = {}) {
+  if (asset?.kind !== "synced_lyrics") return null;
+  const audioSource = normalizePresenterMediaSource(asset.audio?.url || asset.url || "");
+  const pages = Array.isArray(asset.timing?.pages)
+    ? asset.timing.pages
+      .map((page, index) => ({
+        page: Number(page.page || index + 1) || index + 1,
+        start: Number(page.start),
+      }))
+      .filter((page) => Number.isFinite(page.start) && page.start >= 0)
+      .sort((a, b) => (a.page || 0) - (b.page || 0))
+    : [];
+  if (!audioSource || !pages.length) return null;
+  return {
+    audioSrc: audioSource,
+    audioTitle: asset.audio?.name || asset.name || "",
+    pages,
+    cross: Number.isFinite(Number(asset.timing?.cross)) ? Number(asset.timing.cross) : null,
+    duration: Number.isFinite(Number(asset.timing?.duration)) ? Number(asset.timing.duration) : null,
+  };
+}
+
+function presenterApplySyncedLyricsConfig(slides = [], syncConfig = null, item = {}, index = 0) {
+  if (!syncConfig) return slides;
+  let lyricIndex = 0;
+  const groupId = `${item.id || index}:synced-lyrics`;
+  return slides.map((slide) => {
+    if (slide?.type !== "lyrics") return slide;
+    lyricIndex += 1;
+    const page = syncConfig.pages[lyricIndex - 1] || null;
+    return {
+      ...slide,
+      syncTimeline: {
+        groupId,
+        audioSrc: syncConfig.audioSrc,
+        audioTitle: syncConfig.audioTitle,
+        page: lyricIndex,
+        start: page ? page.start : null,
+        cross: syncConfig.cross,
+        duration: syncConfig.duration,
+      },
+      sourceType: slide.sourceType || "synced_lyrics",
+      componentType: slide.componentType || "synced_lyrics",
+    };
+  });
+}
+
 function presenterScoreImageSourcesForFormSequence(imageSources = [], scoreForms = [], forms = [], item = {}, song = null, version = null) {
   const presetLabels = presenterScoreFormPresetLabels(item, song, version);
   const planTargets = presetLabels

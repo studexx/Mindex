@@ -9155,6 +9155,14 @@ const SERVICE_ASSET_KIND_ALIASES = {
   powerpoint: "file",
   key: "file",
   keynote: "file",
+  importeddeck: "imported_deck",
+  imported_deck: "imported_deck",
+  keynote_deck: "imported_deck",
+  ppt_deck: "imported_deck",
+  syncedlyrics: "synced_lyrics",
+  synced_lyrics: "synced_lyrics",
+  timed_lyrics: "synced_lyrics",
+  lyric_sync: "synced_lyrics",
   score: "score",
   music_score: "score",
   sheet_music: "score",
@@ -9164,7 +9172,7 @@ const SERVICE_ASSET_KIND_ALIASES = {
   "오디오": "audio",
   "유튜브": "youtube",
 };
-const SERVICE_ASSET_KINDS = new Set(["", "file", "video", "pdf", "image", "score", "audio", "youtube"]);
+const SERVICE_ASSET_KINDS = new Set(["", "file", "video", "pdf", "image", "score", "audio", "youtube", "synced_lyrics", "imported_deck"]);
 
 function serviceAssetKindForElementType(elementType) {
   const type = normalizeServiceElementType(elementType);
@@ -9288,12 +9296,67 @@ function normalizeServiceAsset(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return { kind: "", name: "", url: "" };
   const rawKind = String(value.kind || value.type || "").trim().toLowerCase();
   const kind = SERVICE_ASSET_KIND_ALIASES[rawKind] || rawKind;
-  const slides = normalizeServiceAssetSlides(value.slides || value.images || value.urls || value.pages || value.files || value.items);
-  return {
+  const manifest = value.manifest && typeof value.manifest === "object" && !Array.isArray(value.manifest) ? value.manifest : {};
+  const slides = normalizeServiceAssetSlides(
+    value.slides
+    || value.images
+    || value.urls
+    || value.pages
+    || value.files
+    || value.items
+    || manifest.slides
+    || manifest.stages,
+  );
+  const audio = normalizeServiceAssetAudioPayload(value.audio || value.sound || value.music);
+  const timing = normalizeServiceSyncTiming(value.timing || value.sync || value.timeline);
+  const normalized = {
     kind: SERVICE_ASSET_KINDS.has(kind) ? kind : "",
     name: String(value.name || value.title || "").trim(),
     url: String(value.url || value.path || value.href || "").trim(),
     ...(slides.length ? { slides } : {}),
+  };
+  if (audio.url) normalized.audio = audio;
+  if (timing.pages.length || timing.cross !== null || timing.duration) normalized.timing = timing;
+  if (String(value.manifestUrl || value.manifest_url || manifest.url || "").trim()) {
+    normalized.manifestUrl = String(value.manifestUrl || value.manifest_url || manifest.url || "").trim();
+  }
+  if (String(value.fingerprint || value.sourceFingerprint || value.source_fingerprint || manifest.fingerprint || "").trim()) {
+    normalized.fingerprint = String(value.fingerprint || value.sourceFingerprint || value.source_fingerprint || manifest.fingerprint || "").trim();
+  }
+  return normalized;
+}
+
+function normalizeServiceAssetAudioPayload(value) {
+  if (!value) return { name: "", url: "" };
+  if (typeof value === "string") return { name: "", url: String(value || "").trim() };
+  if (!value || typeof value !== "object" || Array.isArray(value)) return { name: "", url: "" };
+  return {
+    name: String(value.name || value.title || value.label || "").trim(),
+    url: String(value.url || value.path || value.href || value.src || "").trim(),
+  };
+}
+
+function normalizeServiceSyncTiming(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return { pages: [], cross: null, duration: null };
+  const pages = (Array.isArray(value.pages) ? value.pages : [])
+    .map((page, index) => {
+      if (!page || typeof page !== "object") return null;
+      const start = Number(page.start ?? page.time ?? page.at);
+      if (!Number.isFinite(start) || start < 0) return null;
+      return {
+        page: Number(page.page || page.index || index + 1) || index + 1,
+        start,
+        lines: Array.isArray(page.lines) ? page.lines.map((line) => String(line || "").trim()).filter(Boolean) : [],
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => (Number(a.page) || 0) - (Number(b.page) || 0));
+  const cross = Number(value.cross);
+  const duration = Number(value.duration);
+  return {
+    pages,
+    cross: Number.isFinite(cross) && cross >= 0 ? cross : null,
+    duration: Number.isFinite(duration) && duration > 0 ? duration : null,
   };
 }
 
@@ -25434,7 +25497,12 @@ function resumeServiceMusicAfterInterruption(reason = "") {
 }
 
 function setServiceMusicSource(audio, source, mode, playback = null, label = "") {
-  if (state.serviceMusic.sourceKey === source && state.serviceMusic.mode === mode) return;
+  if (state.serviceMusic.sourceKey === source && state.serviceMusic.mode === mode) {
+    audio.loop = Boolean(playback?.loop);
+    if (source && !audio.currentSrc && !audio.src) audio.src = source;
+    state.serviceMusic.sourceLabel = label || state.serviceMusic.sourceLabel || "";
+    return;
+  }
   clearServiceMusicResumeTimer();
   allowIntentionalServiceMusicPause();
   audio.pause();
@@ -25497,17 +25565,18 @@ function runServiceMusicAction(action) {
   const manualSource = state.serviceMusic.mode === "manual"
     ? state.serviceMusic.sourceKey || state.serviceMusic.objectUrl
     : state.serviceMusic.objectUrl;
-  const source = manualSource || context.source;
+  const presenterSource = state.serviceMusic.mode === "presenter-audio" ? state.serviceMusic.sourceKey : "";
+  const source = manualSource || presenterSource || context.source;
   const mode = manualSource ? "manual" : "presenter-audio";
   const playback = manualSource ? { loop: false } : context.playback;
   const label = manualSource
     ? state.serviceMusic.sourceLabel || state.serviceMusic.fileName || ""
-    : context.label || "";
+    : state.serviceMusic.sourceLabel || context.label || "";
   if (!source) {
     showToast("음악 파일을 먼저 선택해 주세요.", "error");
     return;
   }
-  if (!manualSource && context.source && presenterMediaSourceIsYoutube(context.source)) {
+  if (!manualSource && !presenterSource && context.source && presenterMediaSourceIsYoutube(context.source)) {
     showToast("YouTube 링크는 아직 컨트롤러 내 재생 대신 별도 영상/오디오 파일로 등록해 주세요.", "error");
     return;
   }
@@ -28849,6 +28918,7 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
     || item.render_mode,
   );
   const outputMode = serviceItemOutputMode(item, memo);
+  const configuredAsset = normalizeServiceAsset(memo.asset || item.asset);
   if (isServicePreparationItem(item, memo)) {
     return [presenterPreparationSlide(service, item, index)];
   }
@@ -28910,6 +28980,15 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
   }
   const liturgicalSlides = buildPresenterLiturgicalBodySlides(item, section, index, service, memo, displayText);
   if (liturgicalSlides.length) return withIntroAndSpecialTitle(liturgicalSlides);
+  const importedDeckSlides = presenterImportedDeckSlidesFromAsset(
+    configuredAsset,
+    item,
+    section,
+    index,
+    configuredAsset.name || displayText || label || "자료",
+    label || section.sectionLabel || "자료",
+  );
+  if (importedDeckSlides.length) return withIntroAndSpecialTitle(importedDeckSlides);
   const elementSlide = presenterElementSlideFromMemo(item, section, index, memo, displayText, service);
   if (Array.isArray(elementSlide)) return withIntroAndSpecialTitle(elementSlide);
   if (elementSlide) return withIntroAndSpecialTitle([elementSlide]);
@@ -28998,12 +29077,14 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
         sort: index + formIndex / 100 + chunkIndex / 10000,
       }));
     });
+    const syncConfig = presenterSyncedLyricsConfigFromAsset(configuredAsset);
+    const syncedLyricsSlides = presenterApplySyncedLyricsConfig(lyricsSlides, syncConfig, item, index);
     const slides = shouldIncludeSongTitleSlide(item, label)
       ? presenterSlidesWithSpecialSongTitle(item, section, [
           presenterSongTitleSlide(item, section, song, version, displayText, index),
-          ...lyricsSlides,
+          ...syncedLyricsSlides,
         ], index, service)
-      : lyricsSlides;
+      : syncedLyricsSlides;
     return withIntro(slides);
   }
 

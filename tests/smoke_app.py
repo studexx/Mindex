@@ -1972,6 +1972,7 @@ def main() -> int:
                       return {
                         visibleCount: uniqueIds.length,
                         previewable,
+                        previewableCount: previewable.length,
                         structuredPreviews: [...document.querySelectorAll('.service-card-sermon-preview')]
                           .filter((node) => node.querySelector('.service-card-sermon-title') && node.querySelector('.service-card-sermon-reference'))
                           .length,
@@ -1982,7 +1983,10 @@ def main() -> int:
                 )
                 if (
                     home_visible_service_previews["visibleCount"] > 0
-                    and home_visible_service_previews["structuredPreviews"] > 0
+                    and (
+                        home_visible_service_previews["previewableCount"] == 0
+                        or home_visible_service_previews["structuredPreviews"] > 0
+                    )
                     and home_visible_service_previews["allPreviewableShown"]
                 ):
                     pass_("home-visible-service-previews-loaded", json.dumps(home_visible_service_previews, ensure_ascii=False))

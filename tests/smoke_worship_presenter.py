@@ -3306,6 +3306,51 @@ def main() -> int:
                         song_id: '',
                         memo: audioMemo
                       };
+                      const syncedLyricsItem = {
+                        id: '__smoke_synced_lyrics_item__',
+                        label: '찬양',
+                        raw_title: '반복 테스트',
+                        song_id: ccmSong.id,
+                        version_id: '__smoke_ccm_version__',
+                        memo: serializeServiceItemMemo({
+                          elementType: 'praise',
+                          asset: {
+                            kind: 'synced_lyrics',
+                            name: '반복 테스트 자동 넘김',
+                            audio: { name: '반복 테스트 음원', url: 'assets/audio/children-praise.mp3' },
+                            timing: {
+                              duration: 52,
+                              cross: 46.5,
+                              pages: [
+                                { page: 1, start: 12.3 },
+                                { page: 2, start: 24.6 },
+                                { page: 3, start: 36.9 },
+                              ],
+                            },
+                          },
+                        }),
+                      };
+                      const importedDeckItem = {
+                        id: '__smoke_imported_deck_item__',
+                        label: '설교 자료',
+                        raw_title: '요셉 이야기',
+                        song_id: '',
+                        _worshipSectionKey: 'sermon_media',
+                        _worshipSectionTitle: '설교 자료',
+                        memo: serializeServiceItemMemo({
+                          elementType: 'image',
+                          asset: {
+                            kind: 'imported_deck',
+                            name: '요셉 이야기',
+                            manifestUrl: 'cache/keynote/joseph/manifest.json',
+                            fingerprint: 'deck-v1-smoke',
+                            slides: [
+                              { url: 'cache/keynote/joseph/stage-001.png', name: 'Stage 1' },
+                              { url: 'cache/keynote/joseph/stage-002.png', name: 'Stage 2' },
+                            ],
+                          },
+                        }),
+                      };
                       const hymnAllSlides = buildPresenterSlidesForServiceItem(hymnItem, service, 0);
                       const hymnSlides = hymnAllSlides.filter((slide) => slide.type === 'lyrics');
                       const hymnBlankSlides = hymnAllSlides.filter((slide) => slide.type === 'blank');
@@ -3643,6 +3688,8 @@ def main() -> int:
                           warnings: slide.warnings || [],
                         }));
                       const audioSlides = buildPresenterSlidesForServiceItem(audioItem, service, 9);
+                      const syncedLyricsSlides = buildPresenterSlidesForServiceItem(syncedLyricsItem, service, 9.1);
+                      const importedDeckSlides = buildPresenterSlidesForServiceItem(importedDeckItem, service, 9.2);
                       const warningHtml = renderPresenterBoardSubgroup({
                         id: '__smoke_warning_group__',
                         label: '찬양',
@@ -3913,6 +3960,22 @@ def main() -> int:
                           audioSrc: slide.audioSrc,
                           body: renderPresenterSlideBody(slide).trim(),
                           preview: renderPresenterSlideBody(slide),
+                        })),
+                        syncedLyricsSlides: syncedLyricsSlides.filter((slide) => slide.type === 'lyrics').map((slide) => ({
+                          type: slide.type,
+                          sourceType: slide.sourceType,
+                          componentType: slide.componentType,
+                          text: slide.text,
+                          syncTimeline: slide.syncTimeline || null,
+                        })),
+                        importedDeckSlides: importedDeckSlides.map((slide) => ({
+                          type: slide.type,
+                          layout: slide.layout,
+                          elementType: slide.elementType,
+                          sourceType: slide.sourceType,
+                          componentType: slide.componentType,
+                          imageSrc: slide.imageSrc,
+                          importedDeck: slide.importedDeck || null,
                         })),
                         scoreFormBadges: [...scoreBadgeNode.querySelectorAll('.svc-slide-form-badge')].map((node) => node.textContent.trim()),
                         missingWarnings: [...new Set(missingSlides.flatMap((slide) => slide.warnings || []))],
@@ -4391,6 +4454,39 @@ def main() -> int:
                         "body": "",
                         "preview": "",
                     }]
+                    and [slide["syncTimeline"]["start"] for slide in form_preset_state["syncedLyricsSlides"]] == [12.3, 24.6, 36.9, None]
+                    and all(slide["sourceType"] == "synced_lyrics" for slide in form_preset_state["syncedLyricsSlides"])
+                    and all(slide["syncTimeline"]["audioSrc"] == "assets/audio/children-praise.mp3" for slide in form_preset_state["syncedLyricsSlides"])
+                    and form_preset_state["syncedLyricsSlides"][0]["syncTimeline"]["groupId"] == "__smoke_synced_lyrics_item__:synced-lyrics"
+                    and form_preset_state["syncedLyricsSlides"][-1]["syncTimeline"]["cross"] == 46.5
+                    and form_preset_state["importedDeckSlides"] == [
+                        {
+                            "type": "image",
+                            "layout": "media",
+                            "elementType": "image",
+                            "sourceType": "imported_deck",
+                            "componentType": "imported_deck",
+                            "imageSrc": "cache/keynote/joseph/stage-001.png",
+                            "importedDeck": {
+                                "manifestUrl": "cache/keynote/joseph/manifest.json",
+                                "fingerprint": "deck-v1-smoke",
+                                "stage": 1,
+                            },
+                        },
+                        {
+                            "type": "image",
+                            "layout": "media",
+                            "elementType": "image",
+                            "sourceType": "imported_deck",
+                            "componentType": "imported_deck",
+                            "imageSrc": "cache/keynote/joseph/stage-002.png",
+                            "importedDeck": {
+                                "manifestUrl": "cache/keynote/joseph/manifest.json",
+                                "fingerprint": "deck-v1-smoke",
+                                "stage": 2,
+                            },
+                        },
+                    ]
                     and form_preset_state["missingWarnings"] == ["Bridge 없음"]
                     and "Bridge 없음" not in form_preset_state["missingPreviewText"]
                     and form_preset_state["warningChipText"] == "Bridge 없음"
@@ -5667,6 +5763,72 @@ def main() -> int:
                         pass_("presenter-controller-music-survives-output-open-navigation", json.dumps(music_open_nav_state, ensure_ascii=False))
                     else:
                         fail("presenter-controller-music-survives-output-open-navigation", json.dumps(music_open_nav_state, ensure_ascii=False))
+
+                    music_source_resume_state = page.evaluate(
+                        """
+                        (async () => {
+                          const previousMusic = { ...state.serviceMusic };
+                          let pauseCalls = 0;
+                          let playCalls = 0;
+                          const audio = {
+                            paused: true,
+                            ended: false,
+                            currentSrc: '',
+                            src: '',
+                            loop: false,
+                            volume: 0,
+                            play() {
+                              playCalls += 1;
+                              this.paused = false;
+                              return Promise.resolve();
+                            },
+                            pause() {
+                              pauseCalls += 1;
+                              this.paused = true;
+                            },
+                            removeAttribute(name) {
+                              if (name === 'src') this.src = '';
+                            },
+                          };
+                          state.serviceMusic = {
+                            ...state.serviceMusic,
+                            audio,
+                            objectUrl: '',
+                            fileName: '',
+                            mode: 'presenter-audio',
+                            sourceKey: 'assets/audio/resume-preserved.mp3',
+                            sourceLabel: '다시 재생 음악',
+                            playing: false,
+                            volumeLevel: 3,
+                          };
+                          runServiceMusicAction('toggle');
+                          await new Promise((resolve) => setTimeout(resolve, 20));
+                          const result = {
+                            pauseCalls,
+                            playCalls,
+                            src: audio.src,
+                            playing: state.serviceMusic.playing,
+                            mode: state.serviceMusic.mode,
+                            sourceKey: state.serviceMusic.sourceKey,
+                            sourceLabel: state.serviceMusic.sourceLabel,
+                          };
+                          state.serviceMusic = previousMusic;
+                          return result;
+                        })()
+                        """
+                    )
+                    if (
+                        music_source_resume_state["pauseCalls"] == 0
+                        and music_source_resume_state["playCalls"] == 1
+                        and music_source_resume_state["src"] == "assets/audio/resume-preserved.mp3"
+                        and music_source_resume_state["playing"]
+                        and music_source_resume_state["mode"] == "presenter-audio"
+                        and music_source_resume_state["sourceKey"] == "assets/audio/resume-preserved.mp3"
+                        and music_source_resume_state["sourceLabel"] == "다시 재생 음악"
+                    ):
+                        pass_("presenter-controller-music-resumes-preserved-source", json.dumps(music_source_resume_state, ensure_ascii=False))
+                    else:
+                        fail("presenter-controller-music-resumes-preserved-source", json.dumps(music_source_resume_state, ensure_ascii=False))
 
                     music_pause_guard_state = page.evaluate(
                         """
