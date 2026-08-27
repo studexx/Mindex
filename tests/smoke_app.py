@@ -6151,6 +6151,116 @@ def main() -> int:
                     else:
                         fail("presenter-generic-asset-upload-guard", json.dumps(presenter_generic_asset_upload_guard, ensure_ascii=False))
 
+                    presenter_imported_deck_asset_guard = page.evaluate(
+                        """
+                        async () => {
+                          const serviceId = '__smoke_imported_deck_asset_upload__';
+                          const item = normalizeServiceItem({
+                            id: '__smoke_imported_deck_asset_item__',
+                            service_id: serviceId,
+                            label: '설교 자료',
+                            raw_title: '',
+                            memo: serializeServiceItemMemo({
+                              elementType: 'image',
+                              componentType: 'image',
+                              inputMode: 'asset',
+                              asset: { kind: 'imported_deck', name: '', url: '' },
+                            }),
+                          }, 0);
+                          const originalItems = state.serviceItems[serviceId];
+                          const originalElectron = window.mindexElectron;
+                          const originalSaveService = saveService;
+                          const originalRenderCurrentServiceModuleDetail = renderCurrentServiceModuleDetail;
+                          const originalRenderServiceList = renderServiceList;
+                          const calls = [];
+                          let saved = false;
+                          let rendered = false;
+                          try {
+                            state.serviceItems[serviceId] = [item];
+                            window.mindexElectron = {
+                              filePathForFile: (file) => `/tmp/${file.name}`,
+                              importKeynoteDeck: async (payload) => {
+                                calls.push(payload);
+                                return {
+                                  ok: true,
+                                  cached: false,
+                                  manifestPath: '/tmp/cache/sermon/manifest.json',
+                                  manifest: {
+                                    name: '어린이 설교',
+                                    manifestUrl: 'file:///tmp/cache/sermon/manifest.json',
+                                    fingerprint: 'deck-smoke-v1',
+                                    slides: [
+                                      { order: 1, name: 'Stage 1', url: 'file:///tmp/cache/sermon/stage-001.png' },
+                                      { order: 2, name: 'Stage 2', url: 'file:///tmp/cache/sermon/stage-002.png' },
+                                    ],
+                                  },
+                                };
+                              },
+                            };
+                            saveService = async () => { saved = true; return true; };
+                            renderCurrentServiceModuleDetail = () => { rendered = true; };
+                            renderServiceList = () => {};
+                            const html = renderPresenterServiceAssetInput(item, 0, parseServiceItemMemo(item.memo));
+                            const input = {
+                              files: [new File(['deck-data'], 'sermon.key', { type: 'application/vnd.apple.keynote' })],
+                              dataset: { serviceId, serviceItemIndex: '0' },
+                              disabled: false,
+                              value: 'sermon.key',
+                            };
+                            const imported = await uploadServiceItemAssetFile(input);
+                            const memo = parseServiceItemMemo(item.memo);
+                            const uploadedHtml = renderPresenterServiceAssetInput(item, 0, memo);
+                            return {
+                              acceptDeck: html.includes('.key,.keynote,.ppt,.pptx'),
+                              buttonLabel: html.includes('슬라이드 선택'),
+                              imported,
+                              saved,
+                              rendered,
+                              calls,
+                              inputCleared: input.value === '',
+                              elementType: memo.elementType || '',
+                              inputMode: memo.inputMode || '',
+                              rawTitle: item.raw_title || '',
+                              asset: memo.asset || {},
+                              compactDeckStatus: uploadedHtml.includes('슬라이드 2장 연결됨'),
+                              modified: Boolean(item._worshipElementTemplateModified),
+                            };
+                          } finally {
+                            if (originalItems === undefined) delete state.serviceItems[serviceId];
+                            else state.serviceItems[serviceId] = originalItems;
+                            if (originalElectron === undefined) delete window.mindexElectron;
+                            else window.mindexElectron = originalElectron;
+                            saveService = originalSaveService;
+                            renderCurrentServiceModuleDetail = originalRenderCurrentServiceModuleDetail;
+                            renderServiceList = originalRenderServiceList;
+                          }
+                        }
+                        """
+                    )
+                    if (
+                        presenter_imported_deck_asset_guard["acceptDeck"]
+                        and presenter_imported_deck_asset_guard["buttonLabel"]
+                        and presenter_imported_deck_asset_guard["imported"]
+                        and presenter_imported_deck_asset_guard["saved"]
+                        and presenter_imported_deck_asset_guard["rendered"]
+                        and presenter_imported_deck_asset_guard["inputCleared"]
+                        and len(presenter_imported_deck_asset_guard["calls"]) == 1
+                        and presenter_imported_deck_asset_guard["calls"][0]["inputPath"] == "/tmp/sermon.key"
+                        and presenter_imported_deck_asset_guard["elementType"] == "image"
+                        and presenter_imported_deck_asset_guard["inputMode"] == "asset"
+                        and presenter_imported_deck_asset_guard["rawTitle"] == "어린이 설교"
+                        and presenter_imported_deck_asset_guard["asset"].get("kind") == "imported_deck"
+                        and presenter_imported_deck_asset_guard["asset"].get("name") == "어린이 설교"
+                        and presenter_imported_deck_asset_guard["asset"].get("manifestUrl") == "file:///tmp/cache/sermon/manifest.json"
+                        and presenter_imported_deck_asset_guard["asset"].get("fingerprint") == "deck-smoke-v1"
+                        and len(presenter_imported_deck_asset_guard["asset"].get("slides", [])) == 2
+                        and presenter_imported_deck_asset_guard["compactDeckStatus"]
+                        and presenter_imported_deck_asset_guard["modified"]
+                    ):
+                        pass_("presenter-imported-deck-asset-guard", json.dumps(presenter_imported_deck_asset_guard, ensure_ascii=False))
+                    else:
+                        fail("presenter-imported-deck-asset-guard", json.dumps(presenter_imported_deck_asset_guard, ensure_ascii=False))
+
                     presenter_praise_header_audio_guard = page.evaluate(
                         """
                         (() => {

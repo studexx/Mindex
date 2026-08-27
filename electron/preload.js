@@ -1,4 +1,4 @@
-const { contextBridge, ipcRenderer } = require("electron");
+const { contextBridge, ipcRenderer, webUtils } = require("electron");
 
 contextBridge.exposeInMainWorld("mindexElectron", {
   isDesktop: true,
@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld("mindexElectron", {
   downloadUpdate: () => ipcRenderer.invoke("mindex:download-update"),
   installUpdate: () => ipcRenderer.invoke("mindex:install-update"),
   importKeynoteDeck: (payload) => ipcRenderer.invoke("mindex:import-keynote-deck", payload),
+  filePathForFile: (file) => webUtils.getPathForFile(file),
   onUpdateAvailable: (callback) => {
     ipcRenderer.on("mindex:update-available", (_event, info) => callback(info));
   },

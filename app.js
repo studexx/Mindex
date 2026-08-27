@@ -11267,6 +11267,7 @@ function serviceAssetFileAcceptForKind(kind = "") {
   if (normalized === "image") return "image/*";
   if (normalized === "video") return "video/*";
   if (normalized === "audio") return "audio/*";
+  if (normalized === "imported_deck") return ".key,.keynote,.ppt,.pptx,application/vnd.apple.keynote,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation";
   return PRESENTER_REFERENCE_MEDIA_ACCEPT;
 }
 
@@ -11275,7 +11276,19 @@ function serviceAssetFileKindLabel(kind = "") {
   if (normalized === "image") return "이미지";
   if (normalized === "video") return "영상";
   if (normalized === "audio") return "음원";
+  if (normalized === "imported_deck") return "슬라이드";
   return "파일";
+}
+
+function isDeckAssetFile(file) {
+  const name = String(file?.name || "").toLowerCase();
+  return /\.(key|keynote|pptx?|ppt)$/.test(name);
+}
+
+function serviceAssetKindForUploadTarget(item = {}, memo = parseServiceItemMemo(item?.memo)) {
+  const asset = normalizeServiceAsset(memo.asset);
+  const elementType = serviceMemoElementType(memo);
+  return asset.kind || serviceAssetKindForElementType(elementType) || elementType || "file";
 }
 
 function presenterMediaMaxBytesForKind(kind = "") {
@@ -11323,12 +11336,76 @@ async function uploadServiceItemAssetFile(input) {
   const file = input?.files?.[0];
   const serviceId = input?.dataset?.serviceId || state.selectedServiceId;
   const index = Number(input?.dataset?.serviceItemIndex);
+  const item = getServiceItems(serviceId)[index];
+  const memo = parseServiceItemMemo(item?.memo);
+  if (serviceAssetKindForUploadTarget(item, memo) === "imported_deck" || isDeckAssetFile(file)) {
+    return importServiceItemDeckAssetFile(input);
+  }
   return uploadPresenterReferenceMediaAsset({
     file,
     serviceId,
-    item: getServiceItems(serviceId)[index],
+    item,
     input,
   });
+}
+
+async function importServiceItemDeckAssetFile(input) {
+  const file = input?.files?.[0];
+  const serviceId = input?.dataset?.serviceId || state.selectedServiceId;
+  const index = Number(input?.dataset?.serviceItemIndex);
+  const item = getServiceItems(serviceId)[index];
+  const targetItem = currentServiceItemForMutation(serviceId, item);
+  const desktop = window.mindexElectron;
+  const inputPath = desktop?.filePathForFile?.(file) || file?.path || "";
+  if (!file || !targetItem || !isDeckAssetFile(file)) {
+    showToast("Keynote 또는 PowerPoint 파일만 선택해 주세요.", "error");
+    if (input) input.value = "";
+    return false;
+  }
+  if (!desktop?.importKeynoteDeck || !inputPath) {
+    showToast("데스크톱 앱에서만 Keynote/PowerPoint 반입을 사용할 수 있습니다.", "error");
+    if (input) input.value = "";
+    return false;
+  }
+
+  if (input) input.disabled = true;
+  try {
+    const result = await desktop.importKeynoteDeck({ inputPath });
+    const manifest = result?.manifest;
+    const slides = normalizeServiceAssetSlides(manifest?.slides);
+    if (!result?.ok || !manifest || !slides.length) {
+      throw new Error("슬라이드 manifest를 만들지 못했습니다.");
+    }
+    const memo = parseServiceItemMemo(targetItem.memo);
+    memo.elementType = "image";
+    memo.componentType = "image";
+    memo.inputMode = "asset";
+    memo.asset = normalizeServiceAsset({
+      kind: "imported_deck",
+      name: manifest.name || file.name,
+      url: slides[0]?.url || "",
+      manifestUrl: manifest.manifestUrl || result.manifestPath || "",
+      fingerprint: manifest.fingerprint || "",
+      slides,
+    });
+    targetItem.raw_title = targetItem.raw_title || memo.asset.name || file.name;
+    targetItem.memo = serializeServiceItemMemo(memo);
+    targetItem._worshipElementTemplateModified = true;
+    state.dirty.service = true;
+    await saveService(serviceId, { silent: true, renderAfterSave: false, throwOnError: true });
+    renderCurrentServiceModuleDetail();
+    renderServiceList();
+    showToast(`${serviceAssetFileKindLabel("imported_deck")} ${slides.length}장을 반입했습니다.`);
+    return true;
+  } catch (error) {
+    showToast(error?.message || "슬라이드 파일을 반입하지 못했습니다.", "error");
+    return false;
+  } finally {
+    if (input) {
+      input.disabled = false;
+      input.value = "";
+    }
+  }
 }
 
 function currentServiceItemForMutation(serviceId, item) {
@@ -25095,13 +25172,13 @@ function renderPresenterServiceAssetInput(item, index, memo) {
       </div>`;
   }
   const kind = ["image", "video", "audio"].includes(elementType) ? elementType : "";
-  const typeLabel = serviceAssetFileKindLabel(kind || asset.kind || elementType);
-  const assetKind = kind || asset.kind || elementType || "file";
+  const assetKind = asset.kind && asset.kind !== kind ? asset.kind : kind || asset.kind || elementType || "file";
+  const typeLabel = serviceAssetFileKindLabel(assetKind || elementType);
   return `
     <div class="svc-reference-media-input svc-reference-media-input--asset svc-reference-media-input--${escapeAttr(assetKind)}">
       <div class="svc-reference-media-toolbar svc-reference-media-toolbar--asset">
         <label class="svc-reference-media-upload">
-          <input type="file" accept="${escapeAttr(serviceAssetFileAcceptForKind(kind))}" data-service-item-asset-file data-service-id="${escapeAttr(serviceId)}" data-service-item-index="${index}" />
+          <input type="file" accept="${escapeAttr(serviceAssetFileAcceptForKind(assetKind))}" data-service-item-asset-file data-service-id="${escapeAttr(serviceId)}" data-service-item-index="${index}" />
           <i data-lucide="upload"></i><span>${escapeHtml(typeLabel)} 선택</span>
         </label>
       </div>
@@ -25122,6 +25199,11 @@ function renderPresenterServiceAssetInput(item, index, memo) {
 function renderPresenterReferenceMediaPreview(asset, kind, emptyMessage = "파일을 선택하면 이 예배의 참고 화면으로 바로 송출됩니다.") {
   const source = String(asset?.url || "").trim();
   if (!source) return `<div class="svc-reference-media-preview is-empty"><i data-lucide="image-plus"></i><span>${escapeHtml(emptyMessage)}</span></div>`;
+  if (kind === "imported_deck") {
+    const slideCount = normalizeServiceAssetSlides(asset.slides).length;
+    const statusLabel = slideCount ? `슬라이드 ${slideCount}장 연결됨` : "슬라이드 연결됨";
+    return renderPresenterStaticAssetPreview(asset, "presentation", statusLabel);
+  }
   if (kind === "video") return renderPresenterStaticAssetPreview(asset, "file-video", "영상 연결됨");
   if (kind === "audio") return `<div class="svc-reference-media-preview svc-reference-media-preview--audio"><i data-lucide="audio-lines"></i><strong>${escapeHtml(asset.name || "음원")}</strong><audio controls preload="metadata" src="${escapeAttr(source)}"></audio></div>`;
   if (kind === "file") return renderPresenterStaticAssetPreview(asset, "file", "파일 연결됨");
