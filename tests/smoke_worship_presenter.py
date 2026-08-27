@@ -7859,6 +7859,72 @@ def main() -> int:
                 else:
                     fail("presenter-keyboard-thumb-focus-advances", json.dumps(thumb_focus_keyboard_state, ensure_ascii=False))
 
+                outline_click_scroll_state = page.evaluate(
+                    """
+                    (serviceId) => {
+                      preparePresenterService(serviceId);
+                      renderServiceList();
+                      renderPresenterControlState(serviceId);
+                      const rows = [...document.querySelectorAll('.service-outline-row--child[data-service-outline-slide][data-service-outline-item-index]')]
+                        .filter((node) => Number(node.dataset.serviceOutlineItemIndex) >= 0 && Number(node.dataset.serviceOutlineSlide) >= 0);
+                      const row = rows.find((node) => node.textContent.includes('찬양') && Number(node.dataset.serviceOutlineItemIndex) > 1)
+                        || rows.find((node) => Number(node.dataset.serviceOutlineItemIndex) > 1)
+                        || rows[0];
+                      if (!row) return { hasRow: false };
+                      const previousStable = scrollPresenterBoardToIndexStable;
+                      const previousItem = scrollPresenterBoardToServiceItem;
+                      const previousIndex = scrollPresenterBoardToIndex;
+                      const stableCalls = [];
+                      const itemCalls = [];
+                      const indexCalls = [];
+                      scrollPresenterBoardToIndexStable = (...args) => {
+                        stableCalls.push(args.map((value) => typeof value === 'object' ? { ...value } : value));
+                        return true;
+                      };
+                      scrollPresenterBoardToServiceItem = (...args) => {
+                        itemCalls.push(args.map((value) => typeof value === 'object' ? { ...value } : value));
+                        return true;
+                      };
+                      scrollPresenterBoardToIndex = (...args) => {
+                        indexCalls.push(args.map((value) => typeof value === 'object' ? { ...value } : value));
+                        return true;
+                      };
+                      const target = {
+                        text: row.textContent.trim(),
+                        itemIndex: Number(row.dataset.serviceOutlineItemIndex),
+                        slideIndex: Number(row.dataset.serviceOutlineSlide),
+                      };
+                      row.click();
+                      scrollPresenterBoardToIndexStable = previousStable;
+                      scrollPresenterBoardToServiceItem = previousItem;
+                      scrollPresenterBoardToIndex = previousIndex;
+                      return {
+                        hasRow: true,
+                        target,
+                        presenterIndex: state.presenter.index,
+                        selectedItemIndex: state.selectedServiceItemIndex,
+                        stableCalls,
+                        itemCalls,
+                        indexCalls,
+                      };
+                    }
+                    """,
+                    selection_state["switchId"],
+                )
+                if (
+                    outline_click_scroll_state["hasRow"]
+                    and outline_click_scroll_state["presenterIndex"] == outline_click_scroll_state["target"]["slideIndex"]
+                    and outline_click_scroll_state["selectedItemIndex"] == outline_click_scroll_state["target"]["itemIndex"]
+                    and outline_click_scroll_state["stableCalls"] == []
+                    and len(outline_click_scroll_state["itemCalls"]) == 1
+                    and outline_click_scroll_state["itemCalls"][0][1] == outline_click_scroll_state["target"]["itemIndex"]
+                    and outline_click_scroll_state["itemCalls"][0][2].get("block") == "start"
+                    and outline_click_scroll_state["indexCalls"] == []
+                ):
+                    pass_("presenter-outline-click-prefers-item-scroll", json.dumps(outline_click_scroll_state, ensure_ascii=False))
+                else:
+                    fail("presenter-outline-click-prefers-item-scroll", json.dumps(outline_click_scroll_state, ensure_ascii=False))
+
                 next_prep_state = page.evaluate(
                     """
                     (() => {

@@ -1545,7 +1545,7 @@ function handleServiceOutlineSlideClick(serviceOutlineItem) {
     && state.presenter.serviceId
     && state.presenter.serviceId !== target.serviceId;
   if (!outputIsShowingAnotherService) {
-    runPresenterAction("jump", target.serviceId, { index: target.slideIndex });
+    runPresenterAction("jump", target.serviceId, { index: target.slideIndex, scroll: false });
   } else {
     selectPresenterBoardSlide(target.serviceId, target.slideIndex);
   }
@@ -27347,7 +27347,7 @@ function runPresenterAction(action, serviceId = state.selectedServiceId, options
   publishPresenterState();
   renderPresenterControlState(serviceId);
   scrollPresenterOutlineToActive(serviceId);
-  if (["next", "prev", "first", "last", "jump"].includes(action)) {
+  if (options.scroll !== false && ["next", "prev", "first", "last", "jump"].includes(action)) {
     scrollPresenterBoardToIndexStable(serviceId, state.presenter.index, { force: false });
   }
 }
@@ -27561,13 +27561,14 @@ function scrollWithinPresenterViewport(target, options = {}) {
   const targetTop = targetRect.top - viewportRect.top + currentTop;
   const targetBottom = targetRect.bottom - viewportRect.top + currentTop;
   const padding = Number(options.padding) || 18;
+  const stickyTop = presenterViewportStickyTopOffset(viewport);
   let top = currentTop;
   if (block === "start") {
-    top = targetTop - padding;
+    top = targetTop - padding - stickyTop;
   } else if (block === "center") {
     top = targetTop - Math.max(0, (viewport.clientHeight - targetRect.height) / 2);
-  } else if (targetRect.top < viewportRect.top + padding) {
-    top = targetTop - padding;
+  } else if (targetRect.top < viewportRect.top + stickyTop + padding) {
+    top = targetTop - padding - stickyTop;
   } else if (targetRect.bottom > viewportRect.bottom - padding) {
     top = targetBottom - viewport.clientHeight + padding;
   } else {
@@ -27578,6 +27579,15 @@ function scrollWithinPresenterViewport(target, options = {}) {
   if (Math.abs(nextTop - currentTop) < 2) return true;
   viewport.scrollTo({ top: nextTop, behavior });
   return true;
+}
+
+function presenterViewportStickyTopOffset(viewport) {
+  const sticky = viewport?.querySelector?.(".svc-presenter-top");
+  if (!sticky?.getBoundingClientRect) return 0;
+  const viewportRect = viewport.getBoundingClientRect();
+  const stickyRect = sticky.getBoundingClientRect();
+  if (stickyRect.bottom <= viewportRect.top || stickyRect.top > viewportRect.top + viewport.clientHeight) return 0;
+  return Math.max(0, Math.min(viewport.clientHeight, stickyRect.bottom - viewportRect.top));
 }
 
 function scrollPresenterOutlineToActive(serviceId = state.presenter.serviceId) {
