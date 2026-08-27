@@ -1728,6 +1728,7 @@ def main() -> int:
                       const rendered = {
                         headings: [...document.querySelectorAll(".global-search-heading")].map((node) => node.textContent.trim()),
                         songResult: Boolean(document.querySelector('[data-global-song-id="__smoke_global_search_song__"]')),
+                        songMeta: document.querySelector('[data-global-song-id="__smoke_global_search_song__"] .song-meta-line')?.textContent.trim() || '',
                       };
                       const scriptureReferences = normalizeServiceScriptureReferenceList("요3:16~17, 18");
                       const complexScriptureReferences = {
@@ -1770,6 +1771,7 @@ def main() -> int:
                     all(global_search_deep_state["directMatches"].values())
                     and "찬양" in global_search_deep_state["rendered"]["headings"]
                     and global_search_deep_state["rendered"]["songResult"]
+                    and "부제 일치" in global_search_deep_state["rendered"]["songMeta"]
                     and global_search_deep_state["scriptureReferences"] == ["요 3:16–18"]
                     and global_search_deep_state["complexScriptureReferences"] == {
                         "sameChapterComma": ["마 13:31–33", "마 13:44–50"],

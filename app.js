@@ -13671,8 +13671,7 @@ function getGlobalPraiseResults(tokens) {
     .map((song) => ({ song, match: getSongSearchMatch(song, tokens, { includeLyrics }) }))
     .filter((item) => item.match)
     .sort((a, b) => b.match.score - a.match.score || sortSongsForCurrentList(a.song, b.song))
-    .slice(0, 8)
-    .map((item) => item.song);
+    .slice(0, 8);
 }
 
 function getGlobalScriptureResults(query, tokens) {
@@ -13713,8 +13712,11 @@ function getGlobalServiceResults(query) {
   return sortServicesByDate(state.services.filter((service) => serviceMatchesSearch(service, query)), "desc").slice(0, 8);
 }
 
-function renderGlobalPraiseResult(song) {
+function renderGlobalPraiseResult(result) {
+  const song = result?.song || result;
+  const matchHint = globalSongMatchHint(result?.match);
   const view = songListView(song);
+  const meta = cleanList([view.meta, matchHint]).join(" · ");
   return `
     <button class="song-item global-search-result" type="button" data-global-song-id="${escapeAttr(song.id)}">
       <span class="song-title">
@@ -13723,9 +13725,20 @@ function renderGlobalPraiseResult(song) {
         ${song.versions?.length > 1 ? `<span class="song-count-badge">${song.versions.length}</span>` : ""}
         ${renderSongAttentionIcon(song)}
       </span>
-      ${view.meta ? `<span class="song-meta-line">${escapeHtml(view.meta)}</span>` : ""}
+      ${meta ? `<span class="song-meta-line">${escapeHtml(meta)}</span>` : ""}
     </button>
   `;
+}
+
+function globalSongMatchHint(match) {
+  const label = match?.field?.label || {
+    title: "제목",
+    hymn: "찬송가 번호",
+    meta: "정보",
+    version: "버전",
+    lyrics: "가사",
+  }[match?.field?.kind];
+  return label ? `${label} 일치` : "";
 }
 
 function renderGlobalScriptureResult(result) {
@@ -17205,34 +17218,34 @@ function getSongSearchFields(song, options = {}) {
   if (cached?.[cacheBucket]) return cached[cacheBucket];
   const metadata = normalizeSongMetadata(song?.metadata);
   const fields = [
-    searchField("title", song.title, 120),
-    searchField("hymn", song.hymn_no, 125),
-    searchField("hymn", formatHymnMarker(song.hymn_no), 125),
-    searchField("meta", song.subtitle, 88),
-    searchField("meta", song.original_title, 88),
-    ...cleanList(song.scripture).map((reference) => searchField("meta", reference, 70)),
-    ...songPraiseTypes(song).map((type) => searchField("meta", type, 40)),
-    searchField("meta", metadata.artist, 62),
-    searchField("meta", metadata.lyricist, 58),
-    searchField("meta", metadata.composer, 58),
-    searchField("meta", metadata.translator, 54),
-    searchField("meta", metadata.album, 48),
-    searchField("meta", metadata.track, 32),
+    searchField("title", song.title, 120, "제목"),
+    searchField("hymn", song.hymn_no, 125, "찬송가 번호"),
+    searchField("hymn", formatHymnMarker(song.hymn_no), 125, "찬송가 번호"),
+    searchField("meta", song.subtitle, 88, "부제"),
+    searchField("meta", song.original_title, 88, "원제"),
+    ...cleanList(song.scripture).map((reference) => searchField("meta", reference, 70, "성구")),
+    ...songPraiseTypes(song).map((type) => searchField("meta", type, 40, "분류")),
+    searchField("meta", metadata.artist, 62, "아티스트"),
+    searchField("meta", metadata.lyricist, 58, "작사"),
+    searchField("meta", metadata.composer, 58, "작곡"),
+    searchField("meta", metadata.translator, 54, "번역"),
+    searchField("meta", metadata.album, 48, "앨범"),
+    searchField("meta", metadata.track, 32, "트랙"),
   ];
 
   for (const version of song.versions || []) {
     const versionMetadata = normalizeSongMetadata(version.metadata);
-    fields.push(searchField("version", versionDisplayName(song, version), 118));
-    fields.push(searchField("version", version.raw_section_name, 58));
-    fields.push(searchField("version", version.version_label, 52));
-    fields.push(searchField("version", versionMetadata.artist, 46));
-    fields.push(searchField("version", versionMetadata.lyricist, 42));
-    fields.push(searchField("version", versionMetadata.composer, 42));
-    fields.push(searchField("version", versionMetadata.translator, 38));
-    fields.push(searchField("version", versionMetadata.album, 36));
+    fields.push(searchField("version", versionDisplayName(song, version), 118, "버전"));
+    fields.push(searchField("version", version.raw_section_name, 58, "버전"));
+    fields.push(searchField("version", version.version_label, 52, "버전"));
+    fields.push(searchField("version", versionMetadata.artist, 46, "아티스트"));
+    fields.push(searchField("version", versionMetadata.lyricist, 42, "작사"));
+    fields.push(searchField("version", versionMetadata.composer, 42, "작곡"));
+    fields.push(searchField("version", versionMetadata.translator, 38, "번역"));
+    fields.push(searchField("version", versionMetadata.album, 36, "앨범"));
     if (includeLyrics) {
       for (const form of version.forms || []) {
-        fields.push(searchField("lyrics", form.lyrics, 24));
+        fields.push(searchField("lyrics", form.lyrics, 24, "가사"));
       }
     }
   }
@@ -17242,9 +17255,9 @@ function getSongSearchFields(song, options = {}) {
   return filteredFields;
 }
 
-function searchField(kind, text, weight) {
+function searchField(kind, text, weight, label = "") {
   const fieldText = String(text || "").trim();
-  return { kind, text: fieldText, weight, candidate: fieldText ? getSearchCandidate(fieldText) : null };
+  return { kind, text: fieldText, weight, label, candidate: fieldText ? getSearchCandidate(fieldText) : null };
 }
 
 function matchSearchField(field, token) {
