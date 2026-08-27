@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld("mindexElectron", {
   checkForUpdates: () => ipcRenderer.invoke("mindex:check-for-updates"),
   downloadUpdate: () => ipcRenderer.invoke("mindex:download-update"),
   installUpdate: () => ipcRenderer.invoke("mindex:install-update"),
+  importKeynoteDeck: (payload) => ipcRenderer.invoke("mindex:import-keynote-deck", payload),
   onUpdateAvailable: (callback) => {
     ipcRenderer.on("mindex:update-available", (_event, info) => callback(info));
   },

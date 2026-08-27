@@ -1,5 +1,6 @@
 const { app, BrowserWindow, ipcMain, screen } = require("electron");
 const path = require("node:path");
+const { importKeynoteDeck } = require("./keynote-importer");
 
 let mainWindow = null;
 let presenterWindow = null;
@@ -209,6 +210,15 @@ ipcMain.handle("mindex:install-update", () => {
   if (!app.isPackaged || !updatesEnabled() || !autoUpdater) return { ok: false, reason: "updates-unavailable" };
   autoUpdater.quitAndInstall(false, true);
   return { ok: true };
+});
+
+ipcMain.handle("mindex:import-keynote-deck", async (_event, payload = {}) => {
+  const outputDir = payload.outputDir || path.join(app.getPath("userData"), "imported-decks");
+  return importKeynoteDeck({
+    ...payload,
+    outputDir,
+    repoRoot: payload.repoRoot || appRoot(),
+  });
 });
 
 app.whenReady().then(() => {

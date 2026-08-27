@@ -10,6 +10,7 @@ mindex.local.js
 .cache/
 scripts/*
 !scripts/audit_mindex_content.py
+!scripts/import-keynote-deck.mjs
 !scripts/audit_hbible_hymns.py
 !scripts/repair_confirmed_unified_hymn_titles.py
 !scripts/repair_confirmed_unified_hymn_duplicates.py
