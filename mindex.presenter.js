@@ -445,8 +445,10 @@ function presenterApplySyncedLyricsConfig(slides = [], syncConfig = null, item =
   let lyricIndex = 0;
   const groupId = `${item.id || index}:synced-lyrics`;
   return slides.map((slide) => {
-    if (slide?.type !== "lyrics") return slide;
-    lyricIndex += 1;
+    const isLyricSlide = slide?.type === "lyrics";
+    const isIntroTitle = slide?.type === "song-title" && lyricIndex === 0;
+    if (!isLyricSlide && !isIntroTitle) return slide;
+    if (isLyricSlide) lyricIndex += 1;
     const page = syncConfig.pages[lyricIndex - 1] || null;
     return {
       ...slide,
@@ -454,10 +456,11 @@ function presenterApplySyncedLyricsConfig(slides = [], syncConfig = null, item =
         groupId,
         audioSrc: syncConfig.audioSrc,
         audioTitle: syncConfig.audioTitle,
-        page: lyricIndex,
-        start: page ? page.start : null,
+        page: isLyricSlide ? lyricIndex : 0,
+        start: isLyricSlide && page ? page.start : null,
         cross: syncConfig.cross,
         duration: syncConfig.duration,
+        intro: isIntroTitle,
       },
       sourceType: slide.sourceType || "synced_lyrics",
       componentType: slide.componentType || "synced_lyrics",
@@ -2526,6 +2529,8 @@ function presenterMediaSourceIsYoutube(value) {
 }
 
 function presenterSlideAudioSource(slide) {
+  const syncedSource = normalizePresenterMediaSource(slide?.syncTimeline?.audioSrc || "");
+  if (syncedSource) return syncedSource;
   if (presenterSlideElementType(slide) !== PRESENTER_ELEMENT_TYPES.AUDIO) return "";
   return normalizePresenterMediaSource(slide.audioSrc || slide.asset?.url || slide.text);
 }

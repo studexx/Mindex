@@ -738,6 +738,7 @@ const state = {
     intentionalPauseUntil: 0,
     resumeTimer: null,
     resumeAttempts: 0,
+    syncTimer: null,
   },
   servicePrepEditorOpenId: null,
   calendarData: [],
@@ -25427,6 +25428,7 @@ function getServiceMusicAudio() {
     });
     audio.addEventListener("ended", () => {
       clearServiceMusicResumeTimer();
+      clearServiceMusicSyncTimer();
       state.serviceMusic.playing = false;
       if (state.serviceMusic.mode === "presenter-audio") {
         state.serviceMusic.sourceKey = "";
@@ -25434,6 +25436,9 @@ function getServiceMusicAudio() {
         state.serviceMusic.mode = "manual";
       }
       renderPresenterControlState();
+    });
+    audio.addEventListener("timeupdate", () => {
+      syncServiceMusicSyncedLyricsWithCurrentTime();
     });
     state.serviceMusic.audio = audio;
   }
@@ -25453,6 +25458,19 @@ function clearServiceMusicResumeTimer() {
   if (!state.serviceMusic.resumeTimer) return;
   clearTimeout(state.serviceMusic.resumeTimer);
   state.serviceMusic.resumeTimer = null;
+}
+
+function clearServiceMusicSyncTimer() {
+  if (!state.serviceMusic.syncTimer) return;
+  clearInterval(state.serviceMusic.syncTimer);
+  state.serviceMusic.syncTimer = null;
+}
+
+function startServiceMusicSyncTimer() {
+  clearServiceMusicSyncTimer();
+  state.serviceMusic.syncTimer = setInterval(() => {
+    syncServiceMusicSyncedLyricsWithCurrentTime();
+  }, 120);
 }
 
 function shouldResumeInterruptedServiceMusic(audio) {
@@ -25525,6 +25543,7 @@ function serviceMusicHasActivePlayback() {
 function stopServiceMusicPlayback(options = {}) {
   const audio = state.serviceMusic.audio;
   clearServiceMusicResumeTimer();
+  clearServiceMusicSyncTimer();
   if (audio) {
     allowIntentionalServiceMusicPause();
     audio.pause();
@@ -25584,6 +25603,8 @@ function runServiceMusicAction(action) {
   audio.play()
     .then(() => {
       state.serviceMusic.playing = true;
+      startServiceMusicSyncTimer();
+      syncServiceMusicSyncedLyricsWithCurrentTime();
       renderPresenterControlState();
     })
     .catch(() => showToast("브라우저가 음악 재생을 막았습니다. 다시 눌러 주세요.", "error"));
@@ -25605,6 +25626,68 @@ function setServiceMusicVolume(value) {
   state.serviceMusic.volumeLevel = level;
   getServiceMusicAudio().volume = level / 5;
   renderPresenterControlState();
+}
+
+function presenterSyncTimelineForSlide(slide = null) {
+  const sync = slide?.syncTimeline && typeof slide.syncTimeline === "object" ? slide.syncTimeline : null;
+  if (!sync) return null;
+  const groupId = String(sync.groupId || "").trim();
+  const audioSrc = normalizePresenterMediaSource(sync.audioSrc || "");
+  if (!groupId || !audioSrc) return null;
+  const start = Number(sync.start);
+  return {
+    groupId,
+    audioSrc,
+    start: Number.isFinite(start) && start >= 0 ? start : null,
+    lead: Math.max(0, Math.min(Number(sync.lead ?? sync.advanceLead ?? 0.25) || 0, 2)),
+  };
+}
+
+function presenterSyncedLyricsTargetForTime(slides = [], activeIndex = 0, currentTime = 0) {
+  const activeSync = presenterSyncTimelineForSlide(slides[activeIndex]);
+  if (!activeSync) return null;
+  const time = Number(currentTime);
+  if (!Number.isFinite(time) || time < 0) return null;
+  const effectiveTime = time + activeSync.lead;
+  const groupSlides = slides
+    .map((slide, index) => ({ slide, index, sync: presenterSyncTimelineForSlide(slide) }))
+    .filter(({ slide, sync }) =>
+      sync
+      && !presenterSlideIsHidden(slide)
+      && sync.groupId === activeSync.groupId
+      && sync.audioSrc === activeSync.audioSrc
+      && sync.start !== null
+    )
+    .sort((a, b) => a.sync.start - b.sync.start || a.index - b.index);
+  let target = null;
+  groupSlides.forEach((candidate) => {
+    if (candidate.sync.start <= effectiveTime) target = candidate;
+  });
+  return target;
+}
+
+function syncServiceMusicSyncedLyricsWithCurrentTime(options = {}) {
+  if (state.serviceMusic.mode !== "presenter-audio" || !state.serviceMusic.playing) return false;
+  if (state.presenter.safetyBlank || state.presenter.liveScripture?.active) return false;
+  const audio = state.serviceMusic.audio;
+  if (!audio) return false;
+  const slides = state.presenter.slides || [];
+  const activeIndex = clampPresenterIndex(state.presenter.index, slides.length);
+  const activeSync = presenterSyncTimelineForSlide(slides[activeIndex]);
+  if (!activeSync) return false;
+  const source = normalizePresenterMediaSource(state.serviceMusic.sourceKey || audio.currentSrc || audio.src || "");
+  if (!source || source !== activeSync.audioSrc) return false;
+  const target = presenterSyncedLyricsTargetForTime(slides, activeIndex, Number(audio.currentTime) || 0);
+  if (!target || target.index === state.presenter.index) return false;
+  state.presenter.index = target.index;
+  state.presenter.safetyBlank = false;
+  syncSelectedServiceItemToPresenterSlide(state.presenter.serviceId);
+  if (options.publish !== false) publishPresenterState();
+  if (options.render !== false && state.module === "presenter" && state.selectedServiceId === state.presenter.serviceId) {
+    renderPresenterControlState(state.presenter.serviceId);
+  }
+  if (options.scroll !== false) scrollPresenterBoardToIndexStable(state.presenter.serviceId, state.presenter.index, { force: false });
+  return true;
 }
 
 function updateLiveScriptureDraft(value) {
@@ -29078,14 +29161,13 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
       }));
     });
     const syncConfig = presenterSyncedLyricsConfigFromAsset(configuredAsset);
-    const syncedLyricsSlides = presenterApplySyncedLyricsConfig(lyricsSlides, syncConfig, item, index);
     const slides = shouldIncludeSongTitleSlide(item, label)
       ? presenterSlidesWithSpecialSongTitle(item, section, [
           presenterSongTitleSlide(item, section, song, version, displayText, index),
-          ...syncedLyricsSlides,
+          ...lyricsSlides,
         ], index, service)
-      : syncedLyricsSlides;
-    return withIntro(slides);
+      : lyricsSlides;
+    return withIntro(presenterApplySyncedLyricsConfig(slides, syncConfig, item, index));
   }
 
   if (!specialSongItem && song && presenterHymnScoreAssetSlides(song, version, displayText).length) {

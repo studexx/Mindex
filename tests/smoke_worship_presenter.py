@@ -3961,6 +3961,12 @@ def main() -> int:
                           body: renderPresenterSlideBody(slide).trim(),
                           preview: renderPresenterSlideBody(slide),
                         })),
+                        syncedLyricsAllSlides: syncedLyricsSlides.map((slide) => ({
+                          type: slide.type,
+                          sourceType: slide.sourceType,
+                          audioSource: presenterSlideAudioSource(slide),
+                          syncTimeline: slide.syncTimeline || null,
+                        })),
                         syncedLyricsSlides: syncedLyricsSlides.filter((slide) => slide.type === 'lyrics').map((slide) => ({
                           type: slide.type,
                           sourceType: slide.sourceType,
@@ -4455,6 +4461,10 @@ def main() -> int:
                         "preview": "",
                     }]
                     and [slide["syncTimeline"]["start"] for slide in form_preset_state["syncedLyricsSlides"]] == [12.3, 24.6, 36.9, None]
+                    and form_preset_state["syncedLyricsAllSlides"][0]["type"] == "song-title"
+                    and form_preset_state["syncedLyricsAllSlides"][0]["audioSource"] == "assets/audio/children-praise.mp3"
+                    and form_preset_state["syncedLyricsAllSlides"][0]["syncTimeline"]["intro"]
+                    and form_preset_state["syncedLyricsAllSlides"][0]["syncTimeline"]["start"] is None
                     and all(slide["sourceType"] == "synced_lyrics" for slide in form_preset_state["syncedLyricsSlides"])
                     and all(slide["syncTimeline"]["audioSrc"] == "assets/audio/children-praise.mp3" for slide in form_preset_state["syncedLyricsSlides"])
                     and form_preset_state["syncedLyricsSlides"][0]["syncTimeline"]["groupId"] == "__smoke_synced_lyrics_item__:synced-lyrics"
@@ -4497,6 +4507,103 @@ def main() -> int:
                     pass_("presenter-form-preset-sequence", json.dumps(form_preset_state, ensure_ascii=False))
                 else:
                     fail("presenter-form-preset-sequence", json.dumps(form_preset_state, ensure_ascii=False))
+
+                synced_lyrics_runtime_state = page.evaluate(
+                    """
+                    () => {
+                      const previousPresenter = { ...state.presenter };
+                      const previousMusic = { ...state.serviceMusic };
+                      const previousModule = state.module;
+                      const previousSelected = state.selectedServiceId;
+                      let publishCalls = 0;
+                      const previousPublish = window.publishPresenterState;
+                      window.publishPresenterState = () => { publishCalls += 1; };
+                      state.module = 'presenter';
+                      state.selectedServiceId = '__smoke_synced_runtime_service__';
+                      state.presenter.serviceId = '__smoke_synced_runtime_service__';
+                      state.presenter.safetyBlank = false;
+                      state.presenter.liveScripture = { active: false, slide: null, reference: '', draft: '' };
+                      state.presenter.slides = [
+                        {
+                          id: 'sync-title',
+                          type: 'song-title',
+                          syncTimeline: {
+                            groupId: 'runtime-group',
+                            audioSrc: 'assets/audio/children-praise.mp3',
+                            audioTitle: '어린이 찬양',
+                            page: 0,
+                            start: null,
+                            intro: true,
+                          },
+                        },
+                        {
+                          id: 'sync-1',
+                          type: 'lyrics',
+                          syncTimeline: {
+                            groupId: 'runtime-group',
+                            audioSrc: 'assets/audio/children-praise.mp3',
+                            page: 1,
+                            start: 12.3,
+                          },
+                        },
+                        {
+                          id: 'sync-2',
+                          type: 'lyrics',
+                          syncTimeline: {
+                            groupId: 'runtime-group',
+                            audioSrc: 'assets/audio/children-praise.mp3',
+                            page: 2,
+                            start: 24.6,
+                          },
+                        },
+                        {
+                          id: 'other-audio',
+                          type: 'lyrics',
+                          syncTimeline: {
+                            groupId: 'runtime-group',
+                            audioSrc: 'assets/audio/other.mp3',
+                            page: 3,
+                            start: 36.9,
+                          },
+                        },
+                      ];
+                      state.presenter.index = 0;
+                      state.serviceMusic = {
+                        ...state.serviceMusic,
+                        audio: { currentTime: 24.4, currentSrc: '', src: '', paused: false, ended: false },
+                        mode: 'presenter-audio',
+                        sourceKey: 'assets/audio/children-praise.mp3',
+                        sourceLabel: '어린이 찬양',
+                        playing: true,
+                      };
+                      const titleSource = presenterSlideAudioSource(state.presenter.slides[0]);
+                      const moved = syncServiceMusicSyncedLyricsWithCurrentTime({ publish: false, render: false, scroll: false });
+                      const movedIndex = state.presenter.index;
+                      const movedSlide = state.presenter.slides[movedIndex].id;
+                      state.serviceMusic.audio.currentTime = 36.9;
+                      const blockedDifferentAudio = syncServiceMusicSyncedLyricsWithCurrentTime({ publish: false, render: false, scroll: false });
+                      const finalIndex = state.presenter.index;
+                      window.publishPresenterState = previousPublish;
+                      state.presenter = previousPresenter;
+                      state.serviceMusic = previousMusic;
+                      state.module = previousModule;
+                      state.selectedServiceId = previousSelected;
+                      return { titleSource, moved, movedIndex, movedSlide, blockedDifferentAudio, finalIndex, publishCalls };
+                    }
+                    """
+                )
+                if (
+                    synced_lyrics_runtime_state["titleSource"] == "assets/audio/children-praise.mp3"
+                    and synced_lyrics_runtime_state["moved"]
+                    and synced_lyrics_runtime_state["movedIndex"] == 2
+                    and synced_lyrics_runtime_state["movedSlide"] == "sync-2"
+                    and not synced_lyrics_runtime_state["blockedDifferentAudio"]
+                    and synced_lyrics_runtime_state["finalIndex"] == 2
+                    and synced_lyrics_runtime_state["publishCalls"] == 0
+                ):
+                    pass_("presenter-synced-lyrics-runtime-advance", json.dumps(synced_lyrics_runtime_state, ensure_ascii=False))
+                else:
+                    fail("presenter-synced-lyrics-runtime-advance", json.dumps(synced_lyrics_runtime_state, ensure_ascii=False))
 
                 section_song_title_fit_state = page.evaluate(
                     """
