@@ -5247,6 +5247,9 @@ def main() -> int:
                               Element.prototype.scrollIntoView = window.__mindexOriginalScrollIntoView;
                               Element.prototype.scrollTo = window.__mindexOriginalDetailScrollTo;
                               const activeSubgroup = activeTarget?.closest?.('.svc-board-subgroup') || activeTarget;
+                              const sticky = document.querySelector('.svc-presenter-top');
+                              const stickyRect = sticky?.getBoundingClientRect();
+                              const activeRect = activeSubgroup?.getBoundingClientRect();
                               return {
                                 expected,
                                 target,
@@ -5254,7 +5257,10 @@ def main() -> int:
                                 activeTarget: {
                                   className: activeSubgroup?.className || '',
                                   itemIndex: Number(activeSubgroup?.dataset?.serviceItemIndex ?? -1),
+                                  top: activeRect ? Math.round(activeRect.top) : null,
                                 },
+                                stickyBottom: stickyRect ? Math.round(stickyRect.bottom) : null,
+                                belowSticky: Boolean(activeRect && stickyRect && activeRect.top >= stickyRect.bottom - 2),
                                 presenterIndex: state.presenter.index,
                                 activeThumbs: document.querySelectorAll(`.svc-slide-thumb.active[data-presenter-index="${expected.index}"]`).length,
                                 targetThumbs: document.querySelectorAll(`.svc-slide-thumb[data-service-id="${expected.serviceId}"][data-presenter-index="${expected.index}"]`).length,
@@ -5293,6 +5299,7 @@ def main() -> int:
                         if (
                             scroll_ok
                             and outline_scroll_state["visible"]
+                            and outline_scroll_state["belowSticky"]
                             and (
                                 outline_scroll_state["presenterIndex"] >= 0
                                 or outline_scroll_state["selectedThumbs"] >= 1
