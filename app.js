@@ -3081,6 +3081,7 @@ async function loadServiceDataOnce({ silent = false } = {}) {
     restorePresenterControllerSession();
     if (state.module === "presenter") {
       await loadWorshipPresenterSlides(presenterViewServiceId(), { renderControls: false });
+      restorePresenterControllerSession();
     }
     state.dirtyServiceTypeIds.clear();
     state.dirty.service = false;
