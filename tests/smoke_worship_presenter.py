@@ -279,6 +279,46 @@ def main() -> int:
                 else:
                     fail("presenter-status-ready", json.dumps(initial_status, ensure_ascii=False))
 
+                live_panel_state = page.evaluate(
+                    """
+                    (() => {
+                      const panel = document.querySelector('.svc-presenter-live-panel');
+                      const actions = document.querySelector('.svc-presenter-actions');
+                      const preview = panel?.querySelector('.svc-presenter-live-preview');
+                      const previewRect = preview?.getBoundingClientRect();
+                      const topRect = document.querySelector('.svc-presenter-top')?.getBoundingClientRect();
+                      return {
+                        exists: Boolean(panel),
+                        inActions: Boolean(panel && actions?.contains(panel)),
+                        status: panel?.querySelector('.svc-presenter-status')?.textContent.trim() || '',
+                        title: panel?.querySelector('.svc-presenter-live-copy strong')?.textContent.trim() || '',
+                        hasPreview: Boolean(preview),
+                        hasEmptyPreview: Boolean(panel?.querySelector('.svc-presenter-live-preview-empty')),
+                        previewRatio: previewRect?.height ? Number((previewRect.width / previewRect.height).toFixed(2)) : 0,
+                        topHeight: Math.round(topRect?.height || 0),
+                        mediaCount: panel?.querySelectorAll('audio, video').length || 0,
+                        overflowX: Math.max(0, document.documentElement.scrollWidth - window.innerWidth),
+                      };
+                    })()
+                    """
+                )
+                live_panel_ok = (
+                    live_panel_state["exists"]
+                    and live_panel_state["inActions"]
+                    and live_panel_state["status"] == "준비"
+                    and live_panel_state["title"] == "송출 대기"
+                    and live_panel_state["hasPreview"]
+                    and live_panel_state["hasEmptyPreview"]
+                    and 1.72 <= live_panel_state["previewRatio"] <= 1.82
+                    and live_panel_state["topHeight"] <= 72
+                    and live_panel_state["mediaCount"] == 0
+                    and live_panel_state["overflowX"] == 0
+                )
+                if live_panel_ok:
+                    pass_("presenter-live-status-panel", json.dumps(live_panel_state, ensure_ascii=False))
+                else:
+                    fail("presenter-live-status-panel", json.dumps(live_panel_state, ensure_ascii=False))
+
                 announcement_center_state = page.evaluate(
                     """
                     (() => {
