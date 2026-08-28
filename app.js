@@ -21085,6 +21085,7 @@ function renderServiceCurrentSidebar(service) {
   const items = getServiceOutlineItems(service);
   const editorItems = normalizeServiceItems(getServiceItems(service.id));
   const slides = presenterSlidesForService(service.id);
+  const slideIndexByItemId = buildPresenterSlideItemIndexMap(slides);
   const selectedIndex = serviceSidebarSelectedItemIndex(service.id, editorItems, slides);
   const outlineGroups = groupServiceSidebarOutlineItems(items);
   const readyRow = renderServiceReadyOutlineRow(service, slides, items);
@@ -21096,7 +21097,7 @@ function renderServiceCurrentSidebar(service) {
       <div class="service-outline-list">
         ${readyRow}
         ${items.length
-          ? outlineGroups.map((group, index) => renderServiceOutlineGroup(service, group, index, selectedIndex, slides)).join("")
+          ? outlineGroups.map((group, index) => renderServiceOutlineGroup(service, group, index, selectedIndex, slides, slideIndexByItemId)).join("")
           : `<p class="service-no-results">순서가 없습니다.</p>`}
       </div>
     </section>
@@ -21150,14 +21151,14 @@ function renderServiceReadyOutlineRow(service, slides = [], items = getServiceIt
     </button>`;
 }
 
-function renderServiceOutlineGroup(service, group, groupIndex, selectedIndex, slides = []) {
+function renderServiceOutlineGroup(service, group, groupIndex, selectedIndex, slides = [], slideIndexByItemId = null) {
   if (!group?.items?.length) return "";
   const firstEntry = group.items[0];
   const childEntries = group.items.filter(({ item }) =>
     !isServiceSidebarSectionMarkerItem(item, group)
     && !isServiceConnectedPraiseSecondaryItem(item));
-  const firstSlideEntry = group.items.find(({ item }) => firstPresenterSlideIndexForServiceItem(item, slides) >= 0) || firstEntry;
-  const firstSlideIndex = firstPresenterSlideIndexForServiceItem(firstSlideEntry.item, slides);
+  const firstSlideEntry = group.items.find(({ item }) => firstPresenterSlideIndexForServiceItem(item, slides, slideIndexByItemId) >= 0) || firstEntry;
+  const firstSlideIndex = firstPresenterSlideIndexForServiceItem(firstSlideEntry.item, slides, slideIndexByItemId);
   const selected = group.items.some(({ index }) => index === selectedIndex);
   const activeSlide = state.presenter.serviceId === service.id
     && group.items.some(({ item }) => presenterSlideBelongsToItem(state.presenter.slides[state.presenter.index], item));
@@ -21180,13 +21181,13 @@ function renderServiceOutlineGroup(service, group, groupIndex, selectedIndex, sl
       </button>
       ${childEntries.length ? `
         <div class="service-outline-children">
-          ${childEntries.map(({ item, index }) => renderServiceOutlineChildRow(service, item, index, selectedIndex, slides)).join("")}
+          ${childEntries.map(({ item, index }) => renderServiceOutlineChildRow(service, item, index, selectedIndex, slides, slideIndexByItemId)).join("")}
         </div>` : ""}
     </div>`;
 }
 
-function renderServiceOutlineChildRow(service, item, index, selectedIndex, slides = []) {
-  const slideIndex = firstPresenterSlideIndexForServiceItem(item, slides);
+function renderServiceOutlineChildRow(service, item, index, selectedIndex, slides = [], slideIndexByItemId = null) {
+  const slideIndex = firstPresenterSlideIndexForServiceItem(item, slides, slideIndexByItemId);
   const activeSlide = state.presenter.serviceId === service.id && slideIndex >= 0 && presenterSlideBelongsToItem(state.presenter.slides[state.presenter.index], item);
   const selected = index === selectedIndex;
   const title = serviceSidebarChildItemTitle(item, service);
@@ -21336,7 +21337,20 @@ function serviceSidebarSelectedItemIndex(serviceId, items = getServiceItems(serv
   return Number.isInteger(items[0]._origIndex) ? items[0]._origIndex : 0;
 }
 
-function firstPresenterSlideIndexForServiceItem(item, slides = []) {
+function buildPresenterSlideItemIndexMap(slides = []) {
+  const map = new Map();
+  slides.forEach((slide, index) => {
+    [slide?.elementId, slide?.sectionId].forEach((rawId) => {
+      const id = String(rawId || "").trim();
+      if (id && !map.has(id)) map.set(id, index);
+    });
+  });
+  return map;
+}
+
+function firstPresenterSlideIndexForServiceItem(item, slides = [], slideIndexByItemId = null) {
+  const id = String(item?.id || "").trim();
+  if (id && slideIndexByItemId?.has?.(id)) return slideIndexByItemId.get(id);
   return slides.findIndex((slide) => presenterSlideBelongsToItem(slide, item));
 }
 
@@ -28110,7 +28124,7 @@ function preparePresenterService(serviceId = state.selectedServiceId) {
   const previousSlides = state.presenter.slides;
   const previousIndex = state.presenter.index;
   const signature = presenterSlideBuildSourceSignature(serviceId);
-  const slides = buildServicePresenterSlides(serviceId);
+  const slides = buildServicePresenterSlides(serviceId, signature);
   if (previousServiceId !== serviceId) {
     state.presenter.restorePayload = null;
     if (!state.serviceMusic.playing) {
@@ -28366,10 +28380,10 @@ function presenterSlideBuildSourceSignature(serviceId) {
   });
 }
 
-function buildServicePresenterSlides(serviceId) {
+function buildServicePresenterSlides(serviceId, signatureOverride = "") {
   const key = String(serviceId || "");
   if (!key) return [];
-  const signature = presenterSlideBuildSourceSignature(key);
+  const signature = signatureOverride || presenterSlideBuildSourceSignature(key);
   const cached = presenterSlideBuildCache.get(key);
   if (cached?.signature === signature) return cached.slides;
   const slides = buildServicePresenterSlidesUncached(key);
