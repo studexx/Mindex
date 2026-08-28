@@ -7538,6 +7538,133 @@ def main() -> int:
                 else:
                     fail("presenter-output-key-sync", json.dumps({"output": channel_state, "controller": controller_state}, ensure_ascii=False))
 
+                controller_restore_after_hydration = page.evaluate(
+                    """
+                    (() => {
+                      const previous = {
+                        services: state.services,
+                        serviceTypes: state.serviceTypes,
+                        serviceItems: state.serviceItems,
+                        selectedServiceId: state.selectedServiceId,
+                        selectedServiceTypeId: state.selectedServiceTypeId,
+                        module: state.module,
+                        presenter: { ...state.presenter },
+                        storedPayload: localStorage.getItem(PRESENTER_STORAGE_KEY),
+                      };
+                      const service = {
+                        id: '__smoke_presenter_restore_hydration__',
+                        type_id: 'monthly',
+                        date: '2026-07-04',
+                        title: 'Restore Hydration Smoke',
+                        leader: '테스트',
+                        alias: '',
+                      };
+                      try {
+                        if (!state.serviceTypes.some((item) => item.id === service.type_id)) {
+                          state.serviceTypes = [
+                            ...state.serviceTypes,
+                            { id: service.type_id, name: '월삭예배', sort_order: 1 },
+                          ];
+                        }
+                        state.services = [
+                          service,
+                          ...state.services.filter((item) => item.id !== service.id),
+                        ];
+                        const hydratedItems = normalizeServiceItems([
+                          {
+                            id: '__smoke_presenter_restore_item_1__',
+                            service_id: service.id,
+                            sort_order: 1,
+                            label: '준비',
+                            raw_title: '복원 첫 항목',
+                            memo: JSON.stringify({ slides: ['복원 첫 슬라이드'] }),
+                          },
+                          {
+                            id: '__smoke_presenter_restore_item_2__',
+                            service_id: service.id,
+                            sort_order: 2,
+                            label: '찬양',
+                            raw_title: '복원 둘째 항목',
+                            memo: JSON.stringify({ slides: ['복원 둘째 슬라이드'] }),
+                          },
+                        ]);
+                        state.serviceItems = {
+                          ...state.serviceItems,
+                          [service.id]: hydratedItems,
+                        };
+                        const slides = buildServicePresenterSlides(service.id);
+                        const targetIndex = Math.min(1, Math.max(slides.length - 1, 0));
+                        const restorePayload = normalizePresenterPayload({
+                          serviceId: service.id,
+                          serviceType: service.type_id,
+                          serviceTitle: '월삭예배 · 2026-07-04',
+                          serviceDate: service.date,
+                          slides,
+                          index: targetIndex,
+                          slideAnchor: presenterSlideAnchor(slides[targetIndex]),
+                          safetyBlank: false,
+                          liveScripture: null,
+                          updatedAt: Date.now(),
+                        });
+                        localStorage.setItem(PRESENTER_STORAGE_KEY, JSON.stringify(restorePayload));
+
+                        delete state.serviceItems[service.id];
+                        state.module = 'presenter';
+                        state.selectedServiceId = '';
+                        state.selectedServiceTypeId = '';
+                        state.presenter = {
+                          ...state.presenter,
+                          serviceId: '',
+                          slides: [],
+                          index: 0,
+                          safetyBlank: false,
+                          liveScripture: { reference: '', draft: '', active: false, slide: null },
+                          livePraise: emptyLivePraiseState(),
+                          restorePayload,
+                          outputConnectedAt: Date.now(),
+                          outputStopAt: 0,
+                        };
+                        const before = restorePresenterControllerSession();
+                        state.serviceItems[service.id] = hydratedItems;
+                        const after = restorePresenterControllerSession();
+                        return {
+                          before,
+                          after,
+                          serviceId: state.presenter.serviceId,
+                          selectedServiceId: state.selectedServiceId,
+                          selectedServiceTypeId: state.selectedServiceTypeId,
+                          index: state.presenter.index,
+                          expectedIndex: targetIndex,
+                          slideTitle: state.presenter.slides[state.presenter.index]?.title || '',
+                          payloadIndex: JSON.parse(localStorage.getItem(PRESENTER_STORAGE_KEY) || '{}').index,
+                        };
+                      } finally {
+                        state.services = previous.services;
+                        state.serviceTypes = previous.serviceTypes;
+                        state.serviceItems = previous.serviceItems;
+                        state.selectedServiceId = previous.selectedServiceId;
+                        state.selectedServiceTypeId = previous.selectedServiceTypeId;
+                        state.module = previous.module;
+                        state.presenter = previous.presenter;
+                        if (previous.storedPayload === null) localStorage.removeItem(PRESENTER_STORAGE_KEY);
+                        else localStorage.setItem(PRESENTER_STORAGE_KEY, previous.storedPayload);
+                      }
+                    })()
+                    """
+                )
+                if (
+                    controller_restore_after_hydration["before"] == "pending"
+                    and controller_restore_after_hydration["after"] == "restored"
+                    and controller_restore_after_hydration["serviceId"] == "__smoke_presenter_restore_hydration__"
+                    and controller_restore_after_hydration["selectedServiceId"] == "__smoke_presenter_restore_hydration__"
+                    and controller_restore_after_hydration["selectedServiceTypeId"] == "monthly"
+                    and controller_restore_after_hydration["index"] == controller_restore_after_hydration["expectedIndex"]
+                    and controller_restore_after_hydration["payloadIndex"] == controller_restore_after_hydration["expectedIndex"]
+                ):
+                    pass_("presenter-controller-restore-after-hydration", json.dumps(controller_restore_after_hydration, ensure_ascii=False))
+                else:
+                    fail("presenter-controller-restore-after-hydration", json.dumps(controller_restore_after_hydration, ensure_ascii=False))
+
                 selection_state = page.evaluate(
                     """
                     () => {
