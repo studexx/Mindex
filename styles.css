@@ -7406,6 +7406,7 @@ body.is-chromium .svc-slide-thumb-wrap.active:has(.svc-slide-thumb:focus-visible
 }
 .svc-slide-thumb-frame {
   --presenter-preview-scale: 0.15;
+  position: relative;
   display: flex;
   width: 100%;
   min-width: 0;
@@ -7429,6 +7430,17 @@ body.is-chromium .svc-slide-thumb-wrap.active:has(.svc-slide-thumb:focus-visible
   transform: translateZ(0);
   transition: filter .16s ease, outline-color .16s ease;
 }
+.svc-slide-thumb-frame::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: inherit;
+  background: rgba(255, 255, 255, .10);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .16s ease;
+}
 body.is-chromium .svc-slide-thumb-frame {
   box-shadow: none;
   transform: none;
@@ -7439,12 +7451,15 @@ body.is-chromium .svc-slide-thumb-frame {
   padding: 0;
 }
 .svc-slide-thumb:hover .svc-slide-thumb-frame {
-  filter: brightness(1.08);
+  filter: brightness(1.04);
   outline: none;
   outline-offset: 0;
   box-shadow:
     inset 0 0 0 1px rgba(255,255,255,.46),
     0 1px 3px rgba(0, 0, 0, .10);
+}
+.svc-slide-thumb:hover .svc-slide-thumb-frame::after {
+  opacity: 1;
 }
 body.is-chromium .svc-slide-thumb:hover .svc-slide-thumb-frame {
   outline: none;

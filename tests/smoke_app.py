@@ -7770,12 +7770,14 @@ def main() -> int:
                           if (!frame || !canvas) return null;
                           const rect = frame.getBoundingClientRect();
                           const numberStyle = number ? getComputedStyle(number) : null;
+                          const hoverOverlayStyle = getComputedStyle(frame, '::after');
                           return {
                             width: Number(rect.width.toFixed(2)),
                             height: Number(rect.height.toFixed(2)),
                             transform: getComputedStyle(canvas).transform || '',
                             numberColor: numberStyle?.color || '',
                             numberWeight: numberStyle?.fontWeight || '',
+                            hoverOverlayOpacity: Number.parseFloat(hoverOverlayStyle.opacity || '0') || 0,
                           };
                         }
                         """
@@ -7797,6 +7799,7 @@ def main() -> int:
                               if (!frame || !canvas) return null;
                               const rect = frame.getBoundingClientRect();
                               const numberStyle = number ? getComputedStyle(number) : null;
+                              const hoverOverlayStyle = getComputedStyle(frame, '::after');
                               return {
                                 width: Number(rect.width.toFixed(2)),
                                 height: Number(rect.height.toFixed(2)),
@@ -7804,6 +7807,7 @@ def main() -> int:
                                 outline: getComputedStyle(frame).outlineStyle,
                                 numberColor: numberStyle?.color || '',
                                 numberWeight: numberStyle?.fontWeight || '',
+                                hoverOverlayOpacity: Number.parseFloat(hoverOverlayStyle.opacity || '0') || 0,
                               };
                             }
                             """
@@ -7815,6 +7819,8 @@ def main() -> int:
                             and thumb_hover_state["transform"] == thumb_hover_later["transform"]
                             and thumb_hover_state["numberColor"] == thumb_hover_later["numberColor"]
                             and thumb_hover_state["numberWeight"] == thumb_hover_later["numberWeight"]
+                            and thumb_hover_state["hoverOverlayOpacity"] <= 0.01
+                            and thumb_hover_later["hoverOverlayOpacity"] >= 0.5
                         )
                         if hover_stable:
                             pass_("presenter-thumbnail-hover-stability", json.dumps({
