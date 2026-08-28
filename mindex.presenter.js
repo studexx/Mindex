@@ -2904,8 +2904,7 @@ function handlePresenterShortcut(event) {
   const presenterServiceId = state.presenter.serviceId;
   if (state.module !== "presenter" || !presenterServiceId) return false;
   if (event.key === "F11" && isPresenterOutputWindowOpen()) {
-    event.preventDefault();
-    event.stopPropagation?.();
+    consumePresenterShortcutEvent(event);
     state.presenter.exitArmedAt = 0;
     requestPresenterOutputFullscreenFromController();
     return true;
@@ -2915,7 +2914,7 @@ function handlePresenterShortcut(event) {
   const activeServiceSelected = state.selectedServiceId === presenterServiceId;
 
   if (event.key === "Escape") {
-    event.preventDefault();
+    consumePresenterShortcutEvent(event);
     if (activeServiceSelected && state.presenter.jumpDraft) {
       clearPresenterJumpDraft(presenterServiceId);
       return true;
@@ -2932,48 +2931,54 @@ function handlePresenterShortcut(event) {
   if (!activeServiceSelected) return false;
 
   if (/^\d$/.test(event.key)) {
-    event.preventDefault();
+    consumePresenterShortcutEvent(event);
     state.presenter.exitArmedAt = 0;
     setPresenterJumpDraft(`${state.presenter.jumpDraft || ""}${event.key}`, presenterServiceId);
     return true;
   }
 
   if (event.key === "Enter" && state.presenter.jumpDraft) {
-    event.preventDefault();
+    consumePresenterShortcutEvent(event);
     state.presenter.exitArmedAt = 0;
     commitPresenterJumpDraft(presenterServiceId);
     return true;
   }
 
   if (event.key === "Enter" || event.key === "ArrowRight" || event.key === "ArrowDown" || event.key === "PageDown" || event.key === " ") {
-    event.preventDefault();
+    consumePresenterShortcutEvent(event);
     state.presenter.exitArmedAt = 0;
     runPresenterAction("next", presenterServiceId);
     return true;
   }
 
   if (event.key === "ArrowLeft" || event.key === "ArrowUp" || event.key === "PageUp") {
-    event.preventDefault();
+    consumePresenterShortcutEvent(event);
     state.presenter.exitArmedAt = 0;
     runPresenterAction("prev", presenterServiceId);
     return true;
   }
 
   if (event.key === "Home") {
-    event.preventDefault();
+    consumePresenterShortcutEvent(event);
     state.presenter.exitArmedAt = 0;
     runPresenterAction("first", presenterServiceId);
     return true;
   }
 
   if (event.key === "End") {
-    event.preventDefault();
+    consumePresenterShortcutEvent(event);
     state.presenter.exitArmedAt = 0;
     runPresenterAction("last", presenterServiceId);
     return true;
   }
 
   return false;
+}
+
+function consumePresenterShortcutEvent(event) {
+  event.preventDefault?.();
+  event.stopPropagation?.();
+  event.stopImmediatePropagation?.();
 }
 
 function requestPresenterOutputFullscreenFromController() {
@@ -2990,7 +2995,7 @@ function shouldKeepPresenterShortcutInFocusedControl(event) {
   if (target.closest("[data-service-music-action]")) return true;
   if (
     presenterControllerNavigationKey(event.key)
-    && target.closest(".svc-slide-thumb[data-presenter-index][data-service-id], .svc-slide-thumb-wrap[data-presenter-index][data-service-id]")
+    && target.closest("[data-presenter-action], .svc-slide-thumb[data-presenter-index][data-service-id], .svc-slide-thumb-wrap[data-presenter-index][data-service-id]")
   ) {
     return false;
   }

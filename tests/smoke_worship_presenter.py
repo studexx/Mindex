@@ -8041,6 +8041,47 @@ def main() -> int:
                 else:
                     fail("presenter-keyboard-thumb-focus-advances", json.dumps(thumb_focus_keyboard_state, ensure_ascii=False))
 
+                page.evaluate(
+                    """
+                    (serviceId) => {
+                      state.presenter.serviceId = serviceId;
+                      state.presenter.index = 1;
+                      state.selectedServiceId = serviceId;
+                      publishPresenterState({ force: true });
+                      renderPresenterControlState(serviceId);
+                      const thumb = document.querySelector('.svc-slide-thumb[data-presenter-index="1"][data-service-id]');
+                      thumb?.focus();
+                    }
+                    """,
+                    selection_state["switchId"],
+                )
+                page.keyboard.press("Space")
+                output_page.wait_for_function(
+                    "() => JSON.parse(localStorage.getItem('mindex.presenter.state') || '{}').index === 2",
+                    timeout=5000,
+                )
+                page.wait_for_timeout(200)
+                thumb_space_keyboard_state = page.evaluate(
+                    """
+                    (() => {
+                      const payload = JSON.parse(localStorage.getItem('mindex.presenter.state') || '{}');
+                      return {
+                        presenterIndex: state.presenter.index,
+                        outputIndex: payload.index,
+                        focusedThumb: document.activeElement?.matches('.svc-slide-thumb[data-presenter-index][data-service-id]') || false,
+                      };
+                    })()
+                    """
+                )
+                if (
+                    thumb_space_keyboard_state["presenterIndex"] == 2
+                    and thumb_space_keyboard_state["outputIndex"] == 2
+                    and thumb_space_keyboard_state["focusedThumb"]
+                ):
+                    pass_("presenter-keyboard-thumb-space-no-bounce", json.dumps(thumb_space_keyboard_state, ensure_ascii=False))
+                else:
+                    fail("presenter-keyboard-thumb-space-no-bounce", json.dumps(thumb_space_keyboard_state, ensure_ascii=False))
+
                 outline_click_scroll_state = page.evaluate(
                     """
                     (serviceId) => {
