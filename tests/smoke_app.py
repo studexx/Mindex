@@ -1472,7 +1472,10 @@ def main() -> int:
                     (() => ({
                       placeholder: document.querySelector('#searchInput')?.placeholder || '',
                       hasCalendar: Boolean(document.querySelector('.cal-view') || document.querySelector('.empty-detail')),
+                      title: document.querySelector('.cal-title')?.textContent.trim() || '',
                       activeTab: document.querySelector('.cal-tab.active')?.textContent.trim() || '',
+                      headerBorder: getComputedStyle(document.querySelector('.cal-header')).borderBottomWidth,
+                      tabHeight: Math.round(document.querySelector('.cal-tab.active')?.getBoundingClientRect().height || 0),
                       departmentHeaders: [...document.querySelectorAll('.cal-table thead th')]
                         .map((node) => node.textContent.replace(/\\s+/g, ' ').trim())
                         .map((text) => text.normalize('NFC'))
@@ -1500,7 +1503,10 @@ def main() -> int:
                 if (
                     calendar_state["placeholder"] == "검색..."
                     and calendar_state["hasCalendar"]
+                    and calendar_state["title"] == "교회력"
                     and calendar_state["activeTab"] == "부서 일과"
+                    and calendar_state["headerBorder"] == "1px"
+                    and calendar_state["tabHeight"] == 28
                     and calendar_state["departmentHeaders"] == expected_department_headers
                     and "cal-table--departments" in calendar_state["tableClass"]
                     and 0 <= calendar_state["tableScrollWidth"] - calendar_state["wrapperWidth"] <= 32
@@ -1552,11 +1558,21 @@ def main() -> int:
                     (() => ({
                       placeholder: document.querySelector('#searchInput')?.placeholder || '',
                       hasReferences: Boolean(document.querySelector('.references-shell') || document.querySelector('.empty-detail')),
+                      title: document.querySelector('.references-shell .editor-title h2')?.textContent.trim() || '',
+                      summary: document.querySelector('.references-shell .song-description-title')?.textContent.trim() || '',
+                      headerBorder: getComputedStyle(document.querySelector('.references-shell .editor-head')).borderBottomWidth,
                       overflow: Math.max(document.documentElement.scrollWidth - window.innerWidth, document.body.scrollWidth - window.innerWidth)
                     }))()
                     """
                 )
-                if references_state["placeholder"] == "검색..." and references_state["hasReferences"] and references_state["overflow"] <= 2:
+                if (
+                    references_state["placeholder"] == "검색..."
+                    and references_state["hasReferences"]
+                    and references_state["title"] == "참고자료"
+                    and "링크" in references_state["summary"]
+                    and references_state["headerBorder"] == "1px"
+                    and references_state["overflow"] <= 2
+                ):
                     pass_("references-utility-shell", json.dumps(references_state, ensure_ascii=False))
                 else:
                     fail("references-utility-shell", json.dumps(references_state, ensure_ascii=False))

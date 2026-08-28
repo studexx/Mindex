@@ -14689,7 +14689,7 @@ function renderReferencesDetail() {
     <div class="editor-shell references-shell">
       <header class="editor-head">
         <div class="editor-title">
-          <h2>링크</h2>
+          <h2>참고자료</h2>
           <section class="song-description" aria-label="링크 설명">
             <p class="song-description-title">${escapeHtml(referenceDetailSummary())}</p>
           </section>

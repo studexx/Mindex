@@ -22,21 +22,32 @@ body[data-theme="dark"] .cal-view {
   --cal-today: color-mix(in srgb, var(--accent) 13%, var(--panel));
 }
 .cal-view { display: flex; flex-direction: column; height: 100%; min-height: 0; overflow: hidden; }
-.cal-header { flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; gap: var(--s3); padding: 0 0 12px; }
-.cal-title { margin: 0; color: var(--ink); font-size: var(--page-title-size); font-weight: var(--page-title-weight); letter-spacing: 0; line-height: 1.15; }
-.cal-subtitle { display: block; margin-top: 3px; color: var(--cal-soft); font-size: 11px; font-weight: 500; }
+.cal-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  border-bottom: 1px solid color-mix(in srgb, var(--cal-line) 72%, transparent);
+  padding: 0 0 10px;
+}
+.cal-title { margin: 0; color: var(--ink); font-size: clamp(22px, 2.2vw, 30px); font-weight: var(--page-title-weight); letter-spacing: 0; line-height: 1.15; }
+.cal-subtitle { display: block; margin-top: 2px; color: var(--cal-soft); font-size: 11px; font-weight: 700; line-height: 16px; }
 .cal-tabs {
   display: inline-flex;
   flex-shrink: 0;
   align-items: center;
-  gap: var(--s1);
+  gap: 2px;
+  border-radius: var(--r);
+  background: color-mix(in srgb, var(--panel-2) 44%, transparent);
+  padding: 3px;
 }
 .cal-tab {
   min-width: 80px;
-  height: 30px;
+  height: 28px;
   padding: 0 var(--s3);
   border: 0;
-  border-radius: var(--r);
+  border-radius: calc(var(--r) - 2px);
   background: transparent;
   color: var(--cal-muted);
   font: inherit;
@@ -46,12 +57,12 @@ body[data-theme="dark"] .cal-view {
   cursor: pointer;
 }
 .cal-tab:hover {
-  background: var(--sidebar-hover-bg);
+  background: color-mix(in srgb, var(--panel-2) 54%, transparent);
   color: var(--ink-2);
 }
 .cal-tab.active {
-  background: transparent;
-  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, var(--panel-2));
+  color: var(--ink);
   font-weight: 700;
 }
 .cal-table-wrap { flex: 1; min-height: 0; overflow: auto; background: var(--bg); padding: 0 0 var(--s4); }
