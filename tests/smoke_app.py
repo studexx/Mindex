@@ -360,6 +360,7 @@ def select_service_with_slides(page) -> dict[str, Any] | None:
           if (typeof refs !== 'undefined' && refs.searchInput) refs.searchInput.value = '';
           state.selectedServiceTypeId = service.type_id;
           state.selectedServiceId = service.id;
+          state.presenter.viewServiceId = service.id;
           render();
           const renderedSlides = presenterSlidesForService(service.id);
           const visibleThumbs = document.querySelectorAll('.svc-slide-thumb[data-presenter-index][data-service-id]').length;
@@ -380,6 +381,7 @@ def cleanup_presenter_fixture(page) -> None:
           delete state.serviceItems[serviceId];
           delete state.worshipPresenterSlides[serviceId];
           if (state.selectedServiceId === serviceId) state.selectedServiceId = null;
+          if (state.presenter?.viewServiceId === serviceId) state.presenter.viewServiceId = "";
           if (state.presenter?.serviceId === serviceId) {
             state.presenter.serviceId = null;
             state.presenter.slides = [];
@@ -7017,6 +7019,7 @@ def main() -> int:
                             songVersionTablesSupported: state.songVersionTablesSupported,
                             selectedServiceId: state.selectedServiceId,
                             selectedServiceTypeId: state.selectedServiceTypeId,
+                            presenterViewServiceId: state.presenter.viewServiceId,
                             calendarData: state.calendarData,
                             drafts: state.presenterPreparationDrafts,
                             dirty: state.dirty.service,
@@ -7419,6 +7422,7 @@ def main() -> int:
                             state.songVersionTablesSupported = original.songVersionTablesSupported;
                             state.selectedServiceId = original.selectedServiceId;
                             state.selectedServiceTypeId = original.selectedServiceTypeId;
+                            state.presenter.viewServiceId = original.presenterViewServiceId;
                             state.calendarData = original.calendarData;
                             state.presenterPreparationDrafts = original.drafts;
                             state.dirty.service = original.dirty;
@@ -7561,6 +7565,7 @@ def main() -> int:
                             drafts: state.presenterPreparationDrafts,
                             dirty: state.dirty.service,
                             presenter: {
+                              viewServiceId: state.presenter.viewServiceId,
                               serviceId: state.presenter.serviceId,
                               slides: state.presenter.slides,
                               index: state.presenter.index,
@@ -7616,6 +7621,7 @@ def main() -> int:
                             state.presenterPreparationDrafts = original.drafts;
                             state.dirty.service = original.dirty;
                             state.presenter.serviceId = original.presenter.serviceId;
+                            state.presenter.viewServiceId = original.presenter.viewServiceId;
                             state.presenter.slides = original.presenter.slides;
                             state.presenter.index = original.presenter.index;
                             state.presenter.safetyBlank = original.presenter.safetyBlank;
@@ -7638,7 +7644,19 @@ def main() -> int:
                         fail("presenter-preparation-sermon-slot", json.dumps(presenter_preparation_sermon_slot, ensure_ascii=False))
 
                     page.set_viewport_size({"width": 520, "height": 760})
-                    page.evaluate("renderPresenterDetail()")
+                    page.evaluate(
+                        """
+                        (serviceId) => {
+                          state.module = 'presenter';
+                          state.selectedServiceId = serviceId;
+                          const service = state.services.find((item) => item.id === serviceId);
+                          state.selectedServiceTypeId = service?.type_id || state.selectedServiceTypeId;
+                          state.presenter.viewServiceId = serviceId;
+                          renderPresenterDetail();
+                        }
+                        """,
+                        service_for_slides["id"],
+                    )
                     page.wait_for_selector("#servicePresenterControls", timeout=5000)
                     authoring_narrow = page.evaluate(
                         """

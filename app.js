@@ -699,6 +699,7 @@ const state = {
     outputStoppingClientId: "",
     outputClientId: "",
     outputWarmup: null,
+    viewServiceId: "",
     serviceId: null,
     slides: [],
     sourceItems: null,
@@ -2061,6 +2062,9 @@ async function goHome() {
 }
 
 function currentBrowserHistorySnapshot() {
+  const selectedServiceId = state.module === "presenter"
+    ? presenterViewServiceId()
+    : state.selectedServiceId;
   return {
     module: state.module,
     search: state.search,
@@ -2075,7 +2079,7 @@ function currentBrowserHistorySnapshot() {
     selectedBibleChapter: state.selectedBibleChapter,
     selectedBibleVerse: state.selectedBibleVerse,
     selectedServiceTypeId: state.selectedServiceTypeId,
-    selectedServiceId: state.selectedServiceId,
+    selectedServiceId,
     bibleTextSearchQuery: state.bibleTextSearchQuery,
     bibleTextSearchPage: state.bibleTextSearchPage,
   };
@@ -2121,6 +2125,9 @@ async function applyBrowserHistorySnapshot(snapshot) {
     state.lastSelectedBibleVerse = state.selectedBibleVerse || null;
     state.selectedServiceTypeId = snapshot.selectedServiceTypeId || null;
     state.selectedServiceId = snapshot.selectedServiceId || null;
+    if (state.module === "presenter" && state.selectedServiceId) {
+      state.presenter.viewServiceId = state.selectedServiceId;
+    }
     state.selectedServiceItemIndex = null;
     clearBibleTextSearch();
     state.bibleTextSearchQuery = snapshot.bibleTextSearchQuery || "";
@@ -2314,6 +2321,9 @@ function applyLinkState(params) {
   state.lastSelectedBibleVerse = state.selectedBibleVerse || null;
   state.selectedServiceTypeId = snapshot.selectedServiceTypeId || state.selectedServiceTypeId;
   state.selectedServiceId = snapshot.selectedServiceId || state.selectedServiceId;
+  if (state.module === "presenter" && state.selectedServiceId) {
+    state.presenter.viewServiceId = state.selectedServiceId;
+  }
   if (snapshot.selectedServiceId) markWorshipServiceExplicitlyRequested(snapshot.selectedServiceId);
   state.selectedServiceItemIndex = null;
   state.bibleTextSearchQuery = snapshot.bibleTextSearchQuery || state.bibleTextSearchQuery;
@@ -12434,7 +12444,7 @@ function renderPageTabTitle() {
 }
 
 function presenterViewServiceId() {
-  return String(state.selectedServiceId || state.presenter.serviceId || "").trim();
+  return String(state.presenter.viewServiceId || state.presenter.serviceId || state.selectedServiceId || "").trim();
 }
 
 function currentPageTabTitle() {
@@ -28158,6 +28168,7 @@ function presenterServiceNeedsHymnScoreManifest(serviceId) {
 
 function preparePresenterService(serviceId = state.selectedServiceId) {
   if (!serviceId) return;
+  state.presenter.viewServiceId = serviceId;
   const outputItems = getServiceOutputItems(serviceId);
   if (!songCatalogLoaded && !songLoadPromise && canUseClientData()) {
     void loadSongsForIds(outputItems.map((item) => item.song_id)).then(() => refreshPresenterForService(serviceId));
@@ -29512,6 +29523,7 @@ async function deleteService(serviceId) {
       captureCleanFingerprint("service");
     }
     if (state.presenter.serviceId === serviceId) {
+      state.presenter.viewServiceId = "";
       state.presenter.serviceId = null;
       state.presenter.slides = [];
       state.presenter.sourceItems = null;
@@ -29542,6 +29554,7 @@ async function deleteService(serviceId) {
 function selectService(id) {
   if (id !== state.selectedServiceId && !confirmDiscardServiceChanges()) return;
   markWorshipServiceExplicitlyRequested(id);
+  if (state.module === "presenter") state.presenter.viewServiceId = id;
   state.selectedServiceId = id;
   state.selectedServiceItemIndex = 0;
   const service = state.services.find((svc) => svc.id === id);
@@ -29577,6 +29590,7 @@ async function openServiceInPresenter(id) {
   if (!id) return;
   if (id !== state.selectedServiceId && !confirmDiscardServiceChanges()) return;
   markWorshipServiceExplicitlyRequested(id);
+  state.presenter.viewServiceId = id;
   state.selectedServiceId = id;
   state.selectedServiceItemIndex = 0;
   const service = state.services.find((svc) => svc.id === id);

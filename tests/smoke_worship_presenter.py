@@ -160,6 +160,7 @@ def main() -> int:
                     (serviceId) => {
                       const service = state.services.find((item) => item.id === serviceId) || {};
                       const previousPresenter = {
+                        viewServiceId: state.presenter.viewServiceId,
                         serviceId: state.presenter.serviceId,
                         slides: state.presenter.slides,
                         sourceItems: state.presenter.sourceItems,
@@ -209,6 +210,64 @@ def main() -> int:
                     pass_("presenter-session-survives-navigation-selection-clear", json.dumps(session_navigation_state, ensure_ascii=False))
                 else:
                     fail("presenter-session-survives-navigation-selection-clear", json.dumps(session_navigation_state, ensure_ascii=False))
+
+                tab_selection_state = page.evaluate(
+                    """
+                    (serviceId) => {
+                      const service = state.services.find((item) => item.id === serviceId) || {};
+                      const other = state.services.find((item) => item.id && item.id !== serviceId) || null;
+                      if (!other) return { skipped: true, reason: 'No second service fixture.' };
+                      const previousModule = state.module;
+                      const previousPresenter = {
+                        viewServiceId: state.presenter.viewServiceId,
+                        serviceId: state.presenter.serviceId,
+                        slides: state.presenter.slides,
+                        sourceItems: state.presenter.sourceItems,
+                        sourceSignature: state.presenter.sourceSignature,
+                        index: state.presenter.index,
+                        safetyBlank: state.presenter.safetyBlank,
+                        jumpDraft: state.presenter.jumpDraft,
+                        liveScripture: state.presenter.liveScripture,
+                        livePraise: state.presenter.livePraise,
+                      };
+                      const previousSelectedServiceId = state.selectedServiceId;
+                      const previousSelectedServiceItemIndex = state.selectedServiceItemIndex;
+                      preparePresenterService(serviceId);
+                      state.module = 'presenter';
+                      state.selectedServiceId = other.id;
+                      state.selectedServiceItemIndex = null;
+                      const snapshot = currentBrowserHistorySnapshot();
+                      renderPresenterDetail();
+                      const title = document.querySelector('.presenter-viewer .svc-service-title')?.textContent?.trim() || '';
+                      const viewedServiceId = presenterViewServiceId();
+                      Object.assign(state.presenter, previousPresenter);
+                      state.module = previousModule;
+                      state.selectedServiceId = previousSelectedServiceId;
+                      state.selectedServiceItemIndex = previousSelectedServiceItemIndex;
+                      render();
+                      return {
+                        skipped: false,
+                        expectedServiceId: serviceId,
+                        selectedServiceId: other.id,
+                        viewedServiceId,
+                        snapshotServiceId: snapshot.selectedServiceId,
+                        title,
+                        expectedTitle: serviceDisplayTypeName(service),
+                      };
+                    }
+                    """,
+                    service["id"],
+                )
+                if tab_selection_state.get("skipped"):
+                    skip("presenter-tab-keeps-pinned-service", json.dumps(tab_selection_state, ensure_ascii=False))
+                elif (
+                    tab_selection_state["viewedServiceId"] == service["id"]
+                    and tab_selection_state["snapshotServiceId"] == service["id"]
+                    and tab_selection_state["title"] == tab_selection_state["expectedTitle"]
+                ):
+                    pass_("presenter-tab-keeps-pinned-service", json.dumps(tab_selection_state, ensure_ascii=False))
+                else:
+                    fail("presenter-tab-keeps-pinned-service", json.dumps(tab_selection_state, ensure_ascii=False))
 
                 section_edit_buttons = page.locator("[data-presenter-section-edit]")
                 section_editor_rows = []
@@ -7698,6 +7757,7 @@ def main() -> int:
                       state.module = 'presenter';
                       state.selectedServiceTypeId = service.type_id;
                       state.selectedServiceId = service.id;
+                      state.presenter.viewServiceId = service.id;
                       renderPresenterDetail();
                       renderServiceList();
                       const payload = JSON.parse(localStorage.getItem('mindex.presenter.state') || '{}');
