@@ -25383,14 +25383,16 @@ function renderPresenterControlsTop(service, slides, active, index) {
             outputOpen,
             outputOpenElsewhere,
           })}
-          <span class="svc-presenter-action-group svc-presenter-action-group--music">
-            ${renderServiceMusicPlayer()}
+          <span class="svc-presenter-utility-actions" aria-label="송출 보조 도구">
+            <span class="svc-presenter-action-group svc-presenter-action-group--music">
+              ${renderServiceMusicPlayer()}
+            </span>
+            ${showLiveScriptureControl ? `
+              <span class="svc-presenter-action-group svc-presenter-action-group--scripture">
+                ${renderLiveScriptureControl(service.id)}
+              </span>` : ""}
+            ${renderPresenterHelpControl()}
           </span>
-          ${showLiveScriptureControl ? `
-            <span class="svc-presenter-action-group svc-presenter-action-group--scripture">
-              ${renderLiveScriptureControl(service.id)}
-            </span>` : ""}
-          ${renderPresenterHelpControl()}
         </div>
       </div>`;
 }
