@@ -3521,17 +3521,17 @@ body[data-module="presenter"] .detail-pane {
 }
 .service-outline-children {
   display: grid;
-  gap: 2px;
+  gap: 1px;
   margin-left: var(--sidebar-item-pad-x);
-  padding: 2px 0 6px 8px;
+  padding: 1px 0 4px 8px;
   border-left: 1px solid color-mix(in srgb, var(--sidebar-line, rgba(255, 255, 255, .16)) 48%, transparent);
 }
 .service-outline-row--child {
-  min-height: 32px;
+  min-height: 28px;
   grid-template-columns: 0 minmax(0, 1fr) 30px;
   gap: 5px;
   border-radius: 5px;
-  padding: 5px 6px;
+  padding: 3px 6px;
 }
 .service-outline-row--child .service-outline-main {
   display: grid;
@@ -3548,17 +3548,17 @@ body[data-module="presenter"] .detail-pane {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.service-outline-row--child strong {
+.service-outline-row--child .service-outline-main strong {
   color: var(--sidebar-sub);
-  font-size: 13.5px;
+  font-size: 12px;
   font-weight: 650;
-  line-height: 19px;
+  line-height: 16px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .service-outline-row--child:has(.service-outline-kind) {
-  min-height: 45px;
+  min-height: 36px;
 }
 .service-outline-row--child.selected:not(.active) {
   background: var(--sidebar-hover-bg);

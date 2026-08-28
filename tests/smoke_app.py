@@ -4644,6 +4644,20 @@ def main() -> int:
                               align: getComputedStyle(row.querySelector('.service-outline-start')).textAlign,
                               child: row.classList.contains('service-outline-row--child')
                             })),
+                          outlineChildMetrics: (() => {
+                            const row = [...document.querySelectorAll('.service-outline-row--child')]
+                              .find((candidate) => candidate.querySelector('strong'));
+                            const title = row?.querySelector('strong');
+                            if (!row || !title) return null;
+                            const rowStyle = getComputedStyle(row);
+                            const titleStyle = getComputedStyle(title);
+                            return {
+                              rowHeight: Number(row.getBoundingClientRect().height.toFixed(2)),
+                              rowMinHeight: rowStyle.minHeight,
+                              titleFontSize: titleStyle.fontSize,
+                              titleLineHeight: titleStyle.lineHeight,
+                            };
+                          })(),
                           collapsedBoardSubgroups: document.querySelectorAll('.svc-board-subgroup.collapsed-head').length,
                           mainPraiseSubgroupLabels: (() => {
                             const group = { kind: 'main-praise', label: '찬양', subgroups: [] };
@@ -4857,6 +4871,11 @@ def main() -> int:
                             for item in presenter_terms["praiseChildTargetContract"]
                         )
                         and presenter_terms["outlineCountText"] == []
+                        and presenter_terms["outlineChildMetrics"] is not None
+                        and presenter_terms["outlineChildMetrics"]["rowHeight"] <= 40
+                        and presenter_terms["outlineChildMetrics"]["rowMinHeight"] == "36px"
+                        and presenter_terms["outlineChildMetrics"]["titleFontSize"] == "12px"
+                        and presenter_terms["outlineChildMetrics"]["titleLineHeight"] == "16px"
                         and all(
                             (
                                 item["start"] == ""
