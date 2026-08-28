@@ -3496,7 +3496,7 @@ body[data-module="presenter"] .detail-pane {
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 3px;
+  gap: 7px;
 }
 .service-outline-row {
   display: grid;
@@ -3547,10 +3547,10 @@ body[data-module="presenter"] .detail-pane {
 }
 .service-outline-children {
   display: grid;
-  gap: 1px;
-  margin-left: var(--sidebar-item-pad-x);
-  padding: 1px 0 4px 8px;
-  border-left: 1px solid color-mix(in srgb, var(--sidebar-line, rgba(255, 255, 255, .16)) 48%, transparent);
+  gap: 2px;
+  margin-left: calc(var(--sidebar-item-pad-x) + 2px);
+  padding: 2px 0 5px 10px;
+  border-left: 1px solid color-mix(in srgb, var(--sidebar-label) 28%, transparent);
 }
 .service-outline-row--child {
   min-height: 28px;
