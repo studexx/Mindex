@@ -8158,9 +8158,11 @@ def main() -> int:
                     and fullscreen_ready_state["text"] == "잠시 후\n금요기도회\n가 시작됩니다"
                     and fullscreen_ready_state["readyMessage"]["kickerText"] == "지금은 기도로 예배를 준비하는 시간입니다"
                     and fullscreen_ready_state["readyMessage"]["kickerFontSize"] < fullscreen_ready_state["readyMessage"]["messageFontSize"]
-                    and abs(fullscreen_ready_state["readyMessage"]["kickerHeight"] - fullscreen_ready_state["readyMessage"]["logoHeight"]) <= 10
-                    and abs(fullscreen_ready_state["readyMessage"]["gapAboveMessage"] - fullscreen_ready_state["readyMessage"]["gapBelowMessage"]) <= 2
-                    and 70 <= fullscreen_ready_state["readyMessage"]["messageFontSize"] <= 80
+                    and 36 <= fullscreen_ready_state["readyMessage"]["kickerHeight"] <= 52
+                    and 40 <= fullscreen_ready_state["readyMessage"]["logoHeight"] <= 58
+                    and 22 <= fullscreen_ready_state["readyMessage"]["gapAboveMessage"] <= 36
+                    and fullscreen_ready_state["readyMessage"]["gapBelowMessage"] >= 180
+                    and 56 <= fullscreen_ready_state["readyMessage"]["messageFontSize"] <= 62
                     and fullscreen_ready_state["readyMessage"]["text"] == "잠시 후 금요기도회가 시작됩니다"
                     and fullscreen_ready_state["readyMessage"]["strongText"] == "금요기도회"
                     and int(fullscreen_ready_state["readyMessage"]["strongWeight"]) > int(fullscreen_ready_state["readyMessage"]["messageWeight"])

@@ -4178,7 +4178,7 @@ function renderPresenterGeneratedWaitingLoopSlide(slide) {
       <div class="presenter-waiting-loop-field" aria-hidden="true"></div>
       <div class="presenter-waiting-loop-cross" aria-hidden="true"></div>
       <div class="presenter-waiting-loop-copy">
-        <p class="presenter-waiting-loop-script">영과 진리로 예배하는 자</p>
+        <p class="presenter-waiting-loop-script">기도로 준비합니다</p>
         <p class="presenter-waiting-loop-title"><strong>${escapeHtml(serviceName)}</strong></p>
         <p class="presenter-waiting-loop-message">예배가 곧 시작됩니다<br>기도로 예배를 준비해 주세요</p>
       </div>
@@ -4196,6 +4196,7 @@ function renderPresenterFullscreenReadySlide(slide) {
   const serviceName = presenterReadySlideServiceName(slide);
   return `
     <div class="presenter-ready-screen">
+      <div class="presenter-ready-screen-field" aria-hidden="true"></div>
       <div class="presenter-ready-screen-copy">
         <p class="presenter-ready-screen-kicker">지금은 기도로 예배를 준비하는 시간입니다</p>
         <p class="presenter-ready-screen-message">잠시 후 <strong>${escapeHtml(serviceName)}</strong>가 시작됩니다</p>
