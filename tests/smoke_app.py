@@ -7835,12 +7835,14 @@ def main() -> int:
                         """
                         (() => {
                           const wrap = document.querySelector('.svc-slide-thumb-wrap.active');
+                          const thumb = wrap?.querySelector('.svc-slide-thumb');
                           const frame = wrap?.querySelector('.svc-slide-thumb-frame');
-                          if (!wrap || !frame) return { hasActiveWrap: false };
+                          if (!wrap || !thumb || !frame) return { hasActiveWrap: false };
                           const wrapRect = wrap.getBoundingClientRect();
+                          const thumbRect = thumb.getBoundingClientRect();
                           const frameRect = frame.getBoundingClientRect();
                           const ring = Number.parseFloat(getComputedStyle(wrap).getPropertyValue('--svc-thumb-ring-space')) || 0;
-                          const activeRing = getComputedStyle(wrap, '::after');
+                          const activeRing = getComputedStyle(thumb, '::after');
                           return {
                             hasActiveWrap: true,
                             ring,
@@ -7849,7 +7851,10 @@ def main() -> int:
                             rightInset: Number((wrapRect.right - frameRect.right).toFixed(2)),
                             bottomInset: Number((wrapRect.bottom - frameRect.bottom).toFixed(2)),
                             wrapWidth: Math.round(wrapRect.width),
+                            wrapHeight: Math.round(wrapRect.height),
+                            thumbHeight: Math.round(thumbRect.height),
                             frameWidth: Math.round(frameRect.width),
+                            frameHeight: Math.round(frameRect.height),
                             activeRingBorder: activeRing.borderTopStyle,
                             activeRingBorderWidth: Number.parseFloat(activeRing.borderTopWidth) || 0,
                             activeFrameShadow: getComputedStyle(frame).boxShadow,
@@ -7870,6 +7875,8 @@ def main() -> int:
                         and active_ring_state.get("activeRingBorder") == "solid"
                         and active_ring_state.get("activeRingBorderWidth", 0) >= 1
                         and active_ring_state.get("activeFrameOutline") in ("none", "")
+                        and active_ring_state.get("thumbHeight", 0) <= active_ring_state.get("frameHeight", 0) + 1
+                        and active_ring_state.get("wrapHeight", 0) > active_ring_state.get("thumbHeight", 0) + 12
                     ):
                         pass_("presenter-active-ring-box", json.dumps(active_ring_state, ensure_ascii=False))
                     else:
