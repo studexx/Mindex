@@ -7373,12 +7373,6 @@ body.is-chromium .svc-slide-thumb-wrap.active:has(.svc-slide-thumb:focus-visible
   color: var(--accent);
   font-weight: 800;
 }
-.svc-slide-thumb-wrap.selected .svc-slide-thumb-no {
-  color: var(--ink);
-}
-.svc-slide-thumb-wrap.active.selected .svc-slide-thumb-no {
-  color: var(--accent);
-}
 .svc-slide-thumb {
   position: relative;
   display: grid;
