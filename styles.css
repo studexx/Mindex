@@ -6176,6 +6176,84 @@ textarea.svc-presenter-input-control--multiline {
   background: color-mix(in srgb, var(--panel-2) 46%, transparent);
   padding: 0 6px;
 }
+.svc-presenter-live-panel {
+  display: grid;
+  width: min(236px, 26vw);
+  min-width: 178px;
+  grid-template-columns: minmax(0, 1fr) 48px;
+  align-items: center;
+  gap: 7px;
+  border-radius: var(--r);
+  background: color-mix(in srgb, var(--panel-2) 24%, transparent);
+  padding: 4px;
+}
+.svc-presenter-live-panel.is-live {
+  background: color-mix(in srgb, #1f9d55 8%, var(--panel-2) 24%);
+}
+.svc-presenter-live-copy {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+.svc-presenter-live-label {
+  color: var(--ink-4);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  line-height: 1;
+}
+.svc-presenter-live-copy .svc-presenter-state-group {
+  height: 20px;
+  gap: 4px;
+  background: transparent;
+  padding: 0;
+}
+.svc-presenter-live-copy .svc-presenter-status,
+.svc-presenter-live-copy .svc-presenter-mode,
+.svc-presenter-live-copy .svc-presenter-warmup {
+  height: 20px;
+  min-width: 0;
+  max-width: 78px;
+  font-size: 10px;
+  line-height: 20px;
+  padding: 0 6px;
+}
+.svc-presenter-live-copy .svc-presenter-warmup { max-width: 104px; }
+.svc-presenter-live-copy strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink-2);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.svc-presenter-live-preview {
+  position: relative;
+  width: 48px;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: calc(var(--r) - 2px);
+  background: color-mix(in srgb, var(--panel) 68%, #111);
+}
+.svc-presenter-live-preview .svc-slide-mini-output,
+.svc-presenter-live-preview .svc-slide-mini-canvas {
+  width: 100%;
+  height: 100%;
+}
+.svc-presenter-live-preview .presenter-slide,
+.svc-presenter-live-preview .presenter-output-root {
+  pointer-events: none;
+}
+.svc-presenter-live-preview-empty {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background:
+    linear-gradient(135deg, transparent 0 46%, color-mix(in srgb, var(--ink-4) 30%, transparent) 46% 54%, transparent 54%),
+    color-mix(in srgb, var(--panel-2) 45%, transparent);
+}
 .svc-presenter-mini-label {
   flex: 0 0 auto;
   color: var(--ink-4);
@@ -7862,6 +7940,11 @@ body.is-chromium .svc-slide-thumb.active:hover .svc-slide-thumb-frame {
   .svc-presenter-actions {
     grid-column: 1 / -1;
     flex-wrap: wrap;
+  }
+  .svc-presenter-live-panel {
+    width: 100%;
+    min-width: 0;
+    flex: 1 1 180px;
   }
 }
 

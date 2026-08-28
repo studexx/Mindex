@@ -25353,11 +25353,6 @@ function renderPresenterControlsTop(service, slides, active, index) {
           ${renderPresenterScreenControl()}
         </div>
         <div class="svc-presenter-main" aria-live="polite">
-          <span class="svc-presenter-state-group">
-            <span class="svc-presenter-status svc-presenter-status--${escapeAttr(statusTone)}" aria-label="${escapeAttr(uiText("presenter.aria.status", { status: statusLabel }))}">${escapeHtml(statusLabel)}</span>
-            ${mode.label ? `<span class="svc-presenter-mode svc-presenter-mode--${escapeAttr(mode.tone)}" aria-label="${escapeAttr(uiText("presenter.aria.mode", { mode: mode.label }))}">${escapeHtml(mode.label)}</span>` : ""}
-            ${warmup ? `<span class="svc-presenter-warmup svc-presenter-warmup--${escapeAttr(warmup.tone)}" aria-label="${escapeAttr(warmup.aria)}">${escapeHtml(warmup.label)}</span>` : ""}
-          </span>
           <span class="svc-slide-counter" aria-label="${escapeAttr(uiText("presenter.aria.slideCount", { current, count }))}">
             <span class="svc-presenter-mini-label">${escapeHtml(uiText("presenter.label.slide"))}</span>
             <input class="svc-slide-jump-input" type="number" inputmode="numeric" min="0" max="${escapeAttr(count || 1)}" value="${escapeAttr(jumpInputValue)}" data-presenter-jump-input data-service-id="${escapeAttr(service.id)}" aria-label="${escapeAttr(uiText("presenter.aria.slideNumber"))}" ${count ? "" : "disabled"} />
@@ -25377,6 +25372,16 @@ function renderPresenterControlsTop(service, slides, active, index) {
           </span>
         </div>
         <div class="svc-presenter-actions">
+          ${renderPresenterLiveStatusPanel(service, slides, {
+            active,
+            safeIndex,
+            statusLabel,
+            statusTone,
+            mode,
+            warmup,
+            outputOpen,
+            outputOpenElsewhere,
+          })}
           <span class="svc-presenter-action-group svc-presenter-action-group--music">
             ${renderServiceMusicPlayer()}
           </span>
@@ -25387,6 +25392,51 @@ function renderPresenterControlsTop(service, slides, active, index) {
           ${renderPresenterHelpControl()}
         </div>
       </div>`;
+}
+
+function renderPresenterLiveStatusPanel(service, slides = [], options = {}) {
+  const previewSlide = presenterLiveStatusPreviewSlide(slides, options.safeIndex, options);
+  const previewTitle = presenterLiveStatusPreviewTitle(previewSlide, options);
+  return `
+    <aside class="svc-presenter-live-panel${options.outputOpen ? " is-live" : ""}" aria-label="현재 송출 상태">
+      <div class="svc-presenter-live-copy">
+        <span class="svc-presenter-live-label">현재 송출</span>
+        <span class="svc-presenter-state-group">
+          <span class="svc-presenter-status svc-presenter-status--${escapeAttr(options.statusTone || "ready")}" aria-label="${escapeAttr(uiText("presenter.aria.status", { status: options.statusLabel || "" }))}">${escapeHtml(options.statusLabel || "")}</span>
+          ${options.mode?.label ? `<span class="svc-presenter-mode svc-presenter-mode--${escapeAttr(options.mode.tone)}" aria-label="${escapeAttr(uiText("presenter.aria.mode", { mode: options.mode.label }))}">${escapeHtml(options.mode.label)}</span>` : ""}
+          ${options.warmup ? `<span class="svc-presenter-warmup svc-presenter-warmup--${escapeAttr(options.warmup.tone)}" aria-label="${escapeAttr(options.warmup.aria)}">${escapeHtml(options.warmup.label)}</span>` : ""}
+        </span>
+        <strong title="${escapeAttr(previewTitle)}">${escapeHtml(previewTitle)}</strong>
+      </div>
+      <div class="svc-presenter-live-preview" aria-hidden="true">
+        ${previewSlide ? renderPresenterSlideMiniPreview(previewSlide, service.id) : `<span class="svc-presenter-live-preview-empty"></span>`}
+      </div>
+    </aside>`;
+}
+
+function presenterLiveStatusPreviewSlide(slides = [], safeIndex = 0, options = {}) {
+  if (!options.active || !options.outputOpen) return null;
+  if (state.presenter.liveScripture?.active && state.presenter.liveScripture.slide) return state.presenter.liveScripture.slide;
+  if (state.presenter.safetyBlank) {
+    return {
+      id: "presenter-live-status-blank",
+      elementType: "blank",
+      layout: "blank",
+      type: "blank",
+      title: "빈 화면",
+      text: "",
+      outputContext: "clean",
+    };
+  }
+  return slides[clampPresenterIndex(safeIndex, slides.length)] || null;
+}
+
+function presenterLiveStatusPreviewTitle(slide = null, options = {}) {
+  if (options.outputOpenElsewhere) return "다른 예배 송출 중";
+  if (!options.outputOpen) return "송출 대기";
+  if (state.presenter.safetyBlank) return "빈 화면";
+  if (state.presenter.liveScripture?.active) return state.presenter.liveScripture.reference || slide?.title || "실시간 말씀";
+  return String(slide?.title || slide?.label || slide?.elementTitle || slide?.text || "현재 화면").split(/\r?\n/)[0].trim() || "현재 화면";
 }
 
 function presenterSlideIsLiveScriptureElement(slide = null) {
