@@ -7765,13 +7765,17 @@ def main() -> int:
                         """
                         () => {
                           const frame = document.querySelector('.svc-slide-thumb-frame');
+                          const number = frame?.closest('.svc-slide-thumb-wrap')?.querySelector('.svc-slide-thumb-no');
                           const canvas = frame?.querySelector('.svc-slide-mini-canvas');
                           if (!frame || !canvas) return null;
                           const rect = frame.getBoundingClientRect();
+                          const numberStyle = number ? getComputedStyle(number) : null;
                           return {
                             width: Number(rect.width.toFixed(2)),
                             height: Number(rect.height.toFixed(2)),
                             transform: getComputedStyle(canvas).transform || '',
+                            numberColor: numberStyle?.color || '',
+                            numberWeight: numberStyle?.fontWeight || '',
                           };
                         }
                         """
@@ -7788,14 +7792,18 @@ def main() -> int:
                             """
                             () => {
                               const frame = document.querySelector('.svc-slide-thumb-frame');
+                              const number = frame?.closest('.svc-slide-thumb-wrap')?.querySelector('.svc-slide-thumb-no');
                               const canvas = frame?.querySelector('.svc-slide-mini-canvas');
                               if (!frame || !canvas) return null;
                               const rect = frame.getBoundingClientRect();
+                              const numberStyle = number ? getComputedStyle(number) : null;
                               return {
                                 width: Number(rect.width.toFixed(2)),
                                 height: Number(rect.height.toFixed(2)),
                                 transform: getComputedStyle(canvas).transform || '',
                                 outline: getComputedStyle(frame).outlineStyle,
+                                numberColor: numberStyle?.color || '',
+                                numberWeight: numberStyle?.fontWeight || '',
                               };
                             }
                             """
@@ -7805,6 +7813,8 @@ def main() -> int:
                             and abs(thumb_hover_state["width"] - thumb_hover_later["width"]) <= 1
                             and abs(thumb_hover_state["height"] - thumb_hover_later["height"]) <= 1
                             and thumb_hover_state["transform"] == thumb_hover_later["transform"]
+                            and thumb_hover_state["numberColor"] == thumb_hover_later["numberColor"]
+                            and thumb_hover_state["numberWeight"] == thumb_hover_later["numberWeight"]
                         )
                         if hover_stable:
                             pass_("presenter-thumbnail-hover-stability", json.dumps({
