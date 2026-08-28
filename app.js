@@ -25398,7 +25398,7 @@ function renderPresenterLiveStatusPanel(service, slides = [], options = {}) {
   const previewSlide = presenterLiveStatusPreviewSlide(slides, options.safeIndex, options);
   const previewTitle = presenterLiveStatusPreviewTitle(previewSlide, options);
   return `
-    <aside class="svc-presenter-live-panel${options.outputOpen ? " is-live" : ""}" aria-label="현재 송출 상태">
+    <aside class="svc-presenter-live-panel${options.outputOpen ? " is-live" : ""}" aria-label="현재 송출 상태" aria-live="polite">
       <div class="svc-presenter-live-copy">
         <span class="svc-presenter-live-label">현재 송출</span>
         <span class="svc-presenter-state-group">

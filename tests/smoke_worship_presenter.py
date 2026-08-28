@@ -310,7 +310,7 @@ def main() -> int:
                     and live_panel_state["hasPreview"]
                     and live_panel_state["hasEmptyPreview"]
                     and 1.72 <= live_panel_state["previewRatio"] <= 1.82
-                    and live_panel_state["topHeight"] <= 72
+                    and live_panel_state["topHeight"] <= 60
                     and live_panel_state["mediaCount"] == 0
                     and live_panel_state["overflowX"] == 0
                 )
