@@ -28046,13 +28046,19 @@ function patchServiceOutlineActiveState(serviceId = state.selectedServiceId) {
   outline.querySelectorAll(".service-outline-row.active, .service-outline-group.active")
     .forEach((node) => node.classList.remove("active"));
   if (!activeSlide) return;
+  const service = state.services.find((svc) => svc.id === serviceId);
+  const itemByIndex = new Map();
+  if (service) {
+    getServiceOutlineItems(service).forEach((item, candidateIndex) => {
+      const index = Number.isInteger(item._serviceItemIndex) ? item._serviceItemIndex : candidateIndex;
+      if (!itemByIndex.has(index)) itemByIndex.set(index, item);
+    });
+  }
   const activeGroups = new Set();
   outline.querySelectorAll(".service-outline-row[data-service-outline-service]").forEach((row) => {
     if (row.dataset.serviceOutlineService !== serviceId) return;
     const index = Number(row.dataset.serviceOutlineItemIndex);
-    const item = Number.isInteger(index)
-      ? getServiceItems(serviceId).find((entry, itemIndex) => (Number.isInteger(entry._serviceItemIndex) ? entry._serviceItemIndex : itemIndex) === index)
-      : null;
+    const item = Number.isInteger(index) ? itemByIndex.get(index) : null;
     const active = item
       ? presenterSlideBelongsToItem(activeSlide, item)
       : Number(row.dataset.serviceOutlineSlide) === state.presenter.index;
