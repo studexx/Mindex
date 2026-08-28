@@ -514,6 +514,7 @@ def main() -> int:
                       const wrapRect = wrap.getBoundingClientRect();
                       const frameRect = frame.getBoundingClientRect();
                       const ring = Number.parseFloat(getComputedStyle(wrap).getPropertyValue('--svc-thumb-ring-space')) || 0;
+                      const activeRing = getComputedStyle(wrap, '::after');
                       return {
                         hasActiveWrap: true,
                         ring,
@@ -523,7 +524,10 @@ def main() -> int:
                         bottomInset: Number((wrapRect.bottom - frameRect.bottom).toFixed(2)),
                         wrapWidth: Math.round(wrapRect.width),
                         frameWidth: Math.round(frameRect.width),
+                        activeRingBorder: activeRing.borderTopStyle,
+                        activeRingBorderWidth: Number.parseFloat(activeRing.borderTopWidth) || 0,
                         activeFrameShadow: getComputedStyle(frame).boxShadow,
+                        activeFrameOutline: getComputedStyle(frame).outlineStyle,
                       };
                     })()
                     """
@@ -537,6 +541,9 @@ def main() -> int:
                         active_ring_state.get("rightInset", 0),
                         active_ring_state.get("bottomInset", 0),
                     ) >= active_ring_state.get("ring", 0) - 1
+                    and active_ring_state.get("activeRingBorder") == "solid"
+                    and active_ring_state.get("activeRingBorderWidth", 0) >= 1
+                    and active_ring_state.get("activeFrameOutline") in ("none", "")
                 ):
                     pass_("presenter-active-ring-box", json.dumps(active_ring_state, ensure_ascii=False))
                 else:
@@ -2307,6 +2314,7 @@ def main() -> int:
 	                          elementType: 'scripture_body',
 	                          inputMode: 'scripture',
 	                          scriptureReference: '출 23:14–19',
+	                          scriptureTranslationId: smokeTranslation.id,
 	                        }),
 	                        _worshipSectionKey: 'scripture_reading',
 	                        _worshipSectionTitle: '성경봉독',
