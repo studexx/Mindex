@@ -180,6 +180,20 @@ class WorshipRuleGuardTests(unittest.TestCase):
         self.assertIn('.from("mindex_worship_elements")', shared)
         self.assertIn('.from("mindex_worship_sections")', shared)
 
+    def test_committed_item_edits_use_element_patch_save(self) -> None:
+        patch = function_block(self.source, "saveWorshipServiceElementPatch")
+        item_save = function_block(self.source, "saveServiceItemPatch")
+        committed = function_block(self.source, "resolveAndSaveCommittedServiceItem")
+
+        self.assertIn("await saveWorshipServiceElementPatch(service, item.id)", item_save)
+        self.assertIn('.from("mindex_worship_sections")', patch)
+        self.assertIn('.upsert([sectionRow], { onConflict: "id" })', patch)
+        self.assertIn('.from("mindex_worship_elements")', patch)
+        self.assertIn('.upsert([elementRow], { onConflict: "id" })', patch)
+        self.assertNotIn(".delete()", patch)
+        self.assertIn("await saveServiceItemPatch(serviceId, index, options)", committed)
+        self.assertNotIn("await saveService(serviceId, options)", committed)
+
     def test_calendar_load_precedes_auto_worship_generation(self) -> None:
         load_worship = function_block(self.source, "loadWorshipData")
         self.assertLess(

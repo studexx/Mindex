@@ -11369,6 +11369,7 @@ function selectServiceSongForItem(index, songId) {
   item.song_version_id = item.version_id;
   state.serviceItems[serviceId] = normalizeServiceItemsInCurrentOrder(items);
   state.dirty.service = true;
+  markServiceElementDirty(serviceId, item);
   refreshPresenterForService(serviceId);
   renderCurrentServiceModuleDetail();
   updateSaveState();
@@ -11711,7 +11712,8 @@ async function importServiceItemDeckAssetFile(input) {
     targetItem.memo = serializeServiceItemMemo(memo);
     targetItem._worshipElementTemplateModified = true;
     state.dirty.service = true;
-    await saveService(serviceId, { silent: true, renderAfterSave: false, throwOnError: true });
+    markServiceElementDirty(serviceId, targetItem);
+    await saveServiceItemPatch(serviceId, index, { silent: true, renderAfterSave: false, throwOnError: true });
     renderCurrentServiceModuleDetail();
     renderServiceList();
     showToast(`${serviceAssetFileKindLabel("imported_deck")} ${slides.length}장을 반입했습니다.`);
@@ -11779,10 +11781,13 @@ async function uploadPresenterReferenceMediaAsset({ file, serviceId, item, input
     targetItem.memo = serializeServiceItemMemo(memo);
     targetItem._worshipElementTemplateModified = true;
     state.dirty.service = true;
+    markServiceElementDirty(serviceId, targetItem);
     // Saving rebuilds and publishes the presenter from the persisted element rows.
     // Refreshing first can rebuild a newly inserted reference item from stale state
     // and discard its just-uploaded asset before the persistence payload is built.
-    await saveService(serviceId, { silent: true, renderAfterSave: false, throwOnError: true });
+    const targetIndex = getServiceItems(serviceId).findIndex((candidate) => candidate.id === targetItem.id);
+    if (targetIndex < 0) throw new Error("저장할 예배 항목을 다시 찾지 못했습니다.");
+    await saveServiceItemPatch(serviceId, targetIndex, { silent: true, renderAfterSave: false, throwOnError: true });
     renderCurrentServiceModuleDetail();
     renderServiceList();
     const destination = referenceMedia ? "참고 화면" : String(targetItem.label || targetItem.raw_title || "항목").trim();
@@ -11894,7 +11899,10 @@ async function uploadServiceItemAudioAsset(input) {
     targetItem.memo = serializeServiceItemMemo(memo);
     targetItem._worshipElementTemplateModified = true;
     state.dirty.service = true;
-    await saveService(serviceId, { silent: true, renderAfterSave: false, throwOnError: true });
+    markServiceElementDirty(serviceId, targetItem);
+    const targetIndex = getServiceItems(serviceId).findIndex((candidate) => candidate.id === targetItem.id);
+    if (targetIndex < 0) throw new Error("저장할 예배 항목을 다시 찾지 못했습니다.");
+    await saveServiceItemPatch(serviceId, targetIndex, { silent: true, renderAfterSave: false, throwOnError: true });
     renderCurrentServiceModuleDetail();
     renderServiceList();
     showToast("찬양 헤더에 음원을 연결했습니다.");
@@ -11926,8 +11934,9 @@ async function clearServiceItemAudioAsset(serviceId = state.selectedServiceId, i
   item.memo = serializeServiceItemMemo(memo);
   item._worshipElementTemplateModified = true;
   state.dirty.service = true;
+  markServiceElementDirty(serviceId, item);
   refreshPresenterForService(serviceId);
-  await saveService(serviceId, { silent: true, renderAfterSave: false, throwOnError: true });
+  await saveServiceItemPatch(serviceId, index, { silent: true, renderAfterSave: false, throwOnError: true });
   renderCurrentServiceModuleDetail();
   renderServiceList();
   showToast("찬양 헤더 음원을 제거했습니다.");
@@ -11975,6 +11984,7 @@ function addPresenterReferenceMedia(serviceId = state.selectedServiceId, request
   const createdIndex = state.serviceItems[serviceId].findIndex((candidate) => candidate.id === item.id);
   state.selectedServiceItemIndex = createdIndex;
   state.dirty.service = true;
+  markServiceStructureDirty(serviceId);
   refreshPresenterForService(serviceId);
   renderCurrentServiceModuleDetail();
   renderServiceList();
@@ -12009,6 +12019,7 @@ function updatePresenterSectionField(field) {
   }
   state.serviceItems[serviceId] = normalizeServiceItemsInCurrentOrder(items);
   state.dirty.service = true;
+  markServiceStructureDirty(serviceId);
   refreshPresenterForService(serviceId, { publish: false });
   const editorRoot = field.closest("[data-presenter-section-editor]");
   const titleNode = editorRoot?.querySelector(".presenter-section-editor-head h3");
@@ -26482,6 +26493,7 @@ async function appendPresenterCitationReference(input) {
   item._worshipTemplatePlaceholder = false;
   state.serviceItems[serviceId] = normalizeServiceItemsInCurrentOrder(items);
   state.dirty.service = true;
+  markServiceElementDirty(serviceId, item);
 
   try {
     await resolveServiceScriptureBeforeSave(serviceId, index);
@@ -26498,7 +26510,7 @@ async function appendPresenterCitationReference(input) {
     input.value = "";
     runPresenterAction("jump", serviceId, { index: targetIndex });
     scrollPresenterBoardToIndex(serviceId, targetIndex, { force: true });
-    void saveService(serviceId, { renderAfterSave: false, silent: true });
+    void saveServiceItemPatch(serviceId, index, { renderAfterSave: false, silent: true });
   } catch (error) {
     showToast(error.message || "성구를 불러오지 못했습니다.", "error");
   }
