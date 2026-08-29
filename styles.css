@@ -3969,7 +3969,8 @@ body[data-module="presenter"] .detail-pane {
 }
 .service-week-card:hover,
 .service-week-empty:hover {
-  background: color-mix(in srgb, var(--accent-soft) 38%, transparent);
+  background: color-mix(in srgb, var(--accent-soft) 76%, var(--panel) 24%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent);
   color: var(--ink);
 }
 body[data-theme="dark"] .service-week-card:hover,
