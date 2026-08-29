@@ -3041,6 +3041,20 @@ function presenterScaleForBox(width, height, stageWidth = 1920, stageHeight = 10
   return Math.min(1, boxWidth / stageWidth, boxHeight / stageHeight);
 }
 
+const PRESENTER_PREVIEW_OVERSCAN_PX = 2;
+
+function presenterPreviewScaleForBox(width, height, stageWidth = 1920, stageHeight = 1080) {
+  const boxWidth = Number(width);
+  const boxHeight = Number(height);
+  if (!Number.isFinite(boxWidth) || !Number.isFinite(boxHeight) || boxWidth <= 0 || boxHeight <= 0) return 1;
+  return presenterScaleForBox(
+    boxWidth + PRESENTER_PREVIEW_OVERSCAN_PX,
+    boxHeight + PRESENTER_PREVIEW_OVERSCAN_PX,
+    stageWidth,
+    stageHeight,
+  );
+}
+
 function applyPresenterOutputViewportScale(root = document.getElementById("presenterOutputRoot")) {
   if (!root) return;
   root.style.setProperty("--presenter-stage-scale", "1");
@@ -3051,7 +3065,7 @@ function applyPresenterPreviewScales(host = document) {
   host.querySelectorAll(".svc-slide-mini-canvas.presenter-output-root").forEach((canvas) => {
     const frame = canvas.closest(".svc-slide-thumb-frame") || canvas.parentElement;
     const rect = frame?.getBoundingClientRect?.();
-    const scale = presenterScaleForBox(rect?.width, rect?.height);
+    const scale = presenterPreviewScaleForBox(rect?.width, rect?.height);
     const currentScale = Number(canvas.style.getPropertyValue("--presenter-preview-scale"));
     if (Number.isFinite(currentScale) && Math.abs(currentScale - scale) < 0.0005) return;
     canvas.style.setProperty("--presenter-preview-scale", String(scale));

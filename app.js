@@ -28595,7 +28595,9 @@ function presenterPreviewScaleNeedsUpdate(root = document.getElementById("servic
     const frame = canvas.closest(".svc-slide-thumb-frame") || canvas.parentElement;
     const rect = frame?.getBoundingClientRect?.();
     if (!rect?.width || !rect?.height) return true;
-    const expected = presenterScaleForBox(rect.width, rect.height);
+    const expected = typeof presenterPreviewScaleForBox === "function"
+      ? presenterPreviewScaleForBox(rect.width, rect.height)
+      : presenterScaleForBox(rect.width, rect.height);
     const current = Number(canvas.style.getPropertyValue("--presenter-preview-scale"));
     return !Number.isFinite(current) || Math.abs(current - expected) >= 0.0005;
   });
