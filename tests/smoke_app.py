@@ -1477,6 +1477,9 @@ def main() -> int:
                       title: document.querySelector('.cal-title')?.textContent.trim() || '',
                       activeTab: document.querySelector('.cal-tab.active')?.textContent.trim() || '',
                       headerBorder: getComputedStyle(document.querySelector('.cal-header')).borderBottomWidth,
+                      headerMinHeight: Math.round(document.querySelector('.cal-header')?.getBoundingClientRect().height || 0),
+                      titleFontSize: getComputedStyle(document.querySelector('.cal-title')).fontSize,
+                      subtitleFontSize: getComputedStyle(document.querySelector('.cal-subtitle')).fontSize,
                       tabHeight: Math.round(document.querySelector('.cal-tab.active')?.getBoundingClientRect().height || 0),
                       departmentHeaders: [...document.querySelectorAll('.cal-table thead th')]
                         .map((node) => node.textContent.replace(/\\s+/g, ' ').trim())
@@ -1508,6 +1511,9 @@ def main() -> int:
                     and calendar_state["title"] == "교회력"
                     and calendar_state["activeTab"] == "부서 일과"
                     and calendar_state["headerBorder"] == "1px"
+                    and 44 <= calendar_state["headerMinHeight"] <= 60
+                    and calendar_state["titleFontSize"] == "20px"
+                    and calendar_state["subtitleFontSize"] == "12px"
                     and calendar_state["tabHeight"] == 28
                     and calendar_state["departmentHeaders"] == expected_department_headers
                     and "cal-table--departments" in calendar_state["tableClass"]
@@ -1561,8 +1567,11 @@ def main() -> int:
                       placeholder: document.querySelector('#searchInput')?.placeholder || '',
                       hasReferences: Boolean(document.querySelector('.references-shell') || document.querySelector('.empty-detail')),
                       title: document.querySelector('.references-shell .editor-title h2')?.textContent.trim() || '',
-                      summary: document.querySelector('.references-shell .song-description-title')?.textContent.trim() || '',
+                      summary: document.querySelector('.references-shell .utility-summary')?.textContent.trim() || '',
                       headerBorder: getComputedStyle(document.querySelector('.references-shell .editor-head')).borderBottomWidth,
+                      headerMinHeight: Math.round(document.querySelector('.references-shell .editor-head')?.getBoundingClientRect().height || 0),
+                      titleFontSize: getComputedStyle(document.querySelector('.references-shell .editor-title h2')).fontSize,
+                      summaryFontSize: getComputedStyle(document.querySelector('.references-shell .utility-summary')).fontSize,
                       groupToolGap: (() => {
                         const title = document.querySelector('.reference-group-head h3');
                         const tools = document.querySelector('.reference-group-tools');
@@ -1586,6 +1595,9 @@ def main() -> int:
                     and references_state["title"] == "참고자료"
                     and "링크" in references_state["summary"]
                     and references_state["headerBorder"] == "1px"
+                    and 44 <= references_state["headerMinHeight"] <= 60
+                    and references_state["titleFontSize"] == "20px"
+                    and references_state["summaryFontSize"] == "12px"
                     and references_state["groupToolGap"] is not None
                     and 6 <= references_state["groupToolGap"] <= 16
                     and 0 < references_state["firstCardWidth"] <= 370

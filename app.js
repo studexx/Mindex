@@ -4819,7 +4819,7 @@ function renderCalendarView() {
   refs.detailPane.innerHTML = `
     <div class="cal-view">
       <div class="cal-header">
-        <div>
+        <div class="utility-title-block">
           <h2 class="cal-title">교회력</h2>
           <span class="cal-subtitle">${escapeHtml(churchYearSeriesSummary(calendarRows))}</span>
         </div>
@@ -14810,9 +14810,7 @@ function renderReferencesDetail() {
       <header class="editor-head">
         <div class="editor-title">
           <h2>참고자료</h2>
-          <section class="song-description" aria-label="링크 설명">
-            <p class="song-description-title">${escapeHtml(referenceDetailSummary())}</p>
-          </section>
+          <p class="utility-summary">${escapeHtml(referenceDetailSummary())}</p>
         </div>
         <div class="head-actions">
           <span class="dirty-pill" ${state.dirty.references ? "" : "hidden"}>저장되지 않은 변경</span>

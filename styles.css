@@ -2099,26 +2099,28 @@ body[data-module="calendar"] .detail-pane { overflow: hidden; }
 }
 .references-shell .editor-head {
   grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
+  min-height: 44px;
+  align-items: flex-end;
   border-bottom: 1px solid color-mix(in srgb, var(--line) 44%, transparent);
-  padding-bottom: var(--s3);
+  padding-bottom: 12px;
 }
 .references-shell .editor-title {
-  gap: 4px;
+  gap: 3px;
 }
 .references-shell .editor-title h2 {
-  font-size: clamp(22px, 2.2vw, 30px);
-  line-height: 1.15;
+  font-size: var(--ui-page-title-size);
+  line-height: 1.2;
 }
-.references-shell .song-description-title {
+.references-shell .utility-summary {
   min-height: 0;
   color: var(--ink-4);
-  font-size: 11px;
-  font-weight: 700;
+  font-size: var(--ui-meta-size);
+  font-weight: var(--ui-meta-weight);
   line-height: 16px;
 }
 .references-shell .head-actions {
   align-items: center;
+  gap: var(--s2);
 }
 @media (max-width: 1100px) {
   .reference-editor-row {
