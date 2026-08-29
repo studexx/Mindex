@@ -21279,7 +21279,7 @@ function serviceSidebarChildItemDisplayParts(item, service = null) {
   const label = String(item?.label || "").trim();
   const fallback = serviceSidebarChildItemTitle(item, service);
   if (!label) return { meta: "", title: serviceSidebarOutlineFirstLine(fallback || "항목") };
-  const title = serviceItemDisplayText(item);
+  const title = serviceSidebarChildItemDisplayText(item);
   const personSummary = serviceSidebarPersonSummary(item, service);
   if (personSummary) {
     const parts = cleanList(String(personSummary).split(/[·/,]+/u));
@@ -21289,6 +21289,15 @@ function serviceSidebarChildItemDisplayParts(item, service = null) {
   }
   if (!title || compactSearchValue(label) === compactSearchValue(title)) return { meta: label, title: "" };
   return { meta: label, title: serviceSidebarOutlineFirstLine(title) };
+}
+
+function serviceSidebarChildItemDisplayText(item = {}) {
+  const rawTitle = String(item?.raw_title || "").trim();
+  if (rawTitle) {
+    const contentTitle = serviceItemContentTitleWithoutElementName(item, rawTitle);
+    return contentTitle ?? rawTitle;
+  }
+  return serviceItemDisplayText(item);
 }
 
 function serviceSidebarOutlineFirstLine(value = "") {
