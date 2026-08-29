@@ -21,14 +21,13 @@ shell, navigation, buttons, labels, and shared UI copy.
 
 ## Token Rules
 
-- Use 5px or 10px steps for new UI spacing. Existing 4px shell rhythm may stay
-  until that area is deliberately retuned.
+- Use the shared `5px` rhythm for shell spacing and `10px` steps for larger UI spacing.
 - Use the shared typography ladder before adding a new one-off size:
-  `11/700` labels, `12/500` metadata, `14/600` rows and controls,
-  `15/700` compact titles, `20/700` page titles.
+  `12/700` labels, `12/500` metadata, `14/600` rows and controls,
+  `16/700` compact titles, `20/700` page titles.
 - Use shared icon sizes before adding local values: 14px helper, 16px normal,
   20px large.
-- Use shared button sizes: 40px topbar, 34px icon, 30px dense, 28px compact.
+- Use shared button sizes: 40px topbar, 35px icon, 30px dense, 28px compact.
 - Do not add accent color to neutral shell controls. Accent is for selected
   state, primary creation actions, or explicit attention.
 

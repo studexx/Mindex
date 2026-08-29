@@ -776,7 +776,7 @@ def main() -> int:
                 })()
                 """
             )
-            if topbar_offsets["leftFirst"] == 4 and topbar_offsets["rightLastInset"] == 4:
+            if topbar_offsets["leftFirst"] == 5 and topbar_offsets["rightLastInset"] == 5:
                 pass_("topbar-action-offset", json.dumps(topbar_offsets, ensure_ascii=False))
             else:
                 fail("topbar-action-offset", json.dumps(topbar_offsets, ensure_ascii=False))
@@ -815,11 +815,11 @@ def main() -> int:
                 desktop_shell["bodyScrollWidth"] - desktop_shell["viewport"],
             )
             if (
-                desktop_shell["detailPaddingLeft"] in {24, 25}
-                and desktop_shell["detailPaddingTop"] in {24, 25}
+                desktop_shell["detailPaddingLeft"] == 25
+                and desktop_shell["detailPaddingTop"] == 25
                 and desktop_shell["sidebarSearchTop"] == 0
                 and desktop_shell["sidebarSearchInputLineHeight"] == 30
-                and desktop_shell["topbarHeight"] == 48
+                and desktop_shell["topbarHeight"] == 50
                 and desktop_shell["toggleWidth"] == desktop_shell["toggleHeight"] == 40
                 and desktop_overflow <= 2
             ):
@@ -872,11 +872,11 @@ def main() -> int:
                 mobile_shell["bodyScrollWidth"] - mobile_shell["viewport"],
             )
             if (
-                mobile_shell["detailPaddingLeft"] in {24, 25}
-                and mobile_shell["detailPaddingTop"] in {24, 25}
+                mobile_shell["detailPaddingLeft"] == 25
+                and mobile_shell["detailPaddingTop"] == 25
                 and mobile_shell["sidebarSearchTop"] == 0
                 and mobile_shell["sidebarSearchInputLineHeight"] == 30
-                and mobile_shell["topbarHeight"] == 48
+                and mobile_shell["topbarHeight"] == 50
                 and mobile_overflow <= 2
             ):
                 pass_("shell-mobile-geometry", json.dumps(mobile_shell, ensure_ascii=False))
@@ -926,9 +926,9 @@ def main() -> int:
                     )
                 )
             if all(
-                item["topbarHeight"] == 48
+                item["topbarHeight"] == 50
                 and item["sidebarWidth"] <= item["railWidth"] <= item["width"]
-                and item["railWidth"] - item["sidebarWidth"] == 48
+                and item["railWidth"] - item["sidebarWidth"] == 50
                 and item["sidebarLeftRail"]
                 and (item["width"] > 860 or item["sidebarHeight"] > 300)
                 and item["searchWithinSidebar"]
@@ -1854,10 +1854,10 @@ def main() -> int:
                     """
                 )
                 if (
-                    service_sidebar_gap["gap"] == 16
+                    service_sidebar_gap["gap"] == 20
                     and service_sidebar_gap["headHeight"] < 18
-                    and service_sidebar_gap["headLeft"] == 4
-                    and service_sidebar_gap["labelLeft"] == 14
+                    and service_sidebar_gap["headLeft"] == 5
+                    and service_sidebar_gap["labelLeft"] == 15
                 ):
                     pass_("service-sidebar-section-label-gap", json.dumps(service_sidebar_gap, ensure_ascii=False))
                 else:

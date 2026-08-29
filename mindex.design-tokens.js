@@ -1,9 +1,9 @@
 (function () {
   const TYPOGRAPHY = Object.freeze({
-    label: Object.freeze({ size: 11, weight: 700 }),
+    label: Object.freeze({ size: 12, weight: 700 }),
     meta: Object.freeze({ size: 12, weight: 500 }),
     control: Object.freeze({ size: 14, weight: 600 }),
-    cardTitle: Object.freeze({ size: 15, weight: 700 }),
+    cardTitle: Object.freeze({ size: 16, weight: 700 }),
     pageTitle: Object.freeze({ size: 20, weight: 700 }),
   });
 
@@ -23,7 +23,7 @@
 
   const BUTTONS = Object.freeze({
     topbar: Object.freeze({ size: 40 }),
-    icon: Object.freeze({ size: 34 }),
+    icon: Object.freeze({ size: 35 }),
     dense: Object.freeze({ size: 30 }),
     compact: Object.freeze({ size: 28 }),
   });
@@ -31,8 +31,8 @@
   const SPACING = Object.freeze({
     denseStep: 5,
     layoutStep: 10,
-    detailPadding: 24,
-    legacyShellStep: 4,
+    detailPadding: 25,
+    legacyShellStep: 5,
   });
 
   const MOTION = Object.freeze({
@@ -57,7 +57,7 @@
   });
 
   window.MINDEX_DESIGN_TOKENS = Object.freeze({
-    version: "2026-08-23",
+    version: "2026-08-30",
     typography: TYPOGRAPHY,
     icons: ICONS,
     tabs: TABS,
