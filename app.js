@@ -22967,16 +22967,7 @@ function renderServiceItemMemoEditor(item, index, options = {}) {
             placeholder="${escapeAttr(assetNamePlaceholder)}"
           />
         </label>
-        <label>
-          <span>파일/링크</span>
-          <input
-            type="text"
-            data-service-item-field="asset_url"
-            data-service-item-index="${index}"
-            value="${escapeAttr(parsed.asset?.url || "")}"
-            placeholder="${escapeAttr(assetUrlPlaceholder)}"
-          />
-        </label>
+        ${renderServiceItemMemoAssetUrlInput(parsed.asset, index, assetUrlPlaceholder)}
         ${showSlideOverrideInput ? `
           <label>
             <span>슬라이드 직접 지정</span>
@@ -22989,6 +22980,24 @@ function renderServiceItemMemoEditor(item, index, options = {}) {
           </label>` : ""}
       </div>
     </details>`;
+}
+
+function renderServiceItemMemoAssetUrlInput(asset, index, placeholder) {
+  const source = String(asset?.url || "").trim();
+  if (source) {
+    return `<input type="hidden" data-service-item-field="asset_url" data-service-item-index="${index}" value="${escapeAttr(source)}" />`;
+  }
+  return `
+    <label>
+      <span>파일/링크</span>
+      <input
+        type="text"
+        data-service-item-field="asset_url"
+        data-service-item-index="${index}"
+        value=""
+        placeholder="${escapeAttr(placeholder)}"
+      />
+    </label>`;
 }
 
 function renderServiceItemMemoSummary({ parsed, preparation, elementType, autoAdvanceAt } = {}) {
@@ -25211,11 +25220,7 @@ function renderPresenterServiceAssetInput(item, index, memo) {
           <input class="svc-presenter-input-control" type="text" data-service-item-field="asset_name" data-service-item-index="${index}" data-service-id="${escapeAttr(serviceId)}"
             value="${escapeAttr(asset.name)}" placeholder="참고 화면 제목" aria-label="참고 화면 제목" />
         </label>
-        <label class="svc-presenter-input-field">
-          <span>공개 링크</span>
-          <input class="svc-presenter-input-control" type="text" data-service-item-field="asset_url" data-service-item-index="${index}" data-service-id="${escapeAttr(serviceId)}"
-            value="${escapeAttr(asset.url)}" placeholder="파일을 선택하거나 공개 URL 입력" aria-label="참고 화면 공개 링크" />
-        </label>
+        ${renderPresenterServiceAssetUrlInput(asset, index, serviceId, "참고 화면 공개 링크", "공개 링크", "파일을 선택하거나 공개 URL 입력")}
         ${renderPresenterReferenceMediaPreview(asset, kind)}
       </div>`;
   }
@@ -25235,13 +25240,22 @@ function renderPresenterServiceAssetInput(item, index, memo) {
         <input class="svc-presenter-input-control" type="text" data-service-item-field="asset_name" data-service-item-index="${index}" data-service-id="${escapeAttr(serviceId)}"
           value="${escapeAttr(asset.name)}" placeholder="${escapeAttr(`${typeLabel} 이름`)}" aria-label="${escapeAttr(`${item.label || "파일"} 이름`)}" title="${escapeAttr(asset.name)}" />
       </label>
-      <label class="svc-presenter-input-field">
-        <span>파일/링크</span>
-        <input class="svc-presenter-input-control" type="text" data-service-item-field="asset_url" data-service-item-index="${index}" data-service-id="${escapeAttr(serviceId)}"
-          value="${escapeAttr(asset.url)}" placeholder="파일을 선택하거나 공개 URL 입력" aria-label="${escapeAttr(`${item.label || "파일"} 링크`)}" title="${escapeAttr(asset.url)}" />
-      </label>
+      ${renderPresenterServiceAssetUrlInput(asset, index, serviceId, `${item.label || "파일"} 링크`, "파일/링크", "파일을 선택하거나 공개 URL 입력")}
       ${renderPresenterReferenceMediaPreview(asset, assetKind, "파일을 선택하면 이 항목에 바로 연결됩니다.")}
     </div>`;
+}
+
+function renderPresenterServiceAssetUrlInput(asset, index, serviceId, ariaLabel, label, placeholder) {
+  const source = String(asset?.url || "").trim();
+  if (source) {
+    return `<input type="hidden" data-service-item-field="asset_url" data-service-item-index="${index}" data-service-id="${escapeAttr(serviceId)}" value="${escapeAttr(source)}" />`;
+  }
+  return `
+    <label class="svc-presenter-input-field">
+      <span>${escapeHtml(label)}</span>
+      <input class="svc-presenter-input-control" type="text" data-service-item-field="asset_url" data-service-item-index="${index}" data-service-id="${escapeAttr(serviceId)}"
+        value="" placeholder="${escapeAttr(placeholder)}" aria-label="${escapeAttr(ariaLabel)}" />
+    </label>`;
 }
 
 function renderPresenterReferenceMediaPreview(asset, kind, emptyMessage = "파일을 선택하면 이 예배의 참고 화면으로 바로 송출됩니다.") {
