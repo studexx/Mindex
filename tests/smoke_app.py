@@ -7075,6 +7075,36 @@ def main() -> int:
                     else:
                         fail("presenter-preparation-real-song-match", json.dumps(presenter_preparation_real_song_match, ensure_ascii=False))
 
+                    presenter_preparation_song_index = page.evaluate(
+                        """
+                        (() => {
+                          clearSearchCaches();
+                          const first = presenterPreparationSongExactIndex();
+                          const second = presenterPreparationSongExactIndex();
+                          const sampleSong = state.songs.find((song) => song.title === '충만') || state.songs[0];
+                          const sampleKey = compactSearchValue(sampleSong?.title || '');
+                          const sampleMatches = first.labels.get(sampleKey) || [];
+                          clearSearchCaches();
+                          const third = presenterPreparationSongExactIndex();
+                          return {
+                            reused: first === second,
+                            invalidated: first !== third,
+                            sampleFound: sampleMatches.some((song) => song.id === sampleSong?.id),
+                            hymn430Count: (third.hymnNos.get('430') || []).length,
+                          };
+                        })()
+                        """
+                    )
+                    if (
+                        presenter_preparation_song_index.get("reused") is True
+                        and presenter_preparation_song_index.get("invalidated") is True
+                        and presenter_preparation_song_index.get("sampleFound") is True
+                        and presenter_preparation_song_index.get("hymn430Count", 0) >= 1
+                    ):
+                        pass_("presenter-preparation-song-index", json.dumps(presenter_preparation_song_index, ensure_ascii=False))
+                    else:
+                        fail("presenter-preparation-song-index", json.dumps(presenter_preparation_song_index, ensure_ascii=False))
+
                     presenter_preparation_middle_dot_separator = page.evaluate(
                         """
                         (() => {

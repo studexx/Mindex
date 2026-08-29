@@ -757,6 +757,8 @@ const state = {
     global: new Map(),
     songPicker: new Map(),
     songFields: new WeakMap(),
+    presenterPreparationSongs: null,
+    presenterPreparationSongSource: null,
     renderTimer: 0,
   },
   forms: [],
@@ -13613,6 +13615,8 @@ function clearSearchCaches(options = {}) {
   state.searchCache.global.clear();
   if (options.songs !== false) state.searchCache.songPicker.clear();
   state.searchCache.songFields = new WeakMap();
+  state.searchCache.presenterPreparationSongs = null;
+  state.searchCache.presenterPreparationSongSource = null;
 }
 
 function scheduleSearchRender(delay = 180) {
@@ -17905,6 +17909,15 @@ function versionLyricSignature(version) {
     hash = ((hash << 5) - hash + text.charCodeAt(index)) | 0;
   }
   return `mindex-${Math.abs(hash).toString(16) || "0"}`;
+}
+
+function compactTextSignature(value = "") {
+  const text = String(value || "");
+  let hash = 0;
+  for (let index = 0; index < text.length; index += 1) {
+    hash = ((hash << 5) - hash + text.charCodeAt(index)) | 0;
+  }
+  return `${text.length}:${hash >>> 0}`;
 }
 
 function isUniqueConstraintError(error, constraintName = "") {
@@ -24787,6 +24800,43 @@ function presenterPreparationSongLabels(song = {}) {
   ].filter(Boolean);
 }
 
+function addPresenterPreparationSongIndexEntry(map, key, song) {
+  const value = String(key || "").trim();
+  if (!value || !song) return;
+  const existing = map.get(value);
+  if (existing) existing.push(song);
+  else map.set(value, [song]);
+}
+
+function presenterPreparationSongExactIndex() {
+  if (
+    state.searchCache.presenterPreparationSongs
+    && state.searchCache.presenterPreparationSongSource === state.songs
+  ) {
+    return state.searchCache.presenterPreparationSongs;
+  }
+
+  const index = {
+    labels: new Map(),
+    strippedTitles: new Map(),
+    hymnNos: new Map(),
+  };
+  (state.songs || []).forEach((song) => {
+    presenterPreparationSongLabels(song).forEach((label) => {
+      addPresenterPreparationSongIndexEntry(index.labels, compactSearchValue(label), song);
+    });
+    addPresenterPreparationSongIndexEntry(
+      index.strippedTitles,
+      compactSearchValue(stripHymnNumber(song.title || "")),
+      song,
+    );
+    addPresenterPreparationSongIndexEntry(index.hymnNos, String(song.hymn_no || "").trim(), song);
+  });
+  state.searchCache.presenterPreparationSongs = index;
+  state.searchCache.presenterPreparationSongSource = state.songs;
+  return index;
+}
+
 function parsePresenterPreparationHymnHint(value = "") {
   const raw = String(value || "").replace(/\s+/g, " ").trim();
   if (!raw) return { title: "", hymnNo: "" };
@@ -24812,7 +24862,7 @@ function parsePresenterPreparationHymnHint(value = "") {
 function resolvePresenterPreparationHymnSong(value = "") {
   const hint = parsePresenterPreparationHymnHint(value);
   if (!hint.hymnNo) return null;
-  const hymnMatches = state.songs.filter((song) => String(song.hymn_no || "").trim() === hint.hymnNo);
+  const hymnMatches = presenterPreparationSongExactIndex().hymnNos.get(hint.hymnNo) || [];
   if (!hymnMatches.length) return null;
   if (!hint.title) return hymnMatches.length === 1 ? hymnMatches[0] : null;
   const titleKey = compactSearchValue(hint.title);
@@ -24832,13 +24882,13 @@ function resolvePresenterPreparationSong(value, item, service) {
   if (presenterPreparationSongContentHasConnection(songInput)) return null;
   const hymnSong = resolvePresenterPreparationHymnSong(songInput);
   if (hymnSong) return hymnSong;
+  const songIndex = presenterPreparationSongExactIndex();
+  const exact = songIndex.labels.get(query) || [];
+  if (exact.length === 1) return exact[0];
+  const titleExact = songIndex.strippedTitles.get(query) || [];
+  if (titleExact.length === 1) return titleExact[0];
   const praiseSong = findServicePraiseSong(songInput);
   if (praiseSong) return praiseSong;
-  const exact = state.songs.filter((song) => presenterPreparationSongLabels(song)
-    .some((label) => compactSearchValue(label) === query));
-  if (exact.length === 1) return exact[0];
-  const titleExact = state.songs.filter((song) => compactSearchValue(stripHymnNumber(song.title || "")) === query);
-  if (titleExact.length === 1) return titleExact[0];
   return findConfidentServicePraiseSong(songInput, item, service);
 }
 
@@ -28707,7 +28757,7 @@ function presenterSlideBuildSourceSignature(serviceId) {
         (version?.forms || []).map((form) => [
           form.id || "",
           form.label || form.name || form.type || "",
-          form.lyrics || form.text || "",
+          compactTextSignature(form.lyrics || form.text || ""),
         ]),
       ];
     }),
@@ -28715,7 +28765,7 @@ function presenterSlideBuildSourceSignature(serviceId) {
       slide.id || "",
       slide.sort ?? "",
       slide.title || "",
-      slide.text || "",
+      compactTextSignature(slide.text || ""),
       slide.updated_at || "",
     ]),
   });
