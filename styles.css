@@ -7796,18 +7796,11 @@ body.is-chromium .svc-slide-thumb.active:hover .svc-slide-thumb-frame {
   --presenter-output-bg: #07384d;
   --presenter-output-fg: #f7fbff;
   --presenter-output-muted: rgba(247, 251, 255, .68);
-  background:
-    linear-gradient(180deg, rgba(36, 169, 207, .32), transparent 46%),
-    radial-gradient(circle at 50% 25%, rgba(255, 255, 255, .13), transparent 34%),
-    var(--presenter-output-bg);
 }
 .svc-slide-mini-output[data-output-theme="young-adult"] {
   --presenter-output-bg: #0b0d12;
   --presenter-output-fg: #f8f8f3;
   --presenter-output-muted: rgba(248, 248, 243, .62);
-  background:
-    radial-gradient(circle at 50% 42%, rgba(255, 255, 255, .09), transparent 30%),
-    var(--presenter-output-bg);
 }
 .svc-slide-thumb-frame .svc-slide-mini-output:has(.svc-slide-mini-canvas) {
   background: transparent;

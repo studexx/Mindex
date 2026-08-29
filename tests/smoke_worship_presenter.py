@@ -9594,8 +9594,8 @@ def main() -> int:
                     theme_preview_state["formalBg"] == "rgb(16, 18, 15)"
                     and theme_preview_state["childrenBgImage"] == "none"
                     and theme_preview_state["childrenTextColor"] == "rgb(255, 255, 255)"
-                    and "linear-gradient" in theme_preview_state["youthBgImage"]
-                    and "radial-gradient" in theme_preview_state["youngAdultBgImage"]
+                    and theme_preview_state["youthBgImage"] == "none"
+                    and theme_preview_state["youngAdultBgImage"] == "none"
                     and "26-C1.png" in theme_preview_state["childrenHasBackgroundImage"]
                 ):
                     pass_("presenter-controller-preview-theme-parity", json.dumps(theme_preview_state, ensure_ascii=False))
