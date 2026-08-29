@@ -4318,6 +4318,7 @@ def main() -> int:
                             selectedServiceId: state.selectedServiceId,
                             selectedServiceTypeId: state.selectedServiceTypeId,
                             dirtyService: state.dirty.service,
+                            showToast,
                           };
                           const service = { id: '__smoke_strict_song_service__', type_id: 'sunday-first', date: '2099-07-05', title: '' };
                           const hymn = {
@@ -4385,7 +4386,12 @@ def main() -> int:
                             const typedScoreSongId = typedScore.song_id || '';
                             const typedScoreVersionId = typedScore.version_id || '';
                             const typedScoreRawTitle = typedScore.raw_title || '';
+                            const versionToasts = [];
+                            showToast = (message, type = 'info') => {
+                              versionToasts.push({ message, type });
+                            };
                             selectServiceSongForItem(0, ccm.id);
+                            showToast = previous.showToast;
                             const selected = state.serviceItems[service.id][0];
                             const selectedVersionImmediately = selected.version_id || '';
                             const invalidAfterSong = serviceItemSongSelectionInvalid(selected, service);
@@ -4448,6 +4454,7 @@ def main() -> int:
                               selectedDisplayText: serviceItemDisplayText(selected),
                               selectedTitleForSave: serviceElementTitleForSave(selected, 'praise'),
                               selectedVersionId: selectedVersionImmediately,
+                              versionToasts,
                               invalidAfterSong,
                               selectedVersionAfterPick,
                               invalidAfterVersion,
@@ -4475,6 +4482,7 @@ def main() -> int:
                             state.selectedServiceId = previous.selectedServiceId;
                             state.selectedServiceTypeId = previous.selectedServiceTypeId;
                             state.dirty.service = previous.dirtyService;
+                            showToast = previous.showToast || showToast;
                             renderCurrentServiceModuleDetail();
                           }
                         })()
@@ -4495,6 +4503,10 @@ def main() -> int:
                         and strict_song_picker["selectedDisplayText"] == "은혜"
                         and strict_song_picker["selectedTitleForSave"] == ""
                         and strict_song_picker["selectedVersionId"] == "__smoke_ccm_v1__"
+                        and strict_song_picker["versionToasts"] == [{
+                            "message": "은혜에 여러 버전이 있어 첫 번째 버전을 우선 선택했습니다. 필요하면 버전을 골라 주세요.",
+                            "type": "info",
+                        }]
                         and not strict_song_picker["invalidAfterSong"]
                         and strict_song_picker["selectedVersionAfterPick"] == "__smoke_ccm_v2__"
                         and not strict_song_picker["invalidAfterVersion"]
@@ -6190,7 +6202,7 @@ def main() -> int:
                         "pickerInvalid": False,
                         "lyricTexts": ["가사 A\n가사 B"],
                         "switchedSongId": "__smoke_lyrics_song__",
-                        "switchedVersionId": "__smoke_lyrics_text__",
+                        "switchedVersionId": "__smoke_lyrics_score__",
                     }:
                         pass_("presenter-lyrics-db-version-resolution", json.dumps(presenter_lyrics_db_version_resolution, ensure_ascii=False))
                     else:

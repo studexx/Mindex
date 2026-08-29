@@ -10306,6 +10306,23 @@ function serviceSelectableSongVersions(song = null, item = {}, service = selecte
   return hymnVersions.length ? hymnVersions : versions;
 }
 
+function defaultServiceSongVersion(song = null, item = {}, service = selectedServiceForEditor()) {
+  return serviceSelectableSongVersions(song, item, service)[0] || null;
+}
+
+function serviceSongHasMultipleSelectableVersions(song = null, item = {}, service = selectedServiceForEditor()) {
+  return serviceSelectableSongVersions(song, item, service).length > 1;
+}
+
+function showServiceSongVersionChoiceNotice(labels = []) {
+  const uniqueLabels = [...new Set(labels.map((label) => String(label || "").trim()).filter(Boolean))];
+  if (!uniqueLabels.length) return;
+  const labelText = uniqueLabels.length > 3
+    ? `${uniqueLabels.slice(0, 3).join(", ")} 외 ${uniqueLabels.length - 3}개`
+    : uniqueLabels.join(", ");
+  showToast(`${labelText}에 여러 버전이 있어 첫 번째 버전을 우선 선택했습니다. 필요하면 버전을 골라 주세요.`, "info");
+}
+
 function serviceVersionIsNewHymnalScoreVersion(song = null, version = null) {
   if (!song?.hymn_no || !version) return false;
   if (!isHymnBookVersion(song, version)) return false;
@@ -11069,13 +11086,16 @@ function selectServiceSongForItem(index, songId) {
   }
   item.song_id = song.id;
   item.raw_title = "";
-  item.version_id = preferredServiceSongVersion(song, item, service)?.id || null;
+  item.version_id = defaultServiceSongVersion(song, item, service)?.id || null;
   item.song_version_id = item.version_id;
   state.serviceItems[serviceId] = normalizeServiceItemsInCurrentOrder(items);
   state.dirty.service = true;
   refreshPresenterForService(serviceId);
   renderCurrentServiceModuleDetail();
   updateSaveState();
+  if (serviceSongHasMultipleSelectableVersions(song, item, service)) {
+    showServiceSongVersionChoiceNotice([songServiceOptionLabel(song) || song.title || item.label || "찬양"]);
+  }
   saveCommittedServiceItem(index, serviceId);
 }
 
@@ -20207,8 +20227,8 @@ function linkServiceItemToPraiseSong(item, song, service = selectedServiceForEdi
   }
   item.song_id = song.id;
   if (options.clearRawTitle !== false) item.raw_title = "";
-  const preferredVersion = preferredServiceSongVersion(song, item, service);
-  item.version_id = preferredVersion?.id || null;
+  const defaultVersion = defaultServiceSongVersion(song, item, service);
+  item.version_id = defaultVersion?.id || null;
   item.song_version_id = item.version_id;
   return true;
 }
@@ -24917,10 +24937,9 @@ async function applyPresenterPreparationInput(serviceId = state.selectedServiceI
         item._worshipElementTemplateModified = true;
         markServiceItemSharedContentDirty(item, service);
         item._worshipTemplatePlaceholder = false;
-        const versions = serviceSelectableSongVersions(song, item, service);
-        const preferredVersion = preferredServiceSongVersion(song, item, service);
-        if (preferredVersion) item.version_id = preferredVersion.id;
-        else if (versions.length > 1) versionWarnings.push(entry.label);
+        const defaultVersion = defaultServiceSongVersion(song, item, service);
+        item.version_id = defaultVersion?.id || null;
+        if (serviceSongHasMultipleSelectableVersions(song, item, service)) versionWarnings.push(entry.label);
         item.song_version_id = item.version_id;
         continue;
       }
@@ -25008,18 +25027,14 @@ async function applyPresenterPreparationInput(serviceId = state.selectedServiceI
       .filter((index) => index >= 0);
     scriptureIndexes.forEach((index) => scheduleServiceScriptureBodyResolve(serviceId, index));
 
-    if (versionWarnings.length) {
-      renderCurrentServiceModuleDetail();
-      renderServiceList();
-      showToast(`${versionWarnings.join(", ")}의 찬양 버전을 선택한 뒤 저장해 주세요.`, "info");
-      return;
-    }
-
     renderCurrentServiceModuleDetail();
     renderServiceList();
     updateSaveState();
     const createdNote = createdSongTitles.length ? ` 빈 곡 ${createdSongTitles.length}개를 찬양 DB에 만들었습니다.` : "";
-    showToast(`예배 입력 ${entries.length}개 항목을 반영했습니다.${createdNote} 상단 저장을 눌러 확정해 주세요.`, "info");
+    const versionNote = versionWarnings.length
+      ? ` ${versionWarnings.join(", ")}에 여러 버전이 있어 첫 번째 버전을 우선 선택했습니다. 필요하면 버전을 골라 주세요.`
+      : "";
+    showToast(`예배 입력 ${entries.length}개 항목을 반영했습니다.${createdNote}${versionNote} 상단 저장을 눌러 확정해 주세요.`, "info");
   } finally {
     state.presenterPreparationApplyingServiceIds.delete(serviceId);
     renderServiceList();
