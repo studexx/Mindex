@@ -367,6 +367,13 @@
 .presenter-output-root.no-chromakey.has-background .presenter-waiting-loop {
   background: transparent;
 }
+.presenter-output-root.no-chromakey.has-background .presenter-ready-screen::before,
+.presenter-output-root.no-chromakey.has-background .presenter-waiting-loop::before {
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, .16), transparent 18%, transparent 82%, rgba(0, 0, 0, .16)),
+    linear-gradient(180deg, transparent 0 72%, rgba(0, 0, 0, .18) 100%);
+  opacity: .54;
+}
 .presenter-waiting-loop {
   position: absolute;
   inset: 0;
