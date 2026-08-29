@@ -4970,13 +4970,21 @@ async function loadServiceItems(serviceId) {
       service,
       groupWorshipElements(sections, elements)[serviceId] || [],
     );
+    const linkedSongIds = elements.map((item) => item.song_id).filter(Boolean);
+    const shouldHydrateLinkedSongsBeforeRender = state.selectedServiceId === serviceId
+      && (state.module === "presenter" || isServiceDataModule());
+    if (shouldHydrateLinkedSongsBeforeRender) {
+      await loadSongsForIds(linkedSongIds);
+    }
     if (state.selectedServiceId === serviceId && !state.dirty.service) {
       captureCleanFingerprint("service");
     }
-    loadSongsForIdsInBackground(elements.map((item) => item.song_id), {
-      render: state.selectedServiceId === serviceId ? "detail" : false,
-      serviceId,
-    });
+    if (!shouldHydrateLinkedSongsBeforeRender) {
+      loadSongsForIdsInBackground(linkedSongIds, {
+        render: state.selectedServiceId === serviceId ? "detail" : false,
+        serviceId,
+      });
+    }
     warmWorshipScriptureReferencesForService(serviceId);
     warmServiceItemScriptureReferencesForService(serviceId);
     renderCurrentServiceModuleDetail();

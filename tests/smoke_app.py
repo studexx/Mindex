@@ -5836,6 +5836,98 @@ def main() -> int:
                     else:
                         fail("presenter-linked-song-hydration", json.dumps(presenter_linked_song_hydration, ensure_ascii=False))
 
+                    selected_service_song_hydration_order = page.evaluate(
+                        """
+                        async () => {
+                          const originalFetchRows = fetchWorshipRowsForServiceIds;
+                          const originalLoadSongsForIds = loadSongsForIds;
+                          const originalRenderDetail = renderCurrentServiceModuleDetail;
+                          const originalWarmWorship = warmWorshipScriptureReferencesForService;
+                          const originalWarmItems = warmServiceItemScriptureReferencesForService;
+                          const originalServices = state.services;
+                          const originalServiceItems = state.serviceItems;
+                          const originalSections = state.worshipSections;
+                          const originalElements = state.worshipElements;
+                          const originalLoadedIds = state.loadedWorshipServiceIds;
+                          const originalSelectedServiceId = state.selectedServiceId;
+                          const originalModule = state.module;
+                          const originalDirty = { ...state.dirty };
+                          const serviceId = '__smoke_selected_song_hydration_order__';
+                          const sectionId = '__smoke_selected_song_hydration_section__';
+                          const songId = '33333333-3333-4333-8333-333333333333';
+                          const events = [];
+                          try {
+                            state.services = [{ id: serviceId, type_id: 'sunday-first', title: 'Hydration Order', date: '2026-08-30' }];
+                            state.serviceItems = {};
+                            state.worshipSections = [];
+                            state.worshipElements = [];
+                            state.loadedWorshipServiceIds = new Set();
+                            state.selectedServiceId = serviceId;
+                            state.module = 'presenter';
+                            state.dirty = { ...state.dirty, service: false };
+                            fetchWorshipRowsForServiceIds = async () => ({
+                              sections: [{
+                                id: sectionId,
+                                service_id: serviceId,
+                                section_key: 'praise',
+                                label: '찬양',
+                                sort_order: 1,
+                              }],
+                              elements: [{
+                                id: '__smoke_selected_song_hydration_item__',
+                                section_id: sectionId,
+                                label: '찬양 1',
+                                raw_title: '',
+                                song_id: songId,
+                                song_version_id: '44444444-4444-4444-8444-444444444444',
+                                element_type: 'praise',
+                                input_mode: 'lyrics_db',
+                                output_mode: 'lyrics',
+                                sort_order: 1,
+                              }],
+                            });
+                            loadSongsForIds = async (ids) => {
+                              events.push(`songs:start:${ids.includes(songId)}`);
+                              await new Promise((resolve) => setTimeout(resolve, 0));
+                              events.push('songs:done');
+                            };
+                            renderCurrentServiceModuleDetail = () => {
+                              events.push('render');
+                            };
+                            warmWorshipScriptureReferencesForService = () => Promise.resolve(false);
+                            warmServiceItemScriptureReferencesForService = () => Promise.resolve(false);
+                            await loadServiceItems(serviceId);
+                            return {
+                              events,
+                              renderAfterSongs: events.indexOf('render') > events.indexOf('songs:done'),
+                              backgroundHydrationSkipped: events.filter((event) => event.startsWith('songs:start')).length === 1,
+                            };
+                          } finally {
+                            fetchWorshipRowsForServiceIds = originalFetchRows;
+                            loadSongsForIds = originalLoadSongsForIds;
+                            renderCurrentServiceModuleDetail = originalRenderDetail;
+                            warmWorshipScriptureReferencesForService = originalWarmWorship;
+                            warmServiceItemScriptureReferencesForService = originalWarmItems;
+                            state.services = originalServices;
+                            state.serviceItems = originalServiceItems;
+                            state.worshipSections = originalSections;
+                            state.worshipElements = originalElements;
+                            state.loadedWorshipServiceIds = originalLoadedIds;
+                            state.selectedServiceId = originalSelectedServiceId;
+                            state.module = originalModule;
+                            state.dirty = originalDirty;
+                          }
+                        }
+                        """
+                    )
+                    if (
+                        selected_service_song_hydration_order["renderAfterSongs"]
+                        and selected_service_song_hydration_order["backgroundHydrationSkipped"]
+                    ):
+                        pass_("selected-service-song-hydration-before-render", json.dumps(selected_service_song_hydration_order, ensure_ascii=False))
+                    else:
+                        fail("selected-service-song-hydration-before-render", json.dumps(selected_service_song_hydration_order, ensure_ascii=False))
+
                     presenter_praise_input_mode_persistence = page.evaluate(
                         """
                         (() => {
