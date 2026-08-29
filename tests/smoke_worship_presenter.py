@@ -9610,38 +9610,97 @@ def main() -> int:
                         safetyBlank: false,
                       });
                       await new Promise((resolve) => setTimeout(resolve, 120));
+                      const active = root.querySelector('.presenter-output-layer.is-active');
                       const entering = root.querySelector('.presenter-output-layer.is-entering');
                       const exiting = root.querySelector('.presenter-output-layer.is-exiting');
-                      const enteringStyle = entering ? getComputedStyle(entering) : null;
-                      const exitingStyle = exiting ? getComputedStyle(exiting) : null;
                       return {
                         noChromakey: root?.classList.contains('no-chromakey') || false,
-                        enteringText: entering?.innerText.trim() || '',
-                        exitingText: exiting?.innerText.trim() || '',
-                        enteringAnimation: enteringStyle?.animationName || '',
-                        exitingAnimation: exitingStyle?.animationName || '',
-                        enteringDuration: enteringStyle?.animationDuration || '',
-                        exitingDuration: exitingStyle?.animationDuration || '',
-                        enteringOpacity: enteringStyle?.opacity || '',
-                        exitingOpacity: exitingStyle?.opacity || '',
+                        activeText: active?.innerText.trim() || '',
+                        enteringCount: entering ? 1 : 0,
+                        exitingCount: exiting ? 1 : 0,
                       };
                     }
                     """
                 )
                 if (
                     fullscreen_transition_state["noChromakey"]
-                    and "다음 화면" in fullscreen_transition_state["enteringText"]
-                    and "이전 화면" in fullscreen_transition_state["exitingText"]
-                    and fullscreen_transition_state["enteringAnimation"] == "presenter-layer-fade-in"
-                    and fullscreen_transition_state["exitingAnimation"] == "presenter-layer-fade-out"
-                    and fullscreen_transition_state["enteringDuration"] == "0.22s"
-                    and fullscreen_transition_state["exitingDuration"] == "0.22s"
-                    and 0 < float(fullscreen_transition_state["enteringOpacity"]) < 1
-                    and 0 < float(fullscreen_transition_state["exitingOpacity"]) < 1
+                    and "다음 화면" in fullscreen_transition_state["activeText"]
+                    and fullscreen_transition_state["enteringCount"] == 0
+                    and fullscreen_transition_state["exitingCount"] == 0
                 ):
-                    pass_("presenter-fullscreen-fade-transition", json.dumps(fullscreen_transition_state, ensure_ascii=False))
+                    pass_("presenter-fullscreen-no-fade-transition", json.dumps(fullscreen_transition_state, ensure_ascii=False))
                 else:
-                    fail("presenter-fullscreen-fade-transition", json.dumps(fullscreen_transition_state, ensure_ascii=False))
+                    fail("presenter-fullscreen-no-fade-transition", json.dumps(fullscreen_transition_state, ensure_ascii=False))
+
+                scripture_reading_transition_state = output_page.evaluate(
+                    """
+                    async () => {
+                      const root = document.getElementById('presenterOutputRoot');
+                      const slides = [
+                        {
+                          id: '__smoke_scripture_reading_transition_old__',
+                          type: 'scripture',
+                          elementType: PRESENTER_ELEMENT_TYPES.SCRIPTURE_TEXT,
+                          layout: PRESENTER_SLIDE_LAYOUTS.CENTER_TEXT,
+                          title: '성경봉독',
+                          text: '이전 본문',
+                          outputContext: 'clean',
+                          scriptureContext: 'reading',
+                        },
+                        {
+                          id: '__smoke_scripture_reading_transition_next__',
+                          type: 'scripture',
+                          elementType: PRESENTER_ELEMENT_TYPES.SCRIPTURE_TEXT,
+                          layout: PRESENTER_SLIDE_LAYOUTS.CENTER_TEXT,
+                          title: '성경봉독',
+                          text: '다음 본문',
+                          outputContext: 'clean',
+                          scriptureContext: 'reading',
+                        },
+                      ];
+                      renderPresenterOutput({
+                        serviceId: '__smoke_scripture_reading_transition_service__',
+                        serviceType: 'friday',
+                        chromakey: false,
+                        outputTheme: 'formal',
+                        backgroundImage: 'assets/worship-backgrounds/26-B2.png',
+                        slides,
+                        index: 0,
+                        safetyBlank: false,
+                      });
+                      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+                      renderPresenterOutput({
+                        serviceId: '__smoke_scripture_reading_transition_service__',
+                        serviceType: 'friday',
+                        chromakey: false,
+                        outputTheme: 'formal',
+                        backgroundImage: 'assets/worship-backgrounds/26-B2.png',
+                        slides,
+                        index: 1,
+                        safetyBlank: false,
+                      });
+                      await new Promise((resolve) => setTimeout(resolve, 120));
+                      const active = root.querySelector('.presenter-output-layer.is-active');
+                      return {
+                        noChromakey: root?.classList.contains('no-chromakey') || false,
+                        activeText: active?.innerText.trim() || '',
+                        activeIsReading: Boolean(active?.querySelector('.presenter-slide--scripture-reading')),
+                        enteringCount: root.querySelectorAll('.presenter-output-layer.is-entering').length,
+                        exitingCount: root.querySelectorAll('.presenter-output-layer.is-exiting').length,
+                      };
+                    }
+                    """
+                )
+                if (
+                    scripture_reading_transition_state["noChromakey"]
+                    and "다음 본문" in scripture_reading_transition_state["activeText"]
+                    and scripture_reading_transition_state["activeIsReading"]
+                    and scripture_reading_transition_state["enteringCount"] == 0
+                    and scripture_reading_transition_state["exitingCount"] == 0
+                ):
+                    pass_("presenter-scripture-reading-no-fade-transition", json.dumps(scripture_reading_transition_state, ensure_ascii=False))
+                else:
+                    fail("presenter-scripture-reading-no-fade-transition", json.dumps(scripture_reading_transition_state, ensure_ascii=False))
 
                 score_transition_state = output_page.evaluate(
                     """

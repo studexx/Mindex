@@ -3624,7 +3624,9 @@ function presenterOutputShouldAnimateFrameTransition(root, frameState = {}) {
   if (root?.classList?.contains("svc-slide-mini-canvas")) return false;
   if (root?.querySelector?.(":scope > .presenter-output-layer.is-active .presenter-slide--score")) return false;
   if (root?.querySelector?.(":scope > .presenter-output-layer.is-next .presenter-slide--score")) return false;
-  return !window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+  // Fullscreen output shares the same physical surface across clean slides.
+  // Cross-fading exposes the stage background between layers, so swap directly.
+  return false;
 }
 
 function fitPresenterChromakeyScriptureText(host, frameState = {}) {
