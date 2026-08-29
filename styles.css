@@ -808,10 +808,8 @@ body:not(.right-sidebar-open) .right-sidebar .svc-presenter-side-panel {
 body:not([data-module="presenter"]) #presenterRightSidebarBtn {
   display: none;
 }
-body[data-module="presenter"] .page-tabs {
-  opacity: 0;
-  pointer-events: none;
-  visibility: hidden;
+body[data-module="presenter"] .right-sidebar {
+  padding-top: calc(var(--topbar-btn-size) + var(--s1));
 }
 body[data-module="presenter"] #presenterRightSidebarBtn,
 body[data-module="presenter"] #saveAllBtn,

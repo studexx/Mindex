@@ -828,7 +828,6 @@ def main() -> int:
                       const pageTabs = document.querySelector('.page-tabs');
                       const titleStyle = currentTitle ? getComputedStyle(currentTitle) : null;
                       const dateStyle = currentDate ? getComputedStyle(currentDate) : null;
-                      const pageTabsStyle = pageTabs ? getComputedStyle(pageTabs) : null;
                       const controllerTitle = document.querySelector('.presenter-viewer .svc-service-title');
                       const controllerDate = document.querySelector('.presenter-viewer .svc-date-text');
                       const afterHeader = currentHeader?.getBoundingClientRect();
@@ -855,7 +854,11 @@ def main() -> int:
                           icon: sidebarLaunch?.querySelector('svg')?.getAttribute('data-lucide') || '',
                           width: Math.round(sidebarLaunch?.getBoundingClientRect().width || 0),
                         },
-                        pageTabsHidden: pageTabsStyle ? pageTabsStyle.visibility === 'hidden' && pageTabsStyle.opacity === '0' : false,
+                        pageTabsVisible: pageTabs ? getComputedStyle(pageTabs).visibility !== 'hidden' && getComputedStyle(pageTabs).opacity !== '0' : false,
+                        rightSidebarTopGap: currentRightSidebar
+                          ? Math.round((currentTop?.getBoundingClientRect().top || 0) - currentRightSidebar.getBoundingClientRect().top)
+                          : 0,
+                        topbarButtonSize: parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--topbar-btn-size')) || 0,
                         usesSidebarTitle: Boolean((currentTitle || title)?.closest('.service-sidebar-presenter-context') && !document.querySelector('.svc-presenter-title-row')),
                         controllerTitleRemoved: !controllerTitle && !controllerDate,
                         presenterHeaderRemoved: !presenterHeader && !currentPresenterHeader,
@@ -894,7 +897,8 @@ def main() -> int:
                     and sticky_title_state["sidebarLaunch"]["label"] in ("송출 시작", "송출 종료")
                     and sticky_title_state["sidebarLaunch"]["icon"] in ("screen-share", "screen-share-off")
                     and sticky_title_state["sidebarLaunch"]["width"] >= 90
-                    and sticky_title_state["pageTabsHidden"]
+                    and sticky_title_state["pageTabsVisible"]
+                    and sticky_title_state["rightSidebarTopGap"] >= sticky_title_state["topbarButtonSize"]
                     and sticky_title_state["rightSidebarVisible"]
                     and sticky_title_state["controlsPosition"] == "static"
                     and sticky_title_state["sidePanelPosition"] == "static"
