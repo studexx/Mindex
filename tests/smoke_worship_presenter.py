@@ -117,6 +117,62 @@ def main() -> int:
             page.goto(build_raw_connection_link(app_url, "presenter"), wait_until="load")
             page.wait_for_selector(".app-shell", timeout=5000)
             wait_for_supabase_client(page)
+
+            loading_right_rail_state = page.evaluate(
+                """
+                (() => {
+                  const sidebar = document.querySelector('#mindexRightSidebar');
+                  const topbar = document.querySelector('.topbar');
+                  const toggleButton = document.querySelector('#presenterRightSidebarBtn');
+                  const saveButton = document.querySelector('#saveAllBtn');
+                  const themeButton = document.querySelector('#themeBtn');
+                  const sidebarStyle = sidebar ? getComputedStyle(sidebar) : null;
+                  const topbarStyle = topbar ? getComputedStyle(topbar) : null;
+                  const toggleStyle = toggleButton ? getComputedStyle(toggleButton) : null;
+                  const saveStyle = saveButton ? getComputedStyle(saveButton) : null;
+                  const themeStyle = themeButton ? getComputedStyle(themeButton) : null;
+                  const hasContent = sidebar?.dataset.hasContent === 'true';
+                  return {
+                    module: document.body.dataset.module || '',
+                    hidden: Boolean(sidebar?.hidden),
+                    hasContent,
+                    bodyOpen: document.body.classList.contains('right-sidebar-open'),
+                    sidebarWidth: sidebar ? Math.round(sidebar.getBoundingClientRect().width) : 0,
+                    rightRailWidth: Math.round(parseFloat(getComputedStyle(document.body).getPropertyValue('--right-rail-w')) || 0),
+                    sidebarBackground: sidebarStyle?.backgroundColor || '',
+                    topbarBackground: topbarStyle?.backgroundColor || '',
+                    toggleOpacity: toggleStyle?.opacity || '',
+                    saveOpacity: saveStyle?.opacity || '',
+                    themeOpacity: themeStyle?.opacity || '',
+                    toggleColor: toggleStyle?.color || '',
+                    saveColor: saveStyle?.color || '',
+                    themeColor: themeStyle?.color || '',
+                  };
+                })()
+                """
+            )
+            loading_right_rail_ok = (
+                loading_right_rail_state["module"] == "presenter"
+                and not loading_right_rail_state["hidden"]
+                and (
+                    loading_right_rail_state["hasContent"]
+                    or (
+                        not loading_right_rail_state["bodyOpen"]
+                        and loading_right_rail_state["sidebarWidth"] == loading_right_rail_state["rightRailWidth"]
+                    )
+                )
+                and loading_right_rail_state["sidebarBackground"] == loading_right_rail_state["topbarBackground"]
+                and loading_right_rail_state["toggleOpacity"] == "1"
+                and loading_right_rail_state["saveOpacity"] == "1"
+                and loading_right_rail_state["themeOpacity"] == "1"
+                and loading_right_rail_state["toggleColor"] == loading_right_rail_state["saveColor"]
+                and loading_right_rail_state["toggleColor"] == loading_right_rail_state["themeColor"]
+            )
+            if loading_right_rail_ok:
+                pass_("presenter-loading-right-rail", json.dumps(loading_right_rail_state, ensure_ascii=False))
+            else:
+                fail("presenter-loading-right-rail", json.dumps(loading_right_rail_state, ensure_ascii=False))
+
             wait_for_service_data(page)
 
             service = select_service_with_slides(page)
@@ -396,29 +452,80 @@ def main() -> int:
                     """
                     (() => {
                       const button = document.querySelector('#presenterRightSidebarBtn');
+                      const saveButton = document.querySelector('#saveAllBtn');
+                      const themeButton = document.querySelector('#themeBtn');
                       const sidebar = document.querySelector('#mindexRightSidebar');
+                      const sidePanel = sidebar?.querySelector('.svc-presenter-side-panel');
+                      const rightSidebarHead = sidebar?.querySelector('.right-sidebar-head');
+                      const presenterTop = sidebar?.querySelector('.svc-presenter-top');
+                      const inputRail = sidebar?.querySelector('.svc-presenter-input-rail');
+                      const inputRailHead = sidebar?.querySelector('.svc-presenter-input-rail-head');
+                      const leftSidebar = document.querySelector('#mindexSidebarPanel');
                       const headerToggle = document.querySelector('.svc-header-actions [data-presenter-right-sidebar-toggle]');
                       const presenterHeader = document.querySelector('.presenter-viewer .svc-header');
+                      const resolveCssColor = (value) => {
+                        const sample = document.createElement('span');
+                        sample.style.color = value;
+                        document.body.appendChild(sample);
+                        const color = getComputedStyle(sample).color;
+                        sample.remove();
+                        return color;
+                      };
                       const sidebarIsVisible = () => {
                         if (!sidebar || sidebar.hidden || !document.body.classList.contains('right-sidebar-open')) return false;
                         const style = getComputedStyle(sidebar);
                         return style.visibility !== 'hidden' && Number(style.opacity) > 0.5;
                       };
+                      const buttonStyle = button ? getComputedStyle(button) : null;
+                      const buttonRect = button?.getBoundingClientRect();
+                      const saveRect = saveButton?.getBoundingClientRect();
+                      const themeRect = themeButton?.getBoundingClientRect();
+                      const presenterTopStyle = presenterTop ? getComputedStyle(presenterTop) : null;
+                      const inputRailStyle = inputRail ? getComputedStyle(inputRail) : null;
+                      const inputRailHeadStyle = inputRailHead ? getComputedStyle(inputRailHead) : null;
+                      const saveStyle = saveButton ? getComputedStyle(saveButton) : null;
+                      const themeStyle = themeButton ? getComputedStyle(themeButton) : null;
                       const before = {
                         buttonVisible: Boolean(button && !button.hidden),
                         saveHidden: Boolean(document.querySelector('#saveAllBtn')?.hidden),
+                        saveVisible: Boolean(saveButton && !saveButton.hidden),
+                        themeVisible: Boolean(themeButton && !themeButton.hidden),
+                        railButtonAligned: Boolean(buttonRect && saveRect && themeRect)
+                          && Math.abs(buttonRect.left - saveRect.left) <= 1
+                          && Math.abs(buttonRect.left - themeRect.left) <= 1,
+                        railButtonOrder: Boolean(buttonRect && saveRect && themeRect)
+                          && buttonRect.top < saveRect.top
+                          && saveRect.top < themeRect.top,
                         headerToggleRemoved: !headerToggle,
                         presenterHeaderRemoved: !presenterHeader,
+                        rightSidebarHeaderRemoved: !rightSidebarHead,
                         sidebarVisible: sidebarIsVisible(),
                         bodyOpen: document.body.classList.contains('right-sidebar-open'),
                         bodyTransition: getComputedStyle(document.body).transitionProperty,
                         sidebarTransition: sidebar ? getComputedStyle(sidebar).transitionProperty : '',
                         sidebarBorderLeft: sidebar ? getComputedStyle(sidebar).borderLeftWidth : '',
+                        sidebarWidth: sidebar ? Math.round(sidebar.getBoundingClientRect().width) : 0,
+                        sidePanelWidth: sidePanel ? Math.round(sidePanel.getBoundingClientRect().width) : 0,
+                        leftSidebarWidth: leftSidebar ? Math.round(leftSidebar.getBoundingClientRect().width) : 0,
+                        rightRailWidth: Math.round(parseFloat(getComputedStyle(document.body).getPropertyValue('--right-rail-w')) || 0),
+                        buttonBorderWidth: buttonStyle?.borderTopWidth || '',
+                        buttonBoxShadow: buttonStyle?.boxShadow || '',
+                        buttonOpacity: buttonStyle?.opacity || '',
+                        saveOpacity: saveStyle?.opacity || '',
+                        themeOpacity: themeStyle?.opacity || '',
+                        buttonColor: buttonStyle?.color || '',
+                        saveColor: saveStyle?.color || '',
+                        themeColor: themeStyle?.color || '',
+                        accentColor: resolveCssColor('var(--accent)'),
+                        presenterTopBorderWidth: presenterTopStyle?.borderTopWidth || '',
+                        inputRailBorderWidth: inputRailStyle?.borderTopWidth || '',
+                        inputRailHeadBorderBottomWidth: inputRailHeadStyle?.borderBottomWidth || '',
                       };
                       button?.click();
                       const afterClose = {
                         sidebarVisible: sidebarIsVisible(),
                         sidebarMounted: Boolean(sidebar && !sidebar.hidden),
+                        sidebarWidth: sidebar ? Math.round(sidebar.getBoundingClientRect().width) : 0,
                         bodyOpen: document.body.classList.contains('right-sidebar-open'),
                         pressed: button?.getAttribute('aria-pressed') || '',
                       };
@@ -426,6 +533,7 @@ def main() -> int:
                       const afterOpen = {
                         sidebarVisible: sidebarIsVisible(),
                         sidebarMounted: Boolean(sidebar && !sidebar.hidden),
+                        sidebarWidth: sidebar ? Math.round(sidebar.getBoundingClientRect().width) : 0,
                         bodyOpen: document.body.classList.contains('right-sidebar-open'),
                         pressed: button?.getAttribute('aria-pressed') || '',
                       };
@@ -435,20 +543,43 @@ def main() -> int:
                 )
                 right_sidebar_toggle_ok = (
                     right_sidebar_toggle_state["before"]["buttonVisible"]
-                    and right_sidebar_toggle_state["before"]["saveHidden"]
+                    and not right_sidebar_toggle_state["before"]["saveHidden"]
+                    and right_sidebar_toggle_state["before"]["saveVisible"]
+                    and right_sidebar_toggle_state["before"]["themeVisible"]
+                    and right_sidebar_toggle_state["before"]["railButtonAligned"]
+                    and right_sidebar_toggle_state["before"]["railButtonOrder"]
                     and right_sidebar_toggle_state["before"]["headerToggleRemoved"]
                     and right_sidebar_toggle_state["before"]["presenterHeaderRemoved"]
+                    and right_sidebar_toggle_state["before"]["rightSidebarHeaderRemoved"]
                     and right_sidebar_toggle_state["before"]["sidebarVisible"]
                     and right_sidebar_toggle_state["before"]["bodyOpen"]
                     and "--shell-right-w" in right_sidebar_toggle_state["before"]["bodyTransition"]
                     and "opacity" in right_sidebar_toggle_state["before"]["sidebarTransition"]
                     and right_sidebar_toggle_state["before"]["sidebarBorderLeft"] == "0px"
+                    and right_sidebar_toggle_state["before"]["sidePanelWidth"] == right_sidebar_toggle_state["before"]["leftSidebarWidth"]
+                    and right_sidebar_toggle_state["before"]["sidebarWidth"] == (
+                        right_sidebar_toggle_state["before"]["sidePanelWidth"]
+                        + right_sidebar_toggle_state["before"]["rightRailWidth"]
+                    )
+                    and right_sidebar_toggle_state["before"]["buttonBorderWidth"] == "0px"
+                    and right_sidebar_toggle_state["before"]["buttonBoxShadow"] == "none"
+                    and right_sidebar_toggle_state["before"]["buttonOpacity"] == "1"
+                    and right_sidebar_toggle_state["before"]["saveOpacity"] == "1"
+                    and right_sidebar_toggle_state["before"]["themeOpacity"] == "1"
+                    and right_sidebar_toggle_state["before"]["buttonColor"] != right_sidebar_toggle_state["before"]["accentColor"]
+                    and right_sidebar_toggle_state["before"]["buttonColor"] == right_sidebar_toggle_state["before"]["saveColor"]
+                    and right_sidebar_toggle_state["before"]["buttonColor"] == right_sidebar_toggle_state["before"]["themeColor"]
+                    and right_sidebar_toggle_state["before"]["presenterTopBorderWidth"] == "0px"
+                    and right_sidebar_toggle_state["before"]["inputRailBorderWidth"] == "0px"
+                    and right_sidebar_toggle_state["before"]["inputRailHeadBorderBottomWidth"] == "0px"
                     and not right_sidebar_toggle_state["afterClose"]["sidebarVisible"]
                     and right_sidebar_toggle_state["afterClose"]["sidebarMounted"]
+                    and right_sidebar_toggle_state["afterClose"]["sidebarWidth"] == right_sidebar_toggle_state["before"]["rightRailWidth"]
                     and not right_sidebar_toggle_state["afterClose"]["bodyOpen"]
                     and right_sidebar_toggle_state["afterClose"]["pressed"] == "false"
                     and right_sidebar_toggle_state["afterOpen"]["sidebarVisible"]
                     and right_sidebar_toggle_state["afterOpen"]["sidebarMounted"]
+                    and right_sidebar_toggle_state["afterOpen"]["sidebarWidth"] == right_sidebar_toggle_state["before"]["sidebarWidth"]
                     and right_sidebar_toggle_state["afterOpen"]["bodyOpen"]
                     and right_sidebar_toggle_state["afterOpen"]["pressed"] == "true"
                 )
@@ -693,6 +824,8 @@ def main() -> int:
                       const currentSidebarContext = document.querySelector('.service-sidebar-presenter-context');
                       const currentTitle = currentSidebarContext?.querySelector('.service-sidebar-presenter-title');
                       const currentDate = currentSidebarContext?.querySelector('.service-sidebar-presenter-date');
+                      const titleStyle = currentTitle ? getComputedStyle(currentTitle) : null;
+                      const dateStyle = currentDate ? getComputedStyle(currentDate) : null;
                       const controllerTitle = document.querySelector('.presenter-viewer .svc-service-title');
                       const controllerDate = document.querySelector('.presenter-viewer .svc-date-text');
                       const afterHeader = currentHeader?.getBoundingClientRect();
@@ -707,6 +840,11 @@ def main() -> int:
                       return {
                         title: currentTitle?.textContent.trim() || title?.textContent.trim() || '',
                         date: currentDate?.textContent.trim() || date?.textContent.trim() || '',
+                        titleFontSize: parseFloat(titleStyle?.fontSize || '0'),
+                        titleFontWeight: titleStyle?.fontWeight || '',
+                        dateFontSize: parseFloat(dateStyle?.fontSize || '0'),
+                        dateFontWeight: dateStyle?.fontWeight || '',
+                        contextBackground: currentSidebarContext ? getComputedStyle(currentSidebarContext).backgroundColor : '',
                         usesSidebarTitle: Boolean((currentTitle || title)?.closest('.service-sidebar-presenter-context') && !document.querySelector('.svc-presenter-title-row')),
                         controllerTitleRemoved: !controllerTitle && !controllerDate,
                         presenterHeaderRemoved: !presenterHeader && !currentPresenterHeader,
@@ -735,6 +873,11 @@ def main() -> int:
                     and sticky_title_state["usesSidebarTitle"]
                     and sticky_title_state["controllerTitleRemoved"]
                     and sticky_title_state["presenterHeaderRemoved"]
+                    and sticky_title_state["titleFontSize"] >= 18
+                    and int(sticky_title_state["titleFontWeight"]) >= 800
+                    and sticky_title_state["dateFontSize"] >= 13
+                    and int(sticky_title_state["dateFontWeight"]) >= 700
+                    and sticky_title_state["contextBackground"] != "rgba(0, 0, 0, 0)"
                     and sticky_title_state["rightSidebarVisible"]
                     and sticky_title_state["controlsPosition"] == "static"
                     and sticky_title_state["sidePanelPosition"] == "static"

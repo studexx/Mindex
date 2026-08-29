@@ -668,6 +668,8 @@ const state = {
   songVersionTablesSupported: false,
   songVersionPraiseTypesSupported: false,
   dirtyServiceTypeIds: new Set(),
+  dirtyServiceElementIds: new Map(),
+  dirtyServiceStructureIds: new Set(),
   serviceItemAssigneeSupported: false,
   serviceItemVersionSupported: false,
   serviceItemMemoSupported: false,
@@ -5592,7 +5594,7 @@ async function saveAll() {
     return;
   }
   if (isServiceDataModule()) {
-    await saveService();
+    await saveService(state.module === "presenter" ? presenterViewServiceId() : state.selectedServiceId);
     return;
   }
   if (state.module === "scripture") {
@@ -5948,6 +5950,8 @@ async function saveService(serviceId = state.selectedServiceId, options = {}) {
       await saveWorshipServiceInstance(service);
     }
     state.dirty.service = false;
+    state.dirtyServiceElementIds.delete(serviceId);
+    state.dirtyServiceStructureIds.delete(serviceId);
     captureCleanFingerprint("service");
     if (!options.silent) showToast("예배를 저장했습니다.");
     // Field-level commits already refreshed the affected presenter content. Avoid
@@ -6147,6 +6151,127 @@ async function saveWorshipServiceInstance(service) {
   suppressedItems.forEach((item) => suppressedIds.delete(item.id));
   await syncSharedSundayContentAfterSave(service, persistenceItems, { elementTypedStateColumns });
   refreshPresenterForService(serviceId);
+}
+
+async function saveServiceItemPatch(serviceId = state.selectedServiceId, index = -1, options = {}) {
+  if (!requireClient()) return false;
+  if (state.saving) {
+    if (activeServiceSavePromise && !options._afterActiveServiceSave) {
+      try {
+        await activeServiceSavePromise;
+      } catch (_error) {
+        // The active save already reported its own failure. Retry once with the
+        // latest in-memory item state.
+      }
+      return saveServiceItemPatch(serviceId, index, { ...options, _afterActiveServiceSave: true });
+    }
+    const message = "다른 저장이 끝나는 중입니다. 잠시 후 다시 시도해 주세요.";
+    if (!options.silent) showToast(message, "error");
+    if (options.throwOnError) throw new Error(message);
+    return false;
+  }
+
+  const service = state.services.find((candidate) => candidate.id === serviceId);
+  const item = getServiceItems(serviceId)[Number(index)];
+  if (!service || !item || service._isExpected) return false;
+  if (!isUuid(item.id) || state.dirtyServiceStructureIds.has(serviceId)) {
+    return saveService(serviceId, options);
+  }
+
+  state.saving = true;
+  updateSaveState();
+  try {
+    await saveDirtyServiceTypes();
+    const saved = await saveWorshipServiceElementPatch(service, item.id);
+    if (!saved) {
+      state.saving = false;
+      updateSaveState();
+      return await saveService(serviceId, options);
+    }
+    clearServiceElementDirty(serviceId, item);
+    if (!state.dirtyServiceStructureIds.has(serviceId) && !state.dirtyServiceElementIds.get(serviceId)?.size) {
+      state.dirty.service = false;
+      captureCleanFingerprint("service");
+    }
+    if (!options.silent) showToast("항목을 저장했습니다.");
+    if (options.renderAfterSave !== false) render();
+    else renderServiceList();
+    return true;
+  } catch (error) {
+    const message = serviceSaveErrorMessage(error);
+    if (!options.silent) showToast(message, "error");
+    if (options.throwOnError) throw new Error(message);
+    return false;
+  } finally {
+    state.saving = false;
+    updateSaveState();
+  }
+}
+
+async function saveWorshipServiceElementPatch(service, itemId) {
+  const serviceId = service?.id || "";
+  const targetItemId = String(itemId || "").trim();
+  if (!serviceId || !targetItemId) return false;
+  await ensureWorshipServiceRowsLoadedForPersistence(serviceId);
+
+  const existingSections = state.worshipSections.filter((section) => section.service_id === serviceId);
+  const existingElements = state.worshipElements.filter((element) =>
+    existingSections.some((section) => section.id === element.section_id));
+  const existingSectionById = Object.fromEntries(existingSections.map((section) => [section.id, section]));
+  const existingElementById = Object.fromEntries(existingElements.map((element) => [element.id, element]));
+  const items = ensureUniqueServiceItemPersistenceIds(normalizeServiceItemsForTemplateHierarchy(
+    service,
+    normalizeServiceItemsInCurrentOrder(getServiceItems(serviceId)),
+  )).filter((item) => !isUnmodifiedTemplatePlaceholder(item));
+  if (!items.some((item) => item.id === targetItemId)) return false;
+
+  const elementTypedStateColumns = await worshipElementTypedStateColumns();
+  const persistenceItems = materializeSharedSundayContentForPersistence(service, items);
+  const rows = buildWorshipPersistenceRows(service, persistenceItems, existingSectionById, existingElementById, {
+    elementTypedStateColumns,
+  });
+  sanitizeWorshipPersistenceRows(rows, { elementTypedStateColumns });
+  compactWorshipPersistenceRows(rows);
+  validateWorshipPersistenceRows(rows, { serviceId });
+
+  const elementRow = rows.elements.find((element) => element.id === targetItemId);
+  if (!elementRow) return false;
+  const sectionRow = rows.sections.find((section) => section.id === elementRow.section_id);
+  if (sectionRow) {
+    const { error } = await state.client
+      .from("mindex_worship_sections")
+      .upsert([sectionRow], { onConflict: "id" });
+    if (error) throw error;
+  }
+  const { error } = await state.client
+    .from("mindex_worship_elements")
+    .upsert([elementRow], { onConflict: "id" });
+  if (error) throw error;
+
+  if (sectionRow) {
+    state.worshipSections = [
+      ...state.worshipSections.filter((section) => section.id !== sectionRow.id),
+      sectionRow,
+    ];
+  }
+  state.worshipElements = [
+    ...state.worshipElements.filter((element) => element.id !== elementRow.id),
+    elementRow,
+  ];
+  state.serviceItems[serviceId] = projectWorshipServiceItemsFromTemplate(
+    service,
+    groupWorshipElements(
+      state.worshipSections.filter((section) => section.service_id === serviceId),
+      state.worshipElements,
+    )[serviceId] || [],
+  );
+  await syncSharedSundayContentAfterSave(
+    service,
+    persistenceItems.filter((item) => item.id === targetItemId),
+    { elementTypedStateColumns },
+  );
+  refreshPresenterForService(serviceId);
+  return true;
 }
 
 async function syncSharedSundayContentAfterSave(sourceService, sourceItems = [], options = {}) {
@@ -8816,6 +8941,7 @@ function updateServiceMetaField(field) {
     syncSundayAfternoonDedicationSlots(service.id, enabled);
   }
   state.dirty.service = true;
+  markServiceStructureDirty(service.id);
   refreshPresenterForService(service.id);
   updateSaveState();
 }
@@ -8970,7 +9096,7 @@ async function resolveAndSaveCommittedServiceItem(serviceId, index, options = {}
   const item = getServiceItems(serviceId)[index];
   const service = state.services.find((candidate) => candidate.id === serviceId);
   if (!item || !service || serviceItemSongSelectionInvalid(item, service) || serviceItemScriptureInputInvalid(item)) return;
-  await saveService(serviceId, options);
+  await saveServiceItemPatch(serviceId, index, options);
 }
 
 async function resolveServiceSongSelectionBeforeSave(serviceId, index) {
@@ -9034,6 +9160,37 @@ function serviceItemPersistenceSignature(item = {}) {
     memo: item.memo || "",
     config: item.config || null,
   });
+}
+
+function markServiceElementDirty(serviceId = state.selectedServiceId, item = null) {
+  const id = String(serviceId || "").trim();
+  const itemId = String(item?.id || "").trim();
+  if (!id || !itemId) return;
+  const dirtyIds = state.dirtyServiceElementIds.get(id) || new Set();
+  dirtyIds.add(itemId);
+  state.dirtyServiceElementIds.set(id, dirtyIds);
+}
+
+function clearServiceElementDirty(serviceId = state.selectedServiceId, item = null) {
+  const id = String(serviceId || "").trim();
+  const itemId = String(item?.id || "").trim();
+  if (!id || !itemId) return;
+  const dirtyIds = state.dirtyServiceElementIds.get(id);
+  if (!dirtyIds) return;
+  dirtyIds.delete(itemId);
+  if (dirtyIds.size) state.dirtyServiceElementIds.set(id, dirtyIds);
+  else state.dirtyServiceElementIds.delete(id);
+}
+
+function markServiceStructureDirty(serviceId = state.selectedServiceId) {
+  const id = String(serviceId || "").trim();
+  if (id) state.dirtyServiceStructureIds.add(id);
+}
+
+function serviceHasOnlyElementDirty(serviceId = state.selectedServiceId) {
+  const id = String(serviceId || "").trim();
+  if (!id || state.dirtyServiceStructureIds.has(id)) return false;
+  return Boolean(state.dirtyServiceElementIds.get(id)?.size);
 }
 
 function updateServiceItemField(field, options = {}) {
@@ -9205,6 +9362,7 @@ function updateServiceItemField(field, options = {}) {
   }
   state.serviceItems[serviceId] = normalizeServiceItemsInCurrentOrder(items);
   state.dirty.service = true;
+  markServiceElementDirty(serviceId, item);
   const presenterRefreshOptions = {
     publish: !options.livePreview,
     renderControls: !options.livePreview,
@@ -11305,6 +11463,7 @@ function runServiceItemAction(action, index, label = "", title = "") {
   state.serviceItems[serviceId] = normalizeServiceItemsInCurrentOrder(items);
   state.selectedServiceItemIndex = Number.isFinite(nextSelectedIndex) && nextSelectedIndex >= 0 ? nextSelectedIndex : null;
   state.dirty.service = true;
+  markServiceStructureDirty(serviceId);
   refreshPresenterForService(serviceId);
   renderCurrentServiceModuleDetail();
   renderServiceList();
@@ -11391,6 +11550,7 @@ function runPresenterSectionItemAction(action, index) {
   }
   state.serviceItems[serviceId] = normalizeServiceItemsInCurrentOrder(items);
   state.dirty.service = true;
+  markServiceStructureDirty(serviceId);
   refreshPresenterForService(serviceId);
   renderCurrentServiceModuleDetail();
   renderServiceList();
@@ -12569,7 +12729,7 @@ function renderModuleSwitcher() {
   refs.searchInput.placeholder = "검색...";
   refs.searchInput.setAttribute("aria-label", "검색");
   syncPraiseCreateControls();
-  refs.saveAllBtn.hidden = state.module === "presenter";
+  refs.saveAllBtn.hidden = false;
   const saveLabel =
     state.module === "scripture"
       ? "말씀 저장"
@@ -14631,8 +14791,9 @@ function presenterRightSidebarIsOpen() {
 
 function applyRightSidebarVisibility(hasContent = refs.rightSidebar?.dataset.hasContent === "true") {
   if (!refs.rightSidebar) return;
+  const railAvailable = state.module === "presenter" || hasContent;
   const open = Boolean(hasContent && presenterRightSidebarIsOpen());
-  refs.rightSidebar.hidden = !hasContent;
+  refs.rightSidebar.hidden = !railAvailable;
   refs.rightSidebar.setAttribute("aria-hidden", String(!open));
   if ("inert" in refs.rightSidebar) refs.rightSidebar.inert = !open;
   document.body.classList.toggle("right-sidebar-available", Boolean(hasContent));
@@ -17851,7 +18012,7 @@ async function confirmSaveBeforeLeaving() {
 }
 
 function updateSaveState() {
-  refs.saveAllBtn.hidden = state.module === "presenter";
+  refs.saveAllBtn.hidden = false;
   updatePresenterRightSidebarToggleButtons();
   if (state.module === "home" || state.module === "calendar") {
     refs.saveAllBtn.disabled = true;
@@ -17868,7 +18029,8 @@ function updateSaveState() {
   }
 
   if (isServiceDataModule()) {
-    const selectedService = state.services.find((svc) => svc.id === state.selectedServiceId);
+    const serviceId = state.module === "presenter" ? presenterViewServiceId() : state.selectedServiceId;
+    const selectedService = state.services.find((svc) => svc.id === serviceId);
     refs.saveAllBtn.disabled = !selectedService || !state.dirty.service || state.saving;
     renderConnectionStatus();
     const dirtyPill = refs.detailPane.querySelector(".dirty-pill");
@@ -24447,10 +24609,6 @@ function renderPresenterRightSidebar(service, slides, active, index) {
   if (!service?.id) return "";
   return `
     <div class="svc-presenter-side-panel" data-presenter-right-sidebar data-service-id="${escapeAttr(service.id)}">
-      <header class="right-sidebar-head">
-        <strong>컨트롤러</strong>
-        ${renderPresenterRightSidebarToggle({ icon: "x", label: "컨트롤러 닫기" })}
-      </header>
       ${renderPresenterControlsTop(service, slides, active, index)}
       ${renderPresenterServiceInputRail(service)}
     </div>`;
