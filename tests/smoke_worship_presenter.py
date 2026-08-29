@@ -4925,7 +4925,7 @@ def main() -> int:
                 )
                 if (
 	                    section_song_title_fit_state["noChromakey"]
-	                    and not section_song_title_fit_state["hasBackground"]
+	                    and section_song_title_fit_state["hasBackground"]
 	                    and not section_song_title_fit_state["hasSongLayout"]
 	                    and section_song_title_fit_state["hasOrderContent"]
 	                    and section_song_title_fit_state["display"] == "grid"
@@ -8950,7 +8950,7 @@ def main() -> int:
                         { type_id: 'sunday-first', date: '2026-03-29', calendarNote: '종려주일', expected: '26-S4.png', defaultFile: '26-A2.png', seasonFile: '26-S4.png', chromakey: false },
                         { type_id: 'sunday-first', date: '2026-04-05', calendarNote: '부활주일', expected: '26-S5.png', defaultFile: '26-A2.png', seasonFile: '26-S5.png', chromakey: false },
                         { type_id: 'sunday-first', date: '2026-05-24', calendarNote: '성령강림주일', expected: '26-S6.png', defaultFile: '26-A3.png', seasonFile: '26-S6.png', chromakey: false },
-                        { type_id: 'sunday-first', date: '2026-07-05', calendarNote: '맥추감사주일', expected: '', defaultFile: '26-A4.png', seasonFile: '26-SH.png', chromakey: false },
+                        { type_id: 'sunday-first', date: '2026-07-05', calendarNote: '맥추감사주일', expected: '26-A4.png', defaultFile: '26-A4.png', seasonFile: '26-SH.png', chromakey: false },
                         { type_id: 'sunday-first', date: '2026-11-15', calendarNote: '추수감사주일', expected: '', defaultFile: '26-A6.png', seasonFile: '26-ST.png', chromakey: false },
                         { type_id: 'sunday-first', date: '2027-01-03', expected: '', defaultFile: '27-A1.png', seasonFile: '', chromakey: false },
                         { type_id: 'sunday-second', date: '2026-07-05', expected: '', defaultFile: '26-A4.png', seasonFile: '26-SH.png', chromakey: true },
@@ -8987,7 +8987,7 @@ def main() -> int:
                     item["actualChromakey"] == item["chromakey"]
                     and item["actualDefaultFile"] == item["defaultFile"]
                     and item["actualSeasonFile"] == item["seasonFile"]
-                    and item["sources"] == []
+                    and ((item["expected"] and any(item["expected"] in source for source in item["sources"])) or (not item["expected"] and item["sources"] == []))
                     for item in default_background_state
                 )
                 if default_background_ok:
@@ -9157,9 +9157,9 @@ def main() -> int:
                     and no_chromakey_payload["backgroundImage"] == ""
                     and no_chromakey_state["serviceType"] == no_chromakey_payload["serviceType"]
                     and no_chromakey_state["noChromakey"]
-                    and not no_chromakey_state["hasBackground"]
-                    and no_chromakey_state["inlineBackground"] == ""
-                    and "url(" not in no_chromakey_state["computedBackground"]
+                    and no_chromakey_state["hasBackground"]
+                    and "url(" in no_chromakey_state["inlineBackground"]
+                    and "url(" in no_chromakey_state["computedBackground"]
                     and no_chromakey_state["slideClass"] == "presenter-slide--lyrics"
                     and no_chromakey_state["elementType"] == "praise"
                     and no_chromakey_state["layout"] == "lower_bar_text"
