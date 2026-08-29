@@ -5,6 +5,8 @@ contextBridge.exposeInMainWorld("mindexElectron", {
   openPresenterOutput: (payload) => ipcRenderer.invoke("mindex:open-presenter", payload),
   closePresenterOutput: () => ipcRenderer.invoke("mindex:close-presenter"),
   fullscreenPresenterOutput: () => ipcRenderer.invoke("mindex:fullscreen-presenter"),
+  getPresenterDisplays: () => ipcRenderer.invoke("mindex:get-presenter-displays"),
+  setPresenterAlwaysOnTop: (payload) => ipcRenderer.invoke("mindex:set-presenter-always-on-top", payload),
   checkForUpdates: () => ipcRenderer.invoke("mindex:check-for-updates"),
   downloadUpdate: () => ipcRenderer.invoke("mindex:download-update"),
   installUpdate: () => ipcRenderer.invoke("mindex:install-update"),

@@ -250,6 +250,7 @@ const PRESENTER_CHANNEL = "mindex.presenter";
 const PRESENTER_STORAGE_KEY = "mindex.presenter.state";
 const PRESENTER_SIGNAL_KEY = "mindex.presenter.signal";
 const PRESENTER_TARGET_SCREEN_STORAGE_KEY = "mindex.presenter.targetScreen.v1";
+const PRESENTER_ALWAYS_ON_TOP_STORAGE_KEY = "mindex.presenter.alwaysOnTop.v1";
 const PRESENTER_JUMP_MAX_DIGITS = 3;
 const PRESENTER_OUTPUT_HEARTBEAT_INTERVAL_MS = 1000;
 const PRESENTER_OUTPUT_HEARTBEAT_TTL_MS = 3000;
@@ -710,6 +711,7 @@ const state = {
     exitArmedAt: 0,
     screens: [],
     selectedScreenId: null,
+    alwaysOnTop: false,
     liveScripture: {
       reference: "",
       draft: "",
@@ -1896,6 +1898,7 @@ function readUiState() {
   state.selectedBibleChapter = Number.isFinite(bibleChapter) && bibleChapter > 0 ? bibleChapter : 1;
   state.bibleCopyReference = bibleCopyReference !== "false";
   state.presenter.selectedScreenId = safeStorageGet("local", PRESENTER_TARGET_SCREEN_STORAGE_KEY) || null;
+  state.presenter.alwaysOnTop = safeStorageGet("local", PRESENTER_ALWAYS_ON_TOP_STORAGE_KEY) === "true";
 }
 
 function persistUiState() {
@@ -8217,6 +8220,12 @@ function handleDetailChange(event) {
     } else {
       safeStorageRemove("local", PRESENTER_TARGET_SCREEN_STORAGE_KEY);
     }
+    return;
+  }
+
+  const presenterAlwaysOnTop = event.target.closest("[data-presenter-always-on-top]");
+  if (presenterAlwaysOnTop) {
+    setPresenterAlwaysOnTopPreference(presenterAlwaysOnTop.checked);
     return;
   }
 
@@ -24039,8 +24048,10 @@ function normalizePresenterScreen(screen = {}, index = 0, currentScreen = null) 
   const safeTop = Number.isFinite(top) ? top : 0;
   const safeWidth = Number.isFinite(width) && width > 0 ? width : 1920;
   const safeHeight = Number.isFinite(height) && height > 0 ? height : 1080;
-  const isCurrent = screen === currentScreen;
+  const isCurrent = Boolean(screen.isCurrent) || screen === currentScreen;
   const isPrimary = Boolean(screen.isPrimary);
+  const resolution = `${Math.round(safeWidth)}x${Math.round(safeHeight)}`;
+  const screenLabel = String(screen.label || "").trim();
   const key = [
     Math.round(safeLeft),
     Math.round(safeTop),
@@ -24049,8 +24060,9 @@ function normalizePresenterScreen(screen = {}, index = 0, currentScreen = null) 
     isPrimary ? "primary" : "display",
   ].join(":");
   const labelParts = [
-    `화면 ${index + 1}`,
-    isPrimary ? "기본" : "외부",
+    screenLabel || (isPrimary ? "기본 화면" : `출력 화면 ${index + 1}`),
+    resolution,
+    isPrimary && !screenLabel ? "기본" : "",
     isCurrent ? "현재" : "",
   ].filter(Boolean);
   return {
@@ -24068,6 +24080,23 @@ function normalizePresenterScreen(screen = {}, index = 0, currentScreen = null) 
 }
 
 async function requestPresenterScreens() {
+  const electronDisplays = window.mindexElectron?.getPresenterDisplays;
+  if (electronDisplays) {
+    try {
+      const result = await electronDisplays();
+      const screens = Array.from(result?.displays || [])
+        .map((screen, index) => normalizePresenterScreen(screen, index))
+        .filter((screen) => screen.rect.width > 0 && screen.rect.height > 0);
+      applyPresenterScreens(screens);
+      renderPresenterControlState(presenterViewServiceId());
+      showToast(screens.length > 1 ? "출력 화면을 감지했습니다." : "출력 화면을 확인했습니다.", "success");
+      return screens;
+    } catch (error) {
+      console.warn("Could not detect Electron presenter screens.", error);
+      showToast("출력 화면을 감지하지 못했습니다.", "error");
+      return [];
+    }
+  }
   if (!window.getScreenDetails || !window.isSecureContext) {
     showToast("이 브라우저에서는 화면 감지를 지원하지 않습니다.", "error");
     return [];
@@ -24077,19 +24106,7 @@ async function requestPresenterScreens() {
     const screens = Array.from(details?.screens || [])
       .map((screen, index) => normalizePresenterScreen(screen, index, details?.currentScreen))
       .filter((screen) => screen.rect.width > 0 && screen.rect.height > 0);
-    state.presenter.screens = screens;
-    const selectedStillAvailable = screens.some((screen) => screen.key === state.presenter.selectedScreenId);
-    if (!selectedStillAvailable) {
-      state.presenter.selectedScreenId = screens.find((screen) => !screen.isCurrent && !screen.isPrimary)?.key
-        || screens.find((screen) => !screen.isPrimary)?.key
-        || screens[0]?.key
-        || null;
-    }
-    if (state.presenter.selectedScreenId) {
-      safeStorageSet("local", PRESENTER_TARGET_SCREEN_STORAGE_KEY, state.presenter.selectedScreenId);
-    } else {
-      safeStorageRemove("local", PRESENTER_TARGET_SCREEN_STORAGE_KEY);
-    }
+    applyPresenterScreens(screens);
     renderPresenterControlState(presenterViewServiceId());
     showToast(screens.length > 1 ? "출력 화면을 감지했습니다." : "감지된 외부 화면이 없습니다.", screens.length > 1 ? "success" : "info");
     return screens;
@@ -24097,6 +24114,22 @@ async function requestPresenterScreens() {
     console.warn("Could not detect presenter screens.", error);
     showToast("화면 감지 권한을 확인해 주세요.", "error");
     return [];
+  }
+}
+
+function applyPresenterScreens(screens = []) {
+  state.presenter.screens = screens;
+  const selectedStillAvailable = screens.some((screen) => screen.key === state.presenter.selectedScreenId);
+  if (!selectedStillAvailable) {
+    state.presenter.selectedScreenId = screens.find((screen) => !screen.isCurrent && !screen.isPrimary)?.key
+      || screens.find((screen) => !screen.isPrimary)?.key
+      || screens[0]?.key
+      || null;
+  }
+  if (state.presenter.selectedScreenId) {
+    safeStorageSet("local", PRESENTER_TARGET_SCREEN_STORAGE_KEY, state.presenter.selectedScreenId);
+  } else {
+    safeStorageRemove("local", PRESENTER_TARGET_SCREEN_STORAGE_KEY);
   }
 }
 
@@ -24112,8 +24145,8 @@ function resolvePresenterTargetScreenRect() {
 }
 
 function renderPresenterScreenControl() {
-  if (!window.getScreenDetails || !window.isSecureContext) return "";
-  if (state.presenter.screens.length > 1) {
+  if (!window.mindexElectron?.getPresenterDisplays && (!window.getScreenDetails || !window.isSecureContext)) return "";
+  if (state.presenter.screens.length) {
     return `
       <label class="svc-presenter-screen-select">
         <i data-lucide="monitor"></i>
@@ -24131,6 +24164,28 @@ function renderPresenterScreenControl() {
     <button class="icon-btn" type="button" data-presenter-action="detect-screens" aria-label="${escapeAttr(uiText("presenter.action.detectDisplays"))}" title="${escapeAttr(uiText("presenter.action.detectDisplays"))}">
       <i data-lucide="monitor"></i>
     </button>`;
+}
+
+function renderPresenterAlwaysOnTopControl() {
+  if (!window.mindexElectron?.setPresenterAlwaysOnTop) return "";
+  return `
+    <label class="svc-presenter-pin-toggle" title="출력 창을 항상 위에 표시">
+      <input type="checkbox" data-presenter-always-on-top ${state.presenter.alwaysOnTop ? "checked" : ""} />
+      <span class="svc-presenter-pin-track" aria-hidden="true"></span>
+      <span>항상 위</span>
+    </label>`;
+}
+
+function setPresenterAlwaysOnTopPreference(enabled) {
+  state.presenter.alwaysOnTop = Boolean(enabled);
+  safeStorageSet("local", PRESENTER_ALWAYS_ON_TOP_STORAGE_KEY, state.presenter.alwaysOnTop ? "true" : "false");
+  const updater = window.mindexElectron?.setPresenterAlwaysOnTop;
+  if (updater) {
+    updater({ enabled: state.presenter.alwaysOnTop }).catch((error) => {
+      console.warn("Could not update presenter always-on-top state.", error);
+    });
+  }
+  renderPresenterControlState(presenterViewServiceId());
 }
 
 function renderPresenterHelpControl() {
@@ -25458,6 +25513,7 @@ function renderPresenterControlsTop(service, slides, active, index) {
             <span>${escapeHtml(launchLabel)}</span>
           </button>
           ${renderPresenterScreenControl()}
+          ${renderPresenterAlwaysOnTopControl()}
         </div>
         <div class="svc-presenter-main" aria-live="polite">
           <span class="svc-slide-counter" aria-label="${escapeAttr(uiText("presenter.aria.slideCount", { current, count }))}">
@@ -27905,7 +27961,7 @@ async function openPresenterOutput(serviceId = state.selectedServiceId) {
   const url = presenterOutputUrl();
   if (window.mindexElectron?.openPresenterOutput) {
     try {
-      await window.mindexElectron.openPresenterOutput({ url, targetRect });
+      await window.mindexElectron.openPresenterOutput({ url, targetRect, alwaysOnTop: state.presenter.alwaysOnTop });
       preparePresenterService(serviceId);
       publishPresenterState();
       startPresenterOutputWindowMonitor(serviceId);

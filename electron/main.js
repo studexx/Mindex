@@ -106,11 +106,45 @@ function displayForPresenter(targetRect = null) {
   return displays.find((display) => !display.internal) || displays.find((display) => display.id !== screen.getPrimaryDisplay().id) || screen.getPrimaryDisplay();
 }
 
-function createPresenterWindow({ url, targetRect } = {}) {
+function presenterDisplayPayload() {
+  const primaryId = screen.getPrimaryDisplay().id;
+  return screen.getAllDisplays().map((display, index) => {
+    const bounds = display.bounds || {};
+    const workArea = display.workArea || bounds;
+    return {
+      id: String(display.id),
+      label: display.id === primaryId ? "기본 화면" : "출력 화면",
+      isPrimary: display.id === primaryId,
+      isCurrent: false,
+      left: workArea.x ?? bounds.x ?? 0,
+      top: workArea.y ?? bounds.y ?? 0,
+      width: workArea.width ?? bounds.width ?? 1920,
+      height: workArea.height ?? bounds.height ?? 1080,
+      index,
+    };
+  });
+}
+
+function applyPresenterAlwaysOnTop(enabled) {
+  if (!presenterWindow || presenterWindow.isDestroyed()) return false;
+  presenterWindow.setAlwaysOnTop(Boolean(enabled), "screen-saver");
+  return true;
+}
+
+function createPresenterWindow({ url, targetRect, alwaysOnTop = false } = {}) {
   const targetDisplay = displayForPresenter(targetRect);
   const { x, y, width, height } = targetDisplay.bounds;
 
   if (presenterWindow && !presenterWindow.isDestroyed()) {
+    applyPresenterAlwaysOnTop(alwaysOnTop);
+    if (targetRect) {
+      presenterWindow.setBounds({
+        x: Math.round(targetRect.left ?? x),
+        y: Math.round(targetRect.top ?? y),
+        width: Math.round(targetRect.width ?? width),
+        height: Math.round(targetRect.height ?? height),
+      });
+    }
     presenterWindow.focus();
     return;
   }
@@ -122,6 +156,7 @@ function createPresenterWindow({ url, targetRect } = {}) {
     height,
     frame: false,
     show: false,
+    alwaysOnTop: Boolean(alwaysOnTop),
     backgroundColor: "#00ff00",
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
@@ -132,6 +167,7 @@ function createPresenterWindow({ url, targetRect } = {}) {
   });
 
   presenterWindow.once("ready-to-show", () => {
+    applyPresenterAlwaysOnTop(alwaysOnTop);
     presenterWindow.setFullScreen(true);
     presenterWindow.show();
     presenterWindow.focus();
@@ -193,6 +229,15 @@ ipcMain.handle("mindex:fullscreen-presenter", () => {
   presenterWindow.focus();
   return { ok: true };
 });
+
+ipcMain.handle("mindex:get-presenter-displays", () => ({
+  ok: true,
+  displays: presenterDisplayPayload(),
+}));
+
+ipcMain.handle("mindex:set-presenter-always-on-top", (_event, payload = {}) => ({
+  ok: applyPresenterAlwaysOnTop(Boolean(payload.enabled)),
+}));
 
 ipcMain.handle("mindex:check-for-updates", async () => {
   if (!app.isPackaged || !updatesEnabled() || !autoUpdater) return { ok: false, reason: "updates-unavailable" };

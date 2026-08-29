@@ -8094,6 +8094,117 @@ def main() -> int:
                 else:
                     fail("presenter-controller-f11-output-fullscreen", json.dumps(controller_f11_state, ensure_ascii=False))
 
+                presenter_desktop_output_controls = page.evaluate(
+                    """
+                    async (serviceId) => {
+                      const previousElectron = window.mindexElectron;
+                      const previousScreens = state.presenter.screens;
+                      const previousSelectedScreenId = state.presenter.selectedScreenId;
+                      const previousAlwaysOnTop = state.presenter.alwaysOnTop;
+                      const previousOutputWindow = state.presenter.outputWindow;
+                      const previousOutputConnectedAt = state.presenter.outputConnectedAt;
+                      const previousOutputPendingAt = state.presenter.outputPendingAt;
+                      const previousOutputBlockedAt = state.presenter.outputBlockedAt;
+                      const previousOutputAttemptServiceId = state.presenter.outputAttemptServiceId;
+                      const previousOutputStopAt = state.presenter.outputStopAt;
+                      const previousOpen = window.open;
+                      const previousAlwaysStorage = localStorage.getItem(PRESENTER_ALWAYS_ON_TOP_STORAGE_KEY);
+                      const openedPayloads = [];
+                      const alwaysUpdates = [];
+                      try {
+                        window.mindexElectron = {
+                          getPresenterDisplays: async () => ({
+                            ok: true,
+                            displays: [
+                              { id: '1', label: '기본 화면', isPrimary: true, left: 0, top: 0, width: 1440, height: 900 },
+                              { id: '2', label: '출력 화면', isPrimary: false, left: 1440, top: 0, width: 1920, height: 1080 },
+                            ],
+                          }),
+                          openPresenterOutput: async (payload) => {
+                            openedPayloads.push(payload);
+                            state.presenter.outputConnectedAt = Date.now();
+                            return { ok: true };
+                          },
+                          setPresenterAlwaysOnTop: async (payload) => {
+                            alwaysUpdates.push(payload);
+                            return { ok: true };
+                          },
+                        };
+                        window.open = () => null;
+                        state.presenter.screens = [];
+                        state.presenter.selectedScreenId = null;
+                        state.presenter.alwaysOnTop = false;
+                        state.presenter.outputWindow = null;
+                        state.presenter.outputConnectedAt = 0;
+                        state.presenter.outputPendingAt = 0;
+                        state.presenter.outputBlockedAt = 0;
+                        state.presenter.outputAttemptServiceId = '';
+                        state.presenter.outputStopAt = 0;
+                        stopPresenterOutputWindowMonitor();
+                        await requestPresenterScreens();
+                        renderPresenterControlState(serviceId);
+                        const screenLabel = document.querySelector('[data-presenter-screen-select] option:checked')?.textContent.trim() || '';
+                        const toggle = document.querySelector('[data-presenter-always-on-top]');
+                        if (toggle) {
+                          toggle.checked = true;
+                          toggle.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
+                        await openPresenterOutput(serviceId);
+                        return {
+                          screenCount: state.presenter.screens.length,
+                          selectedScreenId: state.presenter.selectedScreenId || '',
+                          screenLabel,
+                          toggleRendered: Boolean(toggle),
+                          alwaysOnTop: state.presenter.alwaysOnTop,
+                          alwaysUpdates,
+                          openedPayloads: openedPayloads.map((payload) => ({
+                            hasUrl: Boolean(payload.url),
+                            alwaysOnTop: Boolean(payload.alwaysOnTop),
+                            targetRect: payload.targetRect || null,
+                          })),
+                        };
+                      } finally {
+                        if (previousElectron === undefined) delete window.mindexElectron;
+                        else window.mindexElectron = previousElectron;
+                        window.open = previousOpen;
+                        state.presenter.screens = previousScreens;
+                        state.presenter.selectedScreenId = previousSelectedScreenId;
+                        state.presenter.alwaysOnTop = previousAlwaysOnTop;
+                        state.presenter.outputWindow = previousOutputWindow;
+                        state.presenter.outputConnectedAt = previousOutputConnectedAt;
+                        state.presenter.outputPendingAt = previousOutputPendingAt;
+                        state.presenter.outputBlockedAt = previousOutputBlockedAt;
+                        state.presenter.outputAttemptServiceId = previousOutputAttemptServiceId;
+                        state.presenter.outputStopAt = previousOutputStopAt;
+                        if (previousAlwaysStorage === null) localStorage.removeItem(PRESENTER_ALWAYS_ON_TOP_STORAGE_KEY);
+                        else localStorage.setItem(PRESENTER_ALWAYS_ON_TOP_STORAGE_KEY, previousAlwaysStorage);
+                        renderPresenterControlState(serviceId);
+                      }
+                    }
+                    """,
+                    service["id"],
+                )
+                desktop_controls_ok = (
+                    presenter_desktop_output_controls["screenCount"] == 2
+                    and "1920x1080" in presenter_desktop_output_controls["screenLabel"]
+                    and presenter_desktop_output_controls["toggleRendered"]
+                    and presenter_desktop_output_controls["alwaysOnTop"]
+                    and presenter_desktop_output_controls["alwaysUpdates"] == [{"enabled": True}]
+                    and len(presenter_desktop_output_controls["openedPayloads"]) == 1
+                    and presenter_desktop_output_controls["openedPayloads"][0]["hasUrl"]
+                    and presenter_desktop_output_controls["openedPayloads"][0]["alwaysOnTop"]
+                    and presenter_desktop_output_controls["openedPayloads"][0]["targetRect"] == {
+                        "left": 1440,
+                        "top": 0,
+                        "width": 1920,
+                        "height": 1080,
+                    }
+                )
+                if desktop_controls_ok:
+                    pass_("presenter-desktop-output-controls", json.dumps(presenter_desktop_output_controls, ensure_ascii=False))
+                else:
+                    fail("presenter-desktop-output-controls", json.dumps(presenter_desktop_output_controls, ensure_ascii=False))
+
                 switch_state = page.evaluate(
                     """
                     (switchId) => {

@@ -6698,7 +6698,7 @@ textarea.svc-presenter-input-control--multiline {
 .svc-presenter-launch { justify-self: start; }
 .svc-presenter-screen-select {
   display: inline-flex;
-  max-width: 158px;
+  max-width: 198px;
   align-items: center;
   gap: 5px;
   height: 30px;
@@ -6715,6 +6715,57 @@ textarea.svc-presenter-input-control--multiline {
   color: inherit;
   font-size: 12px;
   font-weight: 600;
+}
+.svc-presenter-pin-toggle {
+  display: inline-flex;
+  height: 30px;
+  align-items: center;
+  gap: 6px;
+  border-radius: var(--r);
+  background: color-mix(in srgb, var(--panel-2) 44%, transparent);
+  color: var(--ink-3);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 0 8px 0 6px;
+  white-space: nowrap;
+}
+.svc-presenter-pin-toggle input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.svc-presenter-pin-track {
+  position: relative;
+  width: 26px;
+  height: 14px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ink-4) 34%, transparent);
+  transition: background var(--fast);
+}
+.svc-presenter-pin-track::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ink-inverse);
+  transition: transform var(--fast), background var(--fast);
+}
+.svc-presenter-pin-toggle input:checked + .svc-presenter-pin-track {
+  background: var(--accent);
+}
+.svc-presenter-pin-toggle input:checked + .svc-presenter-pin-track::after {
+  transform: translateX(12px);
+}
+.svc-presenter-pin-toggle:focus-within {
+  outline: 2px solid color-mix(in srgb, var(--accent) 64%, transparent);
+  outline-offset: 2px;
 }
 .svc-slide-board {
   display: grid;
