@@ -7685,9 +7685,6 @@ def main() -> int:
                       const video = slide?.querySelector('.presenter-video');
                       const copy = slide?.querySelector('.presenter-waiting-loop-copy');
                       const logo = slide?.querySelector('.presenter-waiting-loop-logo');
-                      const title = slide?.querySelector('.presenter-waiting-loop-title');
-                      const titleRect = title?.getBoundingClientRect();
-                      const logoRect = logo?.getBoundingClientRect();
                       return {
                         slideClass: slide?.className || '',
                         elementType: slide?.dataset.elementType || '',
@@ -7700,7 +7697,6 @@ def main() -> int:
                         controls: Boolean(video?.controls),
                         presenterRole: video?.dataset.presenterRole || '',
                         hasOverlay: Boolean(copy && logo),
-                        overlayGap: logoRect && titleRect ? logoRect.top - titleRect.bottom : -1,
                       };
                     })()
                     """
@@ -7716,8 +7712,8 @@ def main() -> int:
                     and ready_output_state["loop"]
                     and not ready_output_state["controls"]
                     and ready_output_state["presenterRole"] == "waiting_loop"
-                    and ready_output_state["hasOverlay"]
-                    and 42 <= ready_output_state["overlayGap"] <= 58
+                    and not ready_output_state["hasOverlay"]
+                    and ready_output_state["text"] == ""
                     and not is_chromakey_green(tuple(ready_output_state["centerPixel"]))
                 ):
                     pass_("presenter-ready-output-chromakey-video-loop", json.dumps(ready_output_state, ensure_ascii=False))

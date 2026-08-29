@@ -466,39 +466,6 @@
 .presenter-waiting-loop-title strong {
   font-weight: inherit;
 }
-.presenter-waiting-video-loop {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  grid-template-rows: auto auto;
-  align-content: center;
-  gap: 4.6cqh;
-  justify-items: center;
-  overflow: hidden;
-  color: #fff;
-  isolation: isolate;
-}
-.presenter-waiting-video-loop::before {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  content: "";
-  pointer-events: none;
-  background:
-    linear-gradient(90deg, rgba(0, 0, 0, .3), transparent 22%, transparent 78%, rgba(0, 0, 0, .3)),
-    linear-gradient(180deg, rgba(0, 0, 0, .08), rgba(0, 0, 0, .14));
-}
-.presenter-waiting-video-loop .presenter-video {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  transform: scale(1.08);
-  filter: brightness(.58) blur(1.5px);
-}
-.presenter-waiting-video-loop .presenter-waiting-loop-copy,
-.presenter-waiting-video-loop .presenter-waiting-loop-logo {
-  z-index: 2;
-}
 .presenter-slide--title .presenter-slide-text {
   align-items: center;
   font-size: var(--presenter-size-display);

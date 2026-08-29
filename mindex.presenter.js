@@ -4335,10 +4335,8 @@ function renderPresenterVideoSlide(slide, options = {}) {
       : "video";
   const playback = presenterPlaybackConfig(slide.playback, playbackType);
   const previewStage = Boolean(options.previewStage);
-  const isWaitingLoop = presenterRole === "waiting_loop" && !options.noChromakey;
-  const videoClass = isWaitingLoop ? "presenter-video presenter-video--waiting-loop" : "presenter-video";
   const attrs = [
-    `class="${videoClass}"`,
+    "class=\"presenter-video\"",
     `src="${escapeAttr(source)}"`,
     presenterRole ? `data-presenter-role="${escapeAttr(presenterRole)}"` : "",
     playback.autoplay ? "autoplay" : "",
@@ -4349,18 +4347,6 @@ function renderPresenterVideoSlide(slide, options = {}) {
     "playsinline",
     `preload=\"${previewStage ? "metadata" : "auto"}\"`,
   ].filter(Boolean).join(" ");
-  if (isWaitingLoop) {
-    return `
-      <div class="presenter-waiting-video-loop" aria-label="${escapeAttr(`${presenterReadySlideServiceName(slide)} 대기 화면`)}">
-        <video ${attrs}></video>
-        <div class="presenter-waiting-loop-copy">
-          <p class="presenter-waiting-loop-script">지금은 기도로 예배를 준비하는 시간입니다</p>
-          <p class="presenter-waiting-loop-title">잠시 후 <strong>${escapeHtml(presenterReadySlideServiceName(slide))}</strong>가 시작됩니다</p>
-        </div>
-        <img class="presenter-waiting-loop-logo" src="${escapeAttr(PRESENTER_CHURCH_LOGO)}" alt="기형 검단우리교회" decoding="sync" loading="eager" fetchpriority="high" draggable="false" />
-      </div>
-    `;
-  }
   return `
     <video ${attrs}></video>
   `;
