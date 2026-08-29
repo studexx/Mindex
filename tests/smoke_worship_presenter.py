@@ -8752,7 +8752,7 @@ def main() -> int:
                     fullscreen_ready_state["chromakey"] is False
                     and fullscreen_ready_state["slideCount"] >= 2
                     and fullscreen_ready_state["type"] == "ready"
-                    and fullscreen_ready_state["elementType"] == "video"
+                    and fullscreen_ready_state["elementType"] == "image"
                     and fullscreen_ready_state["layout"] == "media"
                     and fullscreen_ready_state["imageSrc"] == ""
                     and fullscreen_ready_state["readyServiceName"] == "금요기도회"
@@ -8820,7 +8820,7 @@ def main() -> int:
                 if (
                     friday_ready_default_state["chromakey"] is False
                     and friday_ready_default_state["type"] == "ready"
-                    and friday_ready_default_state["elementType"] == "video"
+                    and friday_ready_default_state["elementType"] == "image"
                     and friday_ready_default_state["layout"] == "media"
                     and friday_ready_default_state["imageSrc"] == ""
                     and friday_ready_default_state["videoSrc"] == ""
@@ -8830,6 +8830,63 @@ def main() -> int:
                     pass_("presenter-friday-ready-default-image", json.dumps(friday_ready_default_state, ensure_ascii=False))
                 else:
                     fail("presenter-friday-ready-default-image", json.dumps(friday_ready_default_state, ensure_ascii=False))
+
+                friday_legacy_waiting_loop_state = page.evaluate(
+                    """
+                    () => {
+                      const service = {
+                        id: '__smoke_friday_legacy_waiting_loop_service__',
+                        type_id: 'friday',
+                        date: '2026-07-17',
+                        title: 'Friday Legacy Waiting Loop',
+                        leader: '테스트',
+                        alias: '',
+                      };
+                      if (!state.serviceTypes.some((item) => item.id === service.type_id)) {
+                        state.serviceTypes.push({ id: service.type_id, name: '금요기도회', sort_order: 2 });
+                      }
+                      state.services = [
+                        service,
+                        ...state.services.filter((item) => item.id !== service.id),
+                      ];
+                      state.serviceItems[service.id] = normalizeServiceItems([
+                        {
+                          id: '__smoke_friday_legacy_waiting_loop_item__',
+                          service_id: service.id,
+                          sort_order: 1,
+                          label: '대기 화면',
+                          raw_title: '대기 화면',
+                          memo: JSON.stringify({ presenterRole: 'waiting_loop' }),
+                        },
+                      ]);
+                      preparePresenterService(service.id);
+                      const first = state.presenter.slides[0] || {};
+                      return {
+                        chromakey: presenterServiceUsesChromakey(service),
+                        type: first.type || '',
+                        elementType: first.elementType || '',
+                        layout: first.layout || '',
+                        imageSrc: first.imageSrc || '',
+                        videoSrc: first.videoSrc || '',
+                        presenterRole: first.presenterRole || '',
+                        outputContext: first.outputContext || '',
+                      };
+                    }
+                    """
+                )
+                if (
+                    friday_legacy_waiting_loop_state["chromakey"] is False
+                    and friday_legacy_waiting_loop_state["type"] == "ready"
+                    and friday_legacy_waiting_loop_state["elementType"] == "image"
+                    and friday_legacy_waiting_loop_state["layout"] == "media"
+                    and friday_legacy_waiting_loop_state["imageSrc"] == ""
+                    and friday_legacy_waiting_loop_state["videoSrc"] == ""
+                    and friday_legacy_waiting_loop_state["presenterRole"] == "ready"
+                    and friday_legacy_waiting_loop_state["outputContext"] == "clean"
+                ):
+                    pass_("presenter-friday-legacy-waiting-loop-normalized", json.dumps(friday_legacy_waiting_loop_state, ensure_ascii=False))
+                else:
+                    fail("presenter-friday-legacy-waiting-loop-normalized", json.dumps(friday_legacy_waiting_loop_state, ensure_ascii=False))
 
                 friday_ready_background_guard = page.evaluate(
                     """

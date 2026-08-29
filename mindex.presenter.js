@@ -1469,16 +1469,20 @@ function presenterLiturgicalChromakeyChunks(title = "", text = "") {
 
 function presenterPreparationSlide(service, item, index) {
   const memo = parseServiceItemMemo(item?.memo);
-  const presenterRole = presenterPreparationRole(item, memo);
+  const chromakey = presenterServiceUsesChromakey(service);
+  const rawPresenterRole = presenterPreparationRole(item, memo);
+  const presenterRole = rawPresenterRole === "waiting_loop" && !chromakey ? "ready" : rawPresenterRole;
   const elementLabel = presenterPreparationElementLabel(item, {}, presenterRole);
-  if (!presenterServiceUsesChromakey(service) && presenterRole !== "intro") {
+  if (!chromakey && presenterRole !== "intro") {
     return presenterFullscreenPreparationSlide(service, item, index, presenterRole, elementLabel);
   }
   const configuredAsset = normalizeServiceAsset(memo.asset);
   const asset = configuredAsset.url
     ? configuredAsset
     : presenterDefaultPreparationAsset(service, item, memo);
-  const elementType = servicePreparationElementTypeForType(service?.type_id);
+  const elementType = presenterRole === "intro" || (presenterRole === "waiting_loop" && chromakey)
+    ? PRESENTER_ELEMENT_TYPES.VIDEO
+    : PRESENTER_ELEMENT_TYPES.IMAGE;
   const source = normalizePresenterMediaSource(asset.url || "");
   const playbackType = presenterRole === "intro" ? "intro-video" : "ready-video";
   const assetElementLabel = presenterPreparationElementLabel(item, asset, presenterRole);

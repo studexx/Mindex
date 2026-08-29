@@ -9533,14 +9533,16 @@ function servicePreparationElementLabel(role = "", contextId = "") {
 
 function servicePreparationDefaultRoleForType(role = "", typeId = "") {
   const normalized = normalizeServicePresenterRole(role);
-  if (normalized === "intro" || normalized === "still" || normalized === "waiting_loop") return normalized;
+  if (normalized === "intro" || normalized === "still") return normalized;
+  if (normalized === "waiting_loop") return serviceTypeUsesChromakey(typeId) ? "waiting_loop" : "ready";
   return serviceTypeUsesChromakey(typeId) ? "waiting_loop" : (normalized || "ready");
 }
 
 function servicePreparationDefaultRoleForService(role = "", service = null, fallbackTypeId = "") {
   const normalized = normalizeServicePresenterRole(role);
-  if (normalized === "intro" || normalized === "still" || normalized === "waiting_loop") return normalized;
   const candidate = service || { type_id: fallbackTypeId };
+  if (normalized === "intro" || normalized === "still") return normalized;
+  if (normalized === "waiting_loop") return presenterServiceUsesChromakey(candidate) ? "waiting_loop" : "ready";
   return presenterServiceUsesChromakey(candidate) ? "waiting_loop" : (normalized || "ready");
 }
 
@@ -9550,10 +9552,17 @@ function servicePreparationDefaultRoleForServiceId(role = "", serviceId = state.
 }
 
 function servicePreparationElementTypeForRole(role = "", serviceId = state.selectedServiceId) {
-  const normalized = normalizeServicePresenterRole(role);
+  const service = state.services.find((svc) => svc.id === serviceId);
+  const normalized = servicePreparationDefaultRoleForService(role, service, service?.type_id || state.selectedServiceTypeId);
   if (normalized === "waiting_loop" || normalized === "intro") return "video";
   if (normalized === "still") return "image";
   return servicePreparationElementTypeForServiceId(serviceId);
+}
+
+function servicePreparationElementTypeForRoleAndService(role = "", service = null, fallbackTypeId = "") {
+  const normalized = servicePreparationDefaultRoleForService(role, service, fallbackTypeId);
+  if (normalized === "waiting_loop" || normalized === "intro") return "video";
+  return "image";
 }
 
 function presenterPreparationRoleLabel(role = "") {
@@ -12076,7 +12085,7 @@ function buildWorshipServiceScaffold(serviceId, typeId, options = {}) {
       const elementLabel = ready
         ? servicePreparationElementLabel(elementReadyRole, typeId)
         : String(elementStep.label || elementStep.name || label).trim() || label;
-      const elementType = ready ? servicePreparationElementTypeForService(service, typeId) : worshipTemplateElementType(elementStep, elementLabel);
+      const elementType = ready ? servicePreparationElementTypeForRoleAndService(elementReadyRole, service, typeId) : worshipTemplateElementType(elementStep, elementLabel);
       const defaultStrength = String(elementStep.defaultStrength || elementStep.default_strength || "").trim();
       const formPreset = normalizeServiceFormPreset(
         elementStep.formPreset || elementStep.form_preset,
@@ -13099,11 +13108,11 @@ function serviceTypeUsesChromakey(typeId) {
 }
 
 function servicePreparationElementTypeForType(typeId) {
-  return serviceTypeUsesChromakey(typeId) ? "video" : "image";
+  return servicePreparationElementTypeForRoleAndService("ready", { type_id: typeId }, typeId);
 }
 
 function servicePreparationElementTypeForService(service = null, fallbackTypeId = "") {
-  return presenterServiceUsesChromakey(service || { type_id: fallbackTypeId }) ? "video" : "image";
+  return servicePreparationElementTypeForRoleAndService("ready", service, fallbackTypeId);
 }
 
 function servicePreparationElementTypeForServiceId(serviceId) {
@@ -23041,7 +23050,14 @@ function renderServiceItemMemoEditor(item, index, options = {}) {
     : "";
   const manualPraise = praiseInputMode === "manual_praise";
   const preparation = isServicePreparationItem(item, parsed);
-  const elementType = preparation ? servicePreparationElementTypeForServiceId(item?.service_id || state.selectedServiceId) : serviceMemoElementType(parsed);
+  const preparationRole = preparation
+    ? servicePreparationDefaultRoleForService(
+      normalizeServicePresenterRole(parsed.presenterRole) || presenterPreparationRole(item, parsed),
+      service,
+      service?.type_id || state.selectedServiceTypeId,
+    )
+    : "";
+  const elementType = preparation ? servicePreparationElementTypeForRoleAndService(preparationRole, service, service?.type_id || state.selectedServiceTypeId) : serviceMemoElementType(parsed);
   const generatedScriptureSlides = Boolean(isScriptureBodyServiceItem(item) && parsed.scriptureReference && parsed.slides.length);
   const showSlideOverrideInput = !manualPraise;
   const operationalSettings = Boolean(
@@ -28993,6 +29009,7 @@ function isPresenterPreparationSlide(slide) {
 function presenterReadySlide(service) {
   const title = "준비";
   const serviceName = serviceDisplayTypeName(service) || "예배";
+  const chromakey = presenterServiceUsesChromakey(service);
   return {
     id: `${service?.id || "service"}:ready`,
     sectionId: `${service?.id || "service"}:ready`,
@@ -29003,7 +29020,7 @@ function presenterReadySlide(service) {
     elementLabel: "준비",
     elementTitle: title,
     sectionName: title,
-    elementType: PRESENTER_ELEMENT_TYPES.VIDEO,
+    elementType: chromakey ? PRESENTER_ELEMENT_TYPES.VIDEO : PRESENTER_ELEMENT_TYPES.IMAGE,
     layout: PRESENTER_SLIDE_LAYOUTS.MEDIA,
     type: "ready",
     label: "준비",
