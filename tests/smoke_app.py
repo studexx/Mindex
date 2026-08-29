@@ -5536,8 +5536,15 @@ def main() -> int:
                             special: collectLabels(renderPresenterServiceTextInputs(special, 3, specialModel, specialMemo)),
                             announcement: collectLabels(renderPresenterServiceTextInputs(announcement, 4, announcementModel, announcementMemo)),
                           };
+                          const titleLabelVisibility = {
+                            genericTitle: presenterServiceTitleFieldShowsLabel('제목'),
+                            content: presenterServiceTitleFieldShowsLabel('내용'),
+                            scripture: presenterServiceTitleFieldShowsLabel('말씀'),
+                            praise: presenterServiceTitleFieldShowsLabel('찬양'),
+                          };
                           return {
                             ...labels,
+                            titleLabelVisibility,
                             all: Object.values(labels).flat(),
                           };
                         })()
@@ -5549,6 +5556,12 @@ def main() -> int:
                         and presenter_input_label_vocabulary["title"] == ["담당"]
                         and presenter_input_label_vocabulary["special"] == ["찬양", "가사", "담당"]
                         and presenter_input_label_vocabulary["announcement"] == ["내용"]
+                        and presenter_input_label_vocabulary["titleLabelVisibility"] == {
+                            "genericTitle": False,
+                            "content": True,
+                            "scripture": True,
+                            "praise": True,
+                        }
                         and all(label in ["찬양", "말씀", "제목", "내용", "가사", "담당"] for label in presenter_input_label_vocabulary["all"])
                     ):
                         pass_("presenter-input-label-vocabulary", json.dumps(presenter_input_label_vocabulary, ensure_ascii=False))

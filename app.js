@@ -25278,16 +25278,14 @@ function renderPresenterServiceTextInputs(item, index, model, memo) {
   if (!needsTitle && !needsAssignee && !manualPraise) return "";
   const specialSong = isSpecialSongServiceItem(item);
   const announcementText = isAnnouncementTextInputItem(item);
-  const titlePerson = serviceMemoElementType(memo) === "title_person";
   const titleLabel = presenterServiceTitleInputLabel(item, memo, { manualPraise });
-  const showTitleFieldLabel = titleLabel !== "제목";
   const titlePlaceholder = presenterServiceTitleInputPlaceholder(item, memo, titleLabel);
   const assigneeLabel = presenterServiceAssigneeInputLabel(item);
   const assigneePlaceholder = inferServiceItemAssignee(item) || assigneeLabel;
   return `
     ${needsTitle ? `
       <label class="svc-presenter-input-field">
-        ${showTitleFieldLabel ? `<span>${escapeHtml(titleLabel)}</span>` : ""}
+        ${presenterServiceTitleFieldShowsLabel(titleLabel) ? `<span>${escapeHtml(titleLabel)}</span>` : ""}
         ${announcementText ? `
           <textarea class="svc-presenter-input-control svc-presenter-input-control--multiline" data-service-item-field="raw_title" data-service-item-index="${index}"
             rows="4" placeholder="1. 다음 주 모임 안내&#10;같은 항목의 추가 내용&#10;2. 새가족 환영" aria-label="${escapeAttr(`${item.label || "항목"} ${titleLabel}`)}">${escapeHtml(item.raw_title || "")}</textarea>
@@ -25314,6 +25312,10 @@ function presenterServiceTitleInputLabel(item = {}, memo = parseServiceItemMemo(
   if (isScriptureBodyServiceItem(item) || isScriptureServiceLabel(item?.label || "")) return "말씀";
   if (isAnnouncementTextInputItem(item)) return "내용";
   return "제목";
+}
+
+function presenterServiceTitleFieldShowsLabel(label = "") {
+  return label !== "제목";
 }
 
 function presenterServiceTitleInputPlaceholder(item = {}, memo = parseServiceItemMemo(item?.memo), label = presenterServiceTitleInputLabel(item, memo)) {
