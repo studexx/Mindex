@@ -824,8 +824,11 @@ def main() -> int:
                       const currentSidebarContext = document.querySelector('.service-sidebar-presenter-context');
                       const currentTitle = currentSidebarContext?.querySelector('.service-sidebar-presenter-title');
                       const currentDate = currentSidebarContext?.querySelector('.service-sidebar-presenter-date');
+                      const sidebarLaunch = currentSidebarContext?.querySelector('.svc-presenter-launch--sidebar');
+                      const pageTabs = document.querySelector('.page-tabs');
                       const titleStyle = currentTitle ? getComputedStyle(currentTitle) : null;
                       const dateStyle = currentDate ? getComputedStyle(currentDate) : null;
+                      const pageTabsStyle = pageTabs ? getComputedStyle(pageTabs) : null;
                       const controllerTitle = document.querySelector('.presenter-viewer .svc-service-title');
                       const controllerDate = document.querySelector('.presenter-viewer .svc-date-text');
                       const afterHeader = currentHeader?.getBoundingClientRect();
@@ -845,6 +848,14 @@ def main() -> int:
                         dateFontSize: parseFloat(dateStyle?.fontSize || '0'),
                         dateFontWeight: dateStyle?.fontWeight || '',
                         contextBackground: currentSidebarContext ? getComputedStyle(currentSidebarContext).backgroundColor : '',
+                        sidebarLaunch: {
+                          exists: Boolean(sidebarLaunch),
+                          action: sidebarLaunch?.dataset.presenterAction || '',
+                          label: sidebarLaunch?.querySelector('span')?.textContent.trim() || '',
+                          icon: sidebarLaunch?.querySelector('svg')?.getAttribute('data-lucide') || '',
+                          width: Math.round(sidebarLaunch?.getBoundingClientRect().width || 0),
+                        },
+                        pageTabsHidden: pageTabsStyle ? pageTabsStyle.visibility === 'hidden' && pageTabsStyle.opacity === '0' : false,
                         usesSidebarTitle: Boolean((currentTitle || title)?.closest('.service-sidebar-presenter-context') && !document.querySelector('.svc-presenter-title-row')),
                         controllerTitleRemoved: !controllerTitle && !controllerDate,
                         presenterHeaderRemoved: !presenterHeader && !currentPresenterHeader,
@@ -878,6 +889,12 @@ def main() -> int:
                     and sticky_title_state["dateFontSize"] >= 13
                     and int(sticky_title_state["dateFontWeight"]) >= 700
                     and sticky_title_state["contextBackground"] != "rgba(0, 0, 0, 0)"
+                    and sticky_title_state["sidebarLaunch"]["exists"]
+                    and sticky_title_state["sidebarLaunch"]["action"] in ("open", "stop")
+                    and sticky_title_state["sidebarLaunch"]["label"] in ("송출 시작", "송출 종료")
+                    and sticky_title_state["sidebarLaunch"]["icon"] in ("screen-share", "screen-share-off")
+                    and sticky_title_state["sidebarLaunch"]["width"] >= 90
+                    and sticky_title_state["pageTabsHidden"]
                     and sticky_title_state["rightSidebarVisible"]
                     and sticky_title_state["controlsPosition"] == "static"
                     and sticky_title_state["sidePanelPosition"] == "static"
@@ -6242,7 +6259,7 @@ def main() -> int:
                     )
                     page.evaluate("() => requestPresenterScreens()")
                     page.wait_for_function("() => state.presenter.screens.length === 2", timeout=5000)
-                    page.click(f'.svc-presenter-launch[data-service-id="{service["id"]}"]')
+                    page.click(f'.svc-presenter-side-panel .svc-presenter-launch[data-service-id="{service["id"]}"]')
                     page.wait_for_function("() => Boolean(window.__mindexPresenterOpenArgs)", timeout=5000)
                     target_state = page.evaluate(
                         """
@@ -6252,9 +6269,9 @@ def main() -> int:
                           focusCalls: window.__mindexPresenterFocusCalls || 0,
                           openCalls: window.__mindexPresenterOpenCalls || 0,
                           screenDetailsCalls: window.__mindexScreenDetailsCalls || 0,
-                          action: document.querySelector('.svc-presenter-launch')?.dataset.presenterAction || '',
-                          label: document.querySelector('.svc-presenter-launch span')?.textContent.trim() || '',
-                          icon: document.querySelector('.svc-presenter-launch svg')?.getAttribute('data-lucide') || '',
+                          action: document.querySelector('.svc-presenter-side-panel .svc-presenter-launch')?.dataset.presenterAction || '',
+                          label: document.querySelector('.svc-presenter-side-panel .svc-presenter-launch span')?.textContent.trim() || '',
+                          icon: document.querySelector('.svc-presenter-side-panel .svc-presenter-launch svg')?.getAttribute('data-lucide') || '',
                         }))()
                         """
                     )
@@ -6278,7 +6295,7 @@ def main() -> int:
                     else:
                         fail("presenter-secondary-fullscreen-launch", json.dumps(target_state, ensure_ascii=False))
 
-                    page.click(f'.svc-presenter-launch[data-service-id="{service["id"]}"]')
+                    page.click(f'.svc-presenter-side-panel .svc-presenter-launch[data-service-id="{service["id"]}"]')
                     page.wait_for_function("() => (window.__mindexPresenterCloseCalls || 0) === 1", timeout=5000)
                     stop_state = page.evaluate(
                         """
@@ -6286,8 +6303,8 @@ def main() -> int:
                           openCalls: window.__mindexPresenterOpenCalls || 0,
                           closeCalls: window.__mindexPresenterCloseCalls || 0,
                           hasWindowRef: Boolean(state.presenter.outputWindow),
-                          action: document.querySelector('.svc-presenter-launch')?.dataset.presenterAction || '',
-                          label: document.querySelector('.svc-presenter-launch span')?.textContent.trim() || '',
+                          action: document.querySelector('.svc-presenter-side-panel .svc-presenter-launch')?.dataset.presenterAction || '',
+                          label: document.querySelector('.svc-presenter-side-panel .svc-presenter-launch span')?.textContent.trim() || '',
                         }))()
                         """
                     )
@@ -6645,7 +6662,7 @@ def main() -> int:
                     else:
                         fail("presenter-controller-music-nav-keys-do-not-stop", json.dumps(music_key_state, ensure_ascii=False))
 
-                    page.click(f'.svc-presenter-launch[data-service-id="{service["id"]}"]')
+                    page.click(f'.svc-presenter-side-panel .svc-presenter-launch[data-service-id="{service["id"]}"]')
                     page.wait_for_function("() => (window.__mindexPresenterOpenCalls || 0) === 2", timeout=5000)
 
                     dbl_target = min(service["slides"] - 1, 4)
@@ -6950,9 +6967,9 @@ def main() -> int:
                       open: isPresenterOutputWindowOpen(),
                       hasWindowRef: Boolean(state.presenter.outputWindow),
                       status: document.querySelector('.svc-presenter-status')?.textContent.trim() || '',
-                      action: document.querySelector('.svc-presenter-launch')?.dataset.presenterAction || '',
-                      label: document.querySelector('.svc-presenter-launch span')?.textContent.trim() || '',
-                      icon: document.querySelector('.svc-presenter-launch svg')?.getAttribute('data-lucide') || '',
+                      action: document.querySelector('.svc-presenter-side-panel .svc-presenter-launch')?.dataset.presenterAction || '',
+                      label: document.querySelector('.svc-presenter-side-panel .svc-presenter-launch span')?.textContent.trim() || '',
+                      icon: document.querySelector('.svc-presenter-side-panel .svc-presenter-launch svg')?.getAttribute('data-lucide') || '',
                     }))()
                     """
                 )

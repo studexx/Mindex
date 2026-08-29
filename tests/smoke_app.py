@@ -5610,6 +5610,7 @@ def main() -> int:
                             rightSidebarMounted: Boolean(rightSidebar && !rightSidebar.hidden),
                             topbarToggleVisible: Boolean(topbarToggle && !topbarToggle.hidden),
                             saveHidden: Boolean(document.querySelector('#saveAllBtn')?.hidden),
+                            saveVisible: Boolean(document.querySelector('#saveAllBtn:not([hidden])')),
                             headerToggleRemoved: !headerToggle,
                             railMounted: Boolean(rightSidebar?.querySelector('.svc-presenter-input-rail')),
                             sidePanelMounted: Boolean(sidePanel),
@@ -5641,7 +5642,8 @@ def main() -> int:
                         presenter_header_input["legacyContextRemoved"]
                         and presenter_header_input["rightSidebarMounted"]
                         and presenter_header_input["topbarToggleVisible"]
-                        and presenter_header_input["saveHidden"]
+                        and not presenter_header_input["saveHidden"]
+                        and presenter_header_input["saveVisible"]
                         and presenter_header_input["headerToggleRemoved"]
                         and presenter_header_input["railMounted"]
                         and presenter_header_input["sidePanelMounted"]
@@ -8194,7 +8196,8 @@ def main() -> int:
                             sidePanelMounted: Boolean(document.querySelector('#mindexRightSidebar .svc-presenter-side-panel')),
                             rightSidebarMounted: Boolean(document.querySelector('#mindexRightSidebar:not([hidden])')),
                             topbarToggleVisible: Boolean(document.querySelector('#presenterRightSidebarBtn:not([hidden])')),
-                            saveHidden: Boolean(document.querySelector('#saveAllBtn')?.hidden)
+                            saveHidden: Boolean(document.querySelector('#saveAllBtn')?.hidden),
+                            saveVisible: Boolean(document.querySelector('#saveAllBtn:not([hidden])'))
                           };
                         })()
                         """
@@ -8212,7 +8215,8 @@ def main() -> int:
                         and authoring_narrow["sidePanelMounted"]
                         and authoring_narrow["rightSidebarMounted"]
                         and authoring_narrow["topbarToggleVisible"]
-                        and authoring_narrow["saveHidden"]
+                        and not authoring_narrow["saveHidden"]
+                        and authoring_narrow["saveVisible"]
                         and not authoring_narrow["hasReadonly"]
                     ):
                         pass_("presenter-narrow", json.dumps(authoring_narrow, ensure_ascii=False))

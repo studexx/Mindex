@@ -6208,6 +6208,12 @@ async function saveServiceItemPatch(serviceId = state.selectedServiceId, index =
   }
 }
 
+async function saveServiceItemMutation(serviceId = state.selectedServiceId, index = -1, options = {}) {
+  const saved = await saveServiceItemPatch(serviceId, index, options);
+  if (saved) return true;
+  return saveService(serviceId, options);
+}
+
 async function saveWorshipServiceElementPatch(service, itemId) {
   const serviceId = service?.id || "";
   const targetItemId = String(itemId || "").trim();
@@ -11713,7 +11719,7 @@ async function importServiceItemDeckAssetFile(input) {
     targetItem._worshipElementTemplateModified = true;
     state.dirty.service = true;
     markServiceElementDirty(serviceId, targetItem);
-    await saveServiceItemPatch(serviceId, index, { silent: true, renderAfterSave: false, throwOnError: true });
+    await saveServiceItemMutation(serviceId, index, { silent: true, renderAfterSave: false, throwOnError: true });
     renderCurrentServiceModuleDetail();
     renderServiceList();
     showToast(`${serviceAssetFileKindLabel("imported_deck")} ${slides.length}장을 반입했습니다.`);
@@ -11787,7 +11793,7 @@ async function uploadPresenterReferenceMediaAsset({ file, serviceId, item, input
     // and discard its just-uploaded asset before the persistence payload is built.
     const targetIndex = getServiceItems(serviceId).findIndex((candidate) => candidate.id === targetItem.id);
     if (targetIndex < 0) throw new Error("저장할 예배 항목을 다시 찾지 못했습니다.");
-    await saveServiceItemPatch(serviceId, targetIndex, { silent: true, renderAfterSave: false, throwOnError: true });
+    await saveServiceItemMutation(serviceId, targetIndex, { silent: true, renderAfterSave: false, throwOnError: true });
     renderCurrentServiceModuleDetail();
     renderServiceList();
     const destination = referenceMedia ? "참고 화면" : String(targetItem.label || targetItem.raw_title || "항목").trim();
@@ -11902,7 +11908,7 @@ async function uploadServiceItemAudioAsset(input) {
     markServiceElementDirty(serviceId, targetItem);
     const targetIndex = getServiceItems(serviceId).findIndex((candidate) => candidate.id === targetItem.id);
     if (targetIndex < 0) throw new Error("저장할 예배 항목을 다시 찾지 못했습니다.");
-    await saveServiceItemPatch(serviceId, targetIndex, { silent: true, renderAfterSave: false, throwOnError: true });
+    await saveServiceItemMutation(serviceId, targetIndex, { silent: true, renderAfterSave: false, throwOnError: true });
     renderCurrentServiceModuleDetail();
     renderServiceList();
     showToast("찬양 헤더에 음원을 연결했습니다.");
@@ -11936,7 +11942,7 @@ async function clearServiceItemAudioAsset(serviceId = state.selectedServiceId, i
   state.dirty.service = true;
   markServiceElementDirty(serviceId, item);
   refreshPresenterForService(serviceId);
-  await saveServiceItemPatch(serviceId, index, { silent: true, renderAfterSave: false, throwOnError: true });
+  await saveServiceItemMutation(serviceId, index, { silent: true, renderAfterSave: false, throwOnError: true });
   renderCurrentServiceModuleDetail();
   renderServiceList();
   showToast("찬양 헤더 음원을 제거했습니다.");
@@ -21381,11 +21387,20 @@ function renderPresenterSidebarServiceSummary(service) {
     dateStr,
     variantName && compactSearchValue(variantName) !== compactSearchValue(serviceName) ? variantName : "",
   ]);
+  const anyOutputOpen = isPresenterOutputWindowOpen();
+  const launchAction = anyOutputOpen ? "stop" : "open";
+  const launchLabel = uiText(anyOutputOpen ? "presenter.action.stop" : "presenter.action.present");
+  const launchIcon = anyOutputOpen ? "screen-share-off" : "screen-share";
+  const launchTone = anyOutputOpen ? "stop" : "start";
   return `
     <section class="service-sidebar-section service-sidebar-section--presenter-context" aria-label="현재 예배">
       <div class="service-sidebar-presenter-context">
         <strong class="service-sidebar-presenter-title">${escapeHtml(serviceName)}</strong>
         ${details.length ? `<span class="service-sidebar-presenter-date">${escapeHtml(details.join(" · "))}</span>` : ""}
+        <button class="svc-present-btn svc-presenter-launch svc-presenter-launch--sidebar svc-presenter-launch--${launchTone}${anyOutputOpen ? " is-stop" : ""}" type="button" data-presenter-action="${escapeAttr(launchAction)}" data-service-id="${escapeAttr(service.id)}" aria-label="${escapeAttr(launchLabel)}">
+          <i data-lucide="${escapeAttr(launchIcon)}"></i>
+          <span>${escapeHtml(launchLabel)}</span>
+        </button>
       </div>
     </section>`;
 }
