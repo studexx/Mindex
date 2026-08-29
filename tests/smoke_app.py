@@ -4920,7 +4920,7 @@ def main() -> int:
                         and presenter_terms["outlineChildMetrics"]["titleFontSize"] == "12px"
                         and presenter_terms["outlineChildMetrics"]["titleLineHeight"] == "16px"
                         and presenter_terms["outlineHierarchyAlignment"] is not None
-                        and presenter_terms["outlineHierarchyAlignment"]["sectionMinusChild"] <= 8
+                        and abs(presenter_terms["outlineHierarchyAlignment"]["sectionMinusChild"]) <= 2
                         and presenter_terms["outlineHierarchyAlignment"]["childMinusGuide"] >= 6
                         and all(
                             (
