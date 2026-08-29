@@ -6035,7 +6035,7 @@ body[data-theme="dark"] .service-week-empty:hover {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.svc-presenter-launch--sidebar {
+.svc-present-btn.svc-presenter-launch--sidebar {
   width: 100%;
   height: 38px;
   margin-top: 7px;
@@ -6043,12 +6043,21 @@ body[data-theme="dark"] .service-week-empty:hover {
   background: var(--accent);
   color: var(--accent-ink);
 }
-.svc-presenter-launch--sidebar:hover,
-.svc-presenter-launch--sidebar:focus-visible {
+.svc-present-btn.svc-presenter-launch--sidebar:hover,
+.svc-present-btn.svc-presenter-launch--sidebar:focus-visible {
   background: color-mix(in srgb, var(--accent) 88%, white);
   color: var(--accent-ink);
 }
-.svc-presenter-launch--sidebar span {
+.svc-present-btn.svc-presenter-launch--sidebar.svc-presenter-launch--stop {
+  background: color-mix(in srgb, var(--danger) 22%, var(--panel-2));
+  color: color-mix(in srgb, var(--danger) 62%, var(--ink));
+}
+.svc-present-btn.svc-presenter-launch--sidebar.svc-presenter-launch--stop:hover,
+.svc-present-btn.svc-presenter-launch--sidebar.svc-presenter-launch--stop:focus-visible {
+  background: color-mix(in srgb, var(--danger) 30%, var(--panel-2));
+  color: color-mix(in srgb, #ffc2c2 74%, var(--ink));
+}
+.svc-present-btn.svc-presenter-launch--sidebar span {
   color: inherit;
   font-size: inherit;
   font-weight: inherit;
