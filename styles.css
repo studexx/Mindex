@@ -6780,8 +6780,34 @@ textarea.svc-presenter-input-control--multiline {
   justify-self: stretch;
 }
 .svc-presenter-side-panel .svc-presenter-live-panel {
+  display: grid;
   width: auto;
   min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+  gap: 8px;
+}
+.svc-presenter-side-panel .svc-presenter-live-copy {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 7px 8px;
+}
+.svc-presenter-side-panel .svc-presenter-live-copy .svc-presenter-state-group {
+  justify-self: end;
+}
+.svc-presenter-side-panel .svc-presenter-live-copy strong {
+  grid-column: 1 / -1;
+  color: var(--ink-3);
+  font-size: var(--ui-label-size);
+  line-height: 1.1;
+}
+.svc-presenter-side-panel .svc-presenter-live-preview {
+  width: 100%;
+  grid-column: 1;
+  grid-row: auto;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--r);
 }
 .svc-presenter-side-panel .svc-presenter-utility-actions {
   justify-content: flex-end;
