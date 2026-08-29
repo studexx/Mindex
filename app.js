@@ -29031,13 +29031,15 @@ function resolvePresenterServiceItemContentState(item = {}, memo = emptyServiceI
       : missing(rawText ? "scripture_reference_invalid" : "scripture_empty");
   }
   if (elementType === "title_person") {
-    const titleText = titlePersonParts?.title || rawText;
+    const explicitTitleText = titlePersonParts?.rawTitleAssignee
+      ? ""
+      : (presenterTitleAssigneeTitleIsGeneric(rawText, item?.label || "") ? "" : rawText);
     const { needsTitle, needsAssignee } = presenterServiceTextInputSpec(
       item,
       serviceItemEditorModel(item, { service }),
       memo,
     );
-    if (needsTitle && !titleText) return missing("title_empty");
+    if (needsTitle && !explicitTitleText) return missing("title_empty");
     if (needsAssignee && !assignee) return missing("assignee_empty");
     return filled("title_person");
   }
