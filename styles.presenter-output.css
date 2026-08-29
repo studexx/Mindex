@@ -135,6 +135,8 @@
   place-items: stretch;
   opacity: 0;
   pointer-events: none;
+  transform: translateZ(0) scale(1);
+  transform-origin: center;
   z-index: 0;
 }
 .presenter-output-layer.is-active {
@@ -159,31 +161,38 @@
 @media (prefers-reduced-motion: no-preference) {
   .presenter-output-root.no-chromakey:not(.svc-slide-mini-canvas)
     > .presenter-output-layer {
-    transition: opacity 520ms ease;
+    will-change: opacity, transform;
   }
   .presenter-output-root.no-chromakey:not(.svc-slide-mini-canvas)
     > .presenter-output-layer.is-entering {
-    animation: presenter-layer-dissolve-in 620ms ease forwards;
+    animation: presenter-layer-morph-in 500ms cubic-bezier(.22, 1, .36, 1) forwards;
   }
   .presenter-output-root.no-chromakey:not(.svc-slide-mini-canvas)
     > .presenter-output-layer.is-exiting {
-    animation: presenter-layer-dissolve-out 620ms ease forwards;
+    animation: presenter-layer-morph-out 500ms cubic-bezier(.22, 1, .36, 1) forwards;
   }
 }
-@keyframes presenter-layer-dissolve-in {
+@keyframes presenter-layer-morph-in {
   from {
     opacity: 0;
+    transform: translateZ(0) scale(1.018);
   }
-  to {
-    opacity: 1;
-  }
-}
-@keyframes presenter-layer-dissolve-out {
-  from {
+  58% {
     opacity: 1;
   }
   to {
+    opacity: 1;
+    transform: translateZ(0) scale(1);
+  }
+}
+@keyframes presenter-layer-morph-out {
+  from {
+    opacity: 1;
+    transform: translateZ(0) scale(1);
+  }
+  to {
     opacity: 0;
+    transform: translateZ(0) scale(.988);
   }
 }
 .presenter-output-root.no-chromakey {
