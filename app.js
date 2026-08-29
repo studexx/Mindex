@@ -21365,24 +21365,45 @@ function serviceSidebarChildItemDisplayText(item = {}) {
 }
 
 function serviceSidebarOutlineFirstLine(value = "", item = null) {
-  const line = String(value || "").split(/\r?\n/u).map((part) => part.trim()).find(Boolean) || "";
-  if (!line) return "";
   if (isSidebarLiturgicalSummaryItem(item)) {
-    const summary = serviceSidebarLiturgicalSummaryText(line, item);
+    const visualText = serviceSidebarLiturgicalVisualText(value, item);
+    let summary = String(visualText || "").split(/\r?\n/u).map((part) => part.trim()).find(Boolean) || "";
+    if (!summary) return "";
+    const commaIndex = summary.indexOf(",");
+    if (commaIndex > 0) summary = summary.slice(0, commaIndex + 1).trim();
     return summary.endsWith("...") || summary.endsWith("…") ? summary : `${summary}…`;
   }
+  const line = String(value || "").split(/\r?\n/u).map((part) => part.trim()).find(Boolean) || "";
+  if (!line) return "";
   return line;
 }
 
-function serviceSidebarLiturgicalSummaryText(line = "", item = null) {
-  const compactLabel = compactSearchValue(item?.label || "");
-  const sectionKey = String(item?._worshipSectionKey || "").trim();
-  if (sectionKey === "community_confession" || compactLabel === "공동체고백") {
-    const splitIndex = line.indexOf("하나님의");
-    if (splitIndex > 0) return line.slice(0, splitIndex).trim();
+function serviceSidebarLiturgicalVisualText(value = "", item = null) {
+  const text = String(value || "").trim();
+  const key = serviceSidebarLiturgicalKey(item, text);
+  if (key === "community_confession" && compactSearchValue(text) === compactSearchValue(PUBLIC_COMMUNITY_CONFESSION_TEXT)) {
+    return `우리는 세상으로부터 부름 받은
+하나님의 거룩한 백성입니다.`;
   }
-  const commaIndex = line.indexOf(",");
-  return commaIndex > 0 ? line.slice(0, commaIndex + 1).trim() : line;
+  if (key === "creed" && compactSearchValue(text) === compactSearchValue(PUBLIC_APOSTLES_CREED_TEXT)) {
+    return text.replace("하나님, 천지의 창조주를 믿습니다.", "하나님,\n천지의 창조주를 믿습니다.");
+  }
+  return text;
+}
+
+function serviceSidebarLiturgicalKey(item = {}, text = "") {
+  const sectionKey = String(item?._worshipSectionKey || "").trim();
+  if (["creed", "lords_prayer", "community_confession"].includes(sectionKey)) return sectionKey;
+  const label = compactSearchValue(item?.label || "");
+  const title = compactSearchValue(item?.raw_title || item?.title || "");
+  if (label === "공동체고백" || title === "공동체고백") return "community_confession";
+  if (label === "주기도문" || title === "주기도문") return "lords_prayer";
+  if (label === "사도신경" || (label === "신앙고백" && title === "사도신경")) return "creed";
+  const compactText = compactSearchValue(text);
+  if (compactText === compactSearchValue(PUBLIC_COMMUNITY_CONFESSION_TEXT)) return "community_confession";
+  if (compactText === compactSearchValue(PUBLIC_LORDS_PRAYER_TEXT)) return "lords_prayer";
+  if (compactText === compactSearchValue(PUBLIC_APOSTLES_CREED_TEXT)) return "creed";
+  return "";
 }
 
 function serviceSidebarPersonSummary(item = {}, service = null) {

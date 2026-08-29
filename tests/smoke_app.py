@@ -3265,8 +3265,8 @@ def main() -> int:
                             });
                             return {
                               creed: serviceSidebarOutlineFirstLine('전능하사 천지를 만드신 하나님 아버지를 내가 믿사오며,', item('사도신경', 'creed', '사도신경')),
-                              community: serviceSidebarOutlineFirstLine('우리는 세상으로부터 부름 받은 하나님의 거룩한 백성입니다.', item('공동체고백', 'community_confession', '공동체고백')),
-                              lords: serviceSidebarOutlineFirstLine('하늘에 계신 우리 아버지여, 이름이 거룩히 여김을 받으시오며', item('주기도문', 'lords_prayer', '주기도문')),
+                              community: serviceSidebarOutlineFirstLine(PUBLIC_COMMUNITY_CONFESSION_TEXT, item('공동체고백', 'community_confession', '공동체고백')),
+                              lords: serviceSidebarOutlineFirstLine(PUBLIC_LORDS_PRAYER_TEXT, item('주기도문', 'lords_prayer', '주기도문')),
                             };
                           })(),
                           sundayFirstDoxologyProjectionRecovery: (() => {
@@ -4159,7 +4159,7 @@ def main() -> int:
                         and template_terms["liturgicalSidebarSummaries"] == {
                             "creed": "전능하사 천지를 만드신 하나님 아버지를 내가 믿사오며,…",
                             "community": "우리는 세상으로부터 부름 받은…",
-                            "lords": "하늘에 계신 우리 아버지여,…",
+                            "lords": "하늘에 계신 우리 아버지,…",
                         }
                         and template_terms["sundayFirstDoxologyProjectionRecovery"] == {
                             "labels": ["송영", "축도"],
