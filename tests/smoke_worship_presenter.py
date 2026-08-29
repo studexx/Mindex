@@ -3803,6 +3803,31 @@ def main() -> int:
                           contentState: slide.contentState || '',
                           warnings: slide.warnings || [],
                         }));
+                      const missingTitlePersonAssigneeSlides = buildPresenterSlidesForServiceItem({
+                        id: '__smoke_missing_title_person_assignee_item__',
+                        label: '공동기도',
+                        raw_title: '공동기도 제목',
+                        song_id: '',
+                        assignee: '',
+                        _worshipSectionId: '__smoke_missing_corporate_prayer_section__',
+                        _worshipSectionKey: 'corporate_prayer',
+                        _worshipSectionTitle: '공동기도',
+                        memo: serializeServiceItemMemo({ elementType: 'title_person' })
+                      }, { ...service, type_id: 'sunday-main' }, 8.77)
+                        .map((slide) => ({
+                          type: slide.type,
+                          elementType: slide.elementType || '',
+                          layout: slide.layout || '',
+                          title: slide.title || '',
+                          assignee: slide.assignee || '',
+                          text: slide.text || '',
+                          sectionKey: slide.sectionKey || '',
+                          missingContent: Boolean(slide.missingContent),
+                          missingReason: slide.missingReason || '',
+                          inputMode: slide.inputMode || '',
+                          contentState: slide.contentState || '',
+                          warnings: slide.warnings || [],
+                        }));
                       const defaultTemplateInputSlides = buildPresenterSlidesForServiceItem({
                         id: '__smoke_default_template_input_item__',
                         label: '대표기도',
@@ -4033,6 +4058,7 @@ def main() -> int:
                         emptyTemplateInputSlides,
                         missingSermonBodySlides,
                         missingSermonTitleSlides,
+                        missingTitlePersonAssigneeSlides,
                         defaultTemplateInputSlides,
                         persistenceStateRows,
                         sectionSongTitleSlides,
@@ -4406,6 +4432,20 @@ def main() -> int:
                         "sectionKey": "sermon",
                         "missingContent": True,
                         "missingReason": "title_empty",
+                        "inputMode": "text",
+                        "contentState": "missing",
+                        "warnings": ["입력 필요"],
+                    }]
+                    and form_preset_state["missingTitlePersonAssigneeSlides"] == [{
+                        "type": "title-assignee",
+                        "elementType": "title_assignee",
+                        "layout": "lower_bar_text",
+                        "title": "공동기도",
+                        "assignee": "",
+                        "text": "공동기도",
+                        "sectionKey": "corporate_prayer",
+                        "missingContent": True,
+                        "missingReason": "assignee_empty",
                         "inputMode": "text",
                         "contentState": "missing",
                         "warnings": ["입력 필요"],

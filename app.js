@@ -25083,6 +25083,30 @@ function presenterServiceTextInputSpec(item, model, memo) {
   return { needsTitle, needsAssignee };
 }
 
+function presenterServiceRequiredTextInputState(item = {}, model = null, memo = parseServiceItemMemo(item.memo), service = null) {
+  const { needsTitle, needsAssignee } = presenterServiceTextInputSpec(item, model, memo);
+  const titlePersonParts = serviceMemoElementType(memo) === "title_person"
+    ? serviceTitlePersonEffectiveParts(item, memo, service)
+    : null;
+  const rawText = String(item?.raw_title || item?.title || "").trim();
+  const titleText = titlePersonParts?.rawTitleAssignee
+    ? ""
+    : (presenterTitleAssigneeTitleIsGeneric(rawText, item?.label || "") ? "" : rawText);
+  const assignee = titlePersonParts?.assignee || cleanServiceAssignee(item?.assignee);
+  const missingTitle = needsTitle && !titleText;
+  const missingAssignee = needsAssignee && !assignee;
+  return {
+    needsTitle,
+    needsAssignee,
+    titleText,
+    assignee,
+    missingTitle,
+    missingAssignee,
+    missingReason: missingTitle ? "title_empty" : missingAssignee ? "assignee_empty" : "",
+    complete: !missingTitle && !missingAssignee,
+  };
+}
+
 function isAnnouncementTextInputItem(item = {}) {
   return ["청소년부광고", "청년부광고"].includes(compactSearchValue(item?.label || ""));
 }
@@ -29031,16 +29055,13 @@ function resolvePresenterServiceItemContentState(item = {}, memo = emptyServiceI
       : missing(rawText ? "scripture_reference_invalid" : "scripture_empty");
   }
   if (elementType === "title_person") {
-    const explicitTitleText = titlePersonParts?.rawTitleAssignee
-      ? ""
-      : (presenterTitleAssigneeTitleIsGeneric(rawText, item?.label || "") ? "" : rawText);
-    const { needsTitle, needsAssignee } = presenterServiceTextInputSpec(
+    const textInputState = presenterServiceRequiredTextInputState(
       item,
       serviceItemEditorModel(item, { service }),
       memo,
+      service,
     );
-    if (needsTitle && !explicitTitleText) return missing("title_empty");
-    if (needsAssignee && !assignee) return missing("assignee_empty");
+    if (!textInputState.complete) return missing(textInputState.missingReason);
     return filled("title_person");
   }
   if (song || item?.song_id) return filled("song");
