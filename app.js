@@ -21359,36 +21359,37 @@ function serviceSidebarChildItemDisplayText(item = {}) {
   const rawTitle = String(item?.raw_title || "").trim();
   if (rawTitle) {
     const contentTitle = serviceItemContentTitleWithoutElementName(item, rawTitle);
-    return contentTitle ?? rawTitle;
+    const displayText = contentTitle ?? rawTitle;
+    return serviceSidebarIsLiturgicalBodyText(displayText, item) ? "" : displayText;
   }
   return serviceItemDisplayText(item);
 }
 
 function serviceSidebarOutlineFirstLine(value = "", item = null) {
-  if (isSidebarLiturgicalSummaryItem(item)) {
-    const visualText = serviceSidebarLiturgicalVisualText(value, item);
-    let summary = String(visualText || "").split(/\r?\n/u).map((part) => part.trim()).find(Boolean) || "";
-    if (!summary) return "";
-    const commaIndex = summary.indexOf(",");
-    if (commaIndex > 0) summary = summary.slice(0, commaIndex + 1).trim();
-    return summary.endsWith("...") || summary.endsWith("…") ? summary : `${summary}…`;
-  }
   const line = String(value || "").split(/\r?\n/u).map((part) => part.trim()).find(Boolean) || "";
   if (!line) return "";
   return line;
 }
 
-function serviceSidebarLiturgicalVisualText(value = "", item = null) {
+function serviceSidebarIsLiturgicalBodyText(value = "", item = null) {
   const text = String(value || "").trim();
+  if (!text || !isSidebarLiturgicalSummaryItem(item)) return false;
   const key = serviceSidebarLiturgicalKey(item, text);
-  if (key === "community_confession" && compactSearchValue(text) === compactSearchValue(PUBLIC_COMMUNITY_CONFESSION_TEXT)) {
-    return `우리는 세상으로부터 부름 받은
-하나님의 거룩한 백성입니다.`;
+  const compactText = compactSearchValue(text);
+  if (key === "community_confession") {
+    return compactText === compactSearchValue(PUBLIC_COMMUNITY_CONFESSION_TEXT)
+      || compactText.startsWith("우리는세상으로부터부름받은");
   }
-  if (key === "creed" && compactSearchValue(text) === compactSearchValue(PUBLIC_APOSTLES_CREED_TEXT)) {
-    return text.replace("하나님, 천지의 창조주를 믿습니다.", "하나님,\n천지의 창조주를 믿습니다.");
+  if (key === "lords_prayer") {
+    return compactText === compactSearchValue(PUBLIC_LORDS_PRAYER_TEXT)
+      || compactText.startsWith("하늘에계신우리아버지");
   }
-  return text;
+  if (key === "creed") {
+    return compactText === compactSearchValue(PUBLIC_APOSTLES_CREED_TEXT)
+      || compactText.startsWith("나는전능하신아버지하나님")
+      || compactText.startsWith("전능하사천지를만드신하나님아버지");
+  }
+  return false;
 }
 
 function serviceSidebarLiturgicalKey(item = {}, text = "") {
