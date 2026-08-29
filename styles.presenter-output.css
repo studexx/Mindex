@@ -373,7 +373,7 @@
   display: grid;
   grid-template-rows: auto auto;
   align-content: center;
-  gap: 6cqh;
+  gap: 4.6cqh;
   justify-items: center;
   overflow: hidden;
   color: #fff;
@@ -472,7 +472,7 @@
   display: grid;
   grid-template-rows: auto auto;
   align-content: center;
-  gap: 6cqh;
+  gap: 4.6cqh;
   justify-items: center;
   overflow: hidden;
   color: #fff;

@@ -7702,7 +7702,7 @@ def main() -> int:
                     and not ready_output_state["controls"]
                     and ready_output_state["presenterRole"] == "waiting_loop"
                     and ready_output_state["hasOverlay"]
-                    and 40 <= ready_output_state["overlayGap"] <= 90
+                    and 42 <= ready_output_state["overlayGap"] <= 58
                     and not is_chromakey_green(tuple(ready_output_state["centerPixel"]))
                 ):
                     pass_("presenter-ready-output-chromakey-video-loop", json.dumps(ready_output_state, ensure_ascii=False))
