@@ -3538,6 +3538,7 @@ function activatePresenterOutputLayer(root, activeLayer, nextLayer, frameState =
   const transitionClearDelay = 620;
   const swap = () => {
     if (token !== presenterOutputRenderState.token) return;
+    if (animated) activeLayer.classList.add("is-exiting");
     activeLayer.classList.remove("is-active");
     activeLayer.classList.remove("is-next");
     nextLayer.classList.add("is-active");
@@ -3550,6 +3551,7 @@ function activatePresenterOutputLayer(root, activeLayer, nextLayer, frameState =
       if (activeLayer.classList.contains("is-active")) return;
       activeLayer.innerHTML = "";
       activeLayer.removeAttribute("data-presenter-frame-token");
+      activeLayer.classList.remove("is-exiting");
     };
     if (animated) window.setTimeout(clearPreviousLayer, transitionClearDelay);
     else clearPreviousLayer();

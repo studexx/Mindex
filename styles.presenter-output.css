@@ -144,6 +144,9 @@
 .presenter-output-layer.is-next {
   z-index: 1;
 }
+.presenter-output-layer.is-exiting {
+  z-index: 3;
+}
 .presenter-output-root.no-chromakey:not(.svc-slide-mini-canvas)
   > .presenter-output-layer {
   transition: none;
@@ -162,6 +165,10 @@
   .presenter-output-root.no-chromakey:not(.svc-slide-mini-canvas)
     > .presenter-output-layer.is-next {
     filter: brightness(.8);
+  }
+  .presenter-output-root.no-chromakey:not(.svc-slide-mini-canvas)
+    > .presenter-output-layer.is-exiting {
+    filter: brightness(1.04);
   }
 }
 .presenter-output-root.no-chromakey {
