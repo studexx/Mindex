@@ -3535,9 +3535,12 @@ function commitPresenterOutputFrame(root, payload, slide, frameState, token, opt
 function activatePresenterOutputLayer(root, activeLayer, nextLayer, frameState = {}, token = presenterOutputRenderState.token, onActivated = null) {
   if (!activeLayer || !nextLayer) return;
   const animated = presenterOutputShouldAnimateFrameTransition(root, frameState);
-  const transitionClearDelay = 620;
+  const transitionClearDelay = 860;
+  const transitionEntryDelay = 720;
   const swap = () => {
     if (token !== presenterOutputRenderState.token) return;
+    activeLayer.classList.remove("is-entering");
+    activeLayer.removeAttribute("data-presenter-entering-token");
     if (animated) activeLayer.classList.add("is-exiting");
     activeLayer.classList.remove("is-active");
     activeLayer.classList.remove("is-next");
@@ -3548,11 +3551,11 @@ function activatePresenterOutputLayer(root, activeLayer, nextLayer, frameState =
     root?.append?.(activeLayer);
     if (animated) {
       nextLayer.dataset.presenterEnteringToken = String(token);
-      window.requestAnimationFrame(() => {
+      window.setTimeout(() => {
         if (nextLayer.dataset.presenterEnteringToken !== String(token)) return;
         nextLayer.classList.remove("is-entering");
         nextLayer.removeAttribute("data-presenter-entering-token");
-      });
+      }, transitionEntryDelay);
     }
     onActivated?.();
     const clearPreviousLayer = () => {

@@ -150,6 +150,7 @@
   filter: brightness(.82);
 }
 .presenter-output-layer.is-exiting {
+  opacity: 0;
   z-index: 3;
 }
 .presenter-output-root.no-chromakey:not(.svc-slide-mini-canvas)
@@ -173,11 +174,31 @@
   }
   .presenter-output-root.no-chromakey:not(.svc-slide-mini-canvas)
     > .presenter-output-layer.is-entering {
-    filter: brightness(.82);
+    animation: presenter-layer-dissolve-in 680ms ease forwards;
   }
   .presenter-output-root.no-chromakey:not(.svc-slide-mini-canvas)
     > .presenter-output-layer.is-exiting {
-    filter: brightness(1.04);
+    animation: presenter-layer-dissolve-out 680ms ease forwards;
+  }
+}
+@keyframes presenter-layer-dissolve-in {
+  from {
+    opacity: 0;
+    filter: brightness(.72);
+  }
+  to {
+    opacity: 1;
+    filter: brightness(1);
+  }
+}
+@keyframes presenter-layer-dissolve-out {
+  from {
+    opacity: 1;
+    filter: brightness(1.06);
+  }
+  to {
+    opacity: 0;
+    filter: brightness(.9);
   }
 }
 .presenter-output-root.no-chromakey {
