@@ -3554,10 +3554,14 @@ body[data-module="presenter"] .detail-pane {
 }
 .service-outline-row--child {
   min-height: 28px;
-  grid-template-columns: 0 minmax(0, 1fr) 30px;
+  grid-template-columns: minmax(0, 1fr);
   gap: 5px;
   border-radius: 5px;
-  padding: 3px 6px;
+  padding: 3px 8px;
+}
+.service-outline-row--child .service-outline-no,
+.service-outline-row--child .service-outline-start {
+  display: none;
 }
 .service-outline-row--child .service-outline-main {
   display: grid;
@@ -3578,7 +3582,7 @@ body[data-module="presenter"] .detail-pane {
   display: -webkit-box;
   color: var(--sidebar-sub);
   font-size: 12px;
-  font-weight: 650;
+  font-weight: 560;
   line-height: 16px;
   overflow: hidden;
   overflow-wrap: anywhere;
