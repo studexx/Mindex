@@ -345,7 +345,7 @@
 .presenter-ready-screen-kicker {
   margin: 0;
   color: rgba(255, 255, 255, .68);
-  font-size: calc(48 * var(--presenter-stage-unit));
+  font-size: calc(100 * var(--presenter-stage-unit));
   font-weight: 560;
   line-height: 1.16;
 }
@@ -451,7 +451,7 @@
 }
 .presenter-waiting-loop-script {
   color: rgba(255, 255, 255, .68);
-  font-size: calc(48 * var(--presenter-stage-unit));
+  font-size: calc(100 * var(--presenter-stage-unit));
   font-weight: 560;
   line-height: 1.16;
 }
@@ -468,7 +468,7 @@
 }
 .presenter-waiting-loop-message {
   color: rgba(255, 255, 255, .7);
-  font-size: calc(36 * var(--presenter-stage-unit));
+  font-size: calc(40 * var(--presenter-stage-unit));
   font-weight: 560;
   line-height: 1.34;
 }
