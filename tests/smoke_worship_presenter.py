@@ -8853,7 +8853,7 @@ def main() -> int:
                     and 40 <= fullscreen_ready_state["readyMessage"]["logoHeight"] <= 58
                     and 18 <= fullscreen_ready_state["readyMessage"]["gapAboveMessage"] <= 32
                     and fullscreen_ready_state["readyMessage"]["gapBelowMessage"] >= 180
-                    and 56 <= fullscreen_ready_state["readyMessage"]["messageFontSize"] <= 62
+                    and 72 <= fullscreen_ready_state["readyMessage"]["messageFontSize"] <= 78
                     and fullscreen_ready_state["readyMessage"]["text"] == "잠시 후 금요기도회가 시작됩니다"
                     and fullscreen_ready_state["readyMessage"]["strongText"] == "금요기도회"
                     and int(fullscreen_ready_state["readyMessage"]["strongWeight"]) > int(fullscreen_ready_state["readyMessage"]["messageWeight"])

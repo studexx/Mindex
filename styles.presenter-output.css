@@ -354,7 +354,7 @@
   margin: 0;
   max-width: 100%;
   color: #fff;
-  font-size: calc(80 * var(--presenter-stage-unit));
+  font-size: calc(100 * var(--presenter-stage-unit));
   font-weight: 760;
   line-height: 1.08;
   word-break: keep-all;
