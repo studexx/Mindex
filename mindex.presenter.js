@@ -3526,15 +3526,23 @@ function presenterOutputFrameBackgroundStyle(frameState = {}) {
 function commitPresenterOutputFrame(root, payload, slide, frameState, token, options = {}) {
   const html = slide ? renderPresenterSlideFrame(slide, { noChromakey: frameState.noChromakey }) : "";
   const activeImageSource = presenterSlideImageSource(slide);
+  const frameKey = presenterOutputFrameKey(payload, slide, frameState);
   const commit = () => {
     if (token !== presenterOutputRenderState.token) return;
     const layers = presenterOutputLayers(root);
     if (!layers) return;
+    if (layers.active?.dataset?.presenterFrameKey === frameKey) {
+      applyPresenterOutputFrameState(root, frameState);
+      bindPresenterOutputAutoAdvance(root, payload, slide, options, token);
+      warmPresenterOutputImages(payload, slide || null);
+      return;
+    }
     const nextLayer = layers.next;
     if (nextLayer.dataset.presenterFrameToken !== String(token)) {
       nextLayer.innerHTML = html;
       nextLayer.dataset.presenterFrameToken = String(token);
     }
+    nextLayer.dataset.presenterFrameKey = frameKey;
     fitPresenterChromakeyScriptureText(nextLayer, frameState);
     fitPresenterSongTitleText(nextLayer);
     fitPresenterSermonTitleText(nextLayer);
@@ -3558,6 +3566,7 @@ function commitPresenterOutputFrame(root, payload, slide, frameState, token, opt
   }
   layers.next.innerHTML = html;
   layers.next.dataset.presenterFrameToken = String(token);
+  layers.next.dataset.presenterFrameKey = frameKey;
   layers.next.classList.add("is-next");
   preparePresenterOutputFrameForPaint(layers.next)
     .then(() => nextAnimationFrame())
@@ -3603,6 +3612,7 @@ function activatePresenterOutputLayer(root, activeLayer, nextLayer, frameState =
       if (activeLayer.classList.contains("is-active")) return;
       activeLayer.innerHTML = "";
       activeLayer.removeAttribute("data-presenter-frame-token");
+      activeLayer.removeAttribute("data-presenter-frame-key");
       activeLayer.removeAttribute("data-presenter-entering-token");
       activeLayer.classList.remove("is-exiting");
       activeLayer.classList.remove("is-entering");
@@ -3616,6 +3626,24 @@ function activatePresenterOutputLayer(root, activeLayer, nextLayer, frameState =
   }
   nextLayer.getBoundingClientRect();
   swap();
+}
+
+function presenterOutputFrameKey(payload = {}, slide = null, frameState = {}) {
+  if (!slide) return "empty";
+  return [
+    payload?.serviceId || "",
+    payload?.index ?? "",
+    slide.id || "",
+    slide.type || "",
+    slide.layout || "",
+    slide.elementType || "",
+    slide.outputContext || slide.output_context || "",
+    frameState.noChromakey ? "clean" : "chromakey",
+    frameState.blankOutput ? "blank" : "",
+    frameState.backgroundImage || "",
+    slide.title || "",
+    slide.text || "",
+  ].map((value) => String(value ?? "")).join("|");
 }
 
 function presenterOutputShouldAnimateFrameTransition(root, frameState = {}) {

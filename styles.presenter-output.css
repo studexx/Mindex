@@ -1144,6 +1144,15 @@
   transform-origin: left center;
   animation: presenter-blank-cross-horizontal 450ms ease-out 550ms forwards;
 }
+.presenter-output-root.no-chromakey.is-blank
+  > .presenter-output-layer:not(.is-active)
+  .presenter-slide--blank::before,
+.presenter-output-root.no-chromakey.is-blank
+  > .presenter-output-layer:not(.is-active)
+  .presenter-slide--blank::after {
+  display: none;
+  animation: none;
+}
 /* Controller thumbnails show the finished transition frame without spending
    compositor work on an animation that only matters on the output display. */
 .svc-slide-mini-canvas.presenter-output-root.no-chromakey.is-blank .presenter-slide--blank::before {

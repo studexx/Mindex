@@ -7984,6 +7984,21 @@ def main() -> int:
                       const horizontalAnimation = horizontal.animationName;
                       const horizontalDelay = horizontal.animationDelay;
                       const horizontalOrigin = horizontal.transformOrigin;
+                      const repeatPayload = {
+                        serviceType: 'friday',
+                        chromakey: false,
+                        outputTheme: 'formal',
+                        slides: [],
+                        index: 0,
+                        safetyBlank: true,
+                      };
+                      renderPresenterOutput(repeatPayload);
+                      const repeatActiveBefore = document.querySelector('#presenterOutputRoot > .presenter-output-layer.is-active');
+                      renderPresenterOutput(repeatPayload);
+                      const repeatActiveAfter = document.querySelector('#presenterOutputRoot > .presenter-output-layer.is-active');
+                      const inactiveBlank = document.querySelector('#presenterOutputRoot > .presenter-output-layer:not(.is-active) .presenter-slide--blank');
+                      const inactiveVertical = inactiveBlank ? getComputedStyle(inactiveBlank, '::before') : null;
+                      const inactiveHorizontal = inactiveBlank ? getComputedStyle(inactiveBlank, '::after') : null;
                       const mini = document.createElement('span');
                       mini.className = 'svc-slide-mini-canvas presenter-output-root no-chromakey is-blank';
                       mini.innerHTML = renderPresenterSlideFrame({
@@ -8026,6 +8041,9 @@ def main() -> int:
                         horizontalAnimation,
                         horizontalDelay,
                         horizontalOrigin,
+                        repeatActivePreserved: Boolean(repeatActiveBefore && repeatActiveBefore === repeatActiveAfter),
+                        inactiveVerticalDisplay: inactiveVertical?.display || '',
+                        inactiveHorizontalDisplay: inactiveHorizontal?.display || '',
                         miniVerticalWidth: miniVertical.width,
                         miniVerticalTransform: miniVertical.transform,
                         miniHorizontalHeight: miniHorizontal.height,
@@ -8045,6 +8063,9 @@ def main() -> int:
                     and blank_cross_animation["horizontalAnimation"] == "presenter-blank-cross-horizontal"
                     and blank_cross_animation["horizontalDelay"] == "0.55s"
                     and blank_cross_animation["horizontalOrigin"].startswith("0px ")
+                    and blank_cross_animation["repeatActivePreserved"]
+                    and blank_cross_animation["inactiveVerticalDisplay"] in ["", "none"]
+                    and blank_cross_animation["inactiveHorizontalDisplay"] in ["", "none"]
                     and blank_cross_animation["miniVerticalWidth"] == "12px"
                     and blank_cross_animation["miniVerticalTransform"] != "none"
                     and blank_cross_animation["miniHorizontalHeight"] == "12px"
