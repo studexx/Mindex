@@ -156,7 +156,7 @@ body.is-chromium[data-module="presenter"] *::after {
 }
 body[data-module="service"],
 body[data-module="presenter"] {
-  --sidebar-reference-w: 312px;
+  --sidebar-reference-w: 360px;
 }
 button, input, textarea, select { font: inherit; }
 input::placeholder, textarea::placeholder {
@@ -523,7 +523,7 @@ body[data-theme="dark"] .top-module-entry.active {
   }
   body[data-module="service"],
   body[data-module="presenter"] {
-    --sidebar-reference-w: 292px;
+    --sidebar-reference-w: 336px;
   }
 }
 @media (max-width: 980px) {
@@ -533,7 +533,7 @@ body[data-theme="dark"] .top-module-entry.active {
   }
   body[data-module="service"],
   body[data-module="presenter"] {
-    --sidebar-reference-w: 260px;
+    --sidebar-reference-w: 304px;
   }
 }
 @media (orientation: portrait) {
@@ -3579,17 +3579,13 @@ body[data-module="presenter"] .detail-pane {
   white-space: nowrap;
 }
 .service-outline-row--child .service-outline-main strong {
-  display: -webkit-box;
   color: var(--sidebar-sub);
   font-size: 12px;
   font-weight: 560;
   line-height: 16px;
   overflow: hidden;
-  overflow-wrap: anywhere;
   text-overflow: ellipsis;
-  white-space: normal;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  white-space: nowrap;
 }
 .service-outline-row--child:has(.service-outline-kind) {
   min-height: 36px;
