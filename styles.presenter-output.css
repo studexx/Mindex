@@ -152,8 +152,8 @@
   .presenter-output-root.no-chromakey:not(.svc-slide-mini-canvas)
     > .presenter-output-layer {
     transition:
-      opacity 250ms ease,
-      filter 250ms ease;
+      opacity 360ms ease,
+      filter 360ms ease;
   }
   .presenter-output-root.no-chromakey:not(.svc-slide-mini-canvas)
     > .presenter-output-layer.is-active {
@@ -161,7 +161,7 @@
   }
   .presenter-output-root.no-chromakey:not(.svc-slide-mini-canvas)
     > .presenter-output-layer.is-next {
-    filter: brightness(.92);
+    filter: brightness(.86);
   }
 }
 .presenter-output-root.no-chromakey {
