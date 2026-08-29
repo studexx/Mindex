@@ -4187,6 +4187,7 @@ function renderPresenterGeneratedWaitingLoopSlide(slide) {
         <p class="presenter-waiting-loop-title"><strong>${escapeHtml(serviceName)}</strong></p>
         <p class="presenter-waiting-loop-message">예배가 곧 시작됩니다<br>기도로 예배를 준비해 주세요</p>
       </div>
+      <img class="presenter-waiting-loop-logo" src="${escapeAttr(PRESENTER_CHURCH_LOGO)}" alt="기형 검단우리교회" decoding="sync" loading="eager" fetchpriority="high" draggable="false" />
     </div>
   `;
 }

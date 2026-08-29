@@ -7456,6 +7456,7 @@ def main() -> int:
                         layout: slide?.dataset.slideLayout || '',
                         text: slide?.innerText.trim() || '',
                         title: slide?.querySelector('.presenter-waiting-loop-title')?.textContent.trim() || '',
+                        logoHeight: Math.round(slide?.querySelector('.presenter-waiting-loop-logo')?.getBoundingClientRect().height || 0),
                         loopLabel: slide?.querySelector('.presenter-waiting-loop')?.getAttribute('aria-label') || '',
                       };
                     })()
@@ -7467,6 +7468,7 @@ def main() -> int:
                     and ready_output_state["elementType"] == "video"
                     and ready_output_state["layout"] == "media"
                     and ready_output_state["title"] == "월삭예배"
+                    and ready_output_state["logoHeight"] >= 40
                     and "예배가 곧 시작됩니다" in ready_output_state["text"]
                     and "월삭예배 대기 화면" in ready_output_state["loopLabel"]
                     and not is_chromakey_green(tuple(ready_output_state["centerPixel"]))

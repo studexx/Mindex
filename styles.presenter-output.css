@@ -431,6 +431,18 @@
   text-align: center;
   transform: translateY(6.4cqh);
 }
+.presenter-waiting-loop-logo {
+  display: block;
+  position: absolute;
+  left: 50%;
+  bottom: 8.2cqh;
+  z-index: 2;
+  width: min(30cqw, 575px);
+  max-height: 8.5cqh;
+  object-fit: contain;
+  opacity: .88;
+  transform: translateX(-50%);
+}
 .presenter-waiting-loop-script,
 .presenter-waiting-loop-title,
 .presenter-waiting-loop-message {
