@@ -21208,12 +21208,9 @@ function renderPresenterSidebarServiceSummary(service) {
   ]);
   return `
     <section class="service-sidebar-section service-sidebar-section--presenter-context" aria-label="현재 예배">
-      <div class="service-sidebar-head">
-        <span>현재 예배</span>
-      </div>
       <div class="service-sidebar-presenter-context">
-        <strong>${escapeHtml(serviceName)}</strong>
-        ${details.length ? `<span>${escapeHtml(details.join(" · "))}</span>` : ""}
+        <strong class="service-sidebar-presenter-title">${escapeHtml(serviceName)}</strong>
+        ${details.length ? `<span class="service-sidebar-presenter-date">${escapeHtml(details.join(" · "))}</span>` : ""}
       </div>
     </section>`;
 }
@@ -22199,13 +22196,6 @@ function renderPresenterDetail() {
     return;
   }
 
-  const dateStr = formatServiceIsoDate(svc);
-  const serviceName = serviceDisplayTypeName(svc);
-  const variantName = serviceVariantDisplayName(svc);
-  const subtitle = cleanList([
-    dateStr,
-    variantName && compactSearchValue(variantName) !== compactSearchValue(serviceName) ? variantName : "",
-  ]).join(" · ");
   const presenterActive = state.presenter.serviceId === serviceId;
   const presenterSlides = presenterSlidesForService(serviceId);
   const presenterIndex = presenterActive ? clampPresenterIndex(state.presenter.index, presenterSlides.length) : 0;
@@ -22214,10 +22204,6 @@ function renderPresenterDetail() {
   refs.detailPane.innerHTML = `
     <div class="service-viewer presenter-viewer">
       <div class="svc-header">
-        <div class="svc-header-date">
-          <h2 class="svc-service-title">${escapeHtml(serviceName)}</h2>
-          <span class="svc-date-text">${escapeHtml(subtitle)}</span>
-        </div>
         <div class="svc-header-actions">
           ${serviceSupportsBulletin(svc) ? `
             <button class="svc-output-action svc-output-action--quiet" type="button" data-service-bulletin-action="open" data-service-id="${escapeAttr(serviceId)}" aria-label="청년부 주보 열기">

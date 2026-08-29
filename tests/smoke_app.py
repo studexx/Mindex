@@ -5528,7 +5528,8 @@ def main() -> int:
                           const rect = root?.getBoundingClientRect();
                           return {
                             mounted: Boolean(root),
-                            title: document.querySelector('.presenter-viewer .svc-service-title')?.textContent.trim() || '',
+                            controllerTitleRemoved: !document.querySelector('.presenter-viewer .svc-service-title')
+                              && !document.querySelector('.presenter-viewer .svc-date-text'),
                             hasReadonly: Boolean(document.querySelector('.service-readonly-view')),
                             hasPresenterControls: Boolean(document.querySelector('#servicePresenterControls')),
                             module: state.module,
@@ -5541,7 +5542,7 @@ def main() -> int:
                     )
                     if (
                         authoring_state["mounted"]
-                        and authoring_state["title"]
+                        and authoring_state["controllerTitleRemoved"]
                         and not authoring_state["hasReadonly"]
                         and authoring_state["hasPresenterControls"]
                         and authoring_state["module"] in ("service", "presenter")

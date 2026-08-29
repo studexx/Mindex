@@ -179,7 +179,9 @@ def main() -> int:
                       state.selectedServiceItemIndex = null;
                       renderPresenterDetail();
                       const controls = document.querySelector('#servicePresenterControls');
-                      const title = document.querySelector('.presenter-viewer .svc-service-title')?.textContent?.trim() || '';
+                      const title = document.querySelector('.service-sidebar-presenter-title')?.textContent?.trim() || '';
+                      const controllerTitleRemoved = !document.querySelector('.presenter-viewer .svc-service-title')
+                        && !document.querySelector('.presenter-viewer .svc-date-text');
                       const thumbs = [...document.querySelectorAll('.svc-slide-thumb[data-service-id]')]
                         .filter((thumb) => thumb.dataset.serviceId === serviceId)
                         .length;
@@ -193,6 +195,7 @@ def main() -> int:
                         selectedWasCleared,
                         title,
                         expectedTitle: serviceDisplayTypeName(service),
+                        controllerTitleRemoved,
                         hasControls: Boolean(controls),
                         thumbs,
                       };
@@ -204,6 +207,7 @@ def main() -> int:
                     session_navigation_state["sessionServiceId"] == service["id"]
                     and session_navigation_state["selectedWasCleared"]
                     and session_navigation_state["title"] == session_navigation_state["expectedTitle"]
+                    and session_navigation_state["controllerTitleRemoved"]
                     and session_navigation_state["hasControls"]
                     and session_navigation_state["thumbs"] > 0
                 ):
@@ -238,7 +242,9 @@ def main() -> int:
                       state.selectedServiceItemIndex = null;
                       const snapshot = currentBrowserHistorySnapshot();
                       renderPresenterDetail();
-                      const title = document.querySelector('.presenter-viewer .svc-service-title')?.textContent?.trim() || '';
+                      const title = document.querySelector('.service-sidebar-presenter-title')?.textContent?.trim() || '';
+                      const controllerTitleRemoved = !document.querySelector('.presenter-viewer .svc-service-title')
+                        && !document.querySelector('.presenter-viewer .svc-date-text');
                       const viewedServiceId = presenterViewServiceId();
                       Object.assign(state.presenter, previousPresenter);
                       state.module = previousModule;
@@ -253,6 +259,7 @@ def main() -> int:
                         snapshotServiceId: snapshot.selectedServiceId,
                         title,
                         expectedTitle: serviceDisplayTypeName(service),
+                        controllerTitleRemoved,
                       };
                     }
                     """,
@@ -264,6 +271,7 @@ def main() -> int:
                     tab_selection_state["viewedServiceId"] == service["id"]
                     and tab_selection_state["snapshotServiceId"] == service["id"]
                     and tab_selection_state["title"] == tab_selection_state["expectedTitle"]
+                    and tab_selection_state["controllerTitleRemoved"]
                 ):
                     pass_("presenter-tab-keeps-pinned-service", json.dumps(tab_selection_state, ensure_ascii=False))
                 else:
@@ -647,8 +655,9 @@ def main() -> int:
                       const header = document.querySelector('.svc-header');
                       const rightSidebar = document.querySelector('#mindexRightSidebar');
                       const top = rightSidebar?.querySelector('.svc-presenter-top');
-                      const title = document.querySelector('.svc-service-title');
-                      const date = document.querySelector('.svc-date-text');
+                      const sidebarContext = document.querySelector('.service-sidebar-presenter-context');
+                      const title = sidebarContext?.querySelector('.service-sidebar-presenter-title');
+                      const date = sidebarContext?.querySelector('.service-sidebar-presenter-date');
                       const beforeHeader = header?.getBoundingClientRect();
                       const beforeTop = top?.getBoundingClientRect();
                       if (pane) pane.scrollTop = 260;
@@ -658,8 +667,11 @@ def main() -> int:
                       const currentRightSidebar = document.querySelector('#mindexRightSidebar');
                       const currentTop = currentRightSidebar?.querySelector('.svc-presenter-top');
                       const currentSidePanel = currentRightSidebar?.querySelector('.svc-presenter-side-panel');
-                      const currentTitle = document.querySelector('.svc-service-title');
-                      const currentDate = document.querySelector('.svc-date-text');
+                      const currentSidebarContext = document.querySelector('.service-sidebar-presenter-context');
+                      const currentTitle = currentSidebarContext?.querySelector('.service-sidebar-presenter-title');
+                      const currentDate = currentSidebarContext?.querySelector('.service-sidebar-presenter-date');
+                      const controllerTitle = document.querySelector('.presenter-viewer .svc-service-title');
+                      const controllerDate = document.querySelector('.presenter-viewer .svc-date-text');
                       const afterHeader = currentHeader?.getBoundingClientRect();
                       const afterTop = currentTop?.getBoundingClientRect();
                       const beforeHeaderTop = Math.round(beforeHeader?.top || 0);
@@ -669,7 +681,8 @@ def main() -> int:
                       return {
                         title: currentTitle?.textContent.trim() || title?.textContent.trim() || '',
                         date: currentDate?.textContent.trim() || date?.textContent.trim() || '',
-                        usesExistingHeader: Boolean((currentTitle || title)?.closest('.svc-header') && !document.querySelector('.svc-presenter-title-row')),
+                        usesSidebarTitle: Boolean((currentTitle || title)?.closest('.service-sidebar-presenter-context') && !document.querySelector('.svc-presenter-title-row')),
+                        controllerTitleRemoved: !controllerTitle && !controllerDate,
                         headerPosition: currentHeader ? getComputedStyle(currentHeader).position : '',
                         controlsPosition: currentTop ? getComputedStyle(currentTop).position : '',
                         sidePanelPosition: currentSidePanel ? getComputedStyle(currentSidePanel).position : '',
@@ -690,7 +703,8 @@ def main() -> int:
                     sticky_title_state["title"]
                     and sticky_title_state["date"]
                     and re.match(r"^\d{4}-\d{2}-\d{2} \((주일|월|화|수|목|금|토)\)", sticky_title_state["date"])
-                    and sticky_title_state["usesExistingHeader"]
+                    and sticky_title_state["usesSidebarTitle"]
+                    and sticky_title_state["controllerTitleRemoved"]
                     and sticky_title_state["rightSidebarVisible"]
                     and sticky_title_state["headerPosition"] == "sticky"
                     and sticky_title_state["controlsPosition"] == "static"

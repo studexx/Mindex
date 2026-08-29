@@ -5906,23 +5906,24 @@ body[data-theme="dark"] .service-week-empty:hover {
   padding: 12px;
 }
 .service-sidebar-section--presenter-context {
+  padding-top: 2px;
   padding-bottom: 12px;
 }
 .service-sidebar-presenter-context {
   display: grid;
-  gap: 4px;
+  gap: 3px;
   border-radius: var(--r);
   background: color-mix(in srgb, var(--sidebar-active-bg) 70%, transparent);
   margin: 0 var(--sidebar-item-pad-x);
-  padding: 10px 12px;
+  padding: 10px 11px 11px;
 }
 .service-sidebar-presenter-context strong {
   min-width: 0;
   overflow: hidden;
   color: var(--sidebar-ink);
-  font-size: var(--ui-body-size);
+  font-size: 15px;
   font-weight: 800;
-  line-height: 1.35;
+  line-height: 20px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -5930,9 +5931,9 @@ body[data-theme="dark"] .service-week-empty:hover {
   min-width: 0;
   overflow: hidden;
   color: var(--sidebar-muted);
-  font-size: var(--ui-label-size);
+  font-size: 11px;
   font-weight: var(--ui-label-weight);
-  line-height: 1.3;
+  line-height: 15px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
