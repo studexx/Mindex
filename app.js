@@ -913,6 +913,22 @@ function capturePresenterViewportSnapshot(expectedServiceId = state.selectedServ
   const scrollTop = pane.scrollTop;
   if (scrollTop <= 0) return null;
   const paneRect = pane.getBoundingClientRect();
+  const focusedSubgroup = document.activeElement && root.contains(document.activeElement)
+    ? document.activeElement.closest?.(".svc-board-subgroup[data-service-item-index]")
+    : null;
+  if (focusedSubgroup?.isConnected) {
+    const rect = focusedSubgroup.getBoundingClientRect();
+    return {
+      serviceId: expectedServiceId,
+      scrollTop,
+      selector: `.svc-board-subgroup[data-service-item-index="${CSS.escape(focusedSubgroup.dataset.serviceItemIndex || "")}"]`,
+      elementId: focusedSubgroup.dataset.serviceElementId || "",
+      elementKey: "",
+      slideId: "",
+      groupOrdinal: 0,
+      offsetTop: rect.top - paneRect.top,
+    };
+  }
   const candidates = [...root.querySelectorAll(`.svc-slide-thumb[data-service-id="${serviceSelector}"]`)];
   const anchor = candidates
     .map((thumb) => {
@@ -923,10 +939,18 @@ function capturePresenterViewportSnapshot(expectedServiceId = state.selectedServ
     .filter(({ rect }) => rect.bottom > paneRect.top + 16 && rect.top < paneRect.bottom - 16)
     .sort((a, b) => Math.abs(a.rect.top - paneRect.top - 96) - Math.abs(b.rect.top - paneRect.top - 96))[0];
   if (!anchor) return { serviceId: expectedServiceId, scrollTop, selector: "", offsetTop: 0 };
+  const elementKey = anchor.thumb.dataset.presenterElementKey || "";
+  const sameGroup = elementKey
+    ? candidates.filter((thumb) => (thumb.dataset.presenterElementKey || "") === elementKey)
+    : [];
   return {
     serviceId: expectedServiceId,
     scrollTop,
     selector: `.svc-slide-thumb[data-service-id="${serviceSelector}"][data-presenter-index="${CSS.escape(anchor.thumb.dataset.presenterIndex || "")}"]`,
+    elementId: anchor.thumb.closest(".svc-board-subgroup")?.dataset.serviceElementId || "",
+    elementKey,
+    slideId: anchor.thumb.dataset.presenterSlideId || "",
+    groupOrdinal: sameGroup.indexOf(anchor.thumb),
     offsetTop: anchor.rect.top - paneRect.top,
   };
 }
@@ -948,8 +972,8 @@ function restorePresenterViewportSnapshot(snapshot) {
     ) return;
     const root = document.getElementById("servicePresenterControls");
     let restored = false;
-    if (root?.isConnected && snapshot.selector) {
-      const target = root.querySelector(snapshot.selector)?.closest(".svc-slide-thumb-wrap");
+    if (root?.isConnected) {
+      const target = presenterViewportRestoreTarget(root, snapshot);
       if (target) {
         const paneRect = pane.getBoundingClientRect();
         const targetRect = target.getBoundingClientRect();
@@ -961,6 +985,30 @@ function restorePresenterViewportSnapshot(snapshot) {
       pane.scrollTop = snapshot.scrollTop;
     }
   });
+}
+
+function presenterViewportRestoreTarget(root, snapshot = {}) {
+  if (!root?.querySelector || !snapshot) return null;
+  const serviceId = CSS.escape(String(snapshot.serviceId || ""));
+  if (snapshot.elementId) {
+    const target = root.querySelector(`.svc-board-subgroup[data-service-element-id="${CSS.escape(String(snapshot.elementId))}"]`);
+    if (target) return target;
+  }
+  if (snapshot.slideId) {
+    const thumb = root.querySelector(`.svc-slide-thumb[data-service-id="${serviceId}"][data-presenter-slide-id="${CSS.escape(String(snapshot.slideId))}"]`);
+    if (thumb) return thumb.closest(".svc-slide-thumb-wrap") || thumb;
+  }
+  if (snapshot.elementKey) {
+    const groupThumbs = [...root.querySelectorAll(`.svc-slide-thumb[data-service-id="${serviceId}"][data-presenter-element-key="${CSS.escape(String(snapshot.elementKey))}"]`)];
+    const ordinal = Number(snapshot.groupOrdinal);
+    const thumb = groupThumbs[Math.min(Math.max(Number.isFinite(ordinal) ? ordinal : 0, 0), Math.max(groupThumbs.length - 1, 0))];
+    if (thumb) return thumb.closest(".svc-slide-thumb-wrap") || thumb;
+  }
+  if (snapshot.selector) {
+    const target = root.querySelector(snapshot.selector);
+    if (target) return target.closest(".svc-slide-thumb-wrap") || target;
+  }
+  return null;
 }
 
 let detailViewportRestoreSerial = 0;
@@ -25554,11 +25602,12 @@ function renderPresenterControlsTop(service, slides, active, index) {
   const warmup = presenterOutputWarmupUiState(service.id, { active, outputOpen });
   const launchAction = anyOutputOpen ? "stop" : "open";
   const launchLabel = uiText(anyOutputOpen ? "presenter.action.stop" : "presenter.action.present");
-  const launchIcon = anyOutputOpen ? "square" : "screen-share";
+  const launchIcon = anyOutputOpen ? "screen-share-off" : "screen-share";
+  const launchTone = anyOutputOpen ? "stop" : "start";
   return `
       <div class="svc-presenter-top">
         <div class="svc-presenter-output-group">
-          <button class="svc-present-btn svc-presenter-launch${anyOutputOpen ? " is-stop" : ""}" type="button" data-presenter-action="${escapeAttr(launchAction)}" data-service-id="${escapeAttr(service.id)}" aria-label="${escapeAttr(launchLabel)}">
+          <button class="svc-present-btn svc-presenter-launch svc-presenter-launch--${launchTone}${anyOutputOpen ? " is-stop" : ""}" type="button" data-presenter-action="${escapeAttr(launchAction)}" data-service-id="${escapeAttr(service.id)}" aria-label="${escapeAttr(launchLabel)}">
             <i data-lucide="${escapeAttr(launchIcon)}"></i>
             <span>${escapeHtml(launchLabel)}</span>
           </button>
@@ -27351,6 +27400,7 @@ function renderPresenterSlideThumb(slide, slideIndex, activeIndex, serviceId, fo
   const active = slideIndex === activeIndex;
   const hidden = Boolean(slide?.hiddenInPresentation || slide?.hidden_in_presentation || slide?.hidden);
   const elementKey = presenterSlideElementGroupKey(slide) || `slide:${slideIndex}`;
+  const slideId = String(slide?.id || "").trim();
   const selected = state.presenterBoardSelection.serviceId === serviceId
     && state.presenterBoardSelection.elementKey === elementKey
     && (state.presenterBoardSelection.indexes || []).map(Number).includes(slideIndex);
@@ -27394,6 +27444,7 @@ function renderPresenterSlideThumb(slide, slideIndex, activeIndex, serviceId, fo
         data-presenter-action="jump"
         data-presenter-index="${slideIndex}"
         data-presenter-element-key="${escapeAttr(elementKey)}"
+        data-presenter-slide-id="${escapeAttr(slideId)}"
         data-service-id="${escapeAttr(serviceId)}"
         aria-label="${escapeAttr(`${ariaPrefix}: ${presenterSlideTitle(slide)}`)}"
         title="${escapeAttr(ariaPrefix)}">
@@ -28269,6 +28320,7 @@ function patchPresenterControlsTop(root, service, slides, active, index) {
   const nextTop = template.content.firstElementChild;
   if (!currentTop || !nextTop) return;
   currentTop.replaceWith(nextTop);
+  refreshIcons(nextTop);
 }
 
 function patchPresenterBoardActiveState(root, serviceId, active, index) {

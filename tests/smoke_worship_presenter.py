@@ -5960,6 +5960,9 @@ def main() -> int:
                           focusCalls: window.__mindexPresenterFocusCalls || 0,
                           openCalls: window.__mindexPresenterOpenCalls || 0,
                           screenDetailsCalls: window.__mindexScreenDetailsCalls || 0,
+                          action: document.querySelector('.svc-presenter-launch')?.dataset.presenterAction || '',
+                          label: document.querySelector('.svc-presenter-launch span')?.textContent.trim() || '',
+                          icon: document.querySelector('.svc-presenter-launch svg')?.getAttribute('data-lucide') || '',
                         }))()
                         """
                     )
@@ -5975,6 +5978,9 @@ def main() -> int:
                         and target_state["focusCalls"] == 1
                         and target_state["openCalls"] == 1
                         and target_state["screenDetailsCalls"] == 1
+                        and target_state["action"] == "stop"
+                        and target_state["label"] == "송출 종료"
+                        and target_state["icon"] == "screen-share-off"
                     ):
                         pass_("presenter-secondary-fullscreen-launch", json.dumps(target_state, ensure_ascii=False))
                     else:
@@ -6654,6 +6660,7 @@ def main() -> int:
                       status: document.querySelector('.svc-presenter-status')?.textContent.trim() || '',
                       action: document.querySelector('.svc-presenter-launch')?.dataset.presenterAction || '',
                       label: document.querySelector('.svc-presenter-launch span')?.textContent.trim() || '',
+                      icon: document.querySelector('.svc-presenter-launch svg')?.getAttribute('data-lucide') || '',
                     }))()
                     """
                 )
@@ -6665,6 +6672,7 @@ def main() -> int:
                     and heartbeat_stop_state["status"] == "송출 중"
                     and heartbeat_stop_state["action"] == "stop"
                     and heartbeat_stop_state["label"] == "송출 종료"
+                    and heartbeat_stop_state["icon"] == "screen-share-off"
                 ):
                     pass_("presenter-heartbeat-output-stop-affordance", json.dumps(heartbeat_stop_state, ensure_ascii=False))
                 else:
