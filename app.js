@@ -10315,20 +10315,21 @@ function preferredNewHymnalVersion(song = null, versions = song?.versions || [])
 function preferredServiceSongVersion(song = null, item = {}, service = selectedServiceForEditor()) {
   const versions = serviceSelectableSongVersions(song, item, service);
   if (!versions.length) return null;
+  const fallbackVersion = versions.find((version) => version.id === getDefaultVersionId(song)) || versions[0] || null;
   const memo = parseServiceItemMemo(item?.memo);
   const inputMode = servicePraiseInputMode(item, memo, service);
   if (inputMode === "score_db") {
-    return preferredNewHymnalVersion(song, versions) || (versions.length === 1 ? versions[0] : null);
+    return preferredNewHymnalVersion(song, versions) || fallbackVersion;
   }
   if (inputMode === "lyrics_db" || inputMode === "praise_db") {
     const defaultVersionId = getDefaultVersionId(song);
     return versions.find((version) => version.id === defaultVersionId && versionHasLyrics(version))
       || versions.find(versionHasLyrics)
-      || (versions.length === 1 ? versions[0] : null);
+      || fallbackVersion;
   }
   return versions.find((version) => version.id === getDefaultVersionId(song))
     || preferredNewHymnalVersion(song, versions)
-    || (versions.length === 1 ? versions[0] : null);
+    || fallbackVersion;
 }
 
 function serviceItemEditableAssigneeValue(item = {}, service = selectedServiceForEditor()) {

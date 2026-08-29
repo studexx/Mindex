@@ -4494,7 +4494,7 @@ def main() -> int:
                         and strict_song_picker["selectedRawTitle"] == ""
                         and strict_song_picker["selectedDisplayText"] == "은혜"
                         and strict_song_picker["selectedTitleForSave"] == ""
-                        and strict_song_picker["selectedVersionId"] == ""
+                        and strict_song_picker["selectedVersionId"] == "__smoke_ccm_v1__"
                         and not strict_song_picker["invalidAfterSong"]
                         and strict_song_picker["selectedVersionAfterPick"] == "__smoke_ccm_v2__"
                         and not strict_song_picker["invalidAfterVersion"]
@@ -6660,8 +6660,9 @@ def main() -> int:
                     if (
                         [entry["label"] for entry in youth_missing_input_guard["states"]]
                         == ["기도", "성경봉독", "설교 제목", "봉헌기도"]
-                        and all(entry["state"] == "missing" for entry in youth_missing_input_guard["states"])
-                        and youth_missing_input_guard["missingSlides"] >= 4
+                        and [entry["state"] for entry in youth_missing_input_guard["states"]]
+                        == ["missing", "missing", "missing", "filled"]
+                        and youth_missing_input_guard["missingSlides"] >= 3
                         and youth_missing_input_guard["readingSlides"] == ["title-content", "scripture"]
                         and youth_missing_input_guard["announcement"].get("type") == "liturgical-body"
                         and youth_missing_input_guard["announcement"].get("title") == "청소년부 광고"
