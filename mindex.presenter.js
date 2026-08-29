@@ -3452,6 +3452,7 @@ function presenterOutputFrameStateForSlide(slide, payload = {}) {
   const slideChromakey = presenterFrameSlideOutputContext(slide, fallbackChromakey) === "chromakey";
   const cleanOutput = !slideChromakey;
   const blankSlide = presenterSlideLayout(slide) === PRESENTER_SLIDE_LAYOUTS.BLANK;
+  const scoreOutput = presenterSlideIsScoreLike(slide);
   const suppressBackground = Boolean(slide?.suppressBackgroundImage || slide?.noBackgroundImage);
   // A fullscreen blank stays inside the service visual system: retain the same
   // background while the cross draws over it. Chromakey remains background-free.
@@ -3460,6 +3461,7 @@ function presenterOutputFrameStateForSlide(slide, payload = {}) {
     cleanOutput,
     showBackground,
     blankOutput: Boolean(blankSlide && cleanOutput),
+    scoreOutput,
     backgroundImage: backgroundImages[0] || "",
     backgroundImages,
     serviceType: payload?.serviceType || "",
@@ -3618,7 +3620,10 @@ function activatePresenterOutputLayer(root, activeLayer, nextLayer, frameState =
 
 function presenterOutputShouldAnimateFrameTransition(root, frameState = {}) {
   if (!frameState.cleanOutput) return false;
+  if (frameState.scoreOutput) return false;
   if (root?.classList?.contains("svc-slide-mini-canvas")) return false;
+  if (root?.querySelector?.(":scope > .presenter-output-layer.is-active .presenter-slide--score")) return false;
+  if (root?.querySelector?.(":scope > .presenter-output-layer.is-next .presenter-slide--score")) return false;
   return !window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
 }
 
@@ -4124,8 +4129,12 @@ function presenterSlideIsScoreImage(slide) {
   return Boolean(
     slide
     && presenterSlideImageSource(slide)
-    && (slide.sourceType === "score" || slide.componentType === "score" || slide.scoreBackground),
+    && presenterSlideIsScoreLike(slide),
   );
+}
+
+function presenterSlideIsScoreLike(slide) {
+  return Boolean(slide?.sourceType === "score" || slide?.componentType === "score" || slide?.scoreBackground);
 }
 
 function presenterSlidePreloadGroupKey(slide) {
@@ -4207,7 +4216,7 @@ function renderPresenterSlideFrame(slide, options = {}) {
 function presenterSlideExtraClasses(slide) {
   const classes = [];
   const layout = presenterSlideLayout(slide);
-  if (slide?.sourceType === "score" || slide?.componentType === "score" || slide?.scoreBackground) classes.push("presenter-slide--score");
+  if (presenterSlideIsScoreLike(slide)) classes.push("presenter-slide--score");
   if (layout !== PRESENTER_SLIDE_LAYOUTS.BLANK && presenterScriptureContextUsesReadingForm(slide?.scriptureContext)) classes.push("presenter-slide--scripture-reading");
   if (layout !== PRESENTER_SLIDE_LAYOUTS.BLANK && slide?.scriptureContext === "sermon") classes.push("presenter-slide--scripture-sermon");
   if (layout !== PRESENTER_SLIDE_LAYOUTS.BLANK && slide?.scriptureContext === "citation") classes.push("presenter-slide--scripture-citation");

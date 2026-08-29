@@ -9643,6 +9643,78 @@ def main() -> int:
                 else:
                     fail("presenter-fullscreen-fade-transition", json.dumps(fullscreen_transition_state, ensure_ascii=False))
 
+                score_transition_state = output_page.evaluate(
+                    """
+                    async () => {
+                      const root = document.getElementById('presenterOutputRoot');
+                      const slides = [
+                        {
+                          id: '__smoke_score_transition_old__',
+                          type: 'title-content',
+                          elementType: PRESENTER_ELEMENT_TYPES.TITLE_CONTENT,
+                          layout: PRESENTER_SLIDE_LAYOUTS.CENTER_TEXT,
+                          title: '이전 악보',
+                          text: '이전 악보',
+                          outputContext: 'clean',
+                          sourceType: 'score',
+                          componentType: 'score',
+                        },
+                        {
+                          id: '__smoke_score_transition_next__',
+                          type: 'title-content',
+                          elementType: PRESENTER_ELEMENT_TYPES.TITLE_CONTENT,
+                          layout: PRESENTER_SLIDE_LAYOUTS.CENTER_TEXT,
+                          title: '다음 악보',
+                          text: '다음 악보',
+                          outputContext: 'clean',
+                          sourceType: 'score',
+                          componentType: 'score',
+                        },
+                      ];
+                      renderPresenterOutput({
+                        serviceId: '__smoke_score_transition_service__',
+                        serviceType: 'friday',
+                        chromakey: false,
+                        outputTheme: 'formal',
+                        backgroundImage: '',
+                        slides,
+                        index: 0,
+                        safetyBlank: false,
+                      });
+                      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+                      renderPresenterOutput({
+                        serviceId: '__smoke_score_transition_service__',
+                        serviceType: 'friday',
+                        chromakey: false,
+                        outputTheme: 'formal',
+                        backgroundImage: '',
+                        slides,
+                        index: 1,
+                        safetyBlank: false,
+                      });
+                      await new Promise((resolve) => setTimeout(resolve, 120));
+                      const active = root.querySelector('.presenter-output-layer.is-active');
+                      return {
+                        noChromakey: root?.classList.contains('no-chromakey') || false,
+                        activeText: active?.innerText.trim() || '',
+                        activeIsScore: Boolean(active?.querySelector('.presenter-slide--score')),
+                        enteringCount: root.querySelectorAll('.presenter-output-layer.is-entering').length,
+                        exitingCount: root.querySelectorAll('.presenter-output-layer.is-exiting').length,
+                      };
+                    }
+                    """
+                )
+                if (
+                    score_transition_state["noChromakey"]
+                    and "다음 악보" in score_transition_state["activeText"]
+                    and score_transition_state["activeIsScore"]
+                    and score_transition_state["enteringCount"] == 0
+                    and score_transition_state["exitingCount"] == 0
+                ):
+                    pass_("presenter-score-no-fade-transition", json.dumps(score_transition_state, ensure_ascii=False))
+                else:
+                    fail("presenter-score-no-fade-transition", json.dumps(score_transition_state, ensure_ascii=False))
+
                 explicit_background_payload = page.evaluate(
                     """
                     () => {
