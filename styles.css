@@ -3548,8 +3548,8 @@ body[data-module="presenter"] .detail-pane {
 .service-outline-children {
   display: grid;
   gap: 2px;
-  margin-left: calc(var(--sidebar-item-pad-x) + 2px);
-  padding: 2px 0 5px 10px;
+  margin-left: 6px;
+  padding: 2px 0 5px 6px;
   border-left: 1px solid color-mix(in srgb, var(--sidebar-label) 28%, transparent);
 }
 .service-outline-row--child {
@@ -3557,7 +3557,7 @@ body[data-module="presenter"] .detail-pane {
   grid-template-columns: minmax(0, 1fr);
   gap: 5px;
   border-radius: 5px;
-  padding: 3px 8px;
+  padding: 3px 6px;
 }
 .service-outline-row--child .service-outline-no,
 .service-outline-row--child .service-outline-start {
