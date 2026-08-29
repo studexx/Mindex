@@ -445,8 +445,7 @@
   opacity: .82;
 }
 .presenter-waiting-loop-script,
-.presenter-waiting-loop-title,
-.presenter-waiting-loop-message {
+.presenter-waiting-loop-title {
   margin: 0;
 }
 .presenter-waiting-loop-script {
@@ -465,12 +464,6 @@
 }
 .presenter-waiting-loop-title strong {
   font-weight: inherit;
-}
-.presenter-waiting-loop-message {
-  color: rgba(255, 255, 255, .7);
-  font-size: calc(50 * var(--presenter-stage-unit));
-  font-weight: 560;
-  line-height: 1.34;
 }
 .presenter-slide--title .presenter-slide-text {
   align-items: center;

@@ -384,6 +384,7 @@ body.sidebar-collapsed .brand-home {
   stroke-width: 1.5;
 }
 .icon-btn.page-tab-add {
+  position: relative;
   display: inline-flex;
   width: var(--topbar-btn-size);
   height: var(--topbar-btn-size);
@@ -394,11 +395,20 @@ body.sidebar-collapsed .brand-home {
   background: transparent;
   color: var(--ink-3);
 }
+.icon-btn.page-tab-add::before {
+  position: absolute;
+  inset: var(--shell-face-inset);
+  border-radius: var(--r);
+  background: transparent;
+  content: "";
+}
 .page-tab-add:hover {
-  background: var(--tab-hover-bg);
+  background: transparent;
   color: var(--ink);
 }
+.page-tab-add:hover::before { background: var(--tab-hover-bg); }
 .page-tab-add svg {
+  position: relative;
   width: 16px;
   height: 16px;
   stroke-width: 1.5;

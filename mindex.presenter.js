@@ -4244,9 +4244,8 @@ function renderPresenterGeneratedWaitingLoopSlide(slide) {
       <div class="presenter-waiting-loop-field" aria-hidden="true"></div>
       <div class="presenter-waiting-loop-cross" aria-hidden="true"></div>
       <div class="presenter-waiting-loop-copy">
-        <p class="presenter-waiting-loop-script">기도로 준비합니다</p>
-        <p class="presenter-waiting-loop-title"><strong>${escapeHtml(serviceName)}</strong></p>
-        <p class="presenter-waiting-loop-message">예배가 곧 시작됩니다<br>기도로 예배를 준비해 주세요</p>
+        <p class="presenter-waiting-loop-script">지금은 기도로 예배를 준비하는 시간입니다</p>
+        <p class="presenter-waiting-loop-title">잠시 후 <strong>${escapeHtml(serviceName)}</strong>가 시작됩니다</p>
       </div>
       <img class="presenter-waiting-loop-logo" src="${escapeAttr(PRESENTER_CHURCH_LOGO)}" alt="기형 검단우리교회" decoding="sync" loading="eager" fetchpriority="high" draggable="false" />
     </div>
