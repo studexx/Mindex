@@ -346,11 +346,13 @@ def main() -> int:
                       const preview = panel?.querySelector('.svc-presenter-live-preview');
                       const previewRect = preview?.getBoundingClientRect();
                       const topRect = document.querySelector('.svc-presenter-top')?.getBoundingClientRect();
-                      const sidePanel = document.querySelector('.svc-presenter-side-panel');
+                      const rightSidebar = document.querySelector('#mindexRightSidebar');
+                      const sidePanel = rightSidebar?.querySelector('.svc-presenter-side-panel');
                       return {
                         exists: Boolean(panel),
                         inActions: Boolean(panel && actions?.contains(panel)),
                         inSidePanel: Boolean(panel && sidePanel?.contains(panel)),
+                        inRightSidebar: Boolean(panel && rightSidebar?.contains(panel)),
                         status: panel?.querySelector('.svc-presenter-status')?.textContent.trim() || '',
                         title: panel?.querySelector('.svc-presenter-live-copy strong')?.textContent.trim() || '',
                         hasPreview: Boolean(preview),
@@ -367,6 +369,7 @@ def main() -> int:
                     live_panel_state["exists"]
                     and live_panel_state["inActions"]
                     and live_panel_state["inSidePanel"]
+                    and live_panel_state["inRightSidebar"]
                     and live_panel_state["status"] == "준비"
                     and live_panel_state["title"] == "송출 대기"
                     and live_panel_state["hasPreview"]
@@ -380,6 +383,53 @@ def main() -> int:
                     pass_("presenter-live-status-panel", json.dumps(live_panel_state, ensure_ascii=False))
                 else:
                     fail("presenter-live-status-panel", json.dumps(live_panel_state, ensure_ascii=False))
+
+                right_sidebar_toggle_state = page.evaluate(
+                    """
+                    (() => {
+                      const button = document.querySelector('#presenterRightSidebarBtn');
+                      const sidebar = document.querySelector('#mindexRightSidebar');
+                      const headerToggle = document.querySelector('.svc-header-actions [data-presenter-right-sidebar-toggle]');
+                      const before = {
+                        buttonVisible: Boolean(button && !button.hidden),
+                        saveHidden: Boolean(document.querySelector('#saveAllBtn')?.hidden),
+                        headerToggleRemoved: !headerToggle,
+                        sidebarVisible: Boolean(sidebar && !sidebar.hidden),
+                        bodyOpen: document.body.classList.contains('right-sidebar-open'),
+                      };
+                      button?.click();
+                      const afterClose = {
+                        sidebarVisible: Boolean(sidebar && !sidebar.hidden),
+                        bodyOpen: document.body.classList.contains('right-sidebar-open'),
+                        pressed: button?.getAttribute('aria-pressed') || '',
+                      };
+                      button?.click();
+                      const afterOpen = {
+                        sidebarVisible: Boolean(sidebar && !sidebar.hidden),
+                        bodyOpen: document.body.classList.contains('right-sidebar-open'),
+                        pressed: button?.getAttribute('aria-pressed') || '',
+                      };
+                      return { before, afterClose, afterOpen };
+                    })()
+                    """
+                )
+                right_sidebar_toggle_ok = (
+                    right_sidebar_toggle_state["before"]["buttonVisible"]
+                    and right_sidebar_toggle_state["before"]["saveHidden"]
+                    and right_sidebar_toggle_state["before"]["headerToggleRemoved"]
+                    and right_sidebar_toggle_state["before"]["sidebarVisible"]
+                    and right_sidebar_toggle_state["before"]["bodyOpen"]
+                    and not right_sidebar_toggle_state["afterClose"]["sidebarVisible"]
+                    and not right_sidebar_toggle_state["afterClose"]["bodyOpen"]
+                    and right_sidebar_toggle_state["afterClose"]["pressed"] == "false"
+                    and right_sidebar_toggle_state["afterOpen"]["sidebarVisible"]
+                    and right_sidebar_toggle_state["afterOpen"]["bodyOpen"]
+                    and right_sidebar_toggle_state["afterOpen"]["pressed"] == "true"
+                )
+                if right_sidebar_toggle_ok:
+                    pass_("presenter-right-sidebar-toggle", json.dumps(right_sidebar_toggle_state, ensure_ascii=False))
+                else:
+                    fail("presenter-right-sidebar-toggle", json.dumps(right_sidebar_toggle_state, ensure_ascii=False))
 
                 web_output_controls_state = page.evaluate(
                     """
@@ -595,7 +645,8 @@ def main() -> int:
                     async () => {
                       const pane = document.querySelector('.detail-pane');
                       const header = document.querySelector('.svc-header');
-                      const top = document.querySelector('.svc-presenter-top');
+                      const rightSidebar = document.querySelector('#mindexRightSidebar');
+                      const top = rightSidebar?.querySelector('.svc-presenter-top');
                       const title = document.querySelector('.svc-service-title');
                       const date = document.querySelector('.svc-date-text');
                       const beforeHeader = header?.getBoundingClientRect();
@@ -604,8 +655,9 @@ def main() -> int:
                       document.scrollingElement.scrollTop = 260;
                       await new Promise((resolve) => requestAnimationFrame(resolve));
                       const currentHeader = document.querySelector('.svc-header');
-                      const currentTop = document.querySelector('.svc-presenter-top');
-                      const currentSidePanel = document.querySelector('.svc-presenter-side-panel');
+                      const currentRightSidebar = document.querySelector('#mindexRightSidebar');
+                      const currentTop = currentRightSidebar?.querySelector('.svc-presenter-top');
+                      const currentSidePanel = currentRightSidebar?.querySelector('.svc-presenter-side-panel');
                       const currentTitle = document.querySelector('.svc-service-title');
                       const currentDate = document.querySelector('.svc-date-text');
                       const afterHeader = currentHeader?.getBoundingClientRect();
@@ -621,6 +673,8 @@ def main() -> int:
                         headerPosition: currentHeader ? getComputedStyle(currentHeader).position : '',
                         controlsPosition: currentTop ? getComputedStyle(currentTop).position : '',
                         sidePanelPosition: currentSidePanel ? getComputedStyle(currentSidePanel).position : '',
+                        sidePanelDisplay: currentSidePanel ? getComputedStyle(currentSidePanel).display : '',
+                        rightSidebarVisible: Boolean(currentRightSidebar && !currentRightSidebar.hidden),
                         beforeHeaderTop,
                         afterHeaderTop,
                         headerShift: Math.abs(afterHeaderTop - beforeHeaderTop),
@@ -637,14 +691,14 @@ def main() -> int:
                     and sticky_title_state["date"]
                     and re.match(r"^\d{4}-\d{2}-\d{2} \((주일|월|화|수|목|금|토)\)", sticky_title_state["date"])
                     and sticky_title_state["usesExistingHeader"]
+                    and sticky_title_state["rightSidebarVisible"]
                     and sticky_title_state["headerPosition"] == "sticky"
-                    and (
-                        sticky_title_state["controlsPosition"] == "sticky"
-                        or sticky_title_state["sidePanelPosition"] == "sticky"
-                    )
+                    and sticky_title_state["controlsPosition"] == "static"
+                    and sticky_title_state["sidePanelPosition"] == "static"
+                    and sticky_title_state["sidePanelDisplay"] == "grid"
                     and sticky_title_state["headerShift"] <= 2
                     and sticky_title_state["controlsShift"] <= 2
-                    and sticky_title_state["afterControlsTop"] > sticky_title_state["afterHeaderTop"]
+                    and sticky_title_state["afterControlsTop"] < sticky_title_state["afterHeaderTop"]
                     and sticky_title_state["overflow"] <= 2
                 ):
                     pass_("presenter-sticky-service-title", json.dumps(sticky_title_state, ensure_ascii=False))
@@ -895,7 +949,7 @@ def main() -> int:
                       };
                       const service = state.services.find((entry) => entry.id === serviceId);
                       const slides = presenterSlidesForService(serviceId);
-                      const root = document.getElementById('servicePresenterControls');
+                      const root = document.querySelector('#mindexRightSidebar [data-presenter-right-sidebar]');
                       patchPresenterControlsTop(root, service, slides, true, state.presenter.index);
                       const warming = document.querySelector('.svc-presenter-warmup');
                       const warmingState = {
@@ -967,9 +1021,14 @@ def main() -> int:
                 )
                 if (
                     ready_thumb_state["firstPreparationMedia"]
-                    and ready_thumb_state["firstGeneratedWaitingLoop"]
-                    and "월삭예배" in ready_thumb_state["firstPreviewText"]
-                    and "예배가 곧 시작됩니다" in ready_thumb_state["firstPreviewText"]
+                    and (
+                        (
+                            ready_thumb_state["firstGeneratedWaitingLoop"]
+                            and "월삭예배" in ready_thumb_state["firstPreviewText"]
+                            and "시작됩니다" in ready_thumb_state["firstPreviewText"]
+                        )
+                        or ready_thumb_state["firstPreviewText"] == "예배 전 영상"
+                    )
                     and ready_thumb_state["numberBadges"] >= 2
 	                    and ready_thumb_state["firstNumber"] == "1"
 	                    and ready_thumb_state["secondNumber"] == "2"
@@ -5670,7 +5729,7 @@ def main() -> int:
                       state.presenter.safetyBlank = false;
                       const service = state.services.find((entry) => entry.id === serviceId);
                       const slides = presenterSlidesForService(serviceId);
-                      const root = document.getElementById('servicePresenterControls');
+                      const root = document.querySelector('#mindexRightSidebar [data-presenter-right-sidebar]');
                       patchPresenterControlsTop(root, service, slides, true, state.presenter.index);
                     }
                     """,
@@ -5685,7 +5744,7 @@ def main() -> int:
                       state.presenter.index = Math.max(target, 0);
                       const service = state.services.find((entry) => entry.id === serviceId);
                       const slides = presenterSlidesForService(serviceId);
-                      const root = document.getElementById('servicePresenterControls');
+                      const root = document.querySelector('#mindexRightSidebar [data-presenter-right-sidebar]');
                       patchPresenterControlsTop(root, service, slides, true, state.presenter.index);
                       return target;
                     }
@@ -5776,6 +5835,13 @@ def main() -> int:
                 jump_scope_input = page.locator(f'[data-presenter-jump-input][data-service-id="{service["id"]}"]')
                 jump_scope_input.fill("9")
                 jump_scope_input.focus()
+                page.wait_for_function(
+                    """
+                    (serviceId) => document.activeElement?.matches(`[data-presenter-jump-input][data-service-id="${serviceId}"]`)
+                    """,
+                    arg=service["id"],
+                    timeout=1000,
+                )
                 page.keyboard.press("Escape")
                 page.wait_for_timeout(150)
                 jump_escape_state = page.evaluate(
@@ -6938,12 +7004,12 @@ def main() -> int:
                     """
                 )
                 if (
-                    preview_renderer_state["videoUsesOutputElement"]
-                    and preview_renderer_state["videoUsesMetadataPreload"]
-                    and preview_renderer_state["videoUsesFirstFrameOffset"]
-                    and preview_renderer_state["videoMuted"]
+                    not preview_renderer_state["videoUsesOutputElement"]
+                    and not preview_renderer_state["videoUsesMetadataPreload"]
+                    and not preview_renderer_state["videoUsesFirstFrameOffset"]
+                    and not preview_renderer_state["videoMuted"]
                     and not preview_renderer_state["videoUsesPlaceholder"]
-                    and not preview_renderer_state["videoUsesStaticPreview"]
+                    and preview_renderer_state["videoUsesStaticPreview"]
                     and preview_renderer_state["videoElementCount"] == 0
                     and not preview_renderer_state["audioUsesPlaceholder"]
                 ):
@@ -7579,7 +7645,7 @@ def main() -> int:
                     timeout=5000,
                 )
                 output_page.wait_for_function(
-                    "() => document.querySelector('.presenter-waiting-loop')",
+                    "() => document.querySelector('.presenter-slide--video .presenter-video')",
                     timeout=5000,
                 )
                 ready_output_shot = output_page.locator("#presenterOutputRoot").screenshot()
@@ -7587,14 +7653,18 @@ def main() -> int:
                     """
                     (() => {
                       const slide = document.querySelector('.presenter-slide');
+                      const video = slide?.querySelector('.presenter-video');
                       return {
                         slideClass: slide?.className || '',
                         elementType: slide?.dataset.elementType || '',
                         layout: slide?.dataset.slideLayout || '',
                         text: slide?.innerText.trim() || '',
-                        title: slide?.querySelector('.presenter-waiting-loop-title')?.textContent.trim() || '',
-                        logoHeight: Math.round(slide?.querySelector('.presenter-waiting-loop-logo')?.getBoundingClientRect().height || 0),
-                        loopLabel: slide?.querySelector('.presenter-waiting-loop')?.getAttribute('aria-label') || '',
+                        videoSrc: video?.getAttribute('src') || '',
+                        autoplay: Boolean(video?.autoplay),
+                        muted: Boolean(video?.muted),
+                        loop: Boolean(video?.loop),
+                        controls: Boolean(video?.controls),
+                        presenterRole: video?.dataset.presenterRole || '',
                       };
                     })()
                     """
@@ -7604,15 +7674,17 @@ def main() -> int:
                     "presenter-slide--video" in ready_output_state["slideClass"]
                     and ready_output_state["elementType"] == "video"
                     and ready_output_state["layout"] == "media"
-                    and ready_output_state["title"] == "월삭예배"
-                    and ready_output_state["logoHeight"] >= 40
-                    and "잠시 후 월삭예배가 시작됩니다" in ready_output_state["text"]
-                    and "월삭예배 대기 화면" in ready_output_state["loopLabel"]
+                    and ready_output_state["videoSrc"].endswith("assets/presenter/chromakey-ready-loop.mp4")
+                    and ready_output_state["autoplay"]
+                    and ready_output_state["muted"]
+                    and ready_output_state["loop"]
+                    and not ready_output_state["controls"]
+                    and ready_output_state["presenterRole"] == "waiting_loop"
                     and not is_chromakey_green(tuple(ready_output_state["centerPixel"]))
                 ):
-                    pass_("presenter-ready-output-generated-waiting-loop", json.dumps(ready_output_state, ensure_ascii=False))
+                    pass_("presenter-ready-output-chromakey-video-loop", json.dumps(ready_output_state, ensure_ascii=False))
                 else:
-                    fail("presenter-ready-output-generated-waiting-loop", json.dumps(ready_output_state, ensure_ascii=False))
+                    fail("presenter-ready-output-chromakey-video-loop", json.dumps(ready_output_state, ensure_ascii=False))
 
                 jump_input.fill("0")
                 jump_input.press("Enter")

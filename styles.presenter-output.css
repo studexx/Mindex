@@ -292,7 +292,7 @@
   min-height: 0;
   padding: 12.5cqh 8.5cqw 7.5cqh;
   align-content: center;
-  gap: 13cqh;
+  gap: 23cqh;
   justify-items: center;
   overflow: hidden;
   background:
@@ -323,13 +323,14 @@
   display: none;
 }
 .presenter-ready-screen-field {
-  display: none;
+  display: block;
 }
 .presenter-ready-screen-logo {
   display: block;
   position: relative;
   z-index: 1;
   width: min(32cqw, 640px);
+  height: calc(64 * var(--presenter-stage-unit));
   max-height: 10cqh;
   object-fit: contain;
   opacity: .82;
@@ -353,7 +354,7 @@
   margin: 0;
   max-width: 100%;
   color: #fff;
-  font-size: calc(100 * var(--presenter-stage-unit));
+  font-size: calc(80 * var(--presenter-stage-unit));
   font-weight: 760;
   line-height: 1.08;
   word-break: keep-all;

@@ -5429,7 +5429,7 @@ def main() -> int:
                               Element.prototype.scrollIntoView = window.__mindexOriginalScrollIntoView;
                               Element.prototype.scrollTo = window.__mindexOriginalDetailScrollTo;
                               const activeSubgroup = activeTarget?.closest?.('.svc-board-subgroup') || activeTarget;
-                              const sticky = document.querySelector('.svc-presenter-top');
+                              const sticky = document.querySelector('.detail-pane .svc-presenter-top');
                               const stickyRect = sticky?.getBoundingClientRect();
                               const activeRect = activeSubgroup?.getBoundingClientRect();
                               return {
@@ -5442,7 +5442,7 @@ def main() -> int:
                                   top: activeRect ? Math.round(activeRect.top) : null,
                                 },
                                 stickyBottom: stickyRect ? Math.round(stickyRect.bottom) : null,
-                                belowSticky: Boolean(activeRect && stickyRect && activeRect.top >= stickyRect.bottom - 2),
+                                belowSticky: Boolean(activeRect && (!stickyRect || activeRect.top >= stickyRect.bottom - 2)),
                                 presenterIndex: state.presenter.index,
                                 activeThumbs: document.querySelectorAll(`.svc-slide-thumb.active[data-presenter-index="${expected.index}"]`).length,
                                 targetThumbs: document.querySelectorAll(`.svc-slide-thumb[data-service-id="${expected.serviceId}"][data-presenter-index="${expected.index}"]`).length,
@@ -5557,15 +5557,21 @@ def main() -> int:
                         """
                         (() => {
                           const service = state.services.find((item) => item.id === state.selectedServiceId);
+                          state.module = 'presenter';
+                          state.presenter.viewServiceId = service?.id || state.selectedServiceId;
+                          renderModuleSwitcher();
                           const target = servicePrepEditorItems(service?.id || '')
                             .find((item) => presenterServiceInputItem(item, service));
                           state.selectedServiceItemIndex = Number.isInteger(target?._origIndex) ? target._origIndex : null;
                           renderServiceList();
                           renderPresenterDetail();
                           const legacyContext = document.querySelector('.service-sidebar-input-context');
-                          const bulkInput = document.querySelector('.svc-presenter-side-panel [data-presenter-preparation-input]');
-                          const bulkButton = document.querySelector('.svc-presenter-side-panel [data-presenter-preparation-apply]');
-                          const sidePanel = document.querySelector('.svc-presenter-side-panel');
+                          const rightSidebar = document.querySelector('#mindexRightSidebar');
+                          const bulkInput = rightSidebar?.querySelector('.svc-presenter-side-panel [data-presenter-preparation-input]');
+                          const bulkButton = rightSidebar?.querySelector('.svc-presenter-side-panel [data-presenter-preparation-apply]');
+                          const sidePanel = rightSidebar?.querySelector('.svc-presenter-side-panel');
+                          const topbarToggle = document.querySelector('#presenterRightSidebarBtn');
+                          const headerToggle = document.querySelector('.svc-header-actions [data-presenter-right-sidebar-toggle]');
                           const sidebarContext = document.querySelector('.service-sidebar-presenter-context');
                           const bulkTemplate = document.createElement('template');
                           bulkTemplate.innerHTML = renderPresenterSidebarPreparationInput(service).trim();
@@ -5592,7 +5598,11 @@ def main() -> int:
                           return {
                             module: state.module,
                             legacyContextRemoved: !legacyContext,
-                            railMounted: Boolean(document.querySelector('.svc-presenter-input-rail')),
+                            rightSidebarMounted: Boolean(rightSidebar && !rightSidebar.hidden),
+                            topbarToggleVisible: Boolean(topbarToggle && !topbarToggle.hidden),
+                            saveHidden: Boolean(document.querySelector('#saveAllBtn')?.hidden),
+                            headerToggleRemoved: !headerToggle,
+                            railMounted: Boolean(rightSidebar?.querySelector('.svc-presenter-input-rail')),
                             sidePanelMounted: Boolean(sidePanel),
                             sidebarContext: sidebarContext?.textContent?.replace(/\\s+/g, ' ').trim() || '',
                             controlGroupCount: controlGroups.length,
@@ -5620,6 +5630,10 @@ def main() -> int:
                     )
                     if (
                         presenter_header_input["legacyContextRemoved"]
+                        and presenter_header_input["rightSidebarMounted"]
+                        and presenter_header_input["topbarToggleVisible"]
+                        and presenter_header_input["saveHidden"]
+                        and presenter_header_input["headerToggleRemoved"]
                         and presenter_header_input["railMounted"]
                         and presenter_header_input["sidePanelMounted"]
                         and (
@@ -8167,8 +8181,11 @@ def main() -> int:
                             hasControls: Boolean(document.querySelector('#servicePresenterControls')),
                             legacyInputContextRemoved: !document.querySelector('.service-sidebar-input-context'),
                             headerControls: document.querySelectorAll('.svc-board-subgroup-controls [data-service-item-field]').length,
-                            railMounted: Boolean(document.querySelector('.svc-presenter-input-rail')),
-                            sidePanelMounted: Boolean(document.querySelector('.svc-presenter-side-panel'))
+                            railMounted: Boolean(document.querySelector('#mindexRightSidebar .svc-presenter-input-rail')),
+                            sidePanelMounted: Boolean(document.querySelector('#mindexRightSidebar .svc-presenter-side-panel')),
+                            rightSidebarMounted: Boolean(document.querySelector('#mindexRightSidebar:not([hidden])')),
+                            topbarToggleVisible: Boolean(document.querySelector('#presenterRightSidebarBtn:not([hidden])')),
+                            saveHidden: Boolean(document.querySelector('#saveAllBtn')?.hidden)
                           };
                         })()
                         """
@@ -8184,6 +8201,9 @@ def main() -> int:
                         and authoring_narrow["headerControls"] >= 0
                         and authoring_narrow["railMounted"]
                         and authoring_narrow["sidePanelMounted"]
+                        and authoring_narrow["rightSidebarMounted"]
+                        and authoring_narrow["topbarToggleVisible"]
+                        and authoring_narrow["saveHidden"]
                         and not authoring_narrow["hasReadonly"]
                     ):
                         pass_("presenter-narrow", json.dumps(authoring_narrow, ensure_ascii=False))

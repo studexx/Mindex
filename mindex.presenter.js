@@ -4,6 +4,7 @@
 
 const PRESENTER_SONG_NOTE = "♬";
 const PRESENTER_SONG_NOTE_PATTERN = /^[\u2669\u266A\u266B\u266C]\s*/u;
+const PRESENTER_DEFAULT_CHROMAKEY_READY_LOOP_VIDEO = "assets/presenter/chromakey-ready-loop.mp4";
 
 function presenterSlidesWithIntroSlide(item = {}, section = {}, index = 0, memo = emptyServiceItemMemo(), slides = []) {
   const list = Array.isArray(slides) ? slides.filter(Boolean) : [];
@@ -1519,7 +1520,7 @@ function presenterPreparationSlide(service, item, index) {
       ...base,
       elementType: PRESENTER_ELEMENT_TYPES.VIDEO,
       layout: PRESENTER_SLIDE_LAYOUTS.MEDIA,
-      type: "video",
+      type: presenterRole === "intro" ? "video" : "ready",
       videoSrc: source,
       playback: presenterPlaybackConfig(memo.playback, playbackType),
     };
@@ -1557,6 +1558,14 @@ function presenterFullscreenPreparationSlide(service, item, index, presenterRole
 }
 
 function presenterDefaultPreparationAsset(service, item = {}, memo = {}) {
+  const role = normalizeServicePresenterRole(memo?.presenterRole);
+  if (presenterServiceUsesChromakey(service) && (!role || role === "ready" || role === "waiting_loop")) {
+    return {
+      kind: PRESENTER_ELEMENT_TYPES.VIDEO,
+      name: "예배 전 영상",
+      url: PRESENTER_DEFAULT_CHROMAKEY_READY_LOOP_VIDEO,
+    };
+  }
   return { kind: "", name: "", url: "" };
 }
 
@@ -4344,19 +4353,8 @@ function renderPresenterVideoSlide(slide, options = {}) {
 }
 
 function renderPresenterStaticVideoPreviewSlide(slide) {
-  const source = presenterStaticVideoPreviewSource(slide);
-  if (source) {
-    return `<video class="presenter-video presenter-video--static-preview" src="${escapeAttr(source)}" muted playsinline preload="metadata"></video>`;
-  }
   const title = presenterFileDisplayTitle(slide, "동영상");
-  return `<div class="presenter-static-media-preview" aria-label="${escapeAttr(title)}"></div>`;
-}
-
-function presenterStaticVideoPreviewSource(slide) {
-  const source = normalizePresenterMediaSource(slide.videoSrc || slide.asset?.url || slide.text);
-  if (!source) return "";
-  if (source.includes("#")) return source;
-  return `${source}#t=0.001`;
+  return `<div class="presenter-static-media-preview" aria-label="${escapeAttr(title)}">${escapeHtml(title)}</div>`;
 }
 
 function renderPresenterImageSlide(slide, options = {}) {

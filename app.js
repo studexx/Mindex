@@ -251,6 +251,7 @@ const PRESENTER_STORAGE_KEY = "mindex.presenter.state";
 const PRESENTER_SIGNAL_KEY = "mindex.presenter.signal";
 const PRESENTER_TARGET_SCREEN_STORAGE_KEY = "mindex.presenter.targetScreen.v1";
 const PRESENTER_ALWAYS_ON_TOP_STORAGE_KEY = "mindex.presenter.alwaysOnTop.v1";
+const PRESENTER_RIGHT_SIDEBAR_STORAGE_KEY = "mindex.presenter.rightSidebarOpen.v1";
 const PRESENTER_JUMP_MAX_DIGITS = 3;
 const PRESENTER_OUTPUT_HEARTBEAT_INTERVAL_MS = 1000;
 const PRESENTER_OUTPUT_HEARTBEAT_TTL_MS = 3000;
@@ -493,6 +494,7 @@ const PRESENTER_SLIDE_LAYOUTS = {
   FILE: "file",
 };
 const PRESENTER_CHROMAKEY_VIDEO_POSTER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 9'%3E%3Crect width='16' height='9' fill='%2300ff00'/%3E%3C/svg%3E";
+const PRESENTER_CHROMAKEY_READY_LOOP_VIDEO = "assets/presenter/chromakey-ready-loop.mp4";
 const PRESENTER_MEDIA_STORAGE_BUCKET = "mindex-worship-media";
 const PRESENTER_REFERENCE_MEDIA_SECTION_KEYS = new Set(["sermon", "announcements"]);
 const PRESENTER_REFERENCE_MEDIA_ACCEPT = "image/*,video/*,audio/*";
@@ -1141,6 +1143,7 @@ function cacheRefs() {
   refs.connectionStatus = document.getElementById("connectionStatus");
   refs.themeBtn = document.getElementById("themeBtn");
   refs.newSongBtn = document.getElementById("newSongBtn");
+  refs.presenterRightSidebarBtn = document.getElementById("presenterRightSidebarBtn");
   refs.sidebarCreateSongBtn = document.getElementById("sidebarCreateSongBtn");
   refs.saveAllBtn = document.getElementById("saveAllBtn");
   refs.searchInput = document.getElementById("searchInput");
@@ -1150,6 +1153,7 @@ function cacheRefs() {
   refs.songList = document.getElementById("songList");
   refs.sidebar = document.querySelector(".sidebar");
   refs.detailPane = document.getElementById("detailPane");
+  refs.rightSidebar = document.getElementById("mindexRightSidebar");
   refs.loadingStatus = document.getElementById("loadingStatus");
   refs.toastRegion = document.getElementById("toastRegion");
   normalizeSidebarCreateSongButton();
@@ -1172,6 +1176,7 @@ function bindStaticEvents() {
   });
   refs.themeBtn.addEventListener("click", toggleTheme);
   refs.newSongBtn?.addEventListener("click", () => createPraiseSong());
+  refs.presenterRightSidebarBtn?.addEventListener("click", togglePresenterRightSidebar);
   refs.saveAllBtn.addEventListener("click", saveAll);
   refs.searchInput.addEventListener("input", (event) => {
     saveCurrentListScroll();
@@ -1386,59 +1391,9 @@ function bindStaticEvents() {
     }
   });
 
-  refs.detailPane.addEventListener("click", handleDetailClick);
-  refs.detailPane.addEventListener("dblclick", handlePresenterBoardDoubleClick);
-  refs.detailPane.addEventListener("keydown", handleDetailKeydown);
-  refs.detailPane.addEventListener("input", handleDetailInput);
-  refs.detailPane.addEventListener("change", handleDetailChange);
-  refs.detailPane.addEventListener("submit", handleDetailSubmit);
-  refs.detailPane.addEventListener("paste", handlePresenterPreparationPaste);
-  refs.detailPane.addEventListener("contextmenu", handleDetailContextMenu);
-  refs.detailPane.addEventListener("pointerdown", handleDetailPointerDown);
-  refs.detailPane.addEventListener("pointerover", handleDetailPointerOver);
+  bindDetailInteractionRoot(refs.detailPane, { presenterBoard: true, calendarEdit: true });
+  bindDetailInteractionRoot(refs.rightSidebar);
 
-  // Calendar inline-edit
-  refs.detailPane.addEventListener("focusin", (e) => {
-    const serviceTextField = e.target.closest("input[data-service-item-field], textarea[data-service-item-field]");
-    if (isDeferredServiceTextInput(serviceTextField)) {
-      serviceTextField.dataset.initialValue = serviceTextField.value;
-      serviceTextField.dataset.presenterPreviewValue = serviceTextField.value;
-    }
-    const cell = e.target.closest(".cal-cell");
-    if (cell) cell.dataset.initialValue = cell.textContent;
-  });
-  refs.detailPane.addEventListener("focusout", (e) => {
-    const serviceTextField = e.target.closest("input[data-service-item-field], textarea[data-service-item-field]");
-    if (isDeferredServiceTextInput(serviceTextField)) {
-      clearDeferredServiceTextPreview(serviceTextField);
-      commitDeferredServiceTextInput(serviceTextField, { save: true });
-      return;
-    }
-    const cell = e.target.closest(".cal-cell");
-    if (!cell) return;
-    const id = cell.dataset.calId;
-    const field = cell.dataset.calField;
-    const newVal = cell.textContent.replace(/\n/g, " ").trim();
-    const oldVal = String(cell.dataset.initialValue || "").replace(/\n/g, " ").trim();
-    cell.textContent = newVal;
-    if (newVal !== oldVal) saveCalendarCell(id, field, newVal, { cell, previousValue: oldVal });
-  });
-  refs.detailPane.addEventListener("keydown", (e) => {
-    const cell = e.target.closest(".cal-cell");
-    if (!cell) return;
-    if (e.key === "Enter") { e.preventDefault(); cell.blur(); }
-    if (e.key === "Escape") {
-      cell.textContent = cell.dataset.initialValue || "";
-      cell.blur();
-    }
-  }, true);
-  refs.detailPane.addEventListener("paste", (e) => {
-    const cell = e.target.closest(".cal-cell");
-    if (!cell) return;
-    e.preventDefault();
-    const text = (e.clipboardData || window.clipboardData).getData("text/plain");
-    document.execCommand("insertText", false, text);
-  });
   window.addEventListener("pointerup", handleWindowPointerUp);
   window.addEventListener("mousedown", handleMouseSideButtonNavigation, { capture: true });
   window.addEventListener("popstate", handleBrowserHistoryPop);
@@ -1472,11 +1427,20 @@ function bindStaticEvents() {
 
   window.addEventListener("keydown", (event) => {
     scheduleServiceMusicResume("keydown");
+    const presenterJumpInput = event.target.closest?.("[data-presenter-jump-input]");
+    if (presenterJumpInput && event.key === "Escape") {
+      event.preventDefault();
+      event.target.blur?.();
+      clearPresenterJumpDraft(presenterJumpInput.dataset.serviceId || state.presenter.serviceId);
+      event.stopImmediatePropagation?.();
+      event.stopPropagation();
+      return;
+    }
     if (shouldBlockPresenterMusicControlNavigationKeydown(event)) {
       event.preventDefault();
       event.target.blur?.();
       event.stopImmediatePropagation?.();
-      event.stopPropagation?.();
+      event.stopPropagation();
       return;
     }
   }, { capture: true });
@@ -1532,6 +1496,62 @@ function bindStaticEvents() {
     if (!hasDirtyChanges({ reconcile: true })) return;
     event.preventDefault();
     event.returnValue = "";
+  });
+}
+
+function bindDetailInteractionRoot(root, options = {}) {
+  if (!root) return;
+  root.addEventListener("click", handleDetailClick);
+  if (options.presenterBoard) root.addEventListener("dblclick", handlePresenterBoardDoubleClick);
+  root.addEventListener("keydown", handleDetailKeydown);
+  root.addEventListener("input", handleDetailInput);
+  root.addEventListener("change", handleDetailChange);
+  root.addEventListener("submit", handleDetailSubmit);
+  root.addEventListener("paste", handlePresenterPreparationPaste);
+  root.addEventListener("contextmenu", handleDetailContextMenu);
+  root.addEventListener("pointerdown", handleDetailPointerDown);
+  root.addEventListener("pointerover", handleDetailPointerOver);
+  if (!options.calendarEdit) return;
+  root.addEventListener("focusin", (e) => {
+    const serviceTextField = e.target.closest("input[data-service-item-field], textarea[data-service-item-field]");
+    if (isDeferredServiceTextInput(serviceTextField)) {
+      serviceTextField.dataset.initialValue = serviceTextField.value;
+      serviceTextField.dataset.presenterPreviewValue = serviceTextField.value;
+    }
+    const cell = e.target.closest(".cal-cell");
+    if (cell) cell.dataset.initialValue = cell.textContent;
+  });
+  root.addEventListener("focusout", (e) => {
+    const serviceTextField = e.target.closest("input[data-service-item-field], textarea[data-service-item-field]");
+    if (isDeferredServiceTextInput(serviceTextField)) {
+      clearDeferredServiceTextPreview(serviceTextField);
+      commitDeferredServiceTextInput(serviceTextField, { save: true });
+      return;
+    }
+    const cell = e.target.closest(".cal-cell");
+    if (!cell) return;
+    const id = cell.dataset.calId;
+    const field = cell.dataset.calField;
+    const newVal = cell.textContent.replace(/\n/g, " ").trim();
+    const oldVal = String(cell.dataset.initialValue || "").replace(/\n/g, " ").trim();
+    cell.textContent = newVal;
+    if (newVal !== oldVal) saveCalendarCell(id, field, newVal, { cell, previousValue: oldVal });
+  });
+  root.addEventListener("keydown", (e) => {
+    const cell = e.target.closest(".cal-cell");
+    if (!cell) return;
+    if (e.key === "Enter") { e.preventDefault(); cell.blur(); }
+    if (e.key === "Escape") {
+      cell.textContent = cell.dataset.initialValue || "";
+      cell.blur();
+    }
+  }, true);
+  root.addEventListener("paste", (e) => {
+    const cell = e.target.closest(".cal-cell");
+    if (!cell) return;
+    e.preventDefault();
+    const text = (e.clipboardData || window.clipboardData).getData("text/plain");
+    document.execCommand("insertText", false, text);
   });
 }
 
@@ -7731,6 +7751,12 @@ function handleDetailClick(event) {
 }
 
 function handlePresenterDetailClick(event) {
+  const rightSidebarToggle = event.target.closest("[data-presenter-right-sidebar-toggle]");
+  if (rightSidebarToggle) {
+    togglePresenterRightSidebar();
+    return true;
+  }
+
   const serviceAudioClear = event.target.closest("[data-service-item-audio-clear]");
   if (serviceAudioClear) {
     void clearServiceItemAudioAsset(
@@ -12543,7 +12569,7 @@ function renderModuleSwitcher() {
   refs.searchInput.placeholder = "검색...";
   refs.searchInput.setAttribute("aria-label", "검색");
   syncPraiseCreateControls();
-  refs.saveAllBtn.hidden = false;
+  refs.saveAllBtn.hidden = state.module === "presenter";
   const saveLabel =
     state.module === "scripture"
       ? "말씀 저장"
@@ -12557,6 +12583,7 @@ function renderModuleSwitcher() {
           ? "찬양 저장"
           : "저장";
   refs.saveAllBtn.setAttribute("aria-label", saveLabel);
+  updatePresenterRightSidebarToggleButtons();
   renderListFilter();
 }
 
@@ -14598,6 +14625,52 @@ function finishDetailRender() {
   syncPraiseCreateControls();
 }
 
+function presenterRightSidebarIsOpen() {
+  return safeStorageGet("local", PRESENTER_RIGHT_SIDEBAR_STORAGE_KEY) !== "false";
+}
+
+function applyRightSidebarVisibility(hasContent = refs.rightSidebar?.dataset.hasContent === "true") {
+  if (!refs.rightSidebar) return;
+  const open = Boolean(hasContent && presenterRightSidebarIsOpen());
+  refs.rightSidebar.hidden = !open;
+  document.body.classList.toggle("right-sidebar-available", Boolean(hasContent));
+  document.body.classList.toggle("right-sidebar-open", open);
+  updatePresenterRightSidebarToggleButtons();
+}
+
+function setRightSidebarContent(html = "") {
+  if (!refs.rightSidebar) return;
+  const hasContent = Boolean(String(html || "").trim());
+  refs.rightSidebar.innerHTML = hasContent ? html : "";
+  refs.rightSidebar.dataset.hasContent = hasContent ? "true" : "false";
+  applyRightSidebarVisibility(hasContent);
+  if (hasContent) refreshIcons(refs.rightSidebar);
+}
+
+function togglePresenterRightSidebar() {
+  const nextOpen = !presenterRightSidebarIsOpen();
+  safeStorageSet("local", PRESENTER_RIGHT_SIDEBAR_STORAGE_KEY, String(nextOpen));
+  applyRightSidebarVisibility();
+}
+
+function updatePresenterRightSidebarToggleButtons() {
+  const open = presenterRightSidebarIsOpen();
+  const hasContent = refs.rightSidebar?.dataset.hasContent === "true";
+  if (refs.presenterRightSidebarBtn) {
+    refs.presenterRightSidebarBtn.hidden = !(state.module === "presenter" && hasContent);
+    refs.presenterRightSidebarBtn.classList.toggle("is-active", open);
+    refs.presenterRightSidebarBtn.setAttribute("aria-pressed", String(open));
+    refs.presenterRightSidebarBtn.setAttribute("aria-label", open ? "컨트롤러 닫기" : "컨트롤러 열기");
+    refs.presenterRightSidebarBtn.setAttribute("title", open ? "컨트롤러 닫기" : "컨트롤러 열기");
+  }
+  document.querySelectorAll("[data-presenter-right-sidebar-toggle]").forEach((button) => {
+    button.classList.toggle("is-active", open);
+    button.setAttribute("aria-pressed", String(open));
+    button.setAttribute("aria-label", open ? "컨트롤러 사이드바 닫기" : "컨트롤러 사이드바 열기");
+    button.setAttribute("title", open ? "컨트롤러 닫기" : "컨트롤러 열기");
+  });
+}
+
 function getListScrollKey() {
   const search = normalizeSearchValue(state.search);
   if (isGlobalSearchActive()) return `global:${search}`;
@@ -14664,6 +14737,7 @@ function scrollListItemIntoView(item) {
 }
 
 function renderDetail() {
+  if (state.module !== "presenter") setRightSidebarContent("");
   if (isAuthRequired() && !state.auth.session) {
     refs.detailPane.innerHTML = renderAuthRequiredDetail();
     refreshIcons(refs.detailPane);
@@ -17773,6 +17847,8 @@ async function confirmSaveBeforeLeaving() {
 }
 
 function updateSaveState() {
+  refs.saveAllBtn.hidden = state.module === "presenter";
+  updatePresenterRightSidebarToggleButtons();
   if (state.module === "home" || state.module === "calendar") {
     refs.saveAllBtn.disabled = true;
     renderConnectionStatus();
@@ -22076,12 +22152,14 @@ function renderServiceAuthoringPanel(kicker, title, body) {
 
 function renderPresenterDetail() {
   if (!state.client) {
+    setRightSidebarContent("");
     refs.detailPane.innerHTML = renderConnectionEmptyDetail();
     refreshIcons(refs.detailPane);
     return;
   }
 
   if (state.serviceError || !state.serviceTypes.length) {
+    setRightSidebarContent("");
     refs.detailPane.innerHTML = state.serviceError
       ? renderUnavailableDetail("service", "Presenter", state.serviceError)
       : renderLoadingDetail();
@@ -22092,6 +22170,7 @@ function renderPresenterDetail() {
   const serviceId = presenterViewServiceId();
   const svc = state.services.find((s) => s.id === serviceId);
   if (!svc) {
+    setRightSidebarContent("");
     renderPresenterDashboard();
     return;
   }
@@ -22099,16 +22178,19 @@ function renderPresenterDetail() {
   const items = state.serviceItems[serviceId];
   if (!items) {
     if (shouldDeferPastWorshipServiceLoad(serviceId)) {
+      setRightSidebarContent("");
       refs.detailPane.innerHTML = renderDeferredPastServiceDetail(svc, "presenter");
       refreshIcons(refs.detailPane);
       return;
     }
+    setRightSidebarContent("");
     refs.detailPane.innerHTML = renderLoadingDetail();
     loadServiceItems(serviceId);
     return;
   }
 
   if (state.presenterBulletinServiceId === serviceId && serviceSupportsBulletin(svc)) {
+    setRightSidebarContent("");
     refs.detailPane.innerHTML = renderServiceBulletinWorkbench(svc);
     refreshIcons();
     updateSaveState();
@@ -22126,6 +22208,7 @@ function renderPresenterDetail() {
   const presenterSlides = presenterSlidesForService(serviceId);
   const presenterIndex = presenterActive ? clampPresenterIndex(state.presenter.index, presenterSlides.length) : 0;
   const viewportSnapshot = capturePresenterViewportSnapshot(serviceId);
+  setRightSidebarContent(renderPresenterRightSidebar(svc, presenterSlides, presenterActive, presenterIndex));
   refs.detailPane.innerHTML = `
     <div class="service-viewer presenter-viewer">
       <div class="svc-header">
@@ -24376,12 +24459,31 @@ function renderServicePresenterControls(service, slides, active, index) {
         <div class="svc-presenter-board-column">
           ${renderPresenterSlideBoard(slides, presenterBoardActiveIndex(slides, active, index), service.id)}
         </div>
-        <aside class="svc-presenter-side-panel" aria-label="송출 컨트롤러">
-          ${renderPresenterControlsTop(service, slides, active, index)}
-          ${renderPresenterServiceInputRail(service)}
-        </aside>
       </div>
     </section>`;
+}
+
+function renderPresenterRightSidebar(service, slides, active, index) {
+  if (!service?.id) return "";
+  return `
+    <div class="svc-presenter-side-panel" data-presenter-right-sidebar data-service-id="${escapeAttr(service.id)}">
+      <header class="right-sidebar-head">
+        <strong>컨트롤러</strong>
+        ${renderPresenterRightSidebarToggle({ icon: "x", label: "컨트롤러 닫기" })}
+      </header>
+      ${renderPresenterControlsTop(service, slides, active, index)}
+      ${renderPresenterServiceInputRail(service)}
+    </div>`;
+}
+
+function renderPresenterRightSidebarToggle(options = {}) {
+  const open = presenterRightSidebarIsOpen();
+  const label = options.label || (open ? "컨트롤러 닫기" : "컨트롤러 열기");
+  const icon = options.icon || "panel-right";
+  return `
+    <button class="icon-btn svc-right-sidebar-toggle${open ? " is-active" : ""}" type="button" data-presenter-right-sidebar-toggle aria-pressed="${escapeAttr(String(open))}" aria-label="${escapeAttr(label)}" title="${escapeAttr(label)}">
+      <i data-lucide="${escapeAttr(icon)}"></i>
+    </button>`;
 }
 
 function renderPresenterServiceInputRail(service) {
@@ -27678,9 +27780,13 @@ function presenterSlideMainText(slide) {
 }
 
 function findPresenterJumpInput(serviceId = state.presenter.serviceId) {
-  const scope = refs.detailPane || document;
-  return [...scope.querySelectorAll("[data-presenter-jump-input]")]
-    .find((input) => input.dataset.serviceId === serviceId) || null;
+  const scopes = [refs.rightSidebar, refs.detailPane, document].filter(Boolean);
+  for (const scope of scopes) {
+    const input = [...scope.querySelectorAll("[data-presenter-jump-input]")]
+      .find((candidate) => candidate.dataset.serviceId === serviceId);
+    if (input) return input;
+  }
+  return null;
 }
 
 function setPresenterJumpDraft(value, serviceId = state.presenter.serviceId) {
@@ -28302,6 +28408,7 @@ function stopPresenterOutputWindowMonitor() {
 function renderPresenterControlState(serviceId = state.selectedServiceId) {
   if (state.module === "presenter" && state.selectedServiceId === serviceId) {
     const root = document.getElementById("servicePresenterControls");
+    const sideRoot = refs.rightSidebar?.querySelector("[data-presenter-right-sidebar]");
     const service = state.services.find((svc) => svc.id === serviceId);
     if (root?.isConnected && root.parentNode && service) {
       const active = state.presenter.serviceId === serviceId;
@@ -28310,7 +28417,8 @@ function renderPresenterControlState(serviceId = state.selectedServiceId) {
       const boardKey = presenterControlBoardKey(service, slides, active, presenterServiceUsesChromakey(service));
       if (root.dataset.boardKey === boardKey) {
         root.className = presenterControlsClassName(active, presenterServiceUsesChromakey(service));
-        patchPresenterControlsTop(root, service, slides, active, index);
+        if (sideRoot) patchPresenterControlsTop(sideRoot, service, slides, active, index);
+        else setRightSidebarContent(renderPresenterRightSidebar(service, slides, active, index));
         patchPresenterBoardActiveState(root, serviceId, active, index);
         patchServiceOutlineActiveState(serviceId);
         clearPresenterTransientBoardActiveMarks(root, serviceId);
@@ -28321,7 +28429,7 @@ function renderPresenterControlState(serviceId = state.selectedServiceId) {
       }
       // Connection controls are lightweight and must reflect start/stop
       // immediately even while a hovered thumbnail delays the board swap.
-      patchPresenterControlsTop(root, service, slides, active, index);
+      if (sideRoot) patchPresenterControlsTop(sideRoot, service, slides, active, index);
       const sameService = root.dataset.serviceId === serviceId;
       const interactionAt = Number(root.dataset.presenterInteractionAt) || 0;
       const interactionDelay = 150 - (Date.now() - interactionAt);
@@ -28336,11 +28444,15 @@ function renderPresenterControlState(serviceId = state.selectedServiceId) {
         }
         return;
       }
-      const focusedInput = capturePresenterFocusedInput(root);
+      const focusedThumb = capturePresenterFocusedThumb(root);
+      const focusedInRightSidebar = refs.rightSidebar?.contains(document.activeElement);
+      const focusedRoot = focusedInRightSidebar ? refs.rightSidebar : root;
+      const focusedInput = capturePresenterFocusedInput(focusedRoot);
       const viewportSnapshot = capturePresenterViewportSnapshot(serviceId);
       const template = document.createElement("template");
       template.innerHTML = renderServicePresenterControls(service, slides, active, index).trim();
       const nextRoot = template.content.firstElementChild;
+      setRightSidebarContent(renderPresenterRightSidebar(service, slides, active, index));
       try {
         root.replaceWith(nextRoot);
       } catch (error) {
@@ -28349,7 +28461,9 @@ function renderPresenterControlState(serviceId = state.selectedServiceId) {
         return;
       }
       clearPresenterTransientBoardActiveMarks(nextRoot, serviceId);
-      restorePresenterFocusedInput(nextRoot, focusedInput);
+      if (!restorePresenterFocusedThumb(nextRoot, focusedThumb)) {
+        restorePresenterFocusedInput(focusedInRightSidebar ? refs.rightSidebar : nextRoot, focusedInput);
+      }
       refreshIcons();
       mountDeferredPresenterBoardSections(nextRoot, serviceId, slides);
       restorePresenterViewportSnapshot(viewportSnapshot);
@@ -28367,8 +28481,19 @@ function renderPresenterControlState(serviceId = state.selectedServiceId) {
 
 function capturePresenterFocusedInput(root) {
   const field = document.activeElement;
-  if (!root?.contains(field) || !field?.matches?.("input[data-service-item-field], textarea[data-service-item-field], select[data-service-item-field]")) return null;
+  if (!root?.contains(field)) return null;
+  if (field?.matches?.("[data-presenter-preparation-input]")) {
+    return {
+      type: "preparation",
+      serviceId: field.dataset.serviceId || "",
+      value: field.value,
+      selectionStart: typeof field.selectionStart === "number" ? field.selectionStart : null,
+      selectionEnd: typeof field.selectionEnd === "number" ? field.selectionEnd : null,
+    };
+  }
+  if (!field?.matches?.("input[data-service-item-field], textarea[data-service-item-field], select[data-service-item-field]")) return null;
   return {
+    type: "service-item",
     key: field.dataset.serviceItemField || "",
     index: field.dataset.serviceItemIndex || "",
     scriptureReferenceIndex: field.dataset.scriptureReferenceIndex || "",
@@ -28379,8 +28504,43 @@ function capturePresenterFocusedInput(root) {
   };
 }
 
+function capturePresenterFocusedThumb(root) {
+  const thumb = document.activeElement?.closest?.(".svc-slide-thumb[data-presenter-index][data-service-id]");
+  if (!root?.contains(thumb)) return null;
+  return {
+    serviceId: thumb.dataset.serviceId || "",
+    index: thumb.dataset.presenterIndex || "",
+  };
+}
+
+function restorePresenterFocusedThumb(root, snapshot) {
+  if (!root || !snapshot?.serviceId || snapshot.index === "") return false;
+  const focusIndex = snapshot.serviceId === state.presenter.serviceId
+    ? String(state.presenter.index)
+    : String(snapshot.index);
+  const thumb = root.querySelector(
+    `.svc-slide-thumb[data-service-id="${CSS.escape(snapshot.serviceId)}"][data-presenter-index="${CSS.escape(focusIndex)}"]`,
+  ) || root.querySelector(
+    `.svc-slide-thumb[data-service-id="${CSS.escape(snapshot.serviceId)}"][data-presenter-index="${CSS.escape(snapshot.index)}"]`,
+  );
+  if (!thumb) return false;
+  thumb.focus({ preventScroll: true });
+  return true;
+}
+
 function restorePresenterFocusedInput(root, snapshot) {
-  if (!root || !snapshot?.key) return;
+  if (!root || !snapshot) return;
+  if (snapshot.type === "preparation") {
+    const field = root.querySelector(`[data-presenter-preparation-input][data-service-id="${CSS.escape(snapshot.serviceId || "")}"]`);
+    if (!field) return;
+    if (typeof snapshot.value === "string") field.value = snapshot.value;
+    field.focus({ preventScroll: true });
+    if (snapshot.selectionStart === null || typeof field.setSelectionRange !== "function") return;
+    const end = snapshot.selectionEnd ?? snapshot.selectionStart;
+    field.setSelectionRange(snapshot.selectionStart, end);
+    return;
+  }
+  if (!snapshot.key) return;
   const selector = [
     `[data-service-item-field="${CSS.escape(snapshot.key)}"]`,
     `[data-service-item-index="${CSS.escape(snapshot.index)}"]`,
@@ -29102,6 +29262,7 @@ function presenterReadySlide(service) {
     title,
     marker: "",
     text: `잠시 후\n${serviceName}\n가 시작됩니다`,
+    videoSrc: chromakey ? PRESENTER_CHROMAKEY_READY_LOOP_VIDEO : "",
     readyServiceName: serviceName,
     outputContext: presenterServiceUsesChromakey(service) ? "chromakey" : "clean",
     sort: -1,
