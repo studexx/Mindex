@@ -7120,6 +7120,125 @@ def main() -> int:
                     else:
                         fail("presenter-preparation-hymn-slot-numbering", json.dumps(presenter_preparation_hymn_slot_numbering, ensure_ascii=False))
 
+                    presenter_preparation_hymn_apply_flow = page.evaluate(
+                        """
+                        (async () => {
+                          const original = {
+                            songs: state.songs,
+                            services: state.services,
+                            serviceItems: state.serviceItems,
+                            selectedServiceId: state.selectedServiceId,
+                            selectedServiceTypeId: state.selectedServiceTypeId,
+                            drafts: state.presenterPreparationDrafts,
+                            dirty: state.dirty.service,
+                            showToast,
+                          };
+                          const service = { id: '__smoke_hymn_apply_flow__', type_id: 'special', date: '2099-08-30' };
+                          const hymnOne = {
+                            id: '__smoke_apply_hymn_1__',
+                            title: '만복의 근원 하나님',
+                            hymn_no: '1',
+                            praise_types: ['hymn'],
+                          };
+                          hymnOne.versions = normalizeSongVersions(hymnOne, [
+                            { id: '__smoke_apply_hymn_1_new__', name: '새찬송가', praise_types: ['hymn'], forms: [] },
+                            { id: '__smoke_apply_hymn_1_alt__', name: '다른 버전', praise_types: ['hymn'], forms: [] },
+                          ]);
+                          const hymnTwo = {
+                            id: '__smoke_apply_hymn_2__',
+                            title: '찬양 성부 성자 성령',
+                            hymn_no: '2',
+                            praise_types: ['hymn'],
+                          };
+                          hymnTwo.versions = normalizeSongVersions(hymnTwo, [
+                            { id: '__smoke_apply_hymn_2_new__', name: '새찬송가', praise_types: ['hymn'], forms: [] },
+                          ]);
+                          const ccmTen = {
+                            id: '__smoke_apply_ccm_10__',
+                            title: '10 전능왕 오셔서',
+                            praise_types: ['ccm'],
+                          };
+                          ccmTen.versions = normalizeSongVersions(ccmTen, [
+                            { id: '__smoke_apply_ccm_10_v1__', name: '기본', praise_types: ['ccm'], forms: [] },
+                          ]);
+                          const toasts = [];
+                          try {
+                            state.songs = [hymnOne, hymnTwo, ccmTen];
+                            state.services = [service];
+                            state.selectedServiceId = service.id;
+                            state.selectedServiceTypeId = service.type_id;
+                            state.serviceItems = {
+                              [service.id]: ['찬양 1', '찬양 2', '찬양 3', '찬양 4', '찬양 5'].map((label, index) => normalizeServiceItem({
+                                id: `__smoke_apply_item_${index + 1}__`,
+                                service_id: service.id,
+                                label,
+                                memo: serializeServiceItemMemo({ elementType: 'praise', inputMode: 'praise_db' }),
+                                _worshipSectionKey: 'praise',
+                                _worshipSectionTitle: '찬양',
+                              }, index)),
+                            };
+                            state.presenterPreparationDrafts = {
+                              [service.id]: `찬양 1 찬 1장
+찬양 2. 1
+찬양 3. 찬송가 2장
+찬양4:2장
+찬양 5: 10 전능왕 오셔서`,
+                            };
+                            showToast = (message, type = 'info') => {
+                              toasts.push({ message, type });
+                            };
+                            await applyPresenterPreparationInput(service.id);
+                            const targetLabels = ['찬양 1', '찬양 2', '찬양 3', '찬양 4', '찬양 5'];
+                            const items = targetLabels.map((label) =>
+                              (state.serviceItems[service.id] || []).find((item) => item.label === label) || {});
+                            return {
+                              songs: items.map((item) => item.song_id || ''),
+                              versions: items.map((item) => item.version_id || item.song_version_id || ''),
+                              rawTitles: items.map((item) => item.raw_title || ''),
+                              saveProblem: serviceInputSaveProblem(service),
+                              draftCleared: !state.presenterPreparationDrafts[service.id],
+                              toasts,
+                            };
+                          } finally {
+                            state.songs = original.songs;
+                            state.services = original.services;
+                            state.serviceItems = original.serviceItems;
+                            state.selectedServiceId = original.selectedServiceId;
+                            state.selectedServiceTypeId = original.selectedServiceTypeId;
+                            state.presenterPreparationDrafts = original.drafts;
+                            state.dirty.service = original.dirty;
+                            showToast = original.showToast;
+                            renderPresenterDetail();
+                          }
+                        })()
+                        """
+                    )
+                    if (
+                        presenter_preparation_hymn_apply_flow["songs"] == [
+                            "__smoke_apply_hymn_1__",
+                            "__smoke_apply_hymn_1__",
+                            "__smoke_apply_hymn_2__",
+                            "__smoke_apply_hymn_2__",
+                            "__smoke_apply_ccm_10__",
+                        ]
+                        and presenter_preparation_hymn_apply_flow["versions"] == [
+                            "__smoke_apply_hymn_1_new__",
+                            "__smoke_apply_hymn_1_new__",
+                            "__smoke_apply_hymn_2_new__",
+                            "__smoke_apply_hymn_2_new__",
+                            "__smoke_apply_ccm_10_v1__",
+                        ]
+                        and presenter_preparation_hymn_apply_flow["rawTitles"] == ["", "", "", "", ""]
+                        and presenter_preparation_hymn_apply_flow["saveProblem"] == ""
+                        and presenter_preparation_hymn_apply_flow["draftCleared"] is True
+                        and presenter_preparation_hymn_apply_flow["toasts"]
+                        and presenter_preparation_hymn_apply_flow["toasts"][-1]["type"] == "info"
+                        and "찬양 1" in presenter_preparation_hymn_apply_flow["toasts"][-1]["message"]
+                    ):
+                        pass_("presenter-preparation-hymn-apply-flow", json.dumps(presenter_preparation_hymn_apply_flow, ensure_ascii=False))
+                    else:
+                        fail("presenter-preparation-hymn-apply-flow", json.dumps(presenter_preparation_hymn_apply_flow, ensure_ascii=False))
+
                     presenter_preparation_label_priority = page.evaluate(
                         """
                         (() => {
