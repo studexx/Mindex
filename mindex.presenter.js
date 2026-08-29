@@ -3535,6 +3535,7 @@ function commitPresenterOutputFrame(root, payload, slide, frameState, token, opt
 function activatePresenterOutputLayer(root, activeLayer, nextLayer, frameState = {}, token = presenterOutputRenderState.token, onActivated = null) {
   if (!activeLayer || !nextLayer) return;
   const animated = presenterOutputShouldAnimateFrameTransition(root, frameState);
+  const transitionClearDelay = 620;
   const swap = () => {
     if (token !== presenterOutputRenderState.token) return;
     activeLayer.classList.remove("is-active");
@@ -3550,7 +3551,7 @@ function activatePresenterOutputLayer(root, activeLayer, nextLayer, frameState =
       activeLayer.innerHTML = "";
       activeLayer.removeAttribute("data-presenter-frame-token");
     };
-    if (animated) window.setTimeout(clearPreviousLayer, 280);
+    if (animated) window.setTimeout(clearPreviousLayer, transitionClearDelay);
     else clearPreviousLayer();
   };
   if (!animated) {
