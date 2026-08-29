@@ -4925,7 +4925,7 @@ def main() -> int:
                 )
                 if (
 	                    section_song_title_fit_state["noChromakey"]
-	                    and section_song_title_fit_state["hasBackground"]
+	                    and not section_song_title_fit_state["hasBackground"]
 	                    and not section_song_title_fit_state["hasSongLayout"]
 	                    and section_song_title_fit_state["hasOrderContent"]
 	                    and section_song_title_fit_state["display"] == "grid"
@@ -8977,10 +8977,7 @@ def main() -> int:
                     item["actualChromakey"] == item["chromakey"]
                     and item["actualDefaultFile"] == item["defaultFile"]
                     and item["actualSeasonFile"] == item["seasonFile"]
-                    and (
-                        not item["expected"]
-                        or any(item["expected"] in source for source in item["sources"])
-                    )
+                    and item["sources"] == []
                     for item in default_background_state
                 )
                 if default_background_ok:
@@ -9150,9 +9147,9 @@ def main() -> int:
                     and no_chromakey_payload["backgroundImage"] == ""
                     and no_chromakey_state["serviceType"] == no_chromakey_payload["serviceType"]
                     and no_chromakey_state["noChromakey"]
-                    and no_chromakey_state["hasBackground"]
-                    and no_chromakey_state["backgroundColor"] == "rgb(5, 8, 7)"
-                    and "26-B2.png" in no_chromakey_state["inlineBackground"]
+                    and not no_chromakey_state["hasBackground"]
+                    and no_chromakey_state["inlineBackground"] == ""
+                    and "url(" not in no_chromakey_state["computedBackground"]
                     and no_chromakey_state["slideClass"] == "presenter-slide--lyrics"
                     and no_chromakey_state["elementType"] == "praise"
                     and no_chromakey_state["layout"] == "lower_bar_text"

@@ -13133,11 +13133,6 @@ function presenterBackgroundSourcesForService(service, options = {}) {
   if (!service) return [];
   const includeChromakeyCleanSlides = Boolean(options.includeChromakeyCleanSlides);
   if (presenterServiceUsesChromakey(service) && !includeChromakeyCleanSlides) return [];
-  const seasonFileName = presenterSeasonBackgroundFileNameForService(service);
-  if (seasonFileName) {
-    const seasonSources = worshipBackgroundSourcesForFileName(seasonFileName);
-    if (seasonSources.length) return seasonSources;
-  }
   const sourceRef = serviceSourceRef(service);
   const value = firstNonBlankString(
     service?.presenter_background,
@@ -13153,10 +13148,7 @@ function presenterBackgroundSourcesForService(service, options = {}) {
     sourceRef.backgroundImage,
     sourceRef.background,
   );
-  if (!value) {
-    const defaultFileName = presenterDefaultBackgroundFileNameForService(service);
-    return defaultFileName ? worshipBackgroundSourcesForFileName(defaultFileName) : [];
-  }
+  if (!value) return [];
   if (presenterBackgroundValueIsReadyAsset(value)) return [];
   if (/^(?:data:|https?:|blob:)/i.test(value)) return [resolveWorshipBackgroundSource(value)];
   if (value.includes("/")) return [resolveWorshipBackgroundSource(value)];
