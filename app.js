@@ -21229,17 +21229,7 @@ function serviceOutlineMissingState(item = {}, slides = []) {
 
 function renderServiceOutlineMissingBadge(missing = null) {
   if (!missing?.missingContent) return "";
-  const inputMode = String(missing.inputMode || "").trim();
-  const label = ["praise_db", "score_db", "lyrics_db"].includes(inputMode)
-    ? "찬양 입력 필요"
-    : inputMode === "manual_praise"
-      ? "가사 입력 필요"
-    : inputMode === "scripture"
-      ? "성경 입력 필요"
-      : inputMode === "asset"
-        ? "파일 입력 필요"
-        : "입력 필요";
-  return `<span class="service-outline-badge">${escapeHtml(label)}</span>`;
+  return `<span class="service-outline-badge">입력 필요</span>`;
 }
 
 function serviceOutlineStartLabel(slideIndex) {

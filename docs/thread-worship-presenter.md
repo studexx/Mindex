@@ -278,7 +278,7 @@ Manual checks when changing live presenter behavior:
   uniquely resolvable hymn number/title now immediately promotes the input to
   `song_id` plus the preferred score `version_id`. Do not restore the old
   behavior where score rows kept raw search text only; it leaves valid 1/2부
-  hymn-score entries showing `찬양 입력 필요`.
+  hymn-score entries showing `입력 필요`.
 - Sunday afternoon dedication services are not just renamed afternoon services:
   when a service title/tag/source marks `헌신예배`, the afternoon template must
   include `특송` after `성경봉독` and `봉헌` after `결단`, so the input screen and

@@ -2032,6 +2032,15 @@ def main() -> int:
                           service,
                         );
                         const filledSlide = filledSlides.find((slide) => presenterSlideElementType(slide) === PRESENTER_ELEMENT_TYPES.PRAISE) || {};
+                        const outlineBadges = ['praise_db', 'score_db', 'lyrics_db', 'manual_praise', 'scripture', 'asset', '']
+                          .map((inputMode) => {
+                            const container = document.createElement('div');
+                            container.innerHTML = renderServiceOutlineMissingBadge({
+                              missingContent: true,
+                              inputMode,
+                            });
+                            return container.textContent.trim();
+                          });
                         return {
                           missing: {
                             elementType: missingSlide.elementType || '',
@@ -2057,6 +2066,7 @@ def main() -> int:
                             missingContent: Boolean(filledSlide.missingContent),
                             html: renderPresenterSlideFrame(filledSlide),
                           },
+                          outlineBadges,
                         };
                       } finally {
                         state.songs = originalSongs;
@@ -2073,6 +2083,7 @@ def main() -> int:
                     and fullscreen_missing_layout_state["missing"]["text"] == "입력 필요"
                     and fullscreen_missing_layout_state["missing"]["outputContext"] == "clean"
                     and fullscreen_missing_layout_state["missing"]["missingContent"] is True
+                    and fullscreen_missing_layout_state["outlineBadges"] == ["입력 필요"] * 7
                     and fullscreen_missing_layout_state["filled"]["elementType"] == "praise"
                     and fullscreen_missing_layout_state["filled"]["layout"] == "lower_bar_text"
                     and fullscreen_missing_layout_state["filled"]["type"] in ["song-title", "lyrics"]
