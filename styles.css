@@ -6024,7 +6024,7 @@ body[data-theme="dark"] .service-week-empty:hover {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.service-sidebar-presenter-context span {
+.service-sidebar-presenter-date {
   min-width: 0;
   overflow: hidden;
   color: var(--sidebar-ink);
@@ -6035,11 +6035,25 @@ body[data-theme="dark"] .service-week-empty:hover {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.service-sidebar-presenter-launch {
+.svc-presenter-launch--sidebar {
   width: 100%;
   height: 38px;
   margin-top: 7px;
   justify-content: center;
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+.svc-presenter-launch--sidebar:hover,
+.svc-presenter-launch--sidebar:focus-visible {
+  background: color-mix(in srgb, var(--accent) 88%, white);
+  color: var(--accent-ink);
+}
+.svc-presenter-launch--sidebar span {
+  color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  opacity: 1;
 }
 .svc-presenter-input-rail-head {
   display: flex;
