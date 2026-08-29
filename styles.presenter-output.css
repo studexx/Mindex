@@ -329,8 +329,8 @@
   display: block;
   position: relative;
   z-index: 1;
-  width: min(30cqw, 575px);
-  max-height: 9cqh;
+  width: min(32cqw, 620px);
+  max-height: 10cqh;
   object-fit: contain;
   opacity: .82;
 }
@@ -345,7 +345,7 @@
 .presenter-ready-screen-kicker {
   margin: 0;
   color: rgba(255, 255, 255, .68);
-  font-size: calc(42 * var(--presenter-stage-unit));
+  font-size: calc(46 * var(--presenter-stage-unit));
   font-weight: 560;
   line-height: 1.16;
 }
@@ -353,7 +353,7 @@
   margin: 0;
   max-width: 100%;
   color: #fff;
-  font-size: calc(78 * var(--presenter-stage-unit));
+  font-size: calc(84 * var(--presenter-stage-unit));
   font-weight: 760;
   line-height: 1.08;
   word-break: keep-all;
@@ -439,8 +439,8 @@
   display: block;
   position: relative;
   z-index: 2;
-  width: min(30cqw, 575px);
-  max-height: 9cqh;
+  width: min(32cqw, 620px);
+  max-height: 10cqh;
   object-fit: contain;
   opacity: .82;
 }
@@ -451,14 +451,14 @@
 }
 .presenter-waiting-loop-script {
   color: rgba(255, 255, 255, .68);
-  font-size: calc(42 * var(--presenter-stage-unit));
+  font-size: calc(46 * var(--presenter-stage-unit));
   font-weight: 560;
   line-height: 1.16;
 }
 .presenter-waiting-loop-title {
   max-width: 100%;
   color: #f4d99f;
-  font-size: calc(88 * var(--presenter-stage-unit));
+  font-size: calc(96 * var(--presenter-stage-unit));
   font-weight: 860;
   line-height: 1.04;
   word-break: keep-all;
@@ -468,7 +468,7 @@
 }
 .presenter-waiting-loop-message {
   color: rgba(255, 255, 255, .7);
-  font-size: calc(30 * var(--presenter-stage-unit));
+  font-size: calc(34 * var(--presenter-stage-unit));
   font-weight: 560;
   line-height: 1.34;
 }
