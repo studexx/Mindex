@@ -4690,6 +4690,7 @@ def main() -> int:
                               sectionLeft: Number(sectionLeft.toFixed(2)),
                               childLeft: Number(childLeft.toFixed(2)),
                               guideLeft: Number(guide.getBoundingClientRect().left.toFixed(2)),
+                              guideBorderLeftWidth: getComputedStyle(guide).borderLeftWidth,
                               sectionMinusChild: Number((sectionLeft - childLeft).toFixed(2)),
                               childMinusGuide: Number((childLeft - guide.getBoundingClientRect().left).toFixed(2)),
                             };
@@ -4920,8 +4921,9 @@ def main() -> int:
                         and presenter_terms["outlineChildMetrics"]["titleFontSize"] == "12px"
                         and presenter_terms["outlineChildMetrics"]["titleLineHeight"] == "16px"
                         and presenter_terms["outlineHierarchyAlignment"] is not None
-                        and abs(presenter_terms["outlineHierarchyAlignment"]["sectionMinusChild"]) <= 2
+                        and abs(presenter_terms["outlineHierarchyAlignment"]["sectionMinusChild"]) <= 0.5
                         and presenter_terms["outlineHierarchyAlignment"]["childMinusGuide"] >= 6
+                        and presenter_terms["outlineHierarchyAlignment"]["guideBorderLeftWidth"] == "0px"
                         and all(
                             (
                                 item["start"] == ""
