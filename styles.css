@@ -6403,7 +6403,7 @@ textarea.svc-presenter-input-control--multiline {
   position: static;
   z-index: auto;
   grid-template-columns: 1fr;
-  gap: 14px;
+  gap: 12px;
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -6422,7 +6422,8 @@ textarea.svc-presenter-input-control--multiline {
   display: grid;
   width: 100%;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
+  order: 2;
+  gap: 12px 10px;
   background: transparent;
   padding: 0;
   justify-self: stretch;
@@ -6465,6 +6466,7 @@ textarea.svc-presenter-input-control--multiline {
   width: 100%;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
+  order: 3;
   gap: 10px;
   background: transparent;
   padding: 2px 0;
@@ -6806,18 +6808,16 @@ textarea.svc-presenter-input-control--multiline {
   gap: 7px;
 }
 .svc-presenter-side-panel .svc-presenter-actions {
-  width: 100%;
-  grid-template-columns: 1fr;
-  justify-content: stretch;
-  justify-self: stretch;
+  display: contents;
 }
 .svc-presenter-side-panel .svc-presenter-live-panel {
   display: grid;
   width: auto;
   min-width: 0;
+  order: 1;
   grid-template-columns: minmax(0, 1fr);
   align-items: stretch;
-  gap: 8px;
+  gap: 9px;
 }
 .svc-presenter-side-panel .svc-presenter-live-copy {
   display: grid;
@@ -6842,8 +6842,18 @@ textarea.svc-presenter-input-control--multiline {
   border-radius: var(--r);
 }
 .svc-presenter-side-panel .svc-presenter-utility-actions {
-  justify-content: flex-end;
+  width: 100%;
+  order: 4;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 2px;
 }
+.svc-presenter-side-panel .svc-presenter-action-group--music {
+  min-width: 0;
+  flex: 1 1 auto;
+  justify-content: flex-start;
+}
+.svc-presenter-side-panel .svc-presenter-help { flex: 0 0 auto; }
 .svc-presenter-actions .icon-btn { width: var(--ui-icon-btn-inline); height: var(--ui-icon-btn-inline); }
 .svc-presenter-actions .icon-btn.is-active { background: transparent; color: var(--accent); }
 .svc-presenter-utility-actions {

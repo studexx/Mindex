@@ -407,16 +407,27 @@ def main() -> int:
                     (() => {
                       const panel = document.querySelector('.svc-presenter-live-panel');
                       const actions = document.querySelector('.svc-presenter-actions');
+                      const outputGroup = document.querySelector('.svc-presenter-side-panel .svc-presenter-output-group');
+                      const mainGroup = document.querySelector('.svc-presenter-side-panel .svc-presenter-main');
+                      const utilityGroup = document.querySelector('.svc-presenter-side-panel .svc-presenter-utility-actions');
                       const preview = panel?.querySelector('.svc-presenter-live-preview');
                       const previewRect = preview?.getBoundingClientRect();
                       const topRect = document.querySelector('.svc-presenter-top')?.getBoundingClientRect();
                       const rightSidebar = document.querySelector('#mindexRightSidebar');
                       const sidePanel = rightSidebar?.querySelector('.svc-presenter-side-panel');
+                      const visualOrder = {
+                        actions: actions ? getComputedStyle(actions).display : '',
+                        live: panel ? Number(getComputedStyle(panel).order || 0) : 0,
+                        output: outputGroup ? Number(getComputedStyle(outputGroup).order || 0) : 0,
+                        main: mainGroup ? Number(getComputedStyle(mainGroup).order || 0) : 0,
+                        utility: utilityGroup ? Number(getComputedStyle(utilityGroup).order || 0) : 0,
+                      };
                       return {
                         exists: Boolean(panel),
                         inActions: Boolean(panel && actions?.contains(panel)),
                         inSidePanel: Boolean(panel && sidePanel?.contains(panel)),
                         inRightSidebar: Boolean(panel && rightSidebar?.contains(panel)),
+                        visualOrder,
                         status: panel?.querySelector('.svc-presenter-status')?.textContent.trim() || '',
                         title: panel?.querySelector('.svc-presenter-live-copy strong')?.textContent.trim() || '',
                         hasPreview: Boolean(preview),
@@ -434,6 +445,10 @@ def main() -> int:
                     and live_panel_state["inActions"]
                     and live_panel_state["inSidePanel"]
                     and live_panel_state["inRightSidebar"]
+                    and live_panel_state["visualOrder"]["actions"] == "contents"
+                    and live_panel_state["visualOrder"]["live"] < live_panel_state["visualOrder"]["output"]
+                    and live_panel_state["visualOrder"]["output"] < live_panel_state["visualOrder"]["main"]
+                    and live_panel_state["visualOrder"]["main"] < live_panel_state["visualOrder"]["utility"]
                     and live_panel_state["status"] == "준비"
                     and live_panel_state["title"] == "송출 대기"
                     and live_panel_state["hasPreview"]
