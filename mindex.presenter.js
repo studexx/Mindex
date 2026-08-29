@@ -3435,9 +3435,15 @@ function renderPresenterOutput(payload, options = {}) {
     root.setAttribute("aria-busy", "true");
     applyPresenterOutputFrameState(root, frameState);
     presenterOutputLayers(root);
-    preloadPresenterOutputImage(activeImageSource)?.finally(() => {
+    const rerenderIfReady = () => {
       if (token === presenterOutputRenderState.token) renderPresenterOutput(payload, options);
-    });
+    };
+    preloadPresenterOutputImage(activeImageSource)?.finally(rerenderIfReady);
+    window.setTimeout(() => {
+      if (token === presenterOutputRenderState.token && presenterOutputImageIsReady(activeImageSource)) {
+        renderPresenterOutput(payload, options);
+      }
+    }, 40);
     return;
   }
 
@@ -3932,6 +3938,7 @@ function preparePresenterOutputFrameForPaint(host) {
   if (!host) return Promise.resolve();
   const images = [...host.querySelectorAll("img")];
   const imageReady = images.map((image) => {
+    if (presenterOutputImageIsReady(image.currentSrc || image.src)) return Promise.resolve();
     if (image.complete && image.naturalWidth > 0) return Promise.resolve();
     if (typeof image.decode === "function") return image.decode().catch(() => {});
     return new Promise((resolve) => {

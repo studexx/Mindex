@@ -1180,6 +1180,7 @@ function bindStaticEvents() {
   refs.newSongBtn?.addEventListener("click", () => createPraiseSong());
   refs.presenterRightSidebarBtn?.addEventListener("click", togglePresenterRightSidebar);
   refs.saveAllBtn.addEventListener("click", saveAll);
+  refs.sidebar?.addEventListener("click", handleSidebarPresenterActionClick);
   refs.searchInput.addEventListener("input", (event) => {
     saveCurrentListScroll();
     state.search = event.target.value;
@@ -1229,6 +1230,7 @@ function bindStaticEvents() {
   refs.songList.addEventListener("change", handleDetailChange);
 
   refs.songList.addEventListener("click", async (event) => {
+    if (handleSidebarPresenterActionClick(event)) return;
     if (handleServiceOutlineSlideEvent(event)) return;
 
     const preparationApply = event.target.closest("[data-presenter-preparation-apply]");
@@ -7506,6 +7508,20 @@ function writeFormsToSelectedVersion() {
     ...(form.review_status === "reviewed" ? { review_status: "reviewed" } : {}),
     ...(form.import_source ? { import_source: form.import_source } : {}),
   }));
+}
+
+function handleSidebarPresenterActionClick(event) {
+  const presenterAction = event.target.closest("[data-presenter-action]");
+  if (!presenterAction || !refs.sidebar?.contains(presenterAction)) return false;
+  event.preventDefault();
+  event.stopPropagation();
+  runPresenterAction(presenterAction.dataset.presenterAction, presenterAction.dataset.serviceId, {
+    index: presenterAction.dataset.presenterIndex,
+    nextServiceId: presenterAction.dataset.nextServiceId,
+    nextServiceType: presenterAction.dataset.nextServiceType,
+    nextServiceDate: presenterAction.dataset.nextServiceDate,
+  });
+  return true;
 }
 
 function handleDetailClick(event) {

@@ -439,7 +439,7 @@ def main() -> int:
                     and live_panel_state["hasPreview"]
                     and live_panel_state["hasEmptyPreview"]
                     and 1.72 <= live_panel_state["previewRatio"] <= 1.82
-                    and live_panel_state["topHeight"] <= 240
+                    and 300 <= live_panel_state["topHeight"] <= 430
                     and live_panel_state["mediaCount"] == 0
                     and live_panel_state["overflowX"] == 0
                 )
@@ -826,6 +826,8 @@ def main() -> int:
                       const currentTitle = currentSidebarContext?.querySelector('.service-sidebar-presenter-title');
                       const currentDate = currentSidebarContext?.querySelector('.service-sidebar-presenter-date');
                       const sidebarLaunch = currentSidebarContext?.querySelector('.svc-presenter-launch--sidebar');
+                      const contextRect = currentSidebarContext?.getBoundingClientRect();
+                      const searchRect = sidebarSearch?.getBoundingClientRect();
                       const pageTabs = document.querySelector('.page-tabs');
                       const titleStyle = currentTitle ? getComputedStyle(currentTitle) : null;
                       const dateStyle = currentDate ? getComputedStyle(currentDate) : null;
@@ -848,8 +850,10 @@ def main() -> int:
                         dateFontSize: parseFloat(dateStyle?.fontSize || '0'),
                         dateFontWeight: dateStyle?.fontWeight || '',
                         contextBackground: currentSidebarContext ? getComputedStyle(currentSidebarContext).backgroundColor : '',
-                        contextWidth: Math.round(currentSidebarContext?.getBoundingClientRect().width || 0),
-                        searchWidth: Math.round(sidebarSearch?.getBoundingClientRect().width || 0),
+                        contextLeft: Math.round(contextRect?.left || 0),
+                        searchLeft: Math.round(searchRect?.left || 0),
+                        contextWidth: Math.round(contextRect?.width || 0),
+                        searchWidth: Math.round(searchRect?.width || 0),
                         sidebarLaunch: {
                           exists: Boolean(sidebarLaunch),
                           action: sidebarLaunch?.dataset.presenterAction || '',
@@ -895,6 +899,7 @@ def main() -> int:
                     and sticky_title_state["dateFontSize"] >= 13
                     and int(sticky_title_state["dateFontWeight"]) >= 700
                     and sticky_title_state["contextBackground"] != "rgba(0, 0, 0, 0)"
+                    and abs(sticky_title_state["contextLeft"] - sticky_title_state["searchLeft"]) <= 1
                     and abs(sticky_title_state["contextWidth"] - sticky_title_state["searchWidth"]) <= 1
                     and sticky_title_state["sidebarLaunch"]["exists"]
                     and sticky_title_state["sidebarLaunch"]["action"] in ("open", "stop")
@@ -915,6 +920,56 @@ def main() -> int:
                     pass_("presenter-sticky-service-title", json.dumps(sticky_title_state, ensure_ascii=False))
                 else:
                     fail("presenter-sticky-service-title", json.dumps(sticky_title_state, ensure_ascii=False))
+
+                sidebar_launch_click_state = page.evaluate(
+                    """
+                    async () => {
+                      const serviceId = state.selectedServiceId;
+                      let openCall = null;
+                      const originalOpen = window.open;
+                      const originalHydrate = hydratePresenterOutputInBackground;
+                      window.open = (url, name, features) => {
+                        openCall = { url, name, features };
+                        return {
+                          closed: false,
+                          focus() {},
+                          addEventListener() {},
+                        };
+                      };
+                      hydratePresenterOutputInBackground = () => {};
+                      state.presenter.outputWindow = null;
+                      state.presenter.outputConnectedAt = 0;
+                      renderPresenterSidebar();
+                      const button = document.querySelector('.service-sidebar-presenter-context [data-presenter-action="open"]');
+                      button?.click();
+                      await new Promise((resolve) => setTimeout(resolve, 40));
+                      window.open = originalOpen;
+                      hydratePresenterOutputInBackground = originalHydrate;
+                      const presenterServiceId = state.presenter.serviceId || '';
+                      state.presenter.outputWindow = null;
+                      state.presenter.outputPendingAt = 0;
+                      state.presenter.outputConnectedAt = 0;
+                      return {
+                        hasButton: Boolean(button),
+                        serviceId,
+                        action: button?.dataset.presenterAction || '',
+                        openCalled: Boolean(openCall),
+                        url: openCall?.url || '',
+                        presenterServiceId,
+                      };
+                    }
+                    """
+                )
+                if (
+                    sidebar_launch_click_state["hasButton"]
+                    and sidebar_launch_click_state["action"] == "open"
+                    and sidebar_launch_click_state["openCalled"]
+                    and sidebar_launch_click_state["presenterServiceId"] == sidebar_launch_click_state["serviceId"]
+                    and "output=presenter" in sidebar_launch_click_state["url"]
+                ):
+                    pass_("presenter-sidebar-launch-click", json.dumps(sidebar_launch_click_state, ensure_ascii=False))
+                else:
+                    fail("presenter-sidebar-launch-click", json.dumps(sidebar_launch_click_state, ensure_ascii=False))
 
                 page.evaluate(
                     """

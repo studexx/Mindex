@@ -6007,11 +6007,11 @@ body[data-theme="dark"] .service-week-empty:hover {
 }
 .service-sidebar-presenter-context {
   display: grid;
-  width: calc(var(--sidebar-content-w) - var(--sidebar-item-x) - var(--sidebar-item-end));
+  width: auto;
   gap: 7px;
   border-radius: var(--r);
   background: color-mix(in srgb, var(--sidebar-active-bg) 86%, var(--sidebar-bg));
-  margin: 0 var(--sidebar-item-end) 0 var(--sidebar-item-x);
+  margin: 0;
   padding: 14px 13px 15px;
 }
 .service-sidebar-presenter-context strong {
