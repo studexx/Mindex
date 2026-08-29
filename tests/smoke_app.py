@@ -4981,7 +4981,7 @@ def main() -> int:
                             "welcomeSidebar": "환영 · 헤세드 찬양단",
                             "welcomeSidebarParts": {"meta": "환영", "title": "헤세드 찬양단"},
                             "multilineSidebar": "사도신경",
-                            "multilineSidebarParts": {"meta": "사도신경", "title": "나는 전능하신 아버지 하나님, 천지의 창조주를 믿습니다."},
+                            "multilineSidebarParts": {"meta": "사도신경", "title": "나는 전능하신 아버지 하나님,"},
                             "praiseSidebarParts": {"meta": "찬양 1", "title": "은혜 은혜"},
                             "connectedPraiseSidebarParts": {"meta": "찬양 6–7", "title": "함께 지어져 가네 + 성도의 노래"},
                             "connectedPraiseSidebar": "찬양 6–7 · 함께 지어져 가네 + 성도의 노래",

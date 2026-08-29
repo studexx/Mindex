@@ -21274,22 +21274,22 @@ function serviceSidebarChildItemDisplayParts(item, service = null) {
   if (connectedOrderTitle || connectedSongTitle) {
     return {
       meta: connectedOrderTitle || String(item?.label || "").trim(),
-      title: serviceSidebarOutlineFirstLine(connectedSongTitle || serviceItemDisplayText(item) || connectedOrderTitle),
+      title: serviceSidebarOutlineFirstLine(connectedSongTitle || serviceItemDisplayText(item) || connectedOrderTitle, item),
     };
   }
   const label = String(item?.label || "").trim();
   const fallback = serviceSidebarChildItemTitle(item, service);
-  if (!label) return { meta: "", title: serviceSidebarOutlineFirstLine(fallback || "항목") };
+  if (!label) return { meta: "", title: serviceSidebarOutlineFirstLine(fallback || "항목", item) };
   const title = serviceSidebarChildItemDisplayText(item);
   const personSummary = serviceSidebarPersonSummary(item, service);
   if (personSummary) {
     const parts = cleanList(String(personSummary).split(/[·/,]+/u));
     return parts.length > 1
-      ? { meta: parts[0], title: serviceSidebarOutlineFirstLine(parts.slice(1).join(" / ")) }
-      : { meta: label, title: compactSearchValue(personSummary) === compactSearchValue(label) ? "" : serviceSidebarOutlineFirstLine(personSummary) };
+      ? { meta: parts[0], title: serviceSidebarOutlineFirstLine(parts.slice(1).join(" / "), item) }
+      : { meta: label, title: compactSearchValue(personSummary) === compactSearchValue(label) ? "" : serviceSidebarOutlineFirstLine(personSummary, item) };
   }
   if (!title || compactSearchValue(label) === compactSearchValue(title)) return { meta: label, title: "" };
-  return { meta: label, title: serviceSidebarOutlineFirstLine(title) };
+  return { meta: label, title: serviceSidebarOutlineFirstLine(title, item) };
 }
 
 function serviceSidebarChildItemDisplayText(item = {}) {
@@ -21301,8 +21301,14 @@ function serviceSidebarChildItemDisplayText(item = {}) {
   return serviceItemDisplayText(item);
 }
 
-function serviceSidebarOutlineFirstLine(value = "") {
-  return String(value || "").split(/\r?\n/u).map((line) => line.trim()).find(Boolean) || "";
+function serviceSidebarOutlineFirstLine(value = "", item = null) {
+  const line = String(value || "").split(/\r?\n/u).map((part) => part.trim()).find(Boolean) || "";
+  if (!line) return "";
+  if (isCreedServiceItem(item)) {
+    const commaIndex = line.indexOf(",");
+    return commaIndex > 0 ? line.slice(0, commaIndex + 1).trim() : line;
+  }
+  return line;
 }
 
 function serviceSidebarPersonSummary(item = {}, service = null) {
