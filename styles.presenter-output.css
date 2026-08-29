@@ -373,8 +373,19 @@
   color: inherit;
   font-weight: 860;
 }
-.presenter-output-root.no-chromakey.has-background .presenter-ready-screen {
+.presenter-output-root.no-chromakey.has-background .presenter-ready-screen,
+.presenter-output-root.no-chromakey.has-background .presenter-waiting-loop {
   background: transparent;
+}
+.presenter-output-root.no-chromakey.has-background .presenter-ready-screen::before,
+.presenter-output-root.no-chromakey.has-background .presenter-waiting-loop::before {
+  opacity: .34;
+}
+.presenter-output-root.no-chromakey.has-background .presenter-ready-screen::after,
+.presenter-output-root.no-chromakey.has-background .presenter-ready-screen-field,
+.presenter-output-root.no-chromakey.has-background .presenter-waiting-loop::after,
+.presenter-output-root.no-chromakey.has-background .presenter-waiting-loop-field {
+  opacity: .26;
 }
 .presenter-waiting-loop {
   position: absolute;
