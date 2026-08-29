@@ -433,6 +433,11 @@ Small visual polish that does not alter behavior does not need an entry.
   않는다. 그날은 3부 예배(`sunday-main`)가 통합 예배의 source of
   truth다. `service_alias`, 절기명, 메모, 부서 담당 정보만으로는 온세대
   variant를 자동 판정하지 않는다.
+- 부서별 외부 모임처럼 해당 부서의 MINDEX 예배가 따로 없는 날은
+  교회력 `church_schedule`의 stable phrase를 기준으로 해당 부서
+  자동 생성을 제외한다. 예: `청년부 야외예배`는 `young-adult` 예배를
+  생성하지 않는다. 기존에 자동 생성된 row도 auto-generated source_ref가
+  확인될 때만 purge한다.
 - 이미 일반 3부 template으로 materialized 된 3부 예배가 나중에 교회력상
   온세대 찬양예배로 판정되면, projection 단계에서 수정되지 않은 일반
   3부 전용 항목(`참회기도`, `찬송`, `입례찬양`, `사도신경`, `공동체고백`,

@@ -91,6 +91,15 @@ class WorshipRuleGuardTests(unittest.TestCase):
         self.assertIn("오늘도 청년부 예배에 오신 여러분을 환영하고 축복합니다 :)", young_adult)
         self.assertIn("1. 오늘 2부 활동은 셀 모임으로 진행합니다.", young_adult)
 
+    def test_young_adult_outdoor_calendar_skips_auto_service(self) -> None:
+        skip_guard = function_block(self.source, "calendarSkippedServiceTypesForDate")
+        self.assertIn("청년부야외예배", skip_guard)
+        self.assertIn('"young-adult"', skip_guard)
+        self.assertIn("calendarSkippedServiceTypesForDate(sunday)", self.source)
+        self.assertIn("!skippedSundayServiceTypes.has(target.typeId)", self.source)
+        self.assertIn("calendarSkippedServiceTypesForDate(sundayDate)", self.source)
+        self.assertIn("auto_generated: true", self.source)
+
     def test_sunday_shared_content_contract_stays_linked(self) -> None:
         shared = function_block(self.source, "sundaySharedContentTypesForItem")
         sync_after_save = function_block(self.source, "syncSharedSundayContentAfterSave")
