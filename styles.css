@@ -3575,13 +3575,17 @@ body[data-module="presenter"] .detail-pane {
   white-space: nowrap;
 }
 .service-outline-row--child .service-outline-main strong {
+  display: -webkit-box;
   color: var(--sidebar-sub);
   font-size: 12px;
   font-weight: 650;
   line-height: 16px;
   overflow: hidden;
+  overflow-wrap: anywhere;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 .service-outline-row--child:has(.service-outline-kind) {
   min-height: 36px;
