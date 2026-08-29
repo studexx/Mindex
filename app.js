@@ -27700,10 +27700,11 @@ function renderPresenterSlideMiniPreview(slide, serviceId = state.presenter.serv
   if (!slide) {
     return `<span class="${escapeAttr(outputClasses)}"><span class="${escapeAttr(canvasClasses)}" data-output-theme="${escapeAttr(theme)}"${backgroundStyle}></span></span>`;
   }
+  const staticVideoPreview = !(serviceChromakey && normalizeServicePresenterRole(slide.presenterRole) === "waiting_loop");
   return `
     <span class="${escapeAttr(outputClasses)}">
       <span class="${escapeAttr(canvasClasses)}" data-output-theme="${escapeAttr(theme)}"${backgroundStyle}>
-        ${renderPresenterSlideFrame(slide, { noChromakey: frameState.noChromakey, previewStage: true, staticVideoPreview: true })}
+        ${renderPresenterSlideFrame(slide, { noChromakey: frameState.noChromakey, previewStage: true, staticVideoPreview })}
       </span>
     </span>`;
 }

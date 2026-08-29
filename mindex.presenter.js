@@ -4343,7 +4343,7 @@ function renderPresenterVideoSlide(slide, options = {}) {
     (previewStage || playback.muted) ? "muted" : "",
     playback.loop ? "loop" : "",
     playback.controls ? "controls" : "",
-    options.noChromakey ? "" : `poster="${PRESENTER_CHROMAKEY_VIDEO_POSTER}"`,
+    (options.noChromakey || previewStage) ? "" : `poster="${PRESENTER_CHROMAKEY_VIDEO_POSTER}"`,
     "playsinline",
     `preload=\"${previewStage ? "metadata" : "auto"}\"`,
   ].filter(Boolean).join(" ");

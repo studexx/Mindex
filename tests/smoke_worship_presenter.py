@@ -1050,6 +1050,7 @@ def main() -> int:
 	                      const frameRect = firstFrame?.getBoundingClientRect();
 	                      return {
 	                        firstPreparationMedia: Boolean(first?.querySelector('.svc-slide-thumb-frame--video[data-element-type="video"][data-slide-layout="media"]')),
+	                        firstPreviewVideo: Boolean(first?.querySelector('.svc-slide-mini-output video.presenter-video')),
 	                        firstPreviewText: first?.querySelector('.svc-slide-mini-output')?.innerText.trim() || '',
 	                        firstGeneratedWaitingLoop: Boolean(first?.querySelector('.presenter-waiting-loop')),
 	                        numberBadges: document.querySelectorAll('.svc-slide-thumb-no').length,
@@ -1064,14 +1065,8 @@ def main() -> int:
                 )
                 if (
                     ready_thumb_state["firstPreparationMedia"]
-                    and (
-                        (
-                            ready_thumb_state["firstGeneratedWaitingLoop"]
-                            and "월삭예배" in ready_thumb_state["firstPreviewText"]
-                            and "시작됩니다" in ready_thumb_state["firstPreviewText"]
-                        )
-                        or ready_thumb_state["firstPreviewText"] == "예배 전 영상"
-                    )
+                    and ready_thumb_state["firstPreviewVideo"]
+                    and ready_thumb_state["firstPreviewText"] == ""
                     and ready_thumb_state["numberBadges"] >= 2
 	                    and ready_thumb_state["firstNumber"] == "1"
 	                    and ready_thumb_state["secondNumber"] == "2"
@@ -7033,6 +7028,22 @@ def main() -> int:
                       };
                       const videoPreview = renderPresenterSlideMiniPreview(video);
                       const audioPreview = renderPresenterSlideMiniPreview(audio);
+                      const waitingLoop = {
+                        id: '__smoke_preview_waiting_loop__',
+                        elementType: PRESENTER_ELEMENT_TYPES.VIDEO,
+                        layout: PRESENTER_SLIDE_LAYOUTS.MEDIA,
+                        type: 'ready',
+                        title: '예배 전 영상',
+                        videoSrc: 'assets/presenter/chromakey-ready-loop.mp4',
+                        presenterRole: 'waiting_loop',
+                        outputContext: 'chromakey',
+                      };
+                      const waitingPreview = renderPresenterSlideMiniPreview(waitingLoop);
+                      const waitingMount = document.createElement('div');
+                      waitingMount.innerHTML = waitingPreview;
+                      const waitingVideo = waitingMount.querySelector('video.presenter-video');
+                      const videoMount = document.createElement('div');
+                      videoMount.innerHTML = videoPreview;
                       return {
                         videoUsesOutputElement: videoPreview.includes('<video'),
                         videoUsesMetadataPreload: videoPreview.includes('preload="metadata"'),
@@ -7040,7 +7051,12 @@ def main() -> int:
                         videoMuted: videoPreview.includes('muted'),
                         videoUsesPlaceholder: videoPreview.includes('presenter-slide-file'),
                         videoUsesStaticPreview: videoPreview.includes('presenter-static-media-preview'),
-                        videoElementCount: document.querySelectorAll('.svc-slide-thumb video').length,
+                        videoElementCount: videoMount.querySelectorAll('video').length,
+                        waitingUsesOutputElement: Boolean(waitingVideo),
+                        waitingUsesStaticPreview: waitingPreview.includes('presenter-static-media-preview'),
+                        waitingUsesMetadataPreload: waitingPreview.includes('preload="metadata"'),
+                        waitingMuted: Boolean(waitingVideo?.muted),
+                        waitingLoop: Boolean(waitingVideo?.loop),
                         audioUsesPlaceholder: audioPreview.includes('presenter-slide-file'),
                       };
                     })()
@@ -7054,6 +7070,11 @@ def main() -> int:
                     and not preview_renderer_state["videoUsesPlaceholder"]
                     and preview_renderer_state["videoUsesStaticPreview"]
                     and preview_renderer_state["videoElementCount"] == 0
+                    and preview_renderer_state["waitingUsesOutputElement"]
+                    and not preview_renderer_state["waitingUsesStaticPreview"]
+                    and preview_renderer_state["waitingUsesMetadataPreload"]
+                    and preview_renderer_state["waitingMuted"]
+                    and preview_renderer_state["waitingLoop"]
                     and not preview_renderer_state["audioUsesPlaceholder"]
                 ):
                     pass_("presenter-preview-uses-static-video", json.dumps(preview_renderer_state, ensure_ascii=False))
