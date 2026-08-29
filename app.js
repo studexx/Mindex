@@ -24125,7 +24125,6 @@ function inferServiceItemAssignee(item) {
   if (!label) return "";
   if (/특송/.test(label)) return "담당기관";
   if (/말씀|설교/.test(label)) return "담임목사";
-  if (/성경봉독|교회소식|광고|예배기도|축복기도|봉헌기도|축도/.test(label)) return "인도자";
   if (/^기도$/.test(label) && looksLikePersonOrGroup(note)) return "담당자";
   return "";
 }

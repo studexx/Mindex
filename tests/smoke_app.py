@@ -5690,6 +5690,11 @@ def main() -> int:
                           return {
                             ...labels,
                             titleLabelVisibility,
+                            genericAssigneeFallbacks: ['성경봉독', '교회소식', '광고', '예배기도', '축복기도', '봉헌기도', '축도']
+                              .map((label) => ({
+                                label,
+                                placeholder: inferServiceItemAssignee({ label, raw_title: '' }),
+                              })),
                             all: Object.values(labels).flat(),
                           };
                         })()
@@ -5707,6 +5712,7 @@ def main() -> int:
                             "scripture": True,
                             "praise": True,
                         }
+                        and all(not item["placeholder"] for item in presenter_input_label_vocabulary["genericAssigneeFallbacks"])
                         and all(label in ["찬양", "말씀", "제목", "내용", "가사", "담당"] for label in presenter_input_label_vocabulary["all"])
                     ):
                         pass_("presenter-input-label-vocabulary", json.dumps(presenter_input_label_vocabulary, ensure_ascii=False))
