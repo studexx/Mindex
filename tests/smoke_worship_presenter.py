@@ -725,7 +725,7 @@ def main() -> int:
                         }
                       };
                       runPresenterAction('jump', serviceId, { index: targetIndex });
-                      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+                      await new Promise((resolve) => setTimeout(resolve, 950));
                       Element.prototype.scrollIntoView = originalScrollIntoView;
                       const result = {
                         targetIndex,
@@ -8887,6 +8887,81 @@ def main() -> int:
                     pass_("presenter-output-pixel-match-no-chromakey", json.dumps(no_chromakey_pixels, ensure_ascii=False))
                 else:
                     fail("presenter-output-pixel-match-no-chromakey", json.dumps(no_chromakey_pixels, ensure_ascii=False))
+
+                fullscreen_transition_state = output_page.evaluate(
+                    """
+                    async () => {
+                      const root = document.getElementById('presenterOutputRoot');
+                      const slides = [
+                        {
+                          id: '__smoke_transition_old__',
+                          type: 'title-content',
+                          elementType: PRESENTER_ELEMENT_TYPES.TITLE_CONTENT,
+                          layout: PRESENTER_SLIDE_LAYOUTS.CENTER_TEXT,
+                          title: '이전 화면',
+                          text: '이전 화면',
+                          outputContext: 'clean',
+                        },
+                        {
+                          id: '__smoke_transition_next__',
+                          type: 'title-content',
+                          elementType: PRESENTER_ELEMENT_TYPES.TITLE_CONTENT,
+                          layout: PRESENTER_SLIDE_LAYOUTS.CENTER_TEXT,
+                          title: '다음 화면',
+                          text: '다음 화면',
+                          outputContext: 'clean',
+                        },
+                      ];
+                      renderPresenterOutput({
+                        serviceId: '__smoke_transition_service__',
+                        serviceType: 'friday',
+                        chromakey: false,
+                        outputTheme: 'formal',
+                        backgroundImage: '',
+                        slides,
+                        index: 0,
+                        safetyBlank: false,
+                      });
+                      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+                      renderPresenterOutput({
+                        serviceId: '__smoke_transition_service__',
+                        serviceType: 'friday',
+                        chromakey: false,
+                        outputTheme: 'formal',
+                        backgroundImage: '',
+                        slides,
+                        index: 1,
+                        safetyBlank: false,
+                      });
+                      await new Promise((resolve) => setTimeout(resolve, 120));
+                      const entering = root.querySelector('.presenter-output-layer.is-entering');
+                      const exiting = root.querySelector('.presenter-output-layer.is-exiting');
+                      const enteringStyle = entering ? getComputedStyle(entering) : null;
+                      const exitingStyle = exiting ? getComputedStyle(exiting) : null;
+                      return {
+                        noChromakey: root?.classList.contains('no-chromakey') || false,
+                        enteringText: entering?.innerText.trim() || '',
+                        exitingText: exiting?.innerText.trim() || '',
+                        enteringAnimation: enteringStyle?.animationName || '',
+                        exitingAnimation: exitingStyle?.animationName || '',
+                        enteringOpacity: enteringStyle?.opacity || '',
+                        exitingOpacity: exitingStyle?.opacity || '',
+                      };
+                    }
+                    """
+                )
+                if (
+                    fullscreen_transition_state["noChromakey"]
+                    and "다음 화면" in fullscreen_transition_state["enteringText"]
+                    and "이전 화면" in fullscreen_transition_state["exitingText"]
+                    and fullscreen_transition_state["enteringAnimation"] == "presenter-layer-dissolve-in"
+                    and fullscreen_transition_state["exitingAnimation"] == "presenter-layer-dissolve-out"
+                    and 0 < float(fullscreen_transition_state["enteringOpacity"]) < 1
+                    and 0 < float(fullscreen_transition_state["exitingOpacity"]) < 1
+                ):
+                    pass_("presenter-fullscreen-overlap-dissolve", json.dumps(fullscreen_transition_state, ensure_ascii=False))
+                else:
+                    fail("presenter-fullscreen-overlap-dissolve", json.dumps(fullscreen_transition_state, ensure_ascii=False))
 
                 explicit_background_payload = page.evaluate(
                     """
