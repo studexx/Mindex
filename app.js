@@ -28868,6 +28868,7 @@ function patchPresenterControlsTop(root, service, slides, active, index) {
   if (!currentTop || !nextTop) return;
   currentTop.replaceWith(nextTop);
   refreshIcons(nextTop);
+  schedulePresenterPreviewScaleUpdate(nextTop);
 }
 
 function patchPresenterBoardActiveState(root, serviceId, active, index) {
