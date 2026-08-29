@@ -165,34 +165,31 @@
   }
   .presenter-output-root.no-chromakey:not(.svc-slide-mini-canvas)
     > .presenter-output-layer.is-entering {
-    animation: presenter-layer-morph-in 500ms cubic-bezier(.22, 1, .36, 1) forwards;
+    animation: presenter-layer-fade-in 500ms ease-in-out forwards;
   }
   .presenter-output-root.no-chromakey:not(.svc-slide-mini-canvas)
     > .presenter-output-layer.is-exiting {
-    animation: presenter-layer-morph-out 500ms cubic-bezier(.22, 1, .36, 1) forwards;
+    animation: presenter-layer-fade-out 500ms ease-in-out forwards;
   }
 }
-@keyframes presenter-layer-morph-in {
+@keyframes presenter-layer-fade-in {
   from {
     opacity: 0;
-    transform: translateZ(0) scale(1.018);
-  }
-  58% {
-    opacity: 1;
+    transform: translateZ(0);
   }
   to {
     opacity: 1;
-    transform: translateZ(0) scale(1);
+    transform: translateZ(0);
   }
 }
-@keyframes presenter-layer-morph-out {
+@keyframes presenter-layer-fade-out {
   from {
     opacity: 1;
-    transform: translateZ(0) scale(1);
+    transform: translateZ(0);
   }
   to {
     opacity: 0;
-    transform: translateZ(0) scale(.988);
+    transform: translateZ(0);
   }
 }
 .presenter-output-root.no-chromakey {

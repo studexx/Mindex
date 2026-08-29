@@ -9270,16 +9270,16 @@ def main() -> int:
                     fullscreen_transition_state["noChromakey"]
                     and "다음 화면" in fullscreen_transition_state["enteringText"]
                     and "이전 화면" in fullscreen_transition_state["exitingText"]
-                    and fullscreen_transition_state["enteringAnimation"] == "presenter-layer-morph-in"
-                    and fullscreen_transition_state["exitingAnimation"] == "presenter-layer-morph-out"
+                    and fullscreen_transition_state["enteringAnimation"] == "presenter-layer-fade-in"
+                    and fullscreen_transition_state["exitingAnimation"] == "presenter-layer-fade-out"
                     and fullscreen_transition_state["enteringDuration"] == "0.5s"
                     and fullscreen_transition_state["exitingDuration"] == "0.5s"
                     and 0 < float(fullscreen_transition_state["enteringOpacity"]) < 1
                     and 0 < float(fullscreen_transition_state["exitingOpacity"]) < 1
                 ):
-                    pass_("presenter-fullscreen-morph-transition", json.dumps(fullscreen_transition_state, ensure_ascii=False))
+                    pass_("presenter-fullscreen-fade-transition", json.dumps(fullscreen_transition_state, ensure_ascii=False))
                 else:
-                    fail("presenter-fullscreen-morph-transition", json.dumps(fullscreen_transition_state, ensure_ascii=False))
+                    fail("presenter-fullscreen-fade-transition", json.dumps(fullscreen_transition_state, ensure_ascii=False))
 
                 explicit_background_payload = page.evaluate(
                     """
