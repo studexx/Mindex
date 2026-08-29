@@ -4349,14 +4349,15 @@ function renderPresenterVideoSlide(slide, options = {}) {
       : "video";
   const playback = presenterPlaybackConfig(slide.playback, playbackType);
   const previewStage = Boolean(options.previewStage);
+  const videoSource = previewStage ? presenterPreviewVideoSource(source) : source;
   const attrs = [
     "class=\"presenter-video\"",
-    `src="${escapeAttr(source)}"`,
+    `src="${escapeAttr(videoSource)}"`,
     presenterRole ? `data-presenter-role="${escapeAttr(presenterRole)}"` : "",
-    playback.autoplay ? "autoplay" : "",
+    (!previewStage && playback.autoplay) ? "autoplay" : "",
     (previewStage || playback.muted) ? "muted" : "",
-    playback.loop ? "loop" : "",
-    playback.controls ? "controls" : "",
+    (!previewStage && playback.loop) ? "loop" : "",
+    (!previewStage && playback.controls) ? "controls" : "",
     (options.noChromakey || previewStage) ? "" : `poster="${PRESENTER_CHROMAKEY_VIDEO_POSTER}"`,
     "playsinline",
     `preload=\"${previewStage ? "metadata" : "auto"}\"`,
@@ -4364,6 +4365,12 @@ function renderPresenterVideoSlide(slide, options = {}) {
   return `
     <video ${attrs}></video>
   `;
+}
+
+function presenterPreviewVideoSource(source = "") {
+  const normalized = String(source || "").trim();
+  if (!normalized || normalized.includes("#")) return normalized;
+  return `${normalized}#t=0.001`;
 }
 
 function renderPresenterStaticVideoPreviewSlide(slide) {

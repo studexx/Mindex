@@ -7055,6 +7055,8 @@ def main() -> int:
                         waitingUsesOutputElement: Boolean(waitingVideo),
                         waitingUsesStaticPreview: waitingPreview.includes('presenter-static-media-preview'),
                         waitingUsesMetadataPreload: waitingPreview.includes('preload="metadata"'),
+                        waitingUsesFirstFrameOffset: waitingPreview.includes('#t=0.001'),
+                        waitingAutoplay: Boolean(waitingVideo?.autoplay),
                         waitingMuted: Boolean(waitingVideo?.muted),
                         waitingLoop: Boolean(waitingVideo?.loop),
                         audioUsesPlaceholder: audioPreview.includes('presenter-slide-file'),
@@ -7073,8 +7075,10 @@ def main() -> int:
                     and preview_renderer_state["waitingUsesOutputElement"]
                     and not preview_renderer_state["waitingUsesStaticPreview"]
                     and preview_renderer_state["waitingUsesMetadataPreload"]
+                    and preview_renderer_state["waitingUsesFirstFrameOffset"]
+                    and not preview_renderer_state["waitingAutoplay"]
                     and preview_renderer_state["waitingMuted"]
-                    and preview_renderer_state["waitingLoop"]
+                    and not preview_renderer_state["waitingLoop"]
                     and not preview_renderer_state["audioUsesPlaceholder"]
                 ):
                     pass_("presenter-preview-uses-static-video", json.dumps(preview_renderer_state, ensure_ascii=False))
