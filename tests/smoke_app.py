@@ -2576,7 +2576,8 @@ def main() -> int:
                                 creedElements: sections.find((section) => section.key === 'creed')?.elements || [],
                                 prayerElements: sections.find((section) => section.key === 'prayer')?.elements || [],
                                 scriptureElements: sections.find((section) => section.key === 'scripture_reading')?.elements || [],
-                                communityElements: sections.find((section) => section.key === 'community_confession')?.elements || [],
+                                communityElements: (sections.find((section) => section.key === 'sending')?.elements || [])
+                                  .filter((element) => element.label === '공동체고백'),
                                 sermonElements: sections.find((section) => section.key === 'sermon')?.elements || [],
                                 offeringElements: sections.find((section) => section.key === 'offering')?.elements || [],
                                 announcementsElements: sections.find((section) => section.key === 'announcements')?.elements || [],
@@ -3892,10 +3893,11 @@ def main() -> int:
                         }
                         and "사죄의선언" not in template_terms["sundayPublicScaffold"]["third"]["titles"]
                         and "새가족환영" not in template_terms["sundayPublicScaffold"]["third"]["titles"]
-                        and "공동체고백" in template_terms["sundayPublicScaffold"]["third"]["titles"]
+                        and "공동체고백" not in template_terms["sundayPublicScaffold"]["third"]["titles"]
                         and template_terms["sundayPublicScaffold"]["third"]["communityElements"][0]["type"] == "body"
                         and template_terms["sundayPublicScaffold"]["third"]["communityElements"][0]["label"] == "공동체고백"
                         and template_terms["sundayPublicScaffold"]["third"]["communityElements"][0]["introTitle"] == "공동체고백"
+                        and template_terms["sundayPublicScaffold"]["third"]["sendingElements"][0]["label"] == "공동체고백"
                         and any(
                             item.get("text") == "예배자" and item.get("color") == "#FFC832"
                             for item in template_terms["sundayPublicScaffold"]["third"]["communityElements"][0]["textHighlights"]
@@ -3973,6 +3975,13 @@ def main() -> int:
                             {"type": "scripture_body", "label": "인용 구절", "outputMode": ""},
                         ]
                         and template_terms["sundayPublicScaffold"]["third"]["sendingElements"] == [
+                            {
+                                "type": "body",
+                                "label": "공동체고백",
+                                "introTitle": "공동체고백",
+                                "textHighlights": template_terms["sundayPublicScaffold"]["third"]["communityElements"][0]["textHighlights"],
+                                "outputMode": "",
+                            },
                             {
                                 "type": "praise",
                                 "label": "파송찬송",

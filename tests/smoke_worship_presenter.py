@@ -2932,7 +2932,7 @@ def main() -> int:
                       const communityScaffold = buildWorshipServiceScaffold(communityService.id, communityService.type_id);
                       state.serviceItems[communityService.id] = groupWorshipElements(communityScaffold.sections, communityScaffold.elements)[communityService.id] || [];
                       const communityItem = (state.serviceItems[communityService.id] || [])
-                        .find((item) => item._worshipSectionKey === 'community_confession') || {};
+                        .find((item) => item._worshipSectionKey === 'sending' && item.label === '공동체고백') || {};
                       const communitySlides = normalizePresenterSlidesForServiceOutput(buildPresenterSlidesForServiceItem(
                         communityItem,
                         { id: '__smoke_community_chromakey_service__', type_id: 'sunday-main', date: '2026-07-05' },
@@ -8861,6 +8861,55 @@ def main() -> int:
                     pass_("presenter-outline-click-prefers-item-scroll", json.dumps(outline_click_scroll_state, ensure_ascii=False))
                 else:
                     fail("presenter-outline-click-prefers-item-scroll", json.dumps(outline_click_scroll_state, ensure_ascii=False))
+
+                outline_stale_index_state = page.evaluate(
+                    """
+                    (serviceId) => {
+                      preparePresenterService(serviceId);
+                      renderServiceList();
+                      renderPresenterControlState(serviceId);
+                      const slides = presenterSlidesForService(serviceId);
+                      const rows = [...document.querySelectorAll('.service-outline-row--child[data-service-outline-slide][data-service-outline-item-index][data-service-outline-item-id]')]
+                        .filter((node) => Number(node.dataset.serviceOutlineItemIndex) >= 0 && Number(node.dataset.serviceOutlineSlide) >= 0);
+                      if (rows.length < 2) return { hasRows: false, rowCount: rows.length };
+                      const targetRow = rows.find((node) => {
+                        const item = serviceOutlineItemForIndex(serviceId, Number(node.dataset.serviceOutlineItemIndex));
+                        const expected = item ? firstPresenterSlideIndexForServiceItem(item, slides) : -1;
+                        return expected >= 0 && rows.some((other) => Number(other.dataset.serviceOutlineSlide) !== expected);
+                      }) || rows[0];
+                      const item = serviceOutlineItemForIndex(serviceId, Number(targetRow.dataset.serviceOutlineItemIndex));
+                      const expectedSlide = item ? firstPresenterSlideIndexForServiceItem(item, slides) : -1;
+                      const staleSlide = rows
+                        .map((node) => Number(node.dataset.serviceOutlineSlide))
+                        .find((index) => Number.isFinite(index) && index >= 0 && index !== expectedSlide);
+                      if (!item || expectedSlide < 0 || staleSlide === undefined) {
+                        return { hasRows: true, canTest: false, expectedSlide, staleSlide };
+                      }
+                      targetRow.dataset.serviceOutlineSlide = String(staleSlide);
+                      targetRow.click();
+                      return {
+                        hasRows: true,
+                        canTest: true,
+                        expectedSlide,
+                        staleSlide,
+                        presenterIndex: state.presenter.index,
+                        selectedItemIndex: state.selectedServiceItemIndex,
+                        expectedItemIndex: Number(targetRow.dataset.serviceOutlineItemIndex),
+                      };
+                    }
+                    """,
+                    selection_state["switchId"],
+                )
+                if (
+                    outline_stale_index_state["hasRows"]
+                    and outline_stale_index_state["canTest"]
+                    and outline_stale_index_state["staleSlide"] != outline_stale_index_state["expectedSlide"]
+                    and outline_stale_index_state["presenterIndex"] == outline_stale_index_state["expectedSlide"]
+                    and outline_stale_index_state["selectedItemIndex"] == outline_stale_index_state["expectedItemIndex"]
+                ):
+                    pass_("presenter-outline-click-ignores-stale-slide-index", json.dumps(outline_stale_index_state, ensure_ascii=False))
+                else:
+                    fail("presenter-outline-click-ignores-stale-slide-index", json.dumps(outline_stale_index_state, ensure_ascii=False))
 
                 next_prep_state = page.evaluate(
                     """

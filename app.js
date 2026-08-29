@@ -1572,35 +1572,71 @@ const handleSidebarToggle = () => {
 };
 
 function serviceOutlineSlideTarget(serviceOutlineItem) {
-  const itemIndex = Number(serviceOutlineItem?.dataset?.serviceOutlineItemIndex);
   const serviceId = serviceOutlineItem?.dataset?.serviceOutlineService || state.selectedServiceId;
+  const rawItemIndex = Number(serviceOutlineItem?.dataset?.serviceOutlineItemIndex);
+  const rawItemId = String(serviceOutlineItem?.dataset?.serviceOutlineItemId || "").trim();
   const slideValue = String(serviceOutlineItem?.dataset?.serviceOutlineSlide || "").trim();
-  let slideIndex = slideValue ? Number(slideValue) : -1;
-  const service = state.services.find((svc) => svc.id === serviceId);
   const slides = presenterSlidesForService(serviceId);
-  const outlineItems = service ? getServiceOutlineItems(service) : [];
-  const currentItem = Number.isFinite(itemIndex)
-    ? outlineItems.find((item, index) => (Number.isInteger(item._serviceItemIndex) ? item._serviceItemIndex : index) === itemIndex)
-    : null;
-  if (!Number.isFinite(slideIndex) || slideIndex < 0) {
-    const currentSlideIndex = currentItem ? firstPresenterSlideIndexForServiceItem(currentItem, slides) : -1;
-    if (currentSlideIndex >= 0) slideIndex = currentSlideIndex;
+  const resolved = resolveServiceOutlineItem(serviceId, rawItemIndex, rawItemId);
+  const currentItem = resolved?.item || null;
+  const itemIndex = resolved?.index ?? rawItemIndex;
+  let slideIndex = -1;
+  if (currentItem) {
+    const slideIndexByItemId = buildPresenterSlideItemIndexMap(slides);
+    slideIndex = firstPresenterSlideIndexForServiceItem(currentItem, slides, slideIndexByItemId);
+    const datasetSlideIndex = slideValue ? Number(slideValue) : -1;
+    if (slideIndex < 0
+      && Number.isFinite(datasetSlideIndex)
+      && presenterSlideBelongsToItem(slides[datasetSlideIndex], currentItem)) {
+      slideIndex = datasetSlideIndex;
+    }
+  } else if (slideValue) {
+    slideIndex = Number(slideValue);
   }
   if (!Number.isFinite(slideIndex) || slideIndex < 0 || !serviceId) return null;
   if (slideIndex >= slides.length) slideIndex = Math.max(slides.length - 1, 0);
   return { itemIndex, serviceId, slideIndex };
 }
 
+function resolveServiceOutlineItem(serviceId, rawItemIndex, rawItemId = "") {
+  const service = state.services.find((svc) => svc.id === serviceId);
+  const outlineItems = service ? getServiceOutlineItems(service) : [];
+  if (!outlineItems.length) return null;
+  const itemId = String(rawItemId || "").trim();
+  if (itemId) {
+    const itemById = outlineItems.find((item) => String(item.id || "").trim() === itemId);
+    if (itemById) {
+      return {
+        item: itemById,
+        index: serviceOutlineItemIndex(itemById, outlineItems.indexOf(itemById)),
+      };
+    }
+  }
+  const itemIndex = Number(rawItemIndex);
+  if (!Number.isInteger(itemIndex) || itemIndex < 0) return null;
+  const candidateIndex = outlineItems.findIndex((item, index) => serviceOutlineItemIndex(item, index) === itemIndex);
+  if (candidateIndex < 0) return null;
+  return {
+    item: outlineItems[candidateIndex],
+    index: serviceOutlineItemIndex(outlineItems[candidateIndex], candidateIndex),
+  };
+}
+
+function serviceOutlineItemIndex(item, fallbackIndex = 0) {
+  return Number.isInteger(item?._serviceItemIndex) ? item._serviceItemIndex : fallbackIndex;
+}
+
 function handleServiceOutlineSlideClick(serviceOutlineItem) {
   const target = serviceOutlineSlideTarget(serviceOutlineItem);
   if (!target) {
     const serviceId = serviceOutlineItem?.dataset?.serviceOutlineService || state.selectedServiceId;
-    const itemIndex = Number(serviceOutlineItem?.dataset?.serviceOutlineItemIndex);
-    const service = state.services.find((entry) => entry.id === serviceId);
-    const items = service ? getServiceOutlineItems(service) : [];
-    const item = Number.isInteger(itemIndex) && itemIndex >= 0
-      ? items.find((entry, index) => (Number.isInteger(entry._serviceItemIndex) ? entry._serviceItemIndex : index) === itemIndex)
-      : null;
+    const resolved = resolveServiceOutlineItem(
+      serviceId,
+      Number(serviceOutlineItem?.dataset?.serviceOutlineItemIndex),
+      serviceOutlineItem?.dataset?.serviceOutlineItemId || "",
+    );
+    const item = resolved?.item || null;
+    const itemIndex = resolved?.index ?? -1;
     if (!serviceId || !item) return;
 
     // A missing slide means this item needs preparation, not that it cannot be selected.
@@ -20027,6 +20063,7 @@ function shouldDropAllGenerationsRegularThirdProjectionExtra(service = null, ite
     "community_confession",
   ]);
   if (regularOnlySections.has(sectionKey)) return true;
+  if (labelKey === "공동체고백") return true;
   if (sectionKey === "praise" && labelKey === "입례찬양") return true;
   if (sectionKey === "offering" && labelKey === "봉헌찬송") return true;
   if (sectionKey === "closing_visual" && labelKey === "폐회찬송") return true;
@@ -21614,6 +21651,7 @@ function renderServiceOutlineGroup(service, group, groupIndex, selectedIndex, sl
       <button class="service-outline-row service-outline-row--section${activeSlide ? " active" : ""}" type="button"
         data-service-outline-slide="${escapeAttr(firstSlideIndex >= 0 ? firstSlideIndex : "")}"
         data-service-outline-item-index="${escapeAttr(firstSlideEntry.index)}"
+        data-service-outline-item-id="${escapeAttr(firstSlideEntry.item?.id || "")}"
         data-service-outline-service="${escapeAttr(service.id)}"
         aria-label="${escapeAttr(interactionHint)}"
         title="${escapeAttr(interactionHint)}"
@@ -21643,6 +21681,7 @@ function renderServiceOutlineChildRow(service, item, index, selectedIndex, slide
     <button class="service-outline-row service-outline-row--child${selected ? " selected" : ""}${activeSlide ? " active" : ""}" type="button"
       data-service-outline-slide="${escapeAttr(slideIndex >= 0 ? slideIndex : "")}"
       data-service-outline-item-index="${index}"
+      data-service-outline-item-id="${escapeAttr(item.id || "")}"
       data-service-outline-service="${escapeAttr(service.id)}"
       aria-label="${escapeAttr(interactionHint)}"
       title="${escapeAttr(interactionHint)}"
@@ -28124,12 +28163,7 @@ function presenterBoardThumbSelector(serviceId, index) {
 
 function findPresenterBoardThumbByIndex(root, serviceId, index) {
   if (!root?.querySelector || !serviceId || !Number.isFinite(Number(index))) return null;
-  const serviceIds = [...new Set([serviceId, state.selectedServiceId].filter(Boolean))];
-  for (const candidateServiceId of serviceIds) {
-    const thumb = root.querySelector(presenterBoardThumbSelector(candidateServiceId, index));
-    if (thumb) return thumb;
-  }
-  return null;
+  return root.querySelector(presenterBoardThumbSelector(serviceId, index));
 }
 
 function scrollPresenterBoardToIndex(serviceId, index, options = {}) {
