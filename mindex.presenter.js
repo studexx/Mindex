@@ -3149,12 +3149,16 @@ function initPresenterOutputCore() {
       if (canCloseOutputWindow()) window.close();
     }, 120);
   };
-  const requestPresenterOutputNext = () => {
-    postHeartbeat();
-    if (sendControllerMessage({ type: "presenter-control", action: "next", clientId: outputClientId })) return;
-    currentPayload = applyPresenterActionToPayload(currentPayload, "next");
+  const applyPresenterOutputActionLocally = (action, detail = {}) => {
+    if (!currentPayload) return;
+    currentPayload = applyPresenterActionToPayload(currentPayload, action, detail);
     publishPresenterPayload(currentPayload);
     renderPresenterOutput(currentPayload, { onAutoAdvance: requestPresenterOutputNext });
+  };
+  const requestPresenterOutputNext = () => {
+    postHeartbeat();
+    sendControllerMessage({ type: "presenter-control", action: "next", clientId: outputClientId });
+    applyPresenterOutputActionLocally("next");
   };
   const postDisconnect = () => {
     const payload = {
@@ -3171,6 +3175,16 @@ function initPresenterOutputCore() {
       applyPayload(stored);
     } catch {
       applyPayload(null);
+    }
+  };
+  const renderFreshStoredState = () => {
+    try {
+      const stored = JSON.parse(safeStorageGet("local", PRESENTER_STORAGE_KEY, "null") || "null");
+      if (!stored?.updatedAt || Date.now() - Number(stored.updatedAt) > 5000) return false;
+      applyPayload(stored);
+      return true;
+    } catch {
+      return false;
     }
   };
   const handleOutputSignalMessage = (message = {}) => {
@@ -3199,6 +3213,7 @@ function initPresenterOutputCore() {
     }
   }
   if (channel) {
+    renderFreshStoredState();
     channel.onmessage = (event) => {
       if (event.data?.type === "presenter-state") {
         applyInitialPresenterState(event.data.payload);
@@ -3221,9 +3236,6 @@ function initPresenterOutputCore() {
       postHeartbeat();
     }, 50);
     heartbeatTimer = window.setInterval(postHeartbeat, PRESENTER_OUTPUT_HEARTBEAT_INTERVAL_MS);
-    // Keep the startup canvas black until the controller publishes its current
-    // state. Rendering a stale local payload can flash the previous chromakey
-    // frame before a fullscreen service appears.
   } else {
     renderStoredState();
     window.setTimeout(() => {
@@ -3269,11 +3281,8 @@ function initPresenterOutputCore() {
       jumpDraft = "";
       sendControllerMessage({ type: "presenter-jump-draft", value: "" });
       postHeartbeat();
-      if (!sendControllerMessage({ type: "presenter-control", action: "jump", index, clientId: outputClientId })) {
-        currentPayload = applyPresenterActionToPayload(currentPayload, "jump", { index });
-        publishPresenterPayload(currentPayload);
-        renderPresenterOutput(currentPayload, { onAutoAdvance: requestPresenterOutputNext });
-      }
+      sendControllerMessage({ type: "presenter-control", action: "jump", index, clientId: outputClientId });
+      applyPresenterOutputActionLocally("jump", { index });
       return;
     }
     if (!event.metaKey && !event.ctrlKey && !event.altKey && event.key === "Escape" && jumpDraft) {
@@ -3300,11 +3309,8 @@ function initPresenterOutputCore() {
       jumpDraft = "";
       sendControllerMessage({ type: "presenter-jump-draft", value: "" });
       postHeartbeat();
-      if (!sendControllerMessage({ type: "presenter-control", action, clientId: outputClientId })) {
-        currentPayload = applyPresenterActionToPayload(currentPayload, action);
-        publishPresenterPayload(currentPayload);
-        renderPresenterOutput(currentPayload, { onAutoAdvance: requestPresenterOutputNext });
-      }
+      sendControllerMessage({ type: "presenter-control", action, clientId: outputClientId });
+      applyPresenterOutputActionLocally(action);
     }
   });
 }
@@ -3427,6 +3433,8 @@ function renderPresenterOutput(payload, options = {}) {
   if (activeImageSource && !presenterOutputImageIsReady(activeImageSource)) {
     const token = ++presenterOutputRenderState.token;
     root.setAttribute("aria-busy", "true");
+    applyPresenterOutputFrameState(root, frameState);
+    presenterOutputLayers(root);
     preloadPresenterOutputImage(activeImageSource)?.finally(() => {
       if (token === presenterOutputRenderState.token) renderPresenterOutput(payload, options);
     });

@@ -963,7 +963,7 @@ body[data-module="backgrounds"] .sidebar-count,
 }
 .sidebar-search-wrap {
   flex: 0 0 auto;
-  width: calc(100% - var(--sidebar-item-x) - var(--sidebar-item-end));
+  width: calc(var(--sidebar-content-w) - var(--sidebar-item-x) - var(--sidebar-item-end));
   min-width: 0;
   margin: var(--s1) var(--sidebar-item-end) var(--s2) var(--sidebar-item-x);
 }
@@ -6001,10 +6001,11 @@ body[data-theme="dark"] .service-week-empty:hover {
 }
 .service-sidebar-presenter-context {
   display: grid;
+  width: calc(var(--sidebar-content-w) - var(--sidebar-item-x) - var(--sidebar-item-end));
   gap: 7px;
   border-radius: var(--r);
   background: color-mix(in srgb, var(--sidebar-active-bg) 86%, var(--sidebar-bg));
-  margin: 0 var(--sidebar-item-pad-x);
+  margin: 0 var(--sidebar-item-end) 0 var(--sidebar-item-x);
   padding: 14px 13px 15px;
 }
 .service-sidebar-presenter-context strong {
@@ -6373,7 +6374,7 @@ textarea.svc-presenter-input-control--multiline {
   position: static;
   z-index: auto;
   grid-template-columns: 1fr;
-  gap: 8px;
+  gap: 12px;
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -6392,6 +6393,8 @@ textarea.svc-presenter-input-control--multiline {
   display: grid;
   width: 100%;
   grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  padding: 6px;
   justify-self: stretch;
 }
 .svc-presenter-side-panel .svc-presenter-launch {
@@ -6415,6 +6418,7 @@ textarea.svc-presenter-input-control--multiline {
 }
 .svc-presenter-side-panel .svc-presenter-main {
   width: 100%;
+  gap: 8px;
   justify-content: space-between;
   justify-self: stretch;
 }

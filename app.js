@@ -19086,16 +19086,18 @@ function publicWorshipCommunityConfessionStep() {
     required: false,
     flex: true,
     sectionKey: "community_confession",
-    elements: [
-      {
-        label: "공동체고백",
-        name: "공동체고백",
-        elementType: "body",
-        default_text: PUBLIC_COMMUNITY_CONFESSION_TEXT,
-        introSlide: { title: "공동체고백" },
-        textHighlights: PUBLIC_COMMUNITY_CONFESSION_HIGHLIGHTS,
-      },
-    ],
+    elements: [publicWorshipCommunityConfessionElement()],
+  };
+}
+
+function publicWorshipCommunityConfessionElement() {
+  return {
+    label: "공동체고백",
+    name: "공동체고백",
+    elementType: "body",
+    default_text: PUBLIC_COMMUNITY_CONFESSION_TEXT,
+    introSlide: { title: "공동체고백" },
+    textHighlights: PUBLIC_COMMUNITY_CONFESSION_HIGHLIGHTS,
   };
 }
 
@@ -19231,8 +19233,14 @@ function publicSundayThirdTemplate(options = {}) {
       })
       : publicWorshipOfferingStep({ score: true, praiseLabel: "봉헌찬송", typeId }),
     publicSundayThirdAnnouncementsStep(),
-    ...(includeCommunityConfession ? [publicWorshipCommunityConfessionStep()] : []),
-    publicWorshipSendingStep({ typeId, doxology: false, extraElements: [publicSundayThirdSendingPraiseElement()] }),
+    publicWorshipSendingStep({
+      typeId,
+      doxology: false,
+      extraElements: [
+        ...(includeCommunityConfession ? [publicWorshipCommunityConfessionElement()] : []),
+        publicSundayThirdSendingPraiseElement(),
+      ],
+    }),
     includeClosingHymn ? publicSundayThirdClosingStep() : publicWorshipClosingStep(),
   ];
 }
@@ -20212,6 +20220,7 @@ function uniqueBy(items = [], keyFn) {
 const PUBLIC_TEMPLATE_SECTION_KEY_ALIASES = {
   closing_hymn: "closing_visual",
   closing_song: "closing_visual",
+  community_confession: "sending",
   doxology: "sending",
   benediction: "sending",
   lords_prayer: "sending",
@@ -28409,6 +28418,8 @@ function jumpPresenterToSlideInput(input) {
 
 async function openPresenterOutput(serviceId = state.selectedServiceId) {
   if (!serviceId) return;
+  preparePresenterService(serviceId);
+  publishPresenterState({ force: true });
   state.presenter.outputStopAt = 0;
   state.presenter.outputStoppingClientId = "";
   state.presenter.outputPendingAt = Date.now();
@@ -28418,7 +28429,6 @@ async function openPresenterOutput(serviceId = state.selectedServiceId) {
 
   const existingWindow = presenterOutputWindowRef();
   if (existingWindow) {
-    preparePresenterService(serviceId);
     publishPresenterState();
     startPresenterOutputWindowMonitor(serviceId);
     existingWindow.focus?.();
@@ -28428,7 +28438,6 @@ async function openPresenterOutput(serviceId = state.selectedServiceId) {
     return;
   }
   if (isPresenterOutputHeartbeatOpen()) {
-    preparePresenterService(serviceId);
     publishPresenterState();
     startPresenterOutputWindowMonitor(serviceId);
     window.setTimeout(() => publishPresenterState(), 250);
@@ -28475,7 +28484,6 @@ async function openPresenterOutput(serviceId = state.selectedServiceId) {
   outputWindow.addEventListener?.("load", () => {
     publishPresenterState();
   }, { once: true });
-  preparePresenterService(serviceId);
   publishPresenterState();
   window.setTimeout(() => publishPresenterState(), 250);
   renderPresenterControlState(serviceId);

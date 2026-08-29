@@ -439,7 +439,7 @@ def main() -> int:
                     and live_panel_state["hasPreview"]
                     and live_panel_state["hasEmptyPreview"]
                     and 1.72 <= live_panel_state["previewRatio"] <= 1.82
-                    and live_panel_state["topHeight"] <= 220
+                    and live_panel_state["topHeight"] <= 240
                     and live_panel_state["mediaCount"] == 0
                     and live_panel_state["overflowX"] == 0
                 )
@@ -822,6 +822,7 @@ def main() -> int:
                       const currentTop = currentRightSidebar?.querySelector('.svc-presenter-top');
                       const currentSidePanel = currentRightSidebar?.querySelector('.svc-presenter-side-panel');
                       const currentSidebarContext = document.querySelector('.service-sidebar-presenter-context');
+                      const sidebarSearch = document.querySelector('.sidebar-search-wrap');
                       const currentTitle = currentSidebarContext?.querySelector('.service-sidebar-presenter-title');
                       const currentDate = currentSidebarContext?.querySelector('.service-sidebar-presenter-date');
                       const sidebarLaunch = currentSidebarContext?.querySelector('.svc-presenter-launch--sidebar');
@@ -847,6 +848,8 @@ def main() -> int:
                         dateFontSize: parseFloat(dateStyle?.fontSize || '0'),
                         dateFontWeight: dateStyle?.fontWeight || '',
                         contextBackground: currentSidebarContext ? getComputedStyle(currentSidebarContext).backgroundColor : '',
+                        contextWidth: Math.round(currentSidebarContext?.getBoundingClientRect().width || 0),
+                        searchWidth: Math.round(sidebarSearch?.getBoundingClientRect().width || 0),
                         sidebarLaunch: {
                           exists: Boolean(sidebarLaunch),
                           action: sidebarLaunch?.dataset.presenterAction || '',
@@ -892,6 +895,7 @@ def main() -> int:
                     and sticky_title_state["dateFontSize"] >= 13
                     and int(sticky_title_state["dateFontWeight"]) >= 700
                     and sticky_title_state["contextBackground"] != "rgba(0, 0, 0, 0)"
+                    and abs(sticky_title_state["contextWidth"] - sticky_title_state["searchWidth"]) <= 1
                     and sticky_title_state["sidebarLaunch"]["exists"]
                     and sticky_title_state["sidebarLaunch"]["action"] in ("open", "stop")
                     and sticky_title_state["sidebarLaunch"]["label"] in ("송출 시작", "송출 종료")
