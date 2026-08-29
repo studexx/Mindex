@@ -4681,16 +4681,20 @@ def main() -> int:
                               .find((candidate) => candidate.querySelector('.service-outline-row--section strong')
                                 && candidate.querySelector('.service-outline-row--child .service-outline-kind'));
                             const sectionTitle = group?.querySelector('.service-outline-row--section strong');
+                            const sectionNo = group?.querySelector('.service-outline-row--section .service-outline-no');
                             const childLabel = group?.querySelector('.service-outline-row--child .service-outline-kind');
                             const guide = group?.querySelector('.service-outline-children');
-                            if (!group || !sectionTitle || !childLabel || !guide) return null;
+                            if (!group || !sectionTitle || !sectionNo || !childLabel || !guide) return null;
+                            const sectionNoRect = sectionNo.getBoundingClientRect();
                             const sectionLeft = sectionTitle.getBoundingClientRect().left;
                             const childLeft = childLabel.getBoundingClientRect().left;
                             return {
+                              numberRight: Number(sectionNoRect.right.toFixed(2)),
                               sectionLeft: Number(sectionLeft.toFixed(2)),
                               childLeft: Number(childLeft.toFixed(2)),
                               guideLeft: Number(guide.getBoundingClientRect().left.toFixed(2)),
                               guideBorderLeftWidth: getComputedStyle(guide).borderLeftWidth,
+                              numberTitleGap: Number((sectionLeft - sectionNoRect.right).toFixed(2)),
                               sectionMinusChild: Number((sectionLeft - childLeft).toFixed(2)),
                               childMinusGuide: Number((childLeft - guide.getBoundingClientRect().left).toFixed(2)),
                             };
@@ -4959,6 +4963,7 @@ def main() -> int:
                         and abs(presenter_terms["outlineHierarchyAlignment"]["sectionMinusChild"]) <= 0.5
                         and presenter_terms["outlineHierarchyAlignment"]["childMinusGuide"] >= 6
                         and presenter_terms["outlineHierarchyAlignment"]["guideBorderLeftWidth"] == "0px"
+                        and presenter_terms["outlineHierarchyAlignment"]["numberTitleGap"] >= 6
                         and presenter_terms["outlineMissingBadgeContract"] == {
                             "titledText": "찬양 1 10 전능왕 오셔서",
                             "titledBadges": 0,

@@ -3542,6 +3542,10 @@ body[data-module="presenter"] .detail-pane {
   font-weight: 700;
   line-height: 20px;
 }
+.service-outline-row--ready .service-outline-no,
+.service-outline-row--section .service-outline-no {
+  transform: translateX(-6px);
+}
 .service-outline-group {
   display: grid;
   min-width: 0;
