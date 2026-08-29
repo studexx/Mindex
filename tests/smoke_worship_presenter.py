@@ -6845,6 +6845,37 @@ def main() -> int:
                 else:
                     fail("presenter-preview-uses-static-video", json.dumps(preview_renderer_state, ensure_ascii=False))
 
+                video_paint_guard_state = page.evaluate(
+                    """
+                    (() => {
+                      const source = [
+                        String(preparePresenterOutputFrameForPaint),
+                        String(preparePresenterOutputVideoForPaint),
+                      ].join('\\n');
+                      return {
+                        frameWaitsForVideo: source.includes('video.presenter-video')
+                          && source.includes('preparePresenterOutputVideoForPaint'),
+                        waitsForFirstFrame: source.includes('HAVE_CURRENT_DATA')
+                          && source.includes('loadeddata')
+                          && source.includes('canplay'),
+                        retriesAutoplay: source.includes('video.play')
+                          && source.includes('playPromise.catch'),
+                        hasTimeoutFallback: source.includes('setTimeout')
+                          && source.includes('1500'),
+                      };
+                    })()
+                    """
+                )
+                if (
+                    video_paint_guard_state["frameWaitsForVideo"]
+                    and video_paint_guard_state["waitsForFirstFrame"]
+                    and video_paint_guard_state["retriesAutoplay"]
+                    and video_paint_guard_state["hasTimeoutFallback"]
+                ):
+                    pass_("presenter-output-video-paint-guard", json.dumps(video_paint_guard_state, ensure_ascii=False))
+                else:
+                    fail("presenter-output-video-paint-guard", json.dumps(video_paint_guard_state, ensure_ascii=False))
+
                 output_viewport_shot = output_page.screenshot()
                 fixed_viewport_pixels = {
                     "top": rgb_at(output_viewport_shot, 0.5, 0.01),

@@ -3869,8 +3869,45 @@ function preparePresenterOutputFrameForPaint(host) {
       image.onerror = resolve;
     });
   });
-  return Promise.all(imageReady)
+  const videos = [...host.querySelectorAll("video.presenter-video")];
+  const videoReady = videos.map(preparePresenterOutputVideoForPaint);
+  return Promise.all([...imageReady, ...videoReady])
     .then(() => nextAnimationFrame());
+}
+
+function preparePresenterOutputVideoForPaint(video) {
+  if (!video) return Promise.resolve();
+  const readyForPaint = () => video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA;
+  const requestPlayback = () => {
+    if (!video.autoplay) return;
+    const playPromise = video.play?.();
+    if (playPromise?.catch) playPromise.catch(() => {});
+  };
+  requestPlayback();
+  if (readyForPaint()) return Promise.resolve();
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      cleanup();
+      requestPlayback();
+      resolve();
+    };
+    const cleanup = () => {
+      window.clearTimeout(timeout);
+      video.removeEventListener("loadeddata", finish);
+      video.removeEventListener("canplay", finish);
+      video.removeEventListener("playing", finish);
+      video.removeEventListener("error", finish);
+    };
+    const timeout = window.setTimeout(finish, 1500);
+    video.addEventListener("loadeddata", finish, { once: true });
+    video.addEventListener("canplay", finish, { once: true });
+    video.addEventListener("playing", finish, { once: true });
+    video.addEventListener("error", finish, { once: true });
+    video.load?.();
+  });
 }
 
 function nextAnimationFrame() {
