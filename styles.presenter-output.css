@@ -375,17 +375,28 @@
 }
 .presenter-output-root.no-chromakey.has-background .presenter-ready-screen,
 .presenter-output-root.no-chromakey.has-background .presenter-waiting-loop {
+  grid-template-rows: auto auto;
+  align-content: center;
+  gap: 13cqh;
   background: transparent;
 }
 .presenter-output-root.no-chromakey.has-background .presenter-ready-screen::before,
-.presenter-output-root.no-chromakey.has-background .presenter-waiting-loop::before {
-  opacity: .34;
-}
 .presenter-output-root.no-chromakey.has-background .presenter-ready-screen::after,
 .presenter-output-root.no-chromakey.has-background .presenter-ready-screen-field,
+.presenter-output-root.no-chromakey.has-background .presenter-waiting-loop::before,
 .presenter-output-root.no-chromakey.has-background .presenter-waiting-loop::after,
 .presenter-output-root.no-chromakey.has-background .presenter-waiting-loop-field {
-  opacity: .26;
+  display: none;
+}
+.presenter-output-root.no-chromakey.has-background .presenter-ready-screen-copy,
+.presenter-output-root.no-chromakey.has-background .presenter-waiting-loop-copy {
+  transform: none;
+}
+.presenter-output-root.no-chromakey.has-background .presenter-waiting-loop-logo {
+  position: relative;
+  left: auto;
+  bottom: auto;
+  transform: none;
 }
 .presenter-waiting-loop {
   position: absolute;
