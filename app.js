@@ -23475,14 +23475,12 @@ function sundaySharedContentKey(item = {}) {
   if (slotKey === "sermon.scripture") return "sermon-scripture";
   if (slotKey.startsWith("sermon.citation")) return `sermon-citation:${Number(slotKey.split(".").pop()) || 1}`;
   if (slotKey === "offering.praise") return "offering-hymn";
-  if (slotKey === "hymn.main") return "main-praise:3";
   const sectionKey = String(item?._worshipSectionKey || item?.sectionKey || item?.section_key || "").trim();
   const label = compactSearchValue(item?.label || item?.raw_title || "");
   const praiseMatch = label.match(/^찬양(\d+)$/);
   if (sectionKey === "praise" && praiseMatch && Number(praiseMatch[1]) >= 1 && Number(praiseMatch[1]) <= 3) {
     return `main-praise:${Number(praiseMatch[1])}`;
   }
-  if (sectionKey === "hymn_praise" && label === "찬송") return "main-praise:3";
   if (sectionKey === "scripture_reading" && label === "성경봉독") return "scripture-reading";
   if (sectionKey === "sermon" && ["설교", "설교제목"].includes(label)) return "sermon-title";
   if (sectionKey === "sermon" && ["설교본문", "본문", "성경본문"].includes(label)) return "sermon-scripture";
@@ -23500,11 +23498,7 @@ function sundaySharedContentTypesForItem(item = {}, service = null) {
   const key = sundaySharedContentKey(item);
   if (!key) return [];
   if (key.startsWith("main-praise:") && ["sunday-first", "sunday-second"].includes(typeId)) {
-    if (key === "main-praise:3") return ["sunday-first", "sunday-second", "sunday-main"];
     return ["sunday-first", "sunday-second"];
-  }
-  if (key === "main-praise:3" && typeId === "sunday-main" && isSundayMainHymnPraiseSharedItem(item)) {
-    return ["sunday-first", "sunday-second", "sunday-main"];
   }
   if ((["scripture-reading", "sermon-title", "sermon-scripture"].includes(key) || key.startsWith("sermon-citation:")) && ["sunday-second", "sunday-main"].includes(typeId)) {
     return ["sunday-second", "sunday-main"];
@@ -23515,19 +23509,9 @@ function sundaySharedContentTypesForItem(item = {}, service = null) {
   return [];
 }
 
-function isSundayMainHymnPraiseSharedItem(item = {}) {
-  const sectionKey = String(item?._worshipSectionKey || item?.sectionKey || item?.section_key || "").trim();
-  const label = compactSearchValue(item?.label || item?.raw_title || "");
-  return sectionKey === "hymn_praise" && label === "찬송";
-}
-
 function sundaySharedContentItemIndex(items = [], key = "", service = null) {
   const typeId = worshipAppServiceTypeId(service?.type_id);
   if (key.startsWith("main-praise:") && isAllGenerationsWorshipService(service)) return -1;
-  if (key === "main-praise:3" && typeId === "sunday-main") {
-    const hymnIndex = items.findIndex((item) => isSundayMainHymnPraiseSharedItem(item));
-    if (hymnIndex >= 0) return hymnIndex;
-  }
   if (key === "main-praise:3" && ["sunday-first", "sunday-second"].includes(typeId)) {
     const praiseIndex = items.findIndex((item) =>
       String(item?._worshipSectionKey || item?.sectionKey || item?.section_key || "").trim() === "praise"
