@@ -2777,13 +2777,13 @@ async function loadSongsForIds(songIds = []) {
 
 function songNeedsRelationalHydration(songId = "") {
   if (!isUuid(songId)) return false;
-  const song = state.songs.find((candidate) => candidate.id === songId) || null;
+  const song = songById(songId);
   return !song || song._relationalVersionsLoaded !== true;
 }
 
 async function loadMissingSongsForIds(targetIds = []) {
-  const existingIds = new Set(state.songs.map((song) => song.id));
-  const missingIds = targetIds.filter((id) => !existingIds.has(id));
+  const existingSongs = songLookupMap();
+  const missingIds = targetIds.filter((id) => !existingSongs.has(id));
   let songRows = [];
   if (missingIds.length) {
     try {
@@ -2802,13 +2802,13 @@ async function loadMissingSongsForIds(targetIds = []) {
   }
 
   if (songRows.length) {
-    const songMap = new Map(state.songs.map((song) => [song.id, song]));
+    const songMap = new Map(songLookupMap());
     const linkedSongs = songRows.map(normalizeServerSong);
     for (const song of linkedSongs) songMap.set(song.id, song);
     state.songs = [...songMap.values()].sort(sortSongs);
     clearSearchCaches();
   }
-  const hydratableIds = targetIds.filter((id) => state.songs.some((song) => song.id === id));
+  const hydratableIds = targetIds.filter((id) => songById(id));
   if (!hydratableIds.length) return;
   await attachRelationalSongVersionsForSongs(hydratableIds);
 }
@@ -10557,14 +10557,19 @@ function serviceItemLinkedSong(item = {}) {
   return songById(songId);
 }
 
-function songById(songId = "") {
-  const id = String(songId || "").trim();
-  if (!id) return null;
+function songLookupMap() {
   if (state.songLookupSource !== state.songs) {
     state.songById = new Map((state.songs || []).map((song) => [String(song.id || ""), song]));
     state.songLookupSource = state.songs;
   }
-  return state.songById.get(id) || null;
+  return state.songById;
+}
+
+function songById(songId = "") {
+  const id = String(songId || "").trim();
+  if (!id) return null;
+  const lookup = songLookupMap();
+  return lookup.get(id) || null;
 }
 
 function serviceItemLinkedVersion(item = {}, song = serviceItemLinkedSong(item)) {
@@ -11363,7 +11368,7 @@ function selectServiceSongForItem(index, songId) {
   const service = selectedServiceForEditor();
   const items = getServiceItems(serviceId);
   const item = items[index];
-  const song = state.songs.find((candidate) => candidate.id === songId);
+  const song = songById(songId);
   if (!serviceId || !item || !song) return;
   if (serviceItemRequiresNewHymnalScoreSong(item) && !isNewHymnalScoreSong(song)) {
     showToast("악보 항목은 새찬송가 곡만 선택할 수 있습니다.", "error");
@@ -12868,7 +12873,7 @@ function pageTabTitleForSnapshot(snapshot = {}) {
     return book ? book.koreanName || book.englishName || "말씀" : "말씀";
   }
   if (moduleName === "praise") {
-    const song = state.songs.find((item) => item.id === snapshot.selectedSongId);
+    const song = songById(snapshot.selectedSongId);
     return song ? songListView(song).title || song.title || "찬양" : "찬양";
   }
   if (moduleName === "calendar") return "교회력";
@@ -17938,7 +17943,7 @@ function versionHasLyrics(version) {
 }
 
 function getSelectedSong() {
-  return state.songs.find((song) => song.id === state.selectedSongId) || null;
+  return songById(state.selectedSongId);
 }
 
 function getSelectedScripture() {
@@ -28848,7 +28853,7 @@ function presenterServiceNeedsHymnScoreManifest(serviceId) {
     const memo = parseServiceItemMemo(item?.memo);
     if (serviceItemOutputMode(item, memo) === "score") return true;
     const song = item?.song_id
-      ? state.songs.find((candidate) => candidate.id === item.song_id)
+      ? songById(item.song_id)
       : null;
     return Boolean(song?.hymn_no && isSongServiceLabel(item?.label || ""));
   });
