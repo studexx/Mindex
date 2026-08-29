@@ -13155,11 +13155,10 @@ function presenterBackgroundSourcesForService(service, options = {}) {
     sourceRef.backgroundImage,
     sourceRef.background,
   );
-  if (!value) {
+  if (!value || presenterBackgroundValueIsReadyAsset(value)) {
     const defaultFileName = presenterDefaultBackgroundFileNameForService(service);
     return defaultFileName ? worshipBackgroundSourcesForFileName(defaultFileName) : [];
   }
-  if (presenterBackgroundValueIsReadyAsset(value)) return [];
   if (/^(?:data:|https?:|blob:)/i.test(value)) return [resolveWorshipBackgroundSource(value)];
   if (value.includes("/")) return [resolveWorshipBackgroundSource(value)];
   if (/\.(?:jpe?g|png)$/i.test(value)) {

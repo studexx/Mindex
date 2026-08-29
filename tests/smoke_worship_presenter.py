@@ -8927,9 +8927,11 @@ def main() -> int:
                     """
                 )
                 if (
-                    friday_ready_background_guard["direct"] == []
-                    and friday_ready_background_guard["legacy"] == []
+                    any("26-B4.png" in source for source in friday_ready_background_guard["direct"])
+                    and any("26-B4.png" in source for source in friday_ready_background_guard["legacy"])
                     and all("friday-prayer-ready" not in source for source in friday_ready_background_guard["normal"])
+                    and all("friday-prayer-ready" not in source for source in friday_ready_background_guard["direct"])
+                    and all("friday-prayer-ready" not in source for source in friday_ready_background_guard["legacy"])
                 ):
                     pass_("presenter-friday-ready-background-guard", json.dumps(friday_ready_background_guard, ensure_ascii=False))
                 else:
