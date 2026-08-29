@@ -5526,10 +5526,16 @@ def main() -> int:
                         (() => {
                           const root = document.querySelector('.presenter-viewer');
                           const rect = root?.getBoundingClientRect();
+                          const board = document.querySelector('#servicePresenterControls');
+                          const boardRect = board?.getBoundingClientRect();
                           return {
                             mounted: Boolean(root),
                             controllerTitleRemoved: !document.querySelector('.presenter-viewer .svc-service-title')
                               && !document.querySelector('.presenter-viewer .svc-date-text'),
+                            presenterHeaderRemoved: !document.querySelector('.presenter-viewer .svc-header'),
+                            boardTop: Math.round(boardRect?.top || 0),
+                            rootTop: Math.round(rect?.top || 0),
+                            topGap: Math.round((boardRect?.top || 0) - (rect?.top || 0)),
                             hasReadonly: Boolean(document.querySelector('.service-readonly-view')),
                             hasPresenterControls: Boolean(document.querySelector('#servicePresenterControls')),
                             module: state.module,
@@ -5543,6 +5549,8 @@ def main() -> int:
                     if (
                         authoring_state["mounted"]
                         and authoring_state["controllerTitleRemoved"]
+                        and authoring_state["presenterHeaderRemoved"]
+                        and 0 <= authoring_state["topGap"] <= 8
                         and not authoring_state["hasReadonly"]
                         and authoring_state["hasPresenterControls"]
                         and authoring_state["module"] in ("service", "presenter")

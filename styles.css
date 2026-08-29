@@ -4152,6 +4152,9 @@ body[data-theme="dark"] .service-week-empty:hover {
   min-height: 0;
   padding: 4px 0 18px;
 }
+.presenter-viewer {
+  --svc-service-header-sticky-h: 0px;
+}
 .svc-header {
   position: sticky;
   top: var(--svc-service-sticky-top);

@@ -22205,16 +22205,6 @@ function renderPresenterDetail() {
   setRightSidebarContent(renderPresenterRightSidebar(svc, presenterSlides, presenterActive, presenterIndex));
   refs.detailPane.innerHTML = `
     <div class="service-viewer presenter-viewer">
-      <div class="svc-header">
-        <div class="svc-header-actions">
-          ${serviceSupportsBulletin(svc) ? `
-            <button class="svc-output-action svc-output-action--quiet" type="button" data-service-bulletin-action="open" data-service-id="${escapeAttr(serviceId)}" aria-label="청년부 주보 열기">
-              <i data-lucide="newspaper"></i>
-              <span>주보</span>
-            </button>` : ""}
-          ${renderWorshipModeTabs(serviceId, "presenter")}
-        </div>
-      </div>
       ${renderServicePresenterControls(svc, presenterSlides, presenterActive, presenterIndex)}
       ${renderPresenterSectionEditorLayer(svc)}
       ${renderServicePraiseDatalist()}

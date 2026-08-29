@@ -398,6 +398,7 @@ def main() -> int:
                       const button = document.querySelector('#presenterRightSidebarBtn');
                       const sidebar = document.querySelector('#mindexRightSidebar');
                       const headerToggle = document.querySelector('.svc-header-actions [data-presenter-right-sidebar-toggle]');
+                      const presenterHeader = document.querySelector('.presenter-viewer .svc-header');
                       const sidebarIsVisible = () => {
                         if (!sidebar || sidebar.hidden || !document.body.classList.contains('right-sidebar-open')) return false;
                         const style = getComputedStyle(sidebar);
@@ -407,6 +408,7 @@ def main() -> int:
                         buttonVisible: Boolean(button && !button.hidden),
                         saveHidden: Boolean(document.querySelector('#saveAllBtn')?.hidden),
                         headerToggleRemoved: !headerToggle,
+                        presenterHeaderRemoved: !presenterHeader,
                         sidebarVisible: sidebarIsVisible(),
                         bodyOpen: document.body.classList.contains('right-sidebar-open'),
                         bodyTransition: getComputedStyle(document.body).transitionProperty,
@@ -435,6 +437,7 @@ def main() -> int:
                     right_sidebar_toggle_state["before"]["buttonVisible"]
                     and right_sidebar_toggle_state["before"]["saveHidden"]
                     and right_sidebar_toggle_state["before"]["headerToggleRemoved"]
+                    and right_sidebar_toggle_state["before"]["presenterHeaderRemoved"]
                     and right_sidebar_toggle_state["before"]["sidebarVisible"]
                     and right_sidebar_toggle_state["before"]["bodyOpen"]
                     and "--shell-right-w" in right_sidebar_toggle_state["before"]["bodyTransition"]
@@ -668,17 +671,22 @@ def main() -> int:
                     async () => {
                       const pane = document.querySelector('.detail-pane');
                       const header = document.querySelector('.svc-header');
+                      const presenterHeader = document.querySelector('.presenter-viewer .svc-header');
+                      const board = document.querySelector('#servicePresenterControls');
                       const rightSidebar = document.querySelector('#mindexRightSidebar');
                       const top = rightSidebar?.querySelector('.svc-presenter-top');
                       const sidebarContext = document.querySelector('.service-sidebar-presenter-context');
                       const title = sidebarContext?.querySelector('.service-sidebar-presenter-title');
                       const date = sidebarContext?.querySelector('.service-sidebar-presenter-date');
                       const beforeHeader = header?.getBoundingClientRect();
+                      const beforeBoard = board?.getBoundingClientRect();
                       const beforeTop = top?.getBoundingClientRect();
                       if (pane) pane.scrollTop = 260;
                       document.scrollingElement.scrollTop = 260;
                       await new Promise((resolve) => requestAnimationFrame(resolve));
                       const currentHeader = document.querySelector('.svc-header');
+                      const currentPresenterHeader = document.querySelector('.presenter-viewer .svc-header');
+                      const currentBoard = document.querySelector('#servicePresenterControls');
                       const currentRightSidebar = document.querySelector('#mindexRightSidebar');
                       const currentTop = currentRightSidebar?.querySelector('.svc-presenter-top');
                       const currentSidePanel = currentRightSidebar?.querySelector('.svc-presenter-side-panel');
@@ -688,9 +696,12 @@ def main() -> int:
                       const controllerTitle = document.querySelector('.presenter-viewer .svc-service-title');
                       const controllerDate = document.querySelector('.presenter-viewer .svc-date-text');
                       const afterHeader = currentHeader?.getBoundingClientRect();
+                      const afterBoard = currentBoard?.getBoundingClientRect();
                       const afterTop = currentTop?.getBoundingClientRect();
                       const beforeHeaderTop = Math.round(beforeHeader?.top || 0);
                       const afterHeaderTop = Math.round(afterHeader?.top || 0);
+                      const beforeBoardTop = Math.round(beforeBoard?.top || 0);
+                      const afterBoardTop = Math.round(afterBoard?.top || 0);
                       const beforeControlsTop = Math.round(beforeTop?.top || 0);
                       const afterControlsTop = Math.round(afterTop?.top || 0);
                       return {
@@ -698,6 +709,7 @@ def main() -> int:
                         date: currentDate?.textContent.trim() || date?.textContent.trim() || '',
                         usesSidebarTitle: Boolean((currentTitle || title)?.closest('.service-sidebar-presenter-context') && !document.querySelector('.svc-presenter-title-row')),
                         controllerTitleRemoved: !controllerTitle && !controllerDate,
+                        presenterHeaderRemoved: !presenterHeader && !currentPresenterHeader,
                         headerPosition: currentHeader ? getComputedStyle(currentHeader).position : '',
                         controlsPosition: currentTop ? getComputedStyle(currentTop).position : '',
                         sidePanelPosition: currentSidePanel ? getComputedStyle(currentSidePanel).position : '',
@@ -706,6 +718,8 @@ def main() -> int:
                         beforeHeaderTop,
                         afterHeaderTop,
                         headerShift: Math.abs(afterHeaderTop - beforeHeaderTop),
+                        beforeBoardTop,
+                        afterBoardTop,
                         beforeControlsTop,
                         afterControlsTop,
                         controlsShift: Math.abs(afterControlsTop - beforeControlsTop),
@@ -720,14 +734,14 @@ def main() -> int:
                     and re.match(r"^\d{4}-\d{2}-\d{2} \((주일|월|화|수|목|금|토)\)", sticky_title_state["date"])
                     and sticky_title_state["usesSidebarTitle"]
                     and sticky_title_state["controllerTitleRemoved"]
+                    and sticky_title_state["presenterHeaderRemoved"]
                     and sticky_title_state["rightSidebarVisible"]
-                    and sticky_title_state["headerPosition"] == "sticky"
                     and sticky_title_state["controlsPosition"] == "static"
                     and sticky_title_state["sidePanelPosition"] == "static"
                     and sticky_title_state["sidePanelDisplay"] == "grid"
                     and sticky_title_state["headerShift"] <= 2
+                    and sticky_title_state["beforeBoardTop"] <= 96
                     and sticky_title_state["controlsShift"] <= 2
-                    and sticky_title_state["afterControlsTop"] < sticky_title_state["afterHeaderTop"]
                     and sticky_title_state["overflow"] <= 2
                 ):
                     pass_("presenter-sticky-service-title", json.dumps(sticky_title_state, ensure_ascii=False))
