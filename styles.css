@@ -148,7 +148,12 @@ body[data-theme="dark"] {
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 body { min-width: 320px; height: 100vh; margin: 0; overflow: hidden; background: var(--bg); color: var(--ink); line-height: 1.4; text-rendering: geometricPrecision; }
-body { --shell-left-w: var(--rail-w); transition: --shell-left-w var(--rail-motion); }
+body {
+  --shell-left-w: var(--rail-w);
+  transition:
+    --shell-left-w var(--rail-motion),
+    --shell-right-w var(--rail-motion);
+}
 body.is-chromium[data-module="service"],
 body.is-chromium[data-module="presenter"] {
   --rail-motion: 0ms;
@@ -746,12 +751,21 @@ body[data-module="praise"] .list-filter {
   min-width: 0;
   min-height: 0;
   align-content: start;
-  border-left: 1px solid color-mix(in srgb, var(--line) 58%, transparent);
+  border-left: 0;
   background: var(--sidebar-bg);
   overflow: hidden auto;
-  padding: var(--shell-edge-inset);
+  padding: var(--s1) 0 var(--s3);
+  opacity: 1;
+  transition:
+    opacity var(--rail-motion),
+    visibility var(--rail-motion);
 }
 .right-sidebar[hidden] { display: none; }
+body:not(.right-sidebar-open) .right-sidebar {
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+}
 .right-sidebar-head {
   display: flex;
   min-width: 0;

@@ -398,22 +398,32 @@ def main() -> int:
                       const button = document.querySelector('#presenterRightSidebarBtn');
                       const sidebar = document.querySelector('#mindexRightSidebar');
                       const headerToggle = document.querySelector('.svc-header-actions [data-presenter-right-sidebar-toggle]');
+                      const sidebarIsVisible = () => {
+                        if (!sidebar || sidebar.hidden || !document.body.classList.contains('right-sidebar-open')) return false;
+                        const style = getComputedStyle(sidebar);
+                        return style.visibility !== 'hidden' && Number(style.opacity) > 0.5;
+                      };
                       const before = {
                         buttonVisible: Boolean(button && !button.hidden),
                         saveHidden: Boolean(document.querySelector('#saveAllBtn')?.hidden),
                         headerToggleRemoved: !headerToggle,
-                        sidebarVisible: Boolean(sidebar && !sidebar.hidden),
+                        sidebarVisible: sidebarIsVisible(),
                         bodyOpen: document.body.classList.contains('right-sidebar-open'),
+                        bodyTransition: getComputedStyle(document.body).transitionProperty,
+                        sidebarTransition: sidebar ? getComputedStyle(sidebar).transitionProperty : '',
+                        sidebarBorderLeft: sidebar ? getComputedStyle(sidebar).borderLeftWidth : '',
                       };
                       button?.click();
                       const afterClose = {
-                        sidebarVisible: Boolean(sidebar && !sidebar.hidden),
+                        sidebarVisible: sidebarIsVisible(),
+                        sidebarMounted: Boolean(sidebar && !sidebar.hidden),
                         bodyOpen: document.body.classList.contains('right-sidebar-open'),
                         pressed: button?.getAttribute('aria-pressed') || '',
                       };
                       button?.click();
                       const afterOpen = {
-                        sidebarVisible: Boolean(sidebar && !sidebar.hidden),
+                        sidebarVisible: sidebarIsVisible(),
+                        sidebarMounted: Boolean(sidebar && !sidebar.hidden),
                         bodyOpen: document.body.classList.contains('right-sidebar-open'),
                         pressed: button?.getAttribute('aria-pressed') || '',
                       };
@@ -427,10 +437,15 @@ def main() -> int:
                     and right_sidebar_toggle_state["before"]["headerToggleRemoved"]
                     and right_sidebar_toggle_state["before"]["sidebarVisible"]
                     and right_sidebar_toggle_state["before"]["bodyOpen"]
+                    and "--shell-right-w" in right_sidebar_toggle_state["before"]["bodyTransition"]
+                    and "opacity" in right_sidebar_toggle_state["before"]["sidebarTransition"]
+                    and right_sidebar_toggle_state["before"]["sidebarBorderLeft"] == "0px"
                     and not right_sidebar_toggle_state["afterClose"]["sidebarVisible"]
+                    and right_sidebar_toggle_state["afterClose"]["sidebarMounted"]
                     and not right_sidebar_toggle_state["afterClose"]["bodyOpen"]
                     and right_sidebar_toggle_state["afterClose"]["pressed"] == "false"
                     and right_sidebar_toggle_state["afterOpen"]["sidebarVisible"]
+                    and right_sidebar_toggle_state["afterOpen"]["sidebarMounted"]
                     and right_sidebar_toggle_state["afterOpen"]["bodyOpen"]
                     and right_sidebar_toggle_state["afterOpen"]["pressed"] == "true"
                 )

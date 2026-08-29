@@ -14632,7 +14632,9 @@ function presenterRightSidebarIsOpen() {
 function applyRightSidebarVisibility(hasContent = refs.rightSidebar?.dataset.hasContent === "true") {
   if (!refs.rightSidebar) return;
   const open = Boolean(hasContent && presenterRightSidebarIsOpen());
-  refs.rightSidebar.hidden = !open;
+  refs.rightSidebar.hidden = !hasContent;
+  refs.rightSidebar.setAttribute("aria-hidden", String(!open));
+  if ("inert" in refs.rightSidebar) refs.rightSidebar.inert = !open;
   document.body.classList.toggle("right-sidebar-available", Boolean(hasContent));
   document.body.classList.toggle("right-sidebar-open", open);
   updatePresenterRightSidebarToggleButtons();
