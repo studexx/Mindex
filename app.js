@@ -406,7 +406,6 @@ const PRAISE_LIST_FILTERS = [
   ["ccm", "CCM"],
   ["children", "어린이"],
   ["empty", "빈 곡"],
-  ["partial-empty", "일부 빈 곡"],
   ["review", "검토 필요"],
 ];
 const PRAISE_LIST_FILTER_KEYS = PRAISE_LIST_FILTERS.map(([key]) => key);
@@ -414,7 +413,8 @@ const PRAISE_LIST_FILTER_ALIASES = {
   "all-review": "review",
   "attention-pink": "review",
   "attention-blue": "review",
-  "attention-yellow": "partial-empty",
+  "attention-yellow": "review",
+  "partial-empty": "review",
 };
 const MINDEX_TAB_STATE_STORAGE_KEY = "mindex.pageTabs.v1";
 const HOME_PAGE_TAB_ID = "tab-home";
@@ -15286,8 +15286,7 @@ function songAttentionTone(song) {
 
 function songMatchesPraiseStatusFilter(song, filterKey) {
   if (filterKey === "empty") return songEmptyStatus(song) === "all-empty";
-  if (filterKey === "partial-empty") return songEmptyStatus(song) === "some-empty";
-  if (filterKey === "review") return songNeedsReview(song);
+  if (filterKey === "review") return songEmptyStatus(song) === "some-empty" || songNeedsReview(song);
   return false;
 }
 
@@ -17032,7 +17031,7 @@ function getSongsForPraiseFilter() {
   if (state.praiseFilter === "hymns") return state.songs.filter((song) => songHasPraiseType(song, "hymn"));
   if (state.praiseFilter === "ccm") return state.songs.filter((song) => songHasPraiseType(song, "ccm"));
   if (state.praiseFilter === "children") return state.songs.filter((song) => songHasPraiseType(song, "children"));
-  if (["empty", "partial-empty", "review"].includes(state.praiseFilter)) {
+  if (["empty", "review"].includes(state.praiseFilter)) {
     return state.songs.filter((song) => songMatchesPraiseStatusFilter(song, state.praiseFilter));
   }
   return state.songs;

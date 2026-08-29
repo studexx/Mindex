@@ -8760,7 +8760,7 @@ def main() -> int:
                       state.selectedSongId = null;
                       state.selectedVersionId = null;
                       const results = {};
-                      for (const filter of ['empty', 'partial-empty', 'review']) {
+                      for (const filter of ['empty', 'review']) {
                         state.praiseFilter = filter;
                         results[filter] = getSongsForPraiseFilter().map((song) => song.id);
                       }
@@ -8786,13 +8786,12 @@ def main() -> int:
                 )
                 if (
                     praise_filter_state["results"]["empty"] == ["__filter_empty__"]
-                    and praise_filter_state["results"]["partial-empty"] == ["__filter_yellow_empty__"]
-                    and praise_filter_state["results"]["review"] == ["__filter_pink__", "__filter_blue__"]
+                    and praise_filter_state["results"]["review"] == ["__filter_pink__", "__filter_blue__", "__filter_yellow_empty__"]
                     and praise_filter_state["aliases"] == {
                         "allReview": "review",
                         "pink": "review",
                         "blue": "review",
-                        "yellow": "partial-empty",
+                        "yellow": "review",
                     }
                     and [item["key"] for item in praise_filter_state["filterButtons"]] == [
                         "all",
@@ -8800,7 +8799,6 @@ def main() -> int:
                         "ccm",
                         "children",
                         "empty",
-                        "partial-empty",
                         "review",
                     ]
                     and [item["label"] for item in praise_filter_state["filterButtons"]] == [
@@ -8809,7 +8807,6 @@ def main() -> int:
                         "CCM",
                         "어린이",
                         "빈 곡",
-                        "일부 빈 곡",
                         "검토 필요",
                     ]
                 ):
