@@ -14657,11 +14657,13 @@ function updatePresenterRightSidebarToggleButtons() {
   const open = presenterRightSidebarIsOpen();
   const hasContent = refs.rightSidebar?.dataset.hasContent === "true";
   if (refs.presenterRightSidebarBtn) {
-    refs.presenterRightSidebarBtn.hidden = !(state.module === "presenter" && hasContent);
+    const visible = state.module === "presenter";
+    refs.presenterRightSidebarBtn.hidden = !visible;
+    refs.presenterRightSidebarBtn.disabled = Boolean(visible && !hasContent);
     refs.presenterRightSidebarBtn.classList.toggle("is-active", open);
     refs.presenterRightSidebarBtn.setAttribute("aria-pressed", String(open));
-    refs.presenterRightSidebarBtn.setAttribute("aria-label", open ? "컨트롤러 닫기" : "컨트롤러 열기");
-    refs.presenterRightSidebarBtn.setAttribute("title", open ? "컨트롤러 닫기" : "컨트롤러 열기");
+    refs.presenterRightSidebarBtn.setAttribute("aria-label", hasContent && open ? "컨트롤러 닫기" : "컨트롤러 열기");
+    refs.presenterRightSidebarBtn.setAttribute("title", hasContent ? (open ? "컨트롤러 닫기" : "컨트롤러 열기") : "컨트롤러 준비 중");
   }
   document.querySelectorAll("[data-presenter-right-sidebar-toggle]").forEach((button) => {
     button.classList.toggle("is-active", open);

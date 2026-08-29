@@ -16,11 +16,19 @@
     <link rel="preload" href="./vendor/fonts/freesentation/Freesentation-6SemiBold.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="./vendor/fonts/freesentation/Freesentation-7Bold.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="./vendor/fonts/freesentation/Freesentation-8ExtraBold.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="stylesheet" href="./styles.css?v=mindex-hq-tab-add-20260830-001" />
+    <link rel="stylesheet" href="./styles.css?v=mindex-presenter-sidebar-toggle-20260830-001" />
     <link rel="stylesheet" href="./styles.presenter-output.css?v=mindex-ready-screen-scale-20260830-001" />
     <link rel="stylesheet" href="./styles.calendar.css?v=mindex-calendar-ui-012" />
   </head>
   <body>
+    <script>
+      (() => {
+        try {
+          const moduleName = sessionStorage.getItem("mindex.ui.module");
+          if (moduleName) document.body.dataset.module = moduleName;
+        } catch (_) {}
+      })();
+    </script>
     <div class="app-shell">
       <aside class="nav-sidebar" aria-label="Mindex 탐색 및 목록">
         <button id="sidebarToggleBtn" class="top-left-tool active" type="button" aria-label="사이드바 열기/닫기" aria-controls="mindexSidebarPanel" aria-expanded="true" aria-pressed="true">
@@ -93,7 +101,7 @@
             <i data-lucide="plus"></i>
             <span>새로 만들기</span>
           </button>
-          <button id="presenterRightSidebarBtn" class="icon-btn svc-right-sidebar-toggle" type="button" aria-label="컨트롤러 열기" title="컨트롤러 열기" hidden>
+          <button id="presenterRightSidebarBtn" class="icon-btn svc-right-sidebar-toggle" type="button" aria-label="컨트롤러 열기" title="컨트롤러 열기" disabled>
             <i data-lucide="panel-right"></i>
           </button>
           <button id="saveAllBtn" class="icon-btn primary" type="button" aria-label="저장" disabled>
@@ -123,6 +131,6 @@
     <script src="./mindex.constants.js?v=mindex-sidebar-state-001"></script>
     <script src="./mindex.design-tokens.js?v=mindex-design-tokens-20260819-002"></script>
     <script src="./mindex.presenter.js?v=mindex-chromakey-ready-loop-20260830-001"></script>
-    <script src="./app.js?v=mindex-chromakey-ready-loop-20260830-001"></script>
+    <script src="./app.js?v=mindex-presenter-sidebar-toggle-20260830-001"></script>
   </body>
 </html>

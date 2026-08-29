@@ -774,6 +774,12 @@ body[data-module="praise"] .list-filter {
 .svc-right-sidebar-toggle {
   color: var(--ink-3);
 }
+body:not([data-module="presenter"]) #presenterRightSidebarBtn {
+  display: none;
+}
+body[data-module="presenter"] #saveAllBtn {
+  display: none;
+}
 .svc-right-sidebar-toggle.is-active {
   color: var(--accent);
 }
