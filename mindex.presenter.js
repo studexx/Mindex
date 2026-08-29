@@ -3542,16 +3542,27 @@ function activatePresenterOutputLayer(root, activeLayer, nextLayer, frameState =
     activeLayer.classList.remove("is-active");
     activeLayer.classList.remove("is-next");
     nextLayer.classList.add("is-active");
+    if (animated) nextLayer.classList.add("is-entering");
     nextLayer.classList.remove("is-next");
     root?.prepend?.(nextLayer);
     root?.append?.(activeLayer);
+    if (animated) {
+      nextLayer.dataset.presenterEnteringToken = String(token);
+      window.requestAnimationFrame(() => {
+        if (nextLayer.dataset.presenterEnteringToken !== String(token)) return;
+        nextLayer.classList.remove("is-entering");
+        nextLayer.removeAttribute("data-presenter-entering-token");
+      });
+    }
     onActivated?.();
     const clearPreviousLayer = () => {
       if (token !== presenterOutputRenderState.token) return;
       if (activeLayer.classList.contains("is-active")) return;
       activeLayer.innerHTML = "";
       activeLayer.removeAttribute("data-presenter-frame-token");
+      activeLayer.removeAttribute("data-presenter-entering-token");
       activeLayer.classList.remove("is-exiting");
+      activeLayer.classList.remove("is-entering");
     };
     if (animated) window.setTimeout(clearPreviousLayer, transitionClearDelay);
     else clearPreviousLayer();

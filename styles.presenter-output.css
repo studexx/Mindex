@@ -144,6 +144,11 @@
 .presenter-output-layer.is-next {
   z-index: 1;
 }
+.presenter-output-layer.is-entering {
+  opacity: 0;
+  z-index: 2;
+  filter: brightness(.82);
+}
 .presenter-output-layer.is-exiting {
   z-index: 3;
 }
@@ -165,6 +170,10 @@
   .presenter-output-root.no-chromakey:not(.svc-slide-mini-canvas)
     > .presenter-output-layer.is-next {
     filter: brightness(.8);
+  }
+  .presenter-output-root.no-chromakey:not(.svc-slide-mini-canvas)
+    > .presenter-output-layer.is-entering {
+    filter: brightness(.82);
   }
   .presenter-output-root.no-chromakey:not(.svc-slide-mini-canvas)
     > .presenter-output-layer.is-exiting {
