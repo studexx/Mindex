@@ -3579,13 +3579,18 @@ body[data-module="presenter"] .detail-pane {
   white-space: nowrap;
 }
 .service-outline-row--child .service-outline-main strong {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
   color: var(--sidebar-sub);
   font-size: 12px;
   font-weight: 560;
   line-height: 16px;
   overflow: hidden;
   text-overflow: ellipsis;
+  overflow-wrap: normal;
   white-space: nowrap;
+  word-break: keep-all;
 }
 .service-outline-row--child:has(.service-outline-kind) {
   min-height: 36px;

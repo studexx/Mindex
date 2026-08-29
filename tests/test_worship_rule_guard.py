@@ -6,10 +6,15 @@ from pathlib import Path
 
 
 APP_JS = Path(__file__).resolve().parents[1] / "app.js"
+STYLES_CSS = Path(__file__).resolve().parents[1] / "styles.css"
 
 
 def read_app_js() -> str:
     return APP_JS.read_text(encoding="utf-8")
+
+
+def read_styles_css() -> str:
+    return STYLES_CSS.read_text(encoding="utf-8")
 
 
 def block(source: str, name: str, end_marker: str = "\n};") -> str:
@@ -180,6 +185,18 @@ class WorshipRuleGuardTests(unittest.TestCase):
             load_worship.index("await loadCalendarData({ silent: true })"),
             load_worship.index("await ensureUpcomingPublicWorshipServices()"),
         )
+
+    def test_worship_outline_child_titles_stay_single_line(self) -> None:
+        styles = read_styles_css()
+        match = re.search(r"\.service-outline-row--child \.service-outline-main strong\s*\{(?P<body>[^}]+)\}", styles)
+        self.assertIsNotNone(match)
+        body = match.group("body")
+        self.assertIn("display: block", body)
+        self.assertIn("white-space: nowrap", body)
+        self.assertIn("text-overflow: ellipsis", body)
+        self.assertIn("word-break: keep-all", body)
+        self.assertNotIn("-webkit-line-clamp", body)
+        self.assertNotIn("white-space: normal", body)
 
 if __name__ == "__main__":
     unittest.main()
