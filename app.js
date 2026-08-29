@@ -14836,30 +14836,32 @@ function renderReferenceGroups(links) {
                 aria-label="링크 그룹 이름"
               />
             ` : `<h3>${escapeHtml(group.title)}</h3>`}
-            <span>${escapeHtml(formatCount(group.links.length))}</span>
-            ${state.referenceGroupSupported ? `<div class="reference-group-actions" aria-label="링크 그룹 이동">
-              <button class="icon-btn quiet" type="button"
-                data-reference-action="move-group-up"
+            <div class="reference-group-tools">
+              <span class="reference-group-count">${escapeHtml(formatCount(group.links.length))}</span>
+              ${state.referenceGroupSupported ? `<div class="reference-group-actions" aria-label="링크 그룹 이동">
+                <button class="icon-btn quiet" type="button"
+                  data-reference-action="move-group-up"
+                  data-reference-group-key="${escapeAttr(group.key)}"
+                  ${index <= 0 ? "disabled" : ""}
+                  aria-label="그룹 위로 이동">
+                  <i data-lucide="arrow-up"></i>
+                </button>
+                <button class="icon-btn quiet" type="button"
+                  data-reference-action="move-group-down"
+                  data-reference-group-key="${escapeAttr(group.key)}"
+                  ${index >= groups.length - 1 ? "disabled" : ""}
+                  aria-label="그룹 아래로 이동">
+                  <i data-lucide="arrow-down"></i>
+                </button>
+              </div>
+              <button class="icon-btn quiet reference-group-edit" type="button"
+                data-reference-action="${state.editingReferenceGroupKey === group.key ? "done-group" : "edit-group"}"
                 data-reference-group-key="${escapeAttr(group.key)}"
-                ${index <= 0 ? "disabled" : ""}
-                aria-label="그룹 위로 이동">
-                <i data-lucide="arrow-up"></i>
-              </button>
-              <button class="icon-btn quiet" type="button"
-                data-reference-action="move-group-down"
-                data-reference-group-key="${escapeAttr(group.key)}"
-                ${index >= groups.length - 1 ? "disabled" : ""}
-                aria-label="그룹 아래로 이동">
-                <i data-lucide="arrow-down"></i>
-              </button>
+                aria-label="${state.editingReferenceGroupKey === group.key ? "그룹 편집 완료" : "그룹 이름 변경"}">
+                <i data-lucide="${state.editingReferenceGroupKey === group.key ? "check" : "pencil"}"></i>
+                <span>${state.editingReferenceGroupKey === group.key ? "완료" : "이름 변경"}</span>
+              </button>` : ""}
             </div>
-            <button class="icon-btn quiet reference-group-edit" type="button"
-              data-reference-action="${state.editingReferenceGroupKey === group.key ? "done-group" : "edit-group"}"
-              data-reference-group-key="${escapeAttr(group.key)}"
-              aria-label="${state.editingReferenceGroupKey === group.key ? "그룹 편집 완료" : "그룹 이름 변경"}">
-              <i data-lucide="${state.editingReferenceGroupKey === group.key ? "check" : "pencil"}"></i>
-              <span>${state.editingReferenceGroupKey === group.key ? "완료" : "이름 변경"}</span>
-            </button>` : ""}
           </div>
           <div class="reference-link-grid">
             ${group.links.map((link) => renderReferenceCard(link, group.links)).join("")}
@@ -21366,11 +21368,21 @@ function serviceSidebarOutlineFirstLine(value = "", item = null) {
   const line = String(value || "").split(/\r?\n/u).map((part) => part.trim()).find(Boolean) || "";
   if (!line) return "";
   if (isSidebarLiturgicalSummaryItem(item)) {
-    const commaIndex = line.indexOf(",");
-    const summary = commaIndex > 0 ? line.slice(0, commaIndex + 1).trim() : line;
+    const summary = serviceSidebarLiturgicalSummaryText(line, item);
     return summary.endsWith("...") || summary.endsWith("…") ? summary : `${summary}…`;
   }
   return line;
+}
+
+function serviceSidebarLiturgicalSummaryText(line = "", item = null) {
+  const compactLabel = compactSearchValue(item?.label || "");
+  const sectionKey = String(item?._worshipSectionKey || "").trim();
+  if (sectionKey === "community_confession" || compactLabel === "공동체고백") {
+    const splitIndex = line.indexOf("하나님의");
+    if (splitIndex > 0) return line.slice(0, splitIndex).trim();
+  }
+  const commaIndex = line.indexOf(",");
+  return commaIndex > 0 ? line.slice(0, commaIndex + 1).trim() : line;
 }
 
 function serviceSidebarPersonSummary(item = {}, service = null) {

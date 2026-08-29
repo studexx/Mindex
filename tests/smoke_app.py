@@ -1563,6 +1563,19 @@ def main() -> int:
                       title: document.querySelector('.references-shell .editor-title h2')?.textContent.trim() || '',
                       summary: document.querySelector('.references-shell .song-description-title')?.textContent.trim() || '',
                       headerBorder: getComputedStyle(document.querySelector('.references-shell .editor-head')).borderBottomWidth,
+                      groupToolGap: (() => {
+                        const title = document.querySelector('.reference-group-head h3');
+                        const tools = document.querySelector('.reference-group-tools');
+                        if (!title || !tools) return null;
+                        return Math.round(tools.getBoundingClientRect().left - title.getBoundingClientRect().right);
+                      })(),
+                      firstCardWidth: Math.round(document.querySelector('.reference-card')?.getBoundingClientRect().width || 0),
+                      groupWithinGrid: (() => {
+                        const group = document.querySelector('.reference-group');
+                        const grid = document.querySelector('.reference-link-grid');
+                        if (!group || !grid) return true;
+                        return group.getBoundingClientRect().right <= grid.getBoundingClientRect().right + 2;
+                      })(),
                       overflow: Math.max(document.documentElement.scrollWidth - window.innerWidth, document.body.scrollWidth - window.innerWidth)
                     }))()
                     """
@@ -1573,6 +1586,10 @@ def main() -> int:
                     and references_state["title"] == "참고자료"
                     and "링크" in references_state["summary"]
                     and references_state["headerBorder"] == "1px"
+                    and references_state["groupToolGap"] is not None
+                    and 6 <= references_state["groupToolGap"] <= 16
+                    and 0 < references_state["firstCardWidth"] <= 370
+                    and references_state["groupWithinGrid"]
                     and references_state["overflow"] <= 2
                 ):
                     pass_("references-utility-shell", json.dumps(references_state, ensure_ascii=False))
@@ -4141,7 +4158,7 @@ def main() -> int:
                         }
                         and template_terms["liturgicalSidebarSummaries"] == {
                             "creed": "전능하사 천지를 만드신 하나님 아버지를 내가 믿사오며,…",
-                            "community": "우리는 세상으로부터 부름 받은 하나님의 거룩한 백성입니다.…",
+                            "community": "우리는 세상으로부터 부름 받은…",
                             "lords": "하늘에 계신 우리 아버지여,…",
                         }
                         and template_terms["sundayFirstDoxologyProjectionRecovery"] == {

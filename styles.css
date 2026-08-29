@@ -1821,21 +1821,22 @@ body[data-module="calendar"] .detail-pane { overflow: hidden; }
 }
 .reference-group-stack {
   display: grid;
-  gap: var(--s4);
+  gap: 26px;
 }
 .reference-group {
   display: grid;
-  gap: var(--s2);
+  width: min(100%, 1520px);
+  gap: 10px;
 }
 .reference-group-head {
   display: flex;
   min-height: 24px;
   align-items: center;
   justify-content: flex-start;
-  gap: var(--s2);
+  gap: 10px;
 }
 .reference-group-head h3 {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-width: 0;
   margin: 0;
   color: var(--ink);
@@ -1843,17 +1844,25 @@ body[data-module="calendar"] .detail-pane { overflow: hidden; }
   font-weight: 700;
   line-height: 18px;
 }
-.reference-group-head > span {
+.reference-group-tools {
+  display: inline-flex;
+  min-width: 0;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 10px;
+}
+.reference-group-count {
   flex: 0 0 auto;
   color: var(--ink-4);
   font-size: 10px;
   font-weight: 700;
+  line-height: 14px;
 }
 .reference-group-actions {
   display: inline-flex;
   flex: 0 0 auto;
   align-items: center;
-  gap: 5px;
+  gap: 2px;
 }
 .reference-group-actions .icon-btn {
   width: var(--ui-icon-btn-dense);
@@ -1889,29 +1898,30 @@ body[data-module="calendar"] .detail-pane { overflow: hidden; }
   width: auto;
   height: 28px;
   gap: 5px;
-  padding: 0 8px;
+  padding: 0 7px;
 }
 .reference-group-edit span {
   display: inline;
   color: var(--ink-4);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
 }
 .reference-link-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(280px, 360px));
   gap: var(--s2);
+  justify-content: start;
 }
 .reference-card {
   display: grid;
-  min-height: 72px;
+  min-height: 68px;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: var(--s3);
+  gap: var(--s2);
   border-radius: var(--r);
   background: color-mix(in srgb, var(--panel-2) 42%, transparent);
   color: var(--ink-2);
-  padding: 12px;
+  padding: 11px 10px 11px 12px;
   text-decoration: none;
   transition: background .12s ease;
 }
@@ -1966,7 +1976,7 @@ body[data-module="calendar"] .detail-pane { overflow: hidden; }
 .reference-card-actions {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 2px;
 }
 .reference-card-actions .icon-btn {
   width: var(--ui-icon-btn-inline);
