@@ -6380,11 +6380,11 @@ textarea.svc-presenter-input-control--multiline {
   position: static;
   z-index: auto;
   grid-template-columns: 1fr;
-  gap: 12px;
+  gap: 14px;
   border: 0;
   border-radius: 0;
   background: transparent;
-  padding: 0 12px 10px;
+  padding: 0 14px 12px;
 }
 .svc-presenter-output-group {
   display: inline-flex;
@@ -6399,17 +6399,33 @@ textarea.svc-presenter-input-control--multiline {
   display: grid;
   width: 100%;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 8px;
-  padding: 6px;
+  gap: 10px;
+  background: transparent;
+  padding: 0;
   justify-self: stretch;
 }
 .svc-presenter-side-panel .svc-presenter-launch {
   grid-column: 1 / -1;
   width: 100%;
+  height: 34px;
   justify-self: stretch;
+  background: color-mix(in srgb, var(--panel-2) 42%, transparent);
+  color: var(--sidebar-ink);
+  letter-spacing: 0;
+}
+.svc-presenter-side-panel .svc-presenter-launch:hover,
+.svc-presenter-side-panel .svc-presenter-launch:focus-visible {
+  background: color-mix(in srgb, var(--panel-2) 64%, transparent);
+  color: var(--sidebar-ink);
 }
 .svc-presenter-side-panel .svc-presenter-screen-select {
   max-width: none;
+  background: transparent;
+  padding: 0;
+}
+.svc-presenter-side-panel .svc-presenter-pin-toggle {
+  background: transparent;
+  padding: 0;
 }
 .svc-presenter-main {
   display: inline-flex;
@@ -6424,9 +6440,19 @@ textarea.svc-presenter-input-control--multiline {
 }
 .svc-presenter-side-panel .svc-presenter-main {
   width: 100%;
-  gap: 8px;
+  gap: 10px;
+  background: transparent;
+  padding: 0;
   justify-content: space-between;
   justify-self: stretch;
+}
+.svc-presenter-side-panel .svc-presenter-state-group {
+  background: transparent;
+  padding: 0;
+}
+.svc-presenter-side-panel .svc-presenter-live-panel {
+  box-shadow: none;
+  padding: 0;
 }
 .svc-presenter-state-group {
   display: inline-flex;
