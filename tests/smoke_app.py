@@ -5546,7 +5546,7 @@ def main() -> int:
                     if (
                         presenter_input_label_vocabulary["praise"] == ["찬양"]
                         and presenter_input_label_vocabulary["scripture"] == ["말씀"]
-                        and presenter_input_label_vocabulary["title"] == ["제목", "담당"]
+                        and presenter_input_label_vocabulary["title"] == ["담당"]
                         and presenter_input_label_vocabulary["special"] == ["찬양", "가사", "담당"]
                         and presenter_input_label_vocabulary["announcement"] == ["내용"]
                         and all(label in ["찬양", "말씀", "제목", "내용", "가사", "담당"] for label in presenter_input_label_vocabulary["all"])

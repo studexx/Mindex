@@ -25280,13 +25280,14 @@ function renderPresenterServiceTextInputs(item, index, model, memo) {
   const announcementText = isAnnouncementTextInputItem(item);
   const titlePerson = serviceMemoElementType(memo) === "title_person";
   const titleLabel = presenterServiceTitleInputLabel(item, memo, { manualPraise });
+  const showTitleFieldLabel = titleLabel !== "제목";
   const titlePlaceholder = presenterServiceTitleInputPlaceholder(item, memo, titleLabel);
   const assigneeLabel = presenterServiceAssigneeInputLabel(item);
   const assigneePlaceholder = inferServiceItemAssignee(item) || assigneeLabel;
   return `
     ${needsTitle ? `
       <label class="svc-presenter-input-field">
-        <span>${escapeHtml(titleLabel)}</span>
+        ${showTitleFieldLabel ? `<span>${escapeHtml(titleLabel)}</span>` : ""}
         ${announcementText ? `
           <textarea class="svc-presenter-input-control svc-presenter-input-control--multiline" data-service-item-field="raw_title" data-service-item-index="${index}"
             rows="4" placeholder="1. 다음 주 모임 안내&#10;같은 항목의 추가 내용&#10;2. 새가족 환영" aria-label="${escapeAttr(`${item.label || "항목"} ${titleLabel}`)}">${escapeHtml(item.raw_title || "")}</textarea>
