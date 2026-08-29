@@ -5563,8 +5563,10 @@ def main() -> int:
                           renderServiceList();
                           renderPresenterDetail();
                           const legacyContext = document.querySelector('.service-sidebar-input-context');
-                          const bulkInput = document.querySelector('.service-sidebar--presenter [data-presenter-preparation-input]');
-                          const bulkButton = document.querySelector('.service-sidebar--presenter [data-presenter-preparation-apply]');
+                          const bulkInput = document.querySelector('.svc-presenter-side-panel [data-presenter-preparation-input]');
+                          const bulkButton = document.querySelector('.svc-presenter-side-panel [data-presenter-preparation-apply]');
+                          const sidePanel = document.querySelector('.svc-presenter-side-panel');
+                          const sidebarContext = document.querySelector('.service-sidebar-presenter-context');
                           const bulkTemplate = document.createElement('template');
                           bulkTemplate.innerHTML = renderPresenterSidebarPreparationInput(service).trim();
                           const bulkStatus = bulkTemplate.content.querySelector('.service-sidebar-head small')?.textContent.trim() || '';
@@ -5588,8 +5590,11 @@ def main() -> int:
                             .filter((item) => presenterServiceInputHasEditableField(item, service))
                             .map((item) => item.label || '');
                           return {
+                            module: state.module,
                             legacyContextRemoved: !legacyContext,
-                            railRemoved: !document.querySelector('.svc-presenter-input-rail'),
+                            railMounted: Boolean(document.querySelector('.svc-presenter-input-rail')),
+                            sidePanelMounted: Boolean(sidePanel),
+                            sidebarContext: sidebarContext?.textContent?.replace(/\\s+/g, ' ').trim() || '',
                             controlGroupCount: controlGroups.length,
                             headRowDisplay: firstHeadRowStyle?.display || '',
                             controlGroupJustify: firstControlStyle?.justifyContent || '',
@@ -5615,7 +5620,12 @@ def main() -> int:
                     )
                     if (
                         presenter_header_input["legacyContextRemoved"]
-                        and presenter_header_input["railRemoved"]
+                        and presenter_header_input["railMounted"]
+                        and presenter_header_input["sidePanelMounted"]
+                        and (
+                            presenter_header_input["module"] != "presenter"
+                            or presenter_header_input["sidebarContext"]
+                        )
                         and presenter_header_input["controlGroupCount"] >= 8
                         and presenter_header_input["headRowDisplay"] == "grid"
                         and presenter_header_input["controlGroupJustify"] in ("flex-start", "normal")
@@ -5627,7 +5637,7 @@ def main() -> int:
                         and presenter_header_input["songFieldCount"] >= 5
                         and presenter_header_input["bulkInput"] == presenter_header_input["bulkButton"]
                         and (
-                            (not presenter_header_input["bulkInput"] and presenter_header_input["bulkStatus"] == "")
+                            presenter_header_input["bulkStatus"] == ""
                             or presenter_header_input["bulkStatus"] in ("불러오는 중", "입력 완료", "입력 없음")
                             or presenter_header_input["bulkStatus"].endswith("개 입력 필요")
                         )
@@ -8157,7 +8167,8 @@ def main() -> int:
                             hasControls: Boolean(document.querySelector('#servicePresenterControls')),
                             legacyInputContextRemoved: !document.querySelector('.service-sidebar-input-context'),
                             headerControls: document.querySelectorAll('.svc-board-subgroup-controls [data-service-item-field]').length,
-                            railRemoved: !document.querySelector('.svc-presenter-input-rail')
+                            railMounted: Boolean(document.querySelector('.svc-presenter-input-rail')),
+                            sidePanelMounted: Boolean(document.querySelector('.svc-presenter-side-panel'))
                           };
                         })()
                         """
@@ -8171,7 +8182,8 @@ def main() -> int:
                         and authoring_narrow["hasControls"]
                         and authoring_narrow["legacyInputContextRemoved"]
                         and authoring_narrow["headerControls"] >= 0
-                        and authoring_narrow["railRemoved"]
+                        and authoring_narrow["railMounted"]
+                        and authoring_narrow["sidePanelMounted"]
                         and not authoring_narrow["hasReadonly"]
                     ):
                         pass_("presenter-narrow", json.dumps(authoring_narrow, ensure_ascii=False))

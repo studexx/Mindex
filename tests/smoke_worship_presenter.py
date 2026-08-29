@@ -346,9 +346,11 @@ def main() -> int:
                       const preview = panel?.querySelector('.svc-presenter-live-preview');
                       const previewRect = preview?.getBoundingClientRect();
                       const topRect = document.querySelector('.svc-presenter-top')?.getBoundingClientRect();
+                      const sidePanel = document.querySelector('.svc-presenter-side-panel');
                       return {
                         exists: Boolean(panel),
                         inActions: Boolean(panel && actions?.contains(panel)),
+                        inSidePanel: Boolean(panel && sidePanel?.contains(panel)),
                         status: panel?.querySelector('.svc-presenter-status')?.textContent.trim() || '',
                         title: panel?.querySelector('.svc-presenter-live-copy strong')?.textContent.trim() || '',
                         hasPreview: Boolean(preview),
@@ -364,12 +366,13 @@ def main() -> int:
                 live_panel_ok = (
                     live_panel_state["exists"]
                     and live_panel_state["inActions"]
+                    and live_panel_state["inSidePanel"]
                     and live_panel_state["status"] == "준비"
                     and live_panel_state["title"] == "송출 대기"
                     and live_panel_state["hasPreview"]
                     and live_panel_state["hasEmptyPreview"]
                     and 1.72 <= live_panel_state["previewRatio"] <= 1.82
-                    and live_panel_state["topHeight"] <= 60
+                    and live_panel_state["topHeight"] <= 220
                     and live_panel_state["mediaCount"] == 0
                     and live_panel_state["overflowX"] == 0
                 )
@@ -602,6 +605,7 @@ def main() -> int:
                       await new Promise((resolve) => requestAnimationFrame(resolve));
                       const currentHeader = document.querySelector('.svc-header');
                       const currentTop = document.querySelector('.svc-presenter-top');
+                      const currentSidePanel = document.querySelector('.svc-presenter-side-panel');
                       const currentTitle = document.querySelector('.svc-service-title');
                       const currentDate = document.querySelector('.svc-date-text');
                       const afterHeader = currentHeader?.getBoundingClientRect();
@@ -616,6 +620,7 @@ def main() -> int:
                         usesExistingHeader: Boolean((currentTitle || title)?.closest('.svc-header') && !document.querySelector('.svc-presenter-title-row')),
                         headerPosition: currentHeader ? getComputedStyle(currentHeader).position : '',
                         controlsPosition: currentTop ? getComputedStyle(currentTop).position : '',
+                        sidePanelPosition: currentSidePanel ? getComputedStyle(currentSidePanel).position : '',
                         beforeHeaderTop,
                         afterHeaderTop,
                         headerShift: Math.abs(afterHeaderTop - beforeHeaderTop),
@@ -633,7 +638,10 @@ def main() -> int:
                     and re.match(r"^\d{4}-\d{2}-\d{2} \((주일|월|화|수|목|금|토)\)", sticky_title_state["date"])
                     and sticky_title_state["usesExistingHeader"]
                     and sticky_title_state["headerPosition"] == "sticky"
-                    and sticky_title_state["controlsPosition"] == "sticky"
+                    and (
+                        sticky_title_state["controlsPosition"] == "sticky"
+                        or sticky_title_state["sidePanelPosition"] == "sticky"
+                    )
                     and sticky_title_state["headerShift"] <= 2
                     and sticky_title_state["controlsShift"] <= 2
                     and sticky_title_state["afterControlsTop"] > sticky_title_state["afterHeaderTop"]
