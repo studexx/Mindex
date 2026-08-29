@@ -6299,6 +6299,54 @@ def main() -> int:
                     else:
                         fail("presenter-media-persistence-guard", json.dumps(presenter_media_persistence_guard, ensure_ascii=False))
 
+                    worship_duplicate_slot_key_guard = page.evaluate(
+                        """
+                        (() => {
+                          const now = new Date().toISOString();
+                          let validationError = '';
+                          try {
+                            validateWorshipPersistenceRows({
+                              sections: [{
+                                id: '__smoke_duplicate_slot_section__',
+                                service_id: '__smoke_duplicate_slot_service__',
+                                created_at: now,
+                                updated_at: now,
+                              }],
+                              elements: [{
+                                id: '__smoke_duplicate_slot_first__',
+                                section_id: '__smoke_duplicate_slot_section__',
+                                created_at: now,
+                                updated_at: now,
+                                element_type: 'praise',
+                                source_ref: { label: '찬양 1', slotKey: 'praise.song.1' },
+                                config: {},
+                                asset: {},
+                              }, {
+                                id: '__smoke_duplicate_slot_second__',
+                                section_id: '__smoke_duplicate_slot_section__',
+                                created_at: now,
+                                updated_at: now,
+                                element_type: 'praise',
+                                source_ref: { label: '찬양 중복', slotKey: 'praise.song.1' },
+                                config: {},
+                                asset: {},
+                              }],
+                            }, { serviceId: '__smoke_duplicate_slot_service__' });
+                          } catch (error) {
+                            validationError = error?.message || String(error);
+                          }
+                          return {
+                            blocked: validationError.includes('저장 위치가') && validationError.includes('praise.song.1'),
+                            message: validationError,
+                          };
+                        })()
+                        """
+                    )
+                    if worship_duplicate_slot_key_guard["blocked"]:
+                        pass_("worship-duplicate-slot-key-guard", json.dumps(worship_duplicate_slot_key_guard, ensure_ascii=False))
+                    else:
+                        fail("worship-duplicate-slot-key-guard", json.dumps(worship_duplicate_slot_key_guard, ensure_ascii=False))
+
                     presenter_generic_asset_upload_guard = page.evaluate(
                         """
                         async () => {

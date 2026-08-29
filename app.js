@@ -6285,6 +6285,7 @@ async function persistSharedSundayServiceItems(service, items = [], options = {}
 function validateWorshipPersistenceRows(rows = {}, context = {}) {
   const errors = [];
   const serviceId = String(context.serviceId || "").trim();
+  const elementSlotByKey = new Map();
   (rows.sections || []).forEach((section, index) => {
     if (!section?.id) errors.push(`section[${index}] id missing`);
     if (!section?.service_id) errors.push(`section[${index}] service_id missing`);
@@ -6317,6 +6318,15 @@ function validateWorshipPersistenceRows(rows = {}, context = {}) {
     const asset = normalizeServiceAsset(element?.asset || element?.config?.asset);
     if (hasServiceAsset(asset) && !SERVICE_ASSET_KINDS.has(asset.kind || "")) {
       errors.push(`${label} unsupported asset.kind: ${asset.kind || "(empty)"}`);
+    }
+    const slotKey = normalizeWorshipSlotKey(element?.slot_key || element?.source_ref?.slotKey || element?.config?.slotKey);
+    if (slotKey) {
+      const existing = elementSlotByKey.get(slotKey);
+      if (existing && existing.id !== element?.id) {
+        errors.push(`${label} 저장 위치가 ${existing.label}와 겹칩니다: ${slotKey}`);
+      } else {
+        elementSlotByKey.set(slotKey, { id: element?.id || "", label });
+      }
     }
   });
   if (!errors.length) return;
