@@ -3391,9 +3391,16 @@ def main() -> int:
                               syncedScripture,
                               makeItem('__smoke_share_second__', '설교 본문', 'sermon', 3)
                             );
+                            const materializedSecondItems = materializeSharedSundayContentForPersistence(
+                              services[1],
+                              state.serviceItems.__smoke_share_second__
+                            );
+                            const materializedSecondPraise = materializedSecondItems.find((item) => item.label === '찬양 1');
                             const result = {
                               secondPraiseText: serviceItemDisplayText(secondPraise),
                               secondPraiseSongId: serviceItemWithSharedSundayContent(secondPraise, services[1]).song_id || '',
+                              secondPraiseMaterializedSongId: materializedSecondPraise?.song_id || '',
+                              secondPraiseMaterializedVersionId: materializedSecondPraise?.version_id || materializedSecondPraise?.song_version_id || '',
                               secondPraiseStatic: presenterServiceInputIsStatic(secondPraise),
                               secondPraiseMissing: resolvePresenterServiceItemContentState(secondPraise, parseServiceItemMemo(secondPraise.memo), null, services[1]).state,
                               secondOfferingText: serviceItemDisplayText(secondOffering),
@@ -4143,6 +4150,8 @@ def main() -> int:
                         and template_terms["sharedSundayContentProjection"]["secondPraiseMissing"] == "missing"
                         and template_terms["sharedSundayContentProjection"]["secondPraiseText"]
                         and template_terms["sharedSundayContentProjection"]["secondPraiseSongId"]
+                        and template_terms["sharedSundayContentProjection"]["secondPraiseMaterializedSongId"]
+                        and template_terms["sharedSundayContentProjection"]["secondPraiseMaterializedVersionId"]
                         and template_terms["sharedSundayContentProjection"]["secondOfferingText"]
                         and template_terms["sharedSundayContentProjection"]["thirdReadingRefs"] == ["마 13:31–33", "마 13:44–50"]
                         and template_terms["sharedSundayContentProjection"]["thirdReadingMissing"] == "filled"
@@ -4155,9 +4164,9 @@ def main() -> int:
                         and template_terms["sharedSundayContentProjection"]["thirdOfferingText"]
                         and template_terms["sharedSundayContentProjection"]["thirdOfferingStatic"] is True
                         and template_terms["sharedSundayContentProjection"]["syncedPraiseSongId"]
-                        and template_terms["sharedSundayContentProjection"]["clearedPraiseSongId"] == ""
+                        and template_terms["sharedSundayContentProjection"]["clearedPraiseSongId"] == template_terms["sharedSundayContentProjection"]["syncedPraiseSongId"]
                         and template_terms["sharedSundayContentProjection"]["syncedScriptureRefs"] == ["마 13:31–33", "마 13:44–50"]
-                        and template_terms["sharedSundayContentProjection"]["clearedScriptureRefs"] == []
+                        and template_terms["sharedSundayContentProjection"]["clearedScriptureRefs"] == ["마 13:31–33", "마 13:44–50"]
                         and template_terms["sharedSundayContentProjection"]["thirdMissingSlides"] == [
                             "찬양 1", "찬양 2", "찬양 3", "찬양 4", "찬송", "대표기도", "특송",
                         ]

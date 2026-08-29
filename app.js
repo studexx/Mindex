@@ -5972,7 +5972,8 @@ async function saveWorshipServiceInstance(service) {
     normalizeServiceItemsInCurrentOrder(getServiceItems(serviceId)),
   )).filter((item) => !isUnmodifiedTemplatePlaceholder(item));
   const elementTypedStateColumns = await worshipElementTypedStateColumns();
-  const rows = buildWorshipPersistenceRows(service, items, existingSectionById, existingElementById, {
+  const persistenceItems = materializeSharedSundayContentForPersistence(service, items);
+  const rows = buildWorshipPersistenceRows(service, persistenceItems, existingSectionById, existingElementById, {
     elementTypedStateColumns,
   });
   const suppressedItems = [...state.templateElementSuppressions.values()]
@@ -6068,7 +6069,7 @@ async function saveWorshipServiceInstance(service) {
     groupWorshipElements(rows.sections, rows.elements)[serviceId] || [],
   );
   suppressedItems.forEach((item) => suppressedIds.delete(item.id));
-  await syncSharedSundayContentAfterSave(service, items, { elementTypedStateColumns });
+  await syncSharedSundayContentAfterSave(service, persistenceItems, { elementTypedStateColumns });
   refreshPresenterForService(serviceId);
 }
 
@@ -6079,6 +6080,7 @@ async function syncSharedSundayContentAfterSave(sourceService, sourceItems = [],
   if (!serviceDate) return;
   const changedSharedItems = sourceItems
     .filter((item) => Boolean(item?._worshipSharedContentDirty))
+    .filter((item) => serviceItemHasDirectSundaySharedContent(item, sourceService))
     .filter((item) => sundaySharedContentKey(item) && sundaySharedContentTypesForItem(item, sourceService).length);
   if (!changedSharedItems.length) return;
 
@@ -6106,7 +6108,7 @@ async function syncSharedSundayContentAfterSave(sourceService, sourceItems = [],
         targetUpdates.set(targetService.id, update);
         continue;
       }
-      update.items[targetIndex] = applySharedSundayContentToItem(update.items[targetIndex], sourceItem);
+      update.items[targetIndex] = applySharedSundayContentToItem(update.items[targetIndex], sourceItem, sourceService);
       update.changed = true;
       targetUpdates.set(targetService.id, update);
     }
@@ -6125,7 +6127,8 @@ async function syncSharedSundayContentToService(targetService, key, sourceItem, 
   );
   const targetIndex = sundaySharedContentItemIndex(targetItems, key, targetService);
   if (targetIndex < 0) return;
-  targetItems[targetIndex] = applySharedSundayContentToItem(targetItems[targetIndex], sourceItem);
+  const sourceService = state.services.find((service) => service.id === sourceItem?.service_id) || null;
+  targetItems[targetIndex] = applySharedSundayContentToItem(targetItems[targetIndex], sourceItem, sourceService);
   await persistSharedSundayServiceItems(targetService, targetItems, options);
 }
 
@@ -6154,7 +6157,7 @@ async function ensureWorshipServiceRowsLoadedForPersistence(serviceId = "") {
   state.loadedWorshipServiceIds.add(id);
 }
 
-function applySharedSundayContentToItem(targetItem = {}, sourceItem = {}) {
+function applySharedSundayContentToItem(targetItem = {}, sourceItem = {}, sourceService = null) {
   const key = sundaySharedContentKey(targetItem) || sundaySharedContentKey(sourceItem);
   const next = {
     ...targetItem,
@@ -6162,6 +6165,7 @@ function applySharedSundayContentToItem(targetItem = {}, sourceItem = {}) {
     _worshipTemplatePlaceholder: false,
   };
   delete next._worshipSharedContentDirty;
+  if (!serviceItemHasDirectSundaySharedContent(sourceItem, sourceService)) return next;
 
   if (key === "scripture-reading" || key === "sermon-scripture" || key.startsWith("sermon-citation:")) {
     const targetMemo = parseServiceItemMemo(targetItem.memo);
@@ -6214,6 +6218,16 @@ function applySharedSundayContentToItem(targetItem = {}, sourceItem = {}) {
   }
 
   return next;
+}
+
+function materializeSharedSundayContentForPersistence(service = null, items = []) {
+  if (!worshipServiceParticipatesInSharedSundayContent(service)) return items;
+  return items.map((item) => {
+    if (serviceItemHasDirectSundaySharedContent(item, service)) return item;
+    const source = sharedSundayContentSourceItem(item, service);
+    if (!source?.item) return item;
+    return applySharedSundayContentToItem(item, source.item, source.service);
+  });
 }
 
 async function persistSharedSundayServiceItems(service, items = [], options = {}) {
