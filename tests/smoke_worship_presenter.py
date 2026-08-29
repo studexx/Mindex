@@ -5621,8 +5621,8 @@ def main() -> int:
                         "출 24:1   또 모세에게 이르시되",
                         "출 24:2   너 모세만 여호와께 가까이 나아오고",
                     ]
-	                    and scripture_context_state["citationBadge"] == "출 24:1"
-                    and scripture_context_state["citationNoNumberBadge"] in ["출애굽기 24:1–2", "출 24:1–2"]
+	                    and scripture_context_state["citationBadge"] == "출애굽기 24:1"
+                    and scripture_context_state["citationNoNumberBadge"] == "출애굽기 24:1–2"
 	                    and scripture_context_state["pendingType"] == "scripture-pending"
 	                    and scripture_context_state["pendingElementType"] == "blank"
 	                    and scripture_context_state["pendingLayout"] == "blank"
@@ -5830,6 +5830,43 @@ def main() -> int:
                     pass_("presenter-form-labels", json.dumps(form_label_state, ensure_ascii=False))
                 else:
                     fail("presenter-form-labels", json.dumps(form_label_state, ensure_ascii=False))
+
+                scripture_badge_state = page.evaluate(
+                    """
+                    (() => ({
+                      fromSlideBook: presenterSlideScriptureReferenceBadge({
+                        elementType: 'scripture_text',
+                        layout: 'lower_bar_text',
+                        referenceBook: '출',
+                        referenceRange: '3:1–3',
+                        text: '1 모세가 장인 이드로의 양 떼를 치더니',
+                      }),
+                      fromFullBook: presenterSlideScriptureReferenceBadge({
+                        elementType: 'scripture_text',
+                        layout: 'lower_bar_text',
+                        referenceBook: '출',
+                        referenceBookFull: '출애굽기',
+                        referenceRange: '3:1–3',
+                        text: '2 여호와의 사자가 떨기나무 가운데로부터',
+                      }),
+                      fromInline: presenterSlideScriptureReferenceBadge({
+                        elementType: 'scripture_text',
+                        layout: 'lower_bar_text',
+                        referenceBook: '',
+                        referenceRange: '',
+                        text: '출 3:1 모세가 장인 이드로의 양 떼를 치더니',
+                      }),
+                    }))()
+                    """
+                )
+                if scripture_badge_state == {
+                    "fromSlideBook": "출애굽기 3:1–3",
+                    "fromFullBook": "출애굽기 3:1–3",
+                    "fromInline": "출애굽기 3:1",
+                }:
+                    pass_("presenter-scripture-thumb-badge-full-book", json.dumps(scripture_badge_state, ensure_ascii=False))
+                else:
+                    fail("presenter-scripture-thumb-badge-full-book", json.dumps(scripture_badge_state, ensure_ascii=False))
 
                 legacy_artifact_state = page.evaluate(
                     """

@@ -27464,25 +27464,40 @@ function presenterSlideScriptureReferenceBadge(slide = {}) {
   const number = String(parts.number || "").trim();
   const chapter = String(slide.referenceRange || "").match(/^(\d+)/)?.[1] || "";
   const rawBook = String(slide.referenceBook || "").trim();
-  const book = typeof findBibleBookByReferenceName === "function"
-    ? (findBibleBookByReferenceName(rawBook)?.shortName || rawBook)
-    : rawBook;
+  const book = presenterScriptureReferenceBadgeBookName(rawBook, slide);
   if (book && chapter && number) return [book, `${chapter}:${number}`].filter(Boolean).join(" ").trim();
   const inlineReference = String(slide.text || "").trim().match(/^([^\s\d:;,.]+)\s+(\d+):(\d+(?:[–~-]\d+)?)/);
-  if (inlineReference) return `${inlineReference[1]} ${inlineReference[2]}:${inlineReference[3]}`.trim();
+  if (inlineReference) {
+    const inlineBook = presenterScriptureReferenceBadgeBookName(inlineReference[1]);
+    return `${inlineBook || inlineReference[1]} ${inlineReference[2]}:${inlineReference[3]}`.trim();
+  }
   const referenceRange = String(slide.referenceRange || "").trim();
   if (book && referenceRange) return [book, referenceRange].filter(Boolean).join(" ").trim();
   const parsed = typeof parseBibleReference === "function"
     ? parseBibleReference(slide.title || slide.marker || slide.elementTitle || "")
     : null;
   if (parsed?.book && parsed?.chapter) {
-    const parsedBook = parsed.book.shortName || parsed.book.koreanName || parsed.book.code || "";
+    const parsedBook = presenterScriptureReferenceBadgeBookName(parsed.book.koreanName || parsed.book.shortName || parsed.book.code);
     const parsedVerse = parsed.verse
       ? `${parsed.chapter}:${parsed.verse}${parsed.verseEnd ? `–${parsed.verseEnd}` : ""}`
       : `${parsed.chapter}장`;
     return [parsedBook, parsedVerse].filter(Boolean).join(" ").trim();
   }
   return "";
+}
+
+function presenterScriptureReferenceBadgeBookName(rawBook = "", slide = null) {
+  const explicitFullName = String(slide?.referenceBookFull || "").trim();
+  if (explicitFullName) return explicitFullName;
+  const raw = String(rawBook || "").trim();
+  if (!raw) return "";
+  const book = typeof findBibleBookByReferenceName === "function"
+    ? findBibleBookByReferenceName(raw)
+    : null;
+  const knownFullName = typeof KOREAN_BIBLE_BOOK_NAMES === "object" && book?.code
+    ? KOREAN_BIBLE_BOOK_NAMES[book.code]
+    : "";
+  return String(book?.koreanName || knownFullName || raw).trim();
 }
 
 function renderPresenterSlideMiniPreview(slide, serviceId = state.presenter.serviceId) {
