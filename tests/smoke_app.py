@@ -4695,6 +4695,41 @@ def main() -> int:
                               childMinusGuide: Number((childLeft - guide.getBoundingClientRect().left).toFixed(2)),
                             };
                           })(),
+                          outlineMissingBadgeContract: (() => {
+                            const service = selectedServiceForEditor();
+                            const titledItem = {
+                              id: '__smoke_outline_titled_missing__',
+                              service_id: service?.id || '__service__',
+                              label: '찬양 1',
+                              raw_title: '10 전능왕 오셔서',
+                            };
+                            const emptyItem = {
+                              id: '__smoke_outline_empty_missing__',
+                              service_id: service?.id || '__service__',
+                              label: '찬양 2',
+                              raw_title: '',
+                            };
+                            const titledHtml = renderServiceOutlineChildRow(service || { id: '__service__' }, titledItem, 0, -1, [{
+                              id: '__smoke_outline_titled_missing__:missing',
+                              elementId: '__smoke_outline_titled_missing__',
+                              missingContent: true,
+                            }]);
+                            const emptyHtml = renderServiceOutlineChildRow(service || { id: '__service__' }, emptyItem, 1, -1, [{
+                              id: '__smoke_outline_empty_missing__:missing',
+                              elementId: '__smoke_outline_empty_missing__',
+                              missingContent: true,
+                            }]);
+                            const titledHost = document.createElement('div');
+                            const emptyHost = document.createElement('div');
+                            titledHost.innerHTML = titledHtml;
+                            emptyHost.innerHTML = emptyHtml;
+                            return {
+                              titledText: titledHost.textContent.replace(/\\s+/g, ' ').trim(),
+                              titledBadges: titledHost.querySelectorAll('.service-outline-badge').length,
+                              emptyText: emptyHost.textContent.replace(/\\s+/g, ' ').trim(),
+                              emptyBadges: emptyHost.querySelectorAll('.service-outline-badge').length,
+                            };
+                          })(),
                           collapsedBoardSubgroups: document.querySelectorAll('.svc-board-subgroup.collapsed-head').length,
                           mainPraiseSubgroupLabels: (() => {
                             const group = { kind: 'main-praise', label: '찬양', subgroups: [] };
@@ -4924,6 +4959,12 @@ def main() -> int:
                         and abs(presenter_terms["outlineHierarchyAlignment"]["sectionMinusChild"]) <= 0.5
                         and presenter_terms["outlineHierarchyAlignment"]["childMinusGuide"] >= 6
                         and presenter_terms["outlineHierarchyAlignment"]["guideBorderLeftWidth"] == "0px"
+                        and presenter_terms["outlineMissingBadgeContract"] == {
+                            "titledText": "찬양 1 10 전능왕 오셔서",
+                            "titledBadges": 0,
+                            "emptyText": "찬양 2 입력 필요",
+                            "emptyBadges": 1,
+                        }
                         and all(
                             (
                                 item["start"] == ""

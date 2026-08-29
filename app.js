@@ -21204,6 +21204,7 @@ function renderServiceOutlineChildRow(service, item, index, selectedIndex, slide
   const titleParts = serviceSidebarChildItemDisplayParts(item, service);
   const interactionHint = presenterSlideInteractionHint(service.id, title);
   const missing = serviceOutlineMissingState(item, slides);
+  const showMissingBadge = missing?.missingContent && !titleParts.title;
   return `
     <button class="service-outline-row service-outline-row--child${selected ? " selected" : ""}${activeSlide ? " active" : ""}" type="button"
       data-service-outline-slide="${escapeAttr(slideIndex >= 0 ? slideIndex : "")}"
@@ -21216,7 +21217,7 @@ function renderServiceOutlineChildRow(service, item, index, selectedIndex, slide
       <span class="service-outline-main">
         ${titleParts.meta ? `<span class="service-outline-kind">${escapeHtml(titleParts.meta)}</span>` : ""}
         ${titleParts.title ? `<strong>${escapeHtml(titleParts.title)}</strong>` : ""}
-        ${renderServiceOutlineMissingBadge(missing)}
+        ${showMissingBadge ? renderServiceOutlineMissingBadge(missing) : ""}
       </span>
       <span class="service-outline-start"></span>
     </button>`;
