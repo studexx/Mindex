@@ -21365,9 +21365,10 @@ function serviceSidebarChildItemDisplayText(item = {}) {
 function serviceSidebarOutlineFirstLine(value = "", item = null) {
   const line = String(value || "").split(/\r?\n/u).map((part) => part.trim()).find(Boolean) || "";
   if (!line) return "";
-  if (isCreedServiceItem(item)) {
+  if (isSidebarLiturgicalSummaryItem(item)) {
     const commaIndex = line.indexOf(",");
-    return commaIndex > 0 ? line.slice(0, commaIndex + 1).trim() : line;
+    const summary = commaIndex > 0 ? line.slice(0, commaIndex + 1).trim() : line;
+    return summary.endsWith("...") || summary.endsWith("…") ? summary : `${summary}…`;
   }
   return line;
 }
@@ -24015,6 +24016,17 @@ function isCreedServiceItem(item = {}) {
   return label === "사도신경" || (label === "신앙고백" && title === "사도신경");
 }
 
+function isSidebarLiturgicalSummaryItem(item = {}) {
+  const sectionKey = String(item?._worshipSectionKey || "").trim();
+  if (["creed", "lords_prayer", "community_confession"].includes(sectionKey)) return true;
+  const label = compactSearchValue(item?.label || "");
+  const title = compactSearchValue(item?.raw_title || item?.title || "");
+  return label === "사도신경"
+    || label === "주기도문"
+    || label === "공동체고백"
+    || (label === "신앙고백" && title === "사도신경");
+}
+
 function isCreedPresenterItem(item = {}, label = "", displayText = "") {
   if (isCreedServiceItem(item)) return true;
   const compactLabel = compactSearchValue(label || item?.label || "");
@@ -24145,7 +24157,6 @@ function resolvePresenterTargetScreenRect() {
 }
 
 function renderPresenterScreenControl() {
-  if (!window.mindexElectron?.getPresenterDisplays && (!window.getScreenDetails || !window.isSecureContext)) return "";
   if (state.presenter.screens.length) {
     return `
       <label class="svc-presenter-screen-select">
@@ -24167,24 +24178,29 @@ function renderPresenterScreenControl() {
 }
 
 function renderPresenterAlwaysOnTopControl() {
-  if (!window.mindexElectron?.setPresenterAlwaysOnTop) return "";
+  const supported = Boolean(window.mindexElectron?.setPresenterAlwaysOnTop);
   return `
-    <label class="svc-presenter-pin-toggle" title="출력 창을 항상 위에 표시">
-      <input type="checkbox" data-presenter-always-on-top ${state.presenter.alwaysOnTop ? "checked" : ""} />
+    <label class="svc-presenter-pin-toggle${supported ? "" : " is-unavailable"}" title="${supported ? "출력 창을 항상 위에 표시" : "웹 버전에서는 항상 위 표시를 지원하지 않습니다"}">
+      <input type="checkbox" data-presenter-always-on-top ${supported && state.presenter.alwaysOnTop ? "checked" : ""} />
       <span class="svc-presenter-pin-track" aria-hidden="true"></span>
       <span>항상 위</span>
     </label>`;
 }
 
 function setPresenterAlwaysOnTopPreference(enabled) {
+  const updater = window.mindexElectron?.setPresenterAlwaysOnTop;
+  if (!updater) {
+    state.presenter.alwaysOnTop = false;
+    safeStorageRemove("local", PRESENTER_ALWAYS_ON_TOP_STORAGE_KEY);
+    showToast("웹 버전에서는 항상 위 표시를 지원하지 않습니다.", "info");
+    renderPresenterControlState(presenterViewServiceId());
+    return;
+  }
   state.presenter.alwaysOnTop = Boolean(enabled);
   safeStorageSet("local", PRESENTER_ALWAYS_ON_TOP_STORAGE_KEY, state.presenter.alwaysOnTop ? "true" : "false");
-  const updater = window.mindexElectron?.setPresenterAlwaysOnTop;
-  if (updater) {
-    updater({ enabled: state.presenter.alwaysOnTop }).catch((error) => {
-      console.warn("Could not update presenter always-on-top state.", error);
-    });
-  }
+  updater({ enabled: state.presenter.alwaysOnTop }).catch((error) => {
+    console.warn("Could not update presenter always-on-top state.", error);
+  });
   renderPresenterControlState(presenterViewServiceId());
 }
 

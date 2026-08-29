@@ -6767,6 +6767,12 @@ textarea.svc-presenter-input-control--multiline {
   outline: 2px solid color-mix(in srgb, var(--accent) 64%, transparent);
   outline-offset: 2px;
 }
+.svc-presenter-pin-toggle.is-unavailable {
+  color: var(--ink-4);
+}
+.svc-presenter-pin-toggle.is-unavailable .svc-presenter-pin-track {
+  background: color-mix(in srgb, var(--ink-4) 22%, transparent);
+}
 .svc-slide-board {
   display: grid;
   min-width: 0;

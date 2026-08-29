@@ -378,6 +378,59 @@ def main() -> int:
                 else:
                     fail("presenter-live-status-panel", json.dumps(live_panel_state, ensure_ascii=False))
 
+                web_output_controls_state = page.evaluate(
+                    """
+                    (serviceId) => {
+                      const previousElectron = window.mindexElectron;
+                      const previousAlwaysOnTop = state.presenter.alwaysOnTop;
+                      const previousShowToast = showToast;
+                      const toastMessages = [];
+                      try {
+                        delete window.mindexElectron;
+                        state.presenter.alwaysOnTop = false;
+                        showToast = (message, type) => {
+                          toastMessages.push({ message, type });
+                        };
+                        renderPresenterControlState(serviceId);
+                        const detectButton = document.querySelector('[data-presenter-action="detect-screens"]');
+                        const toggle = document.querySelector('[data-presenter-always-on-top]');
+                        if (toggle) {
+                          toggle.checked = true;
+                          toggle.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
+                        return {
+                          detectVisible: Boolean(detectButton),
+                          toggleVisible: Boolean(toggle),
+                          unavailableClass: Boolean(toggle?.closest('.svc-presenter-pin-toggle')?.classList.contains('is-unavailable')),
+                          alwaysOnTop: state.presenter.alwaysOnTop,
+                          toastMessages,
+                        };
+                      } finally {
+                        if (previousElectron === undefined) delete window.mindexElectron;
+                        else window.mindexElectron = previousElectron;
+                        state.presenter.alwaysOnTop = previousAlwaysOnTop;
+                        showToast = previousShowToast;
+                        renderPresenterControlState(serviceId);
+                      }
+                    }
+                    """,
+                    service["id"],
+                )
+                web_output_controls_ok = (
+                    web_output_controls_state["detectVisible"]
+                    and web_output_controls_state["toggleVisible"]
+                    and web_output_controls_state["unavailableClass"]
+                    and not web_output_controls_state["alwaysOnTop"]
+                    and web_output_controls_state["toastMessages"] == [{
+                        "message": "웹 버전에서는 항상 위 표시를 지원하지 않습니다.",
+                        "type": "info",
+                    }]
+                )
+                if web_output_controls_ok:
+                    pass_("presenter-web-output-controls-fallback", json.dumps(web_output_controls_state, ensure_ascii=False))
+                else:
+                    fail("presenter-web-output-controls-fallback", json.dumps(web_output_controls_state, ensure_ascii=False))
+
                 announcement_center_state = page.evaluate(
                     """
                     (() => {

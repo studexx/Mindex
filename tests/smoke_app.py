@@ -3237,6 +3237,21 @@ def main() -> int:
                             ).map((row) => row.label);
                             return { pastorPreacher, layPreacher };
                           })(),
+                          liturgicalSidebarSummaries: (() => {
+                            const item = (label, key, text) => normalizeServiceItem({
+                              id: `__smoke_liturgical_sidebar_${key}__`,
+                              service_id: '__smoke_liturgical_sidebar__',
+                              label,
+                              raw_title: text,
+                              _worshipSectionKey: key,
+                              memo: serializeServiceItemMemo({ elementType: 'body' }),
+                            });
+                            return {
+                              creed: serviceSidebarOutlineFirstLine('전능하사 천지를 만드신 하나님 아버지를 내가 믿사오며,', item('사도신경', 'creed', '사도신경')),
+                              community: serviceSidebarOutlineFirstLine('우리는 세상으로부터 부름 받은 하나님의 거룩한 백성입니다.', item('공동체고백', 'community_confession', '공동체고백')),
+                              lords: serviceSidebarOutlineFirstLine('하늘에 계신 우리 아버지여, 이름이 거룩히 여김을 받으시오며', item('주기도문', 'lords_prayer', '주기도문')),
+                            };
+                          })(),
                           sundayFirstDoxologyProjectionRecovery: (() => {
                             const previousServices = state.services.slice();
                             const previousItems = state.serviceItems;
@@ -4124,6 +4139,11 @@ def main() -> int:
                             "pastorPreacher": ["설교 제목", "축도"],
                             "layPreacher": ["설교 제목", "주기도문"],
                         }
+                        and template_terms["liturgicalSidebarSummaries"] == {
+                            "creed": "전능하사 천지를 만드신 하나님 아버지를 내가 믿사오며,…",
+                            "community": "우리는 세상으로부터 부름 받은 하나님의 거룩한 백성입니다.…",
+                            "lords": "하늘에 계신 우리 아버지여,…",
+                        }
                         and template_terms["sundayFirstDoxologyProjectionRecovery"] == {
                             "labels": ["송영", "축도"],
                             "doxology": True,
@@ -5007,7 +5027,7 @@ def main() -> int:
                             "welcomeSidebar": "환영 · 헤세드 찬양단",
                             "welcomeSidebarParts": {"meta": "환영", "title": "헤세드 찬양단"},
                             "multilineSidebar": "사도신경",
-                            "multilineSidebarParts": {"meta": "사도신경", "title": "나는 전능하신 아버지 하나님,"},
+                            "multilineSidebarParts": {"meta": "사도신경", "title": "나는 전능하신 아버지 하나님,…"},
                             "praiseSidebarParts": {"meta": "찬양 1", "title": "은혜 은혜"},
                             "connectedPraiseSidebarParts": {"meta": "찬양 6–7", "title": "함께 지어져 가네 + 성도의 노래"},
                             "connectedPraiseSidebar": "찬양 6–7 · 함께 지어져 가네 + 성도의 노래",
