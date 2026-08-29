@@ -4466,10 +4466,10 @@ def main() -> int:
 	                        "elementType": "title_assignee",
 	                        "layout": "lower_bar_text",
 	                        "title": "대표기도",
-                        "assignee": "불러오는 중",
-	                        "text": "대표기도\n불러오는 중",
+                        "assignee": "김남영 목사",
+	                        "text": "대표기도\n김남영 목사",
 	                        "missingContent": False,
-	                        "warnings": ["불러오는 중"],
+	                        "warnings": [],
 	                    }]
 	                    and form_preset_state["persistenceStateRows"] == [
 	                        {

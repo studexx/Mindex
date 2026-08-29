@@ -29013,6 +29013,19 @@ function resolvePresenterServiceItemContentState(item = {}, memo = emptyServiceI
   if (isOptionalCitationScriptureServiceItem(item) && !serviceItemScriptureReferences(item, memo, service).length) {
     return filled("optional_citation_empty");
   }
+  if (elementType === "title_person") {
+    const textInputState = presenterServiceRequiredTextInputState(
+      item,
+      serviceItemEditorModel(item, { service }),
+      memo,
+      service,
+    );
+    if (textInputState.complete) return filled("title_person");
+    if (item?._worshipTemplatePlaceholder && serviceItemsAreHydrating(service?.id)) {
+      return loading("service_items_hydrating");
+    }
+    return missing(textInputState.missingReason);
+  }
   if (item?._worshipTemplatePlaceholder
     && !rawText
     && !hasServiceAsset(asset)
@@ -29044,16 +29057,6 @@ function resolvePresenterServiceItemContentState(item = {}, memo = emptyServiceI
     return serviceItemScriptureReferences(item, memo, service).length || serviceScriptureTextPayload(item, memo, service).verses.length
       ? filled("scripture_reference")
       : missing(rawText ? "scripture_reference_invalid" : "scripture_empty");
-  }
-  if (elementType === "title_person") {
-    const textInputState = presenterServiceRequiredTextInputState(
-      item,
-      serviceItemEditorModel(item, { service }),
-      memo,
-      service,
-    );
-    if (!textInputState.complete) return missing(textInputState.missingReason);
-    return filled("title_person");
   }
   if (song || item?.song_id) return filled("song");
   if (rawText) return filled("raw_title");
