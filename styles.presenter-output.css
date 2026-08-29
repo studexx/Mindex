@@ -154,43 +154,9 @@
   opacity: 1;
   z-index: 3;
 }
-.presenter-output-root.no-chromakey:not(.svc-slide-mini-canvas)
-  > .presenter-output-layer {
+.presenter-output-root > .presenter-output-layer {
   transition: none;
-}
-@media (prefers-reduced-motion: no-preference) {
-  .presenter-output-root.no-chromakey:not(.svc-slide-mini-canvas)
-    > .presenter-output-layer {
-    will-change: opacity, transform;
-  }
-  .presenter-output-root.no-chromakey:not(.svc-slide-mini-canvas)
-    > .presenter-output-layer.is-entering {
-    animation: presenter-layer-fade-in 220ms linear forwards;
-  }
-  .presenter-output-root.no-chromakey:not(.svc-slide-mini-canvas)
-    > .presenter-output-layer.is-exiting {
-    animation: presenter-layer-fade-out 220ms linear forwards;
-  }
-}
-@keyframes presenter-layer-fade-in {
-  from {
-    opacity: 0;
-    transform: translateZ(0);
-  }
-  to {
-    opacity: 1;
-    transform: translateZ(0);
-  }
-}
-@keyframes presenter-layer-fade-out {
-  from {
-    opacity: 1;
-    transform: translateZ(0);
-  }
-  to {
-    opacity: 0;
-    transform: translateZ(0);
-  }
+  animation: none;
 }
 .presenter-output-root.no-chromakey {
   --presenter-output-bg: #050807;
@@ -1138,18 +1104,18 @@
   left: 50%;
   width: var(--presenter-blank-cross-stroke);
   height: calc(450 * var(--presenter-stage-unit));
-  transform: translateX(-50%) scaleY(0);
+  transform: translateX(-50%) scaleY(1);
   transform-origin: center top;
-  animation: presenter-blank-cross-vertical 550ms ease-out forwards;
+  animation: none;
 }
 .presenter-output-root.no-chromakey.is-blank .presenter-slide--blank::after {
   top: calc(50% - (85 * var(--presenter-stage-unit)));
   left: calc(50% - (140 * var(--presenter-stage-unit)));
   width: calc(280 * var(--presenter-stage-unit));
   height: var(--presenter-blank-cross-stroke);
-  transform: translateY(-50%) scaleX(0);
+  transform: translateY(-50%) scaleX(1);
   transform-origin: left center;
-  animation: presenter-blank-cross-horizontal 450ms ease-out 550ms forwards;
+  animation: none;
 }
 .presenter-output-root.no-chromakey.is-blank
   > .presenter-output-layer:not(.is-active)
@@ -1171,12 +1137,6 @@
   height: calc(12 * var(--presenter-stage-unit));
   animation: none;
   transform: translateY(-50%) scaleX(1);
-}
-@keyframes presenter-blank-cross-vertical {
-  to { transform: translateX(-50%) scaleY(1); }
-}
-@keyframes presenter-blank-cross-horizontal {
-  to { transform: translateY(-50%) scaleX(1); }
 }
 @media (prefers-reduced-motion: reduce) {
   .presenter-output-root.no-chromakey.is-blank .presenter-slide--blank::before,
