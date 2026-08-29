@@ -6551,6 +6551,7 @@ textarea.svc-presenter-input-control--multiline {
   white-space: nowrap;
 }
 .svc-presenter-live-preview {
+  --presenter-preview-scale: 0.0239583333;
   position: relative;
   width: 46px;
   grid-column: 2;
