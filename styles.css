@@ -816,15 +816,16 @@ body[data-module="presenter"] #saveAllBtn,
 body[data-module="presenter"] #themeBtn {
   position: absolute;
   right: calc(-1 * var(--shell-right-w) + var(--shell-edge-inset));
+  margin: 0;
 }
 body[data-module="presenter"] #presenterRightSidebarBtn {
-  top: 0;
+  top: var(--s1);
 }
 body[data-module="presenter"] #saveAllBtn {
-  top: var(--topbar-btn-size);
+  top: calc(var(--s1) + var(--topbar-btn-size) + var(--s2));
 }
 body[data-module="presenter"] #themeBtn {
-  top: calc(var(--topbar-btn-size) * 2);
+  top: calc(var(--s1) + (var(--topbar-btn-size) + var(--s2)) * 2);
 }
 body[data-module="presenter"] #presenterRightSidebarBtn,
 body[data-module="presenter"] #saveAllBtn,
@@ -836,6 +837,11 @@ body[data-module="presenter"] #themeBtn:disabled {
   box-shadow: none;
   color: var(--sidebar-ink);
   opacity: 1;
+}
+body[data-module="presenter"] #presenterRightSidebarBtn:hover::before,
+body[data-module="presenter"] #saveAllBtn:hover::before,
+body[data-module="presenter"] #themeBtn:hover::before {
+  background: var(--sidebar-hover-bg);
 }
 .svc-right-sidebar-toggle.is-active {
   border: 0;

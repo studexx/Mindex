@@ -5598,6 +5598,24 @@ def main() -> int:
                             bulkInput.value = '찬양 1: 평화 하나님의 평강이';
                             bulkInput.dispatchEvent(new Event('input', { bubbles: true }));
                           }
+                          const rightRailButtons = ['presenterRightSidebarBtn', 'saveAllBtn', 'themeBtn']
+                            .map((id) => {
+                              const node = document.getElementById(id);
+                              const rect = node?.getBoundingClientRect();
+                              const style = node ? getComputedStyle(node) : null;
+                              return rect ? {
+                                id,
+                                top: Math.round(rect.top),
+                                bottom: Math.round(rect.bottom),
+                                width: Math.round(rect.width),
+                                height: Math.round(rect.height),
+                                opacity: Number(style?.opacity || 0),
+                              } : null;
+                            })
+                            .filter(Boolean);
+                          const rightRailGaps = rightRailButtons.slice(1).map((button, index) =>
+                            Math.round(button.top - rightRailButtons[index].bottom)
+                          );
                           const controlGroups = [...document.querySelectorAll('.svc-board-subgroup-controls')];
                           const controls = [...document.querySelectorAll('.svc-board-subgroup-controls [data-service-item-field]')];
                           const firstControlStyle = controlGroups[0] ? getComputedStyle(controlGroups[0]) : null;
@@ -5642,6 +5660,9 @@ def main() -> int:
                             bulkButton: Boolean(bulkButton),
                             bulkStatus,
                             bulkDraft: state.presenterPreparationDrafts[service?.id || ''] || '',
+                            rightRailDesktop: document.body.dataset.module === 'presenter' && window.innerWidth > 900,
+                            rightRailButtons,
+                            rightRailGaps,
                             overflow: Math.max(document.documentElement.scrollWidth - window.innerWidth, document.body.scrollWidth - window.innerWidth)
                           };
                         })()
@@ -5676,6 +5697,15 @@ def main() -> int:
                             or presenter_header_input["bulkStatus"].endswith("개 입력 필요")
                         )
                         and presenter_header_input["bulkDraft"] in ("", "찬양 1: 평화 하나님의 평강이")
+                        and (
+                            not presenter_header_input["rightRailDesktop"]
+                            or (
+                                [button["id"] for button in presenter_header_input["rightRailButtons"]] == ["presenterRightSidebarBtn", "saveAllBtn", "themeBtn"]
+                                and all(button["width"] == button["height"] and button["width"] >= 32 for button in presenter_header_input["rightRailButtons"])
+                                and all(gap >= 7 for gap in presenter_header_input["rightRailGaps"])
+                                and all(button["opacity"] == 1 for button in presenter_header_input["rightRailButtons"])
+                            )
+                        )
                         and any("찬양" in label for label in presenter_header_input["headerLabels"])
                         and any("성경봉독" in label for label in presenter_header_input["headerLabels"])
                         and any("설교 제목" in label for label in presenter_header_input["headerLabels"])
