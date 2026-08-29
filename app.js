@@ -24259,7 +24259,8 @@ function parsePresenterPreparationInput(value = "") {
     for (const entry of lineEntries) {
       const label = String(entry.label || "").trim();
       const rawLabel = String(entry.rawLabel || label).trim();
-      const content = cleanPresenterPreparationContent(entry.content);
+      let content = cleanPresenterPreparationContent(entry.content);
+      content = normalizePresenterPreparationEntryContent(label, content);
       const key = compactSearchValue(label);
       const rawKey = compactSearchValue(rawLabel);
       if (!label || !content) {
@@ -24306,6 +24307,20 @@ function cleanPresenterPreparationContent(value = "") {
     }
   }
   return text;
+}
+
+function normalizePresenterPreparationEntryContent(label = "", content = "") {
+  const text = String(content || "").trim();
+  if (!text) return "";
+  const labelKey = compactSearchValue(label);
+  const isSongSlot = /^찬양\d+$/.test(labelKey)
+    || ["찬송가", "찬송", "봉헌찬송", "파송찬송", "폐회찬송", "송영"].includes(labelKey);
+  if (!isSongSlot) return text;
+  const hymnOnly = text.match(/^(?:새\s*)?(?:찬송가|찬)?\s*(\d{1,4})\s*장?\s*$/);
+  if (!hymnOnly) return text;
+  const hasHymnSignal = /(?:찬송가|찬|장)/.test(text);
+  if (!hasHymnSignal && !/^찬양\d+$/.test(labelKey)) return text;
+  return `찬 ${Number(hymnOnly[1])}장`;
 }
 
 function normalizePresenterPreparationLineText(line = "") {

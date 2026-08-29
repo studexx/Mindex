@@ -6982,6 +6982,36 @@ def main() -> int:
                     else:
                         fail("presenter-preparation-middle-dot-separator", json.dumps(presenter_preparation_middle_dot_separator, ensure_ascii=False))
 
+                    presenter_preparation_hymn_slot_numbering = page.evaluate(
+                        """
+                        (() => {
+                          const parsed = parsePresenterPreparationInput(`찬양 1 찬 1장
+찬양 2. 1
+찬양 3. 찬송가 2장
+찬양4:2장`);
+                          return {
+                            errors: parsed.errors,
+                            entries: parsed.entries.map((entry) => ({
+                              label: entry.label,
+                              content: entry.content,
+                            })),
+                          };
+                        })()
+                        """
+                    )
+                    if (
+                        presenter_preparation_hymn_slot_numbering.get("errors") == []
+                        and presenter_preparation_hymn_slot_numbering.get("entries") == [
+                            {"label": "찬양 1", "content": "찬 1장"},
+                            {"label": "찬양 2", "content": "찬 1장"},
+                            {"label": "찬양 3", "content": "찬 2장"},
+                            {"label": "찬양 4", "content": "찬 2장"},
+                        ]
+                    ):
+                        pass_("presenter-preparation-hymn-slot-numbering", json.dumps(presenter_preparation_hymn_slot_numbering, ensure_ascii=False))
+                    else:
+                        fail("presenter-preparation-hymn-slot-numbering", json.dumps(presenter_preparation_hymn_slot_numbering, ensure_ascii=False))
+
                     presenter_preparation_label_priority = page.evaluate(
                         """
                         (() => {
@@ -7020,9 +7050,9 @@ def main() -> int:
                             {"rawLabel": "설교", "label": "설교 제목", "key": "설교제목", "rawKey": "설교", "content": "김남영 목사"},
                             {"rawLabel": "성경봉독", "label": "성경봉독", "key": "성경봉독", "rawKey": "성경봉독", "content": "요 15:9; 롬 5:7-8"},
                             {"rawLabel": "봉헌찬양", "label": "봉헌찬양", "key": "봉헌찬양", "rawKey": "봉헌찬양", "content": "임재"},
-                            {"rawLabel": "파송찬송", "label": "파송찬송", "key": "파송찬송", "rawKey": "파송찬송", "content": "찬 359"},
-                            {"rawLabel": "폐회찬송", "label": "폐회찬송", "key": "폐회찬송", "rawKey": "폐회찬송", "content": "찬 352"},
-                            {"rawLabel": "송영", "label": "송영", "key": "송영", "rawKey": "송영", "content": "찬 5"},
+                            {"rawLabel": "파송찬송", "label": "파송찬송", "key": "파송찬송", "rawKey": "파송찬송", "content": "찬 359장"},
+                            {"rawLabel": "폐회찬송", "label": "폐회찬송", "key": "폐회찬송", "rawKey": "폐회찬송", "content": "찬 352장"},
+                            {"rawLabel": "송영", "label": "송영", "key": "송영", "rawKey": "송영", "content": "찬 5장"},
                         ]
                     ):
                         pass_("presenter-preparation-label-priority", json.dumps(presenter_preparation_label_priority, ensure_ascii=False))
