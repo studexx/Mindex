@@ -165,11 +165,11 @@
   }
   .presenter-output-root.no-chromakey:not(.svc-slide-mini-canvas)
     > .presenter-output-layer.is-entering {
-    animation: presenter-layer-fade-in 500ms ease-in-out forwards;
+    animation: presenter-layer-fade-in 220ms linear forwards;
   }
   .presenter-output-root.no-chromakey:not(.svc-slide-mini-canvas)
     > .presenter-output-layer.is-exiting {
-    animation: presenter-layer-fade-out 500ms ease-in-out forwards;
+    animation: presenter-layer-fade-out 220ms linear forwards;
   }
 }
 @keyframes presenter-layer-fade-in {
@@ -517,6 +517,9 @@
   font-weight: var(--presenter-weight-body);
   line-height: 1.18;
   word-break: keep-all;
+}
+.presenter-output-root.no-chromakey .presenter-liturgical-body-lines {
+  font-weight: 600;
 }
 .presenter-liturgical-body-lines span {
   max-width: none;

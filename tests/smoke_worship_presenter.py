@@ -9272,8 +9272,8 @@ def main() -> int:
                     and "이전 화면" in fullscreen_transition_state["exitingText"]
                     and fullscreen_transition_state["enteringAnimation"] == "presenter-layer-fade-in"
                     and fullscreen_transition_state["exitingAnimation"] == "presenter-layer-fade-out"
-                    and fullscreen_transition_state["enteringDuration"] == "0.5s"
-                    and fullscreen_transition_state["exitingDuration"] == "0.5s"
+                    and fullscreen_transition_state["enteringDuration"] == "0.22s"
+                    and fullscreen_transition_state["exitingDuration"] == "0.22s"
                     and 0 < float(fullscreen_transition_state["enteringOpacity"]) < 1
                     and 0 < float(fullscreen_transition_state["exitingOpacity"]) < 1
                 ):
