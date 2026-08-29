@@ -6240,41 +6240,22 @@ async function persistSharedSundayServiceItems(service, items = [], options = {}
     if (error) throw error;
   }
 
-  const nextElementIds = new Set(rows.elements.map((element) => element.id));
-  const removedElementIds = existingElements.map((element) => element.id).filter((id) => !nextElementIds.has(id));
-  if (removedElementIds.length) {
-    const { error } = await state.client
-      .from("mindex_worship_elements")
-      .delete()
-      .in("id", removedElementIds);
-    if (error) throw error;
-  }
-
-  const nextSectionIds = new Set(rows.sections.map((section) => section.id));
-  const removedSectionIds = existingSections.map((section) => section.id).filter((id) => !nextSectionIds.has(id));
-  if (removedSectionIds.length) {
-    const { error } = await state.client
-      .from("mindex_worship_sections")
-      .delete()
-      .in("id", removedSectionIds);
-    if (error) throw error;
-  }
-
-  const replaceSectionIds = new Set([
-    ...existingSections.map((section) => section.id),
-    ...rows.sections.map((section) => section.id),
-  ]);
+  const savedSectionIds = new Set(rows.sections.map((section) => section.id));
+  const savedElementIds = new Set(rows.elements.map((element) => element.id));
   state.worshipSections = [
-    ...state.worshipSections.filter((section) => section.service_id !== serviceId),
+    ...state.worshipSections.filter((section) => section.service_id !== serviceId || !savedSectionIds.has(section.id)),
     ...rows.sections,
   ];
   state.worshipElements = [
-    ...state.worshipElements.filter((element) => !replaceSectionIds.has(element.section_id)),
+    ...state.worshipElements.filter((element) => !savedElementIds.has(element.id)),
     ...rows.elements,
   ];
   state.serviceItems[serviceId] = projectWorshipServiceItemsFromTemplate(
     service,
-    groupWorshipElements(rows.sections, rows.elements)[serviceId] || [],
+    groupWorshipElements(
+      state.worshipSections.filter((section) => section.service_id === serviceId),
+      state.worshipElements,
+    )[serviceId] || [],
   );
   refreshPresenterForService(serviceId);
 }

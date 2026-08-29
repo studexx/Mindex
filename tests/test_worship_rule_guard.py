@@ -157,7 +157,7 @@ class WorshipRuleGuardTests(unittest.TestCase):
         self.assertIn("sanitizeSongContentStateWithoutSong(element.content_state", sanitizer)
         self.assertIn("sanitizeSongContentStateWithoutSong(element.config.contentState", sanitizer)
 
-    def test_shared_sunday_sync_loads_and_replaces_target_rows(self) -> None:
+    def test_shared_sunday_sync_loads_and_merges_target_rows(self) -> None:
         helper = function_block(self.source, "ensureWorshipServiceRowsLoadedForPersistence")
         shared = function_block(self.source, "persistSharedSundayServiceItems")
         self.assertIn("fetchWorshipRowsForServiceIds([id])", helper)
@@ -166,8 +166,11 @@ class WorshipRuleGuardTests(unittest.TestCase):
             shared.index("await ensureWorshipServiceRowsLoadedForPersistence(serviceId)"),
             shared.index("const existingSections"),
         )
-        self.assertIn("removedElementIds", shared)
-        self.assertIn("removedSectionIds", shared)
+        self.assertNotIn("removedElementIds", shared)
+        self.assertNotIn("removedSectionIds", shared)
+        self.assertNotIn(".delete()", shared)
+        self.assertIn("savedSectionIds", shared)
+        self.assertIn("savedElementIds", shared)
         self.assertIn('.from("mindex_worship_elements")', shared)
         self.assertIn('.from("mindex_worship_sections")', shared)
 
