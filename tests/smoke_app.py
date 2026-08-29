@@ -4676,6 +4676,24 @@ def main() -> int:
                               titleLineHeight: titleStyle.lineHeight,
                             };
                           })(),
+                          outlineHierarchyAlignment: (() => {
+                            const group = [...document.querySelectorAll('.service-outline-group')]
+                              .find((candidate) => candidate.querySelector('.service-outline-row--section strong')
+                                && candidate.querySelector('.service-outline-row--child .service-outline-kind'));
+                            const sectionTitle = group?.querySelector('.service-outline-row--section strong');
+                            const childLabel = group?.querySelector('.service-outline-row--child .service-outline-kind');
+                            const guide = group?.querySelector('.service-outline-children');
+                            if (!group || !sectionTitle || !childLabel || !guide) return null;
+                            const sectionLeft = sectionTitle.getBoundingClientRect().left;
+                            const childLeft = childLabel.getBoundingClientRect().left;
+                            return {
+                              sectionLeft: Number(sectionLeft.toFixed(2)),
+                              childLeft: Number(childLeft.toFixed(2)),
+                              guideLeft: Number(guide.getBoundingClientRect().left.toFixed(2)),
+                              sectionMinusChild: Number((sectionLeft - childLeft).toFixed(2)),
+                              childMinusGuide: Number((childLeft - guide.getBoundingClientRect().left).toFixed(2)),
+                            };
+                          })(),
                           collapsedBoardSubgroups: document.querySelectorAll('.svc-board-subgroup.collapsed-head').length,
                           mainPraiseSubgroupLabels: (() => {
                             const group = { kind: 'main-praise', label: '찬양', subgroups: [] };
@@ -4708,6 +4726,11 @@ def main() -> int:
                               raw_title: '환영\\n헤세드 찬양단',
                               memo: serializeServiceItemMemo({ elementType: 'title_content' }),
                             };
+                            const multilineCreedItem = {
+                              label: '사도신경',
+                              raw_title: '나는 전능하신 아버지 하나님, 천지의 창조주를 믿습니다.\\n나는 그의 유일하신 아들, 우리 주 예수 그리스도를 믿습니다.',
+                              memo: serializeServiceItemMemo({ elementType: 'body_text' }),
+                            };
                             const mainPraiseTitle = presenterBoardSubgroupContentTitle({
                               sectionKey: 'praise',
                               sectionLabel: '찬양',
@@ -4733,6 +4756,8 @@ def main() -> int:
                             return {
                               welcomeSidebar: serviceSidebarChildItemTitle(welcomeItem),
                               welcomeSidebarParts: serviceSidebarChildItemDisplayParts(welcomeItem),
+                              multilineSidebar: serviceSidebarChildItemTitle(multilineCreedItem),
+                              multilineSidebarParts: serviceSidebarChildItemDisplayParts(multilineCreedItem),
                               praiseSidebarParts: serviceSidebarChildItemDisplayParts({
                                 label: '찬양 1',
                                 raw_title: '은혜 은혜',
@@ -4894,6 +4919,9 @@ def main() -> int:
                         and presenter_terms["outlineChildMetrics"]["rowMinHeight"] == "36px"
                         and presenter_terms["outlineChildMetrics"]["titleFontSize"] == "12px"
                         and presenter_terms["outlineChildMetrics"]["titleLineHeight"] == "16px"
+                        and presenter_terms["outlineHierarchyAlignment"] is not None
+                        and presenter_terms["outlineHierarchyAlignment"]["sectionMinusChild"] <= 8
+                        and presenter_terms["outlineHierarchyAlignment"]["childMinusGuide"] >= 6
                         and all(
                             (
                                 item["start"] == ""
@@ -4909,6 +4937,8 @@ def main() -> int:
                         and presenter_terms["elementNameTitleContract"] == {
                             "welcomeSidebar": "환영 · 헤세드 찬양단",
                             "welcomeSidebarParts": {"meta": "환영", "title": "헤세드 찬양단"},
+                            "multilineSidebar": "사도신경 · 나는 전능하신 아버지 하나님, 천지의 창조주를 믿습니다.\n나는 그의 유일하신 아들, 우리 주 예수 그리스도를 믿습니다.",
+                            "multilineSidebarParts": {"meta": "사도신경", "title": "나는 전능하신 아버지 하나님, 천지의 창조주를 믿습니다."},
                             "praiseSidebarParts": {"meta": "찬양 1", "title": "은혜 은혜"},
                             "connectedPraiseSidebarParts": {"meta": "찬양 6–7", "title": "함께 지어져 가네 + 성도의 노래"},
                             "connectedPraiseSidebar": "찬양 6–7 · 함께 지어져 가네 + 성도의 노래",

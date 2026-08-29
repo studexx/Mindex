@@ -3527,6 +3527,8 @@ body[data-module="presenter"] .detail-pane {
 }
 .service-outline-row--ready,
 .service-outline-row--section {
+  grid-template-columns: 14px minmax(0, 1fr) 30px;
+  gap: 2px;
   min-height: 35px;
   padding-block: 5px;
 }

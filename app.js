@@ -21273,22 +21273,26 @@ function serviceSidebarChildItemDisplayParts(item, service = null) {
   if (connectedOrderTitle || connectedSongTitle) {
     return {
       meta: connectedOrderTitle || String(item?.label || "").trim(),
-      title: connectedSongTitle || serviceItemDisplayText(item) || connectedOrderTitle,
+      title: serviceSidebarOutlineFirstLine(connectedSongTitle || serviceItemDisplayText(item) || connectedOrderTitle),
     };
   }
   const label = String(item?.label || "").trim();
   const fallback = serviceSidebarChildItemTitle(item, service);
-  if (!label) return { meta: "", title: fallback || "항목" };
+  if (!label) return { meta: "", title: serviceSidebarOutlineFirstLine(fallback || "항목") };
   const title = serviceItemDisplayText(item);
   const personSummary = serviceSidebarPersonSummary(item, service);
   if (personSummary) {
     const parts = cleanList(String(personSummary).split(/[·/,]+/u));
     return parts.length > 1
-      ? { meta: parts[0], title: parts.slice(1).join(" / ") }
-      : { meta: label, title: compactSearchValue(personSummary) === compactSearchValue(label) ? "" : personSummary };
+      ? { meta: parts[0], title: serviceSidebarOutlineFirstLine(parts.slice(1).join(" / ")) }
+      : { meta: label, title: compactSearchValue(personSummary) === compactSearchValue(label) ? "" : serviceSidebarOutlineFirstLine(personSummary) };
   }
   if (!title || compactSearchValue(label) === compactSearchValue(title)) return { meta: label, title: "" };
-  return { meta: label, title };
+  return { meta: label, title: serviceSidebarOutlineFirstLine(title) };
+}
+
+function serviceSidebarOutlineFirstLine(value = "") {
+  return String(value || "").split(/\r?\n/u).map((line) => line.trim()).find(Boolean) || "";
 }
 
 function serviceSidebarPersonSummary(item = {}, service = null) {
