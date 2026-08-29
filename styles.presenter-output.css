@@ -297,11 +297,7 @@
   align-items: center;
   justify-items: center;
   overflow: hidden;
-  background:
-    linear-gradient(180deg, rgba(250, 232, 194, .2) 0%, rgba(250, 232, 194, .06) 13%, transparent 34%),
-    linear-gradient(112deg, rgba(80, 129, 124, .3) 0%, transparent 38%),
-    linear-gradient(248deg, rgba(128, 95, 66, .22) 0%, transparent 36%),
-    linear-gradient(180deg, #16221f 0%, #0b1112 55%, #050606 100%);
+  background: #000;
   color: #fff;
   isolation: isolate;
   text-align: center;
@@ -309,6 +305,7 @@
 .presenter-ready-screen::before,
 .presenter-ready-screen::after,
 .presenter-ready-screen-field {
+  display: none;
   position: absolute;
   inset: 0;
   content: "";
@@ -370,7 +367,7 @@
   word-break: keep-all;
 }
 .presenter-ready-screen-message strong {
-  color: #f4d99f;
+  color: inherit;
   font-weight: 860;
 }
 .presenter-waiting-loop {

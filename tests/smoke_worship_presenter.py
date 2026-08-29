@@ -8707,12 +8707,16 @@ def main() -> int:
                       host.className = 'presenter-output-root no-chromakey';
                       host.innerHTML = renderPresenterFullscreenReadySlide(first);
                       document.body.appendChild(host);
+                      const ready = host.querySelector('.presenter-ready-screen');
                       const kicker = host.querySelector('.presenter-ready-screen-kicker');
                       const message = host.querySelector('.presenter-ready-screen-message');
                       const strong = message?.querySelector('strong');
+                      const readyStyle = ready ? getComputedStyle(ready) : null;
                       const kickerStyle = kicker ? getComputedStyle(kicker) : null;
                       const messageStyle = message ? getComputedStyle(message) : null;
                       const strongStyle = strong ? getComputedStyle(strong) : null;
+                      const field = host.querySelector('.presenter-ready-screen-field');
+                      const fieldStyle = field ? getComputedStyle(field) : null;
                       const logo = host.querySelector('.presenter-ready-screen-logo');
                       const kickerRect = kicker?.getBoundingClientRect();
                       const messageRect = message?.getBoundingClientRect();
@@ -8727,6 +8731,9 @@ def main() -> int:
                         strongText: strong?.textContent || '',
                         messageWeight: messageStyle?.fontWeight || '',
                         strongWeight: strongStyle?.fontWeight || '',
+                        backgroundImage: readyStyle?.backgroundImage || '',
+                        backgroundColor: readyStyle?.backgroundColor || '',
+                        fieldDisplay: fieldStyle?.display || '',
                         logoHeight: logoRect?.height || 0,
                         gapAboveMessage: messageRect && kickerRect ? messageRect.top - kickerRect.bottom : 0,
                         gapBelowMessage: logoRect && messageRect ? logoRect.top - messageRect.bottom : 0,
@@ -8758,6 +8765,9 @@ def main() -> int:
                     and fullscreen_ready_state["readyServiceName"] == "금요기도회"
                     and fullscreen_ready_state["text"] == "잠시 후\n금요기도회\n가 시작됩니다"
                     and fullscreen_ready_state["readyMessage"]["kickerText"] == "지금은 기도로 예배를 준비하는 시간입니다"
+                    and fullscreen_ready_state["readyMessage"]["backgroundImage"] == "none"
+                    and fullscreen_ready_state["readyMessage"]["backgroundColor"] == "rgb(0, 0, 0)"
+                    and fullscreen_ready_state["readyMessage"]["fieldDisplay"] == "none"
                     and fullscreen_ready_state["readyMessage"]["kickerFontSize"] < fullscreen_ready_state["readyMessage"]["messageFontSize"]
                     and 36 <= fullscreen_ready_state["readyMessage"]["kickerHeight"] <= 52
                     and 40 <= fullscreen_ready_state["readyMessage"]["logoHeight"] <= 58
