@@ -971,6 +971,51 @@ def main() -> int:
                 else:
                     fail("presenter-sidebar-launch-click", json.dumps(sidebar_launch_click_state, ensure_ascii=False))
 
+                pending_click_state = page.evaluate(
+                    """
+                    async () => {
+                      const serviceId = state.selectedServiceId;
+                      state.presenter.outputWindow = null;
+                      state.presenter.outputPendingAt = 0;
+                      state.presenter.outputConnectedAt = 0;
+                      state.presenter.outputBlockedAt = 0;
+                      state.presenter.serviceId = null;
+                      state.presenter.index = 0;
+                      state.presenter.jumpDraft = "";
+                      renderPresenterDetail();
+                      await new Promise((resolve) => requestAnimationFrame(resolve));
+                      const thumb = document.querySelector(`.svc-slide-thumb[data-service-id="${serviceId}"][data-presenter-index="2"]`);
+                      thumb?.click();
+                      await new Promise((resolve) => requestAnimationFrame(resolve));
+                      const input = document.querySelector(`.svc-slide-jump-input[data-service-id="${serviceId}"]`);
+                      const selectedThumb = document.querySelector('.svc-slide-thumb.selected');
+                      return {
+                        hasThumb: Boolean(thumb),
+                        serviceId,
+                        presenterServiceId: state.presenter.serviceId || '',
+                        presenterIndex: state.presenter.index,
+                        jumpDraft: state.presenter.jumpDraft || '',
+                        inputValue: input?.value || '',
+                        selectedIndex: Number(selectedThumb?.dataset.presenterIndex ?? -1),
+                        outputOpen: Boolean(state.presenter.outputWindow),
+                        status: document.querySelector('.svc-presenter-status')?.textContent.trim() || '',
+                      };
+                    }
+                    """
+                )
+                if (
+                    pending_click_state["hasThumb"]
+                    and pending_click_state["presenterServiceId"] == pending_click_state["serviceId"]
+                    and pending_click_state["presenterIndex"] == 2
+                    and pending_click_state["inputValue"] == "3"
+                    and pending_click_state["selectedIndex"] == 2
+                    and not pending_click_state["outputOpen"]
+                    and pending_click_state["status"] == "준비"
+                ):
+                    pass_("presenter-pending-slide-click", json.dumps(pending_click_state, ensure_ascii=False))
+                else:
+                    fail("presenter-pending-slide-click", json.dumps(pending_click_state, ensure_ascii=False))
+
                 page.evaluate(
                     """
 	                    (serviceId) => {
@@ -1060,15 +1105,17 @@ def main() -> int:
 	                      await new Promise((resolve) => requestAnimationFrame(resolve));
 	                      Element.prototype.scrollIntoView = originalScrollIntoView;
                       const boardAfter = document.querySelector('.svc-slide-board');
-                      const activeThumb = document.querySelector('.svc-slide-thumb.active');
+                      const selectedThumb = document.querySelector('.svc-slide-thumb.selected');
+                      const input = document.querySelector(`.svc-slide-jump-input[data-service-id="${serviceId}"]`);
                       const result = {
                         targetIndex,
                         immediateIndex,
+                        inputValue: input?.value || '',
                         elapsedMs: Number((performance.now() - startedAt).toFixed(2)),
                         sameBoard: boardBefore === boardAfter,
                         scrollBefore,
                         scrollAfter: detail.scrollTop,
-	                        activeIndex: Number(activeThumb?.dataset.presenterIndex ?? -1),
+	                        selectedIndex: Number(selectedThumb?.dataset.presenterIndex ?? -1),
 	                        scrolledIndex,
                       };
                       state.presenter.index = 0;
@@ -1080,15 +1127,16 @@ def main() -> int:
                     service["id"],
                 )
                 if (
-                    fast_jump_state["immediateIndex"] == 0
-                    and fast_jump_state["activeIndex"] == -1
+                    fast_jump_state["immediateIndex"] == fast_jump_state["targetIndex"]
+                    and fast_jump_state["inputValue"] == str(fast_jump_state["targetIndex"] + 1)
+                    and fast_jump_state["selectedIndex"] == fast_jump_state["targetIndex"]
                     and fast_jump_state["scrolledIndex"] in (-1, fast_jump_state["targetIndex"])
                     and fast_jump_state["sameBoard"]
                     and fast_jump_state["elapsedMs"] < 120
                 ):
-                    pass_("presenter-thumb-click-only-selects", json.dumps(fast_jump_state, ensure_ascii=False))
+                    pass_("presenter-thumb-click-updates-pending", json.dumps(fast_jump_state, ensure_ascii=False))
                 else:
-                    fail("presenter-thumb-click-only-selects", json.dumps(fast_jump_state, ensure_ascii=False))
+                    fail("presenter-thumb-click-updates-pending", json.dumps(fast_jump_state, ensure_ascii=False))
 
                 outline_follow_state = page.evaluate(
                     """

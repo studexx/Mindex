@@ -3432,15 +3432,17 @@ function renderPresenterOutput(payload, options = {}) {
   preloadPresenterOutputImages(payload, slide);
   if (activeImageSource && !presenterOutputImageIsReady(activeImageSource)) {
     const token = ++presenterOutputRenderState.token;
+    presenterOutputRenderState.pendingImageSource = activeImageSource;
+    root.dataset.presenterPendingImageSource = activeImageSource;
     root.setAttribute("aria-busy", "true");
     applyPresenterOutputFrameState(root, frameState);
     presenterOutputLayers(root);
     const rerenderIfReady = () => {
-      if (token === presenterOutputRenderState.token) renderPresenterOutput(payload, options);
+      if (root.dataset.presenterPendingImageSource === activeImageSource) renderPresenterOutput(payload, options);
     };
     preloadPresenterOutputImage(activeImageSource)?.finally(rerenderIfReady);
     window.setTimeout(() => {
-      if (token === presenterOutputRenderState.token && presenterOutputImageIsReady(activeImageSource)) {
+      if (root.dataset.presenterPendingImageSource === activeImageSource && presenterOutputImageIsReady(activeImageSource)) {
         renderPresenterOutput(payload, options);
       }
     }, 40);
@@ -3448,6 +3450,8 @@ function renderPresenterOutput(payload, options = {}) {
   }
 
   const token = ++presenterOutputRenderState.token;
+  presenterOutputRenderState.pendingImageSource = "";
+  delete root.dataset.presenterPendingImageSource;
   root.removeAttribute("aria-busy");
   commitPresenterOutputFrame(root, payload, slide, frameState, token, options);
 }
