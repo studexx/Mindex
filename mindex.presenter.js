@@ -3535,8 +3535,8 @@ function commitPresenterOutputFrame(root, payload, slide, frameState, token, opt
 function activatePresenterOutputLayer(root, activeLayer, nextLayer, frameState = {}, token = presenterOutputRenderState.token, onActivated = null) {
   if (!activeLayer || !nextLayer) return;
   const animated = presenterOutputShouldAnimateFrameTransition(root, frameState);
-  const transitionClearDelay = 980;
-  const transitionEntryDelay = 880;
+  const transitionClearDelay = 700;
+  const transitionEntryDelay = 640;
   const swap = () => {
     if (token !== presenterOutputRenderState.token) return;
     activeLayer.classList.remove("is-entering");

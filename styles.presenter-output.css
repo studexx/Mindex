@@ -146,8 +146,7 @@
 }
 .presenter-output-layer.is-entering {
   opacity: 0;
-  z-index: 2;
-  filter: brightness(.82);
+  z-index: 4;
 }
 .presenter-output-layer.is-exiting {
   opacity: 1;
@@ -160,45 +159,31 @@
 @media (prefers-reduced-motion: no-preference) {
   .presenter-output-root.no-chromakey:not(.svc-slide-mini-canvas)
     > .presenter-output-layer {
-    transition:
-      opacity 520ms ease,
-      filter 520ms ease;
-  }
-  .presenter-output-root.no-chromakey:not(.svc-slide-mini-canvas)
-    > .presenter-output-layer.is-active {
-    filter: brightness(1);
-  }
-  .presenter-output-root.no-chromakey:not(.svc-slide-mini-canvas)
-    > .presenter-output-layer.is-next {
-    filter: brightness(.8);
+    transition: opacity 520ms ease;
   }
   .presenter-output-root.no-chromakey:not(.svc-slide-mini-canvas)
     > .presenter-output-layer.is-entering {
-    animation: presenter-layer-dissolve-in 820ms ease forwards;
+    animation: presenter-layer-dissolve-in 620ms ease forwards;
   }
   .presenter-output-root.no-chromakey:not(.svc-slide-mini-canvas)
     > .presenter-output-layer.is-exiting {
-    animation: presenter-layer-dissolve-out 820ms ease forwards;
+    animation: presenter-layer-dissolve-out 620ms ease forwards;
   }
 }
 @keyframes presenter-layer-dissolve-in {
   from {
     opacity: 0;
-    filter: brightness(.64);
   }
   to {
     opacity: 1;
-    filter: brightness(1);
   }
 }
 @keyframes presenter-layer-dissolve-out {
   from {
     opacity: 1;
-    filter: brightness(1.08);
   }
   to {
     opacity: 0;
-    filter: brightness(.86);
   }
 }
 .presenter-output-root.no-chromakey {
