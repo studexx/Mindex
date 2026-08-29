@@ -21263,7 +21263,6 @@ function renderServiceReadyOutlineRow(service, slides = [], items = getServiceIt
       data-service-outline-service="${escapeAttr(service.id)}"
       aria-label="${escapeAttr(interactionHint)}"
       title="${escapeAttr(interactionHint)}">
-      <span class="service-outline-no">0</span>
       <span class="service-outline-main">
         <strong>준비</strong>
       </span>
@@ -21293,7 +21292,6 @@ function renderServiceOutlineGroup(service, group, groupIndex, selectedIndex, sl
         aria-label="${escapeAttr(interactionHint)}"
         title="${escapeAttr(interactionHint)}"
         >
-        <span class="service-outline-no">${escapeHtml(groupIndex + 1)}</span>
         <span class="service-outline-main">
           <strong>${escapeHtml(title)}</strong>
         </span>
@@ -21323,7 +21321,6 @@ function renderServiceOutlineChildRow(service, item, index, selectedIndex, slide
       aria-label="${escapeAttr(interactionHint)}"
       title="${escapeAttr(interactionHint)}"
       >
-      <span class="service-outline-no"></span>
       <span class="service-outline-main">
         ${titleParts.meta ? `<span class="service-outline-kind">${escapeHtml(titleParts.meta)}</span>` : ""}
         ${titleParts.title ? `<strong>${escapeHtml(titleParts.title)}</strong>` : ""}

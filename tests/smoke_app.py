@@ -4753,20 +4753,16 @@ def main() -> int:
                               .find((candidate) => candidate.querySelector('.service-outline-row--section strong')
                                 && candidate.querySelector('.service-outline-row--child .service-outline-kind'));
                             const sectionTitle = group?.querySelector('.service-outline-row--section strong');
-                            const sectionNo = group?.querySelector('.service-outline-row--section .service-outline-no');
                             const childLabel = group?.querySelector('.service-outline-row--child .service-outline-kind');
                             const guide = group?.querySelector('.service-outline-children');
-                            if (!group || !sectionTitle || !sectionNo || !childLabel || !guide) return null;
-                            const sectionNoRect = sectionNo.getBoundingClientRect();
+                            if (!group || !sectionTitle || !childLabel || !guide) return null;
                             const sectionLeft = sectionTitle.getBoundingClientRect().left;
                             const childLeft = childLabel.getBoundingClientRect().left;
                             return {
-                              numberRight: Number(sectionNoRect.right.toFixed(2)),
                               sectionLeft: Number(sectionLeft.toFixed(2)),
                               childLeft: Number(childLeft.toFixed(2)),
                               guideLeft: Number(guide.getBoundingClientRect().left.toFixed(2)),
                               guideBorderLeftWidth: getComputedStyle(guide).borderLeftWidth,
-                              numberTitleGap: Number((sectionLeft - sectionNoRect.right).toFixed(2)),
                               sectionMinusChild: Number((sectionLeft - childLeft).toFixed(2)),
                               childMinusGuide: Number((childLeft - guide.getBoundingClientRect().left).toFixed(2)),
                             };
@@ -5035,7 +5031,6 @@ def main() -> int:
                         and abs(presenter_terms["outlineHierarchyAlignment"]["sectionMinusChild"]) <= 0.5
                         and presenter_terms["outlineHierarchyAlignment"]["childMinusGuide"] >= 6
                         and presenter_terms["outlineHierarchyAlignment"]["guideBorderLeftWidth"] == "0px"
-                        and presenter_terms["outlineHierarchyAlignment"]["numberTitleGap"] >= 6
                         and presenter_terms["outlineMissingBadgeContract"] == {
                             "titledText": "찬양 1 10 전능왕 오셔서",
                             "titledBadges": 0,
@@ -8536,6 +8531,9 @@ def main() -> int:
                                 sections: groups.map((group) => group.querySelector('.service-outline-row--section strong')?.textContent.trim() || ''),
                                 elements: groups.map((group) => [...group.querySelectorAll('.service-outline-row--child .service-outline-kind')]
                                   .map((node) => node.textContent.trim())),
+                                visibleOrderNumbers: [...document.querySelectorAll('.service-outline-no')]
+                                  .map((node) => node.textContent.trim())
+                                  .filter(Boolean),
                                 labelOnlyBodyTexts: [...document.querySelectorAll('.service-outline-row--child')]
                                   .filter((row) => row.querySelector('.service-outline-kind') && !row.querySelector('strong'))
                                   .map((row) => row.querySelector('.service-outline-kind')?.textContent.trim() || ''),
@@ -8548,6 +8546,7 @@ def main() -> int:
                             hierarchy_state["standaloneRows"] == 0
                             and hierarchy_state["sections"]
                             and not hierarchy_state["emptySections"]
+                            and not hierarchy_state["visibleOrderNumbers"]
                             and all(elements for elements in hierarchy_state["elements"])
                             and hierarchy_state["labelOnlyBodyTexts"]
                         ):
