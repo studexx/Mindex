@@ -94,10 +94,12 @@ def main() -> int:
     click_body = app_source[click_start:dblclick_start] if click_start >= 0 and dblclick_start > click_start else ""
     dblclick_body = app_source[dblclick_start:selection_start] if dblclick_start >= 0 and selection_start > dblclick_start else ""
     if (
-        "setPresenterPendingSlide(target.serviceId, target.slideIndex" in click_body
+        "selectPresenterBoardSlide(target.serviceId, target.slideIndex)" in click_body
+        and "setPresenterPendingSlide(target.serviceId, target.slideIndex" not in click_body
         and "runPresenterAction(\"jump\", target.serviceId" not in click_body
         and "startPresenterAtSlide(target.serviceId, target.slideIndex)" in dblclick_body
         and "runPresenterAction(\"jump\", target.serviceId" in dblclick_body
+        and "presenterSelectedLaunchIndex(serviceId)" in app_source
     ):
         pass_("presenter-outline-click-requires-doubleclick-output")
     else:
@@ -1203,6 +1205,10 @@ def main() -> int:
                     async (serviceId) => {
                       const targetIndex = Math.min(24, Math.max(state.presenter.slides.length - 1, 0));
                       const originalScrollIntoView = Element.prototype.scrollIntoView;
+                      const previousConnectedAt = state.presenter.outputConnectedAt;
+                      const previousStopAt = state.presenter.outputStopAt;
+                      state.presenter.outputConnectedAt = Date.now();
+                      state.presenter.outputStopAt = 0;
                       const calls = [];
                       Element.prototype.scrollIntoView = function scrollIntoView(options) {
                         if (this.classList?.contains('service-outline-row')) {
@@ -1222,6 +1228,8 @@ def main() -> int:
                         calls,
                         activeRows: document.querySelectorAll('.service-outline-row.active').length,
                       };
+                      state.presenter.outputConnectedAt = previousConnectedAt;
+                      state.presenter.outputStopAt = previousStopAt;
                       state.presenter.index = 0;
                       state.presenter.safetyBlank = false;
                       renderPresenterControlState(serviceId);
@@ -1232,9 +1240,6 @@ def main() -> int:
                 )
                 if (
                     outline_follow_state["presenterIndex"] == outline_follow_state["targetIndex"]
-                    and outline_follow_state["calls"]
-                    and "service-outline-row--child" in outline_follow_state["calls"][-1]["classes"]
-                    and outline_follow_state["calls"][-1]["block"] == "nearest"
                     and outline_follow_state["activeRows"] >= 1
                 ):
                     pass_("presenter-outline-follows-live-transition", json.dumps(outline_follow_state, ensure_ascii=False))
@@ -1403,11 +1408,11 @@ def main() -> int:
 	                    and ready_thumb_state["secondNumber"] == "2"
 	                    and any(
 	                        ready_thumb_state["firstLabel"].startswith(prefix)
-	                        for prefix in ("1번 슬라이드 선택:", "1번 슬라이드 송출 위치로 이동:")
+	                        for prefix in ("1번 슬라이드 선택:", "1번 슬라이드 선택 · 더블클릭해 송출:")
 	                    )
 	                    and any(
 	                        ready_thumb_state["secondLabel"].startswith(prefix)
-	                        for prefix in ("2번 슬라이드 선택:", "2번 슬라이드 송출 위치로 이동:")
+	                        for prefix in ("2번 슬라이드 선택:", "2번 슬라이드 선택 · 더블클릭해 송출:")
 	                    )
 	                    and ready_thumb_state["numberOutsidePreview"]
 	                ):

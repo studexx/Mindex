@@ -1661,14 +1661,7 @@ function handleServiceOutlineSlideClick(serviceOutlineItem) {
     && target.itemIndex >= 0
     && state.selectedServiceItemIndex !== target.itemIndex;
   if (Number.isFinite(target.itemIndex) && target.itemIndex >= 0) state.selectedServiceItemIndex = target.itemIndex;
-  const outputIsShowingAnotherService = isPresenterOutputWindowOpen()
-    && state.presenter.serviceId
-    && state.presenter.serviceId !== target.serviceId;
-  if (presenterControllerIsLive(target.serviceId) || outputIsShowingAnotherService) {
-    selectPresenterBoardSlide(target.serviceId, target.slideIndex);
-  } else {
-    setPresenterPendingSlide(target.serviceId, target.slideIndex, { render: false });
-  }
+  selectPresenterBoardSlide(target.serviceId, target.slideIndex);
   syncServiceOutlineSelection(serviceOutlineItem);
   patchServiceOutlineActiveState(target.serviceId);
   if (selectionChanged) {
@@ -21709,7 +21702,7 @@ function renderServiceReadyOutlineRow(service, slides = [], items = getServiceIt
   const readyIndex = slides.findIndex((slide) => isPresenterPreparationSlide(slide));
   const readySlide = readyIndex >= 0 ? slides[readyIndex] : null;
   if (!readySlide || items.some((item) => presenterSlideBelongsToItem(readySlide, item))) return "";
-  const active = state.presenter.serviceId === service.id && readyIndex >= 0 && state.presenter.index === readyIndex;
+  const active = presenterControllerIsLive(service.id) && readyIndex >= 0 && state.presenter.index === readyIndex;
   const interactionHint = presenterSlideInteractionHint(service.id, "준비");
   return `
     <button class="service-outline-row service-outline-row--ready${active ? " active" : ""}" type="button"
@@ -21733,7 +21726,7 @@ function renderServiceOutlineGroup(service, group, groupIndex, selectedIndex, sl
   const firstSlideEntry = group.items.find(({ item }) => firstPresenterSlideIndexForServiceItem(item, slides, slideIndexByItemId) >= 0) || firstEntry;
   const firstSlideIndex = firstPresenterSlideIndexForServiceItem(firstSlideEntry.item, slides, slideIndexByItemId);
   const selected = group.items.some(({ index }) => index === selectedIndex);
-  const activeSlide = state.presenter.serviceId === service.id
+  const activeSlide = presenterControllerIsLive(service.id)
     && group.items.some(({ item }) => presenterSlideBelongsToItem(state.presenter.slides[state.presenter.index], item));
   const title = serviceSidebarSectionTitle(group, firstEntry.item);
   const interactionHint = presenterSlideInteractionHint(service.id, title);
@@ -21761,7 +21754,7 @@ function renderServiceOutlineGroup(service, group, groupIndex, selectedIndex, sl
 
 function renderServiceOutlineChildRow(service, item, index, selectedIndex, slides = [], slideIndexByItemId = null) {
   const slideIndex = firstPresenterSlideIndexForServiceItem(item, slides, slideIndexByItemId);
-  const activeSlide = state.presenter.serviceId === service.id && slideIndex >= 0 && presenterSlideBelongsToItem(state.presenter.slides[state.presenter.index], item);
+  const activeSlide = presenterControllerIsLive(service.id) && slideIndex >= 0 && presenterSlideBelongsToItem(state.presenter.slides[state.presenter.index], item);
   const selected = index === selectedIndex;
   const title = serviceSidebarChildItemTitle(item, service);
   const titleParts = serviceSidebarChildItemDisplayParts(item, service);
@@ -26219,9 +26212,7 @@ function presenterControllerIsLive(serviceId = state.selectedServiceId) {
 }
 
 function presenterSlideInteractionHint(serviceId, title = "슬라이드") {
-  return presenterControllerIsLive(serviceId)
-    ? `${title} 더블클릭해 송출 위치로 이동`
-    : `${title} 선택`;
+  return `${title} 선택 · 더블클릭해 송출`;
 }
 
 function presenterBoardActiveIndex(slides, active, index) {
@@ -26957,6 +26948,15 @@ function selectedPresenterBoardIndexes(serviceId = state.selectedServiceId) {
   const selection = state.presenterBoardSelection || {};
   if (selection.serviceId !== serviceId) return new Set();
   return new Set((selection.indexes || []).map(Number).filter(Number.isFinite));
+}
+
+function presenterSelectedLaunchIndex(serviceId = state.selectedServiceId) {
+  const slides = presenterSlidesForService(serviceId);
+  const selection = state.presenterBoardSelection || {};
+  if (selection.serviceId !== serviceId) return null;
+  return (selection.indexes || [])
+    .map(Number)
+    .find((index) => isValidPresenterIndex(index, slides.length)) ?? null;
 }
 
 function selectPresenterBoardSlide(serviceId, slideIndex, options = {}) {
@@ -28145,6 +28145,9 @@ function runPresenterAction(action, serviceId = state.selectedServiceId, options
   if (action !== "open" && isPresenterOutputWindowOpen() && state.presenter.serviceId && state.presenter.serviceId !== serviceId) return;
 
   if (action === "open") {
+    preparePresenterService(serviceId);
+    const launchIndex = presenterSelectedLaunchIndex(serviceId);
+    if (isValidPresenterIndex(launchIndex, state.presenter.slides.length)) state.presenter.index = launchIndex;
     clearPresenterBoardSelection({ render: false });
     state.presenter.safetyBlank = false;
     openPresenterOutput(serviceId);
@@ -28961,10 +28964,11 @@ function patchServiceOutlineActiveState(serviceId = state.selectedServiceId) {
   if (state.module !== "presenter" || state.selectedServiceId !== serviceId) return;
   const outline = refs.songList?.querySelector(".service-outline-list");
   if (!outline) return;
-  const slides = state.presenter.serviceId === serviceId ? state.presenter.slides : [];
-  const activeSlide = slides[clampPresenterIndex(state.presenter.index, slides.length)] || null;
   outline.querySelectorAll(".service-outline-row.active, .service-outline-group.active")
     .forEach((node) => node.classList.remove("active"));
+  if (!presenterControllerIsLive(serviceId)) return;
+  const slides = state.presenter.serviceId === serviceId ? state.presenter.slides : [];
+  const activeSlide = slides[clampPresenterIndex(state.presenter.index, slides.length)] || null;
   if (!activeSlide) return;
   const service = state.services.find((svc) => svc.id === serviceId);
   const itemByIndex = new Map();
