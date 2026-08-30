@@ -17801,6 +17801,10 @@ function normalizeReferenceInput(value) {
     .trim()
     .replace(/[：.]/g, ":")
     .replace(/[–—~]/g, "-")
+    .replace(/^(\d{1,3})(?::\s*(\d{1,3})(?:\s*-\s*(\d{1,3}))?)?\s*(.+)$/u, (match, chapter, verse, verseEnd, book) => {
+      if (!findBibleBookByReferenceName(book)) return match;
+      return `${book.trim()} ${chapter}${verse ? `:${verse}${verseEnd ? `-${verseEnd}` : ""}` : ""}`;
+    })
     .replace(/^(.+?)(\d{1,3})\s*장\s*(\d{1,3})(?:\s*-\s*(\d{1,3}))?\s*절?$/u, (match, book, chapter, verse, verseEnd) => {
       if (!findBibleBookByReferenceName(book)) return match;
       return `${book.trim()} ${chapter} ${verse}${verseEnd ? `-${verseEnd}` : ""}`;

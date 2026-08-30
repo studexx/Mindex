@@ -624,6 +624,38 @@ def main() -> int:
             else:
                 fail("unsaved-warning-uses-actual-diff", json.dumps(actual_dirty_diff, ensure_ascii=False))
 
+            reversed_scripture_reference = page.evaluate(
+                """
+                (() => {
+                  if (typeof parseBibleReference !== 'function') return { ready: false };
+                  const references = ['23:1마', '23:1 마', '23:1-3마', '23:1ak']
+                    .map((input) => {
+                      const parsed = parseBibleReference(input);
+                      return {
+                        input,
+                        book: parsed?.book?.code || '',
+                        chapter: parsed?.chapter || 0,
+                        verse: parsed?.verse || 0,
+                        verseEnd: parsed?.verseEnd || 0,
+                      };
+                    });
+                  return { ready: true, references };
+                })()
+                """
+            )
+            if (
+                reversed_scripture_reference.get("ready")
+                and reversed_scripture_reference.get("references") == [
+                    {"input": "23:1마", "book": "MAT", "chapter": 23, "verse": 1, "verseEnd": 0},
+                    {"input": "23:1 마", "book": "MAT", "chapter": 23, "verse": 1, "verseEnd": 0},
+                    {"input": "23:1-3마", "book": "MAT", "chapter": 23, "verse": 1, "verseEnd": 3},
+                    {"input": "23:1ak", "book": "MAT", "chapter": 23, "verse": 1, "verseEnd": 0},
+                ]
+            ):
+                pass_("reversed-scripture-reference", json.dumps(reversed_scripture_reference, ensure_ascii=False))
+            else:
+                fail("reversed-scripture-reference", json.dumps(reversed_scripture_reference, ensure_ascii=False))
+
             passive_service_scripture_dirty = page.evaluate(
                 """
                 (async () => {
