@@ -5748,6 +5748,89 @@ def main() -> int:
                     else:
                         fail("presenter-header-input-controls", json.dumps(presenter_header_input, ensure_ascii=False))
 
+                    presenter_input_enter_commit_guard = page.evaluate(
+                        """
+                        (async () => {
+                          if (
+                            typeof handleDetailInput !== 'function'
+                            || typeof handleDetailChange !== 'function'
+                            || typeof handleDetailKeydown !== 'function'
+                            || typeof saveCommittedServiceItem !== 'function'
+                          ) return { ready: false };
+                          const field = document.querySelector(
+                            '#mindexRightSidebar .svc-presenter-input-rail input[data-service-item-field="raw_title"], '
+                            + '.svc-board-subgroup-controls input[data-service-item-field="raw_title"]'
+                          );
+                          if (!field) return { ready: false, reason: 'field' };
+                          const serviceId = field.dataset.serviceId || state.selectedServiceId;
+                          const index = Number(field.dataset.serviceItemIndex);
+                          const item = () => (state.serviceItems[serviceId] || [])[index] || {};
+                          const previousSaveCommittedServiceItem = saveCommittedServiceItem;
+                          const originalValue = item().raw_title || '';
+                          const originalDirty = state.dirty.service;
+                          const saves = [];
+                          let prevented = false;
+                          let stopped = false;
+                          try {
+                            saveCommittedServiceItem = (itemIndex, savedServiceId, options = {}) => {
+                              saves.push({ itemIndex: Number(itemIndex), serviceId: savedServiceId, silent: Boolean(options.silent) });
+                            };
+                            state.dirty.service = false;
+                            field.dataset.initialValue = field.value;
+                            field.dataset.presenterPreviewValue = field.value;
+                            field.value = '마 23:1';
+                            handleDetailInput({
+                              target: field,
+                              stopPropagation() {},
+                            });
+                            await new Promise((resolve) => window.setTimeout(resolve, 650));
+                            const afterInput = item().raw_title || '';
+                            handleDetailChange({ target: field });
+                            const afterChange = item().raw_title || '';
+                            handleDetailKeydown({
+                              target: field,
+                              key: 'Enter',
+                              preventDefault() { prevented = true; },
+                              stopPropagation() { stopped = true; },
+                            });
+                            const afterEnter = item().raw_title || '';
+                            return {
+                              ready: true,
+                              serviceId,
+                              index,
+                              afterInput,
+                              afterChange,
+                              afterEnter,
+                              saves,
+                              prevented,
+                              stopped,
+                              dirty: state.dirty.service,
+                            };
+                          } finally {
+                            saveCommittedServiceItem = previousSaveCommittedServiceItem;
+                            if (item()) item().raw_title = originalValue;
+                            state.dirty.service = originalDirty;
+                            if (typeof renderPresenterDetail === 'function') renderPresenterDetail();
+                          }
+                        })()
+                        """
+                    )
+                    if (
+                        presenter_input_enter_commit_guard.get("ready")
+                        and presenter_input_enter_commit_guard["afterInput"] != "마 23:1"
+                        and presenter_input_enter_commit_guard["afterChange"] != "마 23:1"
+                        and presenter_input_enter_commit_guard["afterEnter"] == "마 23:1"
+                        and len(presenter_input_enter_commit_guard["saves"]) == 1
+                        and presenter_input_enter_commit_guard["saves"][0]["itemIndex"] == presenter_input_enter_commit_guard["index"]
+                        and presenter_input_enter_commit_guard["saves"][0]["serviceId"] == presenter_input_enter_commit_guard["serviceId"]
+                        and presenter_input_enter_commit_guard["saves"][0]["silent"] is True
+                        and presenter_input_enter_commit_guard["prevented"]
+                        and presenter_input_enter_commit_guard["stopped"]
+                    ):
+                        pass_("presenter-input-enter-commit-guard", json.dumps(presenter_input_enter_commit_guard, ensure_ascii=False))
+                    else:
+                        fail("presenter-input-enter-commit-guard", json.dumps(presenter_input_enter_commit_guard, ensure_ascii=False))
+
                     presenter_input_label_vocabulary = page.evaluate(
                         """
                         (() => {

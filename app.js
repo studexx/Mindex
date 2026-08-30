@@ -1534,6 +1534,7 @@ function bindDetailInteractionRoot(root, options = {}) {
     const serviceTextField = e.target.closest("input[data-service-item-field], textarea[data-service-item-field]");
     if (isDeferredServiceTextInput(serviceTextField)) {
       clearDeferredServiceTextPreview(serviceTextField);
+      if (isPresenterEnterCommittedServiceInput(serviceTextField)) return;
       commitDeferredServiceTextInput(serviceTextField, { save: true });
       return;
     }
@@ -8320,6 +8321,10 @@ function handleDetailInput(event) {
   const serviceField = event.target.closest("[data-service-item-field]");
   if (serviceField) {
     if (isDeferredServiceTextInput(serviceField)) {
+      if (isPresenterEnterCommittedServiceInput(serviceField)) {
+        clearDeferredServiceTextPreview(serviceField);
+        return;
+      }
       if (isDeferredServiceScriptureReferenceInput(serviceField)) {
         scheduleDeferredServiceScriptureReferenceCommit(serviceField);
       } else {
@@ -8470,6 +8475,10 @@ function handleDetailChange(event) {
   const serviceField = event.target.closest("[data-service-item-field]");
   if (serviceField) {
     if (isDeferredServiceTextInput(serviceField)) {
+      if (isPresenterEnterCommittedServiceInput(serviceField)) {
+        clearDeferredServiceTextPreview(serviceField);
+        return;
+      }
       commitDeferredServiceTextInput(serviceField, { save: true });
       return;
     }
@@ -9058,6 +9067,12 @@ function updateNewServiceFormField(field) {
 function isDeferredServiceTextInput(field) {
   if (!field?.matches?.('input[type="text"][data-service-item-field], input:not([type])[data-service-item-field], textarea[data-service-item-field]')) return false;
   return true;
+}
+
+function isPresenterEnterCommittedServiceInput(field) {
+  return state.module === "presenter"
+    && isDeferredServiceTextInput(field)
+    && Boolean(field.closest?.(".svc-presenter-input-rail, .svc-board-subgroup-controls"));
 }
 
 function isServiceSongTitleInputField(field) {
