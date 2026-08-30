@@ -6209,6 +6209,66 @@ def main() -> int:
                     else:
                         fail("worship-slot-key-column-adapter", json.dumps(worship_slot_key_column_adapter, ensure_ascii=False))
 
+                    worship_announcement_media_video_guard = page.evaluate(
+                        """
+                        (() => {
+                          const service = { id: '__smoke_announcement_media_video__', type_id: 'sun_2nd', date: '2026-08-30' };
+                          const items = groupWorshipElements([
+                            { id: '__smoke_announcement_media_section__', service_id: service.id, section_key: 'announcements', title: '광고', sort_order: 11 }
+                          ], [{
+                            id: '__smoke_announcement_media_element__',
+                            section_id: '__smoke_announcement_media_section__',
+                            sort_order: 2,
+                            element_type: 'video',
+                            title: '문고리 전도 홍보 영상',
+                            body: '',
+                            asset: { kind: 'video', name: '문고리 전도 홍보 영상.mp4', url: 'https://example.test/mungori.mp4' },
+                            input_mode: 'asset',
+                            content_state: { state: 'filled', reason: 'asset', inputMode: 'asset', elementType: 'video' },
+                            source_ref: { label: '참고화면', slotKey: 'announcements.media' },
+                            config: {
+                              inputMode: 'asset',
+                              elementType: 'video',
+                              componentType: 'video',
+                              asset: { kind: 'video', name: '문고리 전도 홍보 영상.mp4', url: 'https://example.test/mungori.mp4' },
+                            },
+                            template_modified: true,
+                          }])[service.id] || [];
+                          const item = items[0] || {};
+                          const memo = parseServiceItemMemo(item.memo);
+                          const slides = buildPresenterSlidesForServiceItem(item, service, 0);
+                          const slide = slides[0] || {};
+                          return {
+                            itemCount: items.length,
+                            label: item.label || '',
+                            slotKey: item._worshipSlotKey || '',
+                            memoElementType: memo.elementType || '',
+                            memoInputMode: memo.inputMode || '',
+                            memoAssetKind: memo.asset?.kind || '',
+                            slideType: slide.type || '',
+                            slideElementType: slide.elementType || '',
+                            slideLayout: slide.layout || '',
+                            videoSrc: slide.videoSrc || '',
+                          };
+                        })()
+                        """
+                    )
+                    if worship_announcement_media_video_guard == {
+                        "itemCount": 1,
+                        "label": "참고화면",
+                        "slotKey": "announcements.media",
+                        "memoElementType": "video",
+                        "memoInputMode": "asset",
+                        "memoAssetKind": "video",
+                        "slideType": "video",
+                        "slideElementType": "video",
+                        "slideLayout": "media",
+                        "videoSrc": "https://example.test/mungori.mp4",
+                    }:
+                        pass_("worship-announcement-media-video-guard", json.dumps(worship_announcement_media_video_guard, ensure_ascii=False))
+                    else:
+                        fail("worship-announcement-media-video-guard", json.dumps(worship_announcement_media_video_guard, ensure_ascii=False))
+
                     presenter_manual_title_match_guard = page.evaluate(
                         """
                         (async () => {

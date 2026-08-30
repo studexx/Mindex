@@ -4294,9 +4294,6 @@ function groupWorshipElements(sections = [], elements = []) {
     if (configuredElementType === "live_scripture" && compactSearchValue(elementLabel) === "실시간성구송출") return grouped;
     const departmentAnnouncementBody = sectionKey === "announcements"
       && ["청소년부광고", "청년부광고"].includes(compactSearchValue(elementLabel));
-    const elementType = sectionKey === "announcements" && !departmentAnnouncementBody
-      ? "title"
-      : configuredElementType;
     const dbInputMode = normalizeServiceInputMode(element.input_mode);
     const contentInputMode = normalizeServiceInputMode(element.content_state?.inputMode || element.content_state?.input_mode);
     const configInputMode = normalizeServiceInputMode(
@@ -4309,6 +4306,12 @@ function groupWorshipElements(sections = [], elements = []) {
       ? "manual_praise"
       : (dbInputMode || contentInputMode || configInputMode);
     const asset = normalizeServiceAsset(config.asset || config.media || element.asset || sourceRef.asset);
+    const mediaAnnouncement = sectionKey === "announcements"
+      && !departmentAnnouncementBody
+      && (hasServiceAsset(asset) || ["image", "video", "ppt", "pdf"].includes(configuredElementType) || inputMode === "asset");
+    const elementType = sectionKey === "announcements" && !departmentAnnouncementBody && !mediaAnnouncement
+      ? "title"
+      : configuredElementType;
     const audioAsset = normalizeServiceAudioAsset(config.audioAsset || config.audio_asset || sourceRef.audioAsset || sourceRef.audio_asset);
     const playback = normalizeServicePlaybackConfig(config.playback, elementType);
     const presenterRole = normalizeServicePresenterRole(
