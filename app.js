@@ -21494,6 +21494,20 @@ function renderPresenterSidebarServiceSummary(service) {
     </section>`;
 }
 
+function patchPresenterSidebarServiceSummary(serviceId = state.selectedServiceId) {
+  if (state.module !== "presenter" || !refs.sidebar?.isConnected) return;
+  const service = state.services.find((svc) => svc.id === serviceId);
+  if (!service) return;
+  const current = refs.sidebar.querySelector(".service-sidebar-section--presenter-context");
+  if (!current) return;
+  const template = document.createElement("template");
+  template.innerHTML = renderPresenterSidebarServiceSummary(service).trim();
+  const next = template.content.firstElementChild;
+  if (!next) return;
+  current.replaceWith(next);
+  refreshIcons(next);
+}
+
 function renderPresenterSidebarPreparationInput(service) {
   if (!service?.id) return "";
   const draft = state.presenterPreparationDrafts[service.id] || "";
@@ -28696,6 +28710,7 @@ function renderPresenterControlState(serviceId = state.selectedServiceId) {
       const slides = presenterSlidesForService(serviceId);
       const index = active ? clampPresenterIndex(state.presenter.index, slides.length) : 0;
       const boardKey = presenterControlBoardKey(service, slides, active, presenterServiceUsesChromakey(service));
+      patchPresenterSidebarServiceSummary(serviceId);
       if (root.dataset.boardKey === boardKey) {
         root.className = presenterControlsClassName(active, presenterServiceUsesChromakey(service));
         if (sideRoot) patchPresenterControlsTop(sideRoot, service, slides, active, index);

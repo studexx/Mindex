@@ -958,12 +958,29 @@ def main() -> int:
                       const button = document.querySelector('.service-sidebar-presenter-context [data-presenter-action="open"]');
                       button?.click();
                       await new Promise((resolve) => setTimeout(resolve, 40));
+                      const stopButton = document.querySelector('.service-sidebar-presenter-context .svc-presenter-launch--sidebar');
+                      const stopState = {
+                        action: stopButton?.dataset.presenterAction || '',
+                        label: stopButton?.querySelector('span')?.textContent.trim() || '',
+                        icon: stopButton?.querySelector('svg')?.getAttribute('data-lucide') || '',
+                      };
+                      stopButton?.click();
+                      await new Promise((resolve) => setTimeout(resolve, 40));
+                      const restartButton = document.querySelector('.service-sidebar-presenter-context .svc-presenter-launch--sidebar');
+                      const restartState = {
+                        action: restartButton?.dataset.presenterAction || '',
+                        label: restartButton?.querySelector('span')?.textContent.trim() || '',
+                        icon: restartButton?.querySelector('svg')?.getAttribute('data-lucide') || '',
+                      };
                       window.open = originalOpen;
                       hydratePresenterOutputInBackground = originalHydrate;
                       const presenterServiceId = state.presenter.serviceId || '';
                       state.presenter.outputWindow = null;
                       state.presenter.outputPendingAt = 0;
                       state.presenter.outputConnectedAt = 0;
+                      state.presenter.outputStopAt = 0;
+                      state.presenter.outputStoppingClientId = '';
+                      state.presenter.outputClientId = '';
                       return {
                         hasButton: Boolean(button),
                         serviceId,
@@ -971,6 +988,8 @@ def main() -> int:
                         openCalled: Boolean(openCall),
                         url: openCall?.url || '',
                         presenterServiceId,
+                        stopState,
+                        restartState,
                       };
                     }
                     """
@@ -981,6 +1000,12 @@ def main() -> int:
                     and sidebar_launch_click_state["openCalled"]
                     and sidebar_launch_click_state["presenterServiceId"] == sidebar_launch_click_state["serviceId"]
                     and "output=presenter" in sidebar_launch_click_state["url"]
+                    and sidebar_launch_click_state["stopState"]["action"] == "stop"
+                    and sidebar_launch_click_state["stopState"]["label"] == "송출 종료"
+                    and sidebar_launch_click_state["stopState"]["icon"] == "screen-share-off"
+                    and sidebar_launch_click_state["restartState"]["action"] == "open"
+                    and sidebar_launch_click_state["restartState"]["label"] == "송출 시작"
+                    and sidebar_launch_click_state["restartState"]["icon"] == "screen-share"
                 ):
                     pass_("presenter-sidebar-launch-click", json.dumps(sidebar_launch_click_state, ensure_ascii=False))
                 else:
@@ -994,6 +1019,9 @@ def main() -> int:
                       state.presenter.outputPendingAt = 0;
                       state.presenter.outputConnectedAt = 0;
                       state.presenter.outputBlockedAt = 0;
+                      state.presenter.outputStopAt = 0;
+                      state.presenter.outputStoppingClientId = '';
+                      state.presenter.outputClientId = '';
                       state.presenter.serviceId = null;
                       state.presenter.index = 0;
                       state.presenter.jumpDraft = "";
