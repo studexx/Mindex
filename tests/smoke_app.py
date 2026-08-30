@@ -421,6 +421,15 @@ def main() -> int:
     def skip(name: str, detail: str = "") -> None:
         results.append(("SKIP", name, detail))
 
+    app_source = (APP_DIR / "app.js").read_text(encoding="utf-8")
+    full_save_start = app_source.find("async function saveWorshipServiceInstance(service)")
+    hydrate_call = app_source.find("await ensureWorshipServiceRowsLoadedForPersistence(serviceId);", full_save_start)
+    existing_sections = app_source.find("const existingSections = state.worshipSections", full_save_start)
+    if full_save_start >= 0 and hydrate_call >= 0 and existing_sections >= 0 and hydrate_call < existing_sections:
+        pass_("worship-full-save-loads-rows-before-persist")
+    else:
+        fail("worship-full-save-loads-rows-before-persist")
+
     if sync_playwright is None:
         skip("playwright-dependency", f"{PLAYWRIGHT_IMPORT_ERROR}. Install the Python playwright package to run UI smoke checks.")
         for status, name, detail in results:

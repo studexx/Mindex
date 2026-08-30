@@ -6064,6 +6064,7 @@ async function worshipElementTypedStateColumns() {
 
 async function saveWorshipServiceInstance(service) {
   const serviceId = service.id;
+  await ensureWorshipServiceRowsLoadedForPersistence(serviceId);
   const canonicalTypeId = canonicalWorshipServiceTypeId(service.type_id);
   const worshipLeader = cleanServiceAssignee(service.worshipLeader || service._worshipLeader);
   const praiseLeader = serviceUsesPraiseLeader(service.type_id)
