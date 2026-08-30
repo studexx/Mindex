@@ -7328,7 +7328,7 @@ def main() -> int:
                         layout: PRESENTER_SLIDE_LAYOUTS.MEDIA,
                         type: 'video',
                         title: '영상',
-                        videoSrc: 'assets/presenter/friday-prayer-ready.mp4',
+                        videoSrc: 'assets/presenter/chromakey-ready-loop.mp4',
                         outputContext: 'clean',
                       };
                       const audio = {
@@ -7358,20 +7358,16 @@ def main() -> int:
                       const waitingVideo = waitingMount.querySelector('video.presenter-video');
                       const videoMount = document.createElement('div');
                       videoMount.innerHTML = videoPreview;
-                      document.body.appendChild(videoMount);
-                      const videoStaticPreview = videoMount.querySelector('.presenter-static-media-preview');
-                      const videoStaticBackground = videoStaticPreview
-                        ? getComputedStyle(videoStaticPreview).backgroundColor
-                        : '';
-                      videoMount.remove();
+                      const videoOutput = videoMount.querySelector('video.presenter-video');
                       return {
                         videoUsesOutputElement: videoPreview.includes('<video'),
                         videoUsesMetadataPreload: videoPreview.includes('preload="metadata"'),
                         videoUsesFirstFrameOffset: videoPreview.includes('#t=0.001'),
                         videoMuted: videoPreview.includes('muted'),
+                        videoAutoplay: Boolean(videoOutput?.autoplay),
+                        videoLoop: Boolean(videoOutput?.loop),
                         videoUsesPlaceholder: videoPreview.includes('presenter-slide-file'),
                         videoUsesStaticPreview: videoPreview.includes('presenter-static-media-preview'),
-                        videoStaticBackground,
                         videoElementCount: videoMount.querySelectorAll('video').length,
                         waitingUsesOutputElement: Boolean(waitingVideo),
                         waitingUsesStaticPreview: waitingPreview.includes('presenter-static-media-preview'),
@@ -7386,14 +7382,15 @@ def main() -> int:
                     """
                 )
                 if (
-                    not preview_renderer_state["videoUsesOutputElement"]
-                    and not preview_renderer_state["videoUsesMetadataPreload"]
-                    and not preview_renderer_state["videoUsesFirstFrameOffset"]
-                    and not preview_renderer_state["videoMuted"]
+                    preview_renderer_state["videoUsesOutputElement"]
+                    and preview_renderer_state["videoUsesMetadataPreload"]
+                    and preview_renderer_state["videoUsesFirstFrameOffset"]
+                    and preview_renderer_state["videoMuted"]
+                    and not preview_renderer_state["videoAutoplay"]
+                    and not preview_renderer_state["videoLoop"]
                     and not preview_renderer_state["videoUsesPlaceholder"]
-                    and preview_renderer_state["videoUsesStaticPreview"]
-                    and preview_renderer_state["videoStaticBackground"] == "rgb(5, 5, 5)"
-                    and preview_renderer_state["videoElementCount"] == 0
+                    and not preview_renderer_state["videoUsesStaticPreview"]
+                    and preview_renderer_state["videoElementCount"] == 1
                     and preview_renderer_state["waitingUsesOutputElement"]
                     and not preview_renderer_state["waitingUsesStaticPreview"]
                     and preview_renderer_state["waitingUsesMetadataPreload"]
@@ -7403,9 +7400,9 @@ def main() -> int:
                     and not preview_renderer_state["waitingLoop"]
                     and not preview_renderer_state["audioUsesPlaceholder"]
                 ):
-                    pass_("presenter-preview-uses-static-video", json.dumps(preview_renderer_state, ensure_ascii=False))
+                    pass_("presenter-preview-uses-video-first-frame", json.dumps(preview_renderer_state, ensure_ascii=False))
                 else:
-                    fail("presenter-preview-uses-static-video", json.dumps(preview_renderer_state, ensure_ascii=False))
+                    fail("presenter-preview-uses-video-first-frame", json.dumps(preview_renderer_state, ensure_ascii=False))
 
                 video_paint_guard_state = page.evaluate(
                     """
