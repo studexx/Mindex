@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import re
 from io import BytesIO
+from pathlib import Path
 from typing import Any
 
 from PIL import Image
@@ -85,6 +86,22 @@ def main() -> int:
 
     def skip(name: str, detail: str = "") -> None:
         results.append(("SKIP", name, detail))
+
+    app_source = (Path(__file__).resolve().parents[1] / "app.js").read_text(encoding="utf-8")
+    click_start = app_source.find("function handleServiceOutlineSlideClick(serviceOutlineItem)")
+    dblclick_start = app_source.find("function handleServiceOutlineSlideDoubleClick(event)")
+    selection_start = app_source.find("function syncServiceOutlineSelection(serviceOutlineItem)")
+    click_body = app_source[click_start:dblclick_start] if click_start >= 0 and dblclick_start > click_start else ""
+    dblclick_body = app_source[dblclick_start:selection_start] if dblclick_start >= 0 and selection_start > dblclick_start else ""
+    if (
+        "setPresenterPendingSlide(target.serviceId, target.slideIndex" in click_body
+        and "runPresenterAction(\"jump\", target.serviceId" not in click_body
+        and "startPresenterAtSlide(target.serviceId, target.slideIndex)" in dblclick_body
+        and "runPresenterAction(\"jump\", target.serviceId" in dblclick_body
+    ):
+        pass_("presenter-outline-click-requires-doubleclick-output")
+    else:
+        fail("presenter-outline-click-requires-doubleclick-output")
 
     if sync_playwright is None:
         skip("playwright-dependency", f"{PLAYWRIGHT_IMPORT_ERROR}. Install the Python playwright package to run UI smoke checks.")
@@ -9003,6 +9020,8 @@ def main() -> int:
                         itemIndex: Number(row.dataset.serviceOutlineItemIndex),
                         slideIndex: Number(row.dataset.serviceOutlineSlide),
                       };
+                      const beforeIndex = state.presenter.index;
+                      const controllerLive = presenterControllerIsLive(serviceId);
                       row.click();
                       scrollPresenterBoardToIndexStable = previousStable;
                       scrollPresenterBoardToServiceItem = previousItem;
@@ -9010,6 +9029,8 @@ def main() -> int:
                       return {
                         hasRow: true,
                         target,
+                        beforeIndex,
+                        controllerLive,
                         presenterIndex: state.presenter.index,
                         selectedItemIndex: state.selectedServiceItemIndex,
                         stableCalls,
@@ -9022,7 +9043,16 @@ def main() -> int:
                 )
                 if (
                     outline_click_scroll_state["hasRow"]
-                    and outline_click_scroll_state["presenterIndex"] == outline_click_scroll_state["target"]["slideIndex"]
+                    and (
+                        (
+                            outline_click_scroll_state["controllerLive"]
+                            and outline_click_scroll_state["presenterIndex"] == outline_click_scroll_state["beforeIndex"]
+                        )
+                        or (
+                            not outline_click_scroll_state["controllerLive"]
+                            and outline_click_scroll_state["presenterIndex"] == outline_click_scroll_state["target"]["slideIndex"]
+                        )
+                    )
                     and outline_click_scroll_state["selectedItemIndex"] == outline_click_scroll_state["target"]["itemIndex"]
                     and outline_click_scroll_state["stableCalls"] == []
                     and len(outline_click_scroll_state["itemCalls"]) == 1
@@ -9044,10 +9074,13 @@ def main() -> int:
                       const rows = [...document.querySelectorAll('.service-outline-row--child[data-service-outline-slide][data-service-outline-item-index][data-service-outline-item-id]')]
                         .filter((node) => Number(node.dataset.serviceOutlineItemIndex) >= 0 && Number(node.dataset.serviceOutlineSlide) >= 0);
                       if (rows.length < 2) return { hasRows: false, rowCount: rows.length };
+                      const beforeIndex = state.presenter.index;
                       const targetRow = rows.find((node) => {
                         const item = serviceOutlineItemForIndex(serviceId, Number(node.dataset.serviceOutlineItemIndex));
                         const expected = item ? firstPresenterSlideIndexForServiceItem(item, slides) : -1;
-                        return expected >= 0 && rows.some((other) => Number(other.dataset.serviceOutlineSlide) !== expected);
+                        return expected >= 0
+                          && expected !== beforeIndex
+                          && rows.some((other) => Number(other.dataset.serviceOutlineSlide) !== expected);
                       }) || rows[0];
                       const item = serviceOutlineItemForIndex(serviceId, Number(targetRow.dataset.serviceOutlineItemIndex));
                       const expectedSlide = item ? firstPresenterSlideIndexForServiceItem(item, slides) : -1;
@@ -9059,11 +9092,16 @@ def main() -> int:
                       }
                       targetRow.dataset.serviceOutlineSlide = String(staleSlide);
                       targetRow.click();
+                      const afterClickIndex = state.presenter.index;
+                      targetRow.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, cancelable: true }));
                       return {
                         hasRows: true,
                         canTest: true,
                         expectedSlide,
                         staleSlide,
+                        beforeIndex,
+                        afterClickIndex,
+                        afterDoubleClickIndex: state.presenter.index,
                         presenterIndex: state.presenter.index,
                         selectedItemIndex: state.selectedServiceItemIndex,
                         expectedItemIndex: Number(targetRow.dataset.serviceOutlineItemIndex),
@@ -9076,6 +9114,9 @@ def main() -> int:
                     outline_stale_index_state["hasRows"]
                     and outline_stale_index_state["canTest"]
                     and outline_stale_index_state["staleSlide"] != outline_stale_index_state["expectedSlide"]
+                    and outline_stale_index_state["beforeIndex"] != outline_stale_index_state["expectedSlide"]
+                    and outline_stale_index_state["afterClickIndex"] == outline_stale_index_state["beforeIndex"]
+                    and outline_stale_index_state["afterDoubleClickIndex"] == outline_stale_index_state["expectedSlide"]
                     and outline_stale_index_state["presenterIndex"] == outline_stale_index_state["expectedSlide"]
                     and outline_stale_index_state["selectedItemIndex"] == outline_stale_index_state["expectedItemIndex"]
                 ):

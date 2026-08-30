@@ -1233,6 +1233,7 @@ function bindStaticEvents() {
   refs.songList.addEventListener("input", handleDetailInput);
   refs.songList.addEventListener("paste", handlePresenterPreparationPaste);
   refs.songList.addEventListener("change", handleDetailChange);
+  refs.songList.addEventListener("dblclick", handleServiceOutlineSlideDoubleClick);
 
   refs.songList.addEventListener("click", async (event) => {
     if (handleSidebarPresenterActionClick(event)) return;
@@ -1663,10 +1664,10 @@ function handleServiceOutlineSlideClick(serviceOutlineItem) {
   const outputIsShowingAnotherService = isPresenterOutputWindowOpen()
     && state.presenter.serviceId
     && state.presenter.serviceId !== target.serviceId;
-  if (!outputIsShowingAnotherService) {
-    runPresenterAction("jump", target.serviceId, { index: target.slideIndex, scroll: false });
-  } else {
+  if (presenterControllerIsLive(target.serviceId) || outputIsShowingAnotherService) {
     selectPresenterBoardSlide(target.serviceId, target.slideIndex);
+  } else {
+    setPresenterPendingSlide(target.serviceId, target.slideIndex, { render: false });
   }
   syncServiceOutlineSelection(serviceOutlineItem);
   patchServiceOutlineActiveState(target.serviceId);
@@ -1677,6 +1678,21 @@ function handleServiceOutlineSlideClick(serviceOutlineItem) {
   if (!scrollPresenterBoardToServiceItem(target.serviceId, target.itemIndex, { force: true, behavior: "smooth", block: "start" })) {
     scrollPresenterBoardToIndex(target.serviceId, target.slideIndex, { force: true, behavior: "smooth", target: "subgroup", block: "start" });
   }
+}
+
+function handleServiceOutlineSlideDoubleClick(event) {
+  const serviceOutlineItem = event.target.closest("[data-service-outline-slide]");
+  if (!serviceOutlineItem || !refs.songList?.contains(serviceOutlineItem)) return false;
+  const target = serviceOutlineSlideTarget(serviceOutlineItem);
+  if (!target) return false;
+  event.preventDefault();
+  event.stopPropagation();
+  if (presenterControllerIsLive(target.serviceId)) {
+    runPresenterAction("jump", target.serviceId, { index: target.slideIndex, scroll: false });
+  } else {
+    startPresenterAtSlide(target.serviceId, target.slideIndex);
+  }
+  return true;
 }
 
 function syncServiceOutlineSelection(serviceOutlineItem) {
@@ -26204,7 +26220,7 @@ function presenterControllerIsLive(serviceId = state.selectedServiceId) {
 
 function presenterSlideInteractionHint(serviceId, title = "슬라이드") {
   return presenterControllerIsLive(serviceId)
-    ? `${title} 송출 위치로 이동`
+    ? `${title} 더블클릭해 송출 위치로 이동`
     : `${title} 선택`;
 }
 
