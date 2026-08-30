@@ -6565,8 +6565,7 @@ textarea.svc-presenter-input-control--multiline {
   border-radius: calc(var(--r) - 2px);
   background: color-mix(in srgb, var(--panel) 68%, #111);
 }
-.svc-presenter-live-preview .svc-slide-mini-output,
-.svc-presenter-live-preview .svc-slide-mini-canvas {
+.svc-presenter-live-preview .svc-slide-mini-output {
   width: 100%;
   height: 100%;
 }

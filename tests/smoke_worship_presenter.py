@@ -6881,6 +6881,49 @@ def main() -> int:
                         pass_("presenter-doubleclick-live-jumps", json.dumps(dbl_state, ensure_ascii=False))
                     else:
                         fail("presenter-doubleclick-live-jumps", json.dumps(dbl_state, ensure_ascii=False))
+                    page.wait_for_timeout(120)
+                    sidebar_preview_scale_state = page.evaluate(
+                        """
+                        (() => {
+                          const preview = document.querySelector('.svc-presenter-side-panel .svc-presenter-live-preview');
+                          const output = preview?.querySelector('.svc-slide-mini-output');
+                          const canvas = preview?.querySelector('.svc-slide-mini-canvas.presenter-output-root');
+                          const previewRect = preview?.getBoundingClientRect();
+                          const outputRect = output?.getBoundingClientRect();
+                          const canvasRect = canvas?.getBoundingClientRect();
+                          const scale = Number(canvas?.style.getPropertyValue('--presenter-preview-scale')) || 0;
+                          return {
+                            hasPreview: Boolean(preview),
+                            hasOutput: Boolean(output),
+                            hasCanvas: Boolean(canvas),
+                            outputWidth: Math.round(outputRect?.width || 0),
+                            outputHeight: Math.round(outputRect?.height || 0),
+                            canvasCssWidth: Math.round(Number.parseFloat(getComputedStyle(canvas || document.body).width) || 0),
+                            canvasCssHeight: Math.round(Number.parseFloat(getComputedStyle(canvas || document.body).height) || 0),
+                            visualWidth: Math.round(canvasRect?.width || 0),
+                            visualHeight: Math.round(canvasRect?.height || 0),
+                            previewRatio: previewRect?.height ? Number((previewRect.width / previewRect.height).toFixed(3)) : 0,
+                            visualRatio: canvasRect?.height ? Number((canvasRect.width / canvasRect.height).toFixed(3)) : 0,
+                            scale,
+                          };
+                        })()
+                        """
+                    )
+                    if (
+                        sidebar_preview_scale_state["hasPreview"]
+                        and sidebar_preview_scale_state["hasOutput"]
+                        and sidebar_preview_scale_state["hasCanvas"]
+                        and sidebar_preview_scale_state["canvasCssWidth"] == 1920
+                        and sidebar_preview_scale_state["canvasCssHeight"] == 1080
+                        and abs(sidebar_preview_scale_state["visualWidth"] - sidebar_preview_scale_state["outputWidth"]) <= 2
+                        and abs(sidebar_preview_scale_state["visualHeight"] - sidebar_preview_scale_state["outputHeight"]) <= 2
+                        and 1.75 <= sidebar_preview_scale_state["previewRatio"] <= 1.79
+                        and 1.75 <= sidebar_preview_scale_state["visualRatio"] <= 1.79
+                        and sidebar_preview_scale_state["scale"] > 0
+                    ):
+                        pass_("presenter-sidebar-live-preview-scale", json.dumps(sidebar_preview_scale_state, ensure_ascii=False))
+                    else:
+                        fail("presenter-sidebar-live-preview-scale", json.dumps(sidebar_preview_scale_state, ensure_ascii=False))
                     page.evaluate(
                         """
                         (serviceId) => {
