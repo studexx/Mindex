@@ -3438,14 +3438,17 @@ function renderPresenterOutput(payload, options = {}) {
     applyPresenterOutputFrameState(root, frameState);
     presenterOutputLayers(root);
     const rerenderIfReady = () => {
-      if (root.dataset.presenterPendingImageSource === activeImageSource) renderPresenterOutput(payload, options);
-    };
-    preloadPresenterOutputImage(activeImageSource)?.finally(rerenderIfReady);
-    window.setTimeout(() => {
-      if (root.dataset.presenterPendingImageSource === activeImageSource && presenterOutputImageIsReady(activeImageSource)) {
+      if (
+        root.dataset.presenterPendingImageSource === activeImageSource
+        && presenterOutputImageIsReady(activeImageSource)
+      ) {
         renderPresenterOutput(payload, options);
       }
-    }, 40);
+    };
+    preloadPresenterOutputImage(activeImageSource)?.finally(rerenderIfReady);
+    nextAnimationFrame().then(rerenderIfReady);
+    window.setTimeout(rerenderIfReady, 40);
+    window.setTimeout(rerenderIfReady, 160);
     return;
   }
 
