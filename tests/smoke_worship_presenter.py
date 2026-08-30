@@ -7358,6 +7358,12 @@ def main() -> int:
                       const waitingVideo = waitingMount.querySelector('video.presenter-video');
                       const videoMount = document.createElement('div');
                       videoMount.innerHTML = videoPreview;
+                      document.body.appendChild(videoMount);
+                      const videoStaticPreview = videoMount.querySelector('.presenter-static-media-preview');
+                      const videoStaticBackground = videoStaticPreview
+                        ? getComputedStyle(videoStaticPreview).backgroundColor
+                        : '';
+                      videoMount.remove();
                       return {
                         videoUsesOutputElement: videoPreview.includes('<video'),
                         videoUsesMetadataPreload: videoPreview.includes('preload="metadata"'),
@@ -7365,6 +7371,7 @@ def main() -> int:
                         videoMuted: videoPreview.includes('muted'),
                         videoUsesPlaceholder: videoPreview.includes('presenter-slide-file'),
                         videoUsesStaticPreview: videoPreview.includes('presenter-static-media-preview'),
+                        videoStaticBackground,
                         videoElementCount: videoMount.querySelectorAll('video').length,
                         waitingUsesOutputElement: Boolean(waitingVideo),
                         waitingUsesStaticPreview: waitingPreview.includes('presenter-static-media-preview'),
@@ -7385,6 +7392,7 @@ def main() -> int:
                     and not preview_renderer_state["videoMuted"]
                     and not preview_renderer_state["videoUsesPlaceholder"]
                     and preview_renderer_state["videoUsesStaticPreview"]
+                    and preview_renderer_state["videoStaticBackground"] == "rgb(5, 5, 5)"
                     and preview_renderer_state["videoElementCount"] == 0
                     and preview_renderer_state["waitingUsesOutputElement"]
                     and not preview_renderer_state["waitingUsesStaticPreview"]

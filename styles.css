@@ -8206,8 +8206,8 @@ body.is-chromium .svc-slide-thumb.active:hover .svc-slide-thumb-frame {
   height: 100%;
   place-items: center;
   padding: 9%;
-  background: linear-gradient(135deg, rgba(255, 255, 255, .08), rgba(0, 0, 0, .16));
-  color: rgba(255, 255, 255, .82);
+  background: #050505;
+  color: rgba(255, 255, 255, .86);
   font-family: var(--font-ui);
   font-size: 72px;
   font-weight: 800;
