@@ -5645,6 +5645,9 @@ async function deleteSelectedSong() {
 
 async function saveAll() {
   if (state.module === "home") return;
+  const saveState = currentSaveButtonState();
+  if (!saveState.available) return false;
+  if (!saveState.dirty) return true;
   if (state.module === "references") {
     await saveReferenceLinks();
     return;
@@ -12853,20 +12856,7 @@ function renderModuleSwitcher() {
   refs.searchInput.placeholder = "검색...";
   refs.searchInput.setAttribute("aria-label", "검색");
   syncPraiseCreateControls();
-  refs.saveAllBtn.hidden = false;
-  const saveLabel =
-    state.module === "scripture"
-      ? "말씀 저장"
-      : isServiceDataModule()
-        ? "예배 저장"
-      : state.module === "references"
-          ? "참고자료 저장"
-        : state.module === "calendar"
-          ? "교회력은 여기서 읽기 전용입니다"
-          : state.module === "praise"
-          ? "찬양 저장"
-          : "저장";
-  refs.saveAllBtn.setAttribute("aria-label", saveLabel);
+  syncSaveButtonChrome();
   updatePresenterRightSidebarToggleButtons();
   renderListFilter();
 }
@@ -18067,6 +18057,39 @@ function hasDirtyChanges({ reconcile = false } = {}) {
   return state.dirty.song || state.dirty.forms || state.dirty.scripture || state.dirty.service || state.dirty.references;
 }
 
+function currentSaveButtonState() {
+  if (state.saving) return { label: "저장 중", dirty: true, available: true, busy: true };
+  if (state.module === "home") return { label: "저장", dirty: false, available: false };
+  if (state.module === "calendar") return { label: "교회력은 여기서 읽기 전용입니다", dirty: false, available: false };
+  if (state.module === "references") return { label: "참고자료 저장", dirty: state.dirty.references, available: true };
+  if (isServiceDataModule()) {
+    const serviceId = state.module === "presenter" ? presenterViewServiceId() : state.selectedServiceId;
+    return {
+      label: "예배 저장",
+      dirty: state.dirty.service,
+      available: Boolean(state.services.find((svc) => svc.id === serviceId)),
+    };
+  }
+  if (state.module === "scripture") {
+    return { label: "말씀 저장", dirty: state.dirty.scripture, available: Boolean(getSelectedScripture()) };
+  }
+  if (state.module === "praise") {
+    return {
+      label: "찬양 저장",
+      dirty: state.dirty.song || state.dirty.forms,
+      available: Boolean(getSelectedSong()) && !state.loading && !songLoadPromise,
+    };
+  }
+  return { label: "저장", dirty: hasDirtyChanges(), available: true };
+}
+
+function syncSaveButtonChrome(saveState = currentSaveButtonState()) {
+  refs.saveAllBtn.hidden = false;
+  refs.saveAllBtn.disabled = !saveState.available || !saveState.dirty || Boolean(saveState.busy);
+  refs.saveAllBtn.setAttribute("aria-label", saveState.label);
+  refs.saveAllBtn.setAttribute("title", saveState.label);
+}
+
 let unsavedChangesDialogPromise = null;
 
 function confirmUnsavedChangesAction() {
@@ -18140,16 +18163,14 @@ async function confirmSaveBeforeLeaving() {
 }
 
 function updateSaveState() {
-  refs.saveAllBtn.hidden = false;
+  syncSaveButtonChrome();
   updatePresenterRightSidebarToggleButtons();
   if (state.module === "home" || state.module === "calendar") {
-    refs.saveAllBtn.disabled = true;
     renderConnectionStatus();
     return;
   }
 
   if (state.module === "references") {
-    refs.saveAllBtn.disabled = !state.dirty.references || state.saving;
     renderConnectionStatus();
     const dirtyPill = refs.detailPane.querySelector(".dirty-pill");
     if (dirtyPill) dirtyPill.hidden = !state.dirty.references;
@@ -18157,16 +18178,11 @@ function updateSaveState() {
   }
 
   if (isServiceDataModule()) {
-    const serviceId = state.module === "presenter" ? presenterViewServiceId() : state.selectedServiceId;
-    const selectedService = state.services.find((svc) => svc.id === serviceId);
-    refs.saveAllBtn.disabled = !selectedService || !state.dirty.service || state.saving;
     renderConnectionStatus();
     const dirtyPill = refs.detailPane.querySelector(".dirty-pill");
     if (dirtyPill) dirtyPill.hidden = !state.dirty.service;
     return;
   }
-  const selectedItem = state.module === "scripture" ? getSelectedScripture() : getSelectedSong();
-  refs.saveAllBtn.disabled = !selectedItem || !hasDirtyChanges() || state.saving || state.loading;
   renderConnectionStatus();
 
   const dirtyPill = refs.detailPane.querySelector(".dirty-pill");

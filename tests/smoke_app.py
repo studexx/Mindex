@@ -801,6 +801,89 @@ def main() -> int:
             else:
                 pass_("topbar-icon-grid", json.dumps(icon_metrics, ensure_ascii=False))
 
+            save_state_scope = page.evaluate(
+                """
+                async () => {
+                  const original = {
+                    module: state.module,
+                    dirty: { ...state.dirty },
+                    selectedSongId: state.selectedSongId,
+                    selectedScriptureId: state.selectedScriptureId,
+                    songs: state.songs,
+                    scriptures: state.scriptures,
+                    saving: state.saving,
+                    loading: state.loading,
+                  };
+                  const snap = () => ({
+                    label: refs.saveAllBtn.getAttribute('aria-label'),
+                    title: refs.saveAllBtn.getAttribute('title'),
+                    disabled: refs.saveAllBtn.disabled,
+                  });
+                  try {
+                    state.songs = [{ id: '__save_scope_song__', title: '저장 범위 확인', versions: [] }];
+                    state.scriptures = [{ id: '__save_scope_scripture__', title: '저장 범위 확인' }];
+                    state.selectedSongId = '__save_scope_song__';
+                    state.selectedScriptureId = '__save_scope_scripture__';
+                    state.loading = false;
+                    state.saving = false;
+
+                    state.dirty = { song: false, forms: false, scripture: false, service: false, references: true };
+                    state.module = 'praise';
+                    updateSaveState();
+                    const praiseOtherDirty = snap();
+                    const praiseNoop = await saveAll();
+
+                    state.dirty = { song: false, forms: true, scripture: false, service: false, references: false };
+                    updateSaveState();
+                    const praiseOwnDirty = snap();
+
+                    state.dirty = { song: true, forms: false, scripture: false, service: false, references: false };
+                    state.module = 'scripture';
+                    updateSaveState();
+                    const scriptureOtherDirty = snap();
+
+                    state.dirty = { song: false, forms: false, scripture: true, service: false, references: false };
+                    updateSaveState();
+                    const scriptureOwnDirty = snap();
+
+                    state.module = 'calendar';
+                    state.dirty = { song: false, forms: false, scripture: false, service: false, references: true };
+                    updateSaveState();
+                    const calendar = snap();
+
+                    state.module = 'references';
+                    state.saving = true;
+                    updateSaveState();
+                    const saving = snap();
+
+                    return { praiseOtherDirty, praiseNoop, praiseOwnDirty, scriptureOtherDirty, scriptureOwnDirty, calendar, saving };
+                  } finally {
+                    state.module = original.module;
+                    state.dirty = original.dirty;
+                    state.selectedSongId = original.selectedSongId;
+                    state.selectedScriptureId = original.selectedScriptureId;
+                    state.songs = original.songs;
+                    state.scriptures = original.scriptures;
+                    state.saving = original.saving;
+                    state.loading = original.loading;
+                    updateSaveState();
+                  }
+                }
+                """
+            )
+            if (
+                save_state_scope["praiseOtherDirty"] == {"label": "찬양 저장", "title": "찬양 저장", "disabled": True}
+                and save_state_scope["praiseNoop"] is True
+                and save_state_scope["praiseOwnDirty"] == {"label": "찬양 저장", "title": "찬양 저장", "disabled": False}
+                and save_state_scope["scriptureOtherDirty"] == {"label": "말씀 저장", "title": "말씀 저장", "disabled": True}
+                and save_state_scope["scriptureOwnDirty"] == {"label": "말씀 저장", "title": "말씀 저장", "disabled": False}
+                and save_state_scope["calendar"] == {"label": "교회력은 여기서 읽기 전용입니다", "title": "교회력은 여기서 읽기 전용입니다", "disabled": True}
+                and save_state_scope["saving"] == {"label": "저장 중", "title": "저장 중", "disabled": True}
+            ):
+                pass_("save-state-current-module-scope", json.dumps(save_state_scope, ensure_ascii=False))
+            else:
+                fail("save-state-current-module-scope", json.dumps(save_state_scope, ensure_ascii=False))
+
             topbar_offsets = page.evaluate(
                 """
                 (() => {
