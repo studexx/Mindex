@@ -147,6 +147,8 @@ def main() -> int:
                   const themeButton = document.querySelector('#themeBtn');
                   const sidebarStyle = sidebar ? getComputedStyle(sidebar) : null;
                   const topbarStyle = topbar ? getComputedStyle(topbar) : null;
+                  const sidebarRect = sidebar?.getBoundingClientRect();
+                  const topbarRect = topbar?.getBoundingClientRect();
                   const toggleStyle = toggleButton ? getComputedStyle(toggleButton) : null;
                   const saveStyle = saveButton ? getComputedStyle(saveButton) : null;
                   const themeStyle = themeButton ? getComputedStyle(themeButton) : null;
@@ -156,6 +158,8 @@ def main() -> int:
                     hidden: Boolean(sidebar?.hidden),
                     hasContent,
                     bodyOpen: document.body.classList.contains('right-sidebar-open'),
+                    sidebarTop: sidebarRect ? Math.round(sidebarRect.top) : 0,
+                    topbarBottom: topbarRect ? Math.round(topbarRect.bottom) : 0,
                     sidebarWidth: sidebar ? Math.round(sidebar.getBoundingClientRect().width) : 0,
                     rightRailWidth: Math.round(parseFloat(getComputedStyle(document.body).getPropertyValue('--right-rail-w')) || 0),
                     sidebarBackground: sidebarStyle?.backgroundColor || '',
@@ -172,6 +176,7 @@ def main() -> int:
             )
             loading_right_rail_ok = (
                 loading_right_rail_state["module"] == "presenter"
+                and loading_right_rail_state["sidebarTop"] >= loading_right_rail_state["topbarBottom"]
                 and not loading_right_rail_state["hidden"]
                 and (
                     loading_right_rail_state["hasContent"]
@@ -497,6 +502,7 @@ def main() -> int:
                       const leftSidebar = document.querySelector('#mindexSidebarPanel');
                       const headerToggle = document.querySelector('.svc-header-actions [data-presenter-right-sidebar-toggle]');
                       const presenterHeader = document.querySelector('.presenter-viewer .svc-header');
+                      const topbar = document.querySelector('.topbar');
                       const resolveCssColor = (value) => {
                         const sample = document.createElement('span');
                         sample.style.color = value;
@@ -519,6 +525,8 @@ def main() -> int:
                       const inputRailHeadStyle = inputRailHead ? getComputedStyle(inputRailHead) : null;
                       const saveStyle = saveButton ? getComputedStyle(saveButton) : null;
                       const themeStyle = themeButton ? getComputedStyle(themeButton) : null;
+                      const sidebarRect = sidebar?.getBoundingClientRect();
+                      const topbarRect = topbar?.getBoundingClientRect();
                       const before = {
                         buttonVisible: Boolean(button && !button.hidden),
                         saveHidden: Boolean(document.querySelector('#saveAllBtn')?.hidden),
@@ -538,6 +546,8 @@ def main() -> int:
                         bodyTransition: getComputedStyle(document.body).transitionProperty,
                         sidebarTransition: sidebar ? getComputedStyle(sidebar).transitionProperty : '',
                         sidebarBorderLeft: sidebar ? getComputedStyle(sidebar).borderLeftWidth : '',
+                        sidebarTop: sidebarRect ? Math.round(sidebarRect.top) : 0,
+                        topbarBottom: topbarRect ? Math.round(topbarRect.bottom) : 0,
                         sidebarWidth: sidebar ? Math.round(sidebar.getBoundingClientRect().width) : 0,
                         sidePanelWidth: sidePanel ? Math.round(sidePanel.getBoundingClientRect().width) : 0,
                         leftSidebarWidth: leftSidebar ? Math.round(leftSidebar.getBoundingClientRect().width) : 0,
@@ -590,6 +600,7 @@ def main() -> int:
                     and "--shell-right-w" in right_sidebar_toggle_state["before"]["bodyTransition"]
                     and "opacity" in right_sidebar_toggle_state["before"]["sidebarTransition"]
                     and right_sidebar_toggle_state["before"]["sidebarBorderLeft"] == "0px"
+                    and right_sidebar_toggle_state["before"]["sidebarTop"] >= right_sidebar_toggle_state["before"]["topbarBottom"]
                     and right_sidebar_toggle_state["before"]["sidePanelWidth"] == right_sidebar_toggle_state["before"]["leftSidebarWidth"]
                     and right_sidebar_toggle_state["before"]["sidebarWidth"] == (
                         right_sidebar_toggle_state["before"]["sidePanelWidth"]

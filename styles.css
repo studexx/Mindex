@@ -723,7 +723,7 @@ body[data-module="praise"] .list-filter {
 }
 .right-sidebar {
   grid-column: 3;
-  grid-row: 1 / -1;
+  grid-row: 2;
   display: grid;
   min-width: 0;
   min-height: 0;
@@ -782,7 +782,7 @@ body:not([data-module="presenter"]) #presenterRightSidebarBtn {
   display: none;
 }
 body[data-module="presenter"] .right-sidebar {
-  padding-top: calc(var(--topbar-btn-size) + var(--s1));
+  padding-top: var(--s1);
 }
 body[data-module="presenter"] #presenterRightSidebarBtn,
 body[data-module="presenter"] #saveAllBtn,
