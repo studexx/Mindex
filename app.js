@@ -252,6 +252,9 @@ const PRESENTER_SIGNAL_KEY = "mindex.presenter.signal";
 const PRESENTER_TARGET_SCREEN_STORAGE_KEY = "mindex.presenter.targetScreen.v1";
 const PRESENTER_ALWAYS_ON_TOP_STORAGE_KEY = "mindex.presenter.alwaysOnTop.v1";
 const PRESENTER_RIGHT_SIDEBAR_STORAGE_KEY = "mindex.presenter.rightSidebarOpen.v1";
+const WORSHIP_RECOVERY_SNAPSHOTS_STORAGE_KEY = "mindex.worshipRecoverySnapshots.v1";
+const WORSHIP_RECOVERY_SNAPSHOT_LIMIT = 12;
+const WORSHIP_RECOVERY_SNAPSHOT_MAX_BYTES = 4 * 1024 * 1024;
 const PRESENTER_JUMP_MAX_DIGITS = 3;
 const PRESENTER_OUTPUT_HEARTBEAT_INTERVAL_MS = 1000;
 const PRESENTER_OUTPUT_HEARTBEAT_TTL_MS = 3000;
@@ -1961,6 +1964,80 @@ function safeStorageRemove(scope, key) {
   } catch {
     return false;
   }
+}
+
+function readWorshipRecoverySnapshots() {
+  const raw = safeStorageGet("local", WORSHIP_RECOVERY_SNAPSHOTS_STORAGE_KEY, "[]");
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((item) => item && typeof item === "object") : [];
+  } catch {
+    return [];
+  }
+}
+
+function clonePlainJson(value) {
+  try {
+    return JSON.parse(JSON.stringify(value || null));
+  } catch {
+    return value && typeof value === "object" ? { ...value } : value;
+  }
+}
+
+function worshipRecoverySnapshotRows(serviceId = "") {
+  const sectionIds = new Set();
+  const sections = state.worshipSections
+    .filter((section) => section.service_id === serviceId)
+    .map((section) => {
+      sectionIds.add(section.id);
+      return clonePlainJson(section);
+    });
+  const elements = state.worshipElements
+    .filter((element) => sectionIds.has(element.section_id))
+    .map((element) => clonePlainJson(element));
+  return { sections, elements };
+}
+
+function compactWorshipRecoverySnapshots(snapshots = []) {
+  const compact = snapshots
+    .filter((snapshot) => snapshot && typeof snapshot === "object" && snapshot.serviceId)
+    .slice(-WORSHIP_RECOVERY_SNAPSHOT_LIMIT);
+  while (compact.length > 1 && JSON.stringify(compact).length > WORSHIP_RECOVERY_SNAPSHOT_MAX_BYTES) {
+    compact.shift();
+  }
+  return compact;
+}
+
+function writeWorshipRecoverySnapshots(snapshots = []) {
+  const compact = compactWorshipRecoverySnapshots(snapshots);
+  while (compact.length) {
+    if (safeStorageSet("local", WORSHIP_RECOVERY_SNAPSHOTS_STORAGE_KEY, JSON.stringify(compact))) return true;
+    compact.shift();
+  }
+  return safeStorageSet("local", WORSHIP_RECOVERY_SNAPSHOTS_STORAGE_KEY, "[]");
+}
+
+function captureWorshipRecoverySnapshot(service = null, reason = "before-save") {
+  const serviceId = String(service?.id || "").trim();
+  if (!serviceId) return false;
+  const rows = worshipRecoverySnapshotRows(serviceId);
+  if (!rows.sections.length && !rows.elements.length) return false;
+  const snapshot = {
+    schema: 1,
+    reason,
+    capturedAt: new Date().toISOString(),
+    serviceId,
+    service: clonePlainJson(service),
+    sectionCount: rows.sections.length,
+    elementCount: rows.elements.length,
+    sections: rows.sections,
+    elements: rows.elements,
+  };
+  const snapshots = readWorshipRecoverySnapshots();
+  snapshots.push(snapshot);
+  const saved = writeWorshipRecoverySnapshots(snapshots);
+  if (!saved) console.warn("Could not write worship recovery snapshot.");
+  return saved;
 }
 
 function uiText(key, params = {}) {
@@ -6077,6 +6154,7 @@ async function worshipElementTypedStateColumns() {
 async function saveWorshipServiceInstance(service) {
   const serviceId = service.id;
   await ensureWorshipServiceRowsLoadedForPersistence(serviceId);
+  captureWorshipRecoverySnapshot(service, "before-full-save");
   const canonicalTypeId = canonicalWorshipServiceTypeId(service.type_id);
   const worshipLeader = cleanServiceAssignee(service.worshipLeader || service._worshipLeader);
   const praiseLeader = serviceUsesPraiseLeader(service.type_id)
@@ -6303,6 +6381,7 @@ async function saveWorshipServiceElementPatch(service, itemId) {
   const elementRow = rows.elements.find((element) => element.id === targetItemId);
   if (!elementRow) return false;
   const sectionRow = rows.sections.find((section) => section.id === elementRow.section_id);
+  captureWorshipRecoverySnapshot(service, "before-element-patch");
   if (sectionRow) {
     const { error } = await state.client
       .from("mindex_worship_sections")
@@ -30354,6 +30433,8 @@ async function deleteService(serviceId) {
   state.saving = true;
   updateSaveState();
   try {
+    await ensureWorshipServiceRowsLoadedForPersistence(serviceId);
+    captureWorshipRecoverySnapshot(service, "before-service-delete");
     const cachedSections = state.worshipSections.filter((section) => section.service_id === serviceId);
     const { data: dbSections, error: sectionsLookupError } = await state.client
       .from("mindex_worship_sections")

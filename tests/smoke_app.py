@@ -430,6 +430,46 @@ def main() -> int:
     else:
         fail("worship-full-save-loads-rows-before-persist")
 
+    recovery_helpers = [
+        "WORSHIP_RECOVERY_SNAPSHOTS_STORAGE_KEY",
+        "readWorshipRecoverySnapshots",
+        "writeWorshipRecoverySnapshots",
+        "captureWorshipRecoverySnapshot",
+    ]
+    if all(helper in app_source for helper in recovery_helpers):
+        pass_("worship-recovery-snapshot-helpers")
+    else:
+        fail("worship-recovery-snapshot-helpers")
+
+    full_save_end = app_source.find("async function saveServiceItemPatch", full_save_start)
+    full_save_body = app_source[full_save_start:full_save_end]
+    service_update_index = full_save_body.find('.from("mindex_worship_services")')
+    full_save_snapshot_index = full_save_body.find('captureWorshipRecoverySnapshot(service, "before-full-save")')
+    if full_save_snapshot_index >= 0 and service_update_index >= 0 and full_save_snapshot_index < service_update_index:
+        pass_("worship-full-save-captures-recovery-snapshot")
+    else:
+        fail("worship-full-save-captures-recovery-snapshot")
+
+    element_patch_start = app_source.find("async function saveWorshipServiceElementPatch")
+    element_patch_end = app_source.find("async function syncSharedSundayContentAfterSave", element_patch_start)
+    element_patch_body = app_source[element_patch_start:element_patch_end]
+    element_upsert_index = element_patch_body.find('.from("mindex_worship_sections")')
+    element_snapshot_index = element_patch_body.find('captureWorshipRecoverySnapshot(service, "before-element-patch")')
+    if element_snapshot_index >= 0 and element_upsert_index >= 0 and element_snapshot_index < element_upsert_index:
+        pass_("worship-element-patch-captures-recovery-snapshot")
+    else:
+        fail("worship-element-patch-captures-recovery-snapshot")
+
+    delete_start = app_source.find("async function deleteService(serviceId)")
+    delete_end = app_source.find("function renderServiceTypeFilters", delete_start)
+    delete_body = app_source[delete_start:delete_end]
+    delete_index = delete_body.find('.delete()')
+    delete_snapshot_index = delete_body.find('captureWorshipRecoverySnapshot(service, "before-service-delete")')
+    if delete_snapshot_index >= 0 and delete_index >= 0 and delete_snapshot_index < delete_index:
+        pass_("worship-delete-captures-recovery-snapshot")
+    else:
+        fail("worship-delete-captures-recovery-snapshot")
+
     if sync_playwright is None:
         skip("playwright-dependency", f"{PLAYWRIGHT_IMPORT_ERROR}. Install the Python playwright package to run UI smoke checks.")
         for status, name, detail in results:
