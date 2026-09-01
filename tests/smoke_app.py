@@ -732,6 +732,46 @@ def main() -> int:
             else:
                 fail("reversed-scripture-reference", json.dumps(reversed_scripture_reference, ensure_ascii=False))
 
+            preparation_role_semantics = page.evaluate(
+                """
+                (() => {
+                  if (
+                    typeof normalizeServicePresenterRole !== 'function'
+                    || typeof presenterPreparationRole !== 'function'
+                    || typeof servicePreparationElementLabel !== 'function'
+                    || typeof servicePreparationDefaultRoleForType !== 'function'
+                  ) return { ready: false };
+                  return {
+                    ready: true,
+                    readyScreenAlias: normalizeServicePresenterRole('대기 화면'),
+                    waitingVideoAlias: normalizeServicePresenterRole('대기 영상'),
+                    readyScreenRole: presenterPreparationRole({ label: '대기 화면', raw_title: '' }, {}),
+                    waitingVideoRole: presenterPreparationRole({ label: '대기 영상', raw_title: '' }, {}),
+                    chromakeyDefaultRole: servicePreparationDefaultRoleForType('', 'monthly'),
+                    chromakeyReadyRole: servicePreparationDefaultRoleForType('대기 화면', 'monthly'),
+                    chromakeyWaitingRole: servicePreparationDefaultRoleForType('대기 영상', 'monthly'),
+                    readyScreenLabel: servicePreparationElementLabel('ready'),
+                    waitingVideoLabel: servicePreparationElementLabel('waiting_loop'),
+                  };
+                })()
+                """
+            )
+            if preparation_role_semantics == {
+                "ready": True,
+                "readyScreenAlias": "ready",
+                "waitingVideoAlias": "waiting_loop",
+                "readyScreenRole": "ready",
+                "waitingVideoRole": "waiting_loop",
+                "chromakeyDefaultRole": "waiting_loop",
+                "chromakeyReadyRole": "ready",
+                "chromakeyWaitingRole": "waiting_loop",
+                "readyScreenLabel": "대기 화면",
+                "waitingVideoLabel": "대기 영상",
+            }:
+                pass_("preparation-role-semantics", json.dumps(preparation_role_semantics, ensure_ascii=False))
+            else:
+                fail("preparation-role-semantics", json.dumps(preparation_role_semantics, ensure_ascii=False))
+
             passive_service_scripture_dirty = page.evaluate(
                 """
                 (async () => {
@@ -3867,14 +3907,14 @@ def main() -> int:
                         and template_terms["fridayDistrictUnionScaffold"] == {
                             "chromakey": True,
                             "firstElementType": "video",
-                            "firstElementLabel": "대기 화면",
+                            "firstElementLabel": "대기 영상",
                             "firstElementRole": "waiting_loop",
                         }
                         and template_terms["monthlyScaffold"]["sections"] == 12
                         and template_terms["monthlyScaffold"]["elements"] == 26
                         and template_terms["monthlyScaffold"]["firstSection"] == "준비"
                         and template_terms["monthlyScaffold"]["firstElementType"] == "video"
-                        and template_terms["monthlyScaffold"]["firstElementLabel"] == "대기 화면"
+                        and template_terms["monthlyScaffold"]["firstElementLabel"] == "대기 영상"
                         and template_terms["monthlyScaffold"]["firstElementTitle"] == ""
                         and "corporate_prayer" in template_terms["monthlyScaffold"]["sectionKeys"]
                         and "sending" in template_terms["monthlyScaffold"]["sectionKeys"]

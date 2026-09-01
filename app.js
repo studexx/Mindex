@@ -292,9 +292,9 @@ const PRESENTER_ROLE_ALIASES = {
   waiting_loop: "waiting_loop",
   wait_loop: "waiting_loop",
   loop: "waiting_loop",
-  "대기": "waiting_loop",
-  "대기화면": "waiting_loop",
-  "대기 화면": "waiting_loop",
+  "대기": "ready",
+  "대기화면": "ready",
+  "대기 화면": "ready",
   "대기영상": "waiting_loop",
   "대기 영상": "waiting_loop",
   intro: "intro",
@@ -9942,23 +9942,23 @@ function servicePreparationElementLabel(role = "", contextId = "") {
   const normalized = normalizeServicePresenterRole(role);
   if (normalized === "intro") return "인트로";
   if (normalized === "still") return "첫 화면";
-  if (normalized === "waiting_loop") return "대기 화면";
+  if (normalized === "waiting_loop") return "대기 영상";
   return "대기 화면";
 }
 
 function servicePreparationDefaultRoleForType(role = "", typeId = "") {
   const normalized = normalizeServicePresenterRole(role);
-  if (normalized === "intro" || normalized === "still") return normalized;
   if (normalized === "waiting_loop") return serviceTypeUsesChromakey(typeId) ? "waiting_loop" : "ready";
-  return serviceTypeUsesChromakey(typeId) ? "waiting_loop" : (normalized || "ready");
+  if (normalized) return normalized;
+  return serviceTypeUsesChromakey(typeId) ? "waiting_loop" : "ready";
 }
 
 function servicePreparationDefaultRoleForService(role = "", service = null, fallbackTypeId = "") {
   const normalized = normalizeServicePresenterRole(role);
   const candidate = service || { type_id: fallbackTypeId };
-  if (normalized === "intro" || normalized === "still") return normalized;
   if (normalized === "waiting_loop") return presenterServiceUsesChromakey(candidate) ? "waiting_loop" : "ready";
-  return presenterServiceUsesChromakey(candidate) ? "waiting_loop" : (normalized || "ready");
+  if (normalized) return normalized;
+  return presenterServiceUsesChromakey(candidate) ? "waiting_loop" : "ready";
 }
 
 function servicePreparationDefaultRoleForServiceId(role = "", serviceId = state.selectedServiceId) {
@@ -9982,7 +9982,7 @@ function servicePreparationElementTypeForRoleAndService(role = "", service = nul
 
 function presenterPreparationRoleLabel(role = "") {
   const normalized = normalizeServicePresenterRole(role);
-  if (normalized === "waiting_loop") return "대기 화면";
+  if (normalized === "waiting_loop") return "대기 영상";
   if (normalized === "intro") return "인트로";
   if (normalized === "still") return "첫 화면";
   return "준비";
@@ -12499,7 +12499,7 @@ function buildWorshipServiceScaffold(serviceId, typeId, options = {}) {
     const ready = isReadyServiceTemplateLabel(label);
     const sectionKey = worshipTemplateSectionKey(label, index, step);
     const elementSteps = worshipTemplateElementSteps(step, label);
-    const readyRole = ready ? servicePreparationDefaultRoleForService(step.presenterRole || step.presenter_role || "ready", service, typeId) : "";
+    const readyRole = ready ? servicePreparationDefaultRoleForService(step.presenterRole || step.presenter_role || "", service, typeId) : "";
     sections.push({
       id: sectionId,
       service_id: serviceId,
@@ -12513,7 +12513,7 @@ function buildWorshipServiceScaffold(serviceId, typeId, options = {}) {
     });
     elementSteps.forEach((elementStep, elementIndex) => {
       const elementReadyRole = ready
-        ? servicePreparationDefaultRoleForService(elementStep.presenterRole || elementStep.presenter_role || readyRole || "ready", service, typeId)
+        ? servicePreparationDefaultRoleForService(elementStep.presenterRole || elementStep.presenter_role || readyRole || "", service, typeId)
         : "";
       const elementLabel = ready
         ? servicePreparationElementLabel(elementReadyRole, typeId)
@@ -23766,7 +23766,7 @@ function renderPresenterRoleOptions(selectedRole = "") {
   const options = [
     ["", "자동"],
     ["ready", "준비"],
-    ["waiting_loop", "대기 화면"],
+    ["waiting_loop", "대기 영상"],
     ["intro", "인트로"],
     ["still", "첫 화면"],
   ];

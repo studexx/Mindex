@@ -9544,6 +9544,64 @@ def main() -> int:
                 else:
                     fail("presenter-friday-legacy-waiting-loop-normalized", json.dumps(friday_legacy_waiting_loop_state, ensure_ascii=False))
 
+                chromakey_explicit_ready_state = page.evaluate(
+                    """
+                    () => {
+                      const service = {
+                        id: '__smoke_chromakey_explicit_ready_service__',
+                        type_id: '__smoke_chromakey_explicit_ready_type__',
+                        date: '2026-09-01',
+                        title: 'Chromakey Explicit Ready',
+                      };
+                      if (!state.serviceTypes.some((item) => item.id === service.type_id)) {
+                        state.serviceTypes.push({
+                          id: service.type_id,
+                          name: 'Chromakey Smoke',
+                          sort_order: 999,
+                          _worship: true,
+                          _worshipChromakey: true,
+                          _worshipOutputContext: 'chromakey',
+                          fixed_items: [],
+                        });
+                      }
+                      state.services = [
+                        service,
+                        ...state.services.filter((item) => item.id !== service.id),
+                      ];
+                      state.serviceItems[service.id] = normalizeServiceItems([
+                        {
+                          id: '__smoke_chromakey_explicit_ready_item__',
+                          service_id: service.id,
+                          sort_order: 1,
+                          label: '대기 화면',
+                          raw_title: '',
+                          memo: JSON.stringify({ presenterRole: 'ready' }),
+                        },
+                      ]);
+                      preparePresenterService(service.id);
+                      const first = state.presenter.slides.find((slide) => slide.elementId === '__smoke_chromakey_explicit_ready_item__') || {};
+                      return {
+                        chromakey: presenterServiceUsesChromakey(service),
+                        type: first.type || '',
+                        elementType: first.elementType || '',
+                        presenterRole: first.presenterRole || '',
+                        imageSrc: first.imageSrc || '',
+                        videoSrc: first.videoSrc || '',
+                      };
+                    }
+                    """
+                )
+                if (
+                    chromakey_explicit_ready_state["chromakey"] is True
+                    and chromakey_explicit_ready_state["type"] == "ready"
+                    and chromakey_explicit_ready_state["elementType"] == "image"
+                    and chromakey_explicit_ready_state["presenterRole"] == "ready"
+                    and chromakey_explicit_ready_state["videoSrc"] == ""
+                ):
+                    pass_("presenter-chromakey-explicit-ready-screen", json.dumps(chromakey_explicit_ready_state, ensure_ascii=False))
+                else:
+                    fail("presenter-chromakey-explicit-ready-screen", json.dumps(chromakey_explicit_ready_state, ensure_ascii=False))
+
                 friday_ready_background_guard = page.evaluate(
                     """
                     () => {

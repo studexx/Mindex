@@ -1242,11 +1242,15 @@ function isServicePreparationItem(item, memo = parseServiceItemMemo(item?.memo))
   return sectionKey === "ready"
     || label === "준비"
     || label === "예배준비"
+    || label === "대기"
+    || label === "대기화면"
     || label === "대기영상"
     || label === "인트로"
     || label === "카운트다운"
     || title === "준비"
     || title === "예배준비"
+    || title === "대기"
+    || title === "대기화면"
     || title === "대기영상"
     || title === "인트로"
     || title === "카운트다운"
@@ -1534,6 +1538,11 @@ function presenterPreparationSlide(service, item, index) {
     elementLabel: assetElementLabel,
     elementId: item?.id || `${service?.id || "service"}:ready`,
     sectionIndex: index + 1,
+    elementType,
+    layout: PRESENTER_SLIDE_LAYOUTS.MEDIA,
+    type: "ready",
+    imageSrc: "",
+    videoSrc: "",
     presenterRole,
     sort: index,
   };
@@ -1559,7 +1568,7 @@ function presenterFullscreenPreparationSlide(service, item, index, presenterRole
 
 function presenterDefaultPreparationAsset(service, item = {}, memo = {}) {
   const role = normalizeServicePresenterRole(memo?.presenterRole);
-  if (presenterServiceUsesChromakey(service) && (!role || role === "ready" || role === "waiting_loop")) {
+  if (presenterServiceUsesChromakey(service) && (!role || role === "waiting_loop")) {
     return {
       kind: PRESENTER_ELEMENT_TYPES.VIDEO,
       name: "예배 전 영상",
@@ -1584,7 +1593,8 @@ function presenterPreparationRole(item = {}, memo = parseServiceItemMemo(item?.m
   if (explicit) return explicit;
   const compact = compactSearchValue(`${item?.label || ""} ${item?.raw_title || ""}`);
   if (compact.includes("인트로") || compact.includes("카운트다운") || compact.includes("시작영상")) return "intro";
-  if (compact.includes("대기")) return "waiting_loop";
+  if (compact.includes("대기영상") || compact.includes("대기비디오") || compact.includes("waitingloop")) return "waiting_loop";
+  if (compact.includes("대기") || compact.includes("준비")) return "ready";
   if (compact.includes("첫화면") || compact.includes("정지화면")) return "still";
   return "ready";
 }
@@ -4324,7 +4334,7 @@ function presenterSlideUsesGeneratedWaitingLoop(slide, options = {}) {
 function renderPresenterGeneratedWaitingLoopSlide(slide) {
   const serviceName = presenterReadySlideServiceName(slide);
   return `
-    <div class="presenter-waiting-loop" aria-label="${escapeAttr(`${serviceName} 대기 화면`)}">
+    <div class="presenter-waiting-loop" aria-label="${escapeAttr(`${serviceName} 대기 영상`)}">
       <div class="presenter-waiting-loop-field" aria-hidden="true"></div>
       <div class="presenter-waiting-loop-cross" aria-hidden="true"></div>
       <div class="presenter-waiting-loop-copy">
