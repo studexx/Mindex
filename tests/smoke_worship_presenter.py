@@ -141,11 +141,13 @@ def main() -> int:
                 """
                 (() => {
                   const sidebar = document.querySelector('#mindexRightSidebar');
+                  const shell = document.querySelector('.app-shell');
                   const topbar = document.querySelector('.topbar');
                   const toggleButton = document.querySelector('#presenterRightSidebarBtn');
                   const saveButton = document.querySelector('#saveAllBtn');
                   const themeButton = document.querySelector('#themeBtn');
                   const sidebarStyle = sidebar ? getComputedStyle(sidebar) : null;
+                  const shellTopFillStyle = shell ? getComputedStyle(shell, '::after') : null;
                   const topbarStyle = topbar ? getComputedStyle(topbar) : null;
                   const sidebarRect = sidebar?.getBoundingClientRect();
                   const topbarRect = topbar?.getBoundingClientRect();
@@ -163,6 +165,7 @@ def main() -> int:
                     sidebarWidth: sidebar ? Math.round(sidebar.getBoundingClientRect().width) : 0,
                     rightRailWidth: Math.round(parseFloat(getComputedStyle(document.body).getPropertyValue('--right-rail-w')) || 0),
                     sidebarBackground: sidebarStyle?.backgroundColor || '',
+                    topFillBackground: shellTopFillStyle?.backgroundColor || '',
                     topbarBackground: topbarStyle?.backgroundColor || '',
                     toggleOpacity: toggleStyle?.opacity || '',
                     saveOpacity: saveStyle?.opacity || '',
@@ -186,6 +189,7 @@ def main() -> int:
                     )
                 )
                 and loading_right_rail_state["sidebarBackground"] == loading_right_rail_state["topbarBackground"]
+                and loading_right_rail_state["topFillBackground"] == loading_right_rail_state["sidebarBackground"]
                 and loading_right_rail_state["toggleOpacity"] == "1"
                 and loading_right_rail_state["saveOpacity"] == "1"
                 and loading_right_rail_state["themeOpacity"] == "1"
