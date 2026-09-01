@@ -253,6 +253,7 @@ const PRESENTER_TARGET_SCREEN_STORAGE_KEY = "mindex.presenter.targetScreen.v1";
 const PRESENTER_ALWAYS_ON_TOP_STORAGE_KEY = "mindex.presenter.alwaysOnTop.v1";
 const PRESENTER_RIGHT_SIDEBAR_STORAGE_KEY = "mindex.presenter.rightSidebarOpen.v1";
 const WORSHIP_RECOVERY_SNAPSHOTS_STORAGE_KEY = "mindex.worshipRecoverySnapshots.v1";
+const WORSHIP_RECOVERY_LATEST_STORAGE_PREFIX = "mindex.worshipRecoverySnapshot.latest.v1.";
 const WORSHIP_RECOVERY_SNAPSHOT_LIMIT = 12;
 const WORSHIP_RECOVERY_SNAPSHOT_MAX_BYTES = 4 * 1024 * 1024;
 const PRESENTER_JUMP_MAX_DIGITS = 3;
@@ -2000,6 +2001,10 @@ function worshipRecoverySnapshotRows(serviceId = "") {
   return { sections, elements };
 }
 
+function worshipRecoveryLatestSnapshotKey(serviceId = "") {
+  return `${WORSHIP_RECOVERY_LATEST_STORAGE_PREFIX}${serviceId}`;
+}
+
 function compactWorshipRecoverySnapshots(snapshots = []) {
   const compact = snapshots
     .filter((snapshot) => snapshot && typeof snapshot === "object" && snapshot.serviceId)
@@ -2019,12 +2024,36 @@ function writeWorshipRecoverySnapshots(snapshots = []) {
   return safeStorageSet("local", WORSHIP_RECOVERY_SNAPSHOTS_STORAGE_KEY, "[]");
 }
 
-function captureWorshipRecoverySnapshot(service = null, reason = "before-save") {
+function scheduleWorshipRecoverySnapshotHistoryWrite(snapshotJson = "") {
+  if (!snapshotJson) return;
+  const run = () => {
+    let snapshot = null;
+    try {
+      snapshot = JSON.parse(snapshotJson);
+    } catch {
+      return;
+    }
+    const snapshots = readWorshipRecoverySnapshots();
+    snapshots.push(snapshot);
+    if (!writeWorshipRecoverySnapshots(snapshots)) {
+      console.warn("Could not write worship recovery snapshot history.");
+    }
+  };
+  if (typeof window !== "undefined" && typeof window.requestIdleCallback === "function") {
+    window.requestIdleCallback(run, { timeout: 3000 });
+  } else if (typeof window !== "undefined" && typeof window.setTimeout === "function") {
+    window.setTimeout(run, 0);
+  } else {
+    run();
+  }
+}
+
+function buildWorshipRecoverySnapshot(service = null, reason = "before-save") {
   const serviceId = String(service?.id || "").trim();
-  if (!serviceId) return false;
+  if (!serviceId) return null;
   const rows = worshipRecoverySnapshotRows(serviceId);
-  if (!rows.sections.length && !rows.elements.length) return false;
-  const snapshot = {
+  if (!rows.sections.length && !rows.elements.length) return null;
+  return {
     schema: 1,
     reason,
     capturedAt: new Date().toISOString(),
@@ -2035,10 +2064,20 @@ function captureWorshipRecoverySnapshot(service = null, reason = "before-save") 
     sections: rows.sections,
     elements: rows.elements,
   };
-  const snapshots = readWorshipRecoverySnapshots();
-  snapshots.push(snapshot);
-  const saved = writeWorshipRecoverySnapshots(snapshots);
-  if (!saved) console.warn("Could not write worship recovery snapshot.");
+}
+
+function captureWorshipRecoverySnapshot(service = null, reason = "before-save") {
+  const snapshot = buildWorshipRecoverySnapshot(service, reason);
+  if (!snapshot) return false;
+  let snapshotJson = "";
+  try {
+    snapshotJson = JSON.stringify(snapshot);
+  } catch {
+    return false;
+  }
+  const saved = safeStorageSet("local", worshipRecoveryLatestSnapshotKey(snapshot.serviceId), snapshotJson);
+  if (saved) scheduleWorshipRecoverySnapshotHistoryWrite(snapshotJson);
+  else console.warn("Could not write latest worship recovery snapshot.");
   return saved;
 }
 

@@ -432,14 +432,29 @@ def main() -> int:
 
     recovery_helpers = [
         "WORSHIP_RECOVERY_SNAPSHOTS_STORAGE_KEY",
+        "WORSHIP_RECOVERY_LATEST_STORAGE_PREFIX",
         "readWorshipRecoverySnapshots",
         "writeWorshipRecoverySnapshots",
+        "scheduleWorshipRecoverySnapshotHistoryWrite",
+        "buildWorshipRecoverySnapshot",
         "captureWorshipRecoverySnapshot",
     ]
     if all(helper in app_source for helper in recovery_helpers):
         pass_("worship-recovery-snapshot-helpers")
     else:
         fail("worship-recovery-snapshot-helpers")
+
+    capture_start = app_source.find("function captureWorshipRecoverySnapshot")
+    capture_end = app_source.find("function uiText", capture_start)
+    capture_body = app_source[capture_start:capture_end]
+    if (
+        "worshipRecoveryLatestSnapshotKey(snapshot.serviceId)" in capture_body
+        and "scheduleWorshipRecoverySnapshotHistoryWrite(snapshotJson)" in capture_body
+        and "readWorshipRecoverySnapshots()" not in capture_body
+    ):
+        pass_("worship-recovery-latest-write-before-idle-history")
+    else:
+        fail("worship-recovery-latest-write-before-idle-history")
 
     full_save_end = app_source.find("async function saveServiceItemPatch", full_save_start)
     full_save_body = app_source[full_save_start:full_save_end]
