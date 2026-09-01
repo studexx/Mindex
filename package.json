@@ -9,10 +9,16 @@
   "scripts": {
     "dev:web": "python3 serve.py",
     "electron:dev": "electron .",
-    "electron:pack": "electron-builder --dir && node scripts/clear-local-quarantine.mjs",
-    "electron:pack:raw": "electron-builder --dir",
-    "electron:dist": "electron-builder",
-    "electron:release": "node scripts/verify-release.mjs && electron-builder --publish always"
+    "dist:clean": "node scripts/clean-electron-dist.mjs",
+    "dist:prune": "node scripts/prune-electron-dist.mjs",
+    "package:audit": "node scripts/audit-electron-package.mjs",
+    "electron:pack": "pnpm run dist:clean && electron-builder --dir && node scripts/clear-local-quarantine.mjs",
+    "electron:pack:raw": "pnpm run dist:clean && electron-builder --dir",
+    "electron:dist": "pnpm run dist:clean && electron-builder && pnpm run dist:prune",
+    "electron:dist:mac:arm64": "pnpm run dist:clean && electron-builder --mac dmg --arm64 && pnpm run dist:prune",
+    "electron:dist:mac:x64": "pnpm run dist:clean && electron-builder --mac dmg --x64 && pnpm run dist:prune",
+    "electron:dist:win:x64": "pnpm run dist:clean && electron-builder --win nsis --x64 && pnpm run dist:prune",
+    "electron:release": "node scripts/verify-release.mjs && pnpm run dist:clean && electron-builder --publish always && pnpm run dist:prune"
   },
   "build": {
     "appId": "kr.mindex.app",

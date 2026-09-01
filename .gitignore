@@ -19,10 +19,13 @@ scripts/*
 !scripts/service_templates.py
 !scripts/backfill_song_versions_from_memo.py
 !scripts/backfill_song_relations_from_memo.py
+!scripts/audit-electron-package.mjs
+!scripts/clean-electron-dist.mjs
 !scripts/admin-auth-rls.sql
 !scripts/db-maintenance-2026-06-23.sql
 !scripts/calendar-lectionary-2026.sql
 !scripts/render_hymn_score_assets.py
+!scripts/prune-electron-dist.mjs
 !scripts/song-relations-schema.sql
 !scripts/worship-schema.sql
 !scripts/update_hymn_score_form_labels.py
