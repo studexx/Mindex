@@ -1979,12 +1979,8 @@ function readWorshipRecoverySnapshots() {
   }
 }
 
-function clonePlainJson(value) {
-  try {
-    return JSON.parse(JSON.stringify(value || null));
-  } catch {
-    return value && typeof value === "object" ? { ...value } : value;
-  }
+function cloneRecoveryRecord(value) {
+  return value && typeof value === "object" ? { ...value } : value;
 }
 
 function worshipRecoverySnapshotRows(serviceId = "") {
@@ -1993,11 +1989,11 @@ function worshipRecoverySnapshotRows(serviceId = "") {
     .filter((section) => section.service_id === serviceId)
     .map((section) => {
       sectionIds.add(section.id);
-      return clonePlainJson(section);
+      return cloneRecoveryRecord(section);
     });
   const elements = state.worshipElements
     .filter((element) => sectionIds.has(element.section_id))
-    .map((element) => clonePlainJson(element));
+    .map((element) => cloneRecoveryRecord(element));
   return { sections, elements };
 }
 
@@ -2005,20 +2001,17 @@ function worshipRecoveryLatestSnapshotKey(serviceId = "") {
   return `${WORSHIP_RECOVERY_LATEST_STORAGE_PREFIX}${serviceId}`;
 }
 
-function compactWorshipRecoverySnapshots(snapshots = []) {
+function writeWorshipRecoverySnapshots(snapshots = []) {
   const compact = snapshots
     .filter((snapshot) => snapshot && typeof snapshot === "object" && snapshot.serviceId)
     .slice(-WORSHIP_RECOVERY_SNAPSHOT_LIMIT);
-  while (compact.length > 1 && JSON.stringify(compact).length > WORSHIP_RECOVERY_SNAPSHOT_MAX_BYTES) {
-    compact.shift();
-  }
-  return compact;
-}
-
-function writeWorshipRecoverySnapshots(snapshots = []) {
-  const compact = compactWorshipRecoverySnapshots(snapshots);
   while (compact.length) {
-    if (safeStorageSet("local", WORSHIP_RECOVERY_SNAPSHOTS_STORAGE_KEY, JSON.stringify(compact))) return true;
+    const snapshotJson = JSON.stringify(compact);
+    if (snapshotJson.length > WORSHIP_RECOVERY_SNAPSHOT_MAX_BYTES && compact.length > 1) {
+      compact.shift();
+      continue;
+    }
+    if (safeStorageSet("local", WORSHIP_RECOVERY_SNAPSHOTS_STORAGE_KEY, snapshotJson)) return true;
     compact.shift();
   }
   return safeStorageSet("local", WORSHIP_RECOVERY_SNAPSHOTS_STORAGE_KEY, "[]");
@@ -2058,7 +2051,7 @@ function buildWorshipRecoverySnapshot(service = null, reason = "before-save") {
     reason,
     capturedAt: new Date().toISOString(),
     serviceId,
-    service: clonePlainJson(service),
+    service: cloneRecoveryRecord(service),
     sectionCount: rows.sections.length,
     elementCount: rows.elements.length,
     sections: rows.sections,

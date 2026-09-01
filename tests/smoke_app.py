@@ -434,6 +434,7 @@ def main() -> int:
         "WORSHIP_RECOVERY_SNAPSHOTS_STORAGE_KEY",
         "WORSHIP_RECOVERY_LATEST_STORAGE_PREFIX",
         "readWorshipRecoverySnapshots",
+        "cloneRecoveryRecord",
         "writeWorshipRecoverySnapshots",
         "scheduleWorshipRecoverySnapshotHistoryWrite",
         "buildWorshipRecoverySnapshot",
@@ -455,6 +456,17 @@ def main() -> int:
         pass_("worship-recovery-latest-write-before-idle-history")
     else:
         fail("worship-recovery-latest-write-before-idle-history")
+
+    recovery_start = app_source.find("function readWorshipRecoverySnapshots")
+    recovery_end = app_source.find("function uiText", recovery_start)
+    recovery_body = app_source[recovery_start:recovery_end]
+    if (
+        "function cloneRecoveryRecord" in recovery_body
+        and "JSON.parse(JSON.stringify" not in recovery_body
+    ):
+        pass_("worship-recovery-shallow-clone")
+    else:
+        fail("worship-recovery-shallow-clone")
 
     full_save_end = app_source.find("async function saveServiceItemPatch", full_save_start)
     full_save_body = app_source[full_save_start:full_save_end]
