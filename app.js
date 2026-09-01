@@ -1244,7 +1244,9 @@ function bindStaticEvents() {
 
     const preparationApply = event.target.closest("[data-presenter-preparation-apply]");
     if (preparationApply) {
-      applyPresenterPreparationInput(preparationApply.dataset.serviceId || state.selectedServiceId);
+      event.preventDefault();
+      event.stopPropagation();
+      void applyPresenterPreparationInput(preparationApply.dataset.serviceId || state.selectedServiceId);
       return;
     }
 
@@ -8052,7 +8054,9 @@ function handlePresenterDetailClick(event) {
 
   const preparationApply = event.target.closest("[data-presenter-preparation-apply]");
   if (preparationApply) {
-    applyPresenterPreparationInput(preparationApply.dataset.serviceId || state.selectedServiceId);
+    event.preventDefault();
+    event.stopPropagation();
+    void applyPresenterPreparationInput(preparationApply.dataset.serviceId || state.selectedServiceId);
     return true;
   }
 
@@ -24885,6 +24889,7 @@ function renderPresenterRightSidebarToggle(options = {}) {
 function renderPresenterServiceInputRail(service) {
   const draft = state.presenterPreparationDrafts[service.id] || "";
   const examples = presenterPreparationPlaceholderForService(service);
+  const applying = state.presenterPreparationApplyingServiceIds.has(service.id);
   return `
     <aside class="svc-presenter-input-rail" aria-label="예배 입력">
       <header class="svc-presenter-input-rail-head">
@@ -24895,9 +24900,9 @@ function renderPresenterServiceInputRail(service) {
         <textarea class="svc-presenter-preparation-text" data-presenter-preparation-input data-service-id="${escapeAttr(service.id)}" rows="5" placeholder="여기에 붙여넣기" aria-label="예배 준비 입력">${escapeHtml(draft)}</textarea>
         ${renderPresenterPreparationExamples(examples)}
         <div class="svc-presenter-preparation-actions">
-          <button class="svc-presenter-preparation-apply" type="button" data-presenter-preparation-apply data-service-id="${escapeAttr(service.id)}">
+          <button class="svc-presenter-preparation-apply" type="button" data-presenter-preparation-apply data-service-id="${escapeAttr(service.id)}" ${applying ? "disabled" : ""}>
             <i data-lucide="wand-sparkles"></i>
-            <span>반영</span>
+            <span>${applying ? "반영 중" : "반영"}</span>
           </button>
         </div>
       </section>
@@ -24912,6 +24917,21 @@ function renderPresenterPreparationExamples(examples = "") {
       <summary>예시</summary>
       <pre>${escapeHtml(text)}</pre>
     </details>`;
+}
+
+function presenterPreparationInputForService(serviceId) {
+  if (!serviceId) return null;
+  const selector = `[data-presenter-preparation-input][data-service-id="${cssEscape(serviceId)}"]`;
+  return refs.rightSidebar?.querySelector(selector)
+    || refs.detailPane?.querySelector(selector)
+    || refs.songList?.querySelector(selector)
+    || null;
+}
+
+function presenterPreparationDraftForService(serviceId) {
+  const inputValue = presenterPreparationInputForService(serviceId)?.value;
+  const draft = inputValue == null ? state.presenterPreparationDrafts[serviceId] : inputValue;
+  return String(draft || "").trim();
 }
 
 function presenterPreparationPlaceholderForService(service) {
@@ -25599,7 +25619,7 @@ function presenterPreparationCitationItems(service, items, references) {
 
 async function applyPresenterPreparationInput(serviceId = state.selectedServiceId) {
   const service = state.services.find((candidate) => candidate.id === serviceId);
-  const draft = String(state.presenterPreparationDrafts[serviceId] || "").trim();
+  const draft = presenterPreparationDraftForService(serviceId);
   if (!service || !draft) return;
   if (state.presenterPreparationApplyingServiceIds.has(serviceId)) return;
 

@@ -5880,6 +5880,67 @@ def main() -> int:
                     else:
                         fail("presenter-header-input-controls", json.dumps(presenter_header_input, ensure_ascii=False))
 
+                    presenter_preparation_apply_click = page.evaluate(
+                        """
+                        (async () => {
+                          const input = document.querySelector('#mindexRightSidebar [data-presenter-preparation-input]');
+                          const button = document.querySelector('#mindexRightSidebar [data-presenter-preparation-apply]');
+                          if (!input || !button) return { ready: false, reason: 'control' };
+                          const serviceId = input.dataset.serviceId || state.selectedServiceId;
+                          const target = findPresenterPreparationProjectedItem(
+                            state.services.find((service) => service.id === serviceId),
+                            '대표기도'
+                          );
+                          if (!target) return { ready: false, reason: 'target' };
+                          const index = getServiceItems(serviceId).findIndex((item) => item.id === target.id);
+                          if (index < 0) return { ready: false, reason: 'index' };
+                          const item = getServiceItems(serviceId)[index];
+                          const original = {
+                            draft: state.presenterPreparationDrafts[serviceId],
+                            items: getServiceItems(serviceId).map((entry) => ({ ...entry })),
+                            rawTitle: item.raw_title,
+                            assignee: item.assignee,
+                            dirty: state.dirty.service,
+                          };
+                          const toasts = [];
+                          const originalToast = showToast;
+                          try {
+                            showToast = (message, type = 'info') => toasts.push({ message, type });
+                            delete state.presenterPreparationDrafts[serviceId];
+                            state.dirty.service = false;
+                            input.value = '대표기도: 테스트 권사';
+                            button.click();
+                            await new Promise((resolve) => window.setTimeout(resolve, 80));
+                            return {
+                              ready: true,
+                              assignee: getServiceItems(serviceId)[index]?.assignee || '',
+                              draftCleared: !(serviceId in state.presenterPreparationDrafts),
+                              dirty: state.dirty.service,
+                              toasts,
+                            };
+                          } finally {
+                            showToast = originalToast;
+                            state.serviceItems[serviceId] = original.items;
+                            if (original.draft == null) delete state.presenterPreparationDrafts[serviceId];
+                            else state.presenterPreparationDrafts[serviceId] = original.draft;
+                            state.dirty.service = original.dirty;
+                            render();
+                          }
+                        })()
+                        """
+                    )
+                    if (
+                        presenter_preparation_apply_click.get("ready")
+                        and presenter_preparation_apply_click["assignee"] == "테스트 권사"
+                        and presenter_preparation_apply_click["draftCleared"]
+                        and presenter_preparation_apply_click["dirty"]
+                        and presenter_preparation_apply_click["toasts"]
+                        and presenter_preparation_apply_click["toasts"][-1]["type"] == "info"
+                    ):
+                        pass_("presenter-preparation-apply-click", json.dumps(presenter_preparation_apply_click, ensure_ascii=False))
+                    else:
+                        fail("presenter-preparation-apply-click", json.dumps(presenter_preparation_apply_click, ensure_ascii=False))
+
                     presenter_input_enter_commit_guard = page.evaluate(
                         """
                         (async () => {
