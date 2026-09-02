@@ -8229,10 +8229,22 @@ function isPresenterPreparationInputEvent(event) {
 function handleDetailKeydown(event) {
   const preparationInput = event.target.closest("[data-presenter-preparation-input]");
   if (preparationInput) {
+    if (presenterPreparationDoubleEnterShouldApply(preparationInput, event)) {
+      event.preventDefault();
+      event.stopPropagation();
+      void applyPresenterPreparationInput(
+        preparationInput.dataset.serviceId || state.selectedServiceId,
+        { draft: preparationInput.value },
+      );
+      return;
+    }
     if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
       event.preventDefault();
       event.stopPropagation();
-      void applyPresenterPreparationInput(preparationInput.dataset.serviceId || state.selectedServiceId);
+      void applyPresenterPreparationInput(
+        preparationInput.dataset.serviceId || state.selectedServiceId,
+        { draft: preparationInput.value },
+      );
       return;
     }
     event.stopPropagation();
@@ -9219,8 +9231,17 @@ function isDeferredServiceTextInput(field) {
 
 function isPresenterEnterCommittedServiceInput(field) {
   return state.module === "presenter"
-    && isDeferredServiceTextInput(field)
-    && Boolean(field.closest?.(".svc-presenter-input-rail, .svc-board-subgroup-controls"));
+    && isDeferredServiceTextInput(field);
+}
+
+function presenterPreparationDoubleEnterShouldApply(input, event) {
+  if (!input || event?.key !== "Enter" || event.isComposing || event.shiftKey || event.altKey || event.metaKey || event.ctrlKey) return false;
+  const start = Number.isInteger(input.selectionStart) ? input.selectionStart : input.value.length;
+  const end = Number.isInteger(input.selectionEnd) ? input.selectionEnd : start;
+  if (start !== end) return false;
+  const before = input.value.slice(0, start);
+  const after = input.value.slice(end);
+  return Boolean(before.trim() && !after.trim() && /\n\s*$/.test(before));
 }
 
 function isServiceSongTitleInputField(field) {
@@ -24983,7 +25004,8 @@ function presenterPreparationInputForService(serviceId) {
 
 function presenterPreparationDraftNearApplyButton(button) {
   const serviceId = button?.dataset?.serviceId || state.selectedServiceId;
-  const root = button?.closest?.("[data-presenter-right-sidebar], .service-sidebar-presenter-context, .svc-presenter-input-rail")
+  const root = button?.closest?.(".svc-presenter-preparation-input")
+    || button?.closest?.("[data-presenter-right-sidebar], .service-sidebar-presenter-context, .svc-presenter-input-rail")
     || button?.parentElement
     || null;
   const scoped = serviceId

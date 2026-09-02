@@ -6047,6 +6047,8 @@ def main() -> int:
                             const afterInput = item().raw_title || '';
                             handleDetailChange({ target: field });
                             const afterChange = item().raw_title || '';
+                            field.dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: document.body }));
+                            const afterFocusout = item().raw_title || '';
                             handleDetailKeydown({
                               target: field,
                               key: 'Enter',
@@ -6060,6 +6062,7 @@ def main() -> int:
                               index,
                               afterInput,
                               afterChange,
+                              afterFocusout,
                               afterEnter,
                               saves,
                               prevented,
@@ -6079,6 +6082,7 @@ def main() -> int:
                         presenter_input_enter_commit_guard.get("ready")
                         and presenter_input_enter_commit_guard["afterInput"] != "마 23:1"
                         and presenter_input_enter_commit_guard["afterChange"] != "마 23:1"
+                        and presenter_input_enter_commit_guard["afterFocusout"] != "마 23:1"
                         and presenter_input_enter_commit_guard["afterEnter"] == "마 23:1"
                         and len(presenter_input_enter_commit_guard["saves"]) == 1
                         and presenter_input_enter_commit_guard["saves"][0]["itemIndex"] == presenter_input_enter_commit_guard["index"]
@@ -6090,6 +6094,70 @@ def main() -> int:
                         pass_("presenter-input-enter-commit-guard", json.dumps(presenter_input_enter_commit_guard, ensure_ascii=False))
                     else:
                         fail("presenter-input-enter-commit-guard", json.dumps(presenter_input_enter_commit_guard, ensure_ascii=False))
+
+                    presenter_preparation_double_enter = page.evaluate(
+                        """
+                        (() => {
+                          if (
+                            typeof handleDetailKeydown !== 'function'
+                            || typeof presenterPreparationDoubleEnterShouldApply !== 'function'
+                          ) return { ready: false };
+                          const input = document.querySelector('#mindexRightSidebar [data-presenter-preparation-input]');
+                          if (!input) return { ready: false, reason: 'input' };
+                          const originalApply = applyPresenterPreparationInput;
+                          const originalValue = input.value;
+                          const calls = [];
+                          try {
+                            applyPresenterPreparationInput = (serviceId, options = {}) => {
+                              calls.push({ serviceId, draft: options.draft || '' });
+                            };
+                            input.value = '대표기도: 더블엔터 권사';
+                            input.selectionStart = input.selectionEnd = input.value.length;
+                            let firstPrevented = false;
+                            handleDetailKeydown({
+                              target: input,
+                              key: 'Enter',
+                              preventDefault() { firstPrevented = true; },
+                              stopPropagation() {},
+                            });
+                            const firstCalls = calls.length;
+                            input.value = '대표기도: 더블엔터 권사\\n';
+                            input.selectionStart = input.selectionEnd = input.value.length;
+                            let secondPrevented = false;
+                            let secondStopped = false;
+                            handleDetailKeydown({
+                              target: input,
+                              key: 'Enter',
+                              preventDefault() { secondPrevented = true; },
+                              stopPropagation() { secondStopped = true; },
+                            });
+                            return {
+                              ready: true,
+                              firstPrevented,
+                              firstCalls,
+                              secondPrevented,
+                              secondStopped,
+                              calls,
+                            };
+                          } finally {
+                            applyPresenterPreparationInput = originalApply;
+                            input.value = originalValue;
+                          }
+                        })()
+                        """
+                    )
+                    if (
+                        presenter_preparation_double_enter.get("ready")
+                        and not presenter_preparation_double_enter["firstPrevented"]
+                        and presenter_preparation_double_enter["firstCalls"] == 0
+                        and presenter_preparation_double_enter["secondPrevented"]
+                        and presenter_preparation_double_enter["secondStopped"]
+                        and len(presenter_preparation_double_enter["calls"]) == 1
+                        and presenter_preparation_double_enter["calls"][0]["draft"] == "대표기도: 더블엔터 권사\n"
+                    ):
+                        pass_("presenter-preparation-double-enter", json.dumps(presenter_preparation_double_enter, ensure_ascii=False))
+                    else:
+                        fail("presenter-preparation-double-enter", json.dumps(presenter_preparation_double_enter, ensure_ascii=False))
 
                     presenter_input_label_vocabulary = page.evaluate(
                         """
