@@ -733,8 +733,6 @@ body[data-module="praise"] .list-filter {
   background: color-mix(in srgb, var(--panel-2) 82%, var(--line));
 }
 .topbar-actions .btn.secondary:not(:disabled):hover { background: transparent; color: var(--ink-2); }
-.topbar-actions #themeBtn { color: var(--ink-2); }
-.topbar-actions #themeBtn:not(:disabled):hover { background: transparent; color: var(--ink-2); }
 .topbar-actions .icon-btn.primary {
   background: transparent;
   color: var(--ink-4);
