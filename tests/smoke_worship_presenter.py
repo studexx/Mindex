@@ -7409,7 +7409,7 @@ def main() -> int:
                         layout: PRESENTER_SLIDE_LAYOUTS.MEDIA,
                         type: 'video',
                         title: '영상',
-                        videoSrc: 'assets/presenter/chromakey-ready-loop.mp4',
+                        videoSrc: 'assets/presenter/chromakey-ready-loop-fast.mp4',
                         outputContext: 'clean',
                       };
                       const audio = {
@@ -7429,7 +7429,7 @@ def main() -> int:
                         layout: PRESENTER_SLIDE_LAYOUTS.MEDIA,
                         type: 'ready',
                         title: '예배 전 영상',
-                        videoSrc: 'assets/presenter/chromakey-ready-loop.mp4',
+                        videoSrc: 'assets/presenter/chromakey-ready-loop-fast.mp4',
                         presenterRole: 'waiting_loop',
                         outputContext: 'chromakey',
                       };
@@ -8151,7 +8151,7 @@ def main() -> int:
                     "presenter-slide--video" in ready_output_state["slideClass"]
                     and ready_output_state["elementType"] == "video"
                     and ready_output_state["layout"] == "media"
-                    and ready_output_state["videoSrc"].endswith("assets/presenter/chromakey-ready-loop.mp4")
+                    and ready_output_state["videoSrc"].endswith("assets/presenter/chromakey-ready-loop-fast.mp4")
                     and ready_output_state["autoplay"]
                     and ready_output_state["muted"]
                     and ready_output_state["loop"]

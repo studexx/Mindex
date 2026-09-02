@@ -503,7 +503,7 @@ const PRESENTER_SLIDE_LAYOUTS = {
   FILE: "file",
 };
 const PRESENTER_CHROMAKEY_VIDEO_POSTER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 9'%3E%3Crect width='16' height='9' fill='%2300ff00'/%3E%3C/svg%3E";
-const PRESENTER_CHROMAKEY_READY_LOOP_VIDEO = "assets/presenter/chromakey-ready-loop.mp4";
+const PRESENTER_CHROMAKEY_READY_LOOP_VIDEO = "assets/presenter/chromakey-ready-loop-fast.mp4";
 const PRESENTER_MEDIA_STORAGE_BUCKET = "mindex-worship-media";
 const PRESENTER_REFERENCE_MEDIA_SECTION_KEYS = new Set(["sermon", "announcements"]);
 const PRESENTER_REFERENCE_MEDIA_ACCEPT = "image/*,video/*,audio/*";
