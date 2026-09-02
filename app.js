@@ -1118,11 +1118,13 @@ function observePresenterPreviewScaleFrames(host = refs.detailPane) {
   presenterPreviewScaleObserver = null;
   if (!host?.querySelectorAll || typeof ResizeObserver === "undefined") return;
   const frameTargets = [...host.querySelectorAll(".svc-slide-thumb-frame")];
+  const livePreviewTargets = [...host.querySelectorAll(".svc-presenter-live-preview")];
   const targets = [
-    host,
+    host instanceof Element ? host : null,
     host.querySelector("#servicePresenterControls"),
     host.querySelector(".svc-presenter-board-column"),
     ...frameTargets,
+    ...livePreviewTargets,
   ].filter((target, index, list) => target?.isConnected && list.indexOf(target) === index);
   if (!targets.length) return;
   presenterPreviewScaleObserver = new ResizeObserver(() => {
@@ -22688,8 +22690,8 @@ function renderPresenterDetail() {
   mountDeferredPresenterBoardSections(document.getElementById("servicePresenterControls"), serviceId, presenterSlides);
   restorePresenterViewportSnapshot(viewportSnapshot);
   updateSaveState();
-  observePresenterPreviewScaleFrames(refs.detailPane);
-  schedulePresenterPreviewLayoutUpdate(refs.detailPane);
+  observePresenterPreviewScaleFrames(document);
+  schedulePresenterPreviewLayoutUpdate(document);
 }
 
 function serviceBulletinSectionTitle(item = {}) {
@@ -29132,6 +29134,7 @@ function patchPresenterControlsTop(root, service, slides, active, index) {
   currentTop.replaceWith(nextTop);
   refreshIcons(nextTop);
   schedulePresenterPreviewScaleUpdate(nextTop);
+  schedulePresenterPreviewLayoutUpdate(refs.rightSidebar);
 }
 
 function patchPresenterBoardActiveState(root, serviceId, active, index) {

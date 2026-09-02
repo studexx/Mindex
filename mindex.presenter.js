@@ -3073,7 +3073,7 @@ function applyPresenterOutputViewportScale(root = document.getElementById("prese
 function applyPresenterPreviewScales(host = document) {
   if (!host?.querySelectorAll) return;
   host.querySelectorAll(".svc-slide-mini-canvas.presenter-output-root").forEach((canvas) => {
-    const frame = canvas.closest(".svc-slide-thumb-frame") || canvas.parentElement;
+    const frame = canvas.closest(".svc-slide-thumb-frame, .svc-presenter-live-preview") || canvas.parentElement;
     const rect = frame?.getBoundingClientRect?.();
     const scale = presenterPreviewScaleForBox(rect?.width, rect?.height);
     const currentScale = Number(canvas.style.getPropertyValue("--presenter-preview-scale"));
