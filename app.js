@@ -822,6 +822,7 @@ document.addEventListener("DOMContentLoaded", init);
 
 async function init() {
   if (isPresenterOutputRoute()) {
+    document.body.classList.remove("ui-booting");
     initPresenterOutput();
     return;
   }
@@ -841,6 +842,7 @@ async function init() {
   bindPresenterChannel();
   connectClient();
   render();
+  finishUiBoot();
   syncBrowserHistory({ replace: true });
 
   if (state.client) {
@@ -849,6 +851,16 @@ async function init() {
   } else if (state.connectionError) {
     showToast(state.connectionError, "error");
   }
+}
+
+function finishUiBoot() {
+  if (!document.body.classList.contains("ui-booting")) return;
+  const clear = () => document.body.classList.remove("ui-booting");
+  if (typeof requestAnimationFrame !== "function") {
+    window.setTimeout(clear, 0);
+    return;
+  }
+  requestAnimationFrame(() => requestAnimationFrame(clear));
 }
 
 function applyRuntimePlatformClass() {

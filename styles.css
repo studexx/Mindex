@@ -155,6 +155,11 @@ body {
     --shell-left-w var(--rail-motion),
     --shell-right-w var(--rail-motion);
 }
+body.ui-booting,
+body.ui-booting .right-sidebar,
+body.ui-booting .right-sidebar .svc-presenter-side-panel {
+  transition-duration: 0ms !important;
+}
 body.is-chromium[data-module="service"],
 body.is-chromium[data-module="presenter"] {
   --rail-motion: 0ms;
