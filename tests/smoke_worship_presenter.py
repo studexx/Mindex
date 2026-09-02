@@ -183,7 +183,6 @@ def main() -> int:
                 and loading_right_rail_state["topFillBackground"] == loading_right_rail_state["sidebarBackground"]
                 and loading_right_rail_state["saveOpacity"] == "1"
                 and loading_right_rail_state["themeOpacity"] == "1"
-                and loading_right_rail_state["saveColor"] == loading_right_rail_state["themeColor"]
             )
             if loading_right_rail_ok:
                 pass_("presenter-loading-right-rail", json.dumps(loading_right_rail_state, ensure_ascii=False))
@@ -513,6 +512,7 @@ def main() -> int:
                       const buttonRect = button?.getBoundingClientRect();
                       const saveRect = saveButton?.getBoundingClientRect();
                       const themeRect = themeButton?.getBoundingClientRect();
+                      const topbarRectForTheme = topbar?.getBoundingClientRect();
                       const presenterTopStyle = presenterTop ? getComputedStyle(presenterTop) : null;
                       const inputRailStyle = inputRail ? getComputedStyle(inputRail) : null;
                       const inputRailHeadStyle = inputRailHead ? getComputedStyle(inputRailHead) : null;
@@ -525,10 +525,14 @@ def main() -> int:
                         saveHidden: Boolean(document.querySelector('#saveAllBtn')?.hidden),
                         saveVisible: Boolean(saveButton && !saveButton.hidden),
                         themeVisible: Boolean(themeButton && !themeButton.hidden),
-                        railButtonAligned: Boolean(saveRect && themeRect)
-                          && Math.abs(saveRect.left - themeRect.left) <= 1,
-                        railButtonOrder: Boolean(saveRect && themeRect)
-                          && saveRect.top < themeRect.top,
+                        saveInRightRail: Boolean(saveRect && sidebarRect)
+                          && saveRect.left >= sidebarRect.right - 50
+                          && saveRect.right <= sidebarRect.right + 1,
+                        themeInTopbar: Boolean(themeRect && topbarRectForTheme)
+                          && themeRect.top >= topbarRectForTheme.top
+                          && themeRect.bottom <= topbarRectForTheme.bottom,
+                        themeOutsideRightRail: Boolean(themeRect && sidebarRect)
+                          && themeRect.right <= sidebarRect.left,
                         headerToggleRemoved: !headerToggle,
                         presenterHeaderRemoved: !presenterHeader,
                         rightSidebarHeaderRemoved: !rightSidebarHead,
@@ -575,8 +579,9 @@ def main() -> int:
                     and not right_sidebar_toggle_state["before"]["saveHidden"]
                     and right_sidebar_toggle_state["before"]["saveVisible"]
                     and right_sidebar_toggle_state["before"]["themeVisible"]
-                    and right_sidebar_toggle_state["before"]["railButtonAligned"]
-                    and right_sidebar_toggle_state["before"]["railButtonOrder"]
+                    and right_sidebar_toggle_state["before"]["saveInRightRail"]
+                    and right_sidebar_toggle_state["before"]["themeInTopbar"]
+                    and right_sidebar_toggle_state["before"]["themeOutsideRightRail"]
                     and right_sidebar_toggle_state["before"]["headerToggleRemoved"]
                     and right_sidebar_toggle_state["before"]["presenterHeaderRemoved"]
                     and right_sidebar_toggle_state["before"]["rightSidebarHeaderRemoved"]
@@ -593,7 +598,6 @@ def main() -> int:
                     )
                     and right_sidebar_toggle_state["before"]["saveOpacity"] == "1"
                     and right_sidebar_toggle_state["before"]["themeOpacity"] == "1"
-                    and right_sidebar_toggle_state["before"]["saveColor"] == right_sidebar_toggle_state["before"]["themeColor"]
                     and right_sidebar_toggle_state["before"]["presenterTopBorderWidth"] == "0px"
                     and right_sidebar_toggle_state["before"]["inputRailBorderWidth"] == "0px"
                     and right_sidebar_toggle_state["before"]["inputRailHeadBorderBottomWidth"] == "0px"

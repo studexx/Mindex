@@ -5829,7 +5829,7 @@ def main() -> int:
                             bulkInput.value = '찬양 1: 평화 하나님의 평강이';
                             bulkInput.dispatchEvent(new Event('input', { bubbles: true }));
                           }
-                          const rightRailButtons = ['saveAllBtn', 'themeBtn']
+                          const rightRailButtons = ['saveAllBtn']
                             .map((id) => {
                               const node = document.getElementById(id);
                               const rect = node?.getBoundingClientRect();
@@ -5931,9 +5931,8 @@ def main() -> int:
                         and (
                             not presenter_header_input["rightRailDesktop"]
                             or (
-                                [button["id"] for button in presenter_header_input["rightRailButtons"]] == ["saveAllBtn", "themeBtn"]
+                                [button["id"] for button in presenter_header_input["rightRailButtons"]] == ["saveAllBtn"]
                                 and all(button["width"] == button["height"] and button["width"] >= 32 for button in presenter_header_input["rightRailButtons"])
-                                and all(gap >= 7 for gap in presenter_header_input["rightRailGaps"])
                                 and all(button["opacity"] == 1 for button in presenter_header_input["rightRailButtons"])
                             )
                         )

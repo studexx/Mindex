@@ -841,8 +841,7 @@ body[data-module="presenter"] .right-sidebar {
   padding-top: var(--s4);
 }
 body[data-module="presenter"] #presenterRightSidebarBtn,
-body[data-module="presenter"] #saveAllBtn,
-body[data-module="presenter"] #themeBtn {
+body[data-module="presenter"] #saveAllBtn {
   position: absolute;
   right: calc(-1 * var(--shell-right-w) + var(--shell-edge-inset));
   margin: 0;
@@ -853,23 +852,17 @@ body[data-module="presenter"] #presenterRightSidebarBtn {
 body[data-module="presenter"] #saveAllBtn {
   top: var(--s1);
 }
-body[data-module="presenter"] #themeBtn {
-  top: calc(var(--s1) + var(--topbar-btn-size) + var(--s2));
-}
 body[data-module="presenter"] #presenterRightSidebarBtn,
 body[data-module="presenter"] #saveAllBtn,
-body[data-module="presenter"] #themeBtn,
 body[data-module="presenter"] #presenterRightSidebarBtn:disabled,
-body[data-module="presenter"] #saveAllBtn:disabled,
-body[data-module="presenter"] #themeBtn:disabled {
+body[data-module="presenter"] #saveAllBtn:disabled {
   background: transparent;
   box-shadow: none;
   color: var(--sidebar-ink);
   opacity: 1;
 }
 body[data-module="presenter"] #presenterRightSidebarBtn:hover::before,
-body[data-module="presenter"] #saveAllBtn:hover::before,
-body[data-module="presenter"] #themeBtn:hover::before {
+body[data-module="presenter"] #saveAllBtn:hover::before {
   background: var(--sidebar-hover-bg);
 }
 .svc-right-sidebar-toggle.is-active {
@@ -8561,8 +8554,7 @@ body.is-chromium .svc-slide-thumb.active:hover .svc-slide-thumb-frame {
   body[data-module="presenter"].right-sidebar-open,
   body.right-sidebar-open { --shell-right-w: 0px; }
   body[data-module="presenter"] #presenterRightSidebarBtn,
-  body[data-module="presenter"] #saveAllBtn,
-  body[data-module="presenter"] #themeBtn {
+  body[data-module="presenter"] #saveAllBtn {
     position: relative;
     top: auto;
     right: auto;
