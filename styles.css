@@ -6366,6 +6366,14 @@ textarea.svc-presenter-input-control--multiline {
 .svc-presenter-input-field--song .svc-edit-title-wrap--song {
   align-items: flex-start;
 }
+.svc-presenter-input-field--song .svc-edit-title-wrap--song .svc-edit-title {
+  flex: 1 1 min(100%, 220px);
+  min-width: min(100%, 180px);
+}
+.svc-presenter-input-field--song .svc-song-picker--linked,
+.svc-presenter-input-field--song .svc-song-picker:not([role="listbox"]) {
+  flex: 1 1 100%;
+}
 .svc-presenter-input-field--song .svc-song-picker[role="listbox"] {
   display: grid;
   grid-template-columns: 1fr;
@@ -7728,7 +7736,8 @@ textarea.svc-presenter-input-control--multiline {
 }
 .svc-board-subgroup-controls .svc-edit-title,
 .svc-board-subgroup-controls .svc-presenter-input-control {
-  flex: 1 1 220px;
+  flex: 1 1 min(100%, 220px);
+  min-width: min(100%, 180px);
 }
 .svc-board-subgroup-controls .svc-praise-input-mode-select {
   flex: 0 0 132px;
@@ -7770,7 +7779,7 @@ textarea.svc-presenter-input-control--multiline {
 .svc-board-subgroup-controls .svc-song-picker--hint,
 .svc-board-subgroup-controls .svc-song-picker--linked,
 .svc-board-subgroup-controls .svc-song-picker:not([role="listbox"]) {
-  flex: 0 0 auto;
+  flex: 1 1 100%;
   min-width: 0;
 }
 .svc-board-subgroup-controls .svc-song-picker-result {
