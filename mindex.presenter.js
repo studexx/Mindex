@@ -3972,11 +3972,23 @@ function preparePresenterOutputFrameForPaint(host) {
 function preparePresenterOutputVideoForPaint(video) {
   if (!video) return Promise.resolve();
   const readyForPaint = () => video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA;
+  const ensureInlineMutedAutoplay = () => {
+    if (!video.autoplay) return;
+    if (!video.muted && !video.defaultMuted && !video.hasAttribute("muted")) return;
+    video.defaultMuted = true;
+    video.muted = true;
+    video.playsInline = true;
+    video.setAttribute("muted", "");
+    video.setAttribute("playsinline", "");
+    video.setAttribute("webkit-playsinline", "");
+  };
   const requestPlayback = () => {
     if (!video.autoplay) return;
+    ensureInlineMutedAutoplay();
     const playPromise = video.play?.();
     if (playPromise?.catch) playPromise.catch(() => {});
   };
+  ensureInlineMutedAutoplay();
   requestPlayback();
   if (readyForPaint()) return Promise.resolve();
   return new Promise((resolve) => {
@@ -4427,10 +4439,12 @@ function renderPresenterVideoSlide(slide, options = {}) {
     presenterRole ? `data-presenter-role="${escapeAttr(presenterRole)}"` : "",
     (!previewStage && playback.autoplay) ? "autoplay" : "",
     (previewStage || playback.muted) ? "muted" : "",
+    (previewStage || playback.muted) ? "defaultMuted" : "",
     (!previewStage && playback.loop) ? "loop" : "",
     (!previewStage && playback.controls) ? "controls" : "",
     (options.noChromakey || previewStage) ? "" : `poster="${PRESENTER_CHROMAKEY_VIDEO_POSTER}"`,
     "playsinline",
+    "webkit-playsinline",
     `preload=\"${previewStage ? "metadata" : "auto"}\"`,
   ].filter(Boolean).join(" ");
   return `

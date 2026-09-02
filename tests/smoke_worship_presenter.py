@@ -7499,6 +7499,10 @@ def main() -> int:
                           && source.includes('canplay'),
                         retriesAutoplay: source.includes('video.play')
                           && source.includes('playPromise.catch'),
+                        preservesAudibleAutoplay: source.includes('!video.muted && !video.defaultMuted && !video.hasAttribute("muted")'),
+                        forcesSafariMutedInline: source.includes('video.defaultMuted = true')
+                          && source.includes('video.muted = true')
+                          && source.includes('webkit-playsinline'),
                         hasTimeoutFallback: source.includes('setTimeout')
                           && source.includes('1500'),
                       };
@@ -7509,6 +7513,8 @@ def main() -> int:
                     video_paint_guard_state["frameWaitsForVideo"]
                     and video_paint_guard_state["waitsForFirstFrame"]
                     and video_paint_guard_state["retriesAutoplay"]
+                    and video_paint_guard_state["preservesAudibleAutoplay"]
+                    and video_paint_guard_state["forcesSafariMutedInline"]
                     and video_paint_guard_state["hasTimeoutFallback"]
                 ):
                     pass_("presenter-output-video-paint-guard", json.dumps(video_paint_guard_state, ensure_ascii=False))
