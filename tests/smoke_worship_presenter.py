@@ -5811,14 +5811,24 @@ def main() -> int:
                           abbreviation: '개역개정',
                         });
                       }
-                      state.selectedBibleTranslationId = '__smoke_ko__';
+                      if (!state.bibleTranslations.some((translation) => translation.id === '__smoke_en__')) {
+                        state.bibleTranslations.push({
+                          id: '__smoke_en__',
+                          translationKey: 'WEB',
+                          name: 'World English Bible',
+                          language: 'en',
+                          abbreviation: 'WEB',
+                        });
+                      }
+                      state.selectedBibleTranslationId = '__smoke_en__';
+                      const smokeKoTranslation = state.bibleTranslations.find((translation) => translation.id === '__smoke_ko__');
                       cacheServiceScriptureVerses(parseBibleReference('출 23:14–19'), [
                         { book_code: 'EXO', chapter: 23, verse: 14, text: '너는 매년 세 번 내게 절기를 지킬지니라' },
-                      ]);
+                      ], smokeKoTranslation);
                       cacheServiceScriptureVerses(parseBibleReference('출 24:1–2'), [
                         { book_code: 'EXO', chapter: 24, verse: 1, text: '또 모세에게 이르시되' },
                         { book_code: 'EXO', chapter: 24, verse: 2, text: '너 모세만 여호와께 가까이 나아오고' },
-                      ]);
+                      ], smokeKoTranslation);
                       const readingItem = {
                         id: '__smoke_scripture_reading_body__',
                         label: '성경봉독',
@@ -5937,6 +5947,8 @@ def main() -> int:
                         readingFinal: readingSlide.scriptureReadingFinal || false,
                         readingSuppressBackground: Boolean(readingSlide.suppressBackgroundImage),
                         readingTranslationLabel: readingSlide.translationLabel || '',
+                        readerSelectedTranslationId: state.selectedBibleTranslationId || '',
+                        presenterFallbackTranslationId: selectedPresenterBibleTranslation()?.id || '',
                         readingOutputContext: presenterSlideOutputContext(readingSlide, true),
                         readingNoChromakey: outputs[0]?.classList.contains('no-chromakey') || false,
                         readingHasClass: slides[0]?.classList.contains('presenter-slide--scripture-reading') || false,
@@ -6043,6 +6055,8 @@ def main() -> int:
                     and not scripture_context_state["readingSuppressBackground"]
                     and scripture_context_state["readingTranslationLabel"] == "개역개정"
                     and scripture_context_state["readingVersion"] == "개역개정"
+                    and scripture_context_state["readerSelectedTranslationId"] == "__smoke_en__"
+                    and scripture_context_state["presenterFallbackTranslationId"] == "__smoke_ko__"
                     and scripture_context_state["readingFin"] == "Fin."
                     and scripture_context_state["readingFinFontStyle"] == "italic"
                     and scripture_context_state["readingSidePadding"] >= 75

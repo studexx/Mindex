@@ -27024,8 +27024,11 @@ function formatLiveScriptureSlideText(reference, verses = []) {
 }
 
 function selectedPresenterBibleTranslation() {
-  return state.bibleTranslations.find((translation) => translation.id === state.selectedBibleTranslationId)
-    || state.bibleTranslations.find((translation) => /개역개정|KRV|Korean/i.test(`${translation.name || ""} ${translation.translationKey || ""} ${translation.code || ""}`))
+  return state.bibleTranslations.find((translation) => {
+    const label = `${translation.name || ""} ${translation.translationKey || ""} ${translation.abbreviation || ""}`;
+    return /개역개정|\bRKB\b|\bKRV\b/i.test(label);
+  })
+    || state.bibleTranslations.find((translation) => isKoreanBibleTranslation(translation))
     || state.bibleTranslations[0]
     || null;
 }
