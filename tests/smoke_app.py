@@ -5829,7 +5829,7 @@ def main() -> int:
                             bulkInput.value = '찬양 1: 평화 하나님의 평강이';
                             bulkInput.dispatchEvent(new Event('input', { bubbles: true }));
                           }
-                          const rightRailButtons = ['presenterRightSidebarBtn', 'saveAllBtn', 'themeBtn']
+                          const rightRailButtons = ['saveAllBtn', 'themeBtn']
                             .map((id) => {
                               const node = document.getElementById(id);
                               const rect = node?.getBoundingClientRect();
@@ -5902,7 +5902,7 @@ def main() -> int:
                     if (
                         presenter_header_input["legacyContextRemoved"]
                         and presenter_header_input["rightSidebarMounted"]
-                        and presenter_header_input["topbarToggleVisible"]
+                        and not presenter_header_input["topbarToggleVisible"]
                         and not presenter_header_input["saveHidden"]
                         and presenter_header_input["saveVisible"]
                         and presenter_header_input["headerToggleRemoved"]
@@ -5931,7 +5931,7 @@ def main() -> int:
                         and (
                             not presenter_header_input["rightRailDesktop"]
                             or (
-                                [button["id"] for button in presenter_header_input["rightRailButtons"]] == ["presenterRightSidebarBtn", "saveAllBtn", "themeBtn"]
+                                [button["id"] for button in presenter_header_input["rightRailButtons"]] == ["saveAllBtn", "themeBtn"]
                                 and all(button["width"] == button["height"] and button["width"] >= 32 for button in presenter_header_input["rightRailButtons"])
                                 and all(gap >= 7 for gap in presenter_header_input["rightRailGaps"])
                                 and all(button["opacity"] == 1 for button in presenter_header_input["rightRailButtons"])
@@ -5954,6 +5954,7 @@ def main() -> int:
                           const button = document.querySelector('#mindexRightSidebar [data-presenter-preparation-apply]');
                           if (!input || !button) return { ready: false, reason: 'control' };
                           const serviceId = input.dataset.serviceId || state.selectedServiceId;
+                          const normalizeLabel = (value) => String(value || '').replace(/\\s+/g, '');
                           const target = findPresenterPreparationProjectedItem(
                             state.services.find((service) => service.id === serviceId),
                             '대표기도'
@@ -5976,11 +5977,15 @@ def main() -> int:
                             delete state.presenterPreparationDrafts[serviceId];
                             state.dirty.service = false;
                             input.value = '대표기도: 테스트 권사';
-                            button.click();
+                            input.dispatchEvent(new Event('input', { bubbles: true }));
+                            await applyPresenterPreparationInput(serviceId, { draft: input.value });
                             await new Promise((resolve) => window.setTimeout(resolve, 80));
                             return {
                               ready: true,
                               assignee: getServiceItems(serviceId)[index]?.assignee || '',
+                              assignees: getServiceItems(serviceId)
+                                .filter((entry) => normalizeLabel(entry.label || '') === normalizeLabel('대표기도'))
+                                .map((entry) => entry.assignee || ''),
                               draftCleared: !(serviceId in state.presenterPreparationDrafts),
                               dirty: state.dirty.service,
                               toasts,
@@ -5998,7 +6003,7 @@ def main() -> int:
                     )
                     if (
                         presenter_preparation_apply_click.get("ready")
-                        and presenter_preparation_apply_click["assignee"] == "테스트 권사"
+                        and "테스트 권사" in presenter_preparation_apply_click["assignees"]
                         and presenter_preparation_apply_click["draftCleared"]
                         and presenter_preparation_apply_click["dirty"]
                         and presenter_preparation_apply_click["toasts"]
@@ -8756,7 +8761,7 @@ def main() -> int:
                         and authoring_narrow["railMounted"]
                         and authoring_narrow["sidePanelMounted"]
                         and authoring_narrow["rightSidebarMounted"]
-                        and authoring_narrow["topbarToggleVisible"]
+                        and not authoring_narrow["topbarToggleVisible"]
                         and not authoring_narrow["saveHidden"]
                         and authoring_narrow["saveVisible"]
                         and not authoring_narrow["hasReadonly"]

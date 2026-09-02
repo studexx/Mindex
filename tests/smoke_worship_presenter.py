@@ -143,7 +143,6 @@ def main() -> int:
                   const sidebar = document.querySelector('#mindexRightSidebar');
                   const shell = document.querySelector('.app-shell');
                   const topbar = document.querySelector('.topbar');
-                  const toggleButton = document.querySelector('#presenterRightSidebarBtn');
                   const saveButton = document.querySelector('#saveAllBtn');
                   const themeButton = document.querySelector('#themeBtn');
                   const sidebarStyle = sidebar ? getComputedStyle(sidebar) : null;
@@ -151,7 +150,6 @@ def main() -> int:
                   const topbarStyle = topbar ? getComputedStyle(topbar) : null;
                   const sidebarRect = sidebar?.getBoundingClientRect();
                   const topbarRect = topbar?.getBoundingClientRect();
-                  const toggleStyle = toggleButton ? getComputedStyle(toggleButton) : null;
                   const saveStyle = saveButton ? getComputedStyle(saveButton) : null;
                   const themeStyle = themeButton ? getComputedStyle(themeButton) : null;
                   const hasContent = sidebar?.dataset.hasContent === 'true';
@@ -167,10 +165,8 @@ def main() -> int:
                     sidebarBackground: sidebarStyle?.backgroundColor || '',
                     topFillBackground: shellTopFillStyle?.backgroundColor || '',
                     topbarBackground: topbarStyle?.backgroundColor || '',
-                    toggleOpacity: toggleStyle?.opacity || '',
                     saveOpacity: saveStyle?.opacity || '',
                     themeOpacity: themeStyle?.opacity || '',
-                    toggleColor: toggleStyle?.color || '',
                     saveColor: saveStyle?.color || '',
                     themeColor: themeStyle?.color || '',
                   };
@@ -181,20 +177,13 @@ def main() -> int:
                 loading_right_rail_state["module"] == "presenter"
                 and loading_right_rail_state["sidebarTop"] >= loading_right_rail_state["topbarBottom"]
                 and not loading_right_rail_state["hidden"]
-                and (
-                    loading_right_rail_state["hasContent"]
-                    or (
-                        not loading_right_rail_state["bodyOpen"]
-                        and loading_right_rail_state["sidebarWidth"] == loading_right_rail_state["rightRailWidth"]
-                    )
-                )
+                and loading_right_rail_state["bodyOpen"]
+                and loading_right_rail_state["sidebarWidth"] >= loading_right_rail_state["rightRailWidth"]
                 and loading_right_rail_state["sidebarBackground"] == loading_right_rail_state["topbarBackground"]
                 and loading_right_rail_state["topFillBackground"] == loading_right_rail_state["sidebarBackground"]
-                and loading_right_rail_state["toggleOpacity"] == "1"
                 and loading_right_rail_state["saveOpacity"] == "1"
                 and loading_right_rail_state["themeOpacity"] == "1"
-                and loading_right_rail_state["toggleColor"] == loading_right_rail_state["saveColor"]
-                and loading_right_rail_state["toggleColor"] == loading_right_rail_state["themeColor"]
+                and loading_right_rail_state["saveColor"] == loading_right_rail_state["themeColor"]
             )
             if loading_right_rail_ok:
                 pass_("presenter-loading-right-rail", json.dumps(loading_right_rail_state, ensure_ascii=False))
@@ -536,11 +525,9 @@ def main() -> int:
                         saveHidden: Boolean(document.querySelector('#saveAllBtn')?.hidden),
                         saveVisible: Boolean(saveButton && !saveButton.hidden),
                         themeVisible: Boolean(themeButton && !themeButton.hidden),
-                        railButtonAligned: Boolean(buttonRect && saveRect && themeRect)
-                          && Math.abs(buttonRect.left - saveRect.left) <= 1
-                          && Math.abs(buttonRect.left - themeRect.left) <= 1,
-                        railButtonOrder: Boolean(buttonRect && saveRect && themeRect)
-                          && buttonRect.top < saveRect.top
+                        railButtonAligned: Boolean(saveRect && themeRect)
+                          && Math.abs(saveRect.left - themeRect.left) <= 1,
+                        railButtonOrder: Boolean(saveRect && themeRect)
                           && saveRect.top < themeRect.top,
                         headerToggleRemoved: !headerToggle,
                         presenterHeaderRemoved: !presenterHeader,
@@ -556,12 +543,8 @@ def main() -> int:
                         sidePanelWidth: sidePanel ? Math.round(sidePanel.getBoundingClientRect().width) : 0,
                         leftSidebarWidth: leftSidebar ? Math.round(leftSidebar.getBoundingClientRect().width) : 0,
                         rightRailWidth: Math.round(parseFloat(getComputedStyle(document.body).getPropertyValue('--right-rail-w')) || 0),
-                        buttonBorderWidth: buttonStyle?.borderTopWidth || '',
-                        buttonBoxShadow: buttonStyle?.boxShadow || '',
-                        buttonOpacity: buttonStyle?.opacity || '',
                         saveOpacity: saveStyle?.opacity || '',
                         themeOpacity: themeStyle?.opacity || '',
-                        buttonColor: buttonStyle?.color || '',
                         saveColor: saveStyle?.color || '',
                         themeColor: themeStyle?.color || '',
                         accentColor: resolveCssColor('var(--accent)'),
@@ -569,28 +552,26 @@ def main() -> int:
                         inputRailBorderWidth: inputRailStyle?.borderTopWidth || '',
                         inputRailHeadBorderBottomWidth: inputRailHeadStyle?.borderBottomWidth || '',
                       };
-                      button?.click();
-                      const afterClose = {
+                      saveButton?.click();
+                      const afterSaveClick = {
                         sidebarVisible: sidebarIsVisible(),
                         sidebarMounted: Boolean(sidebar && !sidebar.hidden),
                         sidebarWidth: sidebar ? Math.round(sidebar.getBoundingClientRect().width) : 0,
                         bodyOpen: document.body.classList.contains('right-sidebar-open'),
-                        pressed: button?.getAttribute('aria-pressed') || '',
                       };
-                      button?.click();
-                      const afterOpen = {
+                      themeButton?.click();
+                      const afterThemeClick = {
                         sidebarVisible: sidebarIsVisible(),
                         sidebarMounted: Boolean(sidebar && !sidebar.hidden),
                         sidebarWidth: sidebar ? Math.round(sidebar.getBoundingClientRect().width) : 0,
                         bodyOpen: document.body.classList.contains('right-sidebar-open'),
-                        pressed: button?.getAttribute('aria-pressed') || '',
                       };
-                      return { before, afterClose, afterOpen };
+                      return { before, afterSaveClick, afterThemeClick };
                     })()
                     """
                 )
                 right_sidebar_toggle_ok = (
-                    right_sidebar_toggle_state["before"]["buttonVisible"]
+                    not right_sidebar_toggle_state["before"]["buttonVisible"]
                     and not right_sidebar_toggle_state["before"]["saveHidden"]
                     and right_sidebar_toggle_state["before"]["saveVisible"]
                     and right_sidebar_toggle_state["before"]["themeVisible"]
@@ -610,27 +591,20 @@ def main() -> int:
                         right_sidebar_toggle_state["before"]["sidePanelWidth"]
                         + right_sidebar_toggle_state["before"]["rightRailWidth"]
                     )
-                    and right_sidebar_toggle_state["before"]["buttonBorderWidth"] == "0px"
-                    and right_sidebar_toggle_state["before"]["buttonBoxShadow"] == "none"
-                    and right_sidebar_toggle_state["before"]["buttonOpacity"] == "1"
                     and right_sidebar_toggle_state["before"]["saveOpacity"] == "1"
                     and right_sidebar_toggle_state["before"]["themeOpacity"] == "1"
-                    and right_sidebar_toggle_state["before"]["buttonColor"] != right_sidebar_toggle_state["before"]["accentColor"]
-                    and right_sidebar_toggle_state["before"]["buttonColor"] == right_sidebar_toggle_state["before"]["saveColor"]
-                    and right_sidebar_toggle_state["before"]["buttonColor"] == right_sidebar_toggle_state["before"]["themeColor"]
+                    and right_sidebar_toggle_state["before"]["saveColor"] == right_sidebar_toggle_state["before"]["themeColor"]
                     and right_sidebar_toggle_state["before"]["presenterTopBorderWidth"] == "0px"
                     and right_sidebar_toggle_state["before"]["inputRailBorderWidth"] == "0px"
                     and right_sidebar_toggle_state["before"]["inputRailHeadBorderBottomWidth"] == "0px"
-                    and not right_sidebar_toggle_state["afterClose"]["sidebarVisible"]
-                    and right_sidebar_toggle_state["afterClose"]["sidebarMounted"]
-                    and right_sidebar_toggle_state["afterClose"]["sidebarWidth"] == right_sidebar_toggle_state["before"]["rightRailWidth"]
-                    and not right_sidebar_toggle_state["afterClose"]["bodyOpen"]
-                    and right_sidebar_toggle_state["afterClose"]["pressed"] == "false"
-                    and right_sidebar_toggle_state["afterOpen"]["sidebarVisible"]
-                    and right_sidebar_toggle_state["afterOpen"]["sidebarMounted"]
-                    and right_sidebar_toggle_state["afterOpen"]["sidebarWidth"] == right_sidebar_toggle_state["before"]["sidebarWidth"]
-                    and right_sidebar_toggle_state["afterOpen"]["bodyOpen"]
-                    and right_sidebar_toggle_state["afterOpen"]["pressed"] == "true"
+                    and right_sidebar_toggle_state["afterSaveClick"]["sidebarVisible"]
+                    and right_sidebar_toggle_state["afterSaveClick"]["sidebarMounted"]
+                    and right_sidebar_toggle_state["afterSaveClick"]["sidebarWidth"] == right_sidebar_toggle_state["before"]["sidebarWidth"]
+                    and right_sidebar_toggle_state["afterSaveClick"]["bodyOpen"]
+                    and right_sidebar_toggle_state["afterThemeClick"]["sidebarVisible"]
+                    and right_sidebar_toggle_state["afterThemeClick"]["sidebarMounted"]
+                    and right_sidebar_toggle_state["afterThemeClick"]["sidebarWidth"] == right_sidebar_toggle_state["before"]["sidebarWidth"]
+                    and right_sidebar_toggle_state["afterThemeClick"]["bodyOpen"]
                 )
                 if right_sidebar_toggle_ok:
                     pass_("presenter-right-sidebar-toggle", json.dumps(right_sidebar_toggle_state, ensure_ascii=False))

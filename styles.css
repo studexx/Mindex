@@ -229,7 +229,7 @@ h1, h2, h3, p { margin: 0; }
 }
 body.sidebar-collapsed { --shell-left-w: var(--topbar-left-compact-w); }
 body.right-sidebar-open { --shell-right-w: var(--right-sidebar-w); }
-body[data-module="presenter"] { --shell-right-w: var(--right-rail-w); }
+body[data-module="presenter"] { --shell-right-w: calc(var(--right-sidebar-w) + var(--right-rail-w)); }
 body[data-module="presenter"].right-sidebar-open { --shell-right-w: calc(var(--right-sidebar-w) + var(--right-rail-w)); }
 .top-left-tool,
 .brand-home {
@@ -836,6 +836,9 @@ body:not(.right-sidebar-open) .right-sidebar .svc-presenter-side-panel {
 body:not([data-module="presenter"]) #presenterRightSidebarBtn {
   display: none;
 }
+body[data-module="presenter"] #presenterRightSidebarBtn {
+  display: none;
+}
 body[data-module="presenter"] .right-sidebar {
   padding-top: var(--s4);
 }
@@ -850,10 +853,10 @@ body[data-module="presenter"] #presenterRightSidebarBtn {
   top: var(--s1);
 }
 body[data-module="presenter"] #saveAllBtn {
-  top: calc(var(--s1) + var(--topbar-btn-size) + var(--s2));
+  top: var(--s1);
 }
 body[data-module="presenter"] #themeBtn {
-  top: calc(var(--s1) + (var(--topbar-btn-size) + var(--s2)) * 2);
+  top: calc(var(--s1) + var(--topbar-btn-size) + var(--s2));
 }
 body[data-module="presenter"] #presenterRightSidebarBtn,
 body[data-module="presenter"] #saveAllBtn,

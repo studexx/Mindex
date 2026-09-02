@@ -17,7 +17,7 @@
     <link rel="preload" href="./vendor/fonts/freesentation/Freesentation-6SemiBold.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="./vendor/fonts/freesentation/Freesentation-7Bold.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="./vendor/fonts/freesentation/Freesentation-8ExtraBold.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="stylesheet" href="./styles.css?v=mindex-button-press-feedback-20260902-003" />
+    <link rel="stylesheet" href="./styles.css?v=mindex-presenter-fixed-controller-20260903-001" />
     <link rel="stylesheet" href="./styles.presenter-output.css?v=mindex-waiting-video-black-fallback-20260902-001" />
     <link rel="stylesheet" href="./styles.calendar.css?v=mindex-calendar-ui-012" />
     <link rel="prefetch" href="./assets/presenter/chromakey-ready-loop-fast.mp4" type="video/mp4" />
@@ -30,10 +30,7 @@
           const moduleName = sessionStorage.getItem("mindex.ui.module");
           if (moduleName) {
             document.body.dataset.module = moduleName;
-            if (
-              moduleName === "presenter"
-              && localStorage.getItem("mindex.presenter.rightSidebarOpen.v1") !== "false"
-            ) {
+            if (moduleName === "presenter") {
               document.body.classList.add("right-sidebar-open");
             }
           }
@@ -109,9 +106,6 @@
             <i data-lucide="plus"></i>
             <span>새로 만들기</span>
           </button>
-          <button id="presenterRightSidebarBtn" class="icon-btn svc-right-sidebar-toggle" type="button" aria-label="컨트롤러 열기" title="컨트롤러 열기" disabled>
-            <i data-lucide="panel-right"></i>
-          </button>
           <button id="saveAllBtn" class="icon-btn primary" type="button" aria-label="저장" disabled>
             <i data-lucide="save"></i>
           </button>
@@ -139,6 +133,6 @@
     <script src="./mindex.constants.js?v=mindex-sidebar-state-001"></script>
     <script src="./mindex.design-tokens.js?v=mindex-design-tokens-20260819-002"></script>
     <script src="./mindex.presenter.js?v=mindex-sidebar-preview-scale-20260902-001"></script>
-    <script src="./app.js?v=mindex-worship-first-render-20260903-001"></script>
+    <script src="./app.js?v=mindex-presenter-fixed-controller-20260903-001"></script>
   </body>
 </html>

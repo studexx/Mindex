@@ -251,7 +251,6 @@ const PRESENTER_STORAGE_KEY = "mindex.presenter.state";
 const PRESENTER_SIGNAL_KEY = "mindex.presenter.signal";
 const PRESENTER_TARGET_SCREEN_STORAGE_KEY = "mindex.presenter.targetScreen.v1";
 const PRESENTER_ALWAYS_ON_TOP_STORAGE_KEY = "mindex.presenter.alwaysOnTop.v1";
-const PRESENTER_RIGHT_SIDEBAR_STORAGE_KEY = "mindex.presenter.rightSidebarOpen.v1";
 const WORSHIP_RECOVERY_SNAPSHOTS_STORAGE_KEY = "mindex.worshipRecoverySnapshots.v1";
 const WORSHIP_RECOVERY_LATEST_STORAGE_PREFIX = "mindex.worshipRecoverySnapshot.latest.v1.";
 const WORSHIP_RECOVERY_SNAPSHOT_LIMIT = 12;
@@ -15074,16 +15073,16 @@ function finishDetailRender() {
 }
 
 function presenterRightSidebarIsOpen() {
-  return safeStorageGet("local", PRESENTER_RIGHT_SIDEBAR_STORAGE_KEY) !== "false";
+  return state.module === "presenter";
 }
 
 function applyRightSidebarVisibility(hasContent = refs.rightSidebar?.dataset.hasContent === "true") {
   if (!refs.rightSidebar) return;
-  const railAvailable = state.module === "presenter" || hasContent;
-  const open = Boolean(hasContent && presenterRightSidebarIsOpen());
+  const railAvailable = state.module === "presenter";
+  const open = presenterRightSidebarIsOpen();
   refs.rightSidebar.hidden = !railAvailable;
-  refs.rightSidebar.setAttribute("aria-hidden", String(!open));
-  if ("inert" in refs.rightSidebar) refs.rightSidebar.inert = !open;
+  refs.rightSidebar.setAttribute("aria-hidden", String(!(open && hasContent)));
+  if ("inert" in refs.rightSidebar) refs.rightSidebar.inert = !(open && hasContent);
   document.body.classList.toggle("right-sidebar-available", Boolean(hasContent));
   document.body.classList.toggle("right-sidebar-open", open);
   updatePresenterRightSidebarToggleButtons();
@@ -15099,8 +15098,6 @@ function setRightSidebarContent(html = "") {
 }
 
 function togglePresenterRightSidebar() {
-  const nextOpen = !presenterRightSidebarIsOpen();
-  safeStorageSet("local", PRESENTER_RIGHT_SIDEBAR_STORAGE_KEY, String(nextOpen));
   applyRightSidebarVisibility();
 }
 
@@ -15108,13 +15105,12 @@ function updatePresenterRightSidebarToggleButtons() {
   const open = presenterRightSidebarIsOpen();
   const hasContent = refs.rightSidebar?.dataset.hasContent === "true";
   if (refs.presenterRightSidebarBtn) {
-    const visible = state.module === "presenter";
-    refs.presenterRightSidebarBtn.hidden = !visible;
-    refs.presenterRightSidebarBtn.disabled = Boolean(visible && !hasContent);
+    refs.presenterRightSidebarBtn.hidden = true;
+    refs.presenterRightSidebarBtn.disabled = true;
     refs.presenterRightSidebarBtn.classList.toggle("is-active", open);
     refs.presenterRightSidebarBtn.setAttribute("aria-pressed", String(open));
-    refs.presenterRightSidebarBtn.setAttribute("aria-label", hasContent && open ? "컨트롤러 닫기" : "컨트롤러 열기");
-    refs.presenterRightSidebarBtn.setAttribute("title", hasContent ? (open ? "컨트롤러 닫기" : "컨트롤러 열기") : "컨트롤러 준비 중");
+    refs.presenterRightSidebarBtn.setAttribute("aria-label", "프레젠터 컨트롤러");
+    refs.presenterRightSidebarBtn.setAttribute("title", "프레젠터 컨트롤러");
   }
   document.querySelectorAll("[data-presenter-right-sidebar-toggle]").forEach((button) => {
     button.classList.toggle("is-active", open);
