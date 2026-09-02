@@ -8498,7 +8498,11 @@ body.is-chromium .svc-slide-thumb.active:hover .svc-slide-thumb-frame {
 }
 
 @media (max-width: 900px) {
+  body[data-module="presenter"] {
+    --shell-left-w: var(--topbar-left-compact-w);
+  }
   body[data-module="presenter"],
+  body[data-module="presenter"].right-sidebar-open,
   body.right-sidebar-open { --shell-right-w: 0px; }
   body[data-module="presenter"] #presenterRightSidebarBtn,
   body[data-module="presenter"] #saveAllBtn,

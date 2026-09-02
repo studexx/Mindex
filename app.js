@@ -1259,7 +1259,10 @@ function bindStaticEvents() {
     if (preparationApply) {
       event.preventDefault();
       event.stopPropagation();
-      void applyPresenterPreparationInput(preparationApply.dataset.serviceId || state.selectedServiceId);
+      void applyPresenterPreparationInput(
+        preparationApply.dataset.serviceId || state.selectedServiceId,
+        { draft: presenterPreparationDraftNearApplyButton(preparationApply) },
+      );
       return;
     }
 
@@ -8100,7 +8103,10 @@ function handlePresenterDetailClick(event) {
   if (preparationApply) {
     event.preventDefault();
     event.stopPropagation();
-    void applyPresenterPreparationInput(preparationApply.dataset.serviceId || state.selectedServiceId);
+    void applyPresenterPreparationInput(
+      preparationApply.dataset.serviceId || state.selectedServiceId,
+      { draft: presenterPreparationDraftNearApplyButton(preparationApply) },
+    );
     return true;
   }
 
@@ -24033,7 +24039,7 @@ function serviceItemPreviewParts(serviceId) {
 function renderServiceCardPreviewHtml(preview = {}, className = "service-date-card-preview") {
   const title = String(preview.title || "").trim();
   const reference = String(preview.reference || "").trim();
-  if (title && reference) {
+  if (title) {
     return `
       <span class="${escapeAttr(className)} service-card-sermon-preview">
         <span class="service-card-sermon-title">${escapeHtml(title)}</span>
@@ -24973,8 +24979,19 @@ function presenterPreparationInputForService(serviceId) {
     || null;
 }
 
-function presenterPreparationDraftForService(serviceId) {
-  const inputValue = presenterPreparationInputForService(serviceId)?.value;
+function presenterPreparationDraftNearApplyButton(button) {
+  const serviceId = button?.dataset?.serviceId || state.selectedServiceId;
+  const root = button?.closest?.("[data-presenter-right-sidebar], .service-sidebar-presenter-context, .svc-presenter-input-rail")
+    || button?.parentElement
+    || null;
+  const scoped = serviceId
+    ? root?.querySelector?.(`[data-presenter-preparation-input][data-service-id="${cssEscape(serviceId)}"]`)
+    : root?.querySelector?.("[data-presenter-preparation-input]");
+  return scoped?.value;
+}
+
+function presenterPreparationDraftForService(serviceId, options = {}) {
+  const inputValue = options.draft ?? presenterPreparationInputForService(serviceId)?.value;
   const draft = inputValue == null ? state.presenterPreparationDrafts[serviceId] : inputValue;
   return String(draft || "").trim();
 }
@@ -25234,6 +25251,7 @@ function normalizePresenterPreparationInputLabel(label = "") {
   const key = compactSearchValue(raw);
   const aliases = {
     기도: "대표기도",
+    대표기도: "대표기도",
     성경: "성경봉독",
     성경본문: "성경봉독",
     성경봉독본문: "성경봉독",
@@ -25662,9 +25680,9 @@ function presenterPreparationCitationItems(service, items, references) {
   return { items: next, citationIds: [citation.id] };
 }
 
-async function applyPresenterPreparationInput(serviceId = state.selectedServiceId) {
+async function applyPresenterPreparationInput(serviceId = state.selectedServiceId, options = {}) {
   const service = state.services.find((candidate) => candidate.id === serviceId);
-  const draft = presenterPreparationDraftForService(serviceId);
+  const draft = presenterPreparationDraftForService(serviceId, options);
   if (!service || !draft) return;
   if (state.presenterPreparationApplyingServiceIds.has(serviceId)) return;
 
@@ -25683,6 +25701,7 @@ async function applyPresenterPreparationInput(serviceId = state.selectedServiceI
     const scriptureItemIds = new Set();
     const versionWarnings = [];
     const createdSongTitles = [];
+    const textFieldUpdates = [];
     let citationReferences = null;
 
     for (const entry of entries) {
@@ -25815,7 +25834,7 @@ async function applyPresenterPreparationInput(serviceId = state.selectedServiceI
         continue;
       }
 
-      if (entry.key === "대표기도") {
+      if (entry.key === "대표기도" || entry.rawKey === "대표기도") {
         item.assignee = assignee || content;
       } else if ((entry.rawKey || entry.key) === "설교" && isPresenterPreparationSermonTitleItem(item) && !assignee && presenterPreparationContentLooksAssignee(content)) {
         item.assignee = content;
@@ -25828,6 +25847,14 @@ async function applyPresenterPreparationInput(serviceId = state.selectedServiceI
       item._worshipElementTemplateModified = true;
       markServiceItemSharedContentDirty(item, service);
       item._worshipTemplatePlaceholder = false;
+      textFieldUpdates.push({
+        id: item.id,
+        slotKey: serviceItemSlotKey(item),
+        label: item.label,
+        assignee: item.assignee,
+        raw_title: item.raw_title,
+        memo: item.memo,
+      });
     }
 
     if (citationReferences) {
@@ -25844,10 +25871,30 @@ async function applyPresenterPreparationInput(serviceId = state.selectedServiceI
       return;
     }
 
-    state.serviceItems[serviceId] = projectWorshipServiceItemsFromTemplate(
+    const projectedItems = projectWorshipServiceItemsFromTemplate(
       service,
       normalizeServiceItemsInCurrentOrder(items),
     );
+    textFieldUpdates.forEach((update) => {
+      const labelKey = compactSearchValue(update.label || "");
+      const indexes = [
+        projectedItems.findIndex((item) => item.id === update.id),
+        projectedItems.findIndex((item) => update.slotKey && serviceItemSlotKey(item) === update.slotKey),
+        projectedItems.findIndex((item) => labelKey && compactSearchValue(item.label || "") === labelKey),
+      ];
+      const index = indexes.find((candidate) => candidate >= 0) ?? -1;
+      if (index < 0) return;
+      projectedItems[index] = {
+        ...projectedItems[index],
+        assignee: update.assignee,
+        raw_title: update.raw_title,
+        memo: update.memo,
+        _worshipElementTemplateModified: true,
+      };
+      markServiceItemSharedContentDirty(projectedItems[index], service);
+      projectedItems[index]._worshipTemplatePlaceholder = false;
+    });
+    state.serviceItems[serviceId] = projectedItems;
     state.dirty.service = true;
     delete state.presenterPreparationDrafts[serviceId];
     refreshPresenterForService(serviceId);
