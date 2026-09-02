@@ -681,7 +681,7 @@ def main() -> int:
                     and web_output_controls_state["unavailableClass"]
                     and not web_output_controls_state["alwaysOnTop"]
                     and web_output_controls_state["toastMessages"] == [{
-                        "message": "웹 버전에서는 항상 위 표시를 지원하지 않습니다.",
+                        "message": "웹 버전에서는 창 고정을 지원하지 않습니다.",
                         "type": "info",
                     }]
                 )

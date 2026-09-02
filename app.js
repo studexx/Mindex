@@ -24836,16 +24836,17 @@ function renderPresenterScreenControl() {
   return `
     <button class="icon-btn" type="button" data-presenter-action="detect-screens" aria-label="${escapeAttr(uiText("presenter.action.detectDisplays"))}" title="${escapeAttr(uiText("presenter.action.detectDisplays"))}">
       <i data-lucide="monitor"></i>
+      <span class="svc-presenter-screen-label">화면 감지</span>
     </button>`;
 }
 
 function renderPresenterAlwaysOnTopControl() {
   const supported = Boolean(window.mindexElectron?.setPresenterAlwaysOnTop);
   return `
-    <label class="svc-presenter-pin-toggle${supported ? "" : " is-unavailable"}" title="${supported ? "출력 창을 항상 위에 표시" : "웹 버전에서는 항상 위 표시를 지원하지 않습니다"}">
+    <label class="svc-presenter-pin-toggle${supported ? "" : " is-unavailable"}" title="${supported ? "출력 창을 위에 고정" : "웹 버전에서는 창 고정을 지원하지 않습니다"}">
       <input type="checkbox" data-presenter-always-on-top ${supported && state.presenter.alwaysOnTop ? "checked" : ""} />
       <span class="svc-presenter-pin-track" aria-hidden="true"></span>
-      <span>항상 위</span>
+      <span>위에 고정</span>
     </label>`;
 }
 
@@ -24854,7 +24855,7 @@ function setPresenterAlwaysOnTopPreference(enabled) {
   if (!updater) {
     state.presenter.alwaysOnTop = false;
     safeStorageRemove("local", PRESENTER_ALWAYS_ON_TOP_STORAGE_KEY);
-    showToast("웹 버전에서는 항상 위 표시를 지원하지 않습니다.", "info");
+    showToast("웹 버전에서는 창 고정을 지원하지 않습니다.", "info");
     renderPresenterControlState(presenterViewServiceId());
     return;
   }
@@ -26315,9 +26316,9 @@ function renderPresenterLiveStatusPanel(service, slides = [], options = {}) {
   const previewSlide = presenterLiveStatusPreviewSlide(slides, options.safeIndex, options);
   const previewTitle = presenterLiveStatusPreviewTitle(previewSlide, options);
   return `
-    <aside class="svc-presenter-live-panel${options.outputOpen ? " is-live" : ""}" aria-label="현재 송출 상태" aria-live="polite">
+    <aside class="svc-presenter-live-panel${options.outputOpen ? " is-live" : ""}" aria-label="송출 미리보기" aria-live="polite">
       <div class="svc-presenter-live-copy">
-        <span class="svc-presenter-live-label">현재 송출</span>
+        <span class="svc-presenter-live-label">미리보기</span>
         <span class="svc-presenter-state-group">
           <span class="svc-presenter-status svc-presenter-status--${escapeAttr(options.statusTone || "ready")}" aria-label="${escapeAttr(uiText("presenter.aria.status", { status: options.statusLabel || "" }))}">${escapeHtml(options.statusLabel || "")}</span>
           ${options.mode?.label ? `<span class="svc-presenter-mode svc-presenter-mode--${escapeAttr(options.mode.tone)}" aria-label="${escapeAttr(uiText("presenter.aria.mode", { mode: options.mode.label }))}">${escapeHtml(options.mode.label)}</span>` : ""}

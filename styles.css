@@ -6451,6 +6451,9 @@ textarea.svc-presenter-input-control--multiline {
   background: color-mix(in srgb, var(--panel-2) 24%, transparent);
   padding: 0 8px;
 }
+.svc-presenter-side-panel .svc-presenter-screen-select select {
+  width: 100%;
+}
 .svc-presenter-side-panel .svc-presenter-pin-toggle {
   width: 100%;
   height: 32px;
@@ -6461,7 +6464,17 @@ textarea.svc-presenter-input-control--multiline {
 .svc-presenter-side-panel .svc-presenter-output-group > .icon-btn {
   width: 100%;
   height: 32px;
+  gap: 6px;
   background: color-mix(in srgb, var(--panel-2) 24%, transparent);
+  color: var(--ink-3);
+  font-size: var(--ui-label-size);
+  font-weight: 700;
+}
+.svc-presenter-screen-label {
+  display: none;
+}
+.svc-presenter-side-panel .svc-presenter-screen-label {
+  display: inline;
 }
 .svc-presenter-main {
   display: inline-flex;
@@ -6854,7 +6867,7 @@ textarea.svc-presenter-input-control--multiline {
 }
 .svc-presenter-side-panel .svc-presenter-live-copy {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 7px 8px;
   order: 2;
