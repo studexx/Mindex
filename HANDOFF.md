@@ -52,7 +52,7 @@ outrank reviewed decisions.
   - `.env.supabase`
 - Preferred local server:
   - `python3 serve.py`
-  - The app is often tested at `http://localhost:4173`.
+  - The app is often tested at `http://localhost:2300`.
 - GitHub Pages deployment exists, but do not assume remote pages are updated immediately after local edits. Local verification comes first.
 
 ## Global Product Direction

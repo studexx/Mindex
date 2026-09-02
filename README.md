@@ -55,7 +55,7 @@ python3 serve.py
 Then open:
 
 ```text
-http://localhost:4173
+http://localhost:2300
 ```
 
 ## Desktop App
