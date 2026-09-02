@@ -1061,6 +1061,7 @@
 }
 .presenter-slide--video,
 .presenter-slide--image { justify-content: center; align-items: center; padding: 0; background: transparent; }
+.presenter-slide--video[data-presenter-role="waiting_loop"] { background: #000; }
 .presenter-slide--video > .presenter-slide-meta,
 .presenter-slide--image > .presenter-slide-meta { display: none; }
 .presenter-slide--file { justify-content: center; align-items: center; }

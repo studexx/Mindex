@@ -8134,6 +8134,8 @@ def main() -> int:
                         slideClass: slide?.className || '',
                         elementType: slide?.dataset.elementType || '',
                         layout: slide?.dataset.slideLayout || '',
+                        slidePresenterRole: slide?.dataset.presenterRole || '',
+                        slideBackground: slide ? getComputedStyle(slide).backgroundColor : '',
                         text: slide?.innerText.trim() || '',
                         videoSrc: video?.getAttribute('src') || '',
                         autoplay: Boolean(video?.autoplay),
@@ -8151,6 +8153,8 @@ def main() -> int:
                     "presenter-slide--video" in ready_output_state["slideClass"]
                     and ready_output_state["elementType"] == "video"
                     and ready_output_state["layout"] == "media"
+                    and ready_output_state["slidePresenterRole"] == "waiting_loop"
+                    and ready_output_state["slideBackground"] == "rgb(0, 0, 0)"
                     and ready_output_state["videoSrc"].endswith("assets/presenter/chromakey-ready-loop-fast.mp4")
                     and ready_output_state["autoplay"]
                     and ready_output_state["muted"]
