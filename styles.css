@@ -6367,8 +6367,12 @@ textarea.svc-presenter-input-control--multiline {
   align-items: flex-start;
 }
 .svc-presenter-input-field--song .svc-edit-title-wrap--song .svc-edit-title {
-  flex: 1 1 min(100%, 220px);
-  min-width: min(100%, 180px);
+  flex: 1 1 min(100%, 260px);
+  min-width: min(100%, 200px);
+}
+.svc-presenter-input-field--song .svc-praise-input-mode-select {
+  flex: 0 0 116px;
+  max-width: 116px;
 }
 .svc-presenter-input-field--song .svc-song-picker--linked,
 .svc-presenter-input-field--song .svc-song-picker:not([role="listbox"]) {
@@ -7736,11 +7740,12 @@ textarea.svc-presenter-input-control--multiline {
 }
 .svc-board-subgroup-controls .svc-edit-title,
 .svc-board-subgroup-controls .svc-presenter-input-control {
-  flex: 1 1 min(100%, 220px);
-  min-width: min(100%, 180px);
+  flex: 1 1 min(100%, 260px);
+  min-width: min(100%, 200px);
 }
 .svc-board-subgroup-controls .svc-praise-input-mode-select {
-  flex: 0 0 132px;
+  flex: 0 0 116px;
+  max-width: 116px;
 }
 .svc-board-subgroup-controls .svc-presenter-input-field--scripture-parts {
   grid-column: 1 / -1;
