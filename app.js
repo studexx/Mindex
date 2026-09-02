@@ -4033,34 +4033,21 @@ function worshipAppServiceTypeId(typeId) {
 
 async function loadWorshipData() {
   state.serviceAliasSupported = await detectTableColumnSupport("mindex_worship_services", "service_alias");
-  const [types, services, templates, templateItems] = await Promise.all([
+  const [types, services] = await Promise.all([
     fetchCachedSupabasePaged("mindex_worship_service_types", WORSHIP_SERVICE_TYPE_SELECT, (query) =>
       query.order("sort_order", { ascending: true })).catch((error) => {
         console.warn("Could not load worship service types; using defaults.", error);
         return [];
       }),
     fetchWorshipServiceListRows(),
-    fetchCachedSupabasePaged("mindex_worship_templates", "*", (query) =>
-      query.order("template_level", { ascending: true }).order("name", { ascending: true })).catch((error) => {
-        console.warn("Could not load worship templates; using persisted service rows only.", error);
-        return [];
-      }),
-    fetchCachedSupabasePaged("mindex_worship_template_items", "*", (query) =>
-      query.order("template_id", { ascending: true }).order("sort_order", { ascending: true })).catch((error) => {
-        console.warn("Could not load worship template items; using persisted service rows only.", error);
-        return [];
-      }),
   ]);
 
   const resolvedTypes = types.length ? types : defaultWorshipServiceTypes();
   state.serviceTypes = resolvedTypes.map(normalizeWorshipServiceType);
   state.services = services.map(normalizeWorshipService);
-  await loadCalendarData({ silent: true });
-  const autoServices = WORSHIP_EMERGENCY_TODAY_ONLY ? [] : await ensureUpcomingPublicWorshipServices();
-  if (autoServices.length) state.services = sortServicesByDate([...state.services, ...autoServices]);
   state.templateElementSuppressions.clear();
-  state.worshipTemplates = templates;
-  state.worshipTemplateItems = templateItems;
+  state.worshipTemplates = [];
+  state.worshipTemplateItems = [];
 
   // Home cards are the actual service overview, so preload their lightweight
   // row data before rendering them. Other modules can show their shell first.
@@ -4104,6 +4091,9 @@ async function loadWorshipData() {
   state.serviceItemMemoSupported = true;
 
   if (!prioritizedPresenterSongLoad) render();
+  void hydrateSupplementalWorshipDataAfterInitialRender().catch((error) => {
+    console.warn("Could not hydrate supplemental worship data.", error);
+  });
   if (
     state.selectedServiceId
     && (state.module === "presenter" || isServiceDataModule())
@@ -4127,6 +4117,34 @@ async function loadWorshipData() {
       render: "detail",
       serviceId: state.selectedServiceId,
     });
+  }
+}
+
+async function hydrateSupplementalWorshipDataAfterInitialRender() {
+  const [templates, templateItems] = await Promise.all([
+    fetchCachedSupabasePaged("mindex_worship_templates", "*", (query) =>
+      query.order("template_level", { ascending: true }).order("name", { ascending: true })).catch((error) => {
+        console.warn("Could not load worship templates; using persisted service rows only.", error);
+        return [];
+      }),
+    fetchCachedSupabasePaged("mindex_worship_template_items", "*", (query) =>
+      query.order("template_id", { ascending: true }).order("sort_order", { ascending: true })).catch((error) => {
+        console.warn("Could not load worship template items; using persisted service rows only.", error);
+        return [];
+      }),
+    loadCalendarData({ silent: true }),
+  ]);
+  state.worshipTemplates = templates;
+  state.worshipTemplateItems = templateItems;
+
+  if (!WORSHIP_EMERGENCY_TODAY_ONLY) {
+    const autoServices = await ensureUpcomingPublicWorshipServices();
+    if (autoServices.length) state.services = sortServicesByDate([...state.services, ...autoServices]);
+  }
+
+  if (isServiceDataModule()) {
+    renderServiceList();
+    renderCurrentServiceModuleDetail();
   }
 }
 
