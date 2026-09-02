@@ -24843,10 +24843,10 @@ function renderPresenterScreenControl() {
 function renderPresenterAlwaysOnTopControl() {
   const supported = Boolean(window.mindexElectron?.setPresenterAlwaysOnTop);
   return `
-    <label class="svc-presenter-pin-toggle${supported ? "" : " is-unavailable"}" title="${supported ? "출력 창을 위에 고정" : "웹 버전에서는 창 고정을 지원하지 않습니다"}">
+    <label class="svc-presenter-pin-toggle${supported ? "" : " is-unavailable"}" title="${supported ? "출력 창을 항상 위에 표시" : "웹 버전에서는 항상 위 표시를 지원하지 않습니다"}">
       <input type="checkbox" data-presenter-always-on-top ${supported && state.presenter.alwaysOnTop ? "checked" : ""} />
       <span class="svc-presenter-pin-track" aria-hidden="true"></span>
-      <span>위에 고정</span>
+      <span>항상 위</span>
     </label>`;
 }
 
@@ -24855,7 +24855,7 @@ function setPresenterAlwaysOnTopPreference(enabled) {
   if (!updater) {
     state.presenter.alwaysOnTop = false;
     safeStorageRemove("local", PRESENTER_ALWAYS_ON_TOP_STORAGE_KEY);
-    showToast("웹 버전에서는 창 고정을 지원하지 않습니다.", "info");
+    showToast("웹 버전에서는 항상 위 표시를 지원하지 않습니다.", "info");
     renderPresenterControlState(presenterViewServiceId());
     return;
   }
