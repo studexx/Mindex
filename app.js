@@ -27438,6 +27438,13 @@ function presenterBoardSubgroupDisplay(serviceId, subgroup = {}) {
     title: String(subgroup.title || "").trim(),
   };
   const contexts = presenterBoardSubgroupInputContexts(serviceId, subgroup);
+  const sectionFallbackLabel = presenterBoardSectionFallbackLabelForContext(contexts[0], fallback.label);
+  if (contexts.length === 1 && sectionFallbackLabel) {
+    return {
+      ...fallback,
+      label: sectionFallbackLabel,
+    };
+  }
   const connectedContexts = contexts.filter((context) =>
     context?.item && serviceItemConnectedPraise(context.item));
   if (connectedContexts.length < 2) return fallback;
@@ -27450,6 +27457,18 @@ function presenterBoardSubgroupDisplay(serviceId, subgroup = {}) {
     label: label || fallback.label,
     title: title || fallback.title,
   };
+}
+
+function presenterBoardSectionFallbackLabelForContext(context = null, label = "") {
+  const itemLabel = String(context?.item?.label || "").trim();
+  const labelKey = compactSearchValue(label);
+  const itemLabelKey = compactSearchValue(itemLabel);
+  if (!itemLabel || !labelKey || !itemLabelKey || labelKey === itemLabelKey) return "";
+  const item = context.item || {};
+  const sectionTitleKey = compactSearchValue(item._worshipSectionTitle || item.sectionTitle || item.section_label || "");
+  const canonicalSectionKey = compactSearchValue(serviceCanonicalSectionTitle(item._worshipSectionKey || item.section_key || ""));
+  if (labelKey !== sectionTitleKey && labelKey !== canonicalSectionKey) return "";
+  return itemLabel;
 }
 
 function presenterBoardConnectedPraiseItemTitles(contexts = []) {

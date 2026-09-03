@@ -4325,6 +4325,50 @@ def main() -> int:
                           contentState: slide.contentState || '',
                           warnings: slide.warnings || [],
                         }));
+                      const sermonSubgroupHeaderService = { id: '__smoke_sermon_subgroup_header_service__', type_id: 'sunday-main', date: '2026-07-04' };
+                      const sermonSubgroupHeaderItem = normalizeServiceItem({
+                        id: '__smoke_sermon_subgroup_header_item__',
+                        service_id: sermonSubgroupHeaderService.id,
+                        label: '설교 제목',
+                        raw_title: '',
+                        song_id: '',
+                        assignee: '',
+                        _worshipSectionId: '__smoke_sermon_subgroup_header_section__',
+                        _worshipSectionKey: 'sermon',
+                        _worshipSectionTitle: '설교',
+                        memo: serializeServiceItemMemo({ elementType: 'title_person' })
+                      });
+                      state.services = state.services
+                        .filter((item) => item.id !== sermonSubgroupHeaderService.id)
+                        .concat([sermonSubgroupHeaderService]);
+                      state.serviceItems[sermonSubgroupHeaderService.id] = [sermonSubgroupHeaderItem];
+                      const sermonSubgroupHeaderHtml = renderPresenterBoardSubgroup({
+                        id: sermonSubgroupHeaderItem.id,
+                        label: '설교',
+                        title: '',
+                        name: '설교',
+                        slides: [{
+                          slide: {
+                            id: '__smoke_sermon_subgroup_header_slide__',
+                            elementId: sermonSubgroupHeaderItem.id,
+                            type: 'title-assignee',
+                            elementType: PRESENTER_ELEMENT_TYPES.TITLE_ASSIGNEE,
+                            sectionKey: 'sermon',
+                            sectionLabel: '설교',
+                            sectionTitle: '설교',
+                            elementLabel: '',
+                            title: '설교',
+                            warnings: ['입력 필요'],
+                          },
+                          slideIndex: 11,
+                        }],
+                      }, -1, sermonSubgroupHeaderService.id, { showHead: true });
+                      const sermonSubgroupHeaderNode = document.createElement('div');
+                      sermonSubgroupHeaderNode.innerHTML = sermonSubgroupHeaderHtml;
+                      const sermonSubgroupHeaderLabels = [...sermonSubgroupHeaderNode.querySelectorAll('.svc-board-subgroup-head > span:not(.svc-presenter-warnings)')]
+                        .map((node) => node.textContent.trim());
+                      const sermonSubgroupControlLabels = [...sermonSubgroupHeaderNode.querySelectorAll('.svc-board-subgroup-control-label')]
+                        .map((node) => node.textContent.trim());
                       const missingTitlePersonAssigneeSlides = buildPresenterSlidesForServiceItem({
                         id: '__smoke_missing_title_person_assignee_item__',
                         label: '공동기도',
@@ -4580,6 +4624,8 @@ def main() -> int:
                         emptyTemplateInputSlides,
                         missingSermonBodySlides,
                         missingSermonTitleSlides,
+                        sermonSubgroupHeaderLabels,
+                        sermonSubgroupControlLabels,
                         missingTitlePersonAssigneeSlides,
                         defaultTemplateInputSlides,
                         persistenceStateRows,
@@ -4958,6 +5004,8 @@ def main() -> int:
                         "contentState": "missing",
                         "warnings": ["입력 필요"],
                     }]
+                    and form_preset_state["sermonSubgroupHeaderLabels"] == ["설교 제목"]
+                    and form_preset_state["sermonSubgroupControlLabels"] == ["설교 제목"]
                     and form_preset_state["missingTitlePersonAssigneeSlides"] == [{
                         "type": "title-assignee",
                         "elementType": "title_assignee",
