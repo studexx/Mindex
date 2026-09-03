@@ -8127,7 +8127,7 @@ body.is-chromium .svc-slide-thumb.active:hover .svc-slide-thumb-frame {
 }
 .svc-slide-thumb-frame--video,
 .svc-slide-thumb-frame--image {
-  background: color-mix(in srgb, var(--panel-2) 58%, transparent);
+  background: #000;
 }
 .svc-slide-thumb-frame--file {
   background: color-mix(in srgb, var(--panel-2) 70%, #111);
