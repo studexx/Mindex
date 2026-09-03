@@ -14827,7 +14827,7 @@ function homeModuleCards() {
       title: "예배",
       actionTitle: "전체 예배",
       eyebrow: "다음 예배",
-      icon: "layout-template",
+      icon: "church",
       sidebarMeta: nextService ? cleanList([
         homeServiceScheduleLabel(nextService, { compact: true }),
         serviceDisplayTypeName(nextService),
@@ -25445,6 +25445,54 @@ function materializePresenterPreparationItem(service, items, projectedItem) {
   return items.length - 1;
 }
 
+function applyPresenterPreparationTextUpdateToWorshipElementCache(service = null, update = {}) {
+  const serviceId = String(service?.id || "").trim();
+  if (!serviceId || !Array.isArray(state.worshipElements) || !Array.isArray(state.worshipSections)) return;
+  const sectionById = Object.fromEntries(
+    state.worshipSections
+      .filter((section) => section.service_id === serviceId)
+      .map((section) => [section.id, section]),
+  );
+  const updateId = String(update.id || "").trim();
+  const updateSlotKey = normalizeWorshipSlotKey(update.slotKey);
+  const updateSectionKey = String(update.sectionKey || "").trim();
+  const updateLabelKey = compactSearchValue(update.label || "");
+  const candidates = state.worshipElements
+    .map((element) => ({ element, section: sectionById[element.section_id] }))
+    .filter(({ section }) => Boolean(section));
+  const matched = candidates.find(({ element }) => updateId && element.id === updateId)
+    || candidates.find(({ element, section }) => {
+      const sourceRef = element.source_ref && typeof element.source_ref === "object" ? element.source_ref : {};
+      const config = element.config && typeof element.config === "object" ? element.config : {};
+      const elementSlotKey = normalizeWorshipSlotKey(element.slot_key || sourceRef.slotKey || sourceRef.slot_key || config.slotKey || config.slot_key);
+      return Boolean(
+        updateSlotKey
+        && elementSlotKey === updateSlotKey
+        && (!updateSectionKey || String(section.section_key || "").trim() === updateSectionKey),
+      );
+    })
+    || candidates.find(({ element, section }) => {
+      const sourceRef = element.source_ref && typeof element.source_ref === "object" ? element.source_ref : {};
+      const labelKey = compactSearchValue(sourceRef.label || section.title || element.title || "");
+      return Boolean(
+        updateSectionKey
+        && updateLabelKey
+        && String(section.section_key || "").trim() === updateSectionKey
+        && labelKey === updateLabelKey,
+      );
+    });
+  if (!matched?.element) return;
+  const element = matched.element;
+  const rawTitle = String(update.raw_title || "").trim();
+  const assignee = cleanServiceAssignee(update.assignee);
+  element.person = assignee;
+  if (rawTitle) element.title = rawTitle;
+  element.source_ref = element.source_ref && typeof element.source_ref === "object" ? element.source_ref : {};
+  if (update.label) element.source_ref.label = String(update.label || "").trim();
+  if (updateSlotKey) element.source_ref.slotKey = updateSlotKey;
+  element.template_modified = true;
+}
+
 function presenterPreparationSongLabels(song = {}) {
   const title = String(song.title || "").trim();
   const subtitle = String(song.subtitle || "").trim();
@@ -25963,6 +26011,7 @@ async function applyPresenterPreparationInput(serviceId = state.selectedServiceI
       };
       markServiceItemSharedContentDirty(projectedItems[index], service);
       projectedItems[index]._worshipTemplatePlaceholder = false;
+      applyPresenterPreparationTextUpdateToWorshipElementCache(service, update);
     });
     entries.forEach((entry) => {
       const entryKey = compactSearchValue(entry.rawLabel || entry.label || "");
