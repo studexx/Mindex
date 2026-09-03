@@ -9389,19 +9389,19 @@ def main() -> int:
                     }
                     and [item["key"] for item in praise_filter_state["filterButtons"]] == [
                         "all",
+                        "empty",
+                        "review",
                         "hymns",
                         "ccm",
                         "children",
-                        "empty",
-                        "review",
                     ]
                     and [item["label"] for item in praise_filter_state["filterButtons"]] == [
                         "전체",
+                        "빈 곡",
+                        "검토 필요",
                         "찬송가",
                         "CCM",
                         "어린이",
-                        "빈 곡",
-                        "검토 필요",
                     ]
                 ):
                     pass_("praise-status-filters", json.dumps(praise_filter_state, ensure_ascii=False))

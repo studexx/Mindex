@@ -178,7 +178,7 @@ def main() -> int:
                 and loading_right_rail_state["sidebarTop"] >= loading_right_rail_state["topbarBottom"]
                 and not loading_right_rail_state["hidden"]
                 and loading_right_rail_state["bodyOpen"]
-                and loading_right_rail_state["sidebarWidth"] >= loading_right_rail_state["rightRailWidth"]
+                and loading_right_rail_state["sidebarWidth"] >= 180
                 and loading_right_rail_state["sidebarBackground"] == loading_right_rail_state["topbarBackground"]
                 and loading_right_rail_state["topFillBackground"] == loading_right_rail_state["sidebarBackground"]
                 and loading_right_rail_state["saveOpacity"] == "1"
@@ -491,6 +491,7 @@ def main() -> int:
                       const themeButton = document.querySelector('#themeBtn');
                       const sidebar = document.querySelector('#mindexRightSidebar');
                       const sidePanel = sidebar?.querySelector('.svc-presenter-side-panel');
+                      const infobarActions = sidebar?.querySelector('.svc-presenter-infobar-actions');
                       const rightSidebarHead = sidebar?.querySelector('.right-sidebar-head');
                       const presenterTop = sidebar?.querySelector('.svc-presenter-top');
                       const inputRail = sidebar?.querySelector('.svc-presenter-input-rail');
@@ -534,19 +535,13 @@ def main() -> int:
                           && saveRect.bottom <= topbarRectForTheme.bottom,
                         saveOutsideRightRail: Boolean(saveRect && sidebarRect)
                           && saveRect.right <= sidebarRect.left,
-                        saveInRightRail: Boolean(saveRect && sidebarRect)
-                          && saveRect.left >= sidebarRect.right - (Math.round(parseFloat(getComputedStyle(document.body).getPropertyValue('--right-rail-w')) || 0) + 1)
-                          && saveRect.right <= sidebarRect.right + 1
-                          && saveRect.top >= sidebarRect.top,
+                        saveInInfobarActions: Boolean(saveButton && infobarActions?.contains(saveButton)),
                         themeInTopbar: Boolean(themeRect && topbarRectForTheme)
                           && themeRect.top >= topbarRectForTheme.top
                           && themeRect.bottom <= topbarRectForTheme.bottom,
                         themeOutsideRightRail: Boolean(themeRect && sidebarRect)
                           && themeRect.right <= sidebarRect.left,
-                        themeInRightRail: Boolean(themeRect && sidebarRect)
-                          && themeRect.left >= sidebarRect.right - (Math.round(parseFloat(getComputedStyle(document.body).getPropertyValue('--right-rail-w')) || 0) + 1)
-                          && themeRect.right <= sidebarRect.right + 1
-                          && themeRect.top >= sidebarRect.top,
+                        themeInInfobarActions: Boolean(themeButton && infobarActions?.contains(themeButton)),
                         headerToggleRemoved: !headerToggle,
                         presenterHeaderRemoved: !presenterHeader,
                         rightSidebarHeaderRemoved: !rightSidebarHead,
@@ -595,10 +590,10 @@ def main() -> int:
                     and right_sidebar_toggle_state["before"]["themeVisible"]
                     and not right_sidebar_toggle_state["before"]["saveInTopbar"]
                     and not right_sidebar_toggle_state["before"]["saveOutsideRightRail"]
-                    and right_sidebar_toggle_state["before"]["saveInRightRail"]
+                    and right_sidebar_toggle_state["before"]["saveInInfobarActions"]
                     and not right_sidebar_toggle_state["before"]["themeInTopbar"]
                     and not right_sidebar_toggle_state["before"]["themeOutsideRightRail"]
-                    and right_sidebar_toggle_state["before"]["themeInRightRail"]
+                    and right_sidebar_toggle_state["before"]["themeInInfobarActions"]
                     and right_sidebar_toggle_state["before"]["headerToggleRemoved"]
                     and right_sidebar_toggle_state["before"]["presenterHeaderRemoved"]
                     and right_sidebar_toggle_state["before"]["rightSidebarHeaderRemoved"]
@@ -609,10 +604,7 @@ def main() -> int:
                     and right_sidebar_toggle_state["before"]["sidebarBorderLeft"] == "0px"
                     and right_sidebar_toggle_state["before"]["sidebarTop"] >= right_sidebar_toggle_state["before"]["topbarBottom"]
                     and right_sidebar_toggle_state["before"]["sidePanelWidth"] == right_sidebar_toggle_state["before"]["leftSidebarWidth"]
-                    and right_sidebar_toggle_state["before"]["sidebarWidth"] == (
-                        right_sidebar_toggle_state["before"]["sidePanelWidth"]
-                        + right_sidebar_toggle_state["before"]["rightRailWidth"]
-                    )
+                    and right_sidebar_toggle_state["before"]["sidebarWidth"] == right_sidebar_toggle_state["before"]["sidePanelWidth"]
                     and right_sidebar_toggle_state["before"]["saveOpacity"] == "1"
                     and right_sidebar_toggle_state["before"]["themeOpacity"] == "1"
                     and right_sidebar_toggle_state["before"]["presenterTopBorderWidth"] == "0px"
@@ -951,8 +943,8 @@ def main() -> int:
                     and sticky_title_state["sidebarLaunch"]["icon"] in ("screen-share", "screen-share-off")
                     and sticky_title_state["sidebarLaunch"]["width"] >= 90
                     and sticky_title_state["pageTabsVisible"]
-                    and sticky_title_state["rightSidebarTopGap"] < sticky_title_state["topbarButtonSize"]
-                    and sticky_title_state["rightSidebarTopGap"] >= 12
+                    and sticky_title_state["rightSidebarTopGap"] >= sticky_title_state["topbarButtonSize"] + 8
+                    and sticky_title_state["rightSidebarTopGap"] <= sticky_title_state["topbarButtonSize"] + 40
                     and sticky_title_state["rightSidebarVisible"]
                     and sticky_title_state["controlsPosition"] == "static"
                     and sticky_title_state["sidePanelPosition"] == "static"

@@ -229,8 +229,8 @@ h1, h2, h3, p { margin: 0; }
 }
 body.sidebar-collapsed { --shell-left-w: var(--topbar-left-compact-w); }
 body.right-sidebar-open { --shell-right-w: var(--right-sidebar-w); }
-body[data-module="presenter"] { --shell-right-w: calc(var(--right-sidebar-w) + var(--right-rail-w)); }
-body[data-module="presenter"].right-sidebar-open { --shell-right-w: calc(var(--right-sidebar-w) + var(--right-rail-w)); }
+body[data-module="presenter"] { --shell-right-w: var(--right-sidebar-w); }
+body[data-module="presenter"].right-sidebar-open { --shell-right-w: var(--right-sidebar-w); }
 .top-left-tool,
 .brand-home {
   position: relative;
@@ -707,7 +707,7 @@ body[data-module="praise"] .list-filter {
   border-radius: 0;
   background: transparent;
   padding: 0;
-  transition: color .14s ease, transform .08s ease;
+  transition: color .14s ease;
 }
 .topbar-actions .btn::before,
 .topbar-actions .icon-btn::before {
@@ -725,20 +725,22 @@ body[data-module="praise"] .list-filter {
 .topbar-actions .btn:not(:disabled):hover,
 .topbar-actions .icon-btn:not(:disabled):hover { background: transparent; }
 .topbar-actions .btn:not(:disabled):hover::before,
-.topbar-actions .icon-btn:not(:disabled):hover::before { background: var(--panel-2); }
+.topbar-actions .icon-btn:not(:disabled):hover::before { background: var(--sidebar-hover-bg); }
 .topbar-actions .btn:not(:disabled):active,
 .topbar-actions .icon-btn:not(:disabled):active {
-  transform: translateY(1px) scale(.98);
+  transform: none;
 }
 .topbar-actions .btn:not(:disabled):active::before,
 .topbar-actions .icon-btn:not(:disabled):active::before {
-  background: color-mix(in srgb, var(--panel-2) 82%, var(--line));
+  background: var(--sidebar-hover-bg);
 }
 .topbar-actions .btn.secondary:not(:disabled):hover { background: transparent; color: var(--ink-2); }
 .topbar-actions .icon-btn.primary {
   background: transparent;
   color: var(--ink-4);
 }
+.topbar-actions .icon-btn:not(.primary),
+.topbar-actions .btn.secondary { color: var(--sidebar-ink); }
 .topbar-actions .icon-btn.primary:not(:disabled) {
   background: transparent;
   color: var(--accent);
@@ -793,7 +795,7 @@ body[data-module="praise"] .list-filter {
   border-left: 0;
   background: var(--sidebar-bg);
   overflow: hidden auto;
-  padding: var(--s1) var(--right-rail-w) var(--s3) 0;
+  padding: var(--s1) 0 var(--s3);
   opacity: 1;
   transition:
     opacity var(--rail-motion),
@@ -849,34 +851,13 @@ body[data-module="presenter"] #presenterRightSidebarBtn {
 body[data-module="presenter"] .right-sidebar {
   padding-top: var(--s4);
 }
-body[data-module="presenter"] .topbar-actions {
-  position: fixed;
-  top: var(--topbar-h);
-  right: 0;
-  z-index: 34;
-  display: grid;
-  width: var(--right-rail-w);
-  height: auto;
-  grid-auto-flow: row;
-  grid-auto-columns: var(--topbar-btn-size);
-  grid-auto-rows: var(--topbar-btn-size);
-  grid-template-columns: var(--topbar-btn-size);
-  align-content: start;
-  justify-content: center;
-  gap: 0;
-  padding: var(--s1) 0 0;
-  pointer-events: none;
-}
-body[data-module="presenter"] .topbar-actions > * {
-  pointer-events: auto;
-}
 body[data-module="presenter"] #newSongBtn {
   display: none;
 }
-body[data-module="presenter"] #saveAllBtn {
+body[data-module="presenter"] #themeBtn {
   order: 1;
 }
-body[data-module="presenter"] #themeBtn {
+body[data-module="presenter"] #saveAllBtn {
   order: 2;
 }
 body[data-module="presenter"] #presenterRightSidebarBtn {
@@ -6058,6 +6039,49 @@ body[data-theme="dark"] .service-week-empty:hover {
 }
 .right-sidebar .svc-presenter-side-panel {
   padding: 0;
+}
+.svc-presenter-infobar-actions {
+  display: flex;
+  min-width: 0;
+  height: var(--topbar-btn-size);
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  padding: 0 12px;
+}
+.svc-presenter-infobar-actions .icon-btn {
+  position: relative;
+  width: var(--topbar-btn-size);
+  height: var(--topbar-btn-size);
+  border-radius: 0;
+  background: transparent;
+  color: var(--sidebar-ink);
+  padding: 0;
+}
+.svc-presenter-infobar-actions .icon-btn::before {
+  position: absolute;
+  inset: var(--shell-face-inset);
+  border-radius: var(--r);
+  background: transparent;
+  content: "";
+}
+.svc-presenter-infobar-actions .icon-btn > * {
+  position: relative;
+}
+.svc-presenter-infobar-actions .icon-btn:hover {
+  background: transparent;
+  color: var(--sidebar-ink);
+}
+.svc-presenter-infobar-actions .icon-btn:hover::before {
+  background: var(--sidebar-hover-bg);
+}
+.svc-presenter-infobar-actions .icon-btn:not(:disabled):active {
+  transform: translateY(1px) scale(.98);
+}
+.svc-presenter-infobar-actions svg {
+  width: 16px;
+  height: 16px;
+  stroke-width: 1.5;
 }
 .svc-presenter-input-rail {
   display: grid;
