@@ -957,8 +957,7 @@ def main() -> int:
                     and sticky_title_state["sidebarLaunch"]["icon"] in ("screen-share", "screen-share-off")
                     and sticky_title_state["sidebarLaunch"]["width"] >= 90
                     and sticky_title_state["pageTabsVisible"]
-                    and sticky_title_state["rightSidebarTopGap"] >= 12
-                    and sticky_title_state["rightSidebarTopGap"] <= sticky_title_state["topbarButtonSize"]
+                    and 0 <= sticky_title_state["rightSidebarTopGap"] <= 8
                     and sticky_title_state["rightSidebarVisible"]
                     and sticky_title_state["controlsPosition"] == "static"
                     and sticky_title_state["sidePanelPosition"] == "static"
