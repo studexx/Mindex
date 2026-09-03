@@ -21905,7 +21905,6 @@ function renderUpcomingServiceShortcuts() {
     <section class="service-sidebar-section service-sidebar-section--recent">
       <div class="service-sidebar-head">
         <span>다가오는 예배</span>
-        <small>${services.length}</small>
       </div>
       ${renderServiceSidebarDateGroups(services)}
     </section>`;
@@ -21918,7 +21917,6 @@ function renderHomeSidebarRecentServiceShortcuts() {
     <section class="service-sidebar-section service-sidebar-section--recent">
       <div class="service-sidebar-head">
           <span>다가오는 예배</span>
-        <small>${services.length}</small>
       </div>
       ${renderServiceSidebarDateGroups(services)}
     </section>`;
