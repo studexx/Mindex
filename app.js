@@ -513,11 +513,13 @@ const SERVICE_FUTURE_LOOKAHEAD_DAYS = 7;
 const SERVICE_WEEK_PANEL_ID = "__week";
 const SERVICE_LIST_PANEL_ID = "__list";
 const SERVICE_TEMPLATES_PANEL_ID = "__templates";
+const SERVICE_SETLIST_ARCHIVE_PANEL_ID = "__setlist_archive";
 const SERVICE_NAVIGATION_LABELS = MINDEX_DESIGN_TOKENS.serviceNavigation || {};
 const SERVICE_HOME_WEEK_TITLE = SERVICE_NAVIGATION_LABELS.homeWeekTitle || "이번 주 예배";
 const SERVICE_WEEK_PANEL_TITLE = SERVICE_NAVIGATION_LABELS.serviceWeekTitle || "이번 주 예배";
 const SERVICE_LIST_PANEL_TITLE = SERVICE_NAVIGATION_LABELS.serviceListTitle || "전체 예배";
 const SERVICE_TEMPLATES_PANEL_TITLE = SERVICE_NAVIGATION_LABELS.templatesTitle || "템플릿";
+const SERVICE_SETLIST_ARCHIVE_PANEL_TITLE = "역대 콘티";
 const CALENDAR_MIN_DATE = "2025-11-30";
 const {
   SUPABASE_PAGE_SIZE,
@@ -654,6 +656,13 @@ const state = {
   templateElementSuppressions: new Map(),
   worshipTemplates: [],
   worshipTemplateItems: [],
+  worshipSetlistArchive: {
+    sources: [],
+    candidates: [],
+    loaded: false,
+    loading: false,
+    error: "",
+  },
   worshipPresenterSlides: {},
   worshipPresenterSlidesLoaded: false,
   loadedWorshipPresenterServiceIds: new Set(),
@@ -1377,6 +1386,20 @@ function bindStaticEvents() {
       renderServiceList();
       renderCurrentServiceModuleDetail();
       syncBrowserHistory();
+      return;
+    }
+
+    const serviceSetlistArchiveItem = event.target.closest("[data-service-setlist-archive]");
+    if (serviceSetlistArchiveItem) {
+      if (!confirmDiscardServiceChanges()) return;
+      state.selectedServiceTypeId = SERVICE_SETLIST_ARCHIVE_PANEL_ID;
+      state.selectedServiceId = null;
+      state.selectedServiceItemIndex = null;
+      state.newServiceForm = null;
+      renderServiceList();
+      renderCurrentServiceModuleDetail();
+      syncBrowserHistory();
+      void loadWorshipSetlistArchive();
       return;
     }
 
@@ -3426,6 +3449,32 @@ const WORSHIP_SECTION_LIST_SELECT = [
   "created_at",
   "updated_at",
 ].join(",");
+const WORSHIP_IMPORT_SOURCE_LIST_SELECT = [
+  "id",
+  "source_kind",
+  "source_name",
+  "source_path",
+  "service_type_id",
+  "service_date",
+  "status",
+  "parse_report",
+  "created_at",
+  "updated_at",
+].join(",");
+const WORSHIP_IMPORT_CANDIDATE_LIST_SELECT = [
+  "id",
+  "import_source_id",
+  "sort_order",
+  "candidate_level",
+  "raw_label",
+  "raw_title",
+  "raw_body",
+  "suggested_type",
+  "suggested_song_id",
+  "confidence",
+  "review_status",
+  "notes",
+].join(",");
 const WORSHIP_ELEMENT_BASE_LIST_SELECT = [
   "id",
   "section_id",
@@ -3710,6 +3759,44 @@ async function fetchWorshipRowsForServiceIds(serviceIds = []) {
     }
     throw error;
   }
+}
+
+async function loadWorshipSetlistArchive({ force = false } = {}) {
+  if (!state.client) return;
+  if (state.worshipSetlistArchive.loading) return;
+  if (state.worshipSetlistArchive.loaded && !force) return;
+  state.worshipSetlistArchive.loading = true;
+  state.worshipSetlistArchive.error = "";
+  renderCurrentServiceModuleDetail();
+  try {
+    const sources = await fetchSupabasePaged("mindex_worship_import_sources", WORSHIP_IMPORT_SOURCE_LIST_SELECT, (query) =>
+      query
+        .not("service_date", "is", null)
+        .order("service_date", { ascending: false })
+        .order("service_type_id", { ascending: true }));
+    const candidates = [];
+    for (const batch of chunkArray(sources.map((source) => source.id).filter(Boolean), 80)) {
+      const rows = await fetchSupabasePaged("mindex_worship_import_candidates", WORSHIP_IMPORT_CANDIDATE_LIST_SELECT, (query) =>
+        query
+          .in("import_source_id", batch)
+          .order("import_source_id", { ascending: true })
+          .order("sort_order", { ascending: true }));
+      candidates.push(...rows);
+    }
+    state.worshipSetlistArchive = {
+      sources,
+      candidates,
+      loaded: true,
+      loading: false,
+      error: "",
+    };
+  } catch (error) {
+    console.warn("Could not load worship setlist archive.", error);
+    state.worshipSetlistArchive.loading = false;
+    state.worshipSetlistArchive.error = error.message || "역대 콘티를 불러오지 못했습니다.";
+  }
+  renderServiceList();
+  renderCurrentServiceModuleDetail();
 }
 
 const CHILDREN_WORSHIP_AUTO_GENERATION_DEFAULT = false;
@@ -7840,6 +7927,26 @@ function handleDetailClick(event) {
     renderServiceList();
     renderCurrentServiceModuleDetail();
     syncBrowserHistory();
+    return;
+  }
+
+  const serviceSetlistArchiveBtn = event.target.closest("[data-service-setlist-archive]");
+  if (serviceSetlistArchiveBtn) {
+    if (!confirmDiscardServiceChanges()) return;
+    state.selectedServiceTypeId = SERVICE_SETLIST_ARCHIVE_PANEL_ID;
+    state.selectedServiceId = null;
+    state.selectedServiceItemIndex = null;
+    state.newServiceForm = null;
+    renderServiceList();
+    renderCurrentServiceModuleDetail();
+    syncBrowserHistory();
+    void loadWorshipSetlistArchive();
+    return;
+  }
+
+  const serviceSetlistRefreshBtn = event.target.closest("[data-service-setlist-refresh]");
+  if (serviceSetlistRefreshBtn) {
+    void loadWorshipSetlistArchive({ force: true });
     return;
   }
 
@@ -12411,7 +12518,7 @@ function insertServiceItemInTemplateOrder(items, item, typeId) {
 
 function startNewServiceForm(typeId = state.selectedServiceTypeId) {
   const appTypeId = worshipAppServiceTypeId(typeId);
-  if (!appTypeId || appTypeId === SERVICE_TEMPLATES_PANEL_ID) return;
+  if (!appTypeId || [SERVICE_TEMPLATES_PANEL_ID, SERVICE_SETLIST_ARCHIVE_PANEL_ID].includes(appTypeId)) return;
   state.selectedServiceTypeId = appTypeId;
   state.selectedServiceId = null;
   state.newServiceForm = {
@@ -13064,6 +13171,7 @@ function currentPageTabTitle() {
     if (state.selectedServiceTypeId === SERVICE_WEEK_PANEL_ID) return SERVICE_WEEK_PANEL_TITLE;
     if (state.selectedServiceTypeId === SERVICE_LIST_PANEL_ID) return SERVICE_LIST_PANEL_TITLE;
     if (state.selectedServiceTypeId === SERVICE_TEMPLATES_PANEL_ID) return SERVICE_TEMPLATES_PANEL_TITLE;
+    if (state.selectedServiceTypeId === SERVICE_SETLIST_ARCHIVE_PANEL_ID) return SERVICE_SETLIST_ARCHIVE_PANEL_TITLE;
     return "예배";
   }
   if (state.module === "scripture") {
@@ -13141,6 +13249,7 @@ function pageTabTitleForSnapshot(snapshot = {}) {
     if (snapshot.selectedServiceTypeId === SERVICE_WEEK_PANEL_ID) return SERVICE_WEEK_PANEL_TITLE;
     if (snapshot.selectedServiceTypeId === SERVICE_LIST_PANEL_ID) return SERVICE_LIST_PANEL_TITLE;
     if (snapshot.selectedServiceTypeId === SERVICE_TEMPLATES_PANEL_ID) return SERVICE_TEMPLATES_PANEL_TITLE;
+    if (snapshot.selectedServiceTypeId === SERVICE_SETLIST_ARCHIVE_PANEL_ID) return SERVICE_SETLIST_ARCHIVE_PANEL_TITLE;
     return "예배";
   }
   if (moduleName === "scripture") {
@@ -21678,6 +21787,10 @@ function renderServiceList() {
       <span>${escapeHtml(SERVICE_LIST_PANEL_TITLE)}</span>
       <small>${state.services.length}</small>
     </button>
+    <button class="service-type-row${state.selectedServiceTypeId === SERVICE_SETLIST_ARCHIVE_PANEL_ID && !state.selectedServiceId ? " active" : ""}" type="button" data-service-setlist-archive>
+      <span>${escapeHtml(SERVICE_SETLIST_ARCHIVE_PANEL_TITLE)}</span>
+      <small>${state.worshipSetlistArchive.loaded ? state.worshipSetlistArchive.sources.length : "DB"}</small>
+    </button>
   `;
 
   refs.songList.innerHTML = `
@@ -22239,6 +22352,175 @@ function renderServiceSidebarItemEditor(service, items, selectedIndex) {
     </section>`;
 }
 
+function worshipSetlistArchiveCandidatesBySource() {
+  return (state.worshipSetlistArchive.candidates || []).reduce((grouped, candidate) => {
+    const sourceId = String(candidate.import_source_id || "").trim();
+    if (!sourceId) return grouped;
+    if (!grouped[sourceId]) grouped[sourceId] = [];
+    grouped[sourceId].push(candidate);
+    return grouped;
+  }, {});
+}
+
+function isSetlistPraiseCandidate(candidate = {}) {
+  if (String(candidate.candidate_level || "").trim() !== "element") return false;
+  const text = [
+    candidate.suggested_type,
+    candidate.raw_label,
+    candidate.raw_title,
+  ].map((value) => String(value || "")).join(" ");
+  return text.toLowerCase().includes("praise") || /찬양|특송/.test(text);
+}
+
+function worshipSetlistArchiveEntries() {
+  const candidatesBySource = worshipSetlistArchiveCandidatesBySource();
+  return (state.worshipSetlistArchive.sources || []).map((source) => {
+    const candidates = (candidatesBySource[source.id] || [])
+      .filter(isSetlistPraiseCandidate)
+      .sort((a, b) => (Number(a.sort_order) || 0) - (Number(b.sort_order) || 0));
+    const needsReview = candidates.filter((candidate) => candidate.review_status === "needs_review").length;
+    const matched = candidates.filter((candidate) => candidate.suggested_song_id).length;
+    return {
+      source,
+      candidates,
+      needsReview,
+      matched,
+      missing: candidates.length === 0,
+    };
+  }).sort((a, b) => {
+    const dateOrder = String(b.source.service_date || "").localeCompare(String(a.source.service_date || ""));
+    if (dateOrder) return dateOrder;
+    return serviceTypeSortOrder(worshipAppServiceTypeId(a.source.service_type_id))
+      - serviceTypeSortOrder(worshipAppServiceTypeId(b.source.service_type_id));
+  });
+}
+
+function filterWorshipSetlistArchiveEntries(entries = []) {
+  const query = normalizeSearchValue(state.search);
+  if (!query) return entries;
+  return entries.filter((entry) => {
+    const source = entry.source || {};
+    const candidateText = entry.candidates.map((candidate) =>
+      [candidate.raw_label, candidate.raw_title, candidate.review_status].join(" ")).join(" ");
+    return normalizeSearchValue([
+      source.service_date,
+      serviceTypeDisplayName(source.service_type_id),
+      source.source_name,
+      source.source_path,
+      source.status,
+      candidateText,
+    ].join(" ")).includes(query);
+  });
+}
+
+function renderServiceSetlistArchiveDetail() {
+  if (!state.worshipSetlistArchive.loaded && !state.worshipSetlistArchive.loading) {
+    void loadWorshipSetlistArchive();
+  }
+  const archive = state.worshipSetlistArchive;
+  const allEntries = worshipSetlistArchiveEntries();
+  const entries = filterWorshipSetlistArchiveEntries(allEntries);
+  const totalCandidates = allEntries.reduce((sum, entry) => sum + entry.candidates.length, 0);
+  const missingSources = allEntries.filter((entry) => entry.missing).length;
+  const reviewCount = allEntries.reduce((sum, entry) => sum + entry.needsReview, 0);
+  const q = normalizeSearchValue(state.search);
+  refs.detailPane.innerHTML = `
+    <div class="service-date-list service-date-list--setlists">
+      <div class="service-section-head">
+        <div class="service-section-title-block">
+          <h2 class="service-date-list-title">${escapeHtml(SERVICE_SETLIST_ARCHIVE_PANEL_TITLE)}</h2>
+          <p class="service-date-list-helper">${q ? escapeHtml(`"${state.search.trim()}" 검색 결과`) : "DB에 보관된 import archive 기준"}</p>
+        </div>
+        <div class="service-section-head-actions">
+          <span class="service-search-count">${archive.loading ? "불러오는 중" : `${entries.length}개 콘티`}</span>
+          <button class="reference-new-btn secondary" type="button" data-service-setlist-refresh aria-label="역대 콘티 새로고침">
+            <i data-lucide="refresh-cw"></i>
+            <span>새로고침</span>
+          </button>
+        </div>
+      </div>
+      ${archive.error ? `<p class="service-no-results">${escapeHtml(archive.error)}</p>` : ""}
+      <div class="svc-setlist-summary-grid">
+        ${renderWorshipSetlistSummaryCard("Sources", allEntries.length)}
+        ${renderWorshipSetlistSummaryCard("찬양 후보", totalCandidates)}
+        ${renderWorshipSetlistSummaryCard("검토 필요", reviewCount)}
+        ${renderWorshipSetlistSummaryCard("후보 없음", missingSources)}
+      </div>
+      ${archive.loading && !archive.loaded ? renderLoadingDetail() : renderWorshipSetlistArchiveGroups(entries)}
+    </div>`;
+  finishDetailRender();
+}
+
+function renderWorshipSetlistSummaryCard(label, value) {
+  return `
+    <article class="svc-setlist-summary-card">
+      <span>${escapeHtml(label)}</span>
+      <strong>${escapeHtml(value)}</strong>
+    </article>`;
+}
+
+function renderWorshipSetlistArchiveGroups(entries = []) {
+  if (!entries.length) return `<p class="service-no-results">표시할 역대 콘티가 없습니다.</p>`;
+  const groups = [];
+  entries.forEach((entry) => {
+    const month = String(entry.source.service_date || "").slice(0, 7) || "날짜 없음";
+    const group = groups[groups.length - 1];
+    if (group?.month === month) group.entries.push(entry);
+    else groups.push({ month, entries: [entry] });
+  });
+  return `
+    <div class="svc-setlist-month-groups">
+      ${groups.map((group) => `
+        <section class="svc-setlist-month-group">
+          <h3>${escapeHtml(group.month)}</h3>
+          <div class="svc-setlist-entry-list">
+            ${group.entries.map(renderWorshipSetlistArchiveEntry).join("")}
+          </div>
+        </section>
+      `).join("")}
+    </div>`;
+}
+
+function renderWorshipSetlistArchiveEntry(entry) {
+  const source = entry.source || {};
+  const typeName = serviceTypeDisplayName(source.service_type_id);
+  const status = entry.missing
+    ? "찬양 후보 없음"
+    : entry.needsReview
+      ? "검토 필요"
+      : "매칭됨";
+  return `
+    <article class="svc-setlist-entry${entry.missing ? " is-missing" : ""}${entry.needsReview ? " needs-review" : ""}">
+      <header>
+        <div class="svc-setlist-entry-title">
+          <strong>${escapeHtml(source.service_date || "날짜 없음")} · ${escapeHtml(typeName)}</strong>
+          <span>${escapeHtml(source.source_name || source.source_kind || "source")}</span>
+        </div>
+        <div class="svc-setlist-entry-meta">
+          <span>${escapeHtml(status)}</span>
+          <small>${escapeHtml(`${entry.candidates.length}곡`)}</small>
+        </div>
+      </header>
+      ${entry.candidates.length ? `
+        <ol class="svc-setlist-song-list">
+          ${entry.candidates.map(renderWorshipSetlistCandidate).join("")}
+        </ol>
+      ` : `<p class="svc-setlist-empty">가사 입력용 찬양/특송 후보가 없습니다.</p>`}
+    </article>`;
+}
+
+function renderWorshipSetlistCandidate(candidate) {
+  const title = String(candidate.raw_title || candidate.raw_label || "").trim() || "제목 없음";
+  const label = String(candidate.raw_label || "").trim();
+  const matched = candidate.suggested_song_id ? "DB match" : "미매칭";
+  const review = candidate.review_status === "needs_review" ? "검토 필요" : "";
+  return `
+    <li>
+      <span>${escapeHtml(label && label !== title ? `${label} · ${title}` : title)}</span>
+      <small>${escapeHtml(cleanList([matched, review]).join(" · "))}</small>
+    </li>`;
+}
+
 function renderServiceTemplatesDetail() {
   const types = [...state.serviceTypes].sort((a, b) => serviceTypeSortOrder(a.id) - serviceTypeSortOrder(b.id));
   const summary = buildWorshipTemplateDraftSummary(types);
@@ -22553,6 +22835,11 @@ function renderServiceDetail() {
 
   if (state.selectedServiceTypeId === SERVICE_TEMPLATES_PANEL_ID) {
     renderServiceTemplatesDetail();
+    return;
+  }
+
+  if (state.selectedServiceTypeId === SERVICE_SETLIST_ARCHIVE_PANEL_ID) {
+    renderServiceSetlistArchiveDetail();
     return;
   }
 

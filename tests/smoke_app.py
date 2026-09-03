@@ -1416,7 +1416,7 @@ def main() -> int:
                     })()
                     """
                 )
-                expected_home_order = ["예배", "이번 주 예배", "전체 예배", "다가오는 예배"]
+                expected_home_order = ["예배", "이번 주 예배", "전체 예배", "역대 콘티", "다가오는 예배"]
                 if (
                     home_order == expected_home_order
                     and not home_visibility_state["hasActivities"]
