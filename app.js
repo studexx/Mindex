@@ -22461,43 +22461,24 @@ function renderServiceSetlistArchiveDetail() {
   const archive = state.worshipSetlistArchive;
   const allEntries = worshipSetlistArchiveEntries();
   const entries = filterWorshipSetlistArchiveEntries(allEntries);
-  const totalCandidates = allEntries.reduce((sum, entry) => sum + entry.candidates.length, 0);
-  const missingSources = allEntries.filter((entry) => entry.missing).length;
-  const reviewCount = allEntries.reduce((sum, entry) => sum + entry.needsReview, 0);
   const q = normalizeSearchValue(state.search);
   refs.detailPane.innerHTML = `
     <div class="service-date-list service-date-list--setlists">
       <div class="service-section-head">
         <div class="service-section-title-block">
           <h2 class="service-date-list-title">${escapeHtml(SERVICE_SETLIST_ARCHIVE_PANEL_TITLE)}</h2>
-          <p class="service-date-list-helper">${q ? escapeHtml(`"${state.search.trim()}" 검색 결과`) : "DB에 보관된 import archive 기준"}</p>
         </div>
         <div class="service-section-head-actions">
-          <span class="service-search-count">${archive.loading ? "불러오는 중" : `${entries.length}개 콘티`}</span>
+          ${archive.loading || q ? `<span class="service-search-count">${archive.loading ? "불러오는 중" : `${entries.length}개 콘티`}</span>` : ""}
           <button class="reference-new-btn secondary" type="button" data-service-setlist-refresh aria-label="역대 콘티 새로고침">
             <i data-lucide="refresh-cw"></i>
-            <span>새로고침</span>
           </button>
         </div>
       </div>
       ${archive.error ? `<p class="service-no-results">${escapeHtml(archive.error)}</p>` : ""}
-      <div class="svc-setlist-summary-grid">
-        ${renderWorshipSetlistSummaryCard("Sources", allEntries.length)}
-        ${renderWorshipSetlistSummaryCard("찬양 후보", totalCandidates)}
-        ${renderWorshipSetlistSummaryCard("검토 필요", reviewCount)}
-        ${renderWorshipSetlistSummaryCard("후보 없음", missingSources)}
-      </div>
       ${archive.loading && !archive.loaded ? renderLoadingDetail() : renderWorshipSetlistArchiveGroups(entries)}
     </div>`;
   finishDetailRender();
-}
-
-function renderWorshipSetlistSummaryCard(label, value) {
-  return `
-    <article class="svc-setlist-summary-card">
-      <span>${escapeHtml(label)}</span>
-      <strong>${escapeHtml(value)}</strong>
-    </article>`;
 }
 
 function renderWorshipSetlistArchiveGroups(entries = []) {
@@ -22525,20 +22506,11 @@ function renderWorshipSetlistArchiveGroups(entries = []) {
 function renderWorshipSetlistArchiveEntry(entry) {
   const source = entry.source || {};
   const typeName = serviceTypeDisplayName(source.service_type_id);
-  const status = entry.missing
-    ? "찬양 후보 없음"
-    : entry.needsReview
-      ? "검토 필요"
-      : "매칭됨";
   return `
     <article class="svc-setlist-entry${entry.missing ? " is-missing" : ""}${entry.needsReview ? " needs-review" : ""}">
       <header>
         <div class="svc-setlist-entry-title">
           <strong>${escapeHtml(source.service_date || "날짜 없음")} · ${escapeHtml(typeName)}</strong>
-        </div>
-        <div class="svc-setlist-entry-meta">
-          <span>${escapeHtml(status)}</span>
-          <small>${escapeHtml(`${entry.candidates.length}곡`)}</small>
         </div>
       </header>
       ${entry.candidates.length ? `
@@ -22552,12 +22524,9 @@ function renderWorshipSetlistArchiveEntry(entry) {
 function renderWorshipSetlistCandidate(candidate) {
   const title = String(candidate.raw_title || candidate.raw_label || "").trim() || "제목 없음";
   const label = String(candidate.raw_label || "").trim();
-  const matched = setlistCandidateMatchedSong(candidate) ? "DB match" : "미매칭";
-  const review = candidate.review_status === "needs_review" ? "검토 필요" : "";
   return `
     <li>
       <span>${escapeHtml(label && label !== title ? `${label} · ${title}` : title)}</span>
-      <small>${escapeHtml(cleanList([matched, review]).join(" · "))}</small>
     </li>`;
 }
 
