@@ -1164,7 +1164,6 @@ function cacheRefs() {
   refs.pageTabLabel = document.getElementById("pageTabLabel");
   refs.navSidebar = document.querySelector(".nav-sidebar");
   refs.navButtons = [...document.querySelectorAll(".nav-sidebar [data-home-module]")];
-  refs.topbarActions = document.querySelector(".topbar-actions");
   refs.connectionStatus = document.getElementById("connectionStatus");
   refs.themeBtn = document.getElementById("themeBtn");
   refs.newSongBtn = document.getElementById("newSongBtn");
@@ -15109,7 +15108,6 @@ function setRightSidebarContent(html = "") {
   refs.rightSidebar.innerHTML = hasContent ? html : "";
   refs.rightSidebar.dataset.hasContent = hasContent ? "true" : "false";
   applyRightSidebarVisibility(hasContent);
-  syncPresenterInfobarActions();
   if (hasContent) refreshIcons(refs.rightSidebar);
 }
 
@@ -15134,26 +15132,6 @@ function updatePresenterRightSidebarToggleButtons() {
     button.setAttribute("aria-label", open ? "컨트롤러 사이드바 닫기" : "컨트롤러 사이드바 열기");
     button.setAttribute("title", open ? "컨트롤러 닫기" : "컨트롤러 열기");
   });
-}
-
-function syncPresenterInfobarActions() {
-  const inPresenter = state.module === "presenter";
-  const slot = inPresenter ? refs.rightSidebar?.querySelector("[data-presenter-infobar-actions]") : null;
-  const target = slot || refs.topbarActions;
-  if (!target || !refs.themeBtn || !refs.saveAllBtn) return;
-
-  if (slot) {
-    if (refs.themeBtn.parentElement !== slot) slot.appendChild(refs.themeBtn);
-    if (refs.saveAllBtn.parentElement !== slot) slot.appendChild(refs.saveAllBtn);
-    return;
-  }
-
-  if (refs.themeBtn.parentElement !== refs.topbarActions) {
-    refs.topbarActions.insertBefore(refs.themeBtn, refs.newSongBtn || refs.topbarActions.firstChild);
-  }
-  if (refs.saveAllBtn.parentElement !== refs.topbarActions) {
-    refs.topbarActions.insertBefore(refs.saveAllBtn, refs.connectionStatus || null);
-  }
 }
 
 function getListScrollKey() {
@@ -24995,7 +24973,7 @@ function renderPresenterRightSidebar(service, slides, active, index) {
   if (!service?.id) return "";
   return `
     <div class="svc-presenter-side-panel" data-presenter-right-sidebar data-service-id="${escapeAttr(service.id)}">
-      <div class="svc-presenter-infobar-actions" data-presenter-infobar-actions aria-label="프레젠터 보기 설정"></div>
+      <div class="svc-presenter-topbar-spacer" aria-hidden="true"></div>
       ${renderPresenterControlsTop(service, slides, active, index)}
       ${renderPresenterServiceInputRail(service)}
     </div>`;

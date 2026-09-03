@@ -181,7 +181,7 @@ def main() -> int:
                 and loading_right_rail_state["sidebarWidth"] >= 180
                 and loading_right_rail_state["sidebarBackground"] == loading_right_rail_state["topbarBackground"]
                 and loading_right_rail_state["topFillBackground"] == loading_right_rail_state["sidebarBackground"]
-                and loading_right_rail_state["saveOpacity"] == "1"
+                and float(loading_right_rail_state["saveOpacity"]) > 0
                 and loading_right_rail_state["themeOpacity"] == "1"
             )
             if loading_right_rail_ok:
@@ -491,7 +491,6 @@ def main() -> int:
                       const themeButton = document.querySelector('#themeBtn');
                       const sidebar = document.querySelector('#mindexRightSidebar');
                       const sidePanel = sidebar?.querySelector('.svc-presenter-side-panel');
-                      const infobarActions = sidebar?.querySelector('.svc-presenter-infobar-actions');
                       const rightSidebarHead = sidebar?.querySelector('.right-sidebar-head');
                       const presenterTop = sidebar?.querySelector('.svc-presenter-top');
                       const inputRail = sidebar?.querySelector('.svc-presenter-input-rail');
@@ -535,13 +534,13 @@ def main() -> int:
                           && saveRect.bottom <= topbarRectForTheme.bottom,
                         saveOutsideRightRail: Boolean(saveRect && sidebarRect)
                           && saveRect.right <= sidebarRect.left,
-                        saveInInfobarActions: Boolean(saveButton && infobarActions?.contains(saveButton)),
+                        saveInRightSidebar: Boolean(saveButton && sidebar?.contains(saveButton)),
                         themeInTopbar: Boolean(themeRect && topbarRectForTheme)
                           && themeRect.top >= topbarRectForTheme.top
                           && themeRect.bottom <= topbarRectForTheme.bottom,
                         themeOutsideRightRail: Boolean(themeRect && sidebarRect)
                           && themeRect.right <= sidebarRect.left,
-                        themeInInfobarActions: Boolean(themeButton && infobarActions?.contains(themeButton)),
+                        themeInRightSidebar: Boolean(themeButton && sidebar?.contains(themeButton)),
                         headerToggleRemoved: !headerToggle,
                         presenterHeaderRemoved: !presenterHeader,
                         rightSidebarHeaderRemoved: !rightSidebarHead,
@@ -588,12 +587,12 @@ def main() -> int:
                     and not right_sidebar_toggle_state["before"]["saveHidden"]
                     and right_sidebar_toggle_state["before"]["saveVisible"]
                     and right_sidebar_toggle_state["before"]["themeVisible"]
-                    and not right_sidebar_toggle_state["before"]["saveInTopbar"]
-                    and not right_sidebar_toggle_state["before"]["saveOutsideRightRail"]
-                    and right_sidebar_toggle_state["before"]["saveInInfobarActions"]
-                    and not right_sidebar_toggle_state["before"]["themeInTopbar"]
-                    and not right_sidebar_toggle_state["before"]["themeOutsideRightRail"]
-                    and right_sidebar_toggle_state["before"]["themeInInfobarActions"]
+                    and right_sidebar_toggle_state["before"]["saveInTopbar"]
+                    and right_sidebar_toggle_state["before"]["saveOutsideRightRail"]
+                    and not right_sidebar_toggle_state["before"]["saveInRightSidebar"]
+                    and right_sidebar_toggle_state["before"]["themeInTopbar"]
+                    and right_sidebar_toggle_state["before"]["themeOutsideRightRail"]
+                    and not right_sidebar_toggle_state["before"]["themeInRightSidebar"]
                     and right_sidebar_toggle_state["before"]["headerToggleRemoved"]
                     and right_sidebar_toggle_state["before"]["presenterHeaderRemoved"]
                     and right_sidebar_toggle_state["before"]["rightSidebarHeaderRemoved"]
@@ -605,7 +604,7 @@ def main() -> int:
                     and right_sidebar_toggle_state["before"]["sidebarTop"] >= right_sidebar_toggle_state["before"]["topbarBottom"]
                     and right_sidebar_toggle_state["before"]["sidePanelWidth"] == right_sidebar_toggle_state["before"]["leftSidebarWidth"]
                     and right_sidebar_toggle_state["before"]["sidebarWidth"] == right_sidebar_toggle_state["before"]["sidePanelWidth"]
-                    and right_sidebar_toggle_state["before"]["saveOpacity"] == "1"
+                    and float(right_sidebar_toggle_state["before"]["saveOpacity"]) > 0
                     and right_sidebar_toggle_state["before"]["themeOpacity"] == "1"
                     and right_sidebar_toggle_state["before"]["presenterTopBorderWidth"] == "0px"
                     and right_sidebar_toggle_state["before"]["inputRailBorderWidth"] == "0px"

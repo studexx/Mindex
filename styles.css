@@ -707,7 +707,7 @@ body[data-module="praise"] .list-filter {
   border-radius: 0;
   background: transparent;
   padding: 0;
-  transition: color .14s ease;
+  transition: color .14s ease, transform .08s ease;
 }
 .topbar-actions .btn::before,
 .topbar-actions .icon-btn::before {
@@ -725,22 +725,20 @@ body[data-module="praise"] .list-filter {
 .topbar-actions .btn:not(:disabled):hover,
 .topbar-actions .icon-btn:not(:disabled):hover { background: transparent; }
 .topbar-actions .btn:not(:disabled):hover::before,
-.topbar-actions .icon-btn:not(:disabled):hover::before { background: var(--sidebar-hover-bg); }
+.topbar-actions .icon-btn:not(:disabled):hover::before { background: var(--panel-2); }
 .topbar-actions .btn:not(:disabled):active,
 .topbar-actions .icon-btn:not(:disabled):active {
-  transform: none;
+  transform: translateY(1px) scale(.98);
 }
 .topbar-actions .btn:not(:disabled):active::before,
 .topbar-actions .icon-btn:not(:disabled):active::before {
-  background: var(--sidebar-hover-bg);
+  background: color-mix(in srgb, var(--panel-2) 82%, var(--line));
 }
 .topbar-actions .btn.secondary:not(:disabled):hover { background: transparent; color: var(--ink-2); }
 .topbar-actions .icon-btn.primary {
   background: transparent;
   color: var(--ink-4);
 }
-.topbar-actions .icon-btn:not(.primary),
-.topbar-actions .btn.secondary { color: var(--sidebar-ink); }
 .topbar-actions .icon-btn.primary:not(:disabled) {
   background: transparent;
   color: var(--accent);
@@ -854,31 +852,17 @@ body[data-module="presenter"] .right-sidebar {
 body[data-module="presenter"] #newSongBtn {
   display: none;
 }
-body[data-module="presenter"] #themeBtn {
-  order: 1;
-}
-body[data-module="presenter"] #saveAllBtn {
-  order: 2;
-}
 body[data-module="presenter"] #presenterRightSidebarBtn {
   display: none;
 }
 body[data-module="presenter"] #presenterRightSidebarBtn,
-body[data-module="presenter"] #saveAllBtn,
-body[data-module="presenter"] #themeBtn,
-body[data-module="presenter"] #presenterRightSidebarBtn:disabled,
-body[data-module="presenter"] #saveAllBtn:disabled,
-body[data-module="presenter"] #themeBtn:disabled {
+body[data-module="presenter"] #presenterRightSidebarBtn:disabled {
   background: transparent;
   box-shadow: none;
   color: var(--sidebar-ink);
   opacity: 1;
 }
 body[data-module="presenter"] #presenterRightSidebarBtn:hover::before {
-  background: var(--sidebar-hover-bg);
-}
-body[data-module="presenter"] #saveAllBtn:hover::before,
-body[data-module="presenter"] #themeBtn:hover::before {
   background: var(--sidebar-hover-bg);
 }
 .svc-right-sidebar-toggle.is-active {
@@ -6040,48 +6024,8 @@ body[data-theme="dark"] .service-week-empty:hover {
 .right-sidebar .svc-presenter-side-panel {
   padding: 0;
 }
-.svc-presenter-infobar-actions {
-  display: flex;
-  min-width: 0;
+.svc-presenter-topbar-spacer {
   height: var(--topbar-btn-size);
-  align-items: center;
-  justify-content: flex-end;
-  gap: 4px;
-  padding: 0 12px;
-}
-.svc-presenter-infobar-actions .icon-btn {
-  position: relative;
-  width: var(--topbar-btn-size);
-  height: var(--topbar-btn-size);
-  border-radius: 0;
-  background: transparent;
-  color: var(--sidebar-ink);
-  padding: 0;
-}
-.svc-presenter-infobar-actions .icon-btn::before {
-  position: absolute;
-  inset: var(--shell-face-inset);
-  border-radius: var(--r);
-  background: transparent;
-  content: "";
-}
-.svc-presenter-infobar-actions .icon-btn > * {
-  position: relative;
-}
-.svc-presenter-infobar-actions .icon-btn:hover {
-  background: transparent;
-  color: var(--sidebar-ink);
-}
-.svc-presenter-infobar-actions .icon-btn:hover::before {
-  background: var(--sidebar-hover-bg);
-}
-.svc-presenter-infobar-actions .icon-btn:not(:disabled):active {
-  transform: translateY(1px) scale(.98);
-}
-.svc-presenter-infobar-actions svg {
-  width: 16px;
-  height: 16px;
-  stroke-width: 1.5;
 }
 .svc-presenter-input-rail {
   display: grid;
