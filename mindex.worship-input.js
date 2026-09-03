@@ -376,32 +376,35 @@ function applyPresenterPreparationTextUpdateToWorshipElementCache(service = null
   const candidates = state.worshipElements
     .map((element) => ({ element, section: sectionById[element.section_id] }))
     .filter(({ section }) => Boolean(section));
-  const matched = candidates.find(({ element }) => updateId && element.id === updateId)
-    || candidates.find(({ element, section }) => {
-      const sourceRef = element.source_ref && typeof element.source_ref === "object" ? element.source_ref : {};
-      const config = element.config && typeof element.config === "object" ? element.config : {};
-      const elementSlotKey = normalizeWorshipSlotKey(element.slot_key || sourceRef.slotKey || sourceRef.slot_key || config.slotKey || config.slot_key);
-      return Boolean(
-        updateSlotKey
-        && elementSlotKey === updateSlotKey
-        && (!updateSectionKey || String(section.section_key || "").trim() === updateSectionKey),
-      );
-    })
-    || candidates.find(({ element, section }) => {
-      const sourceRef = element.source_ref && typeof element.source_ref === "object" ? element.source_ref : {};
-      const labelKey = compactSearchValue(sourceRef.label || section.title || element.title || "");
-      return Boolean(
-        updateSectionKey
-        && updateLabelKey
-        && String(section.section_key || "").trim() === updateSectionKey
-        && labelKey === updateLabelKey,
-      );
-    });
-  const matchedElements = matched?.element
-    ? [matched.element]
-    : candidates
-      .filter(({ section }) => updateSectionKey && String(section.section_key || "").trim() === updateSectionKey)
-      .map(({ element }) => element);
+  const matchesUpdateSlot = ({ element, section }) => {
+    const sourceRef = element.source_ref && typeof element.source_ref === "object" ? element.source_ref : {};
+    const config = element.config && typeof element.config === "object" ? element.config : {};
+    const elementSlotKey = normalizeWorshipSlotKey(element.slot_key || sourceRef.slotKey || sourceRef.slot_key || config.slotKey || config.slot_key);
+    return Boolean(
+      updateSlotKey
+      && elementSlotKey === updateSlotKey
+      && (!updateSectionKey || String(section.section_key || "").trim() === updateSectionKey),
+    );
+  };
+  const matchesUpdateLabel = ({ element, section }) => {
+    const sourceRef = element.source_ref && typeof element.source_ref === "object" ? element.source_ref : {};
+    const labelKey = compactSearchValue(sourceRef.label || section.title || element.title || "");
+    return Boolean(
+      updateSectionKey
+      && updateLabelKey
+      && String(section.section_key || "").trim() === updateSectionKey
+      && labelKey === updateLabelKey,
+    );
+  };
+  const matchedElements = uniqueList(
+    candidates
+      .filter((candidate) =>
+        (updateId && candidate.element.id === updateId)
+        || matchesUpdateSlot(candidate)
+        || matchesUpdateLabel(candidate)
+        || (updateSectionKey && String(candidate.section.section_key || "").trim() === updateSectionKey))
+      .map(({ element }) => element),
+  );
   const rawTitle = String(update.raw_title || "").trim();
   const assignee = cleanServiceAssignee(update.assignee);
   matchedElements.forEach((element) => {

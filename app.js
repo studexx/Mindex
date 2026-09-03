@@ -5232,6 +5232,10 @@ async function loadServiceItems(serviceId) {
         .filter(Boolean),
     );
     const { sections, elements } = await fetchWorshipRowsForServiceIds([serviceId]);
+    const hasLocalServiceEdits = state.selectedServiceId === serviceId
+      && state.dirty.service
+      && Boolean((state.serviceItems[serviceId] || []).length);
+    if (hasLocalServiceEdits) return;
     const loadedSectionIds = new Set([
       ...previousSectionIds,
       ...sections.map((section) => section.id).filter(Boolean),
