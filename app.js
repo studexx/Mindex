@@ -21753,7 +21753,7 @@ function renderPresenterSidebarPreparationInput(service) {
       </div>
       <div class="svc-presenter-preparation-input svc-presenter-preparation-input--sidebar">
         <textarea class="svc-presenter-preparation-text svc-presenter-preparation-text--sidebar" data-presenter-preparation-input data-service-id="${escapeAttr(service.id)}" rows="4" placeholder="${escapeAttr(placeholder)}" aria-label="예배 입력 붙여넣기">${escapeHtml(draft)}</textarea>
-        <small class="svc-presenter-preparation-hint">빈 줄에서 Enter 한 번 더 누르면 반영됩니다.</small>
+        <small class="svc-presenter-preparation-hint">빈 줄 Enter로 반영</small>
         ${renderPresenterPreparationExamples(examples)}
         <div class="svc-presenter-preparation-actions">
           <button class="svc-presenter-preparation-apply svc-presenter-preparation-apply--sidebar" type="button" data-presenter-preparation-apply data-service-id="${escapeAttr(service.id)}" ${applying ? "disabled" : ""}>
@@ -25003,7 +25003,7 @@ function renderPresenterServiceInputRail(service) {
       </header>
       <section class="svc-presenter-preparation-input">
         <textarea class="svc-presenter-preparation-text" data-presenter-preparation-input data-service-id="${escapeAttr(service.id)}" rows="5" placeholder="${escapeAttr(placeholder)}" aria-label="예배 준비 입력">${escapeHtml(draft)}</textarea>
-        <small class="svc-presenter-preparation-hint">빈 줄에서 Enter 한 번 더 누르면 반영됩니다.</small>
+        <small class="svc-presenter-preparation-hint">빈 줄 Enter로 반영</small>
         ${renderPresenterPreparationExamples(examples)}
         <div class="svc-presenter-preparation-actions">
           <button class="svc-presenter-preparation-apply" type="button" data-presenter-preparation-apply data-service-id="${escapeAttr(service.id)}" ${applying ? "disabled" : ""}>

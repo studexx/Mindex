@@ -5935,7 +5935,7 @@ def main() -> int:
                         and presenter_header_input["songFieldCount"] >= 5
                         and presenter_header_input["bulkInput"] == presenter_header_input["bulkButton"]
                         and "찬양1 곡명" in presenter_header_input["bulkPlaceholder"]
-                        and "Enter 한 번 더" in presenter_header_input["bulkHint"]
+                        and presenter_header_input["bulkHint"] == "빈 줄 Enter로 반영"
                         and presenter_header_input["bulkButtonWidth"] >= presenter_header_input["bulkActionsWidth"] - 2
                         and presenter_header_input["bulkButtonWidth"] >= presenter_header_input["bulkInputWidth"] - 2
                         and (
