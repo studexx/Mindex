@@ -616,7 +616,7 @@ def main() -> int:
                     and "opacity" in right_sidebar_toggle_state["before"]["sidebarTransition"]
                     and right_sidebar_toggle_state["before"]["sidebarBorderLeft"] == "0px"
                     and right_sidebar_toggle_state["before"]["sidebarTop"] >= right_sidebar_toggle_state["before"]["topbarBottom"]
-                    and right_sidebar_toggle_state["before"]["sidePanelWidth"] == right_sidebar_toggle_state["before"]["leftSidebarWidth"]
+                    and right_sidebar_toggle_state["before"]["sidePanelWidth"] == right_sidebar_toggle_state["before"]["leftSidebarWidth"] + right_sidebar_toggle_state["before"]["rightRailWidth"]
                     and right_sidebar_toggle_state["before"]["sidebarWidth"] == right_sidebar_toggle_state["before"]["sidePanelWidth"]
                     and right_sidebar_toggle_state["before"]["topbarActionsWidth"] == right_sidebar_toggle_state["before"]["sidebarWidth"]
                     and float(right_sidebar_toggle_state["before"]["saveOpacity"]) > 0

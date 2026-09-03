@@ -103,7 +103,7 @@
   --tab-active-bg: var(--bg);
   --tab-hover-bg: color-mix(in srgb, var(--panel-2) 46%, transparent);
   --nav-rail-w: 50px;
-  --right-sidebar-w: var(--sidebar-content-w);
+  --right-sidebar-w: var(--rail-w);
   --right-rail-w: var(--nav-rail-w);
   --shell-right-w: 0px;
   --sidebar-reference-w: 240px;
