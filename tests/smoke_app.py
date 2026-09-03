@@ -6078,10 +6078,19 @@ def main() -> int:
                             || typeof handleDetailKeydown !== 'function'
                             || typeof saveCommittedServiceItem !== 'function'
                           ) return { ready: false };
-                          const field = document.querySelector(
-                            '#mindexRightSidebar .svc-presenter-input-rail input[data-service-item-field="raw_title"], '
-                            + '.svc-board-subgroup-controls input[data-service-item-field="raw_title"]'
-                          );
+                          const fields = [
+                            ...document.querySelectorAll('.svc-board-subgroup-controls input[data-service-item-field="raw_title"]')
+                          ];
+                          const field = fields.find((candidate) => {
+                            const candidateServiceId = candidate.dataset.serviceId || state.selectedServiceId;
+                            const candidateIndex = Number(candidate.dataset.serviceItemIndex);
+                            const candidateItem = (state.serviceItems[candidateServiceId] || [])[candidateIndex];
+                            const candidateService = state.services.find((service) => service.id === candidateServiceId);
+                            return candidate.isConnected
+                              && candidateItem
+                              && !serviceItemRequiresSongSelection(candidateItem, candidateService)
+                              && !isScriptureBodyServiceItem(candidateItem);
+                          });
                           if (!field) return { ready: false, reason: 'field' };
                           const serviceId = field.dataset.serviceId || state.selectedServiceId;
                           const index = Number(field.dataset.serviceItemIndex);
