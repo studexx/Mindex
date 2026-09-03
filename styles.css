@@ -8064,9 +8064,7 @@ body.is-chromium .svc-slide-thumb-wrap.active:has(.svc-slide-thumb:focus-visible
   contain: layout size paint;
   isolation: isolate;
   padding: 0;
-  box-shadow:
-    inset 0 0 0 1px rgba(255,255,255,.46),
-    0 1px 3px rgba(0, 0, 0, .10);
+  box-shadow: none;
   filter: brightness(1);
   transform: translateZ(0);
   transition: filter .16s ease, outline-color .16s ease, transform .08s ease;
@@ -8100,9 +8098,7 @@ body.is-chromium .svc-slide-thumb:not(:disabled):active .svc-slide-thumb-frame {
   filter: brightness(1.04);
   outline: none;
   outline-offset: 0;
-  box-shadow:
-    inset 0 0 0 1px rgba(255,255,255,.46),
-    0 1px 3px rgba(0, 0, 0, .10);
+  box-shadow: none;
 }
 .svc-slide-thumb:hover .svc-slide-thumb-frame::after {
   opacity: 1;
@@ -8119,9 +8115,7 @@ body.is-chromium .svc-slide-thumb.selected .svc-slide-thumb-frame {
 .svc-slide-thumb.active .svc-slide-thumb-frame {
   outline: none;
   outline-offset: 0;
-  box-shadow:
-    inset 0 0 0 1px rgba(255,255,255,.46),
-    0 1px 3px rgba(0, 0, 0, .10);
+  box-shadow: none;
 }
 body.is-chromium .svc-slide-thumb.active .svc-slide-thumb-frame,
 body.is-chromium .svc-slide-thumb.active:hover .svc-slide-thumb-frame {
@@ -8129,9 +8123,7 @@ body.is-chromium .svc-slide-thumb.active:hover .svc-slide-thumb-frame {
   outline-offset: 0;
 }
 .svc-slide-thumb.selected .svc-slide-thumb-frame {
-  box-shadow:
-    inset 0 0 0 1px rgba(255,255,255,.46),
-    0 1px 3px rgba(0, 0, 0, .10);
+  box-shadow: none;
 }
 .svc-slide-thumb-frame--video,
 .svc-slide-thumb-frame--image {
