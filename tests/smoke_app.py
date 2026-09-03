@@ -6089,47 +6089,48 @@ def main() -> int:
                           const originalValue = item().raw_title || '';
                           const originalDirty = state.dirty.service;
                           const saves = [];
-                          let prevented = false;
-                          let stopped = false;
+                          const documentEvents = [];
+                          const rememberDocumentEvent = (event) => documentEvents.push(event.type);
                           try {
                             saveCommittedServiceItem = (itemIndex, savedServiceId, options = {}) => {
                               saves.push({ itemIndex: Number(itemIndex), serviceId: savedServiceId, silent: Boolean(options.silent) });
                             };
+                            document.addEventListener('input', rememberDocumentEvent);
+                            document.addEventListener('change', rememberDocumentEvent);
+                            document.addEventListener('focusout', rememberDocumentEvent);
+                            document.addEventListener('keydown', rememberDocumentEvent);
                             state.dirty.service = false;
                             field.dataset.initialValue = field.value;
                             field.dataset.presenterPreviewValue = field.value;
                             field.value = '마 23:1';
-                            handleDetailInput({
-                              target: field,
-                              stopPropagation() {},
-                            });
+                            field.dispatchEvent(new Event('input', { bubbles: true }));
                             await new Promise((resolve) => window.setTimeout(resolve, 650));
                             const afterInput = item().raw_title || '';
-                            handleDetailChange({ target: field });
+                            field.dispatchEvent(new Event('change', { bubbles: true }));
                             const afterChange = item().raw_title || '';
+                            const enterEvent = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+                            const enterDispatched = field.dispatchEvent(enterEvent);
+                            const afterEnter = item().raw_title || '';
                             field.dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: document.body }));
                             const afterFocusout = item().raw_title || '';
-                            handleDetailKeydown({
-                              target: field,
-                              key: 'Enter',
-                              preventDefault() { prevented = true; },
-                              stopPropagation() { stopped = true; },
-                            });
-                            const afterEnter = item().raw_title || '';
                             return {
                               ready: true,
                               serviceId,
                               index,
                               afterInput,
                               afterChange,
-                              afterFocusout,
                               afterEnter,
+                              afterFocusout,
                               saves,
-                              prevented,
-                              stopped,
+                              prevented: !enterDispatched || enterEvent.defaultPrevented,
+                              documentEvents,
                               dirty: state.dirty.service,
                             };
                           } finally {
+                            document.removeEventListener('input', rememberDocumentEvent);
+                            document.removeEventListener('change', rememberDocumentEvent);
+                            document.removeEventListener('focusout', rememberDocumentEvent);
+                            document.removeEventListener('keydown', rememberDocumentEvent);
                             saveCommittedServiceItem = previousSaveCommittedServiceItem;
                             if (item()) item().raw_title = originalValue;
                             state.dirty.service = originalDirty;
@@ -6142,14 +6143,14 @@ def main() -> int:
                         presenter_input_enter_commit_guard.get("ready")
                         and presenter_input_enter_commit_guard["afterInput"] != "마 23:1"
                         and presenter_input_enter_commit_guard["afterChange"] != "마 23:1"
-                        and presenter_input_enter_commit_guard["afterFocusout"] != "마 23:1"
                         and presenter_input_enter_commit_guard["afterEnter"] == "마 23:1"
+                        and presenter_input_enter_commit_guard["afterFocusout"] == "마 23:1"
                         and len(presenter_input_enter_commit_guard["saves"]) == 1
                         and presenter_input_enter_commit_guard["saves"][0]["itemIndex"] == presenter_input_enter_commit_guard["index"]
                         and presenter_input_enter_commit_guard["saves"][0]["serviceId"] == presenter_input_enter_commit_guard["serviceId"]
                         and presenter_input_enter_commit_guard["saves"][0]["silent"] is True
                         and presenter_input_enter_commit_guard["prevented"]
-                        and presenter_input_enter_commit_guard["stopped"]
+                        and presenter_input_enter_commit_guard["documentEvents"] == []
                     ):
                         pass_("presenter-input-enter-commit-guard", json.dumps(presenter_input_enter_commit_guard, ensure_ascii=False))
                     else:

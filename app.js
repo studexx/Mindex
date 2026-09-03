@@ -1558,7 +1558,10 @@ function bindDetailInteractionRoot(root, options = {}) {
     const serviceTextField = e.target.closest("input[data-service-item-field], textarea[data-service-item-field]");
     if (isDeferredServiceTextInput(serviceTextField)) {
       clearDeferredServiceTextPreview(serviceTextField);
-      if (isPresenterEnterCommittedServiceInput(serviceTextField)) return;
+      if (isPresenterEnterCommittedServiceInput(serviceTextField)) {
+        e.stopPropagation?.();
+        return;
+      }
       commitDeferredServiceTextInput(serviceTextField, { save: true });
       return;
     }
@@ -8505,6 +8508,7 @@ function handleDetailInput(event) {
     if (isDeferredServiceTextInput(serviceField)) {
       if (isPresenterEnterCommittedServiceInput(serviceField)) {
         clearDeferredServiceTextPreview(serviceField);
+        event.stopPropagation?.();
         return;
       }
       if (isDeferredServiceScriptureReferenceInput(serviceField)) {
@@ -8659,6 +8663,7 @@ function handleDetailChange(event) {
     if (isDeferredServiceTextInput(serviceField)) {
       if (isPresenterEnterCommittedServiceInput(serviceField)) {
         clearDeferredServiceTextPreview(serviceField);
+        event.stopPropagation?.();
         return;
       }
       commitDeferredServiceTextInput(serviceField, { save: true });
