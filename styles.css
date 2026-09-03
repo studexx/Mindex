@@ -216,11 +216,11 @@ h1, h2, h3, p { margin: 0; }
   position: relative;
   z-index: 3;
   display: grid;
-  grid-column: 2;
+  grid-column: 2 / 4;
   grid-row: 1;
   height: 100%;
   align-items: center;
-  grid-template-columns: minmax(0, 1fr) var(--topbar-compact-w);
+  grid-template-columns: minmax(0, 1fr) max(var(--topbar-compact-w), var(--shell-right-w));
   gap: 0;
   border-bottom: 0;
   background: var(--sidebar-bg);
@@ -851,19 +851,6 @@ body[data-module="presenter"] .right-sidebar {
 }
 body[data-module="presenter"] #newSongBtn {
   display: none;
-}
-body[data-module="presenter"] #presenterRightSidebarBtn {
-  display: none;
-}
-body[data-module="presenter"] #presenterRightSidebarBtn,
-body[data-module="presenter"] #presenterRightSidebarBtn:disabled {
-  background: transparent;
-  box-shadow: none;
-  color: var(--sidebar-ink);
-  opacity: 1;
-}
-body[data-module="presenter"] #presenterRightSidebarBtn:hover::before {
-  background: var(--sidebar-hover-bg);
 }
 .svc-right-sidebar-toggle.is-active {
   border: 0;
@@ -3404,7 +3391,7 @@ body[data-module="calendar"] .detail-pane { overflow: hidden; }
   }
   .topbar {
     height: var(--topbar-h);
-    grid-template-columns: minmax(0, 1fr) var(--topbar-compact-w);
+    grid-template-columns: minmax(0, 1fr) max(var(--topbar-compact-w), var(--shell-right-w));
     padding: 0;
   }
   .primary-switcher { width: auto; height: 100%; padding: 0; }
@@ -6023,9 +6010,6 @@ body[data-theme="dark"] .service-week-empty:hover {
 }
 .right-sidebar .svc-presenter-side-panel {
   padding: 0;
-}
-.svc-presenter-topbar-spacer {
-  height: var(--topbar-btn-size);
 }
 .svc-presenter-input-rail {
   display: grid;

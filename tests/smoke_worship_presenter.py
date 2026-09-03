@@ -143,6 +143,7 @@ def main() -> int:
                   const sidebar = document.querySelector('#mindexRightSidebar');
                   const shell = document.querySelector('.app-shell');
                   const topbar = document.querySelector('.topbar');
+                  const topbarActions = document.querySelector('.topbar-actions');
                   const saveButton = document.querySelector('#saveAllBtn');
                   const themeButton = document.querySelector('#themeBtn');
                   const sidebarStyle = sidebar ? getComputedStyle(sidebar) : null;
@@ -150,6 +151,7 @@ def main() -> int:
                   const topbarStyle = topbar ? getComputedStyle(topbar) : null;
                   const sidebarRect = sidebar?.getBoundingClientRect();
                   const topbarRect = topbar?.getBoundingClientRect();
+                  const topbarActionsRect = topbarActions?.getBoundingClientRect();
                   const saveStyle = saveButton ? getComputedStyle(saveButton) : null;
                   const themeStyle = themeButton ? getComputedStyle(themeButton) : null;
                   const hasContent = sidebar?.dataset.hasContent === 'true';
@@ -161,6 +163,9 @@ def main() -> int:
                     sidebarTop: sidebarRect ? Math.round(sidebarRect.top) : 0,
                     topbarBottom: topbarRect ? Math.round(topbarRect.bottom) : 0,
                     sidebarWidth: sidebar ? Math.round(sidebar.getBoundingClientRect().width) : 0,
+                    topbarActionsLeft: topbarActionsRect ? Math.round(topbarActionsRect.left) : 0,
+                    topbarActionsWidth: topbarActionsRect ? Math.round(topbarActionsRect.width) : 0,
+                    sidebarLeft: sidebarRect ? Math.round(sidebarRect.left) : 0,
                     rightRailWidth: Math.round(parseFloat(getComputedStyle(document.body).getPropertyValue('--right-rail-w')) || 0),
                     sidebarBackground: sidebarStyle?.backgroundColor || '',
                     topFillBackground: shellTopFillStyle?.backgroundColor || '',
@@ -179,6 +184,8 @@ def main() -> int:
                 and not loading_right_rail_state["hidden"]
                 and loading_right_rail_state["bodyOpen"]
                 and loading_right_rail_state["sidebarWidth"] >= 180
+                and abs(loading_right_rail_state["topbarActionsLeft"] - loading_right_rail_state["sidebarLeft"]) <= 1
+                and abs(loading_right_rail_state["topbarActionsWidth"] - loading_right_rail_state["sidebarWidth"]) <= 1
                 and loading_right_rail_state["sidebarBackground"] == loading_right_rail_state["topbarBackground"]
                 and loading_right_rail_state["topFillBackground"] == loading_right_rail_state["sidebarBackground"]
                 and float(loading_right_rail_state["saveOpacity"]) > 0
@@ -499,6 +506,7 @@ def main() -> int:
                       const headerToggle = document.querySelector('.svc-header-actions [data-presenter-right-sidebar-toggle]');
                       const presenterHeader = document.querySelector('.presenter-viewer .svc-header');
                       const topbar = document.querySelector('.topbar');
+                      const topbarActions = document.querySelector('.topbar-actions');
                       const resolveCssColor = (value) => {
                         const sample = document.createElement('span');
                         sample.style.color = value;
@@ -524,6 +532,7 @@ def main() -> int:
                       const themeStyle = themeButton ? getComputedStyle(themeButton) : null;
                       const sidebarRect = sidebar?.getBoundingClientRect();
                       const topbarRect = topbar?.getBoundingClientRect();
+                      const topbarActionsRect = topbarActions?.getBoundingClientRect();
                       const before = {
                         buttonVisible: Boolean(button && !button.hidden),
                         saveHidden: Boolean(document.querySelector('#saveAllBtn')?.hidden),
@@ -532,14 +541,18 @@ def main() -> int:
                         saveInTopbar: Boolean(saveRect && topbarRectForTheme)
                           && saveRect.top >= topbarRectForTheme.top
                           && saveRect.bottom <= topbarRectForTheme.bottom,
-                        saveOutsideRightRail: Boolean(saveRect && sidebarRect)
-                          && saveRect.right <= sidebarRect.left,
+                        saveTracksRightInfoBar: Boolean(saveRect && sidebarRect && topbarActionsRect)
+                          && saveRect.left >= sidebarRect.left
+                          && saveRect.right <= sidebarRect.right + 1
+                          && Math.abs(Math.round(topbarActionsRect.left) - Math.round(sidebarRect.left)) <= 1,
                         saveInRightSidebar: Boolean(saveButton && sidebar?.contains(saveButton)),
                         themeInTopbar: Boolean(themeRect && topbarRectForTheme)
                           && themeRect.top >= topbarRectForTheme.top
                           && themeRect.bottom <= topbarRectForTheme.bottom,
-                        themeOutsideRightRail: Boolean(themeRect && sidebarRect)
-                          && themeRect.right <= sidebarRect.left,
+                        themeTracksRightInfoBar: Boolean(themeRect && sidebarRect && topbarActionsRect)
+                          && themeRect.left >= sidebarRect.left
+                          && themeRect.right <= sidebarRect.right + 1
+                          && Math.abs(Math.round(topbarActionsRect.width) - Math.round(sidebarRect.width)) <= 1,
                         themeInRightSidebar: Boolean(themeButton && sidebar?.contains(themeButton)),
                         headerToggleRemoved: !headerToggle,
                         presenterHeaderRemoved: !presenterHeader,
@@ -554,6 +567,7 @@ def main() -> int:
                         sidebarWidth: sidebar ? Math.round(sidebar.getBoundingClientRect().width) : 0,
                         sidePanelWidth: sidePanel ? Math.round(sidePanel.getBoundingClientRect().width) : 0,
                         leftSidebarWidth: leftSidebar ? Math.round(leftSidebar.getBoundingClientRect().width) : 0,
+                        topbarActionsWidth: topbarActionsRect ? Math.round(topbarActionsRect.width) : 0,
                         rightRailWidth: Math.round(parseFloat(getComputedStyle(document.body).getPropertyValue('--right-rail-w')) || 0),
                         saveOpacity: saveStyle?.opacity || '',
                         themeOpacity: themeStyle?.opacity || '',
@@ -588,10 +602,10 @@ def main() -> int:
                     and right_sidebar_toggle_state["before"]["saveVisible"]
                     and right_sidebar_toggle_state["before"]["themeVisible"]
                     and right_sidebar_toggle_state["before"]["saveInTopbar"]
-                    and right_sidebar_toggle_state["before"]["saveOutsideRightRail"]
+                    and right_sidebar_toggle_state["before"]["saveTracksRightInfoBar"]
                     and not right_sidebar_toggle_state["before"]["saveInRightSidebar"]
                     and right_sidebar_toggle_state["before"]["themeInTopbar"]
-                    and right_sidebar_toggle_state["before"]["themeOutsideRightRail"]
+                    and right_sidebar_toggle_state["before"]["themeTracksRightInfoBar"]
                     and not right_sidebar_toggle_state["before"]["themeInRightSidebar"]
                     and right_sidebar_toggle_state["before"]["headerToggleRemoved"]
                     and right_sidebar_toggle_state["before"]["presenterHeaderRemoved"]
@@ -604,6 +618,7 @@ def main() -> int:
                     and right_sidebar_toggle_state["before"]["sidebarTop"] >= right_sidebar_toggle_state["before"]["topbarBottom"]
                     and right_sidebar_toggle_state["before"]["sidePanelWidth"] == right_sidebar_toggle_state["before"]["leftSidebarWidth"]
                     and right_sidebar_toggle_state["before"]["sidebarWidth"] == right_sidebar_toggle_state["before"]["sidePanelWidth"]
+                    and right_sidebar_toggle_state["before"]["topbarActionsWidth"] == right_sidebar_toggle_state["before"]["sidebarWidth"]
                     and float(right_sidebar_toggle_state["before"]["saveOpacity"]) > 0
                     and right_sidebar_toggle_state["before"]["themeOpacity"] == "1"
                     and right_sidebar_toggle_state["before"]["presenterTopBorderWidth"] == "0px"
@@ -942,8 +957,8 @@ def main() -> int:
                     and sticky_title_state["sidebarLaunch"]["icon"] in ("screen-share", "screen-share-off")
                     and sticky_title_state["sidebarLaunch"]["width"] >= 90
                     and sticky_title_state["pageTabsVisible"]
-                    and sticky_title_state["rightSidebarTopGap"] >= sticky_title_state["topbarButtonSize"] + 8
-                    and sticky_title_state["rightSidebarTopGap"] <= sticky_title_state["topbarButtonSize"] + 40
+                    and sticky_title_state["rightSidebarTopGap"] >= 12
+                    and sticky_title_state["rightSidebarTopGap"] <= sticky_title_state["topbarButtonSize"]
                     and sticky_title_state["rightSidebarVisible"]
                     and sticky_title_state["controlsPosition"] == "static"
                     and sticky_title_state["sidePanelPosition"] == "static"

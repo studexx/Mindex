@@ -24973,7 +24973,6 @@ function renderPresenterRightSidebar(service, slides, active, index) {
   if (!service?.id) return "";
   return `
     <div class="svc-presenter-side-panel" data-presenter-right-sidebar data-service-id="${escapeAttr(service.id)}">
-      <div class="svc-presenter-topbar-spacer" aria-hidden="true"></div>
       ${renderPresenterControlsTop(service, slides, active, index)}
       ${renderPresenterServiceInputRail(service)}
     </div>`;
