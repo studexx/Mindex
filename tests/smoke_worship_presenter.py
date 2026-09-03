@@ -525,9 +525,11 @@ def main() -> int:
                         saveHidden: Boolean(document.querySelector('#saveAllBtn')?.hidden),
                         saveVisible: Boolean(saveButton && !saveButton.hidden),
                         themeVisible: Boolean(themeButton && !themeButton.hidden),
-                        saveInRightRail: Boolean(saveRect && sidebarRect)
-                          && saveRect.left >= sidebarRect.right - 50
-                          && saveRect.right <= sidebarRect.right + 1,
+                        saveInTopbar: Boolean(saveRect && topbarRectForTheme)
+                          && saveRect.top >= topbarRectForTheme.top
+                          && saveRect.bottom <= topbarRectForTheme.bottom,
+                        saveOutsideRightRail: Boolean(saveRect && sidebarRect)
+                          && saveRect.right <= sidebarRect.left,
                         themeInTopbar: Boolean(themeRect && topbarRectForTheme)
                           && themeRect.top >= topbarRectForTheme.top
                           && themeRect.bottom <= topbarRectForTheme.bottom,
@@ -579,7 +581,8 @@ def main() -> int:
                     and not right_sidebar_toggle_state["before"]["saveHidden"]
                     and right_sidebar_toggle_state["before"]["saveVisible"]
                     and right_sidebar_toggle_state["before"]["themeVisible"]
-                    and right_sidebar_toggle_state["before"]["saveInRightRail"]
+                    and right_sidebar_toggle_state["before"]["saveInTopbar"]
+                    and right_sidebar_toggle_state["before"]["saveOutsideRightRail"]
                     and right_sidebar_toggle_state["before"]["themeInTopbar"]
                     and right_sidebar_toggle_state["before"]["themeOutsideRightRail"]
                     and right_sidebar_toggle_state["before"]["headerToggleRemoved"]

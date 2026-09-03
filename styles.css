@@ -840,17 +840,8 @@ body[data-module="presenter"] #presenterRightSidebarBtn {
 body[data-module="presenter"] .right-sidebar {
   padding-top: var(--s4);
 }
-body[data-module="presenter"] #presenterRightSidebarBtn,
-body[data-module="presenter"] #saveAllBtn {
-  position: absolute;
-  right: calc(-1 * var(--shell-right-w) + var(--shell-edge-inset));
-  margin: 0;
-}
 body[data-module="presenter"] #presenterRightSidebarBtn {
-  top: var(--s1);
-}
-body[data-module="presenter"] #saveAllBtn {
-  top: var(--s1);
+  display: none;
 }
 body[data-module="presenter"] #presenterRightSidebarBtn,
 body[data-module="presenter"] #saveAllBtn,
@@ -861,8 +852,7 @@ body[data-module="presenter"] #saveAllBtn:disabled {
   color: var(--sidebar-ink);
   opacity: 1;
 }
-body[data-module="presenter"] #presenterRightSidebarBtn:hover::before,
-body[data-module="presenter"] #saveAllBtn:hover::before {
+body[data-module="presenter"] #presenterRightSidebarBtn:hover::before {
   background: var(--sidebar-hover-bg);
 }
 .svc-right-sidebar-toggle.is-active {
@@ -8553,12 +8543,6 @@ body.is-chromium .svc-slide-thumb.active:hover .svc-slide-thumb-frame {
   body[data-module="presenter"],
   body[data-module="presenter"].right-sidebar-open,
   body.right-sidebar-open { --shell-right-w: 0px; }
-  body[data-module="presenter"] #presenterRightSidebarBtn,
-  body[data-module="presenter"] #saveAllBtn {
-    position: relative;
-    top: auto;
-    right: auto;
-  }
   .right-sidebar {
     position: fixed;
     top: var(--topbar-h);

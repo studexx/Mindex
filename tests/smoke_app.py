@@ -5829,7 +5829,7 @@ def main() -> int:
                             bulkInput.value = '찬양 1: 평화 하나님의 평강이';
                             bulkInput.dispatchEvent(new Event('input', { bubbles: true }));
                           }
-                          const rightRailButtons = ['saveAllBtn']
+                          const topbarActionButtons = ['themeBtn', 'saveAllBtn']
                             .map((id) => {
                               const node = document.getElementById(id);
                               const rect = node?.getBoundingClientRect();
@@ -5844,9 +5844,7 @@ def main() -> int:
                               } : null;
                             })
                             .filter(Boolean);
-                          const rightRailGaps = rightRailButtons.slice(1).map((button, index) =>
-                            Math.round(button.top - rightRailButtons[index].bottom)
-                          );
+                          const topbarRect = document.querySelector('.topbar-actions')?.getBoundingClientRect();
                           const controlGroups = [...document.querySelectorAll('.svc-board-subgroup-controls')];
                           const controls = [...document.querySelectorAll('.svc-board-subgroup-controls [data-service-item-field]')];
                           const firstControlStyle = controlGroups[0] ? getComputedStyle(controlGroups[0]) : null;
@@ -5892,8 +5890,12 @@ def main() -> int:
                             bulkStatus,
                             bulkDraft: state.presenterPreparationDrafts[service?.id || ''] || '',
                             rightRailDesktop: document.body.dataset.module === 'presenter' && window.innerWidth > 900,
-                            rightRailButtons,
-                            rightRailGaps,
+                            topbarActionButtons,
+                            actionsInTopbar: topbarActionButtons.every((button) =>
+                              topbarRect
+                              && button.top >= Math.round(topbarRect.top)
+                              && button.bottom <= Math.round(topbarRect.bottom)
+                            ),
                             overflow: Math.max(document.documentElement.scrollWidth - window.innerWidth, document.body.scrollWidth - window.innerWidth)
                           };
                         })()
@@ -5931,9 +5933,9 @@ def main() -> int:
                         and (
                             not presenter_header_input["rightRailDesktop"]
                             or (
-                                [button["id"] for button in presenter_header_input["rightRailButtons"]] == ["saveAllBtn"]
-                                and all(button["width"] == button["height"] and button["width"] >= 32 for button in presenter_header_input["rightRailButtons"])
-                                and all(button["opacity"] == 1 for button in presenter_header_input["rightRailButtons"])
+                                [button["id"] for button in presenter_header_input["topbarActionButtons"]] == ["themeBtn", "saveAllBtn"]
+                                and presenter_header_input["actionsInTopbar"]
+                                and all(button["width"] == button["height"] and button["width"] >= 32 for button in presenter_header_input["topbarActionButtons"])
                             )
                         )
                         and any("찬양" in label for label in presenter_header_input["headerLabels"])
