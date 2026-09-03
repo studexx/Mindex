@@ -1481,6 +1481,34 @@ def main() -> int:
                     pass_("service-default-opens-week-board", json.dumps(service_default_state, ensure_ascii=False))
                 else:
                     fail("service-default-opens-week-board", json.dumps(service_default_state, ensure_ascii=False))
+
+                page.click("[data-service-list]")
+                page.wait_for_function("() => state.selectedServiceTypeId === '__list'", timeout=5000)
+                page.click('.nav-rail [data-home-module="service"]')
+                page.wait_for_function("() => state.selectedServiceTypeId === '__week'", timeout=5000)
+                service_rail_state = page.evaluate(
+                    """
+                    (() => ({
+                      module: document.body.dataset.module,
+                      selectedTypeId: state.selectedServiceTypeId || '',
+                      selectedServiceId: state.selectedServiceId || '',
+                      hasDashboard: Boolean(document.querySelector('.service-dashboard')),
+                      activeWeekRows: document.querySelectorAll('[data-service-week].active').length,
+                      activeListRows: document.querySelectorAll('[data-service-list].active').length,
+                    }))()
+                    """
+                )
+                if (
+                    service_rail_state["module"] == "service"
+                    and service_rail_state["selectedTypeId"] == "__week"
+                    and service_rail_state["selectedServiceId"] == ""
+                    and service_rail_state["hasDashboard"]
+                    and service_rail_state["activeWeekRows"] == 1
+                    and service_rail_state["activeListRows"] == 0
+                ):
+                    pass_("service-rail-click-opens-week-board", json.dumps(service_rail_state, ensure_ascii=False))
+                else:
+                    fail("service-rail-click-opens-week-board", json.dumps(service_rail_state, ensure_ascii=False))
                 page.evaluate("() => { resetHomeState(); render(); }")
                 page.wait_for_function("() => document.body.dataset.module === 'home'", timeout=5000)
 

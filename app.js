@@ -13358,6 +13358,23 @@ async function handleNavigationRailClick(button) {
     await goHome();
     return;
   }
+  if (moduleName === "service") {
+    if (!(await confirmSaveBeforeLeaving())) return;
+    saveCurrentListScroll();
+    state.module = "service";
+    state.selectedServiceTypeId = SERVICE_WEEK_PANEL_ID;
+    state.selectedServiceId = null;
+    state.selectedServiceItemIndex = null;
+    state.newServiceForm = null;
+    state.search = "";
+    refs.searchInput.value = "";
+    clearBibleTextSearch();
+    clearDirtyState();
+    persistUiState();
+    render();
+    syncBrowserHistory();
+    return;
+  }
   await switchModule(moduleName);
 }
 
