@@ -158,6 +158,168 @@ def compact_title_key(title: str) -> str:
     return re.sub(r"\s+", " ", normalize_marker_title(title)).lower()
 
 
+def compact_db_key(value: str) -> str:
+    normalized = normalize_text(value).lower()
+    normalized = re.sub(r"[‘’“”\"']", "", normalized)
+    return re.sub(r"[^0-9a-z가-힣]+", "", normalized)
+
+
+def db_title_variants(title: str) -> set[str]:
+    normalized = normalize_marker_title(title).lower()
+    compacted = compact_db_key(normalized)
+    variants = {normalized, compacted}
+
+    hymn_with_title = re.match(r"^(?:찬\s*)?(\d{1,3})(?:\s*장)?\s+(.+)$", normalized)
+    if hymn_with_title:
+        variants.add(f"hymn:{hymn_with_title.group(1)}")
+        variants.add(hymn_with_title.group(2).strip())
+        variants.add(compact_db_key(hymn_with_title.group(2)))
+
+    hymn_only = re.match(r"^찬\s*(\d{1,3})\s*장?$", normalized)
+    if hymn_only:
+        variants.add(f"hymn:{hymn_only.group(1)}")
+
+    for part in re.split(r"[()]", normalized):
+        part = part.strip()
+        if part:
+            variants.add(part)
+            variants.add(compact_db_key(part))
+    return {variant for variant in variants if variant}
+
+
+def fetch_all_rows(base_url: str, key: str, table: str, query: dict[str, str]) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    offset = 0
+    page_size = 1000
+    while True:
+        page_query = dict(query)
+        page_query["limit"] = str(page_size)
+        page_query["offset"] = str(offset)
+        page = import_notion_setlist._api_request(base_url, key, "GET", table, page_query)
+        rows.extend(page)
+        if len(page) < page_size:
+            break
+        offset += page_size
+    return rows
+
+
+def build_db_song_alias_index(base_url: str, key: str) -> dict[str, set[str]]:
+    songs = fetch_all_rows(
+        base_url,
+        key,
+        "mindex_songs",
+        {"select": "id,title,subtitle,original_title,hymn_no"},
+    )
+    versions = fetch_all_rows(
+        base_url,
+        key,
+        "mindex_song_versions",
+        {"select": "canonical_song_id,hymn_no,subtitle,original_title,version_label,curated_version_name"},
+    )
+    alias: dict[str, set[str]] = {}
+
+    def add(value: str, song_id: str | None) -> None:
+        if not value or not song_id:
+            return
+        alias.setdefault(value, set()).add(song_id)
+
+    for song in songs:
+        song_id = str(song.get("id") or "")
+        for field in ("title", "subtitle", "original_title"):
+            for variant in db_title_variants(str(song.get(field) or "")):
+                add(variant, song_id)
+        hymn_no = str(song.get("hymn_no") or "").strip()
+        if hymn_no:
+            add(f"hymn:{hymn_no}", song_id)
+
+    for version in versions:
+        song_id = str(version.get("canonical_song_id") or "")
+        for field in ("subtitle", "original_title", "version_label", "curated_version_name"):
+            value = str(version.get(field) or "").strip()
+            if value in {"새찬송가", "통일찬송가"}:
+                continue
+            for variant in db_title_variants(value):
+                add(variant, song_id)
+        hymn_no = str(version.get("hymn_no") or "").strip()
+        if hymn_no:
+            add(f"hymn:{hymn_no}", song_id)
+
+    return alias
+
+
+def resolve_db_song_ids(title: str, alias: dict[str, set[str]]) -> set[str]:
+    matches: set[str] = set()
+    for variant in db_title_variants(title):
+        matches.update(alias.get(variant, set()))
+    return matches
+
+
+def db_candidate_keys(service_date: str, title: str, alias: dict[str, set[str]]) -> set[tuple[str, str]]:
+    song_ids = resolve_db_song_ids(title, alias)
+    if song_ids:
+        return {(service_date, f"song:{song_id}") for song_id in song_ids}
+    return {(service_date, f"title:{compact_db_key(title)}")}
+
+
+def db_baseline_keys(base_url: str, key: str, alias: dict[str, set[str]]) -> set[tuple[str, str]]:
+    sources = fetch_all_rows(
+        base_url,
+        key,
+        "mindex_worship_import_sources",
+        {"select": "id,source_name,service_date", "source_kind": "eq.setlist"},
+    )
+    source_by_id = {
+        str(source.get("id")): source
+        for source in sources
+        if str(source.get("source_name") or "") != SOURCE_NAME
+    }
+    baseline: set[tuple[str, str]] = set()
+    source_ids = list(source_by_id)
+    for start in range(0, len(source_ids), 100):
+        ids = ",".join(source_ids[start:start + 100])
+        candidates = fetch_all_rows(
+            base_url,
+            key,
+            "mindex_worship_import_candidates",
+            {"select": "import_source_id,raw_title", "import_source_id": f"in.({ids})"},
+        )
+        for candidate in candidates:
+            source = source_by_id.get(str(candidate.get("import_source_id")))
+            if not source:
+                continue
+            service_date = str(source.get("service_date") or "")
+            title = str(candidate.get("raw_title") or "")
+            baseline.update(db_candidate_keys(service_date, title, alias))
+    return baseline
+
+
+def filter_missing_against_db_baseline(
+    decks: list[ExtractedDeck],
+    baseline_keys: set[tuple[str, str]],
+    alias: dict[str, set[str]],
+) -> list[ExtractedDeck]:
+    filtered: list[ExtractedDeck] = []
+    for deck in decks:
+        entries = [
+            entry
+            for entry in deck.entries
+            if db_candidate_keys(deck.service_date.isoformat(), entry.title, alias).isdisjoint(baseline_keys)
+        ]
+        if not entries:
+            continue
+        filtered.append(ExtractedDeck(
+            path=deck.path,
+            relative_path=deck.relative_path,
+            service_date=deck.service_date,
+            source_type_id=deck.source_type_id,
+            slide_count=deck.slide_count,
+            entries=entries,
+            excluded_count=deck.excluded_count + len(deck.entries) - len(entries),
+            warning_count=deck.warning_count,
+        ))
+    return filtered
+
+
 def baseline_keys_from_setlist(path: Path, through: date | None) -> set[tuple[str, str, str]]:
     text = path.read_text(encoding="utf-8")
     sections = import_notion_setlist.parse_setlists.parse_text(text)
@@ -529,6 +691,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("root", nargs="?", default="/Users/parkjihun/Downloads/26-3층")
     parser.add_argument("--baseline", help="기존 콘티 텍스트와 비교해 누락된 항목만 반영")
+    parser.add_argument("--db-baseline", action="store_true", help="DB canonical song 기준으로 기존 archive와 비교")
     parser.add_argument("--through", help="이 날짜까지 비교/반영 (YYYY-MM-DD)")
     parser.add_argument("--apply", action="store_true", help="archive DB에 반영")
     return parser.parse_args()
@@ -545,6 +708,10 @@ def main() -> None:
         through = date.fromisoformat(args.through) if args.through else None
         baseline_keys = baseline_keys_from_setlist(Path(args.baseline), through)
         decks = filter_missing_against_baseline(decks, baseline_keys, through)
+    if args.db_baseline:
+        base_url, key = import_notion_setlist.read_config()
+        alias = build_db_song_alias_index(base_url, key)
+        decks = filter_missing_against_db_baseline(decks, db_baseline_keys(base_url, key, alias), alias)
     summarize(decks)
     if not args.apply:
         print("DRY-RUN: DB 반영하지 않았습니다.")
