@@ -1471,16 +1471,16 @@ def main() -> int:
                     """
                 )
                 if (
-                    service_default_state["selectedTypeId"] == "__list"
-                    and not service_default_state["hasDashboard"]
-                    and service_default_state["hasAllList"]
-                    and service_default_state["title"] == "전체 예배"
-                    and service_default_state["activeWeekRows"] == 0
-                    and service_default_state["activeListRows"] == 1
+                    service_default_state["selectedTypeId"] == "__week"
+                    and service_default_state["hasDashboard"]
+                    and not service_default_state["hasAllList"]
+                    and service_default_state["title"] == "이번 주 예배"
+                    and service_default_state["activeWeekRows"] == 1
+                    and service_default_state["activeListRows"] == 0
                 ):
-                    pass_("service-default-opens-all-list", json.dumps(service_default_state, ensure_ascii=False))
+                    pass_("service-default-opens-week-board", json.dumps(service_default_state, ensure_ascii=False))
                 else:
-                    fail("service-default-opens-all-list", json.dumps(service_default_state, ensure_ascii=False))
+                    fail("service-default-opens-week-board", json.dumps(service_default_state, ensure_ascii=False))
                 page.evaluate("() => { resetHomeState(); render(); }")
                 page.wait_for_function("() => document.body.dataset.module === 'home'", timeout=5000)
 
@@ -2075,8 +2075,18 @@ def main() -> int:
                 else:
                     fail("global-search-deep-matching", json.dumps(global_search_deep_state, ensure_ascii=False))
 
-                page.fill("#searchInput", "")
-                page.wait_for_selector("[data-service-list]", timeout=5000)
+                page.evaluate(
+                    """
+                    async () => {
+                      await switchModule('service');
+                      state.search = '';
+                      refs.searchInput.value = '';
+                      renderServiceList();
+                    }
+                    """
+                )
+                page.wait_for_function("() => document.body.dataset.module === 'service'", timeout=5000)
+                page.wait_for_selector(".service-sidebar-head", timeout=5000)
 
                 service_sidebar_gap = page.evaluate(
                     """
