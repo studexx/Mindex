@@ -1546,7 +1546,7 @@ def main() -> int:
                     })()
                     """
                 )
-                expected_topbar_order = ["홈", "예배", "말씀", "찬양", "교회력", "참고자료"]
+                expected_topbar_order = ["예배", "말씀", "찬양", "교회력", "참고자료"]
                 if (
                     topbar_state["order"] == expected_topbar_order
                     and topbar_state["active"] == "scripture"
@@ -1572,16 +1572,17 @@ def main() -> int:
                 else:
                     fail("navigation-rail-does-not-toggle", json.dumps(nav_repeat_state, ensure_ascii=False))
 
-                page.click('.nav-rail [data-home-module="home"]')
+                page.click("#brandNameHome")
                 page.wait_for_function("() => document.body.dataset.module === 'home'", timeout=5000)
                 home_rail_state = page.evaluate(
                     """() => ({
                       module: document.body.dataset.module,
                       collapsed: document.body.classList.contains('sidebar-collapsed'),
-                      active: document.querySelector('.nav-rail .nav-rail-tab.active')?.dataset.homeModule || ''
+                      active: document.querySelector('.nav-rail .nav-rail-tab.active')?.dataset.homeModule || '',
+                      homeRailButton: Boolean(document.querySelector('.nav-rail [data-home-module="home"]'))
                     })"""
                 )
-                if home_rail_state == {"module": "home", "collapsed": False, "active": "home"}:
+                if home_rail_state == {"module": "home", "collapsed": False, "active": "", "homeRailButton": False}:
                     pass_("navigation-rail-home", json.dumps(home_rail_state, ensure_ascii=False))
                 else:
                     fail("navigation-rail-home", json.dumps(home_rail_state, ensure_ascii=False))
