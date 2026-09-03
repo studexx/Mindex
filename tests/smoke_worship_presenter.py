@@ -530,11 +530,19 @@ def main() -> int:
                           && saveRect.bottom <= topbarRectForTheme.bottom,
                         saveOutsideRightRail: Boolean(saveRect && sidebarRect)
                           && saveRect.right <= sidebarRect.left,
+                        saveInRightRail: Boolean(saveRect && sidebarRect)
+                          && saveRect.left >= sidebarRect.right - (Math.round(parseFloat(getComputedStyle(document.body).getPropertyValue('--right-rail-w')) || 0) + 1)
+                          && saveRect.right <= sidebarRect.right + 1
+                          && saveRect.top >= sidebarRect.top,
                         themeInTopbar: Boolean(themeRect && topbarRectForTheme)
                           && themeRect.top >= topbarRectForTheme.top
                           && themeRect.bottom <= topbarRectForTheme.bottom,
                         themeOutsideRightRail: Boolean(themeRect && sidebarRect)
                           && themeRect.right <= sidebarRect.left,
+                        themeInRightRail: Boolean(themeRect && sidebarRect)
+                          && themeRect.left >= sidebarRect.right - (Math.round(parseFloat(getComputedStyle(document.body).getPropertyValue('--right-rail-w')) || 0) + 1)
+                          && themeRect.right <= sidebarRect.right + 1
+                          && themeRect.top >= sidebarRect.top,
                         headerToggleRemoved: !headerToggle,
                         presenterHeaderRemoved: !presenterHeader,
                         rightSidebarHeaderRemoved: !rightSidebarHead,
@@ -581,10 +589,12 @@ def main() -> int:
                     and not right_sidebar_toggle_state["before"]["saveHidden"]
                     and right_sidebar_toggle_state["before"]["saveVisible"]
                     and right_sidebar_toggle_state["before"]["themeVisible"]
-                    and right_sidebar_toggle_state["before"]["saveInTopbar"]
-                    and right_sidebar_toggle_state["before"]["saveOutsideRightRail"]
-                    and right_sidebar_toggle_state["before"]["themeInTopbar"]
-                    and right_sidebar_toggle_state["before"]["themeOutsideRightRail"]
+                    and not right_sidebar_toggle_state["before"]["saveInTopbar"]
+                    and not right_sidebar_toggle_state["before"]["saveOutsideRightRail"]
+                    and right_sidebar_toggle_state["before"]["saveInRightRail"]
+                    and not right_sidebar_toggle_state["before"]["themeInTopbar"]
+                    and not right_sidebar_toggle_state["before"]["themeOutsideRightRail"]
+                    and right_sidebar_toggle_state["before"]["themeInRightRail"]
                     and right_sidebar_toggle_state["before"]["headerToggleRemoved"]
                     and right_sidebar_toggle_state["before"]["presenterHeaderRemoved"]
                     and right_sidebar_toggle_state["before"]["rightSidebarHeaderRemoved"]

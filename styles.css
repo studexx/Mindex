@@ -849,19 +849,55 @@ body[data-module="presenter"] #presenterRightSidebarBtn {
 body[data-module="presenter"] .right-sidebar {
   padding-top: var(--s4);
 }
+body[data-module="presenter"] .topbar-actions {
+  position: fixed;
+  top: var(--topbar-h);
+  right: 0;
+  z-index: 34;
+  display: grid;
+  width: var(--right-rail-w);
+  height: auto;
+  grid-auto-flow: row;
+  grid-auto-columns: var(--topbar-btn-size);
+  grid-auto-rows: var(--topbar-btn-size);
+  grid-template-columns: var(--topbar-btn-size);
+  align-content: start;
+  justify-content: center;
+  gap: 0;
+  padding: var(--s1) 0 0;
+  pointer-events: none;
+}
+body[data-module="presenter"] .topbar-actions > * {
+  pointer-events: auto;
+}
+body[data-module="presenter"] #newSongBtn {
+  display: none;
+}
+body[data-module="presenter"] #saveAllBtn {
+  order: 1;
+}
+body[data-module="presenter"] #themeBtn {
+  order: 2;
+}
 body[data-module="presenter"] #presenterRightSidebarBtn {
   display: none;
 }
 body[data-module="presenter"] #presenterRightSidebarBtn,
 body[data-module="presenter"] #saveAllBtn,
+body[data-module="presenter"] #themeBtn,
 body[data-module="presenter"] #presenterRightSidebarBtn:disabled,
-body[data-module="presenter"] #saveAllBtn:disabled {
+body[data-module="presenter"] #saveAllBtn:disabled,
+body[data-module="presenter"] #themeBtn:disabled {
   background: transparent;
   box-shadow: none;
   color: var(--sidebar-ink);
   opacity: 1;
 }
 body[data-module="presenter"] #presenterRightSidebarBtn:hover::before {
+  background: var(--sidebar-hover-bg);
+}
+body[data-module="presenter"] #saveAllBtn:hover::before,
+body[data-module="presenter"] #themeBtn:hover::before {
   background: var(--sidebar-hover-bg);
 }
 .svc-right-sidebar-toggle.is-active {
