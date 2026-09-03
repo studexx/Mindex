@@ -5850,6 +5850,7 @@ def main() -> int:
                           const bulkButtonRect = bulkButton?.getBoundingClientRect();
                           const bulkActionsRect = bulkButton?.closest('.svc-presenter-preparation-actions')?.getBoundingClientRect();
                           const bulkHint = rightSidebar?.querySelector('.svc-presenter-preparation-hint');
+                          const bulkExamples = rightSidebar?.querySelector('.svc-presenter-preparation-examples');
                           const controlGroups = [...document.querySelectorAll('.svc-board-subgroup-controls')];
                           const controls = [...document.querySelectorAll('.svc-board-subgroup-controls [data-service-item-field]')];
                           const firstControlStyle = controlGroups[0] ? getComputedStyle(controlGroups[0]) : null;
@@ -5892,6 +5893,7 @@ def main() -> int:
                             editableLabels,
                             bulkInput: Boolean(bulkInput),
                             bulkButton: Boolean(bulkButton),
+                            bulkExamples: Boolean(bulkExamples),
                             bulkPlaceholder: bulkInput?.getAttribute('placeholder') || '',
                             bulkHint: bulkHint?.textContent?.trim() || '',
                             bulkButtonWidth: Math.round(bulkButtonRect?.width || 0),
@@ -5934,6 +5936,7 @@ def main() -> int:
                         and presenter_header_input["fieldCount"] >= 12
                         and presenter_header_input["songFieldCount"] >= 5
                         and presenter_header_input["bulkInput"] == presenter_header_input["bulkButton"]
+                        and not presenter_header_input["bulkExamples"]
                         and "찬양1 곡명" in presenter_header_input["bulkPlaceholder"]
                         and presenter_header_input["bulkHint"] == "빈 줄 Enter로 반영"
                         and presenter_header_input["bulkButtonWidth"] >= presenter_header_input["bulkActionsWidth"] - 2

@@ -6128,51 +6128,6 @@ body[data-theme="dark"] .service-week-empty:hover {
   font-weight: var(--ui-meta-weight);
   line-height: 1.35;
 }
-.svc-presenter-preparation-examples {
-  border-radius: calc(var(--r) - 2px);
-  color: var(--ink-4);
-  font-size: var(--ui-label-size);
-  font-weight: var(--ui-label-weight);
-}
-.svc-presenter-preparation-examples summary {
-  display: inline-flex;
-  width: max-content;
-  height: 24px;
-  align-items: center;
-  border-radius: calc(var(--r) - 2px);
-  cursor: pointer;
-  list-style: none;
-  padding: 0 2px;
-}
-.svc-presenter-preparation-examples summary::-webkit-details-marker {
-  display: none;
-}
-.svc-presenter-preparation-examples summary::after {
-  content: "";
-  width: 5px;
-  height: 5px;
-  margin-left: 7px;
-  border-right: 1.5px solid currentColor;
-  border-bottom: 1.5px solid currentColor;
-  transform: rotate(45deg) translateY(-1px);
-}
-.svc-presenter-preparation-examples[open] summary::after {
-  transform: rotate(225deg) translate(-1px, -1px);
-}
-.svc-presenter-preparation-examples pre {
-  max-height: 156px;
-  overflow: auto;
-  margin: 2px 0 0;
-  border-radius: calc(var(--r) - 2px);
-  background: color-mix(in srgb, var(--panel-2) 30%, transparent);
-  color: var(--ink-3);
-  font: inherit;
-  font-size: var(--ui-meta-size);
-  font-weight: var(--ui-meta-weight);
-  line-height: 1.45;
-  padding: 8px 10px;
-  white-space: pre-wrap;
-}
 .svc-presenter-preparation-actions {
   display: flex;
   align-items: center;
@@ -6222,20 +6177,6 @@ body[data-theme="dark"] .service-week-empty:hover {
 }
 .svc-presenter-preparation-input--sidebar .svc-presenter-preparation-hint {
   color: var(--sidebar-label);
-}
-.svc-presenter-preparation-input--sidebar .svc-presenter-preparation-examples {
-  color: var(--sidebar-muted);
-  font-size: var(--ui-label-size);
-}
-.svc-presenter-preparation-input--sidebar .svc-presenter-preparation-examples summary {
-  height: 20px;
-}
-.svc-presenter-preparation-input--sidebar .svc-presenter-preparation-examples pre {
-  max-height: 120px;
-  background: color-mix(in srgb, var(--sidebar-active-bg) 58%, transparent);
-  color: var(--sidebar-muted);
-  font-size: var(--ui-label-size);
-  padding: 7px 8px;
 }
 .svc-presenter-preparation-apply--sidebar {
   justify-self: start;
