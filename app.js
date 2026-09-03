@@ -24956,7 +24956,6 @@ function renderPresenterHelpControl() {
     ["범위 밖 번호", "현재 화면 유지"],
     ["Esc Esc", "프레젠터 종료"],
     ["실시간 성구 송출", "해당 순서에서 성구 입력"],
-    ["출력 전체화면", "출력 창에서 F"],
   ];
   return `
     <details class="svc-presenter-help" data-presenter-help>
@@ -24966,7 +24965,7 @@ function renderPresenterHelpControl() {
       <div class="svc-presenter-help-panel" role="dialog" aria-label="${escapeAttr(uiText("presenter.help.title"))}">
         <div class="svc-presenter-help-head">
           <strong>${escapeHtml(uiText("presenter.help.title"))}</strong>
-          <small>브라우저 전체화면은 출력 창에서 직접 F를 눌러 적용합니다</small>
+          <small>출력 창은 앱 제어로만 전체화면 전환합니다</small>
         </div>
         <dl>
           ${rows.map(([key, value]) => `

@@ -7227,18 +7227,22 @@ def main() -> int:
                         return Promise.resolve();
                       };
                       const before = JSON.parse(localStorage.getItem('mindex.presenter.state') || '{}').index;
+                      const fEvent = new KeyboardEvent('keydown', { key: 'f', bubbles: true, cancelable: true });
+                      const fDispatched = window.dispatchEvent(fEvent);
+                      await new Promise((resolve) => setTimeout(resolve, 80));
                       window.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true }));
                       await new Promise((resolve) => setTimeout(resolve, 80));
                       window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
                       await new Promise((resolve) => setTimeout(resolve, 80));
                       const after = JSON.parse(localStorage.getItem('mindex.presenter.state') || '{}').index;
                       document.documentElement.requestFullscreen = originalRequestFullscreen;
-                      return { requestCalls, before, after };
+                      return { requestCalls, before, after, fPrevented: !fDispatched || fEvent.defaultPrevented };
                     }
                     """
                 )
                 if (
                     output_fullscreen_key_state["requestCalls"] == 0
+                    and output_fullscreen_key_state["fPrevented"]
                     and output_fullscreen_key_state["after"] > output_fullscreen_key_state["before"]
                 ):
                     pass_("presenter-output-enter-space-fullscreen", json.dumps(output_fullscreen_key_state, ensure_ascii=False))

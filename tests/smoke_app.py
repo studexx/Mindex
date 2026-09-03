@@ -5377,8 +5377,9 @@ def main() -> int:
                         and presenter_terms["helpLabel"] == "도움말"
                         and "Esc Esc" in presenter_terms["helpText"]
                         and "실시간 성구 송출" in presenter_terms["helpText"]
-                        and "브라우저 전체화면은 출력 창에서 직접 F를 눌러 적용합니다" in presenter_terms["helpText"]
-                        and "출력 전체화면 출력 창에서 F" in presenter_terms["helpText"]
+                        and "출력 창은 앱 제어로만 전체화면 전환합니다" in presenter_terms["helpText"]
+                        and "브라우저 전체화면" not in presenter_terms["helpText"]
+                        and "출력 창에서 F" not in presenter_terms["helpText"]
                         and "번호 + Enter" in presenter_terms["helpText"]
                         and "0 + Enter" in presenter_terms["helpText"]
                         and "범위 밖 번호 현재 화면 유지" in presenter_terms["helpText"]

@@ -3273,9 +3273,8 @@ function initPresenterOutputCore() {
     }
   });
   window.addEventListener("keydown", (event) => {
-    if (event.key.toLowerCase() === "f") {
+    if (!event.metaKey && !event.ctrlKey && !event.altKey && event.key.toLowerCase() === "f") {
       event.preventDefault();
-      document.documentElement.requestFullscreen?.().catch?.(() => {});
       return;
     }
     if (!event.metaKey && !event.ctrlKey && !event.altKey && /^\d$/.test(event.key)) {
@@ -3323,10 +3322,6 @@ function initPresenterOutputCore() {
       applyPresenterOutputActionLocally(action);
     }
   });
-}
-
-function requestLocalPresenterFullscreen() {
-  document.documentElement.requestFullscreen?.().catch?.(() => {});
 }
 
 function presenterOutputKeyAction(event) {
