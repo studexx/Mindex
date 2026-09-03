@@ -3529,15 +3529,15 @@ body[data-module="presenter"] .detail-pane {
 .service-sidebar-date-group {
   display: grid;
   min-width: 0;
-  grid-template-columns: minmax(58px, 68px) minmax(0, 1fr);
-  column-gap: 9px;
+  grid-template-columns: minmax(62px, 74px) minmax(0, 1fr);
+  column-gap: 12px;
   align-items: start;
 }
 .service-sidebar-date-head {
   display: flex;
   min-height: 18px;
   align-items: center;
-  padding: 5px 0 0 var(--sidebar-item-pad-x);
+  padding: 7px 0 0 var(--sidebar-item-pad-x);
   color: var(--accent);
 }
 .service-sidebar-date-head span {
@@ -3567,11 +3567,12 @@ body[data-module="presenter"] .detail-pane {
 .service-sidebar-card-row {
   display: grid;
   min-width: 0;
-  grid-template-columns: minmax(0, 1fr) 24px;
+  min-height: 36px;
+  grid-template-columns: minmax(0, 1fr) 28px;
   align-items: center;
-  gap: 3px;
+  gap: 6px;
   border-radius: var(--r);
-  padding: 0 3px 0 8px;
+  padding: 2px 8px 2px 10px;
 }
 .service-sidebar-card-row + .service-sidebar-card-row {
   margin-top: 3px;
@@ -3583,9 +3584,9 @@ body[data-module="presenter"] .detail-pane {
   background: var(--sidebar-active-bg);
 }
 .service-sidebar-card--compact {
-  min-height: 31px;
-  grid-template-columns: minmax(0, 1fr) auto;
-  padding: 5px 0;
+  min-height: 32px;
+  grid-template-columns: minmax(0, 1fr);
+  padding: 6px 0;
 }
 .service-sidebar-card-row:hover .service-sidebar-card--compact,
 .service-sidebar-card-row.active .service-sidebar-card--compact {
@@ -3593,8 +3594,8 @@ body[data-module="presenter"] .detail-pane {
 }
 .service-sidebar-presenter {
   display: inline-flex;
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   align-items: center;
   justify-content: center;
   border: 0;
