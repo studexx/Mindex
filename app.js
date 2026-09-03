@@ -22535,7 +22535,6 @@ function renderWorshipSetlistArchiveEntry(entry) {
       <header>
         <div class="svc-setlist-entry-title">
           <strong>${escapeHtml(source.service_date || "날짜 없음")} · ${escapeHtml(typeName)}</strong>
-          <span>${escapeHtml(source.source_name || source.source_kind || "source")}</span>
         </div>
         <div class="svc-setlist-entry-meta">
           <span>${escapeHtml(status)}</span>
@@ -22543,9 +22542,9 @@ function renderWorshipSetlistArchiveEntry(entry) {
         </div>
       </header>
       ${entry.candidates.length ? `
-        <ol class="svc-setlist-song-list">
+        <ul class="svc-setlist-song-list">
           ${entry.candidates.map(renderWorshipSetlistCandidate).join("")}
-        </ol>
+        </ul>
       ` : `<p class="svc-setlist-empty">가사 입력용 찬양/특송 후보가 없습니다.</p>`}
     </article>`;
 }

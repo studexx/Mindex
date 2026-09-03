@@ -3840,8 +3840,9 @@ body[data-module="presenter"] .detail-pane {
   display: grid;
   min-width: 0;
   gap: 5px;
+  list-style: none;
   margin: 0;
-  padding-left: 20px;
+  padding: 0;
 }
 .svc-setlist-song-list li {
   min-width: 0;
