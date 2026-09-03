@@ -378,7 +378,7 @@ body.sidebar-collapsed .brand-home {
   font-size: 13px;
   font-weight: 600;
   line-height: 1;
-  padding: 0 36px 0 16px;
+  padding: 0 16px;
   transition: background .14s ease, color .14s ease, transform .08s ease;
 }
 .page-tab[draggable="true"] { cursor: grab; }
@@ -393,6 +393,10 @@ body.sidebar-collapsed .brand-home {
 .page-tab:not(.active):hover {
   background: var(--tab-hover-bg);
   color: var(--ink);
+}
+.page-tab:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }
 .page-tab:not(:disabled):active {
   transform: translateY(1px);
@@ -417,8 +421,9 @@ body.sidebar-collapsed .brand-home {
   background: transparent;
   color: var(--ink-3);
   cursor: pointer;
+  padding: 0;
   transform: translateY(-50%);
-  transition: background .14s ease, color .14s ease, transform .08s ease;
+  transition: none;
 }
 .page-tab:hover .page-tab-close,
 .page-tab:focus-within .page-tab-close {
@@ -428,12 +433,9 @@ body.sidebar-collapsed .brand-home {
   background: var(--tab-hover-bg);
   color: var(--ink);
 }
-.page-tab-close:not(:disabled):active {
-  transform: translateY(calc(-50% + 1px)) scale(.96);
-}
 .page-tab-close svg {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   stroke-width: 1.5;
 }
 .icon-btn.page-tab-add {
@@ -461,8 +463,8 @@ body.sidebar-collapsed .brand-home {
   color: var(--ink);
 }
 .page-tab-add:hover::before { background: var(--tab-hover-bg); }
-.page-tab-add:not(:disabled):active { transform: translateY(1px) scale(.98); }
-.page-tab-add:not(:disabled):active::before { background: color-mix(in srgb, var(--tab-hover-bg) 70%, var(--line)); }
+.page-tab-add:not(:disabled):active { transform: none; }
+.page-tab-add:not(:disabled):active::before { background: var(--tab-hover-bg); }
 .page-tab-add svg {
   position: relative;
   width: 16px;
@@ -754,6 +756,13 @@ body[data-module="praise"] .list-filter {
 .btn:not(:disabled):active, .icon-btn:not(:disabled):active {
   transform: translateY(1px) scale(.98);
 }
+.icon-btn.page-tab-add:hover,
+.icon-btn.page-tab-add:not(:disabled):active {
+  background: transparent;
+  color: var(--ink);
+  transform: none;
+}
+.icon-btn.page-tab-add:not(:disabled):active::before { background: var(--tab-hover-bg); }
 .btn.primary, .icon-btn.primary { background: var(--accent); color: var(--accent-ink); }
 .btn.secondary, .icon-btn.secondary { background: color-mix(in srgb, var(--panel) 86%, var(--bg)); }
 .btn.subtle, .icon-btn.subtle { background: transparent; color: var(--ink-3); }

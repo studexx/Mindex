@@ -1191,6 +1191,7 @@ function bindStaticEvents() {
   });
   refs.pageTabAddBtn?.addEventListener("click", openNewPageTab);
   refs.pageTabs?.addEventListener("click", handlePageTabClick);
+  refs.pageTabs?.addEventListener("keydown", handlePageTabKeydown);
   refs.pageTabs?.addEventListener("dragstart", handlePageTabDragStart);
   refs.pageTabs?.addEventListener("dragover", handlePageTabDragOver);
   refs.pageTabs?.addEventListener("drop", handlePageTabDrop);
@@ -13197,10 +13198,10 @@ function renderPageTabs() {
       ? `<button class="page-tab-close" type="button" data-page-tab-close="${escapeAttr(String(index))}" aria-label="Close ${escapeAttr(tab.label)}"><i data-lucide="x"></i></button>`
       : "";
     return `
-      <button class="page-tab${active ? " active" : ""}" type="button" role="tab" draggable="${state.pageTabs.length > 1 ? "true" : "false"}" data-page-tab-index="${escapeAttr(String(index))}" aria-selected="${active ? "true" : "false"}" ${active ? 'aria-current="page"' : ""}>
+      <div class="page-tab${active ? " active" : ""}" role="tab" tabindex="0" draggable="${state.pageTabs.length > 1 ? "true" : "false"}" data-page-tab-index="${escapeAttr(String(index))}" aria-selected="${active ? "true" : "false"}" ${active ? 'aria-current="page"' : ""}>
         <span>${escapeHtml(tab.label)}</span>
         ${close}
-      </button>
+      </div>
     `;
   }).join("");
   if (addButton) refs.pageTabs.appendChild(addButton);
@@ -13280,6 +13281,15 @@ async function handlePageTabClick(event) {
   }
   const tab = event.target.closest("[data-page-tab-index]");
   if (!tab) return;
+  await activatePageTab(Number(tab.dataset.pageTabIndex));
+}
+
+async function handlePageTabKeydown(event) {
+  if (event.target.closest("[data-page-tab-close]")) return;
+  if (event.key !== "Enter" && event.key !== " ") return;
+  const tab = event.target.closest("[data-page-tab-index]");
+  if (!tab) return;
+  event.preventDefault();
   await activatePageTab(Number(tab.dataset.pageTabIndex));
 }
 
