@@ -21745,13 +21745,15 @@ function renderPresenterSidebarPreparationInput(service) {
   const draft = state.presenterPreparationDrafts[service.id] || "";
   const applying = state.presenterPreparationApplyingServiceIds.has(service.id);
   const examples = presenterPreparationPlaceholderForService(service);
+  const placeholder = examples || "찬양1 곡명\n대표기도 이름 직분\n성경봉독 히 10:38-39\n말씀 \"설교 제목\"";
   return `
     <section class="service-sidebar-section service-sidebar-section--preparation-input" aria-label="예배 입력 붙여넣기">
       <div class="service-sidebar-head">
         <span>예배 입력</span>
       </div>
       <div class="svc-presenter-preparation-input svc-presenter-preparation-input--sidebar">
-        <textarea class="svc-presenter-preparation-text svc-presenter-preparation-text--sidebar" data-presenter-preparation-input data-service-id="${escapeAttr(service.id)}" rows="4" placeholder="여기에 붙여넣기" aria-label="예배 입력 붙여넣기">${escapeHtml(draft)}</textarea>
+        <textarea class="svc-presenter-preparation-text svc-presenter-preparation-text--sidebar" data-presenter-preparation-input data-service-id="${escapeAttr(service.id)}" rows="4" placeholder="${escapeAttr(placeholder)}" aria-label="예배 입력 붙여넣기">${escapeHtml(draft)}</textarea>
+        <small class="svc-presenter-preparation-hint">빈 줄에서 Enter 한 번 더 누르면 반영됩니다.</small>
         ${renderPresenterPreparationExamples(examples)}
         <div class="svc-presenter-preparation-actions">
           <button class="svc-presenter-preparation-apply svc-presenter-preparation-apply--sidebar" type="button" data-presenter-preparation-apply data-service-id="${escapeAttr(service.id)}" ${applying ? "disabled" : ""}>
@@ -24992,6 +24994,7 @@ function renderPresenterServiceInputRail(service) {
   const draft = state.presenterPreparationDrafts[service.id] || "";
   const examples = presenterPreparationPlaceholderForService(service);
   const applying = state.presenterPreparationApplyingServiceIds.has(service.id);
+  const placeholder = examples || "찬양1 곡명\n대표기도 이름 직분\n성경봉독 히 10:38-39\n말씀 \"설교 제목\"";
   return `
     <aside class="svc-presenter-input-rail" aria-label="예배 입력">
       <header class="svc-presenter-input-rail-head">
@@ -24999,7 +25002,8 @@ function renderPresenterServiceInputRail(service) {
         <small>빠른 반영</small>
       </header>
       <section class="svc-presenter-preparation-input">
-        <textarea class="svc-presenter-preparation-text" data-presenter-preparation-input data-service-id="${escapeAttr(service.id)}" rows="5" placeholder="여기에 붙여넣기" aria-label="예배 준비 입력">${escapeHtml(draft)}</textarea>
+        <textarea class="svc-presenter-preparation-text" data-presenter-preparation-input data-service-id="${escapeAttr(service.id)}" rows="5" placeholder="${escapeAttr(placeholder)}" aria-label="예배 준비 입력">${escapeHtml(draft)}</textarea>
+        <small class="svc-presenter-preparation-hint">빈 줄에서 Enter 한 번 더 누르면 반영됩니다.</small>
         ${renderPresenterPreparationExamples(examples)}
         <div class="svc-presenter-preparation-actions">
           <button class="svc-presenter-preparation-apply" type="button" data-presenter-preparation-apply data-service-id="${escapeAttr(service.id)}" ${applying ? "disabled" : ""}>

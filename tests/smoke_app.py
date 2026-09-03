@@ -5846,6 +5846,10 @@ def main() -> int:
                             })
                             .filter(Boolean);
                           const topbarRect = document.querySelector('.topbar-actions')?.getBoundingClientRect();
+                          const bulkInputRect = bulkInput?.getBoundingClientRect();
+                          const bulkButtonRect = bulkButton?.getBoundingClientRect();
+                          const bulkActionsRect = bulkButton?.closest('.svc-presenter-preparation-actions')?.getBoundingClientRect();
+                          const bulkHint = rightSidebar?.querySelector('.svc-presenter-preparation-hint');
                           const controlGroups = [...document.querySelectorAll('.svc-board-subgroup-controls')];
                           const controls = [...document.querySelectorAll('.svc-board-subgroup-controls [data-service-item-field]')];
                           const firstControlStyle = controlGroups[0] ? getComputedStyle(controlGroups[0]) : null;
@@ -5888,6 +5892,11 @@ def main() -> int:
                             editableLabels,
                             bulkInput: Boolean(bulkInput),
                             bulkButton: Boolean(bulkButton),
+                            bulkPlaceholder: bulkInput?.getAttribute('placeholder') || '',
+                            bulkHint: bulkHint?.textContent?.trim() || '',
+                            bulkButtonWidth: Math.round(bulkButtonRect?.width || 0),
+                            bulkActionsWidth: Math.round(bulkActionsRect?.width || 0),
+                            bulkInputWidth: Math.round(bulkInputRect?.width || 0),
                             bulkStatus,
                             bulkDraft: state.presenterPreparationDrafts[service?.id || ''] || '',
                             rightRailDesktop: document.body.dataset.module === 'presenter' && window.innerWidth > 900,
@@ -5925,6 +5934,10 @@ def main() -> int:
                         and presenter_header_input["fieldCount"] >= 12
                         and presenter_header_input["songFieldCount"] >= 5
                         and presenter_header_input["bulkInput"] == presenter_header_input["bulkButton"]
+                        and "찬양1 곡명" in presenter_header_input["bulkPlaceholder"]
+                        and "Enter 한 번 더" in presenter_header_input["bulkHint"]
+                        and presenter_header_input["bulkButtonWidth"] >= presenter_header_input["bulkActionsWidth"] - 2
+                        and presenter_header_input["bulkButtonWidth"] >= presenter_header_input["bulkInputWidth"] - 2
                         and (
                             presenter_header_input["bulkStatus"] == ""
                             or presenter_header_input["bulkStatus"] in ("불러오는 중", "입력 완료", "입력 없음")
