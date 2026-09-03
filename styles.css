@@ -6121,13 +6121,6 @@ body[data-theme="dark"] .service-week-empty:hover {
 }
 .svc-presenter-preparation-text::placeholder { color: var(--placeholder-ink); font-weight: var(--ui-meta-weight); }
 .svc-presenter-preparation-text:focus { background: color-mix(in srgb, var(--panel-2) 68%, transparent); }
-.svc-presenter-preparation-hint {
-  display: block;
-  color: var(--ink-4);
-  font-size: var(--ui-meta-size);
-  font-weight: var(--ui-meta-weight);
-  line-height: 1.35;
-}
 .svc-presenter-preparation-actions {
   display: flex;
   align-items: center;
@@ -6174,9 +6167,6 @@ body[data-theme="dark"] .service-week-empty:hover {
 }
 .svc-presenter-preparation-text--sidebar:focus {
   background: var(--sidebar-hover-bg);
-}
-.svc-presenter-preparation-input--sidebar .svc-presenter-preparation-hint {
-  color: var(--sidebar-label);
 }
 .svc-presenter-preparation-apply--sidebar {
   justify-self: start;

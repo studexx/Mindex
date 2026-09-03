@@ -21753,11 +21753,10 @@ function renderPresenterSidebarPreparationInput(service) {
       </div>
       <div class="svc-presenter-preparation-input svc-presenter-preparation-input--sidebar">
         <textarea class="svc-presenter-preparation-text svc-presenter-preparation-text--sidebar" data-presenter-preparation-input data-service-id="${escapeAttr(service.id)}" rows="4" placeholder="${escapeAttr(placeholder)}" aria-label="예배 입력 붙여넣기">${escapeHtml(draft)}</textarea>
-        <small class="svc-presenter-preparation-hint">Enter 두 번으로 반영</small>
         <div class="svc-presenter-preparation-actions">
           <button class="svc-presenter-preparation-apply svc-presenter-preparation-apply--sidebar" type="button" data-presenter-preparation-apply data-service-id="${escapeAttr(service.id)}" ${applying ? "disabled" : ""}>
             <i data-lucide="wand-sparkles"></i>
-            <span>${applying ? "반영 중" : "반영"}</span>
+            <span>${applying ? "반영 중" : "반영 (Enter 2번)"}</span>
           </button>
         </div>
       </div>
@@ -25002,11 +25001,10 @@ function renderPresenterServiceInputRail(service) {
       </header>
       <section class="svc-presenter-preparation-input">
         <textarea class="svc-presenter-preparation-text" data-presenter-preparation-input data-service-id="${escapeAttr(service.id)}" rows="5" placeholder="${escapeAttr(placeholder)}" aria-label="예배 준비 입력">${escapeHtml(draft)}</textarea>
-        <small class="svc-presenter-preparation-hint">Enter 두 번으로 반영</small>
         <div class="svc-presenter-preparation-actions">
           <button class="svc-presenter-preparation-apply" type="button" data-presenter-preparation-apply data-service-id="${escapeAttr(service.id)}" ${applying ? "disabled" : ""}>
             <i data-lucide="wand-sparkles"></i>
-            <span>${applying ? "반영 중" : "반영"}</span>
+            <span>${applying ? "반영 중" : "반영 (Enter 2번)"}</span>
           </button>
         </div>
       </section>

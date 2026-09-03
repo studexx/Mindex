@@ -5849,7 +5849,6 @@ def main() -> int:
                           const bulkInputRect = bulkInput?.getBoundingClientRect();
                           const bulkButtonRect = bulkButton?.getBoundingClientRect();
                           const bulkActionsRect = bulkButton?.closest('.svc-presenter-preparation-actions')?.getBoundingClientRect();
-                          const bulkHint = rightSidebar?.querySelector('.svc-presenter-preparation-hint');
                           const bulkExamples = rightSidebar?.querySelector('.svc-presenter-preparation-examples');
                           const controlGroups = [...document.querySelectorAll('.svc-board-subgroup-controls')];
                           const controls = [...document.querySelectorAll('.svc-board-subgroup-controls [data-service-item-field]')];
@@ -5895,7 +5894,7 @@ def main() -> int:
                             bulkButton: Boolean(bulkButton),
                             bulkExamples: Boolean(bulkExamples),
                             bulkPlaceholder: bulkInput?.getAttribute('placeholder') || '',
-                            bulkHint: bulkHint?.textContent?.trim() || '',
+                            bulkButtonLabel: bulkButton?.textContent?.replace(/\s+/g, ' ').trim() || '',
                             bulkButtonWidth: Math.round(bulkButtonRect?.width || 0),
                             bulkActionsWidth: Math.round(bulkActionsRect?.width || 0),
                             bulkInputWidth: Math.round(bulkInputRect?.width || 0),
@@ -5938,7 +5937,7 @@ def main() -> int:
                         and presenter_header_input["bulkInput"] == presenter_header_input["bulkButton"]
                         and not presenter_header_input["bulkExamples"]
                         and "찬양1 곡명" in presenter_header_input["bulkPlaceholder"]
-                        and presenter_header_input["bulkHint"] == "Enter 두 번으로 반영"
+                        and presenter_header_input["bulkButtonLabel"] == "반영 (Enter 2번)"
                         and presenter_header_input["bulkButtonWidth"] >= presenter_header_input["bulkActionsWidth"] - 2
                         and presenter_header_input["bulkButtonWidth"] >= presenter_header_input["bulkInputWidth"] - 2
                         and (
