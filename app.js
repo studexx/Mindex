@@ -3466,6 +3466,7 @@ const WORSHIP_IMPORT_CANDIDATE_LIST_SELECT = [
   "import_source_id",
   "sort_order",
   "candidate_level",
+  "candidate_key",
   "raw_label",
   "raw_title",
   "raw_body",
@@ -22363,6 +22364,7 @@ function worshipSetlistArchiveCandidatesBySource() {
 function isSetlistPraiseCandidate(candidate = {}) {
   if (String(candidate.candidate_level || "").trim() !== "element") return false;
   const text = [
+    candidate.candidate_key,
     candidate.suggested_type,
     candidate.raw_label,
     candidate.raw_title,
@@ -22370,14 +22372,55 @@ function isSetlistPraiseCandidate(candidate = {}) {
   return text.toLowerCase().includes("praise") || /찬양|특송/.test(text);
 }
 
+function setlistCandidateServicePart(candidate = {}) {
+  const text = [candidate.raw_label, candidate.raw_title]
+    .map((value) => String(value || ""))
+    .join(" ");
+  if (/(?:^|\D)1\s*부/u.test(text)) return "sunday-first";
+  if (/(?:^|\D)2\s*부/u.test(text)) return "sunday-second";
+  if (/(?:^|\D)3\s*부/u.test(text)) return "sunday-main";
+  return "";
+}
+
+function setlistCandidateBelongsToSource(candidate = {}, source = {}) {
+  const part = setlistCandidateServicePart(candidate);
+  if (!part) return true;
+  return worshipAppServiceTypeId(source.service_type_id) === part;
+}
+
+function setlistCandidateDisplayOrder(candidate = {}) {
+  const key = String(candidate.candidate_key || "").trim();
+  const label = normalizeTitle(candidate.raw_label || "");
+  if (key === "praise" || label === "찬양") return 10;
+  if (key === "entrance_praise" || label.includes("입례")) return 15;
+  if (key === "special_song" || label.includes("특송")) return 30;
+  if (key === "offering" || label.includes("봉헌")) return 50;
+  if (key === "response_song" || label.includes("결단")) return 70;
+  if (key === "sending" || label.includes("파송") || label.includes("송영")) return 90;
+  if (key === "closing_visual" || label.includes("폐회")) return 100;
+  return 80;
+}
+
+function compareSetlistCandidatesForDisplay(a = {}, b = {}) {
+  return setlistCandidateDisplayOrder(a) - setlistCandidateDisplayOrder(b)
+    || (Number(a.sort_order) || 0) - (Number(b.sort_order) || 0);
+}
+
+function setlistCandidateMatchedSong(candidate = {}) {
+  if (candidate.suggested_song_id) return { id: candidate.suggested_song_id };
+  const title = String(candidate.raw_title || candidate.raw_label || "").trim();
+  return title ? findServicePraiseSong(title) : null;
+}
+
 function worshipSetlistArchiveEntries() {
   const candidatesBySource = worshipSetlistArchiveCandidatesBySource();
   return (state.worshipSetlistArchive.sources || []).map((source) => {
     const candidates = (candidatesBySource[source.id] || [])
       .filter(isSetlistPraiseCandidate)
-      .sort((a, b) => (Number(a.sort_order) || 0) - (Number(b.sort_order) || 0));
+      .filter((candidate) => setlistCandidateBelongsToSource(candidate, source))
+      .sort(compareSetlistCandidatesForDisplay);
     const needsReview = candidates.filter((candidate) => candidate.review_status === "needs_review").length;
-    const matched = candidates.filter((candidate) => candidate.suggested_song_id).length;
+    const matched = candidates.filter((candidate) => setlistCandidateMatchedSong(candidate)).length;
     return {
       source,
       candidates,
@@ -22510,7 +22553,7 @@ function renderWorshipSetlistArchiveEntry(entry) {
 function renderWorshipSetlistCandidate(candidate) {
   const title = String(candidate.raw_title || candidate.raw_label || "").trim() || "제목 없음";
   const label = String(candidate.raw_label || "").trim();
-  const matched = candidate.suggested_song_id ? "DB match" : "미매칭";
+  const matched = setlistCandidateMatchedSong(candidate) ? "DB match" : "미매칭";
   const review = candidate.review_status === "needs_review" ? "검토 필요" : "";
   return `
     <li>
