@@ -6086,7 +6086,13 @@ def main() -> int:
                             const candidateIndex = Number(candidate.dataset.serviceItemIndex);
                             const candidateItem = (state.serviceItems[candidateServiceId] || [])[candidateIndex];
                             const candidateService = state.services.find((service) => service.id === candidateServiceId);
+                            const rect = candidate.getBoundingClientRect();
                             return candidate.isConnected
+                              && refs.detailPane?.contains(candidate)
+                              && rect.width > 0
+                              && rect.height > 0
+                              && !candidate.disabled
+                              && !candidate.readOnly
                               && candidateItem
                               && !serviceItemRequiresSongSelection(candidateItem, candidateService)
                               && !isScriptureBodyServiceItem(candidateItem);
