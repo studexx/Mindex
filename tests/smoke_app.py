@@ -5938,7 +5938,7 @@ def main() -> int:
                         and presenter_header_input["bulkInput"] == presenter_header_input["bulkButton"]
                         and not presenter_header_input["bulkExamples"]
                         and "찬양1 곡명" in presenter_header_input["bulkPlaceholder"]
-                        and presenter_header_input["bulkHint"] == "빈 줄 Enter로 반영"
+                        and presenter_header_input["bulkHint"] == "Enter 두 번으로 반영"
                         and presenter_header_input["bulkButtonWidth"] >= presenter_header_input["bulkActionsWidth"] - 2
                         and presenter_header_input["bulkButtonWidth"] >= presenter_header_input["bulkInputWidth"] - 2
                         and (
