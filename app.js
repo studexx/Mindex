@@ -25385,20 +25385,6 @@ function presenterPreparationTargetLabel(key = "", service = null, content = "")
 function findPresenterPreparationProjectedItem(service, label) {
   const labelKey = compactSearchValue(label);
   const items = servicePrepEditorItems(service.id);
-  const exact = items.find((item) => compactSearchValue(item.label || "") === labelKey);
-  if (exact) return exact;
-  const dynamicPraise = createDynamicMainPraiseProjectedItem(service, label);
-  if (dynamicPraise) return dynamicPraise;
-  const numbered = labelKey.match(/^(.*?)(\d+)$/);
-  if (numbered) {
-    const baseKey = numbered[1];
-    const ordinal = Number(numbered[2]);
-    const matches = items.filter((item) => {
-      const itemKey = compactSearchValue(item.label || "");
-      return itemKey === baseKey || itemKey.replace(/\d+$/, "") === baseKey;
-    });
-    if (ordinal > 0 && matches[ordinal - 1]) return matches[ordinal - 1];
-  }
   if (labelKey === "기도" || labelKey === "대표기도") {
     return items.find((item) =>
       String(item._worshipSectionKey || "") === "prayer"
@@ -25424,6 +25410,20 @@ function findPresenterPreparationProjectedItem(service, label) {
         String(item._worshipSectionKey || "") === "sermon"
         && ["설교", "설교제목"].includes(compactSearchValue(item.label || ""))
       ));
+  }
+  const exact = items.find((item) => compactSearchValue(item.label || "") === labelKey);
+  if (exact) return exact;
+  const dynamicPraise = createDynamicMainPraiseProjectedItem(service, label);
+  if (dynamicPraise) return dynamicPraise;
+  const numbered = labelKey.match(/^(.*?)(\d+)$/);
+  if (numbered) {
+    const baseKey = numbered[1];
+    const ordinal = Number(numbered[2]);
+    const matches = items.filter((item) => {
+      const itemKey = compactSearchValue(item.label || "");
+      return itemKey === baseKey || itemKey.replace(/\d+$/, "") === baseKey;
+    });
+    if (ordinal > 0 && matches[ordinal - 1]) return matches[ordinal - 1];
   }
   return null;
 }
@@ -25888,6 +25888,7 @@ async function applyPresenterPreparationInput(serviceId = state.selectedServiceI
       textFieldUpdates.push({
         id: item.id,
         slotKey: serviceItemSlotKey(item),
+        sectionKey: item._worshipSectionKey || "",
         label: item.label,
         assignee: item.assignee,
         raw_title: item.raw_title,
@@ -25909,14 +25910,45 @@ async function applyPresenterPreparationInput(serviceId = state.selectedServiceI
       return;
     }
 
+    if (textFieldUpdates.length) {
+      items = items.filter((item) => {
+        const itemId = String(item.id || "");
+        const itemSlotKey = serviceItemSlotKey(item);
+        const itemSectionKey = String(item._worshipSectionKey || "").trim();
+        const itemLabelKey = compactSearchValue(item.label || "");
+        return !textFieldUpdates.some((update) => {
+          if (String(update.id || "") === itemId) return false;
+          const updateSectionKey = String(update.sectionKey || "").trim();
+          const updateLabelKey = compactSearchValue(update.label || "");
+          if (update.slotKey && itemSlotKey && update.slotKey === itemSlotKey) return true;
+          return Boolean(
+            updateSectionKey
+            && updateLabelKey
+            && updateSectionKey === itemSectionKey
+            && updateLabelKey === itemLabelKey,
+          );
+        });
+      });
+    }
+
     const projectedItems = projectWorshipServiceItemsFromTemplate(
       service,
       normalizeServiceItemsInCurrentOrder(items),
     );
     textFieldUpdates.forEach((update) => {
       const labelKey = compactSearchValue(update.label || "");
+      const sectionKey = String(update.sectionKey || "").trim();
       const indexes = [
         projectedItems.findIndex((item) => item.id === update.id),
+        projectedItems.findIndex((item) =>
+          update.slotKey
+          && serviceItemSlotKey(item) === update.slotKey
+          && (!sectionKey || String(item._worshipSectionKey || "").trim() === sectionKey)),
+        projectedItems.findIndex((item) =>
+          labelKey
+          && sectionKey
+          && compactSearchValue(item.label || "") === labelKey
+          && String(item._worshipSectionKey || "").trim() === sectionKey),
         projectedItems.findIndex((item) => update.slotKey && serviceItemSlotKey(item) === update.slotKey),
         projectedItems.findIndex((item) => labelKey && compactSearchValue(item.label || "") === labelKey),
       ];
@@ -25931,6 +25963,23 @@ async function applyPresenterPreparationInput(serviceId = state.selectedServiceI
       };
       markServiceItemSharedContentDirty(projectedItems[index], service);
       projectedItems[index]._worshipTemplatePlaceholder = false;
+    });
+    entries.forEach((entry) => {
+      const entryKey = compactSearchValue(entry.rawLabel || entry.label || "");
+      if (entryKey !== "기도" && entryKey !== "대표기도") return;
+      const contentParts = String(entry.content || "").split(/\s+\/\s+/);
+      const content = String(contentParts.shift() || "").trim();
+      const assignee = contentParts.join(" / ").trim() || content;
+      if (!assignee) return;
+      projectedItems.forEach((item) => {
+        const sectionKey = String(item._worshipSectionKey || "").trim();
+        const labelKey = compactSearchValue(item.label || "");
+        if (sectionKey !== "prayer" || !["기도", "대표기도"].includes(labelKey)) return;
+        item.assignee = assignee;
+        item._worshipElementTemplateModified = true;
+        item._worshipTemplatePlaceholder = false;
+        markServiceItemSharedContentDirty(item, service);
+      });
     });
     state.serviceItems[serviceId] = projectedItems;
     state.dirty.service = true;
