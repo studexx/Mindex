@@ -8058,7 +8058,7 @@ body.is-chromium .svc-slide-thumb-wrap.active:has(.svc-slide-thumb:focus-visible
   gap: 5px;
   overflow: hidden;
   border-radius: 5px;
-  background: color-mix(in srgb, var(--panel-2) 44%, transparent);
+  background: #000;
   color: #fff;
   container-type: size;
   contain: layout size paint;
