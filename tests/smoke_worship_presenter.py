@@ -448,6 +448,9 @@ def main() -> int:
                         title: panel?.querySelector('.svc-presenter-live-copy strong')?.textContent.trim() || '',
                         hasPreview: Boolean(preview),
                         hasEmptyPreview: Boolean(panel?.querySelector('.svc-presenter-live-preview-empty')),
+                        emptyPreviewBackground: panel?.querySelector('.svc-presenter-live-preview-empty')
+                          ? getComputedStyle(panel.querySelector('.svc-presenter-live-preview-empty')).backgroundColor
+                          : '',
                         previewRatio: previewRect?.height ? Number((previewRect.width / previewRect.height).toFixed(2)) : 0,
                         topHeight: Math.round(topRect?.height || 0),
                         mediaCount: panel?.querySelectorAll('audio, video').length || 0,
@@ -469,6 +472,7 @@ def main() -> int:
                     and live_panel_state["title"] == "송출 대기"
                     and live_panel_state["hasPreview"]
                     and live_panel_state["hasEmptyPreview"]
+                    and live_panel_state["emptyPreviewBackground"] == "rgb(0, 0, 0)"
                     and 1.72 <= live_panel_state["previewRatio"] <= 1.82
                     and 300 <= live_panel_state["topHeight"] <= 430
                     and live_panel_state["mediaCount"] == 0

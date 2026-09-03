@@ -6683,9 +6683,7 @@ textarea.svc-presenter-input-control--multiline {
   display: block;
   width: 100%;
   height: 100%;
-  background:
-    linear-gradient(135deg, transparent 0 46%, color-mix(in srgb, var(--ink-4) 30%, transparent) 46% 54%, transparent 54%),
-    color-mix(in srgb, var(--panel-2) 45%, transparent);
+  background: #000;
 }
 .svc-presenter-mini-label {
   flex: 0 0 auto;
