@@ -847,7 +847,7 @@ body[data-module="presenter"] #presenterRightSidebarBtn {
   display: none;
 }
 body[data-module="presenter"] .right-sidebar {
-  padding-top: var(--s1);
+  padding-top: 22px;
 }
 body[data-module="presenter"] #newSongBtn {
   display: none;
@@ -6608,7 +6608,7 @@ textarea.svc-presenter-input-control--multiline {
   padding: 1px 0 1px 10px;
 }
 .svc-presenter-live-panel.is-live {
-  background: color-mix(in srgb, #1f9d55 5%, transparent);
+  background: transparent;
 }
 .svc-presenter-live-copy {
   display: flex;
@@ -6666,7 +6666,7 @@ textarea.svc-presenter-input-control--multiline {
   aspect-ratio: 16 / 9;
   overflow: hidden;
   border-radius: calc(var(--r) - 2px);
-  background: color-mix(in srgb, var(--panel) 68%, #111);
+  background: #000;
 }
 .svc-presenter-live-preview .svc-slide-mini-output {
   width: 100%;
@@ -8272,9 +8272,7 @@ body.is-chromium .svc-slide-thumb.active:hover .svc-slide-thumb-frame {
   --presenter-output-muted: rgba(255, 255, 255, .64);
   --presenter-output-bar: rgba(0, 0, 0, .28);
   --presenter-output-stroke: transparent;
-  background:
-    radial-gradient(circle at 50% 36%, rgba(255,255,255,.08), transparent 28%),
-    var(--presenter-output-bg);
+  background: var(--presenter-output-bg);
 }
 .svc-slide-mini-output.no-chromakey.has-background {
   background:
@@ -8351,9 +8349,7 @@ body.is-chromium .svc-slide-thumb.active:hover .svc-slide-thumb-frame {
   will-change: transform;
 }
 .svc-slide-board--clean .svc-slide-thumb-frame {
-  background:
-    radial-gradient(circle at 50% 38%, rgba(255, 255, 255, .08), transparent 36%),
-    #050807;
+  background: #050807;
 }
 .svc-slide-board--formal .svc-slide-thumb-frame {
   background: #10120f;

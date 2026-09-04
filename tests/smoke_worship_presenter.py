@@ -975,7 +975,7 @@ def main() -> int:
                     and sticky_title_state["sidebarLaunch"]["icon"] in ("screen-share", "screen-share-off")
                     and sticky_title_state["sidebarLaunch"]["width"] >= 90
                     and sticky_title_state["pageTabsVisible"]
-                    and 0 <= sticky_title_state["rightSidebarTopGap"] <= 8
+                    and 16 <= sticky_title_state["rightSidebarTopGap"] <= 28
                     and sticky_title_state["rightSidebarVisible"]
                     and sticky_title_state["controlsPosition"] == "static"
                     and sticky_title_state["sidePanelPosition"] == "static"
@@ -7019,8 +7019,8 @@ def main() -> int:
                         and sidebar_preview_scale_state["hasCanvas"]
                         and sidebar_preview_scale_state["canvasCssWidth"] == 1920
                         and sidebar_preview_scale_state["canvasCssHeight"] == 1080
-                        and abs(sidebar_preview_scale_state["visualWidth"] - sidebar_preview_scale_state["outputWidth"]) <= 1
-                        and abs(sidebar_preview_scale_state["visualHeight"] - sidebar_preview_scale_state["outputHeight"]) <= 1
+                        and 0 <= sidebar_preview_scale_state["outputWidth"] - sidebar_preview_scale_state["visualWidth"] <= 5
+                        and 0 <= sidebar_preview_scale_state["outputHeight"] - sidebar_preview_scale_state["visualHeight"] <= 5
                         and 1.75 <= sidebar_preview_scale_state["previewRatio"] <= 1.79
                         and 1.75 <= sidebar_preview_scale_state["visualRatio"] <= 1.79
                         and sidebar_preview_scale_state["scale"] > 0

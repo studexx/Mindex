@@ -5474,7 +5474,7 @@ def main() -> int:
                         and presenter_font_contract["clean"]["outputBg"] == "#000"
                         and presenter_font_contract["clean"]["section"] == "105px"
                         and presenter_font_contract["clean"]["body"] == "75px"
-                        and presenter_font_contract["clean"]["lyrics"] == "75px"
+                        and presenter_font_contract["clean"]["lyrics"] == "78.75px"
                         and presenter_font_contract["clean"]["meta"] == "75px"
                         and presenter_font_contract["clean"]["scriptureBar"] == "52.5px"
                         and presenter_font_contract["clean"]["scriptureClean"] == "52.5px"

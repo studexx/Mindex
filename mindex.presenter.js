@@ -3112,7 +3112,11 @@ function applyPresenterPreviewScales(host = document) {
   host.querySelectorAll(".svc-slide-mini-canvas.presenter-output-root").forEach((canvas) => {
     const frame = canvas.closest(".svc-slide-thumb-frame, .svc-presenter-live-preview") || canvas.parentElement;
     const rect = frame?.getBoundingClientRect?.();
-    const scale = presenterPreviewScaleForBox(rect?.width, rect?.height);
+    const safeInset = frame?.classList?.contains("svc-presenter-live-preview") ? 2 : 0;
+    const scale = presenterPreviewScaleForBox(
+      (rect?.width || 0) - safeInset,
+      (rect?.height || 0) - safeInset,
+    );
     const currentScale = Number(canvas.style.getPropertyValue("--presenter-preview-scale"));
     if (Number.isFinite(currentScale) && Math.abs(currentScale - scale) < 0.0005) return;
     canvas.style.setProperty("--presenter-preview-scale", String(scale));
