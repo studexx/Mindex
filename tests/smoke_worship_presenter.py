@@ -2566,13 +2566,13 @@ def main() -> int:
                             "html": title_assignee_state["cleanSlides"][1]["html"],
                         },
                         {
-                            "elementType": "title_assignee",
-                            "layout": "lower_bar_text",
-                            "type": "title-assignee",
-                            "renderClass": "title-assignee",
+                            "elementType": "title_content",
+                            "layout": "center_text",
+                            "type": "title-content",
+                            "renderClass": "title-content",
                             "title": "｢정함｣",
-                            "bodyText": "",
-                            "text": "설교\n｢정함｣\n김남영 목사",
+                            "bodyText": "김남영 목사",
+                            "text": "｢정함｣\n김남영 목사",
                             "outputContext": "clean",
                             "html": title_assignee_state["cleanSlides"][2]["html"],
                         },
@@ -2599,8 +2599,8 @@ def main() -> int:
                             "html": title_assignee_state["cleanSlides"][4]["html"],
                         },
                     ]
-                    and all("presenter-title-content" in item["html"] for item in title_assignee_state["cleanSlides"][:2] + title_assignee_state["cleanSlides"][3:])
-                    and "presenter-title-assignee--sermon" in title_assignee_state["cleanSlides"][2]["html"]
+                    and all("presenter-title-content" in item["html"] for item in title_assignee_state["cleanSlides"])
+                    and "presenter-title-assignee--sermon" not in title_assignee_state["cleanSlides"][2]["html"]
                 ):
                     pass_("presenter-title-assignee-slides", json.dumps(title_assignee_state, ensure_ascii=False))
                 else:

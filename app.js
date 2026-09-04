@@ -29424,9 +29424,7 @@ function normalizeCleanPresenterSlideLayout(slide = {}) {
   if (!slide || presenterSlideOutputContext(slide, false) !== "clean") return slide;
   if (presenterSlideLayout(slide) !== PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT) return slide;
   if (presenterSlideElementType(slide) !== PRESENTER_ELEMENT_TYPES.TITLE_ASSIGNEE) return slide;
-  // Sermon titles have a dedicated centered title/assignee renderer in clean output.
-  if (presenterTitleAssigneeIsSermon(slide)) return { ...slide, outputContext: "clean" };
-  const title = String(slide.title || slide.sectionTitle || slide.label || "").trim();
+  const title = String(slide.contentTitle || slide.title || slide.sectionTitle || slide.label || "").trim();
   const rawBodyText = String(slide.assignee || presenterTitleContentBodyText(slide)).trim();
   const bodyText = compactSearchValue(rawBodyText) === compactSearchValue(title) ? "" : rawBodyText;
   return {
