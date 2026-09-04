@@ -64,10 +64,10 @@
   --presenter-size-thumbnail: calc(45 * var(--presenter-stage-unit));
   --presenter-scripture-thumbnail-size: calc(45 * var(--presenter-stage-unit));
   --presenter-size-file-caption: calc(40 * var(--presenter-stage-unit));
-  --presenter-bar-split-label-size: var(--presenter-size-meta);
+  --presenter-bar-split-label-size: var(--presenter-size-display);
   --presenter-bar-split-value-size: var(--presenter-size-body);
-  --presenter-bar-split-label-weight: var(--presenter-weight-body);
-  --presenter-bar-split-value-weight: var(--presenter-weight-body);
+  --presenter-bar-split-label-weight: var(--presenter-weight-display);
+  --presenter-bar-split-value-weight: var(--presenter-weight-meta);
   --presenter-weight-display: 800;
   --presenter-weight-body: 700;
   --presenter-weight-meta: 600;
@@ -681,21 +681,21 @@
   display: grid;
   width: 100%;
   min-width: 0;
-  grid-template-columns: minmax(0, 18cqw) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 24cqw) minmax(0, 1fr);
   gap: 2.2cqw;
   align-content: center;
   align-items: center;
   text-align: left;
 }
 .presenter-slide--song-title:not([data-section-key="praise"]) .presenter-section-song-title {
-  grid-template-columns: minmax(0, 1fr);
-  gap: .16em;
-  justify-items: center;
-  text-align: center;
+  grid-template-columns: minmax(0, 24cqw) minmax(0, 1fr);
+  gap: 2.2cqw;
+  justify-items: stretch;
+  text-align: left;
 }
 .presenter-slide--song-title:not([data-section-key="praise"]) .presenter-section-song-title-name {
-  justify-self: center;
-  text-align: center;
+  justify-self: end;
+  text-align: right;
 }
 .presenter-section-song-title-heading,
 .presenter-section-song-title-name {
@@ -762,7 +762,9 @@
   text-align: right;
 }
 .presenter-slide--title-assignee .presenter-title-assignee--solo {
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: start;
+  text-align: left;
 }
 .presenter-title-assignee-title {
   min-width: 0;
@@ -798,11 +800,12 @@
   text-align: left;
 }
 .presenter-title-assignee--solo .presenter-title-assignee-title {
-  font-size: var(--presenter-bar-split-value-size);
+  font-size: var(--presenter-bar-split-label-size);
+  font-weight: var(--presenter-bar-split-label-weight);
 }
 .presenter-output-root:not(.no-chromakey) .presenter-title-assignee--solo .presenter-title-assignee-title {
-  font-size: var(--presenter-bar-split-value-size);
-  font-weight: var(--presenter-bar-split-value-weight);
+  font-size: var(--presenter-bar-split-label-size);
+  font-weight: var(--presenter-bar-split-label-weight);
 }
 .presenter-title-assignee-person {
   min-width: 0;
