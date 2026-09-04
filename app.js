@@ -1559,7 +1559,7 @@ function bindDetailInteractionRoot(root, options = {}) {
   if (!root) return;
   root.addEventListener("click", handleDetailClick);
   if (options.presenterBoard) root.addEventListener("dblclick", handlePresenterBoardDoubleClick);
-  root.addEventListener("keydown", handleDetailKeydown);
+  root.addEventListener("keydown", handleDetailKeydown, { capture: true });
   root.addEventListener("input", handleDetailInput);
   root.addEventListener("change", handleDetailChange);
   root.addEventListener("submit", handleDetailSubmit);
@@ -23685,6 +23685,7 @@ function renderServiceItemGroups(items) {
                 data-service-item-index="${origIndex}"
                 value="${escapeAttr(item.raw_title || "")}"
                 placeholder="${escapeAttr(subModel.titlePlaceholder)}"
+                onkeydown="handleDetailKeydown(event)"
                 ${subModel.song ? `autocomplete="off" spellcheck="false"` : ""}
                 ${subModel.scripture ? `list="serviceScriptureOptions"` : ""}
                 ${subModel.strictSong ? `data-service-song-required="true"` : ""}
@@ -25932,22 +25933,22 @@ function renderPresenterServiceTextInputs(item, index, model, memo) {
         ${presenterServiceTitleFieldShowsLabel(titleLabel) ? `<span>${escapeHtml(titleLabel)}</span>` : ""}
         ${announcementText ? `
           <textarea class="svc-presenter-input-control svc-presenter-input-control--multiline" data-service-item-field="raw_title" data-service-item-index="${index}"
-            rows="4" placeholder="1. 다음 주 모임 안내&#10;같은 항목의 추가 내용&#10;2. 새가족 환영" aria-label="${escapeAttr(`${item.label || "항목"} ${titleLabel}`)}">${escapeHtml(item.raw_title || "")}</textarea>
+            rows="4" placeholder="1. 다음 주 모임 안내&#10;같은 항목의 추가 내용&#10;2. 새가족 환영" onkeydown="handleDetailKeydown(event)" aria-label="${escapeAttr(`${item.label || "항목"} ${titleLabel}`)}">${escapeHtml(item.raw_title || "")}</textarea>
           <small class="svc-presenter-input-hint">줄 맨 앞의 1., 2.마다 새 항목으로 표시됩니다. 번호 없는 다음 줄은 같은 항목에 포함됩니다.</small>` : `
           <input class="svc-presenter-input-control" type="text" data-service-item-field="raw_title" data-service-item-index="${index}"
-            value="${escapeAttr(item.raw_title || "")}" placeholder="${escapeAttr(titlePlaceholder)}" ${specialSong ? `autocomplete="off" spellcheck="false"` : ""} aria-label="${escapeAttr(`${item.label || "항목"} ${titleLabel}`)}" />`}
+            value="${escapeAttr(item.raw_title || "")}" placeholder="${escapeAttr(titlePlaceholder)}" onkeydown="handleDetailKeydown(event)" ${specialSong ? `autocomplete="off" spellcheck="false"` : ""} aria-label="${escapeAttr(`${item.label || "항목"} ${titleLabel}`)}" />`}
       </label>` : ""}
     ${manualPraise ? `
       <label class="svc-presenter-input-field svc-presenter-input-field--lyrics">
         <span>가사</span>
         <textarea class="svc-presenter-input-control svc-presenter-input-control--multiline" data-service-item-field="manual_praise_lyrics" data-service-item-index="${index}"
-          rows="10" placeholder="가사를 붙여넣기&#10;&#10;빈 줄은 다음 슬라이드로 나뉩니다." aria-label="${escapeAttr(`${item.label || "특송"} 가사`)}">${escapeHtml(formatServiceManualPraiseLyricsInput(item.memo))}</textarea>
+          rows="10" placeholder="가사를 붙여넣기&#10;&#10;빈 줄은 다음 슬라이드로 나뉩니다." onkeydown="handleDetailKeydown(event)" aria-label="${escapeAttr(`${item.label || "특송"} 가사`)}">${escapeHtml(formatServiceManualPraiseLyricsInput(item.memo))}</textarea>
       </label>` : ""}
     ${needsAssignee ? `
       <label class="svc-presenter-input-field">
         <span>${escapeHtml(assigneeLabel)}</span>
         <input class="svc-presenter-input-control" type="text" data-service-item-field="assignee" data-service-item-index="${index}"
-          value="${escapeAttr(model.assigneeValue || "")}" placeholder="${escapeAttr(assigneePlaceholder)}" aria-label="${escapeAttr(`${item.label || "항목"} 담당`)}" />
+          value="${escapeAttr(model.assigneeValue || "")}" placeholder="${escapeAttr(assigneePlaceholder)}" onkeydown="handleDetailKeydown(event)" aria-label="${escapeAttr(`${item.label || "항목"} 담당`)}" />
       </label>` : ""}`;
 }
 
@@ -26576,7 +26577,12 @@ async function appendPresenterCitationReference(input) {
       return;
     }
     input.value = "";
-    runPresenterAction("jump", serviceId, { index: targetIndex });
+    if (presenterControllerIsLive(serviceId)) {
+      runPresenterAction("jump", serviceId, { index: targetIndex });
+    } else {
+      setPresenterPendingSlide(serviceId, targetIndex, { render: false });
+      renderPresenterControlState(serviceId);
+    }
     scrollPresenterBoardToIndex(serviceId, targetIndex, { force: true });
     void saveServiceItemPatch(serviceId, index, { renderAfterSave: false, silent: true });
   } catch (error) {

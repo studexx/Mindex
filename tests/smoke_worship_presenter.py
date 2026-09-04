@@ -105,6 +105,18 @@ def main() -> int:
     else:
         fail("presenter-outline-click-requires-doubleclick-output")
 
+    citation_start = app_source.find("async function appendPresenterCitationReference(input)")
+    citation_end = app_source.find("function presenterSlideMatchesScriptureReference", citation_start)
+    citation_body = app_source[citation_start:citation_end] if citation_start >= 0 and citation_end > citation_start else ""
+    if (
+        "if (presenterControllerIsLive(serviceId))" in citation_body
+        and "runPresenterAction(\"jump\", serviceId, { index: targetIndex })" in citation_body
+        and "setPresenterPendingSlide(serviceId, targetIndex, { render: false })" in citation_body
+    ):
+        pass_("presenter-citation-enter-pending-without-output-jump")
+    else:
+        fail("presenter-citation-enter-pending-without-output-jump")
+
     if sync_playwright is None:
         skip("playwright-dependency", f"{PLAYWRIGHT_IMPORT_ERROR}. Install the Python playwright package to run UI smoke checks.")
         for status, name, detail in results:
@@ -7004,8 +7016,8 @@ def main() -> int:
                         and sidebar_preview_scale_state["hasCanvas"]
                         and sidebar_preview_scale_state["canvasCssWidth"] == 1920
                         and sidebar_preview_scale_state["canvasCssHeight"] == 1080
-                        and abs(sidebar_preview_scale_state["visualWidth"] - sidebar_preview_scale_state["outputWidth"]) <= 2
-                        and abs(sidebar_preview_scale_state["visualHeight"] - sidebar_preview_scale_state["outputHeight"]) <= 2
+                        and abs(sidebar_preview_scale_state["visualWidth"] - sidebar_preview_scale_state["outputWidth"]) <= 1
+                        and abs(sidebar_preview_scale_state["visualHeight"] - sidebar_preview_scale_state["outputHeight"]) <= 1
                         and 1.75 <= sidebar_preview_scale_state["previewRatio"] <= 1.79
                         and 1.75 <= sidebar_preview_scale_state["visualRatio"] <= 1.79
                         and sidebar_preview_scale_state["scale"] > 0

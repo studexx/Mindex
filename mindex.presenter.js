@@ -3088,7 +3088,7 @@ function presenterScaleForBox(width, height, stageWidth = 1920, stageHeight = 10
   return Math.min(1, boxWidth / stageWidth, boxHeight / stageHeight);
 }
 
-const PRESENTER_PREVIEW_OVERSCAN_PX = 2;
+const PRESENTER_PREVIEW_OVERSCAN_PX = 0;
 
 function presenterPreviewScaleForBox(width, height, stageWidth = 1920, stageHeight = 1080) {
   const boxWidth = Number(width);
