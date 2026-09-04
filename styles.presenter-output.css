@@ -1,4 +1,25 @@
 /* ── Presenter output ───────────────────────────────────────────────────── */
+@font-face {
+  font-family: "Mindex Presenter";
+  src: url("./vendor/fonts/freesentation/Freesentation-6SemiBold.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: block;
+}
+@font-face {
+  font-family: "Mindex Presenter";
+  src: url("./vendor/fonts/freesentation/Freesentation-7Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: block;
+}
+@font-face {
+  font-family: "Mindex Presenter";
+  src: url("./vendor/fonts/freesentation/Freesentation-8ExtraBold.woff2") format("woff2");
+  font-weight: 800;
+  font-style: normal;
+  font-display: block;
+}
 .presenter-output-document {
   background: #000;
 }
@@ -38,7 +59,8 @@
   --presenter-output-bar: linear-gradient(180deg, #000A64 0%, #000A32 100%);
   --presenter-output-bar-edge: #000A32;
   --presenter-output-stroke: #000;
-  --presenter-scripture-font: var(--font-presenter);
+  --presenter-font-family: var(--font-presenter, "Mindex Presenter", "Freesentation", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif);
+  --presenter-scripture-font: var(--presenter-font-family);
   /* Typography scale, ordered by presenter role. Keep output rules on these
      semantic tokens; the size aliases below preserve the existing selectors. */
   /* Fixed stage measurements use the 5px grid. Ratios stay semantic. */
@@ -64,8 +86,8 @@
   --presenter-size-thumbnail: calc(45 * var(--presenter-stage-unit));
   --presenter-scripture-thumbnail-size: calc(45 * var(--presenter-stage-unit));
   --presenter-size-file-caption: calc(40 * var(--presenter-stage-unit));
-  --presenter-bar-split-label-size: var(--presenter-size-display);
-  --presenter-bar-split-value-size: var(--presenter-size-body);
+  --presenter-bar-split-label-size: calc(90 * var(--presenter-stage-unit));
+  --presenter-bar-split-value-size: calc(70 * var(--presenter-stage-unit));
   --presenter-bar-split-label-weight: var(--presenter-weight-display);
   --presenter-bar-split-value-weight: var(--presenter-weight-meta);
   --presenter-weight-display: 800;
@@ -94,7 +116,7 @@
   overflow: hidden;
   background: var(--presenter-output-bg);
   color: var(--presenter-output-fg);
-  font-family: var(--font-presenter);
+  font-family: var(--presenter-font-family);
   transform: translate(-50%, -50%) scale(var(--presenter-stage-scale));
   transform-origin: center center;
   user-select: none;
@@ -648,7 +670,7 @@
 }
 .presenter-song-note {
   display: inline-block;
-  font-family: var(--font-presenter);
+  font-family: var(--presenter-font-family);
   font-size: .72em;
   font-weight: var(--presenter-weight-body);
   line-height: 1;
@@ -797,6 +819,8 @@
   gap: 0;
 }
 .presenter-output-root:not(.no-chromakey) .presenter-title-assignee--sermon .presenter-title-assignee-content {
+  font-size: var(--presenter-bar-split-label-size);
+  font-weight: var(--presenter-bar-split-label-weight);
   text-align: left;
 }
 .presenter-title-assignee--solo .presenter-title-assignee-title {
@@ -946,6 +970,94 @@
   );
   text-align: center;
   transform: translateZ(0);
+}
+:is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-slide--song-title,
+:is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-slide--title-assignee {
+  justify-content: flex-end;
+  align-items: stretch;
+  padding: 0;
+}
+:is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-slide--song-title::before,
+:is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-slide--title-assignee::before {
+  content: "";
+}
+:is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-slide--song-title > .presenter-slide-text,
+:is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-slide--title-assignee > .presenter-slide-text {
+  width: 100%;
+  height: var(--presenter-output-bar-height);
+  max-width: 100%;
+  justify-content: center;
+  align-items: center;
+  background: transparent;
+  color: #fff;
+  font-size: var(--presenter-size-body);
+  font-weight: var(--presenter-weight-body);
+  line-height: 1.12;
+  padding: 2.25cqh 2.8cqw;
+  margin: 0;
+  text-align: left;
+  text-shadow: none;
+}
+:is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-slide--song-title:is([data-section-key="praise"], [data-section-key="pre_scripture_praise"], [data-section-key="entrance_praise"], [data-section-key="response_song"], [data-section-key="prayer_meeting_praise"], [data-section-key="special_song"]) > .presenter-slide-text {
+  font-size: var(--presenter-bar-split-value-size);
+  font-weight: var(--presenter-bar-split-value-weight);
+}
+:is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-slide--song-title .presenter-section-song-title {
+  grid-template-columns: minmax(0, 24cqw) minmax(0, 1fr);
+  gap: 2.2cqw;
+  justify-items: stretch;
+  text-align: left;
+}
+:is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-section-song-title-heading,
+:is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-title-assignee-title,
+:is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-title-assignee-order,
+:is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-title-assignee--sermon .presenter-title-assignee-content {
+  font-size: var(--presenter-bar-split-label-size);
+  font-weight: var(--presenter-bar-split-label-weight);
+  text-align: left;
+}
+:is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-section-song-title-name,
+:is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-title-assignee-content,
+:is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-title-assignee-person {
+  font-size: var(--presenter-bar-split-value-size);
+  font-weight: var(--presenter-bar-split-value-weight);
+}
+:is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-section-song-title-name,
+:is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-title-assignee-person,
+:is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-title-assignee--order-content .presenter-title-assignee-content {
+  justify-self: end;
+  text-align: right;
+}
+:is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-slide--song-title .presenter-section-song-title-name {
+  justify-self: end;
+  font-size: var(--presenter-bar-split-value-size);
+  font-weight: var(--presenter-bar-split-value-weight);
+  text-align: right;
+}
+:is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-title-assignee--sermon {
+  grid-template-columns: minmax(0, 1fr) minmax(0, max-content);
+  grid-auto-rows: auto;
+  gap: 0;
+  justify-items: stretch;
+  align-content: center;
+  text-align: left;
+}
+:is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-title-assignee--sermon > :is(.presenter-title-assignee-content, .presenter-title-assignee-person) {
+  width: auto;
+  max-width: 100%;
+}
+:is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-title-assignee--sermon .presenter-title-assignee-content {
+  justify-self: start;
+  text-align: left;
+}
+:is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-title-assignee--solo {
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: start;
+  text-align: left;
+}
+:is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-title-assignee--solo .presenter-title-assignee-title {
+  justify-self: start;
+  text-align: left;
 }
 :is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-slide--scripture .presenter-slide-text span {
   font-size: var(--presenter-scripture-clean-size);

@@ -5505,9 +5505,10 @@ def main() -> int:
                 )
                 if (
                     "주 내 아버지" in section_song_title_output_font_state["text"]
-                    and section_song_title_output_font_state["nameFontSize"] > section_song_title_output_font_state["headingFontSize"]
-                    and 70 <= section_song_title_output_font_state["nameFontSize"] <= 80
-                    and section_song_title_output_font_state["nameFontWeight"] == "800"
+                    and section_song_title_output_font_state["headingFontSize"] > section_song_title_output_font_state["nameFontSize"]
+                    and 65 <= section_song_title_output_font_state["headingFontSize"] <= 70
+                    and 50 <= section_song_title_output_font_state["nameFontSize"] <= 55
+                    and section_song_title_output_font_state["nameFontWeight"] == "600"
                 ):
                     pass_("presenter-section-song-title-output-font", json.dumps(section_song_title_output_font_state, ensure_ascii=False))
                 else:
@@ -5559,8 +5560,8 @@ def main() -> int:
                 )
                 if (
                     "주 찬양합니다" in plain_song_title_output_font_state["text"]
-                    and 70 <= plain_song_title_output_font_state["fontSize"] <= 80
-                    and plain_song_title_output_font_state["fontWeight"] == "800"
+                    and 50 <= plain_song_title_output_font_state["fontSize"] <= 55
+                    and plain_song_title_output_font_state["fontWeight"] == "600"
                     and plain_song_title_output_font_state["lineHeight"] >= plain_song_title_output_font_state["fontSize"]
                 ):
                     pass_("presenter-plain-song-title-output-font", json.dumps(plain_song_title_output_font_state, ensure_ascii=False))
@@ -5594,8 +5595,8 @@ def main() -> int:
                 )
                 if (
                     all("주 찬양합니다" in item["text"] for item in fullscreen_song_title_output_font_state)
-                    and all(110 <= item["fontSize"] <= 115 for item in fullscreen_song_title_output_font_state)
-                    and all(item["fontWeight"] == "800" for item in fullscreen_song_title_output_font_state)
+                    and all(50 <= item["fontSize"] <= 55 for item in fullscreen_song_title_output_font_state)
+                    and all(item["fontWeight"] == "600" for item in fullscreen_song_title_output_font_state)
                 ):
                     pass_("presenter-fullscreen-song-title-output-font", json.dumps(fullscreen_song_title_output_font_state, ensure_ascii=False))
                 else:
@@ -5639,8 +5640,8 @@ def main() -> int:
                 )
                 if (
                     fullscreen_sermon_title_center_state["display"] == "grid"
-                    and fullscreen_sermon_title_center_state["titleCentered"] <= 1
-                    and fullscreen_sermon_title_center_state["personCentered"] <= 1
+                    and fullscreen_sermon_title_center_state["titleCentered"] > 1
+                    and fullscreen_sermon_title_center_state["personCentered"] > 1
                 ):
                     pass_("presenter-fullscreen-sermon-title-center", json.dumps(fullscreen_sermon_title_center_state, ensure_ascii=False))
                 else:
@@ -5682,7 +5683,7 @@ def main() -> int:
                 if (
                     preview_long_sermon_title_fit_state["fontSize"] >= 18
                     and preview_long_sermon_title_fit_state["scrollWidth"] <= preview_long_sermon_title_fit_state["clientWidth"]
-                    and preview_long_sermon_title_fit_state["centerOffset"] <= 1
+                    and preview_long_sermon_title_fit_state["centerOffset"] > 1
                 ):
                     pass_("presenter-preview-long-sermon-title-fit", json.dumps(preview_long_sermon_title_fit_state, ensure_ascii=False))
                 else:
@@ -5778,9 +5779,9 @@ def main() -> int:
 	                    and not offering_song_title_output_font_state["hasSongLayout"]
 	                    and offering_song_title_output_font_state["hasOrderContent"]
 	                    and "내 주 되신 주를 참 사랑하고" in offering_song_title_output_font_state["text"]
-	                    and offering_song_title_output_font_state["headingFontSize"] >= 70
+	                    and offering_song_title_output_font_state["headingFontSize"] >= 65
 	                    and offering_song_title_output_font_state["headingFontWeight"] == "800"
-	                    and offering_song_title_output_font_state["nameFontSize"] >= 70
+	                    and 50 <= offering_song_title_output_font_state["nameFontSize"] <= 55
 	                ):
                     pass_("presenter-offering-song-title-output-font", json.dumps(offering_song_title_output_font_state, ensure_ascii=False))
                 else:
@@ -7834,13 +7835,13 @@ def main() -> int:
                     and title_assignee_bounds["titleFontSize"] == 90
                     and title_assignee_bounds["titleFontWeight"] == "800"
                     and title_assignee_bounds["personFontSize"] == 70
-                    and title_assignee_bounds["personFontWeight"] == "700"
+                    and title_assignee_bounds["personFontWeight"] == "600"
                     and title_assignee_bounds["orderFontSize"] == 90
                     and title_assignee_bounds["orderFontWeight"] == "800"
-                    and title_assignee_bounds["contentFontSize"] == 90
-                    and title_assignee_bounds["contentFontWeight"] == "700"
+                    and title_assignee_bounds["contentFontSize"] == 70
+                    and title_assignee_bounds["contentFontWeight"] == "600"
                     and title_assignee_bounds["threePartPersonFontSize"] == 70
-                    and title_assignee_bounds["threePartPersonFontWeight"] == "700"
+                    and title_assignee_bounds["threePartPersonFontWeight"] == "600"
                     and title_assignee_bounds["titleInside"]
                     and title_assignee_bounds["personInside"]
                     and not title_assignee_bounds["titleCentered"]
