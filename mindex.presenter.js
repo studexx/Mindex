@@ -3686,11 +3686,51 @@ function fitPresenterChromakeyScriptureText(host, frameState = {}) {
   const baseSize = Number.parseFloat(window.getComputedStyle(textBox).fontSize);
   if (!Number.isFinite(baseSize) || baseSize <= 0) return;
 
-  const minimumSize = Math.min(32, baseSize);
-  for (let size = baseSize; size >= minimumSize; size -= 2) {
+  const preview = host.classList?.contains("svc-slide-mini-canvas");
+  const targetWidth = preview ? (textBox.clientWidth * 0.5) : textBox.clientWidth;
+  const minimumSize = Math.min(preview ? 28 : 32, baseSize);
+  for (let size = Math.round(baseSize); size >= minimumSize; size -= 1) {
     textBox.style.setProperty("--presenter-scripture-fitted-size", `${size}px`);
-    if (textBox.scrollHeight <= textBox.clientHeight + 1 && textBox.scrollWidth <= textBox.clientWidth + 1) return;
+    if (
+      textBox.scrollHeight <= textBox.clientHeight + 1
+      && textBox.scrollWidth <= textBox.clientWidth + 1
+      && presenterTextNaturalWidthFits(textBox, targetWidth)
+    ) return;
   }
+}
+
+function presenterTextNaturalWidthFits(container, targetWidth) {
+  const limit = Number(targetWidth);
+  if (!container?.querySelectorAll || !Number.isFinite(limit) || limit <= 0) return true;
+  const nodes = [...container.querySelectorAll("span")];
+  const targets = nodes.length ? nodes : [container];
+  return targets.every((node) => presenterTextNaturalWidth(node) <= limit + 1);
+}
+
+function presenterTextNaturalWidth(node) {
+  if (!node) return 0;
+  const previous = {
+    display: node.style.display,
+    maxWidth: node.style.maxWidth,
+    position: node.style.position,
+    visibility: node.style.visibility,
+    whiteSpace: node.style.whiteSpace,
+    width: node.style.width,
+  };
+  node.style.display = "inline-block";
+  node.style.maxWidth = "none";
+  node.style.position = "absolute";
+  node.style.visibility = "hidden";
+  node.style.whiteSpace = "nowrap";
+  node.style.width = "max-content";
+  const width = node.scrollWidth || node.getBoundingClientRect?.().width || 0;
+  node.style.display = previous.display;
+  node.style.maxWidth = previous.maxWidth;
+  node.style.position = previous.position;
+  node.style.visibility = previous.visibility;
+  node.style.whiteSpace = previous.whiteSpace;
+  node.style.width = previous.width;
+  return width;
 }
 
 function fitPresenterChromakeyScripturePreviews(host) {

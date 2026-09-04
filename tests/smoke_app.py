@@ -8919,6 +8919,46 @@ def main() -> int:
                         else:
                             fail("presenter-thumbnail-grid", json.dumps(thumb_metrics, ensure_ascii=False))
 
+                    thumb_scripture_fit_state = page.evaluate(
+                        """
+                        () => {
+                          const host = document.createElement('span');
+                          host.className = 'svc-slide-mini-canvas presenter-output-root';
+                          host.style.cssText = 'position:absolute;left:-10000px;top:0;width:1920px;height:1080px;display:grid;place-items:center;';
+                          host.innerHTML = renderPresenterSlideFrame({
+                            id: '__smoke_thumb_scripture_fit__',
+                            type: 'scripture',
+                            layout: 'lower_bar_text',
+                            elementType: 'scripture_text',
+                            label: '성경봉독',
+                            title: '느헤미야 6:15–19; 느헤미야 7:1–5',
+                            text: '느헤미야 6:15–19; 느헤미야 7:1–5',
+                          }, { previewStage: true });
+                          document.body.appendChild(host);
+                          applyPresenterPreviewScales(document);
+                          fitPresenterChromakeyScriptureText(host);
+                          const box = host.querySelector('.presenter-slide--scripture > .presenter-slide-text');
+                          const line = box?.querySelector('span');
+                          const naturalWidth = line ? presenterTextNaturalWidth(line) : 0;
+                          const limit = box ? box.clientWidth * 0.5 : 0;
+                          const fontSize = box ? Number.parseFloat(getComputedStyle(box).fontSize || '0') : 0;
+                          const fittedSize = box?.style.getPropertyValue('--presenter-scripture-fitted-size') || '';
+                          host.remove();
+                          return { naturalWidth, limit, fontSize, fittedSize };
+                        }
+                        """
+                    )
+                    if (
+                        thumb_scripture_fit_state["naturalWidth"] > 0
+                        and thumb_scripture_fit_state["limit"] > 0
+                        and thumb_scripture_fit_state["naturalWidth"] <= thumb_scripture_fit_state["limit"] + 1
+                        and thumb_scripture_fit_state["fontSize"] >= 28
+                        and thumb_scripture_fit_state["fittedSize"]
+                    ):
+                        pass_("presenter-thumbnail-scripture-fit", json.dumps(thumb_scripture_fit_state, ensure_ascii=False))
+                    else:
+                        fail("presenter-thumbnail-scripture-fit", json.dumps(thumb_scripture_fit_state, ensure_ascii=False))
+
                     thumb_zoom_state = page.evaluate(
                         """
                         async () => {
