@@ -784,6 +784,11 @@ def main() -> int:
                           specialHymnItem,
                           specialHymnSong,
                         ).forms.map((form) => form.id),
+                        specialHymnLabels: presenterFormPlanForServiceItem(
+                          { forms: specialHymnForms },
+                          specialHymnItem,
+                          specialHymnSong,
+                        ).forms.map((form) => presenterResolvedFormMarker(form)),
                         specialHymnWithoutChorusWarnings: specialHymnWithoutChorusPlan.warnings,
                       };
                     })()
@@ -797,6 +802,7 @@ def main() -> int:
                     "groupedLabels": ["V1A", "V1B"],
                     "groupedLyrics": ["1행\n2행\n3행\n4행", "5행\n6행\n7행\n8행"],
                     "specialHymnOrder": ["sv1", "sc", "sv2", "sc", "preset-blank:instrumental", "sv4", "sc"],
+                    "specialHymnLabels": ["1절", "후렴", "2절", "후렴", "간주", "마지막 절", "후렴"],
                     "specialHymnWithoutChorusWarnings": [],
                 }:
                     pass_("presenter-ccm-repeats-chorus", json.dumps(ccm_form_order_state, ensure_ascii=False))

@@ -538,7 +538,7 @@ function presenterScoreFormMetadata(forms = [], slideIndex = 0, formWarnings = [
   const formId = form._localId || form.id || slideIndex;
   return {
     formKey: form._presenterScoreFormKey || `${formId}:${slideIndex}`,
-    formLabel: presenterFormMarker(form),
+    formLabel: presenterResolvedFormMarker(form),
     warnings: formWarnings,
   };
 }
@@ -667,11 +667,29 @@ function presenterSpecialSongHymnFormPreset(item = {}, song = null, version = nu
   const isHymn = versionEffectivePraiseTypes(song, version).includes("hymn")
     || Boolean(song?.hymn_no || version?.hymn_no);
   if (!isHymn) return null;
-  return matchedRule?.formPreset || normalizeServiceFormPreset(
+  return presenterSpecialSongHymnDisplayPreset(matchedRule?.formPreset || normalizeServiceFormPreset(
     ["1절", "후렴", "2절", "후렴", "간주", "마지막 절", "후렴"],
     "1절-후렴-2절-후렴-간주-마지막 절-후렴",
     "default",
-  );
+  ));
+}
+
+function presenterSpecialSongHymnDisplayPreset(preset = null) {
+  if (!preset?.forms?.length) return preset;
+  const forms = cleanList(preset.forms).map((label) => {
+    const target = normalizePresenterFormPresetLabel(label);
+    if (target.lastVerse) return "마지막 절";
+    if (target.type === "verse" && target.number) return `${target.number}절`;
+    if (target.type === "chorus") return "후렴";
+    if (target.type === "instrumental") return "간주";
+    return String(label || "").trim();
+  });
+  return {
+    ...preset,
+    forms,
+    hint: forms.join("-"),
+    omitUnlisted: true,
+  };
 }
 
 function presenterFormPresetShouldOmitUnlisted(preset = null) {
@@ -767,8 +785,9 @@ function presenterFormPresetWithAvailableForms(preset = null, forms = []) {
     if (merged.length === original.length && merged.every((label, index) => label === original[index])) return preset;
     return {
       ...preset,
-      forms: merged,
-      hint: merged.join("-"),
+      forms: original,
+      sourceForms: merged,
+      hint: original.join("-"),
     };
   }
 
@@ -894,18 +913,25 @@ function serviceItemFormPresetRuleMatches(rule = {}, item = {}, song = null, ver
 
 function resolvePresenterFormPresetSequence(forms = [], preset = []) {
   const presetForms = Array.isArray(preset) ? preset : cleanList(preset?.forms);
+  const sourceForms = Array.isArray(preset) ? [] : cleanList(preset?.sourceForms);
   if (presenterFormsAreUnsplitLyrics(forms)) {
-    const lyricsResolved = resolvePresenterLyricsFormPresetSequence(forms, presetForms, Array.isArray(preset) ? [] : preset?.sourceForms);
+    const lyricsResolved = resolvePresenterLyricsFormPresetSequence(forms, presetForms, sourceForms);
     if (lyricsResolved.items.length) return lyricsResolved;
   }
   const items = [];
   const missing = [];
-  for (const label of cleanList(presetForms)) {
-    const resolved = findPresenterFormForPresetLabel(forms, label);
-    if (resolved) items.push(resolved);
+  cleanList(presetForms).forEach((label, index) => {
+    const resolved = findPresenterFormForPresetLabel(forms, sourceForms[index] || label);
+    if (resolved) items.push({ ...resolved, _presenterPresetLabel: presenterResolvedPresetLabel(label) });
     else missing.push(normalizePresenterMissingFormLabel(label));
-  }
+  });
   return { items, missing };
+}
+
+function presenterResolvedPresetLabel(label = "") {
+  const raw = String(label || "").trim();
+  if (isPresenterKoreanHymnPresetLabel(raw)) return raw;
+  return normalizePresenterMissingFormLabel(raw);
 }
 
 function presenterFormsAreUnsplitLyrics(forms = []) {
@@ -2437,6 +2463,17 @@ function presenterFormMarker(form) {
   const label = presenterFormDisplayLabel(form);
   if (isGenericPresenterFormLabel(label)) return "";
   return presenterFormPresetDisplayLabel(label) || label;
+}
+
+function presenterResolvedFormMarker(form = {}) {
+  const presetLabel = String(form?._presenterPresetLabel || "").trim();
+  if (presetLabel && isPresenterKoreanHymnPresetLabel(presetLabel)) return presetLabel;
+  if (presetLabel && !isGenericPresenterFormLabel(presetLabel)) return presenterFormPresetDisplayLabel(presetLabel) || presetLabel;
+  return presenterFormMarker(form);
+}
+
+function isPresenterKoreanHymnPresetLabel(value = "") {
+  return /^(\d+\s*절|후렴|간주|마지막\s*절)$/u.test(String(value || "").trim());
 }
 
 function isGenericPresenterFormLabel(value) {
