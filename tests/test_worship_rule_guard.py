@@ -127,7 +127,10 @@ class WorshipRuleGuardTests(unittest.TestCase):
 
     def test_full_save_preserves_existing_content_rows(self) -> None:
         save = function_block(self.source, "saveWorshipServiceInstance")
+        element_patch = function_block(self.source, "saveWorshipServiceElementPatch")
         preserve = function_block(self.source, "preserveExistingWorshipContentRows")
+        self.assertNotIn("materializeSharedSundayContentForPersistence", save)
+        self.assertNotIn("materializeSharedSundayContentForPersistence", element_patch)
         self.assertLess(
             save.index("preserveExistingWorshipContentRows(rows, existingSections, existingElements)"),
             save.index("validateWorshipPersistenceRows(rows, { serviceId })"),

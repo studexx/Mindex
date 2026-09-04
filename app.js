@@ -6356,8 +6356,7 @@ async function saveWorshipServiceInstance(service) {
     normalizeServiceItemsInCurrentOrder(getServiceItems(serviceId)),
   )).filter((item) => !isUnmodifiedTemplatePlaceholder(item));
   const elementTypedStateColumns = await worshipElementTypedStateColumns();
-  const persistenceItems = materializeSharedSundayContentForPersistence(service, items);
-  const rows = buildWorshipPersistenceRows(service, persistenceItems, existingSectionById, existingElementById, {
+  const rows = buildWorshipPersistenceRows(service, items, existingSectionById, existingElementById, {
     elementTypedStateColumns,
   });
   const suppressedItems = [...state.templateElementSuppressions.values()]
@@ -6454,7 +6453,7 @@ async function saveWorshipServiceInstance(service) {
     groupWorshipElements(rows.sections, rows.elements)[serviceId] || [],
   );
   suppressedItems.forEach((item) => suppressedIds.delete(item.id));
-  await syncSharedSundayContentAfterSave(service, persistenceItems, { elementTypedStateColumns });
+  await syncSharedSundayContentAfterSave(service, items, { elementTypedStateColumns });
   refreshPresenterForService(serviceId);
 }
 
@@ -6537,8 +6536,7 @@ async function saveWorshipServiceElementPatch(service, itemId) {
   if (!items.some((item) => item.id === targetItemId)) return false;
 
   const elementTypedStateColumns = await worshipElementTypedStateColumns();
-  const persistenceItems = materializeSharedSundayContentForPersistence(service, items);
-  const rows = buildWorshipPersistenceRows(service, persistenceItems, existingSectionById, existingElementById, {
+  const rows = buildWorshipPersistenceRows(service, items, existingSectionById, existingElementById, {
     elementTypedStateColumns,
   });
   sanitizeWorshipPersistenceRows(rows, { elementTypedStateColumns });
@@ -6579,7 +6577,7 @@ async function saveWorshipServiceElementPatch(service, itemId) {
   );
   await syncSharedSundayContentAfterSave(
     service,
-    persistenceItems.filter((item) => item.id === targetItemId),
+    items.filter((item) => item.id === targetItemId),
     { elementTypedStateColumns },
   );
   refreshPresenterForService(serviceId);
