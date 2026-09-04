@@ -19746,8 +19746,8 @@ function publicMonthlyCorporatePrayerStep() {
   const prayerElements = [
     group("공동기도 1·2", 0),
     {
-      label: "기도 찬양",
-      name: "기도 찬양",
+      label: "기도찬양",
+      name: "기도찬양",
       elementType: "praise",
     },
     group("공동기도 3·4", 2),

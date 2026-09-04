@@ -4021,7 +4021,7 @@ def main() -> int:
                         }
                         and template_terms["monthlyScaffold"]["corporatePrayerElements"] == [
                             {"type": "title_person", "label": "공동기도 1·2"},
-                            {"type": "praise", "label": "기도 찬양"},
+                            {"type": "praise", "label": "기도찬양"},
                             {"type": "title_person", "label": "공동기도 3·4"},
                         ]
                         and template_terms["publicSpecialRule"] == {

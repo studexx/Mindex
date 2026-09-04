@@ -2102,7 +2102,7 @@ def main() -> int:
                         "title": "공동기도",
                         "subgroups": [
                             {"label": "공동기도 1·2", "title": "", "slides": 3, "slideTitles": ["공동기도 1", "공동기도 2", "빈 화면"]},
-                            {"label": "기도 찬양", "title": "", "slides": 1},
+                            {"label": "기도찬양", "title": "", "slides": 1},
                             {"label": "공동기도 3·4", "title": "", "slides": 3, "slideTitles": ["공동기도 3", "공동기도 4", "빈 화면"]},
                         ],
                     }]
