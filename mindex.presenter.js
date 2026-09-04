@@ -3814,7 +3814,7 @@ function fitPresenterSermonTitleText(host) {
   const fullscreen = outputRoot.classList?.contains("no-chromakey");
   const minimumSize = fullscreen ? 72 : 56;
   host
-    .querySelectorAll(".presenter-title-assignee--sermon .presenter-title-assignee-content")
+    .querySelectorAll(".presenter-title-assignee--sermon .presenter-title-assignee-content, .presenter-title-content-title")
     .forEach((textBox) => {
       textBox.style.removeProperty("font-size");
       const baseSize = Number.parseFloat(window.getComputedStyle(textBox).fontSize);

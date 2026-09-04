@@ -28108,11 +28108,16 @@ function presenterScriptureReferenceBadgeBookName(rawBook = "", slide = null) {
 function renderPresenterSlideMiniPreview(slide, serviceId = state.presenter.serviceId) {
   const service = state.services.find((svc) => svc.id === serviceId);
   const serviceChromakey = presenterServiceUsesChromakey(service);
+  const previewSlide = slide
+    ? (presenterSlideOutputContext(slide, serviceChromakey) === "clean"
+      ? normalizeCleanPresenterSlideLayout(slide)
+      : normalizeChromakeyPresenterSlideLayout(slide))
+    : slide;
   const backgroundImages = presenterBackgroundSourcesForService(service, {
-    includeChromakeyCleanSlides: presenterSlideOutputContext(slide, serviceChromakey) === "clean",
+    includeChromakeyCleanSlides: presenterSlideOutputContext(previewSlide, serviceChromakey) === "clean",
   });
   const theme = presenterOutputTheme(service?.type_id);
-  const frameState = presenterOutputFrameStateForSlide(slide, {
+  const frameState = presenterOutputFrameStateForSlide(previewSlide, {
     chromakey: serviceChromakey,
     backgroundImages,
     serviceType: service?.type_id || "",
@@ -28135,7 +28140,7 @@ function renderPresenterSlideMiniPreview(slide, serviceId = state.presenter.serv
   return `
     <span class="${escapeAttr(outputClasses)}">
       <span class="${escapeAttr(canvasClasses)}" data-output-theme="${escapeAttr(theme)}"${backgroundStyle}>
-        ${renderPresenterSlideFrame(slide, { noChromakey: frameState.noChromakey, previewStage: true })}
+        ${renderPresenterSlideFrame(previewSlide, { noChromakey: frameState.noChromakey, previewStage: true })}
       </span>
     </span>`;
 }
@@ -29481,6 +29486,9 @@ function normalizeCleanPresenterSlideLayout(slide = {}) {
   if (!slide || presenterSlideOutputContext(slide, false) !== "clean") return slide;
   if (presenterSlideLayout(slide) !== PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT) return slide;
   if (presenterSlideElementType(slide) !== PRESENTER_ELEMENT_TYPES.TITLE_ASSIGNEE) return slide;
+  if (!presenterTitleAssigneeIsSermon(slide) && String(slide.orderTitle || "").trim() && String(slide.contentTitle || "").trim()) {
+    return { ...slide, outputContext: "clean" };
+  }
   const title = String(slide.contentTitle || slide.title || slide.sectionTitle || slide.label || "").trim();
   const rawBodyText = String(slide.assignee || presenterTitleContentBodyText(slide)).trim();
   const bodyText = compactSearchValue(rawBodyText) === compactSearchValue(title) ? "" : rawBodyText;

@@ -5759,10 +5759,14 @@ def main() -> int:
                       document.body.appendChild(mount);
                       const host = mount.querySelector('.svc-slide-mini-output');
                       fitPresenterSermonTitleText(host);
-                      const title = mount.querySelector('.presenter-title-assignee-content');
+                      const title = mount.querySelector('.presenter-title-content-title');
+                      const slide = mount.querySelector('.presenter-slide');
                       const hostRect = host?.getBoundingClientRect();
                       const titleRect = title?.getBoundingClientRect();
                       const result = {
+                        slideLayout: slide?.dataset.slideLayout || '',
+                        renderClass: slide?.classList.contains('presenter-slide--title-content') ? 'title-content' : '',
+                        hasLowerBar: Boolean(mount.querySelector('.presenter-title-assignee')),
                         fontSize: title ? Number.parseFloat(getComputedStyle(title).fontSize) : 0,
                         scrollWidth: title?.scrollWidth || 0,
                         clientWidth: title?.clientWidth || 0,
@@ -5775,9 +5779,12 @@ def main() -> int:
                     """
                 )
                 if (
-                    preview_long_sermon_title_fit_state["fontSize"] >= 18
+                    preview_long_sermon_title_fit_state["slideLayout"] == "center_text"
+                    and preview_long_sermon_title_fit_state["renderClass"] == "title-content"
+                    and preview_long_sermon_title_fit_state["hasLowerBar"] is False
+                    and preview_long_sermon_title_fit_state["fontSize"] >= 18
                     and preview_long_sermon_title_fit_state["scrollWidth"] <= preview_long_sermon_title_fit_state["clientWidth"]
-                    and preview_long_sermon_title_fit_state["centerOffset"] > 1
+                    and preview_long_sermon_title_fit_state["centerOffset"] <= 1
                 ):
                     pass_("presenter-preview-long-sermon-title-fit", json.dumps(preview_long_sermon_title_fit_state, ensure_ascii=False))
                 else:
