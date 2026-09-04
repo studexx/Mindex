@@ -1728,7 +1728,11 @@ def main() -> int:
                             subgroups: group.subgroups.map((subgroup) => ({
                               label: subgroup.label,
                               title: subgroup.title,
-                              slides: subgroup.slides.length
+                              slides: subgroup.slides.length,
+                              ...(subgroup.label.includes('공동기도') ? {
+                                slideTitles: subgroup.slides.map(({ slide }) =>
+                                  slide.title || String(slide.text || '').split(/\\r?\\n/)[0] || (slide.type === 'blank' ? '빈 화면' : ''))
+                              } : {})
                             }))
                           })),
                         mainPraiseGroups: groupPresenterSlidesBySection(slides, modelServiceId)
@@ -2097,9 +2101,9 @@ def main() -> int:
                     and fallback_state["corporatePrayerGroups"] == [{
                         "title": "공동기도",
                         "subgroups": [
-                            {"label": "공동기도 1·2", "title": "", "slides": 3},
+                            {"label": "공동기도 1·2", "title": "", "slides": 3, "slideTitles": ["공동기도 1", "공동기도 2", "빈 화면"]},
                             {"label": "기도 찬양", "title": "", "slides": 1},
-                            {"label": "공동기도 3·4", "title": "", "slides": 3},
+                            {"label": "공동기도 3·4", "title": "", "slides": 3, "slideTitles": ["공동기도 3", "공동기도 4", "빈 화면"]},
                         ],
                     }]
                     and len(fallback_state["mainPraiseGroups"]) == 1

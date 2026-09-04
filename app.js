@@ -30226,20 +30226,6 @@ function presenterMonthlyCorporatePrayerSlides(item = {}, section = {}, index = 
   if (!ordinals.length) return [];
   const topics = memo.slides.map((slide) => String(slide || "").trim()).filter(Boolean).slice(0, 2);
   if (!topics.length) return [];
-  const groupSlide = {
-    id: `${item.id || index}:corporate-prayer-group`,
-    ...section,
-    elementType: PRESENTER_ELEMENT_TYPES.TITLE_ASSIGNEE,
-    layout: PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT,
-    type: "title-assignee",
-    label,
-    title: label,
-    assignee: "",
-    marker: "",
-    text: label,
-    skipTrailingBlank: true,
-    sort: index - 0.001,
-  };
   const topicSlides = topics.map((topic, topicIndex) => {
     const ordinal = ordinals[topicIndex] || ordinals[0] + topicIndex;
     const title = `공동기도 ${ordinal}`;
@@ -30254,11 +30240,10 @@ function presenterMonthlyCorporatePrayerSlides(item = {}, section = {}, index = 
       assignee: topic,
       marker: "",
       text: cleanList([title, topic]).join("\n"),
-      skipTrailingBlank: true,
       sort: index + topicIndex / 100,
     };
   });
-  return [groupSlide, ...topicSlides];
+  return topicSlides;
 }
 
 function shouldSuppressMainPraiseScoreSongTitle(item = {}, service = {}) {
