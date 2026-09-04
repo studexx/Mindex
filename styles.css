@@ -7755,7 +7755,7 @@ textarea.svc-presenter-input-control--multiline {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(160px, 0.24fr) max-content;
   min-width: 0;
-  align-items: end;
+  align-items: center;
   gap: 8px;
 }
 .svc-board-subgroup-controls--stacked {
@@ -7784,6 +7784,12 @@ textarea.svc-presenter-input-control--multiline {
   grid-template-rows: 14px 30px;
   gap: 4px;
 }
+.svc-board-subgroup-controls .svc-presenter-input-field:not(.svc-presenter-input-field--lyrics, .svc-presenter-input-field--scripture-parts) {
+  grid-template-columns: max-content minmax(0, 1fr);
+  grid-template-rows: 30px;
+  align-items: center;
+  gap: 8px;
+}
 .svc-board-subgroup-controls .svc-presenter-input-field--song {
   grid-column: 1;
 }
@@ -7801,6 +7807,7 @@ textarea.svc-presenter-input-control--multiline {
   line-height: 14px;
   min-height: 14px;
   padding-left: 2px;
+  white-space: nowrap;
 }
 .svc-board-subgroup-controls .svc-presenter-input-control,
 .svc-board-subgroup-controls .svc-edit-title,
