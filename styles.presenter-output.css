@@ -826,8 +826,6 @@
 :is(.svc-slide-mini-output, .presenter-output-root):not(.no-chromakey) .presenter-slide--song-title:is([data-section-key="praise"], [data-section-key="pre_scripture_praise"], [data-section-key="entrance_praise"], [data-section-key="response_song"], [data-section-key="prayer_meeting_praise"], [data-section-key="special_song"]) > .presenter-slide-text {
   font-size: var(--presenter-bar-split-value-size);
   font-weight: var(--presenter-bar-split-value-weight);
-  line-height: 1.04;
-  padding-block: 1.1cqh;
 }
 :is(.svc-slide-mini-output, .presenter-output-root):not(.no-chromakey) .presenter-section-song-title-heading {
   font-size: var(--presenter-bar-split-label-size);
