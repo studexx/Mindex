@@ -1735,6 +1735,41 @@ def main() -> int:
                               } : {})
                             }))
                           })),
+                        corporatePrayerEditor: (() => {
+                          const service = state.services.find((item) => item.id === modelServiceId);
+                          const items = state.serviceItems[modelServiceId] || [];
+                          const index = items.findIndex((item) => item.label === '공동기도 1·2');
+                          const item = items[index];
+                          const memo = parseServiceItemMemo(item?.memo);
+                          const host = document.createElement('div');
+                          host.innerHTML = item ? presenterServiceInputControls(item, index, service) : '';
+                          const fields = [...host.querySelectorAll('[data-service-item-field]')];
+                          const first = fields[0];
+                          if (first) {
+                            first.value = "'새 기도 제목'";
+                            updateServiceItemField(first, { deferPresenterRefresh: true });
+                          }
+                          const updatedItem = state.serviceItems[modelServiceId]?.[index] || {};
+                          const updatedMemo = parseServiceItemMemo(updatedItem.memo);
+                          const updatedSlides = normalizePresenterSlidesForServiceOutput(
+                            buildPresenterSlidesForServiceItem(updatedItem, service, index),
+                            service
+                          );
+                          return {
+                            index,
+                            fields: fields.map((field) => ({
+                              key: field.dataset.serviceItemField || '',
+                              topicIndex: field.dataset.corporatePrayerTopicIndex || '',
+                              label: field.closest('label')?.querySelector('span')?.textContent.trim() || '',
+                              value: field.value || '',
+                            })),
+                            rawTitle: updatedItem.raw_title || '',
+                            assignee: updatedItem.assignee || '',
+                            memoSlides: updatedMemo.slides || [],
+                            slideTitles: updatedSlides.map((slide) => slide.title || ''),
+                            slideAssignees: updatedSlides.map((slide) => slide.assignee || ''),
+                          };
+                        })(),
                         mainPraiseGroups: groupPresenterSlidesBySection(slides, modelServiceId)
                           .filter((group) => group.kind === 'main-praise')
                           .map((group) => ({
@@ -2139,6 +2174,18 @@ def main() -> int:
                             {"label": "공동기도 3·4", "title": "", "slides": 3, "slideTitles": ["공동기도 3", "공동기도 4", "빈 화면"]},
                         ],
                     }]
+                    and fallback_state["corporatePrayerEditor"] == {
+                        "index": 15,
+                        "fields": [
+                            {"key": "corporate_prayer_topic", "topicIndex": "0", "label": "공동기도 1", "value": "'새 기도 제목'"},
+                            {"key": "corporate_prayer_topic", "topicIndex": "1", "label": "공동기도 2", "value": "선교와 민족을 위해"},
+                        ],
+                        "rawTitle": "공동기도 1·2",
+                        "assignee": "",
+                        "memoSlides": ["'새 기도 제목'", "'선교와 민족을 위해'"],
+                        "slideTitles": ["공동기도 1", "공동기도 2"],
+                        "slideAssignees": ["'새 기도 제목'", "'선교와 민족을 위해'"],
+                    }
                     and len(fallback_state["mainPraiseGroups"]) == 1
                     and fallback_state["mainPraiseGroups"][0]["label"] == "찬양"
                     and fallback_state["mainPraiseGroups"][0]["meta"] == "썸프레이즈"

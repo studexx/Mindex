@@ -9702,6 +9702,16 @@ function updateServiceItemField(field, options = {}) {
     }
     item.memo = serializeServiceItemMemo(parsed);
   }
+  if (key === "corporate_prayer_topic") {
+    const parsed = parseServiceItemMemo(item.memo);
+    const topicIndex = Number(field.dataset.corporatePrayerTopicIndex);
+    if (isMonthlyCorporatePrayerGroupItem(item, parsed) && Number.isInteger(topicIndex) && topicIndex >= 0 && topicIndex < 2) {
+      const slides = Array.isArray(parsed.slides) ? [...parsed.slides] : [];
+      slides[topicIndex] = String(field.value || "").trim();
+      parsed.slides = slides.slice(0, 2);
+      item.memo = serializeServiceItemMemo(parsed);
+    }
+  }
   if (key === "memo_note" || key === "slide_overrides" || key === "manual_praise_lyrics" || key === "form_hint" || key === "element_type" || key === "component_type" || key === "asset_name" || key === "asset_url" || key === "presenter_role" || key === "auto_advance_at") {
     const parsed = parseServiceItemMemo(item.memo);
     if (key === "memo_note") parsed.note = field.value;
@@ -11161,6 +11171,7 @@ function serviceItemEditorModel(item = {}, options = {}) {
 
 function serviceTitlePersonNeedsTitleInput(item = {}, memo = parseServiceItemMemo(item.memo)) {
   if (serviceMemoElementType(memo) !== "title_person") return false;
+  if (isMonthlyCorporatePrayerGroupItem(item, memo)) return false;
   const label = compactSearchValue(item.label || "");
   if (!label) return true;
   if (serviceTitlePersonRawTitleAssignee(item, memo)) return false;
@@ -22325,7 +22336,20 @@ function presenterSlideBelongsToItem(slide, item) {
 function renderServiceSidebarItemEditor(service, items, selectedIndex) {
   const item = items[selectedIndex];
   if (!item) return "";
-  const elementType = serviceMemoElementType(parseServiceItemMemo(item.memo));
+  const memo = parseServiceItemMemo(item.memo);
+  const elementType = serviceMemoElementType(memo);
+  if (isMonthlyCorporatePrayerGroupItem(item, memo)) {
+    return `
+      <section class="service-sidebar-section service-sidebar-section--editor">
+        <div class="service-sidebar-head">
+          <span>편집</span>
+          <small>${escapeHtml(selectedIndex + 1)}</small>
+        </div>
+        <div class="service-sidebar-editor">
+          ${renderPresenterMonthlyCorporatePrayerInputs(item, selectedIndex, memo, service?.id)}
+        </div>
+      </section>`;
+  }
   return `
     <section class="service-sidebar-section service-sidebar-section--editor">
       <div class="service-sidebar-head">
@@ -25699,6 +25723,9 @@ function presenterServiceInputControls(item, index, service) {
   const context = presenterServiceInputItem(item, service);
   if (!context) return "";
   const { mode, model, memo } = context;
+  if (isMonthlyCorporatePrayerGroupItem(item, memo)) {
+    return renderPresenterMonthlyCorporatePrayerInputs(item, index, memo, service?.id || model?.service?.id);
+  }
   if (["praise_db", "score_db", "lyrics_db"].includes(mode)) {
     return renderPresenterServicePraiseInput(item, index, model);
   }
@@ -25714,17 +25741,18 @@ function presenterServiceInputControls(item, index, service) {
 function presenterServiceTextInputSpec(item, model, memo) {
   const elementType = serviceMemoElementType(memo);
   const label = compactSearchValue(item.label || "");
+  const monthlyCorporatePrayerGroup = isMonthlyCorporatePrayerGroupItem(item, memo);
   const specialSong = isSpecialSongServiceItem(item);
   const manualPraise = servicePraiseInputMode(item, memo, model?.service) === "manual_praise";
   const genericTitle = presenterTitleAssigneeTitleIsGeneric(item.raw_title || "", item.label || "");
   const needsTitle = manualPraise
-    || /설교제목|특송|공동기도/.test(label)
+    || (!monthlyCorporatePrayerGroup && /설교제목|특송|공동기도/.test(label))
     || serviceTitlePersonNeedsTitleInput(item, memo)
     || specialSong
     || ["청소년부광고", "청년부광고"].includes(label)
     || (Boolean(String(item.raw_title || "").trim()) && !genericTitle && elementType !== "title_person");
   const needsAssignee = (
-    elementType === "title_person"
+    elementType === "title_person" && !monthlyCorporatePrayerGroup
   ) || specialSong;
   return { needsTitle, needsAssignee };
 }
@@ -25760,6 +25788,7 @@ function isAnnouncementTextInputItem(item = {}) {
 function presenterServiceInputHasEditableField(item, service) {
   const context = presenterServiceInputItem(item, service);
   if (!context) return false;
+  if (isMonthlyCorporatePrayerGroupItem(item, context.memo)) return true;
   if (["praise_db", "score_db", "lyrics_db", "scripture", "asset"].includes(context.mode)) return true;
   if (context.mode === "text" && servicePraiseInputMode(item, context.memo, service) === "manual_praise") return true;
   const { needsTitle, needsAssignee } = presenterServiceTextInputSpec(item, context.model, context.memo);
@@ -25841,7 +25870,40 @@ function renderPresenterServiceScriptureInput(item, index, memo) {
       </div>
     </label>
     ${translationControl}
-    ${perReferenceControls}`;
+      ${perReferenceControls}`;
+}
+
+function isMonthlyCorporatePrayerGroupItem(item = {}, memo = parseServiceItemMemo(item?.memo)) {
+  return String(item?._worshipSectionKey || item?.section_key || "").trim() === "corporate_prayer"
+    && serviceMemoElementType(memo) === "title_person"
+    && memo.templateKey === "monthly_corporate_prayer_group";
+}
+
+function monthlyCorporatePrayerOrdinalsForItem(item = {}) {
+  const ordinals = String(item?.label || "")
+    .match(/\d+/g)
+    ?.map((value) => Number(value))
+    .filter((value) => Number.isFinite(value) && value > 0) || [];
+  if (ordinals.length) return ordinals.slice(0, 2);
+  const compact = compactSearchValue(item?.label || "");
+  return compact.includes("34") ? [3, 4] : [1, 2];
+}
+
+function renderPresenterMonthlyCorporatePrayerInputs(item, index, memo, serviceId = state.selectedServiceId) {
+  const ordinals = monthlyCorporatePrayerOrdinalsForItem(item);
+  const topics = Array.isArray(memo.slides) ? memo.slides : [];
+  const serviceIdAttr = serviceId ? ` data-service-id="${escapeAttr(serviceId)}"` : "";
+  return `
+    <div class="svc-presenter-input-group svc-presenter-input-group--corporate-prayer">
+      ${ordinals.map((ordinal, topicIndex) => `
+        <label class="svc-presenter-input-field">
+          <span>${escapeHtml(`공동기도 ${ordinal}`)}</span>
+          <input class="svc-presenter-input-control" type="text" data-service-item-field="corporate_prayer_topic"
+            data-service-item-index="${index}"${serviceIdAttr} data-corporate-prayer-topic-index="${topicIndex}"
+            value="${escapeAttr(String(topics[topicIndex] || "").replace(/^['"“”‘’]+|['"“”‘’]+$/g, ""))}"
+            placeholder="기도 제목" onkeydown="handleDetailKeydown(event)" aria-label="${escapeAttr(`공동기도 ${ordinal} 제목`)}" />
+        </label>`).join("")}
+    </div>`;
 }
 
 function renderPresenterServiceAssetInput(item, index, memo) {
