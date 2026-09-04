@@ -5726,7 +5726,7 @@ def main() -> int:
                 if (
                     72 <= fullscreen_long_song_title_fit_state["fontSize"] < 152
                     and fullscreen_long_song_title_fit_state["scrollWidth"] <= fullscreen_long_song_title_fit_state["clientWidth"]
-                    and fullscreen_long_song_title_fit_state["textAlign"] == "center"
+                    and fullscreen_long_song_title_fit_state["textAlign"] == "right"
                 ):
                     pass_("presenter-fullscreen-long-song-title-fit", json.dumps(fullscreen_long_song_title_fit_state, ensure_ascii=False))
                 else:
