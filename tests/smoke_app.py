@@ -8940,7 +8940,7 @@ def main() -> int:
                           const box = host.querySelector('.presenter-slide--scripture > .presenter-slide-text');
                           const line = box?.querySelector('span');
                           const naturalWidth = line ? presenterTextNaturalWidth(line) : 0;
-                          const limit = box ? box.clientWidth * 0.5 : 0;
+                          const limit = box ? box.clientWidth : 0;
                           const fontSize = box ? Number.parseFloat(getComputedStyle(box).fontSize || '0') : 0;
                           const fittedSize = box?.style.getPropertyValue('--presenter-scripture-fitted-size') || '';
                           host.remove();

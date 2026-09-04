@@ -3724,7 +3724,7 @@ function fitPresenterChromakeyScriptureText(host, frameState = {}) {
   if (!Number.isFinite(baseSize) || baseSize <= 0) return;
 
   const preview = host.classList?.contains("svc-slide-mini-canvas");
-  const targetWidth = preview ? (textBox.clientWidth * 0.5) : textBox.clientWidth;
+  const targetWidth = textBox.clientWidth;
   const minimumSize = Math.min(preview ? 28 : 32, baseSize);
   for (let size = Math.round(baseSize); size >= minimumSize; size -= 1) {
     textBox.style.setProperty("--presenter-scripture-fitted-size", `${size}px`);
