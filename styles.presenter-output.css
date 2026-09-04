@@ -127,7 +127,7 @@
   --presenter-type-main-song: calc(150 * var(--presenter-stage-unit));
   --presenter-type-section: calc(140 * var(--presenter-stage-unit));
   --presenter-type-content: calc(100 * var(--presenter-stage-unit));
-  --presenter-type-lyrics: calc(100 * var(--presenter-stage-unit));
+  --presenter-type-lyrics: calc(105 * var(--presenter-stage-unit));
   --presenter-type-support: calc(100 * var(--presenter-stage-unit));
   --presenter-type-liturgical-heading: calc(100 * var(--presenter-stage-unit));
   --presenter-type-liturgical-body: calc(55 * var(--presenter-stage-unit));
