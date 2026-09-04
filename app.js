@@ -27558,8 +27558,12 @@ function renderPresenterBoardSubgroup(subgroup, activeIndex, serviceId, options 
   const firstIndex = subgroup.slides[0]?.slideIndex ?? 0;
   const slides = options.slides || annotatePresenterFormStarts(subgroup.slides).entries;
   const display = presenterBoardSubgroupDisplay(serviceId, subgroup);
-  const rawLabel = display.label || subgroup.label || "항목";
-  const rawTitle = display.title || subgroup.title || subgroup.name;
+  const rawLabel = Object.prototype.hasOwnProperty.call(display, "label")
+    ? display.label
+    : subgroup.label || "항목";
+  const rawTitle = Object.prototype.hasOwnProperty.call(display, "title")
+    ? display.title
+    : subgroup.title || subgroup.name;
   const firstSlide = subgroup.slides[0]?.slide || slides[0]?.slide;
   const visibleTitle = isPresenterPreparationSlide(firstSlide)
     ? ""
@@ -27571,9 +27575,10 @@ function renderPresenterBoardSubgroup(subgroup, activeIndex, serviceId, options 
   const context = presenterBoardSubgroupItemContext(serviceId, subgroup);
   const itemIndexAttr = context ? ` data-service-item-index="${escapeAttr(String(context.index))}"` : "";
   const elementIdAttr = context?.item?.id ? ` data-service-element-id="${escapeAttr(context.item.id)}"` : "";
+  const showHead = Boolean(options.showHead && (visibleLabel || visibleTitle || warnings.length));
   return `
-    <div class="svc-board-subgroup${active ? " active" : ""}${options.showHead ? "" : " collapsed-head"}"${itemIndexAttr}${elementIdAttr}>
-      ${options.showHead ? `
+    <div class="svc-board-subgroup${active ? " active" : ""}${showHead ? "" : " collapsed-head"}"${itemIndexAttr}${elementIdAttr}>
+      ${showHead ? `
         <header class="svc-board-subgroup-head-row">
           <button class="svc-board-subgroup-head" type="button"
             data-presenter-action="jump"
@@ -27649,6 +27654,14 @@ function presenterBoardSubgroupDisplay(serviceId, subgroup = {}) {
     title: String(subgroup.title || "").trim(),
   };
   const contexts = presenterBoardSubgroupInputContexts(serviceId, subgroup);
+  const item = contexts.length === 1 ? contexts[0]?.item : null;
+  const sectionKey = String(item?._worshipSectionKey || item?.section_key || "").trim();
+  if (sectionKey === "announcements" && compactSearchValue(fallback.label) === "광고") {
+    return {
+      ...fallback,
+      label: "",
+    };
+  }
   const sectionFallbackLabel = presenterBoardSectionFallbackLabelForContext(contexts[0], fallback.label);
   if (contexts.length === 1 && sectionFallbackLabel) {
     return {

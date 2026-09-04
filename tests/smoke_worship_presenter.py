@@ -1868,6 +1868,39 @@ def main() -> int:
                             readonlyTextareas: controlsHost.querySelectorAll('textarea[readonly]').length,
                           };
                         })(),
+                        announcementGenericLabelGuard: (() => {
+                          const announcementService = { id: '__smoke_announcement_label_guard_service__', type_id: 'sunday-main', date: '2026-08-23' };
+                          const announcementItem = {
+                            id: '__smoke_announcement_label_guard_item__',
+                            service_id: announcementService.id,
+                            label: '광고',
+                            raw_title: '교회소식',
+                            memo: serializeServiceItemMemo({ elementType: 'title' }),
+                            _worshipSectionKey: 'announcements',
+                            _worshipSectionTitle: '광고',
+                            _worshipSectionId: '__smoke_announcement_label_guard_section__',
+                            _worshipSectionOrder: 6,
+                            _worshipElementOrder: 1,
+                          };
+                          state.services = [announcementService].concat(state.services.filter((item) => item.id !== announcementService.id));
+                          state.serviceItems[announcementService.id] = [announcementItem];
+                          const announcementSlides = buildServicePresenterSlidesUncached(announcementService.id);
+                          const group = groupPresenterSlidesBySection(announcementSlides, announcementService.id)
+                            .find((item) => item.sectionKey === 'announcements') || {};
+                          const subgroup = group.subgroups?.[0] || {};
+                          const boardHost = document.createElement('div');
+                          boardHost.innerHTML = renderPresenterBoardSubgroup(subgroup, -1, announcementService.id, { showHead: true });
+                          return {
+                            groupLabel: group.label || '',
+                            subgroupLabel: subgroup.label || '',
+                            subgroupTitle: subgroup.title || '',
+                            renderedLabel: boardHost.querySelector('.svc-board-subgroup-head span')?.textContent.trim() || '',
+                            renderedTitle: boardHost.querySelector('.svc-board-subgroup-head strong')?.textContent.trim() || '',
+                            hasHead: Boolean(boardHost.querySelector('.svc-board-subgroup-head')),
+                            collapsed: boardHost.querySelector('.svc-board-subgroup')?.classList.contains('collapsed-head') || false,
+                            slideTitle: subgroup.slides?.[0]?.slide?.title || '',
+                          };
+                        })(),
                         praiseSectionAssigneeIntro: (() => {
                           const service = state.services.find((item) => item.id === modelServiceId);
                           if (!service) return null;
@@ -2134,6 +2167,16 @@ def main() -> int:
                         "primaryOnlySongFieldCount": 2,
                         "stacked": True,
                         "readonlyTextareas": 0,
+                    }
+                    and fallback_state["announcementGenericLabelGuard"] == {
+                        "groupLabel": "광고",
+                        "subgroupLabel": "교회소식",
+                        "subgroupTitle": "",
+                        "renderedLabel": "교회소식",
+                        "renderedTitle": "",
+                        "hasHead": True,
+                        "collapsed": False,
+                        "slideTitle": "교회소식",
                     }
                     and fallback_state["praiseSectionAssigneeIntro"] == {
                         "type": "title-assignee",
