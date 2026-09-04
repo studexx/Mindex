@@ -2043,6 +2043,7 @@ def main() -> int:
                         consecutiveComma: normalizeServiceScriptureReferenceList("롬 8:22,23"),
                         consecutiveCommaFormatted: formatServiceScriptureReferenceList("롬 8:22,23"),
                         crossBookSemicolon: normalizeServiceScriptureReferenceList("요 15:9; 롬 5:7–8"),
+                        sameBookSemicolonFormatted: formatServiceScriptureReferenceList("느 6:15-19; 느 7:1-5"),
                         longDash: normalizeServiceScriptureReferenceList("마 13:31—33, 44—50"),
                         formatted: formatServiceScriptureReferenceList("마 13:31–33, 44–50"),
                         displayTitle: worshipElementDisplayTitle(
@@ -2085,6 +2086,7 @@ def main() -> int:
                         "consecutiveComma": ["롬 8:22–23"],
                         "consecutiveCommaFormatted": "롬 8:22–23",
                         "crossBookSemicolon": ["요 15:9", "롬 5:7–8"],
+                        "sameBookSemicolonFormatted": "느 6:15–19; 7:1–5",
                         "longDash": ["마 13:31–33", "마 13:44–50"],
                         "formatted": "마 13:31–33, 44–50",
                         "displayTitle": "요 15:9; 롬 5:7–8",

@@ -24519,12 +24519,15 @@ function formatServiceScriptureReferenceList(value) {
     const versePart = reference.verse
       ? `${reference.chapter}:${reference.verse}${reference.verseEnd ? `–${reference.verseEnd}` : ""}`
       : String(reference.chapter);
-    const sameBookAndChapter = previous
-      && previous.book?.code === reference.book?.code
+    const sameBook = previous
+      && previous.book?.code === reference.book?.code;
+    const sameBookAndChapter = sameBook
       && previous.chapter === reference.chapter;
     const display = sameBookAndChapter
       ? versePart.replace(`${reference.chapter}:`, "")
-      : formatServiceBibleReference(reference, referenceText);
+      : sameBook
+        ? versePart
+        : formatServiceBibleReference(reference, referenceText);
     const separator = index ? (sameBookAndChapter ? ", " : "; ") : "";
     return `${formatted}${separator}${display}`;
   }, "");
