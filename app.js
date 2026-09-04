@@ -24504,7 +24504,9 @@ function normalizeServiceItemReferenceSpacing(value) {
 
 function normalizeServiceScriptureReferenceList(value) {
   const source = Array.isArray(value) ? value : String(value || "").split(/[\n;；]/);
-  return uniqueList(mergeConsecutiveServiceScriptureReferences(source.flatMap(expandServiceScriptureReferenceText)));
+  const context = { lastBookName: "", lastChapter: null };
+  return uniqueList(mergeConsecutiveServiceScriptureReferences(source.flatMap((text) =>
+    expandServiceScriptureReferenceText(text, context))));
 }
 
 function formatServiceScriptureReferenceList(value) {
@@ -24557,14 +24559,14 @@ function mergeConsecutiveServiceScriptureReferences(references = []) {
   }, []);
 }
 
-function expandServiceScriptureReferenceText(value = "") {
+function expandServiceScriptureReferenceText(value = "", context = null) {
   const parts = String(value || "")
     .split(/[，,]/)
     .map((part) => part.trim())
     .filter(Boolean);
   const references = [];
-  let lastBookName = "";
-  let lastChapter = null;
+  let lastBookName = context?.lastBookName || "";
+  let lastChapter = context?.lastChapter || null;
 
   for (const part of parts) {
     const candidates = [part];
@@ -24584,6 +24586,10 @@ function expandServiceScriptureReferenceText(value = "") {
     lastChapter = reference.chapter || lastChapter;
   }
 
+  if (context) {
+    context.lastBookName = lastBookName;
+    context.lastChapter = lastChapter;
+  }
   return references;
 }
 
