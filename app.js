@@ -6405,6 +6405,7 @@ async function saveWorshipServiceInstance(service) {
 
   sanitizeWorshipPersistenceRows(rows, { elementTypedStateColumns });
   compactWorshipPersistenceRows(rows);
+  preserveExistingWorshipContentRows(rows, existingSections, existingElements);
   validateWorshipPersistenceRows(rows, { serviceId });
   if (rows.sections.length) {
     const { error } = await state.client
@@ -6936,6 +6937,62 @@ function compactWorshipPersistenceRows(rows = {}) {
   };
   rows.sections = compactById(rows.sections);
   rows.elements = compactById(rows.elements);
+  return rows;
+}
+
+function worshipElementPersistenceSlotKey(element = {}) {
+  return normalizeWorshipSlotKey(
+    element.slot_key
+    || element.source_ref?.slotKey
+    || element.source_ref?.slot_key
+    || element.config?.slotKey
+    || element.config?.slot_key,
+  );
+}
+
+function worshipElementHasPersistedContent(element = {}) {
+  const asset = normalizeServiceAsset(element.asset || element.config?.asset);
+  const contentState = element.content_state && typeof element.content_state === "object"
+    ? element.content_state
+    : {};
+  return Boolean(
+    element.song_id
+    || element.song_version_id
+    || String(element.title || "").trim()
+    || String(element.person || "").trim()
+    || String(element.body || "").trim()
+    || String(element.scripture_reference || "").trim()
+    || hasServiceAsset(asset)
+    || contentState.state === "filled"
+  );
+}
+
+function shouldPreserveExistingWorshipElement(element = {}) {
+  if (!element?.id) return false;
+  if (element.config?.templateSuppressed || element.config?.template_suppressed) return false;
+  return worshipElementHasPersistedContent(element);
+}
+
+function preserveExistingWorshipContentRows(rows = {}, existingSections = [], existingElements = []) {
+  const nextElementIds = new Set((rows.elements || []).map((element) => element.id).filter(Boolean));
+  const nextSectionIds = new Set((rows.sections || []).map((section) => section.id).filter(Boolean));
+  const existingSectionById = Object.fromEntries(existingSections.map((section) => [section.id, section]));
+  existingElements.forEach((element) => {
+    if (nextElementIds.has(element.id) || !shouldPreserveExistingWorshipElement(element)) return;
+    const section = existingSectionById[element.section_id];
+    if (section && !nextSectionIds.has(section.id)) {
+      rows.sections.push(section);
+      nextSectionIds.add(section.id);
+    }
+    rows.elements.push(element);
+    nextElementIds.add(element.id);
+    const slotKey = worshipElementPersistenceSlotKey(element);
+    console.warn("Preserved existing worship content row omitted from save payload.", {
+      id: element.id,
+      slotKey,
+      title: element.title || "",
+    });
+  });
   return rows;
 }
 

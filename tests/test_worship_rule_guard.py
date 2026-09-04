@@ -125,6 +125,18 @@ class WorshipRuleGuardTests(unittest.TestCase):
         self.assertRegex(shared, r'"sunday-second",\s*"sunday-main"')
         self.assertIn('key === "offering-hymn"', shared)
 
+    def test_full_save_preserves_existing_content_rows(self) -> None:
+        save = function_block(self.source, "saveWorshipServiceInstance")
+        preserve = function_block(self.source, "preserveExistingWorshipContentRows")
+        self.assertLess(
+            save.index("preserveExistingWorshipContentRows(rows, existingSections, existingElements)"),
+            save.index("validateWorshipPersistenceRows(rows, { serviceId })"),
+        )
+        should_preserve = function_block(self.source, "shouldPreserveExistingWorshipElement")
+        self.assertIn("worshipElementHasPersistedContent(element)", should_preserve)
+        self.assertIn("rows.elements.push(element)", preserve)
+        self.assertIn("rows.sections.push(section)", preserve)
+
     def test_fixed_doxology_scope_does_not_absorb_sunday_main(self) -> None:
         fixed = function_block(self.source, "publicFixedDoxologySpec")
         self.assertIn('"sunday-first"', fixed)
