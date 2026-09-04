@@ -954,6 +954,9 @@ body[data-module="presenter"] #newSongBtn {
   color: currentColor;
   stroke-width: 1.5;
 }
+.nav-rail-tab[data-home-module="references"] svg {
+  transform: rotate(45deg);
+}
 .sidebar {
   grid-column: 2;
   grid-row: 1 / -1;

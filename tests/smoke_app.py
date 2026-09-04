@@ -1567,7 +1567,14 @@ def main() -> int:
                         activeIconColor: activeIconStyles?.color || '',
                         activeIconWidth: Math.round(activeIconRect?.width || 0),
                         activeIconHeight: Math.round(activeIconRect?.height || 0),
-                        activeIconStroke: activeIconStyles?.strokeWidth || ''
+                        activeIconStroke: activeIconStyles?.strokeWidth || '',
+                        referencesIconRotation: (() => {
+                          const icon = document.querySelector('.nav-rail [data-home-module="references"] svg');
+                          if (!icon) return null;
+                          const matrix = new DOMMatrixReadOnly(getComputedStyle(icon).transform);
+                          const angle = Math.round(Math.atan2(matrix.b, matrix.a) * 180 / Math.PI);
+                          return angle < 0 ? angle + 360 : angle;
+                        })()
                       };
                       probe.remove();
                       return output;
@@ -1583,6 +1590,7 @@ def main() -> int:
                     and topbar_state["activeIconWidth"] == 16
                     and topbar_state["activeIconHeight"] == 16
                     and topbar_state["activeIconStroke"] == "1.5px"
+                    and topbar_state["referencesIconRotation"] == 45
                 ):
                     pass_("navigation-rail-order-active-style", json.dumps(topbar_state, ensure_ascii=False))
                 else:
@@ -3954,7 +3962,7 @@ def main() -> int:
                             "firstElementRole": "waiting_loop",
                         }
                         and template_terms["monthlyScaffold"]["sections"] == 12
-                        and template_terms["monthlyScaffold"]["elements"] == 26
+                        and template_terms["monthlyScaffold"]["elements"] == 24
                         and template_terms["monthlyScaffold"]["firstSection"] == "준비"
                         and template_terms["monthlyScaffold"]["firstElementType"] == "video"
                         and template_terms["monthlyScaffold"]["firstElementLabel"] == "대기 영상"
@@ -4012,11 +4020,9 @@ def main() -> int:
                             "strength": "default",
                         }
                         and template_terms["monthlyScaffold"]["corporatePrayerElements"] == [
-                            {"type": "title_person", "label": "공동기도 1"},
-                            {"type": "title_person", "label": "공동기도 2"},
+                            {"type": "title_person", "label": "공동기도 1·2"},
                             {"type": "praise", "label": "기도 찬양"},
-                            {"type": "title_person", "label": "공동기도 3"},
-                            {"type": "title_person", "label": "공동기도 4"},
+                            {"type": "title_person", "label": "공동기도 3·4"},
                         ]
                         and template_terms["publicSpecialRule"] == {
                             "sectionTitle": "특송",
@@ -4522,7 +4528,7 @@ def main() -> int:
                             {"verse": 18, "verseEnd": 19},
                             {"verse": 20, "verseEnd": None},
                         ]
-                        and len(template_terms["monthlyScaffold"]["corporatePrayerElements"]) == 5
+                        and len(template_terms["monthlyScaffold"]["corporatePrayerElements"]) == 3
                         and len(template_terms["monthlyScaffold"]["offeringElements"]) == 2
                         and template_terms["overflow"] <= 2
                     ):

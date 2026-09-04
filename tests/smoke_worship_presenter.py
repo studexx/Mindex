@@ -2097,11 +2097,9 @@ def main() -> int:
                     and fallback_state["corporatePrayerGroups"] == [{
                         "title": "공동기도",
                         "subgroups": [
-                            {"label": "공동기도 1", "title": "", "slides": 1},
-                            {"label": "공동기도 2", "title": "", "slides": 1},
+                            {"label": "공동기도 1·2", "title": "", "slides": 3},
                             {"label": "기도 찬양", "title": "", "slides": 1},
-                            {"label": "공동기도 3", "title": "", "slides": 1},
-                            {"label": "공동기도 4", "title": "", "slides": 1},
+                            {"label": "공동기도 3·4", "title": "", "slides": 3},
                         ],
                     }]
                     and len(fallback_state["mainPraiseGroups"]) == 1

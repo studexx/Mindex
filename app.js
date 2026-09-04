@@ -4616,6 +4616,8 @@ function groupWorshipElements(sections = [], elements = []) {
         formPreset,
         formPresetDisabled,
         formPresetRules,
+        templateKey: config.templateKey || config.template_key,
+        templateVariant: config.templateVariant || config.template_variant,
         scriptureReference,
         scriptureReferences,
         scriptureTranslationId: config.scriptureTranslationId || config.scripture_translation_id,
@@ -12706,6 +12708,11 @@ function buildWorshipServiceScaffold(serviceId, typeId, options = {}) {
       const outputMode = normalizeServiceOutputMode(elementStep.outputMode || elementStep.output_mode || elementStep.renderMode || elementStep.render_mode);
       const introSlide = normalizeServiceIntroSlide(elementStep.introSlide || elementStep.intro_slide || elementStep.titleSlide || elementStep.title_slide);
       const textHighlights = normalizeServiceTextHighlights(elementStep.textHighlights || elementStep.text_highlights || elementStep.highlights);
+      const manualSlides = Array.isArray(elementStep.slides)
+        ? elementStep.slides.map((slide) => String(slide || "").trim()).filter(Boolean)
+        : [];
+      const templateKey = String(elementStep.templateKey || elementStep.template_key || "").trim();
+      const templateVariant = String(elementStep.templateVariant || elementStep.template_variant || "").trim();
       const asset = worshipTemplateElementAsset(elementStep, elementLabel);
       const defaultSong = worshipTemplateDefaultSong(elementStep, elementType);
       const defaultSongVersionId = defaultSong?.version?._worshipVersionPersisted ? defaultSong.version.id : null;
@@ -12740,6 +12747,9 @@ function buildWorshipServiceScaffold(serviceId, typeId, options = {}) {
           ...(outputMode ? { outputMode } : {}),
           ...(introSlide ? { introSlide } : {}),
           ...(textHighlights.length ? { textHighlights } : {}),
+          ...(manualSlides.length ? { slides: manualSlides } : {}),
+          ...(templateKey ? { templateKey } : {}),
+          ...(templateVariant ? { templateVariant } : {}),
           ...(asset.url ? { asset: { ...asset, kind: asset.kind || elementType } } : {}),
           ...(elementStep.hiddenInPresentation || elementStep.hidden_in_presentation ? { hiddenInPresentation: true } : {}),
           ...(ready ? { presenterRole: elementReadyRole } : {}),
@@ -19725,17 +19735,23 @@ function publicMonthlyCorporatePrayerStep() {
     "치유와 회복을 위해",
     "교회학교를 위해",
   ];
-  const prayerElements = topics.map((topic, index) => ({
-    label: `공동기도 ${index + 1}`,
-    name: `공동기도 ${index + 1}`,
+  const group = (label, startIndex) => ({
+    label,
+    name: label,
     elementType: "title_person",
-    default_text: `'${topic}'`,
-  }));
-  prayerElements.splice(2, 0, {
-    label: "기도 찬양",
-    name: "기도 찬양",
-    elementType: "praise",
+    default_text: label,
+    templateKey: "monthly_corporate_prayer_group",
+    slides: topics.slice(startIndex, startIndex + 2).map((topic) => `'${topic}'`),
   });
+  const prayerElements = [
+    group("공동기도 1·2", 0),
+    {
+      label: "기도 찬양",
+      name: "기도 찬양",
+      elementType: "praise",
+    },
+    group("공동기도 3·4", 2),
+  ];
   return {
     label: "공동기도",
     name: "공동기도",
@@ -30024,6 +30040,8 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
   const contentState = resolvePresenterServiceItemContentState(item, memo, song, service);
   const fixedTitle = presenterFixedTitleText(item);
   if (fixedTitle) return [presenterTitleOnlySlide(item, section, index, fixedTitle)];
+  const monthlyCorporatePrayerSlides = presenterMonthlyCorporatePrayerSlides(item, section, index, memo);
+  if (monthlyCorporatePrayerSlides.length) return monthlyCorporatePrayerSlides;
   if (contentState.state === "loading") return withIntroAndSpecialTitle([presenterMissingContentSlide(item, section, index, contentState, service)]);
   if (isOptionalCitationScriptureServiceItem(item)
     && !serviceItemScriptureReferences(item, memo, service).length
@@ -30198,6 +30216,49 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
     text: formatPresenterSongTitleText(presenterSongTitleDisplayTitle(null, null, displayText, sectionHeading)),
     sort: index,
   }], index, service));
+}
+
+function presenterMonthlyCorporatePrayerSlides(item = {}, section = {}, index = 0, memo = emptyServiceItemMemo()) {
+  if (section.sectionKey !== "corporate_prayer") return [];
+  if (memo.templateKey !== "monthly_corporate_prayer_group") return [];
+  const label = String(item.label || section.elementLabel || "").trim();
+  const ordinals = label.match(/\d+/g)?.map((value) => Number(value)).filter((value) => Number.isFinite(value) && value > 0) || [];
+  if (!ordinals.length) return [];
+  const topics = memo.slides.map((slide) => String(slide || "").trim()).filter(Boolean).slice(0, 2);
+  if (!topics.length) return [];
+  const groupSlide = {
+    id: `${item.id || index}:corporate-prayer-group`,
+    ...section,
+    elementType: PRESENTER_ELEMENT_TYPES.TITLE_ASSIGNEE,
+    layout: PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT,
+    type: "title-assignee",
+    label,
+    title: label,
+    assignee: "",
+    marker: "",
+    text: label,
+    skipTrailingBlank: true,
+    sort: index - 0.001,
+  };
+  const topicSlides = topics.map((topic, topicIndex) => {
+    const ordinal = ordinals[topicIndex] || ordinals[0] + topicIndex;
+    const title = `공동기도 ${ordinal}`;
+    return {
+      id: `${item.id || index}:corporate-prayer-topic:${ordinal}`,
+      ...section,
+      elementType: PRESENTER_ELEMENT_TYPES.TITLE_ASSIGNEE,
+      layout: PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT,
+      type: "title-assignee",
+      label,
+      title,
+      assignee: topic,
+      marker: "",
+      text: cleanList([title, topic]).join("\n"),
+      skipTrailingBlank: true,
+      sort: index + topicIndex / 100,
+    };
+  });
+  return [groupSlide, ...topicSlides];
 }
 
 function shouldSuppressMainPraiseScoreSongTitle(item = {}, service = {}) {
