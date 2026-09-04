@@ -119,8 +119,7 @@ class WorshipRuleGuardTests(unittest.TestCase):
         self.assertIn("worshipServiceParticipatesInSharedSundayContent(service)", source_lookup)
         self.assertIn("worshipServiceParticipatesInSharedSundayContent(candidate)", source_lookup)
         main_praise_branch = shared.split('key.startsWith("main-praise:")', 1)[1].split('if ((["scripture-reading"', 1)[0]
-        self.assertIn('return ["sunday-first", "sunday-second"]', main_praise_branch)
-        self.assertNotIn('"sunday-main"', main_praise_branch)
+        self.assertIn('return ["sunday-first", "sunday-second", "sunday-main"]', main_praise_branch)
         self.assertRegex(shared, r'"scripture-reading",\s*"sermon-title",\s*"sermon-scripture"')
         self.assertIn('key.startsWith("sermon-citation:")', shared)
         self.assertRegex(shared, r'"sunday-second",\s*"sunday-main"')

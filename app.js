@@ -6607,6 +6607,7 @@ async function syncSharedSundayContentAfterSave(sourceService, sourceItems = [],
       && targetTypeIds.includes(worshipAppServiceTypeId(service.type_id))
       && worshipServiceParticipatesInSharedSundayContent(service));
     for (const targetService of targetServices) {
+      await ensureWorshipServiceRowsLoadedForPersistence(targetService.id);
       const update = targetUpdates.get(targetService.id) || {
         service: targetService,
         items: normalizeServiceItemsForTemplateHierarchy(
@@ -6633,6 +6634,7 @@ async function syncSharedSundayContentAfterSave(sourceService, sourceItems = [],
 
 async function syncSharedSundayContentToService(targetService, key, sourceItem, options = {}) {
   if (!worshipServiceParticipatesInSharedSundayContent(targetService)) return;
+  await ensureWorshipServiceRowsLoadedForPersistence(targetService.id);
   const targetItems = normalizeServiceItemsForTemplateHierarchy(
     targetService,
     normalizeServiceItemsInCurrentOrder(getServiceItems(targetService.id)),
@@ -6667,6 +6669,13 @@ async function ensureWorshipServiceRowsLoadedForPersistence(serviceId = "") {
     ...elements,
   ];
   state.loadedWorshipServiceIds.add(id);
+  const loadedService = state.services.find((service) => service.id === id);
+  if (loadedService) {
+    state.serviceItems[id] = projectWorshipServiceItemsFromTemplate(
+      loadedService,
+      groupWorshipElements(sections, elements)[id] || [],
+    );
+  }
 }
 
 function applySharedSundayContentToItem(targetItem = {}, sourceItem = {}, sourceService = null) {
@@ -24677,8 +24686,8 @@ function sundaySharedContentTypesForItem(item = {}, service = null) {
   const typeId = worshipAppServiceTypeId(service?.type_id);
   const key = sundaySharedContentKey(item);
   if (!key) return [];
-  if (key.startsWith("main-praise:") && ["sunday-first", "sunday-second"].includes(typeId)) {
-    return ["sunday-first", "sunday-second"];
+  if (key.startsWith("main-praise:") && ["sunday-first", "sunday-second", "sunday-main"].includes(typeId)) {
+    return ["sunday-first", "sunday-second", "sunday-main"];
   }
   if ((["scripture-reading", "sermon-title", "sermon-scripture"].includes(key) || key.startsWith("sermon-citation:")) && ["sunday-second", "sunday-main"].includes(typeId)) {
     return ["sunday-second", "sunday-main"];
