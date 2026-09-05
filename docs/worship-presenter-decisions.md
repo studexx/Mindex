@@ -22,8 +22,8 @@ Small visual polish that does not alter behavior does not need an entry.
 
 ## Current Decisions
 
-- 전역 담당 표기는 `담당`, 유형명은 `제목 / 담당`으로 통일한다. 기존 명칭의
-  입력 호환성은 유지한다. 상세 규칙은 `docs/ui-contracts.md`의 Assignee Terminology를 따른다.
+- 전역 담당 표기는 `담당`, 유형명은 `제목 / 담당`으로 통일한다. 옛 명칭의
+  레거시 별칭은 DB 전수 검사 후 제거했다. 상세 규칙은 `docs/ui-contracts.md`의 Assignee Terminology를 따른다.
 
 ### Setlist Archive Navigation
 

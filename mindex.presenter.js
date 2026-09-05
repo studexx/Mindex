@@ -1909,8 +1909,6 @@ function resolveMainPraiseIntroBodyText(service = null, bodyText = "") {
     "",
     "찬양팀",
     "담당",
-    "담당기관",
-    "담당자",
     "헤세드찬양단",
     "테힐라찬양단",
     "썸프레이즈",

@@ -9953,9 +9953,6 @@ const SERVICE_ELEMENT_TYPE_ALIASES = {
   "제목/담당": "title_person",
   "제목 / 담당": "title_person",
   "제목담당": "title_person",
-  "제목/담당자": "title_person",
-  "제목 / 담당자": "title_person",
-  "제목담당자": "title_person",
   scripture_reading: "scripture_reading",
   "성경봉독": "scripture_reading",
   scripture_body: "scripture_body",
@@ -21818,8 +21815,6 @@ const GENERIC_PRESENTER_ASSIGNEE_KEYS = new Set([
   "예배인도자",
   "찬양인도자",
   "담당",
-  "담당자",
-  "담당기관",
   "이름직분",
 ]);
 
