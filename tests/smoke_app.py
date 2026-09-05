@@ -6660,7 +6660,22 @@ def main() -> int:
                             || typeof serviceDocumentSnapshotFromRef !== 'function'
                             || typeof withServiceDocumentSnapshot !== 'function'
                           ) return { ready: false, reason: 'functions' };
-                          const service = { id: '__smoke_service_document__', type_id: 'special', date: '2026-07-19', alias: '온세대예배', _worshipSourceRef: {} };
+                          const previousDocument = {
+                            version: MINDEX_SERVICE_DOCUMENT_VERSION,
+                            updatedAt: '2026-07-18T00:00:00.000Z',
+                            sourceSignature: 'old-source',
+                            slideSignature: 'old-slides',
+                            sourceText: '[봉헌]\\n이미지: 이전 안내 이미지',
+                            sourceRecords: [{ index: 1, label: '이미지', value: '이전 안내 이미지' }],
+                            slides: [{ index: 1, type: 'image', title: '이전 안내 이미지' }],
+                          };
+                          const service = {
+                            id: '__smoke_service_document__',
+                            type_id: 'special',
+                            date: '2026-07-19',
+                            alias: '온세대예배',
+                            _worshipSourceRef: { [MINDEX_SERVICE_DOCUMENT_SOURCE_REF_KEY]: previousDocument },
+                          };
                           const item = normalizeServiceItem({
                             id: '__smoke_service_document_asset__',
                             service_id: service.id,
@@ -6686,6 +6701,7 @@ def main() -> int:
                             const document = buildServiceDocumentSnapshot(service, [item]);
                             const sourceRef = withServiceDocumentSnapshot(service, [item]);
                             const fromRef = serviceDocumentSnapshotFromRef({ _worshipSourceRef: sourceRef }) || {};
+                            const history = sourceRef[MINDEX_SERVICE_DOCUMENT_HISTORY_SOURCE_REF_KEY] || [];
                             return {
                               ready: true,
                               version: document.version || '',
@@ -6697,6 +6713,9 @@ def main() -> int:
                               slideCount: document.slides.length,
                               slideAsset: document.slides.find((slide) => slide.asset)?.asset || {},
                               exceptionReason: document.exceptions[0]?.reason || '',
+                              historyCount: history.length,
+                              historySourceText: history[0]?.sourceText || '',
+                              historySlideCount: history[0]?.slides?.length || 0,
                               roundTripVersion: fromRef.version || '',
                               roundTripSourceSignature: fromRef.sourceSignature || '',
                             };
@@ -6727,6 +6746,9 @@ def main() -> int:
                         and service_document_snapshot["slideCount"] >= 1
                         and service_document_snapshot["slideAsset"].get("name") == "꿈꾸는 어린이부 여름성경학교 안내"
                         and "봉헌 섹션의 이미지 항목" in service_document_snapshot["exceptionReason"]
+                        and service_document_snapshot["historyCount"] == 1
+                        and service_document_snapshot["historySourceText"] == "[봉헌]\n이미지: 이전 안내 이미지"
+                        and service_document_snapshot["historySlideCount"] == 1
                         and service_document_snapshot["roundTripVersion"] == "service-document-v1"
                         and service_document_snapshot["roundTripSourceSignature"] == service_document_snapshot["sourceSignature"]
                     ):

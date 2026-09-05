@@ -3487,7 +3487,10 @@ const WORSHIP_ELEMENT_BASE_LIST_SELECT = [
   "updated_at",
 ].join(",");
 const MINDEX_SERVICE_DOCUMENT_SOURCE_REF_KEY = "mindexServiceDocument";
+const MINDEX_SERVICE_DOCUMENT_HISTORY_SOURCE_REF_KEY = "mindexServiceDocumentHistory";
 const MINDEX_SERVICE_DOCUMENT_VERSION = "service-document-v1";
+const MINDEX_SERVICE_DOCUMENT_HISTORY_LIMIT = 3;
+const MINDEX_SERVICE_DOCUMENT_HISTORY_MAX_BYTES = 450000;
 
 async function worshipElementListSelect() {
   const hasSlotKey = await detectTableColumnSupport("mindex_worship_elements", "slot_key");
@@ -21031,10 +21034,65 @@ function serviceDocumentSnapshotFromRef(service = null) {
 function withServiceDocumentSnapshot(service = null, items = null) {
   const base = serviceSourceRef(service);
   const document = buildServiceDocumentSnapshot(service, items);
-  return {
+  const history = serviceDocumentHistoryWithPrevious(
+    base[MINDEX_SERVICE_DOCUMENT_SOURCE_REF_KEY],
+    base[MINDEX_SERVICE_DOCUMENT_HISTORY_SOURCE_REF_KEY],
+    document,
+  );
+  const sourceRef = {
     ...base,
     [MINDEX_SERVICE_DOCUMENT_SOURCE_REF_KEY]: document,
   };
+  if (history.length) sourceRef[MINDEX_SERVICE_DOCUMENT_HISTORY_SOURCE_REF_KEY] = history;
+  else delete sourceRef[MINDEX_SERVICE_DOCUMENT_HISTORY_SOURCE_REF_KEY];
+  return sourceRef;
+}
+
+function serviceDocumentHistoryWithPrevious(previousDocument = null, previousHistory = [], currentDocument = null) {
+  const entries = [];
+  const seen = new Set();
+  const currentKey = serviceDocumentHistoryEntryKey(currentDocument);
+  const append = (entry) => {
+    const compact = compactServiceDocumentHistoryEntry(entry);
+    const key = serviceDocumentHistoryEntryKey(compact);
+    if (!compact || !key || key === currentKey || seen.has(key)) return;
+    seen.add(key);
+    entries.push(compact);
+  };
+  append(previousDocument);
+  (Array.isArray(previousHistory) ? previousHistory : []).forEach(append);
+  return trimServiceDocumentHistory(entries);
+}
+
+function compactServiceDocumentHistoryEntry(document = null) {
+  if (!document || typeof document !== "object") return null;
+  const payload = {
+    version: document.version || MINDEX_SERVICE_DOCUMENT_VERSION,
+    updatedAt: document.updatedAt || "",
+    sourceSignature: document.sourceSignature || "",
+    slideSignature: document.slideSignature || "",
+    sourceText: limitServiceDocumentText(document.sourceText || ""),
+    sourceRecords: Array.isArray(document.sourceRecords) ? document.sourceRecords : [],
+    slides: Array.isArray(document.slides) ? document.slides : [],
+    exceptions: Array.isArray(document.exceptions) ? document.exceptions : [],
+  };
+  return Object.fromEntries(Object.entries(payload).filter(([, value]) => {
+    if (Array.isArray(value)) return value.length;
+    return value !== "" && value != null;
+  }));
+}
+
+function serviceDocumentHistoryEntryKey(document = null) {
+  if (!document || typeof document !== "object") return "";
+  return cleanList([document.sourceSignature, document.slideSignature]).join("|");
+}
+
+function trimServiceDocumentHistory(entries = []) {
+  const trimmed = entries.slice(0, MINDEX_SERVICE_DOCUMENT_HISTORY_LIMIT);
+  while (trimmed.length > 1 && JSON.stringify(trimmed).length > MINDEX_SERVICE_DOCUMENT_HISTORY_MAX_BYTES) {
+    trimmed.pop();
+  }
+  return trimmed;
 }
 
 function buildServiceDocumentSnapshot(service = null, items = null) {
