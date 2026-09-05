@@ -2182,17 +2182,17 @@ def main() -> int:
                     and "찬양" in global_search_deep_state["rendered"]["headings"]
                     and global_search_deep_state["rendered"]["songResult"]
                     and "부제 일치" in global_search_deep_state["rendered"]["songMeta"]
-                    and global_search_deep_state["scriptureReferences"] == ["요 3:16–18"]
+                    and global_search_deep_state["scriptureReferences"] == ["요한복음 3:16–18"]
                     and global_search_deep_state["complexScriptureReferences"] == {
-                        "sameChapterComma": ["마 13:31–33", "마 13:44–50"],
-                        "consecutiveComma": ["롬 8:22–23"],
-                        "consecutiveCommaFormatted": "롬 8:22–23",
-                        "crossBookSemicolon": ["요 15:9", "롬 5:7–8"],
-                        "sameBookSemicolon": ["느 6:15–19", "느 7:1–5"],
-                        "sameBookSemicolonFormatted": "느 6:15–19; 7:1–5",
-                        "longDash": ["마 13:31–33", "마 13:44–50"],
-                        "formatted": "마 13:31–33, 44–50",
-                        "displayTitle": "요 15:9; 롬 5:7–8",
+                        "sameChapterComma": ["마태복음 13:31–33", "마태복음 13:44–50"],
+                        "consecutiveComma": ["로마서 8:22–23"],
+                        "consecutiveCommaFormatted": "로마서 8:22–23",
+                        "crossBookSemicolon": ["요한복음 15:9", "로마서 5:7–8"],
+                        "sameBookSemicolon": ["느헤미야 6:15–19", "느헤미야 7:1–5"],
+                        "sameBookSemicolonFormatted": "느헤미야 6:15–19; 7:1–5",
+                        "longDash": ["마태복음 13:31–33", "마태복음 13:44–50"],
+                        "formatted": "마태복음 13:31–33, 44–50",
+                        "displayTitle": "요한복음 15:9; 로마서 5:7–8",
                     }
                     and global_search_deep_state["hymnPreparation"] == {
                         "bareLeading": {"title": "주와 같이 길 가는 것", "hymnNo": "430"},
@@ -4603,20 +4603,20 @@ def main() -> int:
                             [],
                         ]
                         and template_terms["sharedSundayContentProjection"]["secondOfferingText"]
-                        and template_terms["sharedSundayContentProjection"]["thirdReadingRefs"] == ["마 13:31–33", "마 13:44–50"]
+                        and template_terms["sharedSundayContentProjection"]["thirdReadingRefs"] == ["마태복음 13:31–33", "마태복음 13:44–50"]
                         and template_terms["sharedSundayContentProjection"]["thirdReadingMissing"] == "filled"
                         and template_terms["sharedSundayContentProjection"]["thirdSermonTitleText"] == "믿음으로 사는 사람"
                         and template_terms["sharedSundayContentProjection"]["thirdSermonTitleAssignee"] == "김남영 목사"
                         and template_terms["sharedSundayContentProjection"]["thirdSermonTitleStatic"] is True
-                        and template_terms["sharedSundayContentProjection"]["thirdSermonBodyRefs"] == ["마 13:31–33", "마 13:44–50"]
-                        and template_terms["sharedSundayContentProjection"]["thirdSermonBodyPayloadReference"] == "마 13:31–33"
-                        and template_terms["sharedSundayContentProjection"]["thirdCitationRefs"] == ["고전 13:4–7"]
+                        and template_terms["sharedSundayContentProjection"]["thirdSermonBodyRefs"] == ["마태복음 13:31–33", "마태복음 13:44–50"]
+                        and template_terms["sharedSundayContentProjection"]["thirdSermonBodyPayloadReference"] == "마태복음 13:31–33"
+                        and template_terms["sharedSundayContentProjection"]["thirdCitationRefs"] == ["고린도전서 13:4–7"]
                         and template_terms["sharedSundayContentProjection"]["thirdOfferingText"]
                         and template_terms["sharedSundayContentProjection"]["thirdOfferingStatic"] is True
                         and template_terms["sharedSundayContentProjection"]["syncedPraiseSongId"]
                         and template_terms["sharedSundayContentProjection"]["clearedPraiseSongId"] == template_terms["sharedSundayContentProjection"]["syncedPraiseSongId"]
-                        and template_terms["sharedSundayContentProjection"]["syncedScriptureRefs"] == ["마 13:31–33", "마 13:44–50"]
-                        and template_terms["sharedSundayContentProjection"]["clearedScriptureRefs"] == ["마 13:31–33", "마 13:44–50"]
+                        and template_terms["sharedSundayContentProjection"]["syncedScriptureRefs"] == ["마태복음 13:31–33", "마태복음 13:44–50"]
+                        and template_terms["sharedSundayContentProjection"]["clearedScriptureRefs"] == ["마태복음 13:31–33", "마태복음 13:44–50"]
                         and template_terms["sharedSundayContentProjection"]["thirdMissingSlides"] == [
                             "찬양 1", "찬양 2", "찬양 3", "찬양 4", "찬송", "대표기도", "특송",
                         ]
@@ -4625,8 +4625,8 @@ def main() -> int:
                             "contentState": "filled",
                             "reason": "scripture_body",
                             "slideCount": 1,
-                            "savedTitle": "요 21:15–25",
-                            "savedReference": "요 21:15–25",
+                            "savedTitle": "요한복음 21:15–25",
+                            "savedReference": "요한복음 21:15–25",
                         }
                         and template_terms["worshipSongVersionFkGuard"] == {
                             "staleInvalid": True,
@@ -6494,7 +6494,7 @@ def main() -> int:
                         and "[신앙고백]" not in service_source_view["source"]
                         and "사도신경" not in service_source_view["source"]
                         and "[성경봉독]" in service_source_view["source"]
-                        and "성경봉독: 느 6:15–19; 7:1–4" in service_source_view["source"]
+                        and "성경봉독: 느헤미야 6:15–19; 7:1–4" in service_source_view["source"]
                         and "특송: 하나님의 나팔 소리" in service_source_view["source"]
                         and "  담당: 할렐루야 찬양대" in service_source_view["source"]
                         and "  가사:" in service_source_view["source"]
@@ -6663,8 +6663,8 @@ def main() -> int:
                     if (
                         service_source_view_apply.get("ready")
                         and service_source_view_apply.get("applied")
-                        and service_source_view_apply["readingTitle"] == "막 1:1–3"
-                        and service_source_view_apply["readingReferences"] == ["막 1:1–3"]
+                        and service_source_view_apply["readingTitle"] == "마가복음 1:1–3"
+                        and service_source_view_apply["readingReferences"] == ["마가복음 1:1–3"]
                         and service_source_view_apply["specialTitle"] == "새 특송"
                         and service_source_view_apply["specialAssignee"] == "새 담당"
                         and service_source_view_apply["specialInputMode"] == "manual_praise"
@@ -9269,7 +9269,7 @@ def main() -> int:
                         and presenter_preparation_paste["rawTitleScore"]["missingCount"] == 0
                         and presenter_preparation_paste["rawTitleScore"]["slideTypes"] == ["image"]
                         and presenter_preparation_paste["prayer"] == "정선분 권사"
-                        and presenter_preparation_paste["reading"] == "히 10:38–39"
+                        and presenter_preparation_paste["reading"] == "히브리서 10:38–39"
                         and presenter_preparation_paste["sermonTitle"] == "믿음을 잃어버릴 수도 있어요?"
                         and presenter_preparation_paste["shorthand"] == {
                             "errors": [],
@@ -9292,7 +9292,7 @@ def main() -> int:
                             "reading": "",
                             "sermonBodyCount": 1,
                             "citationCount": 1,
-                            "citationReferences": ["렘 3:22", "마 3:11", "눅 24:49"],
+                            "citationReferences": ["예레미야 3:22", "마태복음 3:11", "누가복음 24:49"],
                             "citationSection": "sermon",
                         }
                         and presenter_preparation_paste["looseInput"] == {
@@ -9357,10 +9357,10 @@ def main() -> int:
                         }
                         and presenter_preparation_paste["citationCount"] == 1
                         and presenter_preparation_paste["citationReferences"] == [
-                            "렘 3:22", "마 3:11", "눅 24:49", "행 2:4", "고후 10:4", "롬 8:35–37", "살전 4:3", "벧전 1:14–15",
-                            "히 4:12", "엡 5:26", "요일 1:7", "행 15:8–9", "눅 11:13", "롬 8:30", "마 5:48", "롬 13:10"
+                            "예레미야 3:22", "마태복음 3:11", "누가복음 24:49", "사도행전 2:4", "고린도후서 10:4", "로마서 8:35–37", "데살로니가전서 4:3", "베드로전서 1:14–15",
+                            "히브리서 4:12", "에베소서 5:26", "요한일서 1:7", "사도행전 15:8–9", "누가복음 11:13", "로마서 8:30", "마태복음 5:48", "로마서 13:10"
                         ]
-                        and presenter_preparation_paste["citationRawTitle"] == "렘 3:22; 마 3:11; 눅 24:49; 행 2:4; 고후 10:4; 롬 8:35–37; 살전 4:3; 벧전 1:14–15; 히 4:12; 엡 5:26; 요일 1:7; 행 15:8–9; 눅 11:13; 롬 8:30; 마 5:48; 롬 13:10"
+                        and presenter_preparation_paste["citationRawTitle"] == "예레미야 3:22; 마태복음 3:11; 누가복음 24:49; 사도행전 2:4; 고린도후서 10:4; 로마서 8:35–37; 데살로니가전서 4:3; 베드로전서 1:14–15; 히브리서 4:12; 에베소서 5:26; 요한일서 1:7; 사도행전 15:8–9; 누가복음 11:13; 로마서 8:30; 마태복음 5:48; 로마서 13:10"
                         and presenter_preparation_paste["citationSlideCount"] == 20
                         and presenter_preparation_paste["citationQuickInsert"] is True
                         and len(presenter_preparation_paste["citationSlideReferences"]) == 16

@@ -11764,9 +11764,7 @@ function serviceScriptureReferenceParts(reference, fallback = "") {
     || KOREAN_BIBLE_BOOK_ABBREVIATIONS[reference.book.code]
     || reference.book.code
     || "";
-  const book = reference.book.shortName
-    || KOREAN_BIBLE_BOOK_ABBREVIATIONS[reference.book.code]
-    || fullBook;
+  const book = fullBook;
   const range = reference.verse
     ? `${reference.chapter}:${reference.verse}${reference.verseEnd ? `–${reference.verseEnd}` : ""}`
     : String(reference.chapter);
@@ -25856,10 +25854,7 @@ function formatServiceBibleReferenceMatch(bookName, chapter, verse, verseEnd) {
 
 function formatServiceBibleReference(reference, fallback = "") {
   if (!reference?.book || !reference?.chapter) return normalizeServiceItemReferenceSpacing(fallback);
-  const book = reference.book.shortName
-    || KOREAN_BIBLE_BOOK_ABBREVIATIONS[reference.book.code]
-    || reference.book.koreanName
-    || reference.book.code;
+  const book = reference.book.koreanName || reference.book.shortName || reference.book.code;
   const versePart = reference.verse
     ? `${reference.chapter}:${reference.verse}${reference.verseEnd ? `–${reference.verseEnd}` : ""}`
     : String(reference.chapter);

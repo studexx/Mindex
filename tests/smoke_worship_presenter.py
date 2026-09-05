@@ -3478,7 +3478,7 @@ def main() -> int:
 	                        "title": "1 만복의 근원 하나님",
 	                        "imageSrc": "assets/hymn-scores/1/slide-02.webp",
 	                    }]
-	                    and title_and_liturgical_state["sharedScripture"]["readingReferences"] == ["출 23:14–19"]
+	                    and title_and_liturgical_state["sharedScripture"]["readingReferences"] == ["출애굽기 23:14–19"]
 	                    and title_and_liturgical_state["sharedScripture"]["readingState"]["state"] == "filled"
 		                    and title_and_liturgical_state["sharedScripture"]["readingState"]["reason"] == "scripture_body"
                     and title_and_liturgical_state["sharedScripture"]["readingInput"] is not None
@@ -3497,16 +3497,16 @@ def main() -> int:
                         "isLiveScriptureElement": True,
                     }]
                     and title_and_liturgical_state["sharedScripture"]["targetLabel"] == "성경봉독"
-                    and title_and_liturgical_state["sharedSundaySermon"]["sermonBodyInputReferences"] == ["마 13:31–33", "마 13:44–50"]
-                    and title_and_liturgical_state["sharedSundaySermon"]["sermonBodySecondReferences"] == ["마 13:31–33", "마 13:44–50"]
-                    and title_and_liturgical_state["sharedSundaySermon"]["sermonBodyThirdEffectiveReferences"] == ["마 13:31–33", "마 13:44–50"]
-                    and title_and_liturgical_state["sharedSundaySermon"]["sermonBodyThirdRaw"] == "마 13:31–33, 44–50"
-                    and title_and_liturgical_state["sharedSundaySermon"]["sermonBodyThirdMemo"]["scriptureReferences"] == ["마 13:31–33", "마 13:44–50"]
-                    and title_and_liturgical_state["sharedSundaySermon"]["citationInputReferences"] == ["요 15:9", "롬 5:7–8"]
-                    and title_and_liturgical_state["sharedSundaySermon"]["citationSecondReferences"] == ["요 15:9", "롬 5:7–8"]
-                    and title_and_liturgical_state["sharedSundaySermon"]["citationThirdEffectiveReferences"] == ["요 15:9", "롬 5:7–8"]
-                    and title_and_liturgical_state["sharedSundaySermon"]["citationThirdRaw"] == "요 15:9; 롬 5:7–8"
-                    and title_and_liturgical_state["sharedSundaySermon"]["citationThirdMemo"]["scriptureReferences"] == ["요 15:9", "롬 5:7–8"]
+                    and title_and_liturgical_state["sharedSundaySermon"]["sermonBodyInputReferences"] == ["마태복음 13:31–33", "마태복음 13:44–50"]
+                    and title_and_liturgical_state["sharedSundaySermon"]["sermonBodySecondReferences"] == ["마태복음 13:31–33", "마태복음 13:44–50"]
+                    and title_and_liturgical_state["sharedSundaySermon"]["sermonBodyThirdEffectiveReferences"] == ["마태복음 13:31–33", "마태복음 13:44–50"]
+                    and title_and_liturgical_state["sharedSundaySermon"]["sermonBodyThirdRaw"] == "마태복음 13:31–33, 44–50"
+                    and title_and_liturgical_state["sharedSundaySermon"]["sermonBodyThirdMemo"]["scriptureReferences"] == ["마태복음 13:31–33", "마태복음 13:44–50"]
+                    and title_and_liturgical_state["sharedSundaySermon"]["citationInputReferences"] == ["요한복음 15:9", "로마서 5:7–8"]
+                    and title_and_liturgical_state["sharedSundaySermon"]["citationSecondReferences"] == ["요한복음 15:9", "로마서 5:7–8"]
+                    and title_and_liturgical_state["sharedSundaySermon"]["citationThirdEffectiveReferences"] == ["요한복음 15:9", "로마서 5:7–8"]
+                    and title_and_liturgical_state["sharedSundaySermon"]["citationThirdRaw"] == "요한복음 15:9; 로마서 5:7–8"
+                    and title_and_liturgical_state["sharedSundaySermon"]["citationThirdMemo"]["scriptureReferences"] == ["요한복음 15:9", "로마서 5:7–8"]
                     and title_and_liturgical_state["sharedSundaySermon"]["sermonBodyThirdState"]["state"] == "filled"
                     and title_and_liturgical_state["sharedSundaySermon"]["citationThirdState"]["state"] == "filled"
                     and "presenter-title-assignee" in title_and_liturgical_state["confession"]["html"]
@@ -6305,15 +6305,15 @@ def main() -> int:
                     and scripture_context_state["readingWordBreak"] == "break-all"
                     and float(scripture_context_state["readingLineHeight"].replace("px", "") or "0") >= 75
                     and scripture_context_state["sermonContext"] == "sermon-chromakey"
-                    and scripture_context_state["sermonElementTitle"] == "출 23:14–19"
+                    and scripture_context_state["sermonElementTitle"] == "출애굽기 23:14–19"
                     and scripture_context_state["sermonOutputContext"] == "chromakey"
                     and not scripture_context_state["sermonNoChromakey"]
                     and not scripture_context_state["sermonHasClass"]
                     and scripture_context_state["sermonHasLowerBarText"]
                     and scripture_context_state["sermonFontSize"] == scripture_context_state["lyricsFontSizeToken"]
                     and scripture_context_state["citationTexts"] == [
-                        "출 24:1   또 모세에게 이르시되",
-                        "출 24:2   너 모세만 여호와께 가까이 나아오고",
+                        "출애굽기 24:1   또 모세에게 이르시되",
+                        "출애굽기 24:2   너 모세만 여호와께 가까이 나아오고",
                     ]
 	                    and scripture_context_state["citationBadge"] == "출애굽기 24:1"
                     and scripture_context_state["citationNoNumberBadge"] == "출애굽기 24:1–2"
