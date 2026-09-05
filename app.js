@@ -4112,7 +4112,7 @@ function autoWorshipServicePayload(target = {}) {
     updated_at: persistedAt,
     title: String(target.title || "").trim(),
     status: "draft",
-    worship_leader: defaultServiceWorshipLeader(typeId, target.date),
+    worship_leader: defaultServiceWorshipLeader(typeId),
     praise_leader: serviceUsesPraiseLeader(typeId) ? defaultServicePraiseLeader(typeId) : "",
     source_kind: "mindex",
     source_ref: {
@@ -12832,10 +12832,9 @@ function defaultServicePraiseLeader(typeId) {
   return String(typeId || "") === "friday" ? "이재희 청년" : "";
 }
 
-function defaultServiceWorshipLeader(typeId, serviceOrDate = null) {
+function defaultServiceWorshipLeader(typeId) {
   const appTypeId = worshipAppServiceTypeId(typeId);
   if (appTypeId === "monthly") return "김남영 목사";
-  if (appTypeId === "sunday-first") return defaultServiceSermonLeader(appTypeId, serviceOrDate);
   return "";
 }
 
@@ -31406,7 +31405,7 @@ async function createService() {
     updated_at: persistedAt,
     title: "",
     status: "draft",
-    worship_leader: defaultServiceWorshipLeader(typeId, { date }),
+    worship_leader: defaultServiceWorshipLeader(typeId),
     praise_leader: serviceUsesPraiseLeader(typeId) ? String(form.leader || "").trim() : "",
     source_kind: "mindex",
     source_ref: { created_from: "mindex_template", app_service_type_id: typeId },

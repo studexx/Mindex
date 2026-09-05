@@ -37,6 +37,8 @@ Small visual polish that does not alter behavior does not need an entry.
 
 ### Setlist Archive Navigation
 
+- 1부 설교자를 예배 인도자 기본값으로 자동 대입하던 예외는 제거한다.
+
 - 주일 콘티는 3부 기준 `주일예배` 카드 하나만 표시한다. 같은 날짜 2부 특송만
   3부 특송 앞에 합치며, 기존 콘티에 2부 특송이 있으면 추가하지 않는다.
   1·2부 별도 카드는 표시하지 않고 예배 DB 원본은 유지한다.
