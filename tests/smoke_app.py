@@ -4537,7 +4537,7 @@ def main() -> int:
                         and template_terms["sharedSundayContentProjection"]["syncedScriptureRefs"] == ["마 13:31–33", "마 13:44–50"]
                         and template_terms["sharedSundayContentProjection"]["clearedScriptureRefs"] == ["마 13:31–33", "마 13:44–50"]
                         and template_terms["sharedSundayContentProjection"]["thirdMissingSlides"] == [
-                            "찬양 1", "찬양 2", "찬양 3", "찬양 4", "찬송", "대표기도", "특송",
+                            "찬양 2", "찬양 3", "찬양 4", "찬송", "대표기도", "특송",
                         ]
                         and template_terms["fullscreenSermonBodyCompatibility"] == {
                             "staticInput": False,

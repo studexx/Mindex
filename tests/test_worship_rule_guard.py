@@ -98,8 +98,14 @@ class WorshipRuleGuardTests(unittest.TestCase):
 
     def test_young_adult_outdoor_calendar_skips_auto_service(self) -> None:
         skip_guard = function_block(self.source, "calendarSkippedServiceTypesForDate")
-        self.assertIn("청년부야외예배", skip_guard)
-        self.assertIn('"young-adult"', skip_guard)
+        contexts = block(self.source, "CALENDAR_SERVICE_SKIP_CONTEXTS", "\n];")
+        keywords = block(self.source, "CALENDAR_SERVICE_SKIP_KEYWORDS", "\n];")
+        self.assertIn('"young-adult"', contexts)
+        self.assertIn("청년부", contexts)
+        self.assertIn("청년", contexts)
+        self.assertIn("야외예배", keywords)
+        self.assertIn("문화예배", keywords)
+        self.assertIn("matchesAlternative", skip_guard)
         self.assertIn("calendarSkippedServiceTypesForDate(sunday)", self.source)
         self.assertIn("!skippedSundayServiceTypes.has(target.typeId)", self.source)
         self.assertIn("calendarSkippedServiceTypesForDate(sundayDate)", self.source)
@@ -219,9 +225,9 @@ class WorshipRuleGuardTests(unittest.TestCase):
         self.assertNotIn("await saveService(serviceId, options)", committed)
 
     def test_calendar_load_precedes_auto_worship_generation(self) -> None:
-        load_worship = function_block(self.source, "loadWorshipData")
+        load_worship = function_block(self.source, "hydrateSupplementalWorshipDataAfterInitialRender")
         self.assertLess(
-            load_worship.index("await loadCalendarData({ silent: true })"),
+            load_worship.index("loadCalendarData({ silent: true })"),
             load_worship.index("await ensureUpcomingPublicWorshipServices()"),
         )
 
