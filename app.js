@@ -11703,11 +11703,7 @@ function serviceScriptureReferenceParts(reference, fallback = "") {
     || KOREAN_BIBLE_BOOK_ABBREVIATIONS[reference.book.code]
     || reference.book.code
     || "";
-  const book = KOREAN_BIBLE_BOOK_ABBREVIATIONS[reference.book.code]
-    || reference.book.shortName
-    || reference.book.koreanName
-    || reference.book.code
-    || "";
+  const book = fullBook;
   const range = reference.verse
     ? `${reference.chapter}:${reference.verse}${reference.verseEnd ? `–${reference.verseEnd}` : ""}`
     : String(reference.chapter);
@@ -18057,6 +18053,7 @@ function fallbackBibleBookByReferenceName(normalizedName = "") {
   for (const [index, code] of codes.entries()) {
     const names = [
       code,
+      KOREAN_BIBLE_BOOK_NAMES[code],
       KOREAN_BIBLE_BOOK_ABBREVIATIONS[code],
       ENGLISH_BIBLE_BOOK_ABBREVIATIONS[code],
       ...(BIBLE_BOOK_ALIASES[code] || []),
@@ -22477,7 +22474,7 @@ function serviceSidebarChildItemDisplayText(item = {}) {
   if (rawTitle) {
     const contentTitle = serviceItemContentTitleWithoutElementName(item, rawTitle);
     const displayText = contentTitle ?? rawTitle;
-    return serviceSidebarIsLiturgicalBodyText(displayText, item) ? "" : displayText;
+    return serviceSidebarIsLiturgicalBodyText(displayText, item) ? "" : normalizeServiceItemReferenceSpacing(displayText);
   }
   return serviceItemDisplayText(item);
 }
@@ -25520,16 +25517,13 @@ function isScriptureServiceLabel(label) {
 function formatServiceBibleReferenceMatch(bookName, chapter, verse, verseEnd) {
   const book = String(bookName || "").replace(/\s+/g, " ").trim();
   const candidate = `${book} ${chapter}:${verse}${verseEnd ? `-${verseEnd}` : ""}`;
-  if (!parseBibleReference(candidate)) return "";
-  return `${book} ${chapter}:${verse}${verseEnd ? `–${verseEnd}` : ""}`;
+  const reference = parseBibleReference(candidate);
+  return reference ? formatServiceBibleReference(reference, candidate) : "";
 }
 
 function formatServiceBibleReference(reference, fallback = "") {
   if (!reference?.book || !reference?.chapter) return normalizeServiceItemReferenceSpacing(fallback);
-  const fallbackBook = String(fallback || "").match(/^(.+?)\s*\d/u)?.[1]?.trim();
-  const book = fallbackBook && findBibleBookByReferenceName(fallbackBook)
-    ? fallbackBook
-    : KOREAN_BIBLE_BOOK_ABBREVIATIONS[reference.book.code] || reference.book.shortName || reference.book.koreanName || reference.book.code;
+  const book = reference.book.koreanName || reference.book.shortName || reference.book.code;
   const versePart = reference.verse
     ? `${reference.chapter}:${reference.verse}${reference.verseEnd ? `–${reference.verseEnd}` : ""}`
     : String(reference.chapter);
