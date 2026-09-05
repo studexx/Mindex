@@ -9669,8 +9669,8 @@ def main() -> int:
                     and fullscreen_ready_state["text"] == "잠시 후\n금요기도회\n가 시작됩니다"
                     and fullscreen_ready_state["readyMessage"]["kickerText"] == "지금은 기도로 예배를 준비하는 시간입니다"
                     and "url(" not in fullscreen_ready_state["readyMessage"]["backgroundImage"]
-                    and fullscreen_ready_state["readyMessage"]["backgroundColor"] == "rgba(0, 0, 0, 0)"
-                    and fullscreen_ready_state["readyMessage"]["fieldDisplay"] == "block"
+                    and fullscreen_ready_state["readyMessage"]["backgroundColor"] == "rgb(0, 0, 0)"
+                    and fullscreen_ready_state["readyMessage"]["fieldDisplay"] == "none"
                     and fullscreen_ready_state["readyMessage"]["kickerFontSize"] < fullscreen_ready_state["readyMessage"]["messageFontSize"]
                     and 36 <= fullscreen_ready_state["readyMessage"]["kickerHeight"] <= 52
                     and 40 <= fullscreen_ready_state["readyMessage"]["logoHeight"] <= 58

@@ -287,11 +287,7 @@
   gap: 23cqh;
   justify-items: center;
   overflow: hidden;
-  background:
-    linear-gradient(180deg, rgba(250, 232, 194, .2) 0%, rgba(250, 232, 194, .06) 13%, transparent 34%),
-    linear-gradient(112deg, rgba(80, 129, 124, .3) 0%, transparent 38%),
-    linear-gradient(248deg, rgba(128, 95, 66, .22) 0%, transparent 36%),
-    linear-gradient(180deg, #16221f 0%, #0b1112 55%, #050606 100%);
+  background: #000;
   color: #fff;
   isolation: isolate;
   text-align: center;
@@ -307,7 +303,7 @@
   display: none;
 }
 .presenter-ready-screen-field {
-  display: block;
+  display: none;
 }
 .presenter-ready-screen-logo {
   display: block;
