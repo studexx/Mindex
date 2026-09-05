@@ -6650,10 +6650,13 @@ def main() -> int:
                               ready: true,
                               version: document.version || '',
                               sourceText: document.sourceText || '',
+                              sourceSignature: document.sourceSignature || '',
+                              slideSignature: document.slideSignature || '',
                               slideCount: document.slides.length,
                               slideAsset: document.slides.find((slide) => slide.asset)?.asset || {},
                               exceptionReason: document.exceptions[0]?.reason || '',
                               roundTripVersion: fromRef.version || '',
+                              roundTripSourceSignature: fromRef.sourceSignature || '',
                             };
                           } finally {
                             state.services = originalServices;
@@ -6669,10 +6672,13 @@ def main() -> int:
                         service_document_snapshot.get("ready")
                         and service_document_snapshot["version"] == "service-document-v1"
                         and service_document_snapshot["sourceText"] == "[봉헌]\n이미지: 사용자가 남긴 안내 이미지"
+                        and ":" in service_document_snapshot["sourceSignature"]
+                        and ":" in service_document_snapshot["slideSignature"]
                         and service_document_snapshot["slideCount"] >= 1
                         and service_document_snapshot["slideAsset"].get("name") == "꿈꾸는 어린이부 여름성경학교 안내"
                         and "봉헌 섹션의 이미지 항목" in service_document_snapshot["exceptionReason"]
                         and service_document_snapshot["roundTripVersion"] == "service-document-v1"
+                        and service_document_snapshot["roundTripSourceSignature"] == service_document_snapshot["sourceSignature"]
                     ):
                         pass_("service-document-snapshot", json.dumps(service_document_snapshot, ensure_ascii=False))
                     else:

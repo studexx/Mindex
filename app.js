@@ -21060,11 +21060,24 @@ function withServiceDocumentSnapshot(service = null, items = null) {
 function buildServiceDocumentSnapshot(service = null, items = null) {
   const serviceId = String(service?.id || "").trim();
   const sourceItems = Array.isArray(items) ? items : getServiceOutputItems(serviceId);
+  const sourceText = serviceDocumentSourceTextForSnapshot(service, sourceItems);
+  const slides = buildServiceDocumentSlideSnapshots(serviceId);
   return {
     version: MINDEX_SERVICE_DOCUMENT_VERSION,
     updatedAt: new Date().toISOString(),
-    sourceText: serviceDocumentSourceTextForSnapshot(service, sourceItems),
-    slides: buildServiceDocumentSlideSnapshots(serviceId),
+    sourceSignature: compactTextSignature(sourceText),
+    slideSignature: compactTextSignature(JSON.stringify(slides.map((slide) => [
+      slide.id || "",
+      slide.elementId || "",
+      slide.type || "",
+      slide.layout || "",
+      slide.elementType || "",
+      slide.title || "",
+      slide.text || "",
+      slide.asset?.url || slide.imageSrc || slide.videoSrc || slide.audioSrc || "",
+    ]))),
+    sourceText,
+    slides,
     exceptions: buildServiceDocumentExceptionNotes(service, sourceItems),
   };
 }
