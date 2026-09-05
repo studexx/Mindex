@@ -2099,8 +2099,8 @@ function buildWorshipRecoverySnapshot(service = null, reason = "before-save") {
   const serviceId = String(service?.id || "").trim();
   if (!serviceId) return null;
   const rows = worshipRecoverySnapshotRows(serviceId);
-  if (!rows.sections.length && !rows.elements.length) return null;
   const serviceDocument = buildWorshipRecoveryServiceDocument(service);
+  if (!rows.sections.length && !rows.elements.length && !serviceDocument) return null;
   return {
     schema: 1,
     reason,
@@ -11025,6 +11025,7 @@ function serviceItemUsesFlexibleOfferingSlot(item = {}) {
 }
 
 function isSpecialSongServiceItem(item = {}) {
+  if (item._worshipSlotKey === "offering.special" || compactSearchValue(item.label || "") === "봉헌특송") return true;
   const sectionKey = String(item._worshipSectionKey || item.sectionKey || item.section_key || "").trim();
   if (sectionKey === "special_song") return true;
   const sectionTitle = compactSearchValue(item._worshipSectionTitle || item.sectionTitle || item.section_title || "");

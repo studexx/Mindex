@@ -52,7 +52,7 @@ function presenterSlidesWithSpecialSongTitle(item = {}, section = {}, slides = [
   const titleSlideIndex = slides.findIndex((slide) => slide?.type === "song-title");
   const existingSpecialTitleIndex = slides.findIndex((slide) =>
     slide?.type === "title-assignee"
-    && normalizeTitle(slide.title) === normalizeTitle("특송"));
+    && normalizeTitle(slide.title) === normalizeTitle(item.label || section.sectionLabel || "특송"));
   const existingSpecialTitle = existingSpecialTitleIndex >= 0 ? slides[existingSpecialTitleIndex] : null;
   if (existingSpecialTitle?.missingContent) {
     return presenterSlidesWithSundayMainSpecialSongOutput(slides, item, section, service);
@@ -123,6 +123,7 @@ function shouldIncludeSpecialSongSectionTitleSlide(item = {}, section = {}, slid
 }
 
 function isPresenterSpecialSongItem(item = {}, section = {}) {
+  if (isSpecialSongServiceItem(item)) return true;
   const sectionKey = String(section.sectionKey || item?._worshipSectionKey || "").trim();
   if (sectionKey === "special_song") return true;
   return compactSearchValue(item?._worshipSectionTitle || "") === "특송";
@@ -137,6 +138,7 @@ function presenterSlidesWithSundayMainSpecialSongOutput(slides = [], item = {}, 
 }
 
 function shouldUseSundayMainSpecialSongCleanOutput(item = {}, section = {}, service = null) {
+  if (String(section.sectionKey || item._worshipSectionKey || "") === "offering") return false;
   if (!isPresenterSpecialSongItem(item, section)) return false;
   const rawType = String(service?.type_id || service?.typeId || "").trim();
   const typeId = typeof worshipAppServiceTypeId === "function"
@@ -158,7 +160,7 @@ function isPresenterAllGenerationsService(service = null) {
 }
 
 function presenterSpecialSongSectionTitleSlide(item = {}, section = {}, index = 0, songTitleSlide = null) {
-  const title = section.sectionLabel || "특송";
+  const title = item.label || section.sectionLabel || "특송";
   const assignee = cleanServiceAssignee(item.assignee);
   const subtitle = assignee;
   const text = [title, subtitle].filter(Boolean).join("\n");
@@ -168,7 +170,7 @@ function presenterSpecialSongSectionTitleSlide(item = {}, section = {}, index = 
     elementType: PRESENTER_ELEMENT_TYPES.TITLE_ASSIGNEE,
     layout: PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT,
     type: "title-assignee",
-    label: "특송",
+    label: title,
     title,
     subtitle,
     assignee: subtitle,
@@ -2028,9 +2030,9 @@ function buildPresenterCustomSlides(item, section, index) {
     return {
       id: `${item.id || index}:custom:${blockIndex}`,
       ...section,
-      elementType: songLikeItem ? PRESENTER_ELEMENT_TYPES.PRAISE : PRESENTER_ELEMENT_TYPES.FREEFORM,
-      layout: songLikeItem ? PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT : PRESENTER_SLIDE_LAYOUTS.CENTER_TEXT,
-      type: songLikeItem ? "lyrics" : "component",
+      elementType: parsed.blank ? PRESENTER_ELEMENT_TYPES.BLANK : songLikeItem ? PRESENTER_ELEMENT_TYPES.PRAISE : PRESENTER_ELEMENT_TYPES.FREEFORM,
+      layout: parsed.blank ? PRESENTER_SLIDE_LAYOUTS.BLANK : songLikeItem ? PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT : PRESENTER_SLIDE_LAYOUTS.CENTER_TEXT,
+      type: parsed.blank ? "blank" : songLikeItem ? "lyrics" : "component",
       label,
       title: section.sectionTitle || item.raw_title || label || "Slide",
       marker: parsed.marker,
@@ -2038,7 +2040,7 @@ function buildPresenterCustomSlides(item, section, index) {
       text: parsed.text,
       sort: index + blockIndex / 100,
     };
-  }).filter((slide) => String(slide.text || "").trim());
+  }).filter((slide) => slide.type === "blank" || String(slide.text || "").trim());
   if (!songLikeItem || !shouldIncludeSongTitleSlide(item, label)) return lyricSlides;
   return [
     presenterSongTitleSlide(item, section, null, null, serviceItemConnectedPraiseTitle(item, "title") || serviceItemDisplayText(item), index),
@@ -2051,6 +2053,9 @@ function parsePresenterCustomSlideBlock(block) {
   if (!lines.length) return { marker: "", text: "" };
   const first = lines[0];
   const bracketed = first.match(/^\[([^\]]+)\]$/)?.[1]?.trim();
+  if (lines.length === 1 && bracketed && /^(간주|interlude|instrumental)$/i.test(bracketed)) {
+    return { marker: "간주", text: "", blank: true };
+  }
   const markerCandidate = bracketed || first;
   if (/^(Verse|Chorus|Pre[-\s]?Chorus|PC|Bridge|Coda|Tag|Lyrics)(?:\s+\d+)?$/i.test(markerCandidate)) {
     return { marker: normalizePresenterCustomMarker(markerCandidate), text: lines.slice(1).join("\n") };
@@ -2401,6 +2406,7 @@ function presenterSongTitleNormalizedHeading(heading = "", sectionKey = "") {
 }
 
 function presenterSongTitleUsesSectionHeading(item = {}, section = {}) {
+  if (isPresenterSpecialSongItem(item, section)) return false;
   if (section.sectionRole === "main-praise") return false;
   const sectionKey = String(section.sectionKey || item?._worshipSectionKey || "").trim();
   if ([

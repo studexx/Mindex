@@ -464,6 +464,7 @@ def main() -> int:
         "function cloneRecoveryRecord" in recovery_body
         and "serviceDocument" in recovery_body
         and "buildWorshipRecoveryServiceDocument(service)" in recovery_body
+        and "!rows.sections.length && !rows.elements.length && !serviceDocument" in recovery_body
         and "JSON.parse(JSON.stringify" not in recovery_body
     ):
         pass_("worship-recovery-shallow-clone-and-service-document")
