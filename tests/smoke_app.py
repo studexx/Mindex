@@ -6528,6 +6528,8 @@ def main() -> int:
                           const originalRenderServiceList = renderServiceList;
                           const originalRefreshPresenter = refreshPresenterForService;
                           const originalDirty = state.dirty.service;
+                          const recoveryKey = worshipRecoveryLatestSnapshotKey(service.id);
+                          const originalRecovery = localStorage.getItem(recoveryKey);
                           const refreshes = [];
                           let rendered = false;
                           try {
@@ -6565,6 +6567,7 @@ def main() -> int:
                             const readingMemo = parseServiceItemMemo(reading.memo);
                             const specialMemo = parseServiceItemMemo(special.memo);
                             const videoMemo = parseServiceItemMemo(video.memo);
+                            const recovery = JSON.parse(localStorage.getItem(recoveryKey) || '{}');
                             return {
                               ready: true,
                               applied,
@@ -6576,6 +6579,8 @@ def main() -> int:
                               specialSlides: specialMemo.slides || [],
                               asset: videoMemo.asset || {},
                               sourceDraft: service._worshipSourceTextDraft || '',
+                              recoveryReason: recovery.reason || '',
+                              recoverySourceText: recovery.serviceDocument?.sourceText || '',
                               dirty: state.dirty.service,
                               rendered,
                               refreshes,
@@ -6590,6 +6595,8 @@ def main() -> int:
                             else state.serviceItems[service.id] = originalItems;
                             state.selectedServiceId = originalSelectedServiceId;
                             state.dirty.service = originalDirty;
+                            if (originalRecovery === null) localStorage.removeItem(recoveryKey);
+                            else localStorage.setItem(recoveryKey, originalRecovery);
                           }
                         })()
                         """
@@ -6606,6 +6613,8 @@ def main() -> int:
                         and service_source_view_apply["asset"].get("name") == "새광고.mp4"
                         and service_source_view_apply["asset"].get("url") == "https://example.com/new.mp4"
                         and "특송: 새 특송" in service_source_view_apply["sourceDraft"]
+                        and service_source_view_apply["recoveryReason"] == "after-source-text-apply"
+                        and service_source_view_apply["recoverySourceText"] == service_source_view_apply["sourceDraft"]
                         and service_source_view_apply.get("dirty")
                         and service_source_view_apply.get("rendered")
                         and service_source_view_apply["refreshes"] == [{"serviceId": "__smoke_source_apply__", "publish": False}]

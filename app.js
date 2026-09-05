@@ -23681,6 +23681,7 @@ function applyServiceSourceText(serviceId = state.selectedServiceId) {
     return false;
   }
   service._worshipSourceTextDraft = textarea.value;
+  captureWorshipRecoverySnapshot(service, "after-source-text-apply");
   refreshPresenterForService(id, { publish: false });
   renderCurrentServiceModuleDetail();
   renderServiceList();
