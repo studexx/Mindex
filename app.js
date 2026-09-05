@@ -6273,7 +6273,14 @@ async function saveService(serviceId = state.selectedServiceId, options = {}) {
     return false;
   }
   commitActiveDeferredServiceTextInput(serviceId);
-  applyPendingServiceSourceTextBeforeSave(serviceId);
+  const sourceTextHadPendingChanges = serviceSourceTextHasPendingChanges(serviceSourceTextareaForService(serviceId));
+  const sourceTextApplied = applyPendingServiceSourceTextBeforeSave(serviceId);
+  if (sourceTextHadPendingChanges && !sourceTextApplied) {
+    const message = "예배 원문에서 반영할 항목을 찾지 못해 저장하지 않았습니다. 원문 항목 이름을 확인해 주세요.";
+    if (!options.silent) showToast(message, "error");
+    if (options.throwOnError) throw new Error(message);
+    return false;
+  }
 
   const service = state.services.find((svc) => svc.id === serviceId);
   const inputProblem = service ? serviceInputSaveProblem(service) : null;

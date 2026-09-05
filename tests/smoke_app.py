@@ -435,13 +435,17 @@ def main() -> int:
     save_service_body = app_source[save_service_start:save_service_end]
     commit_input_index = save_service_body.find("commitActiveDeferredServiceTextInput(serviceId);")
     source_apply_index = save_service_body.find("applyPendingServiceSourceTextBeforeSave(serviceId);")
+    source_pending_index = save_service_body.find("const sourceTextHadPendingChanges")
+    source_block_index = save_service_body.find("예배 원문에서 반영할 항목을 찾지 못해 저장하지 않았습니다.")
     input_problem_index = save_service_body.find("const inputProblem = service ? serviceInputSaveProblem(service) : null;")
     if (
         save_service_start >= 0
         and commit_input_index >= 0
+        and source_pending_index >= 0
         and source_apply_index >= 0
+        and source_block_index >= 0
         and input_problem_index >= 0
-        and commit_input_index < source_apply_index < input_problem_index
+        and commit_input_index < source_pending_index < source_apply_index < source_block_index < input_problem_index
         and "function serviceSourceTextHasPendingChanges" in app_source
     ):
         pass_("worship-save-applies-pending-source-text")
