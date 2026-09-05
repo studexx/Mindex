@@ -10187,9 +10187,9 @@ function normalizeServiceAssetSlides(value) {
 
 function applyServicePreparationDefaults(item, serviceId = state.selectedServiceId) {
   const parsed = parseServiceItemMemo(item?.memo);
-  if (!isServicePreparationItem(item, parsed)) return item;
+  if (!isServicePreparationItemForEditor(item, parsed)) return item;
   const role = servicePreparationDefaultRoleForServiceId(
-    normalizeServicePresenterRole(parsed.presenterRole) || presenterPreparationRole(item, parsed),
+    normalizeServicePresenterRole(parsed.presenterRole) || servicePreparationRoleForEditor(item, parsed),
     serviceId,
   );
   const elementType = servicePreparationElementTypeForRole(role, serviceId);
@@ -10206,7 +10206,7 @@ function applyServicePreparationDefaults(item, serviceId = state.selectedService
   return item;
 }
 
-function presenterPreparationRole(item = {}, memo = parseServiceItemMemo(item.memo)) {
+function servicePreparationRoleForEditor(item = {}, memo = parseServiceItemMemo(item.memo)) {
   const explicitRole = normalizeServicePresenterRole(memo.presenterRole);
   if (explicitRole) return explicitRole;
   const labelRole = normalizeServicePresenterRole(item.label || item.raw_title || item._worshipSectionTitle || "");
@@ -10216,8 +10216,8 @@ function presenterPreparationRole(item = {}, memo = parseServiceItemMemo(item.me
   return "";
 }
 
-function isServicePreparationItem(item = {}, memo = parseServiceItemMemo(item.memo)) {
-  return Boolean(presenterPreparationRole(item, memo));
+function isServicePreparationItemForEditor(item = {}, memo = parseServiceItemMemo(item.memo)) {
+  return Boolean(servicePreparationRoleForEditor(item, memo));
 }
 
 function servicePreparationElementLabel(role = "", contextId = "") {
@@ -11182,7 +11182,7 @@ function serviceItemEditorModel(item = {}, options = {}) {
   const service = options.service || selectedServiceForEditor();
   const isDefault = Boolean(options.isDefault || item._isDefault);
   const parsed = parseServiceItemMemo(item.memo);
-  const preparation = isServicePreparationItem(item, parsed);
+  const preparation = isServicePreparationItemForEditor(item, parsed);
   const elementType = serviceMemoElementType(parsed);
   const titlePerson = elementType === "title_person";
   const compactLabel = compactSearchValue(item.label || "");
@@ -20478,8 +20478,8 @@ function mergeTemplateProjectionItem(templateItem = {}, existingItem = {}) {
   const elementModified = Boolean(existingItem._worshipElementTemplateModified);
   const templateLabel = String(templateItem.label || "").trim();
   const existingLabel = String(existingItem.label || "").trim();
-  const isPreparation = isServicePreparationItem(templateItem, parseServiceItemMemo(templateItem.memo))
-    || isServicePreparationItem(existingItem, parseServiceItemMemo(existingItem.memo));
+  const isPreparation = isServicePreparationItemForEditor(templateItem, parseServiceItemMemo(templateItem.memo))
+    || isServicePreparationItemForEditor(existingItem, parseServiceItemMemo(existingItem.memo));
   const merged = {
     ...templateItem,
     id: existingItem.id || templateItem.id,
@@ -20507,7 +20507,7 @@ function mergeTemplateProjectionItem(templateItem = {}, existingItem = {}) {
   if (elementModified) {
     merged.label = isPreparation
       ? (templateLabel || servicePreparationElementLabel(
-        presenterPreparationRole(existingItem, parseServiceItemMemo(existingItem.memo)),
+        servicePreparationRoleForEditor(existingItem, parseServiceItemMemo(existingItem.memo)),
         existingItem.service_id || templateItem.service_id || state.selectedServiceId,
       ))
       : (existingLabel || templateLabel);
@@ -24127,10 +24127,10 @@ function renderServiceItemMemoEditor(item, index, options = {}) {
     ? servicePraiseInputMode(item, parsed, service)
     : "";
   const manualPraise = praiseInputMode === "manual_praise";
-  const preparation = isServicePreparationItem(item, parsed);
+  const preparation = isServicePreparationItemForEditor(item, parsed);
   const preparationRole = preparation
     ? servicePreparationDefaultRoleForService(
-      normalizeServicePresenterRole(parsed.presenterRole) || presenterPreparationRole(item, parsed),
+      normalizeServicePresenterRole(parsed.presenterRole) || servicePreparationRoleForEditor(item, parsed),
       service,
       service?.type_id || state.selectedServiceTypeId,
     )
@@ -25801,7 +25801,7 @@ function presenterServiceInputIsStatic(item = {}, memo = parseServiceItemMemo(it
   const sectionKey = String(item._worshipSectionKey || "").trim();
   const service = state.services.find((service) => service.id === item?.service_id) || null;
   const usesSharedSundayContent = Boolean(sharedSundayContentSourceItem(item, service));
-  return !isPresenterReferenceMediaItem(item, memo) && (isServicePreparationItem(item, memo)
+  return !isPresenterReferenceMediaItem(item, memo) && (isServicePreparationItemForEditor(item, memo)
     || Boolean(presenterFixedTitleText(item))
     || isPublicFixedDoxologyServiceItem(
       item,
@@ -30247,7 +30247,7 @@ function buildPresenterSlidesForServiceItem(item, service, index) {
   );
   const outputMode = serviceItemOutputMode(item, memo);
   const configuredAsset = normalizeServiceAsset(memo.asset || item.asset);
-  if (isServicePreparationItem(item, memo)) {
+  if (isServicePreparationItemForEditor(item, memo)) {
     return [presenterPreparationSlide(service, item, index)];
   }
   const confessionPrayer = isConfessionPrayerServiceItem(item);

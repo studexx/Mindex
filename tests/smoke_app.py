@@ -9556,7 +9556,11 @@ def main() -> int:
                     pass_("praise-status-filters", json.dumps(praise_filter_state, ensure_ascii=False))
                 else:
                     fail("praise-status-filters", json.dumps(praise_filter_state, ensure_ascii=False))
-                page.click("[data-song-id]")
+                page.evaluate(
+                    """
+                    () => document.querySelector('[data-song-id]')?.click()
+                    """
+                )
                 page.wait_for_selector(".version-compare-title", state="attached", timeout=5000)
                 praise_actions = page.evaluate(
                     """
