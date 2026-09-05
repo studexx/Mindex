@@ -3602,11 +3602,11 @@ function commitPresenterOutputFrame(root, payload, slide, frameState, token, opt
       nextLayer.dataset.presenterFrameToken = String(token);
     }
     nextLayer.dataset.presenterFrameKey = frameKey;
+    applyPresenterOutputFrameState(root, frameState);
     fitPresenterChromakeyScriptureText(nextLayer, frameState);
     fitPresenterSongTitleText(nextLayer);
     fitPresenterSermonTitleText(nextLayer);
     nextLayer.classList.add("is-next");
-    applyPresenterOutputFrameState(root, frameState);
     activatePresenterOutputLayer(root, layers.active, nextLayer, frameState, token, () => {
       bindPresenterOutputAutoAdvance(root, payload, slide, options, token);
     });
@@ -3728,14 +3728,12 @@ function fitPresenterChromakeyScriptureText(host, frameState = {}) {
   if (!Number.isFinite(baseSize) || baseSize <= 0) return;
 
   const preview = host.classList?.contains("svc-slide-mini-canvas");
-  const targetWidth = textBox.clientWidth;
   const minimumSize = Math.min(preview ? 28 : 32, baseSize);
   for (let size = Math.round(baseSize); size >= minimumSize; size -= 1) {
     textBox.style.setProperty("--presenter-scripture-fitted-size", `${size}px`);
     if (
       textBox.scrollHeight <= textBox.clientHeight + 1
       && textBox.scrollWidth <= textBox.clientWidth + 1
-      && presenterTextNaturalWidthFits(textBox, targetWidth)
     ) return;
   }
 }
