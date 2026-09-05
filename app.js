@@ -6613,50 +6613,11 @@ async function saveWorshipServiceElementPatch(service, itemId) {
 }
 
 async function syncSharedSundayContentAfterSave(sourceService, sourceItems = [], options = {}) {
-  if (!state.client || !sourceService?.id) return;
-  if (!worshipServiceParticipatesInSharedSundayContent(sourceService)) return;
-  const serviceDate = String(sourceService.date || "").trim();
-  if (!serviceDate) return;
-  const changedSharedItems = sourceItems
-    .filter((item) => Boolean(item?._worshipSharedContentDirty))
-    .filter((item) => serviceItemHasDirectSundaySharedContent(item, sourceService))
-    .filter((item) => sundaySharedContentKey(item) && sundaySharedContentTypesForItem(item, sourceService).length);
-  if (!changedSharedItems.length) return;
-
-  const targetUpdates = new Map();
-  for (const sourceItem of changedSharedItems) {
-    const key = sundaySharedContentKey(sourceItem);
-    const targetTypeIds = sundaySharedContentTypesForItem(sourceItem, sourceService)
-      .filter((typeId) => typeId !== worshipAppServiceTypeId(sourceService.type_id));
-    const targetServices = state.services.filter((service) =>
-      service.id !== sourceService.id
-      && String(service.date || "").trim() === serviceDate
-      && targetTypeIds.includes(worshipAppServiceTypeId(service.type_id))
-      && worshipServiceParticipatesInSharedSundayContent(service));
-    for (const targetService of targetServices) {
-      await ensureWorshipServiceRowsLoadedForPersistence(targetService.id);
-      const update = targetUpdates.get(targetService.id) || {
-        service: targetService,
-        items: normalizeServiceItemsForTemplateHierarchy(
-          targetService,
-          normalizeServiceItemsInCurrentOrder(getServiceItems(targetService.id)),
-        ),
-        changed: false,
-      };
-      const targetIndex = sundaySharedContentItemIndex(update.items, key, update.service);
-      if (targetIndex < 0) {
-        targetUpdates.set(targetService.id, update);
-        continue;
-      }
-      update.items[targetIndex] = applySharedSundayContentToItem(update.items[targetIndex], sourceItem, sourceService);
-      update.changed = true;
-      targetUpdates.set(targetService.id, update);
-    }
-  }
-
-  await Promise.all([...targetUpdates.values()]
-    .filter((update) => update.changed)
-    .map((update) => persistSharedSundayServiceItems(update.service, update.items, options)));
+  void sourceService;
+  void sourceItems;
+  void options;
+  // Shared Sunday content is a read-time projection only. Persisting it into
+  // sibling services can overwrite service-specific praise or sermon data.
 }
 
 async function syncSharedSundayContentToService(targetService, key, sourceItem, options = {}) {
@@ -6769,13 +6730,8 @@ function applySharedSundayContentToItem(targetItem = {}, sourceItem = {}, source
 }
 
 function materializeSharedSundayContentForPersistence(service = null, items = []) {
-  if (!worshipServiceParticipatesInSharedSundayContent(service)) return items;
-  return items.map((item) => {
-    if (serviceItemHasDirectSundaySharedContent(item, service)) return item;
-    const source = sharedSundayContentSourceItem(item, service);
-    if (!source?.item) return item;
-    return applySharedSundayContentToItem(item, source.item, source.service);
-  });
+  void service;
+  return items;
 }
 
 async function persistSharedSundayServiceItems(service, items = [], options = {}) {
@@ -24774,8 +24730,8 @@ function sundaySharedContentTypesForItem(item = {}, service = null) {
   const typeId = worshipAppServiceTypeId(service?.type_id);
   const key = sundaySharedContentKey(item);
   if (!key) return [];
-  if (key.startsWith("main-praise:") && ["sunday-first", "sunday-second", "sunday-main"].includes(typeId)) {
-    return ["sunday-first", "sunday-second", "sunday-main"];
+  if (key.startsWith("main-praise:") && ["sunday-first", "sunday-second"].includes(typeId)) {
+    return ["sunday-first", "sunday-second"];
   }
   if ((["scripture-reading", "sermon-title", "sermon-scripture"].includes(key) || key.startsWith("sermon-citation:")) && ["sunday-second", "sunday-main"].includes(typeId)) {
     return ["sunday-second", "sunday-main"];
