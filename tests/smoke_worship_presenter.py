@@ -7677,10 +7677,13 @@ def main() -> int:
                       const waitingPreview = renderPresenterSlideMiniPreview(waitingLoop);
                       const waitingMount = document.createElement('div');
                       waitingMount.innerHTML = waitingPreview;
+                      document.body.appendChild(waitingMount);
                       const waitingVideo = waitingMount.querySelector('video.presenter-video');
                       const videoMount = document.createElement('div');
                       videoMount.innerHTML = videoPreview;
                       const videoOutput = videoMount.querySelector('video.presenter-video');
+                      const waitingObjectFit = waitingVideo ? getComputedStyle(waitingVideo).objectFit : '';
+                      waitingMount.remove();
                       return {
                         videoUsesOutputElement: videoPreview.includes('<video'),
                         videoUsesMetadataPreload: videoPreview.includes('preload="metadata"'),
@@ -7698,6 +7701,7 @@ def main() -> int:
                         waitingAutoplay: Boolean(waitingVideo?.autoplay),
                         waitingMuted: Boolean(waitingVideo?.muted),
                         waitingLoop: Boolean(waitingVideo?.loop),
+                        waitingObjectFit,
                         audioUsesPlaceholder: audioPreview.includes('presenter-slide-file'),
                       };
                     })()
@@ -7720,6 +7724,7 @@ def main() -> int:
                     and not preview_renderer_state["waitingAutoplay"]
                     and preview_renderer_state["waitingMuted"]
                     and not preview_renderer_state["waitingLoop"]
+                    and preview_renderer_state["waitingObjectFit"] == "contain"
                     and not preview_renderer_state["audioUsesPlaceholder"]
                 ):
                     pass_("presenter-preview-uses-video-first-frame", json.dumps(preview_renderer_state, ensure_ascii=False))

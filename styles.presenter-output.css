@@ -1258,6 +1258,7 @@
 }
 .presenter-video { display: block; width: 100%; height: 100%; object-fit: contain; background: #000; }
 .presenter-video[data-presenter-role="waiting_loop"] { object-fit: cover; }
+.svc-slide-mini-canvas .presenter-video[data-presenter-role="waiting_loop"] { object-fit: contain; }
 .presenter-output-root:not(.no-chromakey) .presenter-image { background: var(--presenter-chromakey); }
 .presenter-image { display: block; width: 100%; height: 100%; object-fit: contain; background: #000; }
 /* Reference media is laid over the service background in fullscreen output. */
