@@ -23585,6 +23585,7 @@ function renderPresenterDetail() {
       ${renderServicePraiseDatalist()}
       ${renderServiceScriptureDatalist()}
     </div>`;
+  patchPresenterSidebarOutline(svc, presenterSlides);
   refreshIcons();
   mountDeferredPresenterBoardSections(document.getElementById("servicePresenterControls"), serviceId, presenterSlides);
   restorePresenterViewportSnapshot(viewportSnapshot);

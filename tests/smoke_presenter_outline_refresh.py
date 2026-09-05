@@ -24,6 +24,7 @@ def main():
               refs.songList.innerHTML=renderServiceCurrentSidebar(service);
               refs.detailPane.innerHTML=renderServicePresenterControls(service,presenterSlidesForService(service.id),false,0);
               const before=refs.songList.textContent;
+              const staleMarkup=refs.songList.innerHTML;
               state.songs=[{id:'song-fixture',title:'구주의 십자가 보혈로',hymn_no:'250',versions:[
                 {id:'old',name:'통일 182',hymn_no:'통 182',forms:[{id:'v1',part_type:'Verse',part_number:1,lyrics:'첫 줄\\n둘째 줄'}]}
               ]}]; clearSearchCaches();
@@ -32,14 +33,19 @@ def main():
               const row=refs.songList.querySelector('[data-service-outline-item-id="praise-fixture"]');
               const slideIndex=Number(row?.dataset.serviceOutlineSlide);
               const slides=presenterSlidesForService(service.id);
+              refs.songList.innerHTML=staleMarkup;
+              state.serviceError=''; state.serviceTypes=[{id:'young-adult',name:'청년부 예배'}];
+              renderPresenterDetail();
+              const fullRender=refs.songList.textContent;
               const scrolls=[];
               refs.detailPane.scrollTo=options=>scrolls.push(options);
-              handleServiceOutlineSlideClick(row);
-              return {before,after,slideIndex,slide:slides[slideIndex]?.title,
+              handleServiceOutlineSlideClick(refs.songList.querySelector('[data-service-outline-item-id="praise-fixture"]'));
+              return {before,after,fullRender,slideIndex,slide:slides[slideIndex]?.title,
                 immediate:scrolls.length>0 && scrolls.every(options=>options.behavior==='auto')};
             }''')
             assert '250 구주의' in result['before'], result
             assert '통 182 구주의' in result['after'], result
+            assert '통 182 구주의' in result['fullRender'], result
             assert result['slideIndex'] >= 0 and '구주의' in result['slide'], result
             assert result['immediate'], result
             print('PASS delayed song hydration refreshes outline title and slide target; outline jumps are immediate')
