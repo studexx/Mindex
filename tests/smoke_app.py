@@ -6820,8 +6820,8 @@ def main() -> int:
                     if presenter_praise_input_mode_persistence == [
                         {"label": "찬양 1", "inputMode": "praise_db", "contentInputMode": "score_db", "configInputMode": "score_db", "songId": "__smoke_song_0__", "body": ""},
                         {"label": "찬양 2", "inputMode": "praise_db", "contentInputMode": "lyrics_db", "configInputMode": "lyrics_db", "songId": "__smoke_song_1__", "body": ""},
-                        {"label": "찬양 3", "inputMode": "manual_praise", "contentInputMode": "manual_praise", "configInputMode": "manual_praise", "songId": "", "body": "가사 한 줄"},
-                        {"label": "특송", "inputMode": "manual_praise", "contentInputMode": "manual_praise", "configInputMode": "manual_praise", "songId": "", "body": "가사 한 줄"},
+                        {"label": "찬양 3", "inputMode": "praise_db", "contentInputMode": "manual_praise", "configInputMode": "manual_praise", "songId": "", "body": "가사 한 줄"},
+                        {"label": "특송", "inputMode": "praise_db", "contentInputMode": "manual_praise", "configInputMode": "manual_praise", "songId": "", "body": "가사 한 줄"},
                     ]:
                         pass_("presenter-praise-input-mode-persistence", json.dumps(presenter_praise_input_mode_persistence, ensure_ascii=False))
                     else:
@@ -6861,7 +6861,7 @@ def main() -> int:
                         """
                     )
                     if presenter_manual_praise_body_roundtrip == {
-                        "inputMode": "manual_praise",
+                        "inputMode": "praise_db",
                         "contentInputMode": "manual_praise",
                         "body": "첫 줄\n둘째 줄\n\n후렴",
                         "hydratedInputMode": "manual_praise",
@@ -7533,7 +7533,7 @@ def main() -> int:
                     if (
                         presenter_praise_header_audio_guard["parsedAudio"] == {"kind": "audio", "name": "특송 MR", "url": "https://example.test/special.mp3"}
                         and presenter_praise_header_audio_guard["dbElementType"] == "praise"
-                        and presenter_praise_header_audio_guard["dbInputMode"] == "manual_praise"
+                        and presenter_praise_header_audio_guard["dbInputMode"] == "praise_db"
                         and presenter_praise_header_audio_guard["configElementType"] == "praise"
                         and presenter_praise_header_audio_guard["configInputMode"] == "manual_praise"
                         and presenter_praise_header_audio_guard["configAudio"] == {"kind": "audio", "name": "특송 MR", "url": "https://example.test/special.mp3"}

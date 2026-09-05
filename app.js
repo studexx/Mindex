@@ -10036,7 +10036,8 @@ function normalizeServiceInputMode(value) {
 
 function worshipDbInputModeForSave(value) {
   const inputMode = normalizeServiceInputMode(value);
-  if (["score_db", "lyrics_db"].includes(inputMode)) return "praise_db";
+  // Older schemas accept praise_db only; config/content_state retain the exact mode.
+  if (["score_db", "lyrics_db", "manual_praise"].includes(inputMode)) return "praise_db";
   return WORSHIP_DB_ELEMENT_INPUT_MODES.has(inputMode) ? inputMode : "";
 }
 
