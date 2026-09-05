@@ -5818,8 +5818,8 @@ function buildNewPraiseSongDraft(options = {}) {
   const praiseTypes = normalizePraiseTypes(options.praiseTypes || options.praise_types || state.praiseFilter);
   const version = {
     id: createUuid(),
-    name: "Default",
-    raw_section_name: "Default",
+    name: "기본",
+    raw_section_name: "기본",
     is_primary: true,
     praise_types: praiseTypes.length ? praiseTypes : ["ccm"],
     forms: [],
@@ -7425,7 +7425,7 @@ async function saveSongVersions(song) {
 
   const versions = normalizeSongVersions(song, song.versions?.length ? song.versions : [{
     id: createUuid(),
-    name: "Default",
+    name: "기본",
     is_primary: true,
     forms: [],
   }]);
@@ -9157,10 +9157,10 @@ function updateVersionNameField(field) {
   const version = (song.versions || []).find((item) => item.id === versionId);
   if (!version) return;
 
-  const cleanName = normalizeGeneratedVersionName(field.value) || "Default";
+  const cleanName = normalizeGeneratedVersionName(field.value) || "기본";
   version.name = cleanName;
   version.curated_version_name = cleanName;
-  version.raw_section_name = cleanName === "Default" ? null : cleanName;
+  version.raw_section_name = cleanName === "기본" ? null : cleanName;
   version.version_label = cleanName;
   state.dirty.forms = true;
   state.dirty.song = true;
@@ -17356,7 +17356,7 @@ function normalizeServerSong(row) {
     : [
         {
           id: row.id,
-          name: "Default",
+          name: "기본",
           is_primary: true,
           forms: [],
         },
@@ -17765,12 +17765,12 @@ function normalizeGeneratedVersionName(name) {
   const value = String(name || "").trim();
   const koreanGenerated = value.match(/^버전\s*(\d+)$/);
   if (koreanGenerated) return `Version ${koreanGenerated[1]}`;
-  if (value === "기본") return "Default";
+  if (/^default$/i.test(value) || value === "기본") return "기본";
   return value;
 }
 
 function displayVersionName(name) {
-  return normalizeGeneratedVersionName(name) || "Default";
+  return normalizeGeneratedVersionName(name) || "기본";
 }
 
 function isDefaultVersionName(name) {
