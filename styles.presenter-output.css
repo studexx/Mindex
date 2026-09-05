@@ -1022,8 +1022,8 @@
   text-align: right;
 }
 /* Lower-bar song titles share one role in output and previews, in both modes. */
-:is(.svc-slide-mini-output, .presenter-output-root):is(.no-chromakey, :not(.no-chromakey)) .presenter-slide--song-title:is([data-section-key="praise"], [data-section-key="pre_scripture_praise"], [data-section-key="entrance_praise"], [data-section-key="response_song"], [data-section-key="prayer_meeting_praise"], [data-section-key="special_song"]) > .presenter-slide-text,
-:is(.svc-slide-mini-output, .presenter-output-root):is(.no-chromakey, :not(.no-chromakey)) .presenter-slide--song-title:is([data-section-key="praise"], [data-section-key="pre_scripture_praise"], [data-section-key="entrance_praise"], [data-section-key="response_song"], [data-section-key="prayer_meeting_praise"], [data-section-key="special_song"]) .presenter-section-song-title-name {
+:is(.svc-slide-mini-output, .presenter-output-root):is(.no-chromakey, :not(.no-chromakey)) .presenter-slide--song-title[data-element-type="praise"] > .presenter-slide-text,
+:is(.svc-slide-mini-output, .presenter-output-root):is(.no-chromakey, :not(.no-chromakey)) .presenter-slide--song-title[data-element-type="praise"] .presenter-section-song-title-name {
   font-size: var(--presenter-bar-song-title-size);
   font-weight: var(--presenter-weight-display);
 }
