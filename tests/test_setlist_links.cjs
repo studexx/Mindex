@@ -29,3 +29,15 @@ assert.equal(resolve('새 곡',index).status,'unmatched');
 assert.equal(resolve('곡 A',null).status,'pending');
 assert.equal(JSON.stringify({songs,versions}),before);
 console.log('PASS: unique/ambiguous titles, explicit links, aliases, medleys, hymn numbers/editions/verses and immutable source');
+
+assert.equal(MindexSetlistLinks.isExcluded({raw_label:'3부 특송'}),true);
+assert.equal(MindexSetlistLinks.isExcluded({raw_label:'3 부 특송'}),true);
+assert.equal(MindexSetlistLinks.isExcluded({raw_label:'특송'},'sun_3rd'),true);
+assert.equal(MindexSetlistLinks.isExcluded({raw_label:'2부 특송'},'sun_3rd'),false);
+assert.equal(MindexSetlistLinks.isExcluded({raw_label:'특송'},'fri'),false);
+assert.equal(MindexSetlistLinks.isExcluded({raw_label:'찬양'},'sun_3rd'),false);
+const reviewed=buildIndex([{id:'569',title:'선한 목자 되신 우리 주',hymn_no:'569'},{id:'jesus',title:'예수 예수'}]);
+assert.equal(resolve('569 선한 목자 되신 주',reviewed).text,'569 선한 목자 되신 우리 주');
+assert.equal(resolve('능력의 이름 예수',reviewed).song.id,'jesus');
+assert.equal(resolve('568 선한 목자 되신 주',reviewed).status,'hymn-number');
+console.log('PASS: third-service special exclusions and evidence-backed aliases');

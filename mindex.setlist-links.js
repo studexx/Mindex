@@ -1,6 +1,11 @@
 (function (root) {
   "use strict";
   const key = (value) => String(value || "").normalize("NFKC").replace(/\s+/gu, "").toLowerCase();
+  // Reviewed against hymn 569 and the existing Praise alias + stored lyrics.
+  const reviewedAliases = new Map([
+    [key("선한 목자 되신 주"), "선한 목자 되신 우리 주"],
+    [key("능력의 이름 예수"), "예수 예수"],
+  ]);
   function titleParts(value) {
     let text = String(value || "").trim();
     const verse = text.match(/\s*([⑴-⒇①-⑳](?:\s*[,·]\s*[⑴-⒇①-⑳])*)$/u)?.[1] || "";
@@ -42,6 +47,12 @@
     }
     return { byId, titles, names };
   }
+  function isExcluded(candidate, serviceType = "") {
+    const label = String(candidate.raw_label || "").replace(/\s+/gu, "");
+    if (!label.includes("특송")) return false;
+    if (label.includes("3부")) return true;
+    return ["sun_3rd", "sunday-main"].includes(serviceType) && !/[12]부/u.test(label);
+  }
   function split(value) {
     const text = String(value || "").trim();
     const wrapped = text.match(/^메들리\s*[(（]([\s\S]*)[)）]$/u);
@@ -51,6 +62,9 @@
     if (!index) return { status: "pending", text: value, candidates: [] };
     const part = titleParts(value);
     let ids = explicitId ? new Set(index.byId.has(explicitId) ? [explicitId] : []) : index.titles.get(key(part.text));
+    if (!ids?.size && !explicitId && reviewedAliases.has(key(part.text))) {
+      ids = index.titles.get(key(reviewedAliases.get(key(part.text))));
+    }
     if (!ids?.size && !explicitId) ids = new Set(aliases(part.text).flatMap((alias) => [...(index.names.get(alias) || [])]));
     const candidates = [...(ids || [])].map((id) => index.byId.get(id)).filter(Boolean);
     if (!candidates.length) return { status: explicitId ? "broken-link" : "unmatched", text: value, candidates };
@@ -62,5 +76,5 @@
     const title = index.titles.get(key(song.title))?.size > 1 && song.subtitle ? `${song.title} (${song.subtitle})` : song.title;
     return { status: "linked", song, text: `${prefix}${title}${part.verse ? ` ${part.verse}` : ""}`, candidates: numbered };
   }
-  root.MindexSetlistLinks = { buildIndex, resolve, split };
+  root.MindexSetlistLinks = { buildIndex, resolve, split, isExcluded };
 })(typeof window === "undefined" ? globalThis : window);

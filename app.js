@@ -22776,6 +22776,7 @@ function prepareWorshipSetlistArchiveCandidates(candidates = [], source = {}) {
   const sorted = candidates.map((candidate) => ({
     ...candidate,
     archive_display_label: worshipSetlistArchiveDisplayLabel(candidate.raw_label),
+    archive_source_service_type: source.service_type_id,
   })).sort(compareSetlistCandidatesForDisplay);
   const isFriday = worshipAppServiceTypeId(source.service_type_id) === "friday";
 
@@ -22958,6 +22959,9 @@ function renderWorshipSetlistArchiveEntry(entry) {
 function worshipSetlistCandidateLinks(candidate) {
   const title = String(candidate.raw_title || candidate.raw_label || "").trim() || "제목 없음";
   const links = window.MindexSetlistLinks;
+  if (links?.isExcluded(candidate, candidate.archive_source_service_type)) {
+    return [{ original: title, status: "excluded", text: title }];
+  }
   const parts = links ? links.split(title) : [title];
   return parts.map((part) => ({ original: part, ...(links?.resolve(part, state.worshipSetlistSongCatalog?.index,
     parts.length === 1 ? candidate.suggested_song_id : "") || { status: "pending", text: part }) }));
