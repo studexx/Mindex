@@ -27489,7 +27489,6 @@ function renderDeferredPresenterBoardSection(group, serviceId, groupIndex) {
           title="${escapeAttr(interactionLabel)}">
           <span class="svc-board-section-title${visibleTitle ? "" : " is-empty"}">
             ${visibleTitle ? `<strong>${escapeHtml(visibleTitle)}</strong>` : ""}
-            ${group.meta ? `<small>${escapeHtml(group.meta)}</small>` : ""}
           </span>
         </button>
       </div>
@@ -28152,7 +28151,6 @@ function renderPresenterBoardSection(group, activeIndex, serviceId) {
           title="${escapeAttr(interactionLabel)}">
           <span class="svc-board-section-title${visibleTitle ? "" : " is-empty"}">
             ${visibleTitle ? `<strong>${escapeHtml(visibleTitle)}</strong>` : ""}
-            ${group.meta ? `<small>${escapeHtml(group.meta)}</small>` : ""}
           </span>
         </button>
       </div>
