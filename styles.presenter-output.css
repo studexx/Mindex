@@ -1034,6 +1034,11 @@
   font-weight: var(--presenter-bar-split-value-weight);
   text-align: right;
 }
+:is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-slide--song-title:is([data-section-key="praise"], [data-section-key="pre_scripture_praise"], [data-section-key="entrance_praise"], [data-section-key="response_song"], [data-section-key="prayer_meeting_praise"], [data-section-key="special_song"]) > .presenter-slide-text,
+:is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-slide--song-title:is([data-section-key="praise"], [data-section-key="pre_scripture_praise"], [data-section-key="entrance_praise"], [data-section-key="response_song"], [data-section-key="prayer_meeting_praise"], [data-section-key="special_song"]) .presenter-section-song-title-name,
+:is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-slide--title-assignee:is([data-section-key="offering"], [data-section-key="doxology"], [data-section-key="sending"], [data-section-key="closing_visual"]) .presenter-title-assignee--order-content .presenter-title-assignee-content {
+  font-weight: var(--presenter-weight-display);
+}
 :is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-title-assignee--sermon {
   grid-template-columns: minmax(0, 1fr) minmax(0, max-content);
   grid-auto-rows: auto;

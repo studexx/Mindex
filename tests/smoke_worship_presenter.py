@@ -5745,7 +5745,7 @@ def main() -> int:
                 if (
                     all("주 찬양합니다" in item["text"] for item in fullscreen_song_title_output_font_state)
                     and all(50 <= item["fontSize"] <= 55 for item in fullscreen_song_title_output_font_state)
-                    and all(item["fontWeight"] == "600" for item in fullscreen_song_title_output_font_state)
+                    and all(item["fontWeight"] == "800" for item in fullscreen_song_title_output_font_state)
                 ):
                     pass_("presenter-fullscreen-song-title-output-font", json.dumps(fullscreen_song_title_output_font_state, ensure_ascii=False))
                 else:
@@ -5924,6 +5924,7 @@ def main() -> int:
 	                        headingFontSize: size(heading),
                         headingFontWeight: heading ? getComputedStyle(heading).fontWeight : '',
                         nameFontSize: size(name),
+                        nameFontWeight: name ? getComputedStyle(name).fontWeight : '',
                       };
                       root?.remove();
                       return result;
@@ -5938,6 +5939,7 @@ def main() -> int:
 	                    and offering_song_title_output_font_state["headingFontSize"] >= 65
 	                    and offering_song_title_output_font_state["headingFontWeight"] == "800"
 	                    and 50 <= offering_song_title_output_font_state["nameFontSize"] <= 55
+	                    and offering_song_title_output_font_state["nameFontWeight"] == "800"
 	                ):
                     pass_("presenter-offering-song-title-output-font", json.dumps(offering_song_title_output_font_state, ensure_ascii=False))
                 else:
