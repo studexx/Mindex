@@ -27012,9 +27012,13 @@ function renderPresenterServiceTextInputs(item, index, model, memo) {
   const titlePlaceholder = presenterServiceTitleInputPlaceholder(item, memo, titleLabel);
   const assigneeLabel = presenterServiceAssigneeInputLabel(item);
   const assigneePlaceholder = inferServiceItemAssignee(item) || assigneeLabel;
+  const titleFieldClass = [
+    "svc-presenter-input-field",
+    announcementText ? "svc-presenter-input-field--announcement" : "",
+  ].filter(Boolean).join(" ");
   return `
     ${needsTitle ? `
-      <label class="svc-presenter-input-field">
+      <label class="${titleFieldClass}">
         ${presenterServiceTitleFieldShowsLabel(titleLabel) ? `<span>${escapeHtml(titleLabel)}</span>` : ""}
         ${announcementText ? `
           <textarea class="svc-presenter-input-control svc-presenter-input-control--multiline" data-service-item-field="raw_title" data-service-item-index="${index}"
@@ -27045,7 +27049,7 @@ function presenterServiceTitleInputLabel(item = {}, memo = parseServiceItemMemo(
 }
 
 function presenterServiceTitleFieldShowsLabel(label = "") {
-  return label !== "제목";
+  return !["제목", "내용"].includes(label);
 }
 
 function presenterServiceTitleInputPlaceholder(item = {}, memo = parseServiceItemMemo(item?.memo), label = presenterServiceTitleInputLabel(item, memo)) {

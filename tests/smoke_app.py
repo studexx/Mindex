@@ -6895,6 +6895,32 @@ def main() -> int:
                               .map((node) => node.textContent.trim())
                               .filter(Boolean);
                           };
+                          const hasFieldClass = (html, className) => {
+                            const host = document.createElement('div');
+                            host.innerHTML = html;
+                            return Boolean(host.querySelector(`.${className}`));
+                          };
+                          const measureAnnouncementInput = (html) => {
+                            const host = document.createElement('div');
+                            host.className = 'svc-board-subgroup-controls';
+                            host.style.cssText = 'position:absolute;left:-9999px;top:0;width:960px;';
+                            const row = document.createElement('div');
+                            row.className = 'svc-board-subgroup-control-item';
+                            row.innerHTML = html;
+                            host.appendChild(row);
+                            document.body.appendChild(host);
+                            const field = host.querySelector('.svc-presenter-input-field--announcement');
+                            const textarea = host.querySelector('textarea.svc-presenter-input-control--multiline');
+                            const fieldRect = field?.getBoundingClientRect();
+                            const textareaRect = textarea?.getBoundingClientRect();
+                            const result = {
+                              fieldWidth: Math.round(fieldRect?.width || 0),
+                              textareaWidth: Math.round(textareaRect?.width || 0),
+                              leftGap: Math.round((textareaRect?.left || 0) - (fieldRect?.left || 0)),
+                            };
+                            host.remove();
+                            return result;
+                          };
                           const praise = makeItem('찬양 1', { elementType: 'praise', inputMode: 'lyrics_db' });
                           const praiseModel = serviceItemEditorModel(praise, { service });
                           const scripture = makeItem('성경봉독', { elementType: 'scripture_body', scriptureReference: '요 3:16' }, { raw_title: '요 3:16' });
@@ -6908,12 +6934,13 @@ def main() -> int:
                           const announcement = makeItem('청소년부 광고', { elementType: 'body_text' }, { raw_title: '1. 광고 내용' });
                           const announcementMemo = parseServiceItemMemo(announcement.memo);
                           const announcementModel = serviceItemEditorModel(announcement, { service });
+                          const announcementHtml = renderPresenterServiceTextInputs(announcement, 4, announcementModel, announcementMemo);
                           const labels = {
                             praise: collectLabels(renderPresenterServicePraiseInput(praise, 0, praiseModel)),
                             scripture: collectLabels(renderPresenterServiceScriptureInput(scripture, 1, scriptureMemo)),
                             title: collectLabels(renderPresenterServiceTextInputs(title, 2, titleModel, titleMemo)),
                             special: collectLabels(renderPresenterServiceTextInputs(special, 3, specialModel, specialMemo)),
-                            announcement: collectLabels(renderPresenterServiceTextInputs(announcement, 4, announcementModel, announcementMemo)),
+                            announcement: collectLabels(announcementHtml),
                           };
                           const titleLabelVisibility = {
                             genericTitle: presenterServiceTitleFieldShowsLabel('제목'),
@@ -6930,6 +6957,8 @@ def main() -> int:
                                 placeholder: inferServiceItemAssignee({ label, raw_title: '' }),
                               })),
                             all: Object.values(labels).flat(),
+                            announcementFullWidth: hasFieldClass(announcementHtml, 'svc-presenter-input-field--announcement'),
+                            announcementLayout: measureAnnouncementInput(announcementHtml),
                           };
                         })()
                         """
@@ -6939,15 +6968,19 @@ def main() -> int:
                         and presenter_input_label_vocabulary["scripture"] == ["말씀"]
                         and presenter_input_label_vocabulary["title"] == ["담당"]
                         and presenter_input_label_vocabulary["special"] == ["찬양", "가사", "담당"]
-                        and presenter_input_label_vocabulary["announcement"] == ["내용"]
+                        and presenter_input_label_vocabulary["announcement"] == []
                         and presenter_input_label_vocabulary["titleLabelVisibility"] == {
                             "genericTitle": False,
-                            "content": True,
+                            "content": False,
                             "scripture": True,
                             "praise": True,
                         }
+                        and presenter_input_label_vocabulary["announcementFullWidth"] is True
+                        and presenter_input_label_vocabulary["announcementLayout"]["fieldWidth"] >= 900
+                        and presenter_input_label_vocabulary["announcementLayout"]["textareaWidth"] >= 880
+                        and presenter_input_label_vocabulary["announcementLayout"]["leftGap"] <= 2
                         and all(not item["placeholder"] for item in presenter_input_label_vocabulary["genericAssigneeFallbacks"])
-                        and all(label in ["찬양", "말씀", "제목", "내용", "가사", "담당"] for label in presenter_input_label_vocabulary["all"])
+                        and all(label in ["찬양", "말씀", "제목", "가사", "담당"] for label in presenter_input_label_vocabulary["all"])
                     ):
                         pass_("presenter-input-label-vocabulary", json.dumps(presenter_input_label_vocabulary, ensure_ascii=False))
                     else:
@@ -8301,6 +8334,8 @@ def main() -> int:
                             {"marker": "②", "lines": ["반별 사진 제출"]},
                         ]
                         and "<textarea" in youth_missing_input_guard["announcementInputHtml"]
+                        and "svc-presenter-input-field--announcement" in youth_missing_input_guard["announcementInputHtml"]
+                        and "<span>내용</span>" not in youth_missing_input_guard["announcementInputHtml"]
                         and "줄 맨 앞의 1., 2.마다 새 항목" in youth_missing_input_guard["announcementInputHtml"]
                         and "번호 없는 다음 줄은 같은 항목" in youth_missing_input_guard["announcementInputHtml"]
                     ):

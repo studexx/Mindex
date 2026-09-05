@@ -6544,6 +6544,9 @@ textarea.svc-presenter-input-control--multiline {
 .svc-presenter-input-field--lyrics {
   grid-column: 1 / -1;
 }
+.svc-presenter-input-field--announcement {
+  grid-column: 1 / -1;
+}
 .svc-presenter-input-field--lyrics textarea.svc-presenter-input-control {
   min-height: 180px;
   line-height: 1.55;
@@ -8024,6 +8027,15 @@ textarea.svc-presenter-input-control--multiline {
   gap: 8px;
 }
 .svc-board-subgroup-controls .svc-presenter-input-field--song {
+  grid-column: 1;
+}
+.svc-board-subgroup-controls .svc-presenter-input-field--announcement {
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+}
+.svc-board-subgroup-controls .svc-presenter-input-field--announcement .svc-presenter-input-control,
+.svc-board-subgroup-controls .svc-presenter-input-field--announcement .svc-presenter-input-hint {
   grid-column: 1;
 }
 .svc-board-subgroup-controls .svc-presenter-input-field--form {
