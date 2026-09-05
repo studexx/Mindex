@@ -23070,24 +23070,26 @@ function worshipSetlistCandidateLinks(candidate) {
   const title = String(candidate.raw_title || candidate.raw_label || "").trim() || "제목 없음";
   const links = window.MindexSetlistLinks;
   if (links?.isExcluded(candidate, candidate.archive_source_service_type)) {
-    return [{ original: title, status: "excluded", text: title }];
+    return [{ status: "excluded", text: title }];
   }
   const parts = links ? links.split(title) : [title];
-  return parts.map((part) => ({ original: part, ...(links?.resolve(part, state.worshipSetlistSongCatalog?.index,
+  return parts.map((part) => ({ ...(links?.resolve(part, state.worshipSetlistSongCatalog?.index,
     parts.length === 1 ? candidate.suggested_song_id : "") || { status: "pending", text: part }) }));
 }
 
 function renderWorshipSetlistCandidate(candidate) {
   const title = String(candidate.raw_title || candidate.raw_label || "").trim() || "제목 없음";
   const label = String(candidate.archive_display_label || candidate.raw_label || "").trim();
-  const content = worshipSetlistCandidateLinks(candidate).map((match) => {
+  const matches = worshipSetlistCandidateLinks(candidate);
+  const displayTitle = matches.map((match) => match.text).join(" + ");
+  const content = matches.map((match) => {
     if (match.status !== "linked") return escapeHtml(match.text);
-    return `<button class="svc-setlist-song-link" type="button" data-global-song-id="${escapeAttr(match.song.id)}" title="${escapeAttr(match.original)}">${escapeHtml(match.text)}</button>`;
+    return `<button class="svc-setlist-song-link" type="button" data-global-song-id="${escapeAttr(match.song.id)}" title="${escapeAttr(match.text)}">${escapeHtml(match.text)}</button>`;
   }).join(" + ");
   return `
     <li>
       <span class="svc-setlist-song-role">${escapeHtml(label && label !== title ? label : "")}</span>
-      <span class="svc-setlist-song-title" title="${escapeAttr(title)}">${content}</span>
+      <span class="svc-setlist-song-title" title="${escapeAttr(displayTitle)}">${content}</span>
     </li>`;
 }
 

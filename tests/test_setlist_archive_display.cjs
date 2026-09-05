@@ -53,6 +53,7 @@ context.state = { search: '이재희', worshipSetlistArchiveView: 'date' };
 context.normalizeSearchValue = value => String(value || '').trim().toLowerCase();
 context.serviceTypeDisplayName = () => '금요기도회';
 context.escapeHtml = value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+context.escapeAttr = value => context.escapeHtml(value).replaceAll('"', '&quot;');
 for (const name of ['filterWorshipSetlistArchiveEntries', 'renderWorshipSetlistArchiveEntry', 'renderWorshipSetlistCandidate']) {
   const start = source.indexOf(`function ${name}(`);
   vm.runInContext(source.slice(start, source.indexOf('\n}\n', start) + 2), context);

@@ -37,9 +37,10 @@ assert.equal(MindexSetlistLinks.isExcluded({raw_label:'2부 특송'},'sun_3rd'),
 assert.equal(MindexSetlistLinks.isExcluded({raw_label:'특송'},'fri'),false);
 assert.equal(MindexSetlistLinks.isExcluded({raw_label:'찬양'},'sun_3rd'),false);
 const reviewed=buildIndex([{id:'569',title:'선한 목자 되신 우리 주',hymn_no:'569'},{id:'jesus',title:'예수 예수'}]);
-assert.equal(resolve('569 선한 목자 되신 주',reviewed).text,'569 선한 목자 되신 우리 주');
+assert.equal(resolve('569 선한 목자 되신 주',reviewed).status,'unmatched');
+assert.equal(resolve('569 선한 목자 되신 우리 주',reviewed).song.id,'569');
 assert.equal(resolve('능력의 이름 예수',reviewed).status,'unmatched');
 const distinct=buildIndex([{id:'jesus',title:'예수 예수'},{id:'power',title:'능력의 이름 예수'}]);
 assert.equal(resolve('능력의 이름 예수',distinct).song.id,'power');
-assert.equal(resolve('568 선한 목자 되신 주',reviewed).status,'hymn-number');
-console.log('PASS: third-service special exclusions and evidence-backed aliases');
+assert.equal(resolve('568 선한 목자 되신 우리 주',reviewed).status,'hymn-number');
+console.log('PASS: third-service special exclusions and removal of legacy aliases');

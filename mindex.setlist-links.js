@@ -1,10 +1,6 @@
 (function (root) {
   "use strict";
   const key = (value) => String(value || "").normalize("NFKC").replace(/\s+/gu, "").toLowerCase();
-  // Reviewed against hymn 569. Distinct songs must not become title aliases.
-  const reviewedAliases = new Map([
-    [key("선한 목자 되신 주"), "선한 목자 되신 우리 주"],
-  ]);
   function titleParts(value) {
     let text = String(value || "").trim();
     const verse = text.match(/\s*([⑴-⒇①-⑳](?:\s*[,·]\s*[⑴-⒇①-⑳])*)$/u)?.[1] || "";
@@ -61,9 +57,6 @@
     if (!index) return { status: "pending", text: value, candidates: [] };
     const part = titleParts(value);
     let ids = explicitId ? new Set(index.byId.has(explicitId) ? [explicitId] : []) : index.titles.get(key(part.text));
-    if (!ids?.size && !explicitId && reviewedAliases.has(key(part.text))) {
-      ids = index.titles.get(key(reviewedAliases.get(key(part.text))));
-    }
     if (!ids?.size && !explicitId) ids = new Set(aliases(part.text).flatMap((alias) => [...(index.names.get(alias) || [])]));
     const candidates = [...(ids || [])].map((id) => index.byId.get(id)).filter(Boolean);
     if (!candidates.length) return { status: explicitId ? "broken-link" : "unmatched", text: value, candidates };
