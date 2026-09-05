@@ -6543,6 +6543,7 @@ def main() -> int:
                           const originalServices = state.services;
                           const originalItems = state.serviceItems[service.id];
                           const originalSelectedServiceId = state.selectedServiceId;
+                          const originalModule = state.module;
                           const originalDetailHtml = refs.detailPane.innerHTML;
                           const originalRenderCurrent = renderCurrentServiceModuleDetail;
                           const originalRenderServiceList = renderServiceList;
@@ -6556,6 +6557,7 @@ def main() -> int:
                             state.services = [service, ...originalServices.filter((candidate) => candidate.id !== service.id)];
                             state.serviceItems[service.id] = items;
                             state.selectedServiceId = service.id;
+                            state.module = 'presenter';
                             state.dirty.service = false;
                             refs.detailPane.innerHTML = renderServiceSourcePanel(service);
                             const textarea = refs.detailPane.querySelector('[data-service-source-text="__smoke_source_apply__"]');
@@ -6578,7 +6580,11 @@ def main() -> int:
                               '  파일: 새광고.mp4',
                               '  링크: https://example.com/new.mp4',
                             ].join('\\n');
+                            textarea.dispatchEvent(new Event('input', { bubbles: true }));
                             const pendingAfterEdit = serviceSourceTextHasPendingChanges(textarea);
+                            const draftAfterInput = service._worshipSourceTextDraft || '';
+                            const saveDirtyAfterInput = currentSaveButtonState().dirty;
+                            const rerenderedSource = renderServiceSourcePanel(service);
                             renderCurrentServiceModuleDetail = () => { rendered = true; };
                             renderServiceList = () => {};
                             refreshPresenterForService = (serviceId, options = {}) => refreshes.push({ serviceId, publish: options.publish });
@@ -6606,6 +6612,9 @@ def main() -> int:
                               recoverySourceText: recovery.serviceDocument?.sourceText || '',
                               pendingBefore,
                               pendingAfterEdit,
+                              draftAfterInput,
+                              saveDirtyAfterInput,
+                              rerenderPreservedDraft: rerenderedSource.includes('새 특송'),
                               pendingAfterApply,
                               dirty: state.dirty.service,
                               rendered,
@@ -6620,6 +6629,7 @@ def main() -> int:
                             if (originalItems === undefined) delete state.serviceItems[service.id];
                             else state.serviceItems[service.id] = originalItems;
                             state.selectedServiceId = originalSelectedServiceId;
+                            state.module = originalModule;
                             state.dirty.service = originalDirty;
                             if (originalRecovery === null) localStorage.removeItem(recoveryKey);
                             else localStorage.setItem(recoveryKey, originalRecovery);
@@ -6643,6 +6653,9 @@ def main() -> int:
                         and service_source_view_apply["recoverySourceText"] == service_source_view_apply["sourceDraft"]
                         and not service_source_view_apply["pendingBefore"]
                         and service_source_view_apply["pendingAfterEdit"]
+                        and "특송: 새 특송" in service_source_view_apply["draftAfterInput"]
+                        and service_source_view_apply["saveDirtyAfterInput"]
+                        and service_source_view_apply["rerenderPreservedDraft"]
                         and not service_source_view_apply["pendingAfterApply"]
                         and service_source_view_apply.get("dirty")
                         and service_source_view_apply.get("rendered")

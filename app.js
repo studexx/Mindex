@@ -8717,6 +8717,12 @@ function handleDetailInput(event) {
     return;
   }
 
+  const serviceSourceText = event.target.closest("[data-service-source-text]");
+  if (serviceSourceText) {
+    updateServiceSourceTextDraft(serviceSourceText);
+    return;
+  }
+
   const serviceDefaultField = event.target.closest("[data-service-default-field]");
   if (serviceDefaultField) {
     updateServiceDefaultItemField(serviceDefaultField);
@@ -9911,6 +9917,7 @@ function updateServiceItemField(field, options = {}) {
   if (persistenceBefore === serviceItemPersistenceSignature(item)) {
     return;
   }
+  if (service && !options.preserveServiceSourceDraft) delete service._worshipSourceTextDraft;
   state.serviceItems[serviceId] = normalizeServiceItemsInCurrentOrder(items);
   state.dirty.service = true;
   markServiceElementDirty(serviceId, item);
@@ -23625,7 +23632,7 @@ function renderServicePresenterControls(service, slides = [], active = false, in
 
 function renderServiceSourcePanel(service) {
   if (!service?.id) return "";
-  const source = buildServiceSourceText(service);
+  const source = serviceSourceTextForEditor(service);
   return `
     <details class="svc-source-panel">
       <summary class="svc-source-panel-head">
@@ -23654,6 +23661,11 @@ function renderServiceSourcePanel(service) {
 function serviceDocumentHistoryFromRef(service = null) {
   const history = serviceSourceRef(service)[MINDEX_SERVICE_DOCUMENT_HISTORY_SOURCE_REF_KEY];
   return Array.isArray(history) ? history.filter((entry) => entry && typeof entry === "object") : [];
+}
+
+function serviceSourceTextForEditor(service = null) {
+  if (typeof service?._worshipSourceTextDraft === "string") return service._worshipSourceTextDraft;
+  return buildServiceSourceText(service);
 }
 
 function renderServiceSourceHistory(service) {
@@ -23871,6 +23883,16 @@ function serviceSourceTextareaForService(serviceId = state.selectedServiceId) {
 function serviceSourceTextHasPendingChanges(textarea = null) {
   if (!textarea) return false;
   return compactTextSignature(textarea.value) !== String(textarea.dataset.serviceSourceSignature || "");
+}
+
+function updateServiceSourceTextDraft(textarea = null) {
+  const id = String(textarea?.dataset?.serviceSourceText || state.selectedServiceId || "").trim();
+  const service = state.services.find((candidate) => candidate.id === id);
+  if (!service || !textarea) return false;
+  service._worshipSourceTextDraft = textarea.value;
+  if (serviceSourceTextHasPendingChanges(textarea)) state.dirty.service = true;
+  updateSaveState();
+  return true;
 }
 
 function applyPendingServiceSourceTextBeforeSave(serviceId = state.selectedServiceId) {
