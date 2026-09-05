@@ -794,6 +794,16 @@ One source file or source batch: PPT, PDF, manual worship order, legacy service 
 
 Store source identity, source path/hash, parse report, and raw payload.
 
+- 2026-09-06 사용자 요청으로 archived setlist 183건의 `raw_payload.sections`를
+  현재 candidate의 곡명·label·section key와 전수 대조한 뒤 제거했다.
+  182건은 동일했고, 2026-06-21 청년부는 현재 candidate에 결단 `주 말씀 향하여`가
+  추가된 상태로 원문의 모든 곡은 보존되어 있었다. 1,140개 candidate는 변경하지 않았다.
+- `raw_payload.service`(인도자 포함), `source_ref`, `import_identity`, `schema_version`과
+  source identity/hash, parse report는 유지한다. 인도자는 아직 이 metadata에서 읽는다.
+  정리된 archive의 원문 곡 묶음을 단순 재수입으로 복원하지 않는다.
+- 삭제 전 전체 source/candidate 백업은 Git 제외 경로
+  `backups/setlist-raw-before-prune-20260906.json`에 보관했다.
+
 ### `mindex_worship_import_candidates`
 
 Parsed possible service/section/element/slide records before approval.
