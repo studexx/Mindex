@@ -6357,6 +6357,97 @@ def main() -> int:
                     else:
                         fail("presenter-item-apply-flow", json.dumps(presenter_item_apply_flow, ensure_ascii=False))
 
+                    service_source_view = page.evaluate(
+                        """
+                        (() => {
+                          if (
+                            typeof buildServiceSourceText !== 'function'
+                            || typeof renderServicePresenterControls !== 'function'
+                          ) return { ready: false, reason: 'functions' };
+                          const service = { id: '__smoke_source_view__', type_id: 'special', date: '2026-08-02', alias: '찬양예배' };
+                          const items = [
+                            normalizeServiceItem({
+                              id: '__smoke_source_reading__',
+                              service_id: service.id,
+                              label: '성경봉독',
+                              raw_title: '느 6:15-19; 느 7:1-4',
+                              memo: serializeServiceItemMemo({
+                                elementType: 'scripture_body',
+                                inputMode: 'scripture',
+                                scriptureReferences: ['느 6:15-19', '느 7:1-4'],
+                              }),
+                              _worshipSectionKey: 'scripture_reading',
+                              _worshipSectionTitle: '성경봉독',
+                            }, 0),
+                            normalizeServiceItem({
+                              id: '__smoke_source_special__',
+                              service_id: service.id,
+                              label: '특송',
+                              raw_title: '하나님의 나팔 소리',
+                              assignee: '할렐루야 찬양대',
+                              memo: serializeServiceItemMemo({
+                                elementType: 'praise',
+                                inputMode: 'manual_praise',
+                                outputMode: 'lyrics',
+                                slides: ['누가 나와 함께 가려오', '주가 예비하신 그곳'],
+                              }),
+                              _worshipSectionKey: 'special_song',
+                              _worshipSectionTitle: '특송',
+                            }, 1),
+                            normalizeServiceItem({
+                              id: '__smoke_source_video__',
+                              service_id: service.id,
+                              label: '교회소식',
+                              memo: serializeServiceItemMemo({
+                                elementType: 'video',
+                                inputMode: 'asset',
+                                asset: { kind: 'video', name: '광고.mp4', url: 'https://example.com/ad.mp4' },
+                              }),
+                              _worshipSectionKey: 'announcements',
+                              _worshipSectionTitle: '광고',
+                            }, 2),
+                          ];
+                          const originalServices = state.services;
+                          const originalItems = state.serviceItems[service.id];
+                          try {
+                            state.services = [service, ...originalServices.filter((candidate) => candidate.id !== service.id)];
+                            state.serviceItems[service.id] = items;
+                            const source = buildServiceSourceText(service);
+                            const html = renderServicePresenterControls(service, [], false, 0);
+                            return {
+                              ready: true,
+                              source,
+                              hasRoot: html.includes('id="servicePresenterControls"'),
+                              hasSourcePanel: html.includes('svc-source-panel'),
+                              hasCopy: html.includes('data-service-source-copy="__smoke_source_view__"'),
+                            };
+                          } finally {
+                            state.services = originalServices;
+                            if (originalItems === undefined) delete state.serviceItems[service.id];
+                            else state.serviceItems[service.id] = originalItems;
+                          }
+                        })()
+                        """
+                    )
+                    if (
+                        service_source_view.get("ready")
+                        and service_source_view.get("hasRoot")
+                        and service_source_view.get("hasSourcePanel")
+                        and service_source_view.get("hasCopy")
+                        and "# 8월 2일 (주일)" in service_source_view["source"]
+                        and "## 성경봉독" in service_source_view["source"]
+                        and "- 성경봉독: 느 6:15–19; 7:1–4" in service_source_view["source"]
+                        and "- 특송: 하나님의 나팔 소리" in service_source_view["source"]
+                        and "  담당: 할렐루야 찬양대" in service_source_view["source"]
+                        and "  가사:" in service_source_view["source"]
+                        and "    누가 나와 함께 가려오" in service_source_view["source"]
+                        and "  파일: 광고.mp4" in service_source_view["source"]
+                        and "  링크: https://example.com/ad.mp4" in service_source_view["source"]
+                    ):
+                        pass_("service-source-view-export", json.dumps(service_source_view, ensure_ascii=False))
+                    else:
+                        fail("service-source-view-export", json.dumps(service_source_view, ensure_ascii=False))
+
                     presenter_preparation_double_enter = page.evaluate(
                         """
                         (() => {

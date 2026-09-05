@@ -7158,8 +7158,9 @@ function serviceElementContentStateForSave(item = {}, parsed = parseServiceItemM
     serviceItemLinkedSong(item),
     service,
   );
-  const inputMode = contentState.inputMode === "manual_praise" && !serviceItemAllowsManualSongText(item, service)
-    ? "lyrics_db"
+  const praiseInputMode = servicePraiseInputMode(item, parsed, service);
+  const inputMode = praiseInputMode === "manual_praise"
+    ? (serviceItemAllowsManualSongText(item, service) ? "manual_praise" : "lyrics_db")
     : contentState.inputMode;
   return {
     state: contentState.state,
@@ -8012,6 +8013,13 @@ function handleDetailClick(event) {
   const serviceSetlistRefreshBtn = event.target.closest("[data-service-setlist-refresh]");
   if (serviceSetlistRefreshBtn) {
     void loadWorshipSetlistArchive({ force: true });
+    return;
+  }
+
+  const serviceSourceCopyBtn = event.target.closest("[data-service-source-copy]");
+  if (serviceSourceCopyBtn) {
+    const service = state.services.find((candidate) => candidate.id === serviceSourceCopyBtn.dataset.serviceSourceCopy);
+    if (service) void copyText(buildServiceSourceText(service));
     return;
   }
 
@@ -23282,6 +23290,114 @@ function renderPresenterDetail() {
   updateSaveState();
   observePresenterPreviewScaleFrames(document);
   schedulePresenterPreviewLayoutUpdate(document);
+}
+
+function renderServicePresenterControls(service, slides = [], active = false, index = 0) {
+  const chromakey = presenterServiceUsesChromakey(service);
+  const boardKey = presenterControlBoardKey(service, slides, active, chromakey);
+  return `
+    <section
+      id="servicePresenterControls"
+      class="${escapeAttr(presenterControlsClassName(active, chromakey))}"
+      data-service-id="${escapeAttr(service?.id || "")}"
+      data-board-key="${escapeAttr(boardKey)}"
+      aria-label="${escapeAttr(uiText("presenter.controls"))}"
+    >
+      ${renderServiceSourcePanel(service)}
+      <div class="svc-presenter-workspace">
+        <div class="svc-presenter-board-column">
+          ${renderPresenterSlideBoard(slides, presenterBoardActiveIndex(slides, active, index), service?.id)}
+        </div>
+      </div>
+    </section>`;
+}
+
+function renderServiceSourcePanel(service) {
+  if (!service?.id) return "";
+  const source = buildServiceSourceText(service);
+  return `
+    <details class="svc-source-panel">
+      <summary class="svc-source-panel-head">
+        <span>예배 원문</span>
+        <small>읽기 전용</small>
+      </summary>
+      <div class="svc-source-panel-body">
+        <textarea class="svc-source-text" readonly spellcheck="false" aria-label="예배 원문">${escapeHtml(source)}</textarea>
+        <button class="reference-new-btn secondary svc-source-copy" type="button" data-service-source-copy="${escapeAttr(service.id)}">
+          <i data-lucide="clipboard"></i>
+          <span>복사</span>
+        </button>
+      </div>
+    </details>`;
+}
+
+function buildServiceSourceText(service) {
+  const items = getServiceOutputItems(service?.id || "");
+  const lines = [
+    `# ${serviceSourceHeader(service)}`,
+    `date: ${String(service?.date || "").trim() || "-"}`,
+    `type: ${serviceDisplayTypeName(service) || "-"}`,
+  ];
+  const variant = serviceVariantDisplayName(service);
+  if (variant && compactSearchValue(variant) !== compactSearchValue(serviceDisplayTypeName(service))) {
+    lines.push(`alias: ${variant}`);
+  }
+  lines.push("");
+
+  let lastSectionKey = "";
+  for (const item of items) {
+    const memo = parseServiceItemMemo(item.memo);
+    if (memo.hiddenInPresentation) continue;
+    const sectionTitle = serviceSourceSectionTitle(item);
+    const sectionKey = String(item._worshipSectionId || item._worshipSectionKey || sectionTitle || "").trim();
+    if (sectionTitle && sectionKey !== lastSectionKey) {
+      if (lines.at(-1) !== "") lines.push("");
+      lines.push(`## ${sectionTitle}`);
+      lastSectionKey = sectionKey;
+    }
+    const itemLines = serviceSourceItemLines(item, service, memo);
+    if (itemLines.length) lines.push(...itemLines);
+  }
+  return lines.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+function serviceSourceHeader(service = {}) {
+  return cleanList([formatServiceDate(service), serviceDisplayTypeName(service), serviceVariantDisplayName(service)])
+    .filter((part, index, list) => list.findIndex((value) => compactSearchValue(value) === compactSearchValue(part)) === index)
+    .join(" · ") || "예배";
+}
+
+function serviceSourceSectionTitle(item = {}) {
+  return serviceSectionDisplayTitle(item._worshipSectionKey || item.section_key || "", item._worshipSectionTitle || "");
+}
+
+function serviceSourceItemLines(item = {}, service = null, memo = parseServiceItemMemo(item.memo)) {
+  const label = String(item.label || "").trim() || "항목";
+  const value = serviceSourceItemValue(item, service, memo);
+  const lines = [`- ${value && compactSearchValue(value) !== compactSearchValue(label) ? `${label}: ${value}` : label}`];
+  const assignee = serviceItemEditableAssigneeValue(item, service);
+  if (assignee && !lines[0].includes(assignee)) lines.push(`  담당: ${assignee}`);
+  const lyrics = servicePraiseInputMode(item, memo, service) === "manual_praise"
+    ? formatServiceManualPraiseLyricsInput(item.memo)
+    : "";
+  if (lyrics) {
+    lines.push("  가사:");
+    lines.push(...lyrics.split(/\r?\n/).map((line) => `    ${line}`));
+  }
+  const asset = normalizeServiceAsset(memo.asset);
+  if (asset.name || asset.url) {
+    lines.push(`  파일: ${asset.name || asset.url}`);
+    if (asset.name && asset.url) lines.push(`  링크: ${asset.url}`);
+  }
+  return lines;
+}
+
+function serviceSourceItemValue(item = {}, service = null, memo = parseServiceItemMemo(item.memo)) {
+  const scriptureReferences = serviceItemScriptureReferences(item, memo, service);
+  if (scriptureReferences.length) return formatServiceScriptureReferenceList(scriptureReferences);
+  const asset = normalizeServiceAsset(memo.asset);
+  if (asset.name || asset.url) return asset.name || asset.url;
+  return serviceItemDisplayText(item);
 }
 
 function serviceBulletinSectionTitle(item = {}) {

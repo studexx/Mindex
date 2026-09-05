@@ -6163,6 +6163,63 @@ body[data-theme="dark"] .service-week-empty:hover {
   gap: 0;
   align-items: start;
 }
+.svc-source-panel {
+  margin: 0 0 14px;
+  border: 1px solid color-mix(in srgb, var(--line) 62%, transparent);
+  border-radius: var(--r);
+  background: color-mix(in srgb, var(--panel-2) 42%, transparent);
+}
+.svc-source-panel-head {
+  display: flex;
+  min-height: 40px;
+  cursor: pointer;
+  list-style: none;
+  align-items: center;
+  gap: var(--s2);
+  padding: 0 var(--s3);
+  color: var(--ink-2);
+  font-size: var(--ui-body-size);
+  font-weight: 800;
+}
+.svc-source-panel-head::-webkit-details-marker { display: none; }
+.svc-source-panel-head::after {
+  content: "열기";
+  margin-left: auto;
+  color: var(--accent);
+  font-size: var(--ui-label-size);
+}
+.svc-source-panel[open] .svc-source-panel-head::after { content: "닫기"; }
+.svc-source-panel-head small {
+  color: var(--ink-4);
+  font-size: var(--ui-label-size);
+  font-weight: var(--ui-meta-weight);
+}
+.svc-source-panel-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  gap: var(--s2);
+  align-items: start;
+  padding: 0 var(--s3) var(--s3);
+}
+.svc-source-text {
+  min-height: 220px;
+  max-height: 44vh;
+  min-width: 0;
+  resize: vertical;
+  border: 1px solid color-mix(in srgb, var(--line) 65%, transparent);
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--panel) 86%, black);
+  color: var(--ink);
+  padding: var(--s3);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.55;
+  white-space: pre;
+}
+.svc-source-copy {
+  min-height: 34px;
+  white-space: nowrap;
+}
 .svc-presenter-board-column {
   display: grid;
   min-width: 0;
