@@ -3468,10 +3468,7 @@ const WORSHIP_IMPORT_SOURCE_LIST_SELECT = [
   "service_type_id",
   "service_date",
   "status",
-  "parse_report",
   "leader:raw_payload->service->>leader",
-  "created_at",
-  "updated_at",
 ].join(",");
 const WORSHIP_IMPORT_CANDIDATE_LIST_SELECT = [
   "id",
@@ -3481,12 +3478,9 @@ const WORSHIP_IMPORT_CANDIDATE_LIST_SELECT = [
   "candidate_key",
   "raw_label",
   "raw_title",
-  "raw_body",
   "suggested_type",
   "suggested_song_id",
-  "confidence",
   "review_status",
-  "notes",
 ].join(",");
 const WORSHIP_ELEMENT_BASE_LIST_SELECT = [
   "id",
@@ -3778,6 +3772,15 @@ async function loadWorshipSetlistArchive({ force = false } = {}) {
   if (!state.client) return;
   if (state.worshipSetlistArchive.loading) return;
   if (state.worshipSetlistArchive.loaded && !force) return;
+  // Keep a complete snapshot only; authenticated projects never use this public cache.
+  const cacheKey = `${state.config.url}:${WORSHIP_IMPORT_SOURCE_LIST_SELECT}:${WORSHIP_IMPORT_CANDIDATE_LIST_SELECT}`;
+  const useCache = !state.config.authRequired;
+  if (!state.worshipSetlistArchive.loaded && useCache && !force) {
+    const cached = readStaticSupabaseCache("worship_setlist_archive", cacheKey)?.[0];
+    if (Array.isArray(cached?.sources) && Array.isArray(cached?.candidates)) {
+      state.worshipSetlistArchive = { ...cached, loaded: true, loading: false, error: "" };
+    }
+  }
   state.worshipSetlistArchive.loading = true;
   state.worshipSetlistArchive.error = "";
   renderCurrentServiceModuleDetail();
@@ -3788,14 +3791,19 @@ async function loadWorshipSetlistArchive({ force = false } = {}) {
         .order("service_date", { ascending: false })
         .order("service_type_id", { ascending: true }));
     const candidates = [];
-    for (const batch of chunkArray(sources.map((source) => source.id).filter(Boolean), 80)) {
-      const rows = await fetchSupabasePaged("mindex_worship_import_candidates", WORSHIP_IMPORT_CANDIDATE_LIST_SELECT, (query) =>
-        query
-          .in("import_source_id", batch)
-          .order("import_source_id", { ascending: true })
-          .order("sort_order", { ascending: true }));
-      candidates.push(...rows);
+    const batches = chunkArray(sources.map((source) => source.id).filter(Boolean), 80);
+    // Bound concurrency so a growing archive cannot flood the API.
+    for (const group of chunkArray(batches, 3)) {
+      const results = await Promise.all(group.map((batch) =>
+        fetchSupabasePaged("mindex_worship_import_candidates", WORSHIP_IMPORT_CANDIDATE_LIST_SELECT, (query) =>
+          query
+            .in("import_source_id", batch)
+            .eq("candidate_level", "element")
+            .order("import_source_id", { ascending: true })
+            .order("sort_order", { ascending: true }))));
+      candidates.push(...results.flat());
     }
+    if (useCache) writeStaticSupabaseCache("worship_setlist_archive", cacheKey, [{ sources, candidates }]);
     state.worshipSetlistArchive = {
       sources,
       candidates,

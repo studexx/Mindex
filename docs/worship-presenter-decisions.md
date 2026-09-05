@@ -24,6 +24,12 @@ Small visual polish that does not alter behavior does not need an entry.
 
 ### Setlist Archive Navigation
 
+- 역대 콘티는 표시·검색에 필요한 필드와 element 후보만 조회하고 후보 묶음은
+  최대 3개씩 병렬로 요청한다. 공개 프로젝트는 프로젝트 URL별 완성된 snapshot을
+  6시간까지 캐시해 재방문 시 먼저 표시하고 항상 서버에서 갱신한다. 인증이 필요한
+  프로젝트에는 적용하지 않는다. 새로고침은 서버를 직접 조회하며 실패 시 기존
+  완성된 화면과 오류를 유지한다. 일부 요청만 성공한 결과로 캐시를 덮어쓰지 않는다.
+
 - 인도자는 원본 `raw_payload.service.leader`의 이름·직분을 그대로 표시하고
   검색에도 포함한다. 값이 없으면 `인도 미기록`으로 표시하며 다른 예배의
   담당자를 추정해 채우지 않는다. 주별 카드는 예배명을 제목으로 쓰고 개별 날짜를
