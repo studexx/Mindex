@@ -430,6 +430,24 @@ def main() -> int:
     else:
         fail("worship-full-save-loads-rows-before-persist")
 
+    save_service_start = app_source.find("async function saveService(")
+    save_service_end = app_source.find("async function saveDirtyServiceTypes", save_service_start)
+    save_service_body = app_source[save_service_start:save_service_end]
+    commit_input_index = save_service_body.find("commitActiveDeferredServiceTextInput(serviceId);")
+    source_apply_index = save_service_body.find("applyPendingServiceSourceTextBeforeSave(serviceId);")
+    input_problem_index = save_service_body.find("const inputProblem = service ? serviceInputSaveProblem(service) : null;")
+    if (
+        save_service_start >= 0
+        and commit_input_index >= 0
+        and source_apply_index >= 0
+        and input_problem_index >= 0
+        and commit_input_index < source_apply_index < input_problem_index
+        and "function serviceSourceTextHasPendingChanges" in app_source
+    ):
+        pass_("worship-save-applies-pending-source-text")
+    else:
+        fail("worship-save-applies-pending-source-text")
+
     recovery_helpers = [
         "WORSHIP_RECOVERY_SNAPSHOTS_STORAGE_KEY",
         "WORSHIP_RECOVERY_LATEST_STORAGE_PREFIX",
@@ -6435,6 +6453,7 @@ def main() -> int:
                               hasRoot: html.includes('id="servicePresenterControls"'),
                               hasSourcePanel: html.includes('svc-source-panel'),
                               hasEditableText: html.includes('data-service-source-text="__smoke_source_view__"') && !html.includes('readonly'),
+                              hasSignature: html.includes('data-service-source-signature='),
                               hasApply: html.includes('data-service-source-apply="__smoke_source_view__"'),
                               hasCopy: html.includes('data-service-source-copy="__smoke_source_view__"'),
                             };
@@ -6451,6 +6470,7 @@ def main() -> int:
                         and service_source_view.get("hasRoot")
                         and service_source_view.get("hasSourcePanel")
                         and service_source_view.get("hasEditableText")
+                        and service_source_view.get("hasSignature")
                         and service_source_view.get("hasApply")
                         and service_source_view.get("hasCopy")
                         and "# " not in service_source_view["source"]
@@ -6540,6 +6560,7 @@ def main() -> int:
                             refs.detailPane.innerHTML = renderServiceSourcePanel(service);
                             const textarea = refs.detailPane.querySelector('[data-service-source-text="__smoke_source_apply__"]');
                             if (!textarea) return { ready: false, reason: 'textarea' };
+                            const pendingBefore = serviceSourceTextHasPendingChanges(textarea);
                             textarea.value = [
                               '[성경봉독]',
                               '성경봉독: 막 1:1-3',
@@ -6557,10 +6578,12 @@ def main() -> int:
                               '  파일: 새광고.mp4',
                               '  링크: https://example.com/new.mp4',
                             ].join('\\n');
+                            const pendingAfterEdit = serviceSourceTextHasPendingChanges(textarea);
                             renderCurrentServiceModuleDetail = () => { rendered = true; };
                             renderServiceList = () => {};
                             refreshPresenterForService = (serviceId, options = {}) => refreshes.push({ serviceId, publish: options.publish });
                             const applied = applyServiceSourceText(service.id);
+                            const pendingAfterApply = serviceSourceTextHasPendingChanges(textarea);
                             const reading = state.serviceItems[service.id][0];
                             const special = state.serviceItems[service.id][1];
                             const video = state.serviceItems[service.id][2];
@@ -6581,6 +6604,9 @@ def main() -> int:
                               sourceDraft: service._worshipSourceTextDraft || '',
                               recoveryReason: recovery.reason || '',
                               recoverySourceText: recovery.serviceDocument?.sourceText || '',
+                              pendingBefore,
+                              pendingAfterEdit,
+                              pendingAfterApply,
                               dirty: state.dirty.service,
                               rendered,
                               refreshes,
@@ -6615,6 +6641,9 @@ def main() -> int:
                         and "특송: 새 특송" in service_source_view_apply["sourceDraft"]
                         and service_source_view_apply["recoveryReason"] == "after-source-text-apply"
                         and service_source_view_apply["recoverySourceText"] == service_source_view_apply["sourceDraft"]
+                        and not service_source_view_apply["pendingBefore"]
+                        and service_source_view_apply["pendingAfterEdit"]
+                        and not service_source_view_apply["pendingAfterApply"]
                         and service_source_view_apply.get("dirty")
                         and service_source_view_apply.get("rendered")
                         and service_source_view_apply["refreshes"] == [{"serviceId": "__smoke_source_apply__", "publish": False}]

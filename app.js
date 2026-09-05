@@ -6243,6 +6243,7 @@ async function saveService(serviceId = state.selectedServiceId, options = {}) {
     return false;
   }
   commitActiveDeferredServiceTextInput(serviceId);
+  applyPendingServiceSourceTextBeforeSave(serviceId);
 
   const service = state.services.find((svc) => svc.id === serviceId);
   const inputProblem = service ? serviceInputSaveProblem(service) : null;
@@ -23446,7 +23447,7 @@ function renderServiceSourcePanel(service) {
         <small>편집 후 반영</small>
       </summary>
       <div class="svc-source-panel-body">
-        <textarea class="svc-source-text" data-service-source-text="${escapeAttr(service.id)}" spellcheck="false" aria-label="예배 원문">${escapeHtml(source)}</textarea>
+        <textarea class="svc-source-text" data-service-source-text="${escapeAttr(service.id)}" data-service-source-signature="${escapeAttr(compactTextSignature(source))}" spellcheck="false" aria-label="예배 원문">${escapeHtml(source)}</textarea>
         <div class="svc-source-actions">
           <button class="reference-new-btn svc-source-apply" type="button" data-service-source-apply="${escapeAttr(service.id)}">
             <i data-lucide="check"></i>
@@ -23605,11 +23606,33 @@ function parseServiceSourceText(value = "") {
   return records.filter((record) => record.label);
 }
 
-function applyServiceSourceText(serviceId = state.selectedServiceId) {
+function serviceSourceTextareaForService(serviceId = state.selectedServiceId) {
+  const id = String(serviceId || "").trim();
+  if (!id) return null;
+  return refs.detailPane?.querySelector(`[data-service-source-text="${CSS.escape(id)}"]`) || null;
+}
+
+function serviceSourceTextHasPendingChanges(textarea = null) {
+  if (!textarea) return false;
+  return compactTextSignature(textarea.value) !== String(textarea.dataset.serviceSourceSignature || "");
+}
+
+function applyPendingServiceSourceTextBeforeSave(serviceId = state.selectedServiceId) {
+  const textarea = serviceSourceTextareaForService(serviceId);
+  if (!serviceSourceTextHasPendingChanges(textarea)) return false;
+  return applyServiceSourceText(serviceId, {
+    silent: true,
+    renderAfterApply: false,
+    refreshPresenter: false,
+    recoveryReason: "before-save-source-text-apply",
+  });
+}
+
+function applyServiceSourceText(serviceId = state.selectedServiceId, options = {}) {
   const id = String(serviceId || "").trim();
   const service = state.services.find((candidate) => candidate.id === id);
   if (!service) return false;
-  const textarea = refs.detailPane?.querySelector(`[data-service-source-text="${CSS.escape(id)}"]`);
+  const textarea = serviceSourceTextareaForService(id);
   if (!textarea) return false;
   const records = parseServiceSourceText(textarea.value);
   const realItems = getServiceItems(id);
@@ -23629,16 +23652,19 @@ function applyServiceSourceText(serviceId = state.selectedServiceId) {
   }
 
   if (!applied) {
-    showToast("반영할 예배 원문 항목을 찾지 못했습니다.", "error");
+    if (!options.silent) showToast("반영할 예배 원문 항목을 찾지 못했습니다.", "error");
     return false;
   }
   service._worshipSourceTextDraft = textarea.value;
-  captureWorshipRecoverySnapshot(service, "after-source-text-apply");
-  refreshPresenterForService(id, { publish: false });
-  renderCurrentServiceModuleDetail();
-  renderServiceList();
+  textarea.dataset.serviceSourceSignature = compactTextSignature(textarea.value);
+  captureWorshipRecoverySnapshot(service, options.recoveryReason || "after-source-text-apply");
+  if (options.refreshPresenter !== false) refreshPresenterForService(id, { publish: false });
+  if (options.renderAfterApply !== false) {
+    renderCurrentServiceModuleDetail();
+    renderServiceList();
+  }
   updateSaveState();
-  showToast(`예배 원문 ${applied}개 항목을 반영했습니다. 상단 저장을 눌러 확정해 주세요.`, "info");
+  if (!options.silent) showToast(`예배 원문 ${applied}개 항목을 반영했습니다. 상단 저장을 눌러 확정해 주세요.`, "info");
   return true;
 }
 
