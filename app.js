@@ -21062,10 +21062,18 @@ function buildServiceDocumentSnapshot(service = null, items = null) {
   return {
     version: MINDEX_SERVICE_DOCUMENT_VERSION,
     updatedAt: new Date().toISOString(),
-    sourceText: buildServiceSourceText(service, { items: sourceItems }),
+    sourceText: serviceDocumentSourceTextForSnapshot(service, sourceItems),
     slides: buildServiceDocumentSlideSnapshots(serviceId),
     exceptions: buildServiceDocumentExceptionNotes(service, sourceItems),
   };
+}
+
+function serviceDocumentSourceTextForSnapshot(service = null, items = []) {
+  if (typeof service?._worshipSourceTextDraft === "string") {
+    const draft = service._worshipSourceTextDraft.trim();
+    if (draft) return draft;
+  }
+  return buildServiceSourceText(service, { items, ignoreSnapshotFallback: true });
 }
 
 function buildServiceDocumentSlideSnapshots(serviceId = "") {
@@ -23495,7 +23503,7 @@ function renderServiceSourcePanel(service) {
 function buildServiceSourceText(service, options = {}) {
   const items = (Array.isArray(options.items) ? options.items : getServiceOutputItems(service?.id || ""))
     .filter((item) => serviceSourceItemIsUserDiscretionary(item, service));
-  if (!items.length) {
+  if (!items.length && !options.ignoreSnapshotFallback) {
     const sourceText = String(serviceDocumentSnapshotFromRef(service)?.sourceText || "").trim();
     if (sourceText) return sourceText;
   }
@@ -23663,6 +23671,7 @@ function applyServiceSourceText(serviceId = state.selectedServiceId) {
     showToast("반영할 예배 원문 항목을 찾지 못했습니다.", "error");
     return false;
   }
+  service._worshipSourceTextDraft = textarea.value;
   refreshPresenterForService(id, { publish: false });
   renderCurrentServiceModuleDetail();
   renderServiceList();

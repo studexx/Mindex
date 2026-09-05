@@ -6574,6 +6574,7 @@ def main() -> int:
                               specialInputMode: specialMemo.inputMode || '',
                               specialSlides: specialMemo.slides || [],
                               asset: videoMemo.asset || {},
+                              sourceDraft: service._worshipSourceTextDraft || '',
                               dirty: state.dirty.service,
                               rendered,
                               refreshes,
@@ -6603,6 +6604,7 @@ def main() -> int:
                         and service_source_view_apply["specialSlides"] == ["첫 줄", "후렴"]
                         and service_source_view_apply["asset"].get("name") == "새광고.mp4"
                         and service_source_view_apply["asset"].get("url") == "https://example.com/new.mp4"
+                        and "특송: 새 특송" in service_source_view_apply["sourceDraft"]
                         and service_source_view_apply.get("dirty")
                         and service_source_view_apply.get("rendered")
                         and service_source_view_apply["refreshes"] == [{"serviceId": "__smoke_source_apply__", "publish": False}]
@@ -6639,6 +6641,7 @@ def main() -> int:
                             state.services = [service, ...originalServices.filter((candidate) => candidate.id !== service.id)];
                             state.serviceItems[service.id] = [item];
                             presenterSlideBuildCache.delete(service.id);
+                            service._worshipSourceTextDraft = '[봉헌]\\n이미지: 사용자가 남긴 안내 이미지';
                             const document = buildServiceDocumentSnapshot(service, [item]);
                             const sourceRef = withServiceDocumentSnapshot(service, [item]);
                             const fromRef = serviceDocumentSnapshotFromRef({ _worshipSourceRef: sourceRef }) || {};
@@ -6664,7 +6667,7 @@ def main() -> int:
                     if (
                         service_document_snapshot.get("ready")
                         and service_document_snapshot["version"] == "service-document-v1"
-                        and "이미지: 꿈꾸는 어린이부 여름성경학교 안내" in service_document_snapshot["sourceText"]
+                        and service_document_snapshot["sourceText"] == "[봉헌]\n이미지: 사용자가 남긴 안내 이미지"
                         and service_document_snapshot["slideCount"] >= 1
                         and service_document_snapshot["slideAsset"].get("name") == "꿈꾸는 어린이부 여름성경학교 안내"
                         and "봉헌 섹션의 이미지 항목" in service_document_snapshot["exceptionReason"]
