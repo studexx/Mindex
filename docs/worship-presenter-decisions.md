@@ -24,6 +24,10 @@ Small visual polish that does not alter behavior does not need an entry.
 
 ### Setlist Archive Navigation
 
+- 역대 콘티의 `sunday-main`/`sun_3rd` 원본은 2부 특송을 함께 담으므로
+  `주일예배`로 표시한다. 예배별 그룹에서는 최상단, 주별에서는 같은 날짜의
+  다른 예배보다 먼저 둔다. 실제 예배의 1·2·3부 구분은 유지한다.
+
 - 모든 예배의 메인 `찬양`에 표시 순서대로 번호를 붙인다. 한 원본에 함께 기록된
   `2부 특송`·`3부 특송`은 원본 예배 분류와 달라도 숨기지 않는다.
   번호와 부별 label은 화면 표시에서 보존하고 candidate 원본은 수정하지 않는다.

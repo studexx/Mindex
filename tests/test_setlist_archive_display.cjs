@@ -9,6 +9,11 @@ const context = {
   worshipAppServiceTypeId: value => value === 'fri' ? 'friday' : value,
 };
 vm.createContext(context);
+for (const name of ['worshipSetlistArchiveTypeName', 'worshipSetlistArchiveTypeOrder']) {
+  const start = source.indexOf(`function ${name}(`);
+  vm.runInContext(source.slice(start, source.indexOf('\n}\n', start) + 2), context);
+}
+
 for (const name of ['setlistCandidateDisplayOrder', 'compareSetlistCandidatesForDisplay', 'worshipSetlistArchiveDisplayLabel', 'prepareWorshipSetlistArchiveCandidates']) {
   const start = source.indexOf(`function ${name}(`);
   assert.ok(start >= 0, name);
@@ -90,3 +95,12 @@ assert.ok(!source.slice(source.indexOf('function worshipSetlistArchiveEntries()'
 const shared = prepare([song('찬양', '첫 곡', 1), song('찬양', '둘째 곡', 2), song('2부 특송', '2부 곡', 3), song('3부 특송', '3부 곡', 4)], { service_type_id: 'sun_3rd' });
 assert.equal(shared.map(row => row.archive_display_label).join('|'), '찬양 1|찬양 2|2부 특송|3부 특송');
 console.log('PASS: all-service numbering and shared-source 2nd/3rd service special songs');
+assert.equal(context.worshipSetlistArchiveTypeName('sunday-main'), '주일예배');
+assert.ok(context.worshipSetlistArchiveTypeOrder('sunday-main') < context.worshipSetlistArchiveTypeOrder('youth'));
+const sundayGroups = context.groupWorshipSetlistArchiveEntries([
+  {source:{service_type_id:'youth',service_date:'2026-06-21'}},
+  {source:{service_type_id:'sunday-main',service_date:'2026-06-21'}},
+], 'service');
+assert.equal(sundayGroups[0].title, '주일예배');
+assert.equal(context.groupWorshipSetlistArchiveEntries(sundayGroups.flatMap(g=>g.entries), 'date')[0].entries[0].source.service_type_id, 'sunday-main');
+console.log('PASS: archive Sunday name and priority in service/week views');

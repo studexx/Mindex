@@ -22733,6 +22733,14 @@ function prepareWorshipSetlistArchiveCandidates(candidates = [], source = {}) {
   }).sort(compareSetlistCandidatesForDisplay);
 }
 
+function worshipSetlistArchiveTypeName(typeId) {
+  return worshipAppServiceTypeId(typeId) === "sunday-main" ? "주일예배" : serviceTypeDisplayName(typeId);
+}
+
+function worshipSetlistArchiveTypeOrder(typeId) {
+  return worshipAppServiceTypeId(typeId) === "sunday-main" ? -1 : serviceTypeSortOrder(worshipAppServiceTypeId(typeId));
+}
+
 function worshipSetlistArchiveEntries() {
   const candidatesBySource = worshipSetlistArchiveCandidatesBySource();
   return (state.worshipSetlistArchive.sources || []).map((source) => {
@@ -22750,8 +22758,8 @@ function worshipSetlistArchiveEntries() {
   }).sort((a, b) => {
     const dateOrder = String(b.source.service_date || "").localeCompare(String(a.source.service_date || ""));
     if (dateOrder) return dateOrder;
-    return serviceTypeSortOrder(worshipAppServiceTypeId(a.source.service_type_id))
-      - serviceTypeSortOrder(worshipAppServiceTypeId(b.source.service_type_id));
+    return worshipSetlistArchiveTypeOrder(worshipAppServiceTypeId(a.source.service_type_id))
+      - worshipSetlistArchiveTypeOrder(worshipAppServiceTypeId(b.source.service_type_id));
   });
 }
 
@@ -22764,7 +22772,7 @@ function filterWorshipSetlistArchiveEntries(entries = []) {
       [candidate.raw_label, candidate.archive_display_label, candidate.raw_title, candidate.review_status].join(" ")).join(" ");
     return normalizeSearchValue([
       source.service_date,
-      serviceTypeDisplayName(source.service_type_id),
+      worshipSetlistArchiveTypeName(source.service_type_id),
       source.source_name,
       source.leader,
       source.source_path,
@@ -22826,18 +22834,18 @@ function groupWorshipSetlistArchiveEntries(entries = [], view = state.worshipSet
       : week.key;
     if (!groups.has(key)) groups.set(key, {
       key,
-      title: byService ? (key ? serviceTypeDisplayName(key) : "예배 미지정") : week.title,
+      title: byService ? (key ? worshipSetlistArchiveTypeName(key) : "예배 미지정") : week.title,
       entries: [],
     });
     groups.get(key).entries.push(entry);
   });
   const result = [...groups.values()].sort((a, b) => byService
-    ? serviceTypeSortOrder(a.key) - serviceTypeSortOrder(b.key) || a.title.localeCompare(b.title, "ko")
+    ? worshipSetlistArchiveTypeOrder(a.key) - worshipSetlistArchiveTypeOrder(b.key) || a.title.localeCompare(b.title, "ko")
     : b.key.localeCompare(a.key));
   for (const group of result) {
     group.entries.sort((a, b) => (byService ? -1 : 1) * String(a.source.service_date || "").localeCompare(String(b.source.service_date || ""))
-      || serviceTypeSortOrder(worshipAppServiceTypeId(a.source.service_type_id))
-        - serviceTypeSortOrder(worshipAppServiceTypeId(b.source.service_type_id)));
+      || worshipSetlistArchiveTypeOrder(worshipAppServiceTypeId(a.source.service_type_id))
+        - worshipSetlistArchiveTypeOrder(worshipAppServiceTypeId(b.source.service_type_id)));
   }
   return result;
 }
@@ -22860,7 +22868,7 @@ function renderWorshipSetlistArchiveGroups(entries = []) {
 
 function renderWorshipSetlistArchiveEntry(entry) {
   const source = entry.source || {};
-  const typeName = serviceTypeDisplayName(source.service_type_id);
+  const typeName = worshipSetlistArchiveTypeName(source.service_type_id);
   const title = state.worshipSetlistArchiveView === "service" ? source.service_date || "날짜 없음" : typeName;
   const leader = String(source.leader || "").trim();
   return `
