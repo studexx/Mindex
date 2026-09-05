@@ -22947,7 +22947,7 @@ function worshipSetlistArchiveEntries() {
   const live = window.MindexSetlistLinks?.fromServices(archive.live, archive.sources, state.worshipSetlistSongCatalog?.index) || {sources:[], candidates:[]};
   const candidatesBySource = worshipSetlistArchiveCandidatesBySource();
   for (const candidate of live.candidates) (candidatesBySource[candidate.import_source_id] ||= []).push(candidate);
-  return [...(archive.sources || []), ...live.sources].map((source) => {
+  const entries = [...(archive.sources || []), ...live.sources].map((source) => {
     const rows = (candidatesBySource[source.id] || []).filter(isSetlistPraiseCandidate);
     const candidates = source.source_kind === "worship"
       ? rows.map(candidate => ({...candidate, archive_display_label:worshipSetlistArchiveDisplayLabel(candidate.raw_label),
@@ -22960,7 +22960,8 @@ function worshipSetlistArchiveEntries() {
       needsReview,
       missing: candidates.length === 0,
     };
-  }).sort((a, b) => {
+  });
+  return (window.MindexSetlistLinks?.mergeSundayEntries(entries) || entries).sort((a, b) => {
     const dateOrder = String(b.source.service_date || "").localeCompare(String(a.source.service_date || ""));
     if (dateOrder) return dateOrder;
     return worshipSetlistArchiveTypeOrder(worshipAppServiceTypeId(a.source.service_type_id))

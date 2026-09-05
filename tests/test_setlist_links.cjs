@@ -72,3 +72,19 @@ const medleyLive=MindexSetlistLinks.fromServices({services:[{id:'m',service_date
 assert.equal(medleyLive.sources[0].aliases,'삼삼오오예배');
 assert.deepEqual(medleyLive.candidates.map(c=>c.raw_label),['찬양 1–2','찬양 3–5','찬양 6']);
 console.log('PASS: live service aliases and medley ranges');
+
+const sundayEntry = (type, rows, date='2026-09-06') => ({source:{service_type_id:type,service_date:date,leader:type},candidates:rows});
+const sundayRows = [{raw_label:'찬양 1',raw_title:'A'},{raw_label:'특송',raw_title:'Third'},{raw_label:'파송찬양',raw_title:'End'}];
+const sundayInput = [sundayEntry('sun_1st',[{raw_label:'찬양 1'}]),sundayEntry('sun_2nd',[{raw_label:'찬양 1'},{raw_label:'특송',raw_title:'Second',suggested_song_id:'b'}]),sundayEntry('sun_3rd',sundayRows),sundayEntry('fri',[])];
+const sundayBefore=JSON.stringify(sundayInput);
+const combined=MindexSetlistLinks.mergeSundayEntries(sundayInput);
+assert.equal(combined.length,2);
+assert.equal(combined[0].source.leader,'sun_3rd');
+assert.deepEqual(combined[0].candidates.map(c=>c.raw_label),['찬양 1','2부 특송','3부 특송','파송찬양']);
+assert.equal(combined[0].candidates[1].suggested_song_id,'b');
+assert.equal(MindexSetlistLinks.isExcluded(combined[0].candidates[2],'sun_3rd'),true);
+assert.equal(MindexSetlistLinks.isExcluded(combined[0].candidates[1],'sun_3rd'),false);
+assert.equal(JSON.stringify(sundayInput),sundayBefore);
+assert.equal(MindexSetlistLinks.mergeSundayEntries([...sundayInput.slice(0,2),combined[0]])[0].candidates.length,4);
+assert.equal(MindexSetlistLinks.mergeSundayEntries([sundayInput[1],sundayEntry('sun_3rd',sundayRows,'2026-08-30')])[0].candidates.length,3);
+console.log('PASS: Sunday third-service card, second-service special only, no duplicate/date crossover, immutable records');

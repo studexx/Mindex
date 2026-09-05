@@ -111,5 +111,29 @@
     }
     return {sources, candidates};
   }
-  root.MindexSetlistLinks = { buildIndex, resolve, split, isExcluded, fromServices };
+  function mergeSundayEntries(entries = []) {
+    const isType = (entry, ...types) => types.includes(entry.source.service_type_id);
+    return entries.filter(entry => !isType(entry, "sun_1st", "sunday-first", "sun_2nd", "sunday-second")).map(entry => {
+      if (!isType(entry, "sun_3rd", "sunday-main")) return entry;
+      const label = row => String(row.archive_display_label || row.raw_label || "").replace(/\s+/gu, "");
+      const rows = entry.candidates.map(row => label(row) === "특송"
+        ? {...row, raw_label:"3부 특송", archive_display_label:"3부 특송"} : row);
+      if (!rows.some(row => label(row) === "2부특송")) {
+        const second = entries.find(other => isType(other, "sun_2nd", "sunday-second")
+          && other.source.service_date === entry.source.service_date);
+        const specials = (second?.candidates || []).filter(row => /^(?:2부)?특송$/.test(label(row))).map(row => ({
+          ...row, raw_label:"2부 특송", archive_display_label:"2부 특송", archive_source_service_type:"sun_2nd",
+        }));
+        let at = rows.findIndex(row => label(row) === "3부특송");
+        if (at < 0) {
+          at = rows.findIndex(row => !/^찬양(?:\d+(?:[–-]\d+)?)?$/.test(label(row)));
+          if (at < 0) at = rows.length;
+        }
+        rows.splice(at, 0, ...specials);
+      }
+      return {...entry, candidates:rows, missing:rows.length === 0,
+        needsReview:rows.filter(row => row.review_status === "needs_review").length};
+    });
+  }
+  root.MindexSetlistLinks = { buildIndex, resolve, split, isExcluded, fromServices, mergeSundayEntries };
 })(typeof window === "undefined" ? globalThis : window);

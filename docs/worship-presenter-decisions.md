@@ -37,6 +37,10 @@ Small visual polish that does not alter behavior does not need an entry.
 
 ### Setlist Archive Navigation
 
+- 주일 콘티는 3부 기준 `주일예배` 카드 하나만 표시한다. 같은 날짜 2부 특송만
+  3부 특송 앞에 합치며, 기존 콘티에 2부 특송이 있으면 추가하지 않는다.
+  1·2부 별도 카드는 표시하지 않고 예배 DB 원본은 유지한다.
+
 - 콘티 카드에 예배 별명을 표시하고 검색에도 포함한다. 실제 예배의 `service_alias`와
   import 콘티의 service tags를 사용하며 비어 있으면 별명 줄을 만들지 않는다.
   메인 찬양 번호는 행 수가 아니라 곡 수로 센다. `A + B`는 `찬양 1–2`,
