@@ -3779,6 +3779,7 @@ function fitPresenterChromakeyScripturePreviews(host) {
 
 function fitPresenterSongTitleText(host) {
   if (!host) return;
+  fitPresenterLyricText(host);
   const outputRoot = host.closest?.(".presenter-output-root") || host;
   const fullscreen = outputRoot.classList?.contains("no-chromakey");
   const minimumSize = fullscreen ? 72 : 56;
@@ -3795,6 +3796,31 @@ function fitPresenterSongTitleText(host) {
         if (textBox.scrollWidth <= textBox.clientWidth + 1) return;
       }
     });
+}
+
+function fitPresenterLyricText(host) {
+  host.querySelectorAll('.presenter-slide--lyrics[data-element-type="praise"] > .presenter-slide-text').forEach((textBox) => {
+    textBox.style.removeProperty("font-size");
+    const baseSize = Number.parseFloat(getComputedStyle(textBox).fontSize);
+    if (!Number.isFinite(baseSize) || baseSize <= 0 || !textBox.clientWidth) return;
+    const fits = () => {
+      const style = getComputedStyle(textBox);
+      const width = textBox.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+      return [...textBox.children].every((line) => presenterTextNaturalWidth(line) <= width - 2)
+        && textBox.scrollHeight <= textBox.clientHeight + 1;
+    };
+    if (fits()) return;
+    // Measure complete lines, including generated verse numbers, before revealing the frame.
+    let low = 0;
+    let high = baseSize;
+    for (let step = 0; step < 14; step += 1) {
+      const size = (low + high) / 2;
+      textBox.style.fontSize = `${size}px`;
+      if (fits()) low = size;
+      else high = size;
+    }
+    textBox.style.fontSize = `${low}px`;
+  });
 }
 
 function fitPresenterSongTitlePreviews(host) {
