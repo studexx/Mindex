@@ -1729,8 +1729,8 @@ function handleServiceOutlineSlideClick(serviceOutlineItem) {
     const outline = refs.songList?.querySelector(".service-outline-list");
     if (!outline?.contains(serviceOutlineItem)) renderServiceList();
   }
-  if (!scrollPresenterBoardToServiceItem(target.serviceId, target.itemIndex, { force: true, behavior: "smooth", block: "start" })) {
-    scrollPresenterBoardToIndex(target.serviceId, target.slideIndex, { force: true, behavior: "smooth", target: "subgroup", block: "start" });
+  if (!scrollPresenterBoardToServiceItem(target.serviceId, target.itemIndex, { force: true, behavior: "auto", block: "start" })) {
+    scrollPresenterBoardToIndex(target.serviceId, target.slideIndex, { force: true, behavior: "auto", target: "subgroup", block: "start" });
   }
 }
 
@@ -22211,6 +22211,27 @@ function patchPresenterSidebarServiceSummary(serviceId = state.selectedServiceId
   refreshIcons(next);
 }
 
+function patchPresenterSidebarOutline(service, slides) {
+  const current = refs.songList?.querySelector(".service-sidebar-section--current");
+  if (!current || !service) return;
+  const markup = renderServiceCurrentSidebar(service, slides).trim();
+  if (current._presenterOutlineMarkup === markup) return;
+  const scrollTop = refs.songList.scrollTop;
+  const focusedIndex = current.contains(document.activeElement)
+    ? document.activeElement.closest("[data-service-outline-item-index]")?.dataset.serviceOutlineItemIndex
+    : null;
+  const template = document.createElement("template");
+  template.innerHTML = markup;
+  const next = template.content.firstElementChild;
+  next._presenterOutlineMarkup = markup;
+  current.replaceWith(next);
+  if (focusedIndex != null) {
+    next.querySelector(`[data-service-outline-item-index="${CSS.escape(focusedIndex)}"]`)?.focus({ preventScroll: true });
+  }
+  refs.songList.scrollTop = scrollTop;
+  refreshIcons(next);
+}
+
 function renderPresenterSidebarPreparationInput(service) {
   if (!service?.id) return "";
   const draft = state.presenterPreparationDrafts[service.id] || "";
@@ -22314,10 +22335,9 @@ function renderServiceSidebarCard(service, options = {}) {
     ${cardButton}`;
 }
 
-function renderServiceCurrentSidebar(service) {
+function renderServiceCurrentSidebar(service, slides = presenterSlidesForService(service.id)) {
   const items = getServiceOutlineItems(service);
   const editorItems = normalizeServiceItems(getServiceItems(service.id));
-  const slides = presenterSlidesForService(service.id);
   const slideIndexByItemId = buildPresenterSlideItemIndexMap(slides);
   const selectedIndex = serviceSidebarSelectedItemIndex(service.id, editorItems, slides);
   const outlineGroups = groupServiceSidebarOutlineItems(items);
@@ -29535,6 +29555,7 @@ function renderPresenterControlState(serviceId = state.selectedServiceId) {
       const index = active ? clampPresenterIndex(state.presenter.index, slides.length) : 0;
       const boardKey = presenterControlBoardKey(service, slides, active, presenterServiceUsesChromakey(service));
       patchPresenterSidebarServiceSummary(serviceId);
+      patchPresenterSidebarOutline(service, slides);
       if (root.dataset.boardKey === boardKey) {
         root.className = presenterControlsClassName(active, presenterServiceUsesChromakey(service));
         if (sideRoot) patchPresenterControlsTop(sideRoot, service, slides, active, index);
