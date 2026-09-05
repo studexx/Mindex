@@ -28174,7 +28174,6 @@ function normalizePresenterMiniPreviewSlide(slide = null, serviceChromakey = tru
   if (presenterSlideElementType(normalizedSlide) !== PRESENTER_ELEMENT_TYPES.PRAISE || normalizedSlide.type !== "song-title") {
     return normalizedSlide;
   }
-  if (isPresenterMainPraiseSlide(normalizedSlide)) return normalizedSlide;
   const heading = String(
     normalizedSlide.sectionHeading
     || normalizedSlide.elementLabel

@@ -5554,6 +5554,58 @@ def main() -> int:
                 else:
                     fail("presenter-section-song-title-fit", json.dumps(section_song_title_fit_state, ensure_ascii=False))
 
+                plain_song_title_mini_preview_state = page.evaluate(
+                    """
+                    () => {
+                      const serviceId = '__smoke_plain_song_title_mini_preview_service__';
+                      state.services = state.services.filter((item) => item.id !== serviceId);
+                      state.services.push({
+                        id: serviceId,
+                        type_id: 'sunday-first',
+                        date: '2026-07-05',
+                        service_date: '2026-07-05',
+                      });
+                      const slide = {
+                        id: '__smoke_plain_song_title_mini_preview_slide__',
+                        elementType: PRESENTER_ELEMENT_TYPES.PRAISE,
+                        layout: PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT,
+                        type: 'song-title',
+                        title: '405 주의 친절한 팔에 안기세',
+                        text: '♪ 405 주의 친절한 팔에 안기세',
+                        sectionKey: 'praise',
+                      };
+                      const mount = document.createElement('div');
+                      mount.style.cssText = 'position:fixed;left:16px;top:16px;width:368px;height:207px;z-index:99999;pointer-events:none';
+                      mount.innerHTML = renderPresenterSlideMiniPreview(slide, serviceId);
+                      document.body.appendChild(mount);
+                      const host = mount.querySelector('.svc-slide-mini-output');
+                      const titleContent = mount.querySelector('.presenter-title-content');
+                      const title = mount.querySelector('.presenter-title-content-title');
+                      const songTitle = mount.querySelector('.presenter-slide--song-title');
+                      const result = {
+                        noChromakey: Boolean(host?.classList.contains('no-chromakey')),
+                        hasBackground: Boolean(host?.classList.contains('has-background')),
+                        hasTitleContent: Boolean(titleContent),
+                        hasSongTitle: Boolean(songTitle),
+                        titleText: title?.textContent?.trim() || '',
+                      };
+                      mount.remove();
+                      state.services = state.services.filter((item) => item.id !== serviceId);
+                      return result;
+                    }
+                    """
+                )
+                if (
+                    plain_song_title_mini_preview_state["noChromakey"]
+                    and plain_song_title_mini_preview_state["hasBackground"]
+                    and plain_song_title_mini_preview_state["hasTitleContent"]
+                    and not plain_song_title_mini_preview_state["hasSongTitle"]
+                    and "405 주의 친절한 팔에 안기세" in plain_song_title_mini_preview_state["titleText"]
+                ):
+                    pass_("presenter-plain-song-title-mini-preview", json.dumps(plain_song_title_mini_preview_state, ensure_ascii=False))
+                else:
+                    fail("presenter-plain-song-title-mini-preview", json.dumps(plain_song_title_mini_preview_state, ensure_ascii=False))
+
                 section_song_title_output_font_state = page.evaluate(
                     """
                     () => {
