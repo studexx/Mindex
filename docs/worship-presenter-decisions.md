@@ -37,6 +37,10 @@ Small visual polish that does not alter behavior does not need an entry.
 
 ### Setlist Archive Navigation
 
+- 2026-09-06 사용자 확인: 청년부 `2026-04-09`는 `2026-04-19` 오기다.
+  두 콘티 7행의 내용·곡 연결이 동일함을 검증하고 4/9 중복 원본을 제거했다.
+  4/19는 유지하며 옛 입력 자료의 4/9를 다시 가져오지 않는다.
+  백업: `backups/setlist-april09-duplicate-before-20260906.json`.
 - 주일예배 3부 특송은 제목 정규화·곡 링크·미연결 확인 목록에서 제외한다. 부수 없는
   주일예배 원본의 특송(부활절 칸타타 포함)도 해당하며, 2부 특송과 다른 예배 특송은 유지한다.
 - 콘티의 옛 제목은 연결된 DB 제목으로 정리하며, 일회성 제목 별칭은 정리 후 제거한다.
