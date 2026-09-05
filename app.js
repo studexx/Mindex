@@ -1087,20 +1087,27 @@ function restoreDetailViewportSnapshot(snapshot) {
 
 function schedulePresenterPreviewScaleUpdate(host = refs.detailPane) {
   if (!host?.querySelectorAll || typeof applyPresenterPreviewScales !== "function") return;
-  applyPresenterPreviewScales(host);
+  // Board and sidebar updates share a frame; always measure both surfaces.
+  const updateScales = () => {
+    applyPresenterPreviewScales(host);
+    if (refs.rightSidebar?.isConnected && !host.contains(refs.rightSidebar)) {
+      applyPresenterPreviewScales(refs.rightSidebar);
+    }
+  };
+  updateScales();
   if (presenterPreviewScaleRaf) window.cancelAnimationFrame(presenterPreviewScaleRaf);
   presenterPreviewScaleRaf = window.requestAnimationFrame(() => {
     if (!host.isConnected && host !== document) {
       presenterPreviewScaleRaf = 0;
       return;
     }
-    applyPresenterPreviewScales(host);
+    updateScales();
     presenterPreviewScaleRaf = window.requestAnimationFrame(() => {
       if (!host.isConnected && host !== document) {
         presenterPreviewScaleRaf = 0;
         return;
       }
-      applyPresenterPreviewScales(host);
+      updateScales();
       presenterPreviewScaleRaf = 0;
     });
   });
@@ -1126,7 +1133,10 @@ function observePresenterPreviewScaleFrames(host = refs.detailPane) {
   presenterPreviewScaleObserver = null;
   if (!host?.querySelectorAll || typeof ResizeObserver === "undefined") return;
   const frameTargets = [...host.querySelectorAll(".svc-slide-thumb-frame")];
-  const livePreviewTargets = [...host.querySelectorAll(".svc-presenter-live-preview")];
+  const livePreviewTargets = [
+    ...host.querySelectorAll(".svc-presenter-live-preview"),
+    ...(refs.rightSidebar?.querySelectorAll(".svc-presenter-live-preview") || []),
+  ];
   const targets = [
     host instanceof Element ? host : null,
     host.querySelector("#servicePresenterControls"),
@@ -15345,7 +15355,10 @@ function setRightSidebarContent(html = "") {
   refs.rightSidebar.innerHTML = hasContent ? html : "";
   refs.rightSidebar.dataset.hasContent = hasContent ? "true" : "false";
   applyRightSidebarVisibility(hasContent);
-  if (hasContent) refreshIcons(refs.rightSidebar);
+  if (hasContent) {
+    refreshIcons(refs.rightSidebar);
+    schedulePresenterPreviewLayoutUpdate(refs.rightSidebar);
+  }
 }
 
 function togglePresenterRightSidebar() {
