@@ -49,8 +49,14 @@ Small visual polish that does not alter behavior does not need an entry.
   표시하며 원래 표기는 source 데이터와 tooltip에 보존한다. 정식 제목도 콘티 검색에 포함한다.
 - 동명곡은 subtitle로 구분 가능한 정확한 표기를 우선하고, 남은 복수 후보는 임의로
   선택하지 않는다. 찬송가 번호/통일찬송가 구분/절 표기를 보존하며 번호 충돌은 미연결로 둔다.
-- 확인 목록: `docs/setlist-link-review-20260906.md`. 원본 후보와 DB 곡 제목을
-  일괄 수정하지 않고, 연결된 화면 표기를 정규화한다.
+- 원본 후보와 DB 곡 제목을 일괄 수정하지 않고, 연결된 화면 표기를 정규화한다.
+- 2026-09-06 연결 검토 완료: 사용자 지시로 12곡을 신규 등록했고, 내부 레코드만
+  남은 `십자가`, `나는 주를 섬기는 것에 후회가 없습니다`, `주 말씀 향하여`는 기존
+  canonical ID로 복구해 연결했다. 십자가의 기존 가사는 보존했다.
+  `마라나타`는 고형원 CCM, `예수 우리 왕이여`는 예수전도단 번역 CCM으로 연결했다.
+  수정 전 기록은 `backups/setlist-create-twelve-20260906.json`,
+  `backups/setlist-restore-three-20260906.json`, `backups/setlist-ccm-selection-20260906.json`,
+  `backups/setlist-hymn259-before-20260906.json`에 보관한다. 완료된 일회성 확인 목록은 제거했다.
 
 - 역대 콘티의 `sunday-main`/`sun_3rd` 원본은 2부 특송을 함께 담으므로
   `주일예배`로 표시한다. 예배별 그룹에서는 최상단, 주별에서는 같은 날짜의
