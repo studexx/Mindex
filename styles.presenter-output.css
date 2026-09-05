@@ -47,6 +47,7 @@
 }
 .presenter-output-body * { box-sizing: border-box; }
 .presenter-output-root {
+  --presenter-text-inset: 2.5cqw;
   --presenter-stage-width: min(100vw, 177.777778vh);
   --presenter-stage-height: min(100vh, 56.25vw);
   --presenter-stage-scale: 1;
@@ -123,6 +124,7 @@
   user-select: none;
 }
 .presenter-output-root.no-chromakey {
+  --presenter-text-inset: 7.5cqw;
   /* Fullscreen output is read from a distance; chromakey keeps its lower-bar scale. */
   --presenter-type-title: calc(170 * var(--presenter-stage-unit));
   --presenter-type-main-song: calc(150 * var(--presenter-stage-unit));
@@ -242,7 +244,7 @@
   text-shadow: 0 1px 9px rgba(255, 255, 255, .17);
 }
 .presenter-output-empty { color: #fff; font-size: var(--presenter-size-body); font-weight: var(--presenter-weight-display); -webkit-text-stroke: 0; text-shadow: none; }
-.presenter-slide { display: flex; width: 100%; height: 100%; max-width: 100%; max-height: 100%; flex-direction: column; justify-content: flex-end; overflow: hidden; padding: 7cqh 7cqw 10cqh; }
+.presenter-slide { display: flex; width: 100%; height: 100%; max-width: 100%; max-height: 100%; flex-direction: column; justify-content: flex-end; overflow: hidden; padding: 7cqh var(--presenter-text-inset) 10cqh; }
 .presenter-slide--component,
 .presenter-slide--ready,
 .presenter-slide--title,
@@ -283,7 +285,7 @@
   width: 100%;
   min-width: 0;
   min-height: 0;
-  padding: 12.5cqh 8.5cqw 7.5cqh;
+  padding: 12.5cqh var(--presenter-text-inset) 7.5cqh;
   align-content: center;
   gap: 23cqh;
   justify-items: center;
@@ -320,7 +322,7 @@
   position: relative;
   z-index: 1;
   display: grid;
-  width: min(78cqw, 1498px);
+  width: 100%;
   gap: 3cqh;
   justify-items: center;
 }
@@ -405,7 +407,7 @@
   position: relative;
   z-index: 2;
   display: grid;
-  width: min(78cqw, 1498px);
+  width: calc(100% - 2 * var(--presenter-text-inset));
   gap: 2.2cqh;
   justify-items: center;
   text-align: center;
@@ -460,7 +462,7 @@
 .presenter-slide--liturgical-body {
   align-items: stretch;
   justify-content: center;
-  padding: 7cqh 5.2cqw 6.8cqh;
+  padding: 7cqh var(--presenter-text-inset) 6.8cqh;
   text-align: left;
 }
 .presenter-liturgical-body {
@@ -553,7 +555,7 @@
   line-height: .95;
 }
 .presenter-slide--liturgical-body .presenter-title-content {
-  width: min(92cqw, 1600px);
+  width: 100%;
   gap: 2.2cqh;
 }
 .presenter-slide--liturgical-body .presenter-title-content-title {
@@ -571,7 +573,7 @@
 }
 .presenter-title-content {
   display: flex;
-  width: min(78cqw, 1320px);
+  width: 100%;
   max-width: 100%;
   max-height: 100%;
   flex-direction: column;
@@ -610,7 +612,7 @@
   font-size: inherit;
 }
 .presenter-slide--fullscreen-song-title {
-  padding: 7cqh 7cqw;
+  padding: 7cqh var(--presenter-text-inset);
 }
 .presenter-slide--fullscreen-song-title .presenter-title-content-title {
   font-size: var(--presenter-size-song-title);
@@ -665,7 +667,7 @@
   font-size: var(--presenter-size-body);
   font-weight: var(--presenter-weight-body);
   line-height: 1.12;
-  padding: 2.25cqh 2.8cqw;
+  padding: 2.25cqh var(--presenter-text-inset);
   -webkit-text-stroke: 0;
   overflow: hidden;
   overflow-wrap: normal;
@@ -687,8 +689,8 @@
   font-size: var(--presenter-scripture-fitted-size, var(--presenter-scripture-bar-size));
   font-weight: var(--presenter-scripture-weight);
   line-height: var(--presenter-scripture-line-height);
-  padding-right: 2.8cqw;
-  padding-left: 2.8cqw;
+  padding-right: var(--presenter-text-inset);
+  padding-left: var(--presenter-text-inset);
   text-align: left;
 }
 .presenter-slide--scripture .presenter-slide-text span {
@@ -869,10 +871,7 @@
 :is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-slide--title-assignee {
   justify-content: center;
   align-items: center;
-  padding: 9cqh 9cqw;
-}
-:is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-slide--lyrics[data-element-type="praise"] {
-  padding-inline: 7.5cqw;
+  padding: 9cqh var(--presenter-text-inset);
 }
 :is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-slide--lyrics::before,
 :is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-slide--song-title::before,
@@ -887,7 +886,7 @@
   width: 100%;
   height: auto;
   min-height: 0;
-  max-width: 96cqw;
+  max-width: 100%;
   background: transparent;
   color: var(--presenter-output-fg);
   font-size: var(--presenter-size-body);
@@ -984,7 +983,7 @@
   font-size: var(--presenter-size-body);
   font-weight: var(--presenter-weight-body);
   line-height: 1.12;
-  padding: 2.25cqh 2.8cqw;
+  padding: 2.25cqh var(--presenter-text-inset);
   margin: 0;
   text-align: left;
   text-shadow: none;
@@ -1066,7 +1065,7 @@
 .presenter-output-root.no-chromakey .presenter-slide--scripture-reading {
   justify-content: flex-start;
   align-items: stretch;
-  padding: 10cqh 5.5cqw;
+  padding: 10cqh var(--presenter-text-inset);
   text-align: left;
 }
 .presenter-slide--scripture-reading {
