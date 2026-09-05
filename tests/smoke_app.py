@@ -6700,13 +6700,17 @@ def main() -> int:
                             || typeof withServiceDocumentSnapshot !== 'function'
                           ) return { ready: false, reason: 'functions' };
                           const previousDocument = {
+                            kind: MINDEX_SERVICE_DOCUMENT_KIND,
                             version: MINDEX_SERVICE_DOCUMENT_VERSION,
+                            serviceId: '__smoke_service_document__',
+                            serviceTypeId: 'special',
+                            serviceDate: '2026-07-18',
                             updatedAt: '2026-07-18T00:00:00.000Z',
                             sourceSignature: 'old-source',
                             slideSignature: 'old-slides',
                             sourceText: '[봉헌]\\n이미지: 이전 안내 이미지',
-                            sourceRecords: [{ index: 1, label: '이미지', value: '이전 안내 이미지' }],
-                            slides: [{ index: 1, type: 'image', title: '이전 안내 이미지' }],
+                            sourceRecords: [{ index: 1, recordKey: 'offering.media|old', slotKey: 'offering.media', label: '이미지', value: '이전 안내 이미지' }],
+                            slides: [{ index: 1, slideKey: 'offering.media|old-slide', slotKey: 'offering.media', type: 'image', title: '이전 안내 이미지' }],
                           };
                           const service = {
                             id: '__smoke_service_document__',
@@ -6750,13 +6754,19 @@ def main() -> int:
                             const textarea = refs.detailPane.querySelector('[data-service-source-text="__smoke_service_document__"]');
                             return {
                               ready: true,
+                              kind: document.kind || '',
                               version: document.version || '',
+                              serviceId: document.serviceId || '',
+                              serviceTypeId: document.serviceTypeId || '',
+                              serviceDate: document.serviceDate || '',
                               sourceText: document.sourceText || '',
                               sourceSignature: document.sourceSignature || '',
                               sourceRecordCount: document.sourceRecords?.length || 0,
                               sourceRecord: document.sourceRecords?.[0] || {},
                               slideSignature: document.slideSignature || '',
                               slideCount: document.slides.length,
+                              slideSlotKey: document.slides.find((slide) => slide.elementId === item.id)?.slotKey || '',
+                              slideKey: document.slides.find((slide) => slide.elementId === item.id)?.slideKey || '',
                               slideAsset: document.slides.find((slide) => slide.asset)?.asset || {},
                               exceptionReason: document.exceptions[0]?.reason || '',
                               historyCount: history.length,
@@ -6783,10 +6793,15 @@ def main() -> int:
                     )
                     if (
                         service_document_snapshot.get("ready")
+                        and service_document_snapshot["kind"] == "worship-service-document"
                         and service_document_snapshot["version"] == "service-document-v1"
+                        and service_document_snapshot["serviceId"] == "__smoke_service_document__"
+                        and service_document_snapshot["serviceTypeId"] == "special"
+                        and service_document_snapshot["serviceDate"] == "2026-07-19"
                         and service_document_snapshot["sourceText"] == "[봉헌]\n이미지: 사용자가 남긴 안내 이미지"
                         and ":" in service_document_snapshot["sourceSignature"]
                         and service_document_snapshot["sourceRecordCount"] == 1
+                        and service_document_snapshot["sourceRecord"].get("recordKey") == "offering.media|__smoke_service_document_asset__|offering|이미지"
                         and service_document_snapshot["sourceRecord"].get("sectionTitle") == "봉헌"
                         and service_document_snapshot["sourceRecord"].get("label") == "이미지"
                         and service_document_snapshot["sourceRecord"].get("value") == "사용자가 남긴 안내 이미지"
@@ -6796,6 +6811,8 @@ def main() -> int:
                         and service_document_snapshot["sourceRecord"].get("linkedSource", {}).get("asset", {}).get("name") == "꿈꾸는 어린이부 여름성경학교 안내"
                         and ":" in service_document_snapshot["slideSignature"]
                         and service_document_snapshot["slideCount"] >= 1
+                        and service_document_snapshot["slideSlotKey"] == "offering.media"
+                        and service_document_snapshot["slideKey"]
                         and service_document_snapshot["slideAsset"].get("name") == "꿈꾸는 어린이부 여름성경학교 안내"
                         and "봉헌 섹션의 이미지 항목" in service_document_snapshot["exceptionReason"]
                         and service_document_snapshot["historyCount"] == 1

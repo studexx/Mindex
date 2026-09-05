@@ -3490,6 +3490,7 @@ const WORSHIP_ELEMENT_BASE_LIST_SELECT = [
 const MINDEX_SERVICE_DOCUMENT_SOURCE_REF_KEY = "mindexServiceDocument";
 const MINDEX_SERVICE_DOCUMENT_HISTORY_SOURCE_REF_KEY = "mindexServiceDocumentHistory";
 const MINDEX_SERVICE_DOCUMENT_VERSION = "service-document-v1";
+const MINDEX_SERVICE_DOCUMENT_KIND = "worship-service-document";
 const MINDEX_SERVICE_DOCUMENT_HISTORY_LIMIT = 3;
 const MINDEX_SERVICE_DOCUMENT_HISTORY_MAX_BYTES = 450000;
 
@@ -4382,6 +4383,7 @@ function normalizeWorshipService(service = {}) {
   const worshipLeader = cleanServiceAssignee(service.worship_leader);
   const praiseLeader = cleanServiceAssignee(service.praise_leader);
   const serviceDate = service.service_date;
+  const sourceRef = normalizeServiceSourceRef(service.source_ref);
   return {
     id: service.id,
     type_id: typeId,
@@ -4397,7 +4399,7 @@ function normalizeWorshipService(service = {}) {
     _worship: true,
     _worshipServiceTypeId: service.service_type_id,
     _worshipStatus: service.status || "draft",
-    _worshipSourceRef: service.source_ref || {},
+    _worshipSourceRef: sourceRef,
   };
 }
 
@@ -21072,18 +21074,17 @@ function serviceAlias(service) {
 
 function serviceSourceRef(service = null) {
   if (!service || typeof service !== "object") return {};
-  if (service._worshipSourceRef && typeof service._worshipSourceRef === "object") return service._worshipSourceRef;
-  if (service.source_ref && typeof service.source_ref === "object") return service.source_ref;
+  if (service._worshipSourceRef && typeof service._worshipSourceRef === "object") return normalizeServiceSourceRef(service._worshipSourceRef);
+  if (service.source_ref && typeof service.source_ref === "object") return normalizeServiceSourceRef(service.source_ref);
   return {};
 }
 
 function serviceDocumentSnapshotFromRef(service = null) {
-  const document = serviceSourceRef(service)[MINDEX_SERVICE_DOCUMENT_SOURCE_REF_KEY];
-  return document && typeof document === "object" ? document : null;
+  return normalizeServiceDocumentSnapshot(serviceSourceRef(service)[MINDEX_SERVICE_DOCUMENT_SOURCE_REF_KEY]);
 }
 
 function withServiceDocumentSnapshot(service = null, items = null) {
-  const base = serviceSourceRef(service);
+  const base = normalizeServiceSourceRef(serviceSourceRef(service));
   const document = buildServiceDocumentSnapshot(service, items);
   const history = serviceDocumentHistoryWithPrevious(
     base[MINDEX_SERVICE_DOCUMENT_SOURCE_REF_KEY],
@@ -21097,6 +21098,52 @@ function withServiceDocumentSnapshot(service = null, items = null) {
   if (history.length) sourceRef[MINDEX_SERVICE_DOCUMENT_HISTORY_SOURCE_REF_KEY] = history;
   else delete sourceRef[MINDEX_SERVICE_DOCUMENT_HISTORY_SOURCE_REF_KEY];
   return sourceRef;
+}
+
+function normalizeServiceSourceRef(sourceRef = {}) {
+  if (!sourceRef || typeof sourceRef !== "object") return {};
+  const normalized = { ...sourceRef };
+  const document = normalizeServiceDocumentSnapshot(normalized[MINDEX_SERVICE_DOCUMENT_SOURCE_REF_KEY]);
+  if (document) normalized[MINDEX_SERVICE_DOCUMENT_SOURCE_REF_KEY] = document;
+  else delete normalized[MINDEX_SERVICE_DOCUMENT_SOURCE_REF_KEY];
+  const history = normalizeServiceDocumentHistory(normalized[MINDEX_SERVICE_DOCUMENT_HISTORY_SOURCE_REF_KEY]);
+  if (history.length) normalized[MINDEX_SERVICE_DOCUMENT_HISTORY_SOURCE_REF_KEY] = history;
+  else delete normalized[MINDEX_SERVICE_DOCUMENT_HISTORY_SOURCE_REF_KEY];
+  return normalized;
+}
+
+function normalizeServiceDocumentHistory(history = []) {
+  return trimServiceDocumentHistory((Array.isArray(history) ? history : [])
+    .map((entry) => normalizeServiceDocumentSnapshot(entry))
+    .filter(Boolean));
+}
+
+function normalizeServiceDocumentSnapshot(document = null) {
+  if (!document || typeof document !== "object") return null;
+  const sourceText = limitServiceDocumentText(document.sourceText || document.source_text || "");
+  const sourceRecords = normalizeServiceDocumentSourceRecords(document.sourceRecords || document.source_records);
+  const slides = normalizeServiceDocumentSlides(document.slides);
+  const exceptions = normalizeServiceDocumentExceptions(document.exceptions);
+  const payload = {
+    kind: document.kind || MINDEX_SERVICE_DOCUMENT_KIND,
+    version: document.version || MINDEX_SERVICE_DOCUMENT_VERSION,
+    serviceId: String(document.serviceId || document.service_id || "").trim(),
+    serviceTypeId: String(document.serviceTypeId || document.service_type_id || "").trim(),
+    serviceDate: String(document.serviceDate || document.service_date || "").trim(),
+    serviceTitle: String(document.serviceTitle || document.service_title || "").trim(),
+    serviceAlias: String(document.serviceAlias || document.service_alias || "").trim(),
+    updatedAt: document.updatedAt || document.updated_at || "",
+    sourceSignature: document.sourceSignature || document.source_signature || compactTextSignature(sourceText),
+    slideSignature: document.slideSignature || document.slide_signature || compactTextSignature(JSON.stringify(slides)),
+    sourceText,
+    sourceRecords,
+    slides,
+    exceptions,
+  };
+  return Object.fromEntries(Object.entries(payload).filter(([, value]) => {
+    if (Array.isArray(value)) return value.length;
+    return value !== "" && value != null;
+  }));
 }
 
 function serviceDocumentHistoryWithPrevious(previousDocument = null, previousHistory = [], currentDocument = null) {
@@ -21115,10 +21162,119 @@ function serviceDocumentHistoryWithPrevious(previousDocument = null, previousHis
   return trimServiceDocumentHistory(entries);
 }
 
+function normalizeServiceDocumentSourceRecords(records = []) {
+  return (Array.isArray(records) ? records : []).map((record, index) => {
+    if (!record || typeof record !== "object") return null;
+    const linkedSource = record.linkedSource && typeof record.linkedSource === "object" ? record.linkedSource : {};
+    const asset = record.asset && typeof record.asset === "object" ? normalizeServiceAsset(record.asset) : null;
+    const payload = {
+      index: Number(record.index) || index + 1,
+      recordKey: String(record.recordKey || record.record_key || "").trim(),
+      elementId: String(record.elementId || record.element_id || "").trim(),
+      sectionId: String(record.sectionId || record.section_id || "").trim(),
+      sectionKey: String(record.sectionKey || record.section_key || "").trim(),
+      slotKey: normalizeWorshipSlotKey(record.slotKey || record.slot_key || linkedSource.slotKey || linkedSource.slot_key),
+      sectionTitle: String(record.sectionTitle || record.section_title || "").trim(),
+      label: String(record.label || "").trim(),
+      value: normalizeServiceItemReferenceSpacing(record.value || ""),
+      assignee: String(record.assignee || "").trim(),
+      lyrics: limitServiceDocumentText(record.lyrics || ""),
+      linkedSource,
+    };
+    if (asset && hasServiceAsset(asset)) payload.asset = asset;
+    payload.recordKey = payload.recordKey || serviceDocumentRecordKey(payload);
+    return Object.fromEntries(Object.entries(payload).filter(([, value]) => {
+      if (value && typeof value === "object") return Object.keys(value).length;
+      return value !== "" && value != null;
+    }));
+  }).filter(Boolean);
+}
+
+function normalizeServiceDocumentSlides(slides = []) {
+  return (Array.isArray(slides) ? slides : []).map((slide, index) => {
+    if (!slide || typeof slide !== "object") return null;
+    const linkedSource = slide.linkedSource && typeof slide.linkedSource === "object" ? slide.linkedSource : {};
+    const asset = normalizeServiceAsset(slide.asset || slide.media);
+    const slotKey = normalizeWorshipSlotKey(slide.slotKey || slide.slot_key || linkedSource.slotKey || linkedSource.slot_key);
+    const payload = {
+      index: Number(slide.index) || index + 1,
+      slideKey: String(slide.slideKey || slide.slide_key || "").trim(),
+      id: String(slide.id || "").trim(),
+      elementId: String(slide.elementId || slide.element_id || "").trim(),
+      sectionId: String(slide.sectionId || slide.section_id || "").trim(),
+      sectionKey: String(slide.sectionKey || slide.section_key || "").trim(),
+      slotKey,
+      elementLabel: String(slide.elementLabel || slide.element_label || slide.label || "").trim(),
+      type: String(slide.type || "").trim(),
+      layout: String(slide.layout || "").trim(),
+      elementType: String(slide.elementType || slide.element_type || "").trim(),
+      title: String(slide.title || "").trim(),
+      text: limitServiceDocumentText(slide.text || slide.bodyText || slide.body || ""),
+      outputContext: String(slide.outputContext || slide.output_context || "").trim(),
+      hidden: Boolean(slide.hidden),
+      autoTrailingBlank: Boolean(slide.autoTrailingBlank || slide.auto_trailing_blank),
+      linkedSource,
+    };
+    if (asset.name || asset.url || asset.kind) payload.asset = asset;
+    if (slide.imageSrc || slide.image_src) payload.imageSrc = String(slide.imageSrc || slide.image_src || "").trim();
+    if (slide.videoSrc || slide.video_src) payload.videoSrc = String(slide.videoSrc || slide.video_src || "").trim();
+    if (slide.audioSrc || slide.audio_src) payload.audioSrc = String(slide.audioSrc || slide.audio_src || "").trim();
+    payload.slideKey = payload.slideKey || serviceDocumentSlideKey(payload);
+    return Object.fromEntries(Object.entries(payload).filter(([, value]) => {
+      if (Array.isArray(value)) return value.length;
+      if (value && typeof value === "object") return Object.keys(value).length;
+      return value !== "" && value !== false && value != null;
+    }));
+  }).filter(Boolean);
+}
+
+function normalizeServiceDocumentExceptions(exceptions = []) {
+  return (Array.isArray(exceptions) ? exceptions : []).map((entry) => {
+    if (!entry || typeof entry !== "object") return null;
+    const payload = {
+      type: String(entry.type || "").trim(),
+      scope: String(entry.scope || "").trim(),
+      target: entry.target && typeof entry.target === "object" ? entry.target : {},
+      asset: normalizeServiceAsset(entry.asset),
+      reason: String(entry.reason || "").trim(),
+    };
+    return Object.fromEntries(Object.entries(payload).filter(([, value]) => {
+      if (value && typeof value === "object") return Object.keys(value).length;
+      return value !== "" && value != null;
+    }));
+  }).filter(Boolean);
+}
+
+function serviceDocumentRecordKey(record = {}) {
+  return cleanList([
+    record.slotKey || "",
+    record.elementId || "",
+    record.sectionKey || compactSearchValue(record.sectionTitle || ""),
+    compactSearchValue(record.label || ""),
+  ]).join("|");
+}
+
+function serviceDocumentSlideKey(slide = {}) {
+  return cleanList([
+    slide.slotKey || "",
+    slide.elementId || "",
+    slide.id || "",
+    slide.type || "",
+    slide.index ? `#${slide.index}` : "",
+  ]).join("|");
+}
+
 function compactServiceDocumentHistoryEntry(document = null) {
-  if (!document || typeof document !== "object") return null;
+  document = normalizeServiceDocumentSnapshot(document);
+  if (!document) return null;
   const payload = {
+    kind: document.kind || MINDEX_SERVICE_DOCUMENT_KIND,
     version: document.version || MINDEX_SERVICE_DOCUMENT_VERSION,
+    serviceId: document.serviceId || "",
+    serviceTypeId: document.serviceTypeId || "",
+    serviceDate: document.serviceDate || "",
+    serviceTitle: document.serviceTitle || "",
+    serviceAlias: document.serviceAlias || "",
     updatedAt: document.updatedAt || "",
     sourceSignature: document.sourceSignature || "",
     slideSignature: document.slideSignature || "",
@@ -21151,9 +21307,15 @@ function buildServiceDocumentSnapshot(service = null, items = null) {
   const sourceItems = Array.isArray(items) ? items : getServiceOutputItems(serviceId);
   const sourceText = serviceDocumentSourceTextForSnapshot(service, sourceItems);
   const sourceRecords = buildServiceDocumentSourceRecords(sourceText, sourceItems, service);
-  const slides = buildServiceDocumentSlideSnapshots(serviceId);
-  return {
+  const slides = buildServiceDocumentSlideSnapshots(serviceId, sourceItems);
+  return normalizeServiceDocumentSnapshot({
+    kind: MINDEX_SERVICE_DOCUMENT_KIND,
     version: MINDEX_SERVICE_DOCUMENT_VERSION,
+    serviceId,
+    serviceTypeId: worshipAppServiceTypeId(service?.type_id || service?.service_type_id || ""),
+    serviceDate: String(service?.date || service?.service_date || "").trim(),
+    serviceTitle: normalizeWorshipServiceTitle(service?.title || "", service),
+    serviceAlias: String(service?.alias || service?.service_alias || "").trim(),
     updatedAt: new Date().toISOString(),
     sourceSignature: compactTextSignature(sourceText),
     slideSignature: compactTextSignature(JSON.stringify(slides.map((slide) => [
@@ -21170,7 +21332,7 @@ function buildServiceDocumentSnapshot(service = null, items = null) {
     sourceRecords,
     slides,
     exceptions: buildServiceDocumentExceptionNotes(service, sourceItems),
-  };
+  });
 }
 
 function buildServiceDocumentSourceRecords(sourceText = "", items = [], service = null) {
@@ -21184,6 +21346,7 @@ function buildServiceDocumentSourceRecords(sourceText = "", items = [], service 
     if (target) usedIndexes.add(target.index);
     const payload = {
       index: index + 1,
+      recordKey: "",
       elementId: String(item?.id || "").trim(),
       sectionId: String(item?._worshipSectionId || item?.section_id || "").trim(),
       sectionKey: String(item?._worshipSectionKey || item?.section_key || "").trim(),
@@ -21200,6 +21363,7 @@ function buildServiceDocumentSourceRecords(sourceText = "", items = [], service 
       if (record.hasAssetName) payload.asset.name = record.assetName;
       if (record.hasAssetUrl) payload.asset.url = record.assetUrl;
     }
+    payload.recordKey = serviceDocumentRecordKey(payload);
     return Object.fromEntries(Object.entries(payload).filter(([, value]) => {
       if (value && typeof value === "object") return Object.keys(value).length;
       return value !== "" && value != null;
@@ -21228,21 +21392,27 @@ function serviceDocumentSourceTextForSnapshot(service = null, items = []) {
   return buildServiceSourceText(service, { items, ignoreSnapshotFallback: true });
 }
 
-function buildServiceDocumentSlideSnapshots(serviceId = "") {
+function buildServiceDocumentSlideSnapshots(serviceId = "", items = null) {
+  const itemById = Object.fromEntries((Array.isArray(items) ? items : getServiceOutputItems(serviceId))
+    .map((item) => [String(item?.id || "").trim(), item])
+    .filter(([id]) => id));
   return buildServicePresenterSlides(serviceId)
-    .map((slide, index) => compactServiceDocumentSlide(slide, index))
+    .map((slide, index) => compactServiceDocumentSlide(slide, index, itemById[String(slide?.elementId || "").trim()]))
     .filter(Boolean);
 }
 
-function compactServiceDocumentSlide(slide = {}, index = 0) {
+function compactServiceDocumentSlide(slide = {}, index = 0, item = null) {
   if (!slide || typeof slide !== "object") return null;
   const asset = normalizeServiceAsset(slide.asset || slide.media);
+  const slotKey = normalizeWorshipSlotKey(slide.slotKey || slide.slot_key || item?._worshipSlotKey || item?.slotKey || item?.slot_key);
   const payload = {
     index: index + 1,
+    slideKey: "",
     id: String(slide.id || "").trim(),
     elementId: String(slide.elementId || "").trim(),
     sectionId: String(slide.sectionId || "").trim(),
     sectionKey: String(slide.sectionKey || "").trim(),
+    slotKey,
     elementLabel: String(slide.elementLabel || slide.label || "").trim(),
     type: String(slide.type || "").trim(),
     layout: presenterSlideLayout(slide),
@@ -21258,6 +21428,7 @@ function compactServiceDocumentSlide(slide = {}, index = 0) {
   if (slide.imageSrc) payload.imageSrc = String(slide.imageSrc).trim();
   if (slide.videoSrc) payload.videoSrc = String(slide.videoSrc).trim();
   if (slide.audioSrc) payload.audioSrc = String(slide.audioSrc).trim();
+  payload.slideKey = serviceDocumentSlideKey(payload);
   return Object.fromEntries(Object.entries(payload).filter(([, value]) => {
     if (Array.isArray(value)) return value.length;
     if (value && typeof value === "object") return Object.keys(value).length;
@@ -21272,6 +21443,8 @@ function limitServiceDocumentText(value = "") {
 
 function serviceDocumentSlideLinkedSource(slide = {}) {
   const source = {};
+  const slotKey = normalizeWorshipSlotKey(slide.slotKey || slide.slot_key);
+  if (slotKey) source.slotKey = slotKey;
   if (slide.songId || slide.song_id) source.songId = slide.songId || slide.song_id;
   if (slide.songVersionId || slide.song_version_id || slide.versionId) {
     source.songVersionId = slide.songVersionId || slide.song_version_id || slide.versionId;
