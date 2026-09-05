@@ -31,7 +31,7 @@ assert.equal(JSON.stringify(rows), original, 'source data must stay unchanged');
 assert.equal(prepare(opening, friday).at(-1).archive_display_label, '찬양 5');
 assert.equal(prepare(rows.filter(row => row.raw_label !== '특송'), friday)[5].archive_display_label, '입례찬양');
 assert.equal(prepare([...opening, song('예배찬양', '별도 예배찬양', 6)], friday).at(-1).archive_display_label, '입례찬양');
-assert.ok(prepare(rows, { ...friday, service_type_id: 'wednesday' }).filter(row => row.raw_label === '찬양').every(row => row.archive_display_label === '찬양'));
+assert.ok(prepare(rows, { ...friday, service_type_id: 'wednesday' }).filter(row => row.raw_label === '찬양').every((row, index) => row.archive_display_label === `찬양 ${index + 1}`));
 assert.ok(prepare(rows, { ...friday, source_kind: 'pptx' }).every(row => row.archive_display_label !== '입례찬양'));
 assert.ok(prepare([...rows, song('찬양', '추가 메인 찬양', 12)], friday).every(row => row.archive_display_label !== '입례찬양'));
 console.log('PASS: Friday archive ordering, numbering, missing worship praise, explicit role, scope and source preservation');
@@ -84,3 +84,9 @@ assert.equal(byService[0].entries[0].source.service_date,'2026-07-19');
 context.state.worshipSetlistArchiveView = 'date';
 assert.ok(context.renderWorshipSetlistArchiveEntry(entry).includes('2026-01-16'));
 console.log('PASS: Sunday/Saturday boundaries, year boundary, invalid dates, week ordering and card dates');
+
+// A source can contain multiple Sunday services; preserve explicitly labeled songs.
+assert.ok(!source.slice(source.indexOf('function worshipSetlistArchiveEntries()'), source.indexOf('function filterWorshipSetlistArchiveEntries')).includes('.filter((candidate) => setlistCandidateBelongsToSource'));
+const shared = prepare([song('찬양', '첫 곡', 1), song('찬양', '둘째 곡', 2), song('2부 특송', '2부 곡', 3), song('3부 특송', '3부 곡', 4)], { service_type_id: 'sun_3rd' });
+assert.equal(shared.map(row => row.archive_display_label).join('|'), '찬양 1|찬양 2|2부 특송|3부 특송');
+console.log('PASS: all-service numbering and shared-source 2nd/3rd service special songs');

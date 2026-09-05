@@ -22711,19 +22711,19 @@ function prepareWorshipSetlistArchiveCandidates(candidates = [], source = {}) {
     ...candidate,
     archive_display_label: worshipSetlistArchiveDisplayLabel(candidate.raw_label),
   })).sort(compareSetlistCandidatesForDisplay);
-  if (worshipAppServiceTypeId(source.service_type_id) !== "friday") return sorted;
+  const isFriday = worshipAppServiceTypeId(source.service_type_id) === "friday";
 
   const praise = sorted.filter((candidate) => normalizeTitle(candidate.raw_label || "") === "찬양");
   const hasWorshipPraise = sorted.some((candidate) => candidate.archive_display_label === "입례찬양");
   // Legacy setlist imports merged the five opening songs and the separately
   // labeled 찬양 into one six-song section. Five-song services have no such slot.
-  const legacyWorshipPraise = source.source_kind === "setlist" && !hasWorshipPraise && praise.length === 6
+  const legacyWorshipPraise = isFriday && source.source_kind === "setlist" && !hasWorshipPraise && praise.length === 6
     ? praise[praise.length - 1]
     : null;
   let praiseNumber = 0;
   return sorted.map((candidate) => {
     const label = normalizeTitle(candidate.raw_label || "");
-    if (candidate === legacyWorshipPraise || candidate.archive_display_label === "입례찬양") {
+    if (candidate === legacyWorshipPraise || (isFriday && candidate.archive_display_label === "입례찬양")) {
       return { ...candidate, archive_display_label: "입례찬양", archive_display_order: 40 };
     }
     if (label === "찬양") {
@@ -22737,8 +22737,7 @@ function worshipSetlistArchiveEntries() {
   const candidatesBySource = worshipSetlistArchiveCandidatesBySource();
   return (state.worshipSetlistArchive.sources || []).map((source) => {
     const candidates = prepareWorshipSetlistArchiveCandidates((candidatesBySource[source.id] || [])
-      .filter(isSetlistPraiseCandidate)
-      .filter((candidate) => setlistCandidateBelongsToSource(candidate, source)), source);
+      .filter(isSetlistPraiseCandidate), source);
     const needsReview = candidates.filter((candidate) => candidate.review_status === "needs_review").length;
     const matched = candidates.filter((candidate) => setlistCandidateMatchedSong(candidate)).length;
     return {

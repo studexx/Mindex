@@ -24,6 +24,10 @@ Small visual polish that does not alter behavior does not need an entry.
 
 ### Setlist Archive Navigation
 
+- 모든 예배의 메인 `찬양`에 표시 순서대로 번호를 붙인다. 한 원본에 함께 기록된
+  `2부 특송`·`3부 특송`은 원본 예배 분류와 달라도 숨기지 않는다.
+  번호와 부별 label은 화면 표시에서 보존하고 candidate 원본은 수정하지 않는다.
+
 - 역대 콘티는 표시·검색에 필요한 필드와 element 후보만 조회하고 후보 묶음은
   최대 3개씩 병렬로 요청한다. 공개 프로젝트는 프로젝트 URL별 완성된 snapshot을
   6시간까지 캐시해 재방문 시 먼저 표시하고 항상 서버에서 갱신한다. 인증이 필요한
