@@ -871,6 +871,9 @@
   align-items: center;
   padding: 9cqh 9cqw;
 }
+:is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-slide--lyrics[data-element-type="praise"] {
+  padding-inline: 7.5cqw;
+}
 :is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-slide--lyrics::before,
 :is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-slide--song-title::before,
 :is(.svc-slide-mini-output, .presenter-output-root).no-chromakey .presenter-slide--scripture::before,

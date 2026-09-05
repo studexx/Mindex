@@ -1,8 +1,12 @@
+import argparse
 from smoke_app import launch_chromium, start_local_app_server, sync_playwright
 
 
 def main():
-    server, url = start_local_app_server()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--url')
+    args = parser.parse_args()
+    server, url = (None, args.url) if args.url else start_local_app_server()
     try:
         with sync_playwright() as p:
             browser = launch_chromium(p)
@@ -25,18 +29,22 @@ def main():
                           const box = document.querySelector('.is-active .presenter-slide-text');
                           const bounds = box.getBoundingClientRect();
                           const range = document.createRange(); range.selectNodeContents(box);
-                          return {exists:!!box, inside:[...range.getClientRects()].every(r =>
+                          const stage = box.closest('.presenter-output-root').getBoundingClientRect();
+                          return {ratio:bounds.width/stage.width, exists:!!box, inside:[...range.getClientRects()].every(r =>
                             r.left >= bounds.left-1 && r.right <= bounds.right+1 &&
                             r.top >= bounds.top-1 && r.bottom <= bounds.bottom+1)};
                         }''')
                         assert result['inside'], (width,height,chromakey,text,result)
+                        if not chromakey:
+                            assert abs(result['ratio'] - 0.85) < 0.002, result
                         if width == 1920 and not chromakey and text.startswith('1 '):
                             page.screenshot(path='/tmp/mindex-lyric-fit-reported.png')
                 page.screenshot(path=f'/tmp/mindex-lyric-fit-{width}.png')
             browser.close()
             print('PASS lyric bounds: 24 cases, repeated transitions and resizing')
     finally:
-        server.shutdown()
+        if server:
+            server.shutdown()
 
 
 if __name__ == '__main__':
