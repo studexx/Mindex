@@ -40,12 +40,13 @@ def main():
               const scrolls=[];
               refs.detailPane.scrollTo=options=>scrolls.push(options);
               handleServiceOutlineSlideClick(refs.songList.querySelector('[data-service-outline-item-id="praise-fixture"]'));
-              return {before,after,fullRender,slideIndex,slide:slides[slideIndex]?.title,
+              return {before,after,fullRender,slideIndex,slide:slides[slideIndex]?.title,label:row?.getAttribute('aria-label'),
                 immediate:scrolls.length>0 && scrolls.every(options=>options.behavior==='auto')};
             }''')
             assert '250 구주의' in result['before'], result
             assert '통 182 구주의' in result['after'], result
             assert '통 182 구주의' in result['fullRender'], result
+            assert '통 182 구주의' in result['label'], result
             assert result['slideIndex'] >= 0 and '구주의' in result['slide'], result
             assert result['immediate'], result
             print('PASS delayed song hydration refreshes outline title and slide target; outline jumps are immediate')

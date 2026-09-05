@@ -22501,8 +22501,8 @@ function renderServiceOutlineChildRow(service, item, index, selectedIndex, slide
   const slideIndex = firstPresenterSlideIndexForServiceItem(item, slides, slideIndexByItemId);
   const activeSlide = presenterControllerIsLive(service.id) && slideIndex >= 0 && presenterSlideBelongsToItem(state.presenter.slides[state.presenter.index], item);
   const selected = index === selectedIndex;
-  const title = serviceSidebarChildItemTitle(item, service);
   const titleParts = serviceSidebarChildItemDisplayParts(item, service);
+  const title = [titleParts.meta, titleParts.title].filter(Boolean).join(" · ") || serviceSidebarChildItemTitle(item, service);
   const interactionHint = presenterSlideInteractionHint(service.id, title);
   const missing = serviceOutlineMissingState(item, slides);
   const showMissingBadge = missing?.missingContent && !titleParts.title;
