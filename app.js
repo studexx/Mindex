@@ -13825,6 +13825,7 @@ const WORSHIP_BACKGROUND_STATIC_FILES = new Set([
   "26-A2.png",
   "26-A3.png",
   "26-A4.png",
+  "26-A5.png",
   "26-B1.png",
   "26-B2.png",
   "26-B3.png",
