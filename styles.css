@@ -8793,3 +8793,12 @@ body.is-chromium .svc-slide-thumb.active:hover .svc-slide-thumb-frame {
   .service-week-board { grid-template-columns: minmax(0, 1fr); }
   .svc-setlist-entry-list { grid-template-columns: 1fr; }
 }
+
+.svc-setlist-song-link {
+  display: inline; padding: 0; border: 0; border-radius: 0;
+  background: none; color: inherit; font: inherit; line-height: inherit;
+  text-align: left; cursor: pointer;
+}
+.svc-setlist-song-link:hover, .svc-setlist-song-link:focus-visible {
+  text-decoration: underline; text-underline-offset: 3px;
+}

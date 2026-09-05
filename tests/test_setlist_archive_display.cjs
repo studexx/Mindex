@@ -5,6 +5,8 @@ const path = require('node:path');
 
 const source = fs.readFileSync(path.join(__dirname, '../app.js'), 'utf8');
 const context = {
+  window: {},
+  worshipSetlistCandidateLinks: candidate => [{text:candidate.raw_title}],
   normalizeTitle: value => value.trim(),
   worshipAppServiceTypeId: value => value === 'fri' ? 'friday' : value,
 };

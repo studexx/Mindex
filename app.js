@@ -656,6 +656,7 @@ const state = {
   templateElementSuppressions: new Map(),
   worshipTemplates: [],
   worshipTemplateItems: [],
+  worshipSetlistSongCatalog: { key: "", status: "idle", index: null },
   worshipSetlistArchiveView: "date",
   worshipSetlistArchive: {
     sources: [],
@@ -3738,8 +3739,34 @@ async function fetchWorshipRowsForServiceIds(serviceIds = []) {
   }
 }
 
+async function loadWorshipSetlistSongCatalog({ force = false } = {}) {
+  if (!state.client || !window.MindexSetlistLinks) return;
+  const key = state.config.url;
+  const current = state.worshipSetlistSongCatalog;
+  if (current.key === key && (current.status === "loading" || (!force && current.status !== "idle"))) return;
+  const catalog = { key, status: "loading", index: current.key === key ? current.index : null };
+  state.worshipSetlistSongCatalog = catalog;
+  try {
+    // Metadata only: links must not wait on the complete lyrics catalogue.
+    const results = await Promise.allSettled([
+      fetchSupabasePaged("mindex_songs", "id,title,subtitle,original_title,hymn_no", (query) => query.order("id")),
+      fetchSupabasePaged("mindex_song_versions", "id,source_song_id,canonical_song_id,version_label,curated_version_name,subtitle,original_title,hymn_no", (query) => query.order("id")),
+    ]);
+    const failure = results.find((result) => result.status === "rejected");
+    if (failure) throw failure.reason;
+    catalog.index = window.MindexSetlistLinks.buildIndex(results[0].value, results[1].value);
+    catalog.status = "loaded";
+  } catch (error) {
+    catalog.status = "failed";
+    console.warn("Could not load setlist song links.", error);
+  }
+  if (state.worshipSetlistSongCatalog === catalog && state.module === "service"
+    && state.selectedServiceTypeId === SERVICE_SETLIST_ARCHIVE_PANEL_ID) renderCurrentServiceModuleDetail();
+}
+
 async function loadWorshipSetlistArchive({ force = false } = {}) {
   if (!state.client) return;
+  void loadWorshipSetlistSongCatalog({ force });
   if (state.worshipSetlistArchive.loading) return;
   if (state.worshipSetlistArchive.loaded && !force) return;
   // Keep a complete snapshot only; authenticated projects never use this public cache.
@@ -21013,7 +21040,7 @@ function buildServiceDocumentSnapshot(service = null, items = null) {
   const serviceId = String(service?.id || "").trim();
   const sourceItems = Array.isArray(items) ? items : getServiceOutputItems(serviceId);
   const sourceText = serviceDocumentSourceTextForSnapshot(service, sourceItems);
-  const sourceRecords = buildServiceDocumentSourceRecords(sourceText);
+  const sourceRecords = buildServiceDocumentSourceRecords(sourceText, sourceItems, service);
   const slides = buildServiceDocumentSlideSnapshots(serviceId);
   return {
     version: MINDEX_SERVICE_DOCUMENT_VERSION,
@@ -21036,13 +21063,25 @@ function buildServiceDocumentSnapshot(service = null, items = null) {
   };
 }
 
-function buildServiceDocumentSourceRecords(sourceText = "") {
+function buildServiceDocumentSourceRecords(sourceText = "", items = [], service = null) {
+  const candidates = (Array.isArray(items) ? items : [])
+    .filter((item) => serviceSourceItemIsUserDiscretionary(item, service))
+    .map((item, index) => ({ item, index }));
+  const usedIndexes = new Set();
   return parseServiceSourceText(sourceText).map((record, index) => {
+    const target = serviceSourceFindTarget(record, candidates, usedIndexes);
+    const item = target?.item || null;
+    if (target) usedIndexes.add(target.index);
     const payload = {
       index: index + 1,
+      elementId: String(item?.id || "").trim(),
+      sectionId: String(item?._worshipSectionId || item?.section_id || "").trim(),
+      sectionKey: String(item?._worshipSectionKey || item?.section_key || "").trim(),
+      slotKey: normalizeWorshipSlotKey(item?.slot_key || item?.source_ref?.slotKey || item?.source_ref?.slot_key || item?.config?.slotKey),
       sectionTitle: record.sectionTitle,
       label: record.label,
       value: record.value,
+      linkedSource: serviceDocumentRecordLinkedSource(item, service),
     };
     if (record.hasAssignee) payload.assignee = record.assignee;
     if (record.hasLyrics) payload.lyrics = limitServiceDocumentText(record.lyrics);
@@ -21056,6 +21095,19 @@ function buildServiceDocumentSourceRecords(sourceText = "") {
       return value !== "" && value != null;
     }));
   });
+}
+
+function serviceDocumentRecordLinkedSource(item = null, service = null) {
+  if (!item || typeof item !== "object") return {};
+  const source = {};
+  const memo = parseServiceItemMemo(item.memo);
+  if (item.song_id) source.songId = item.song_id;
+  if (item.version_id || item.song_version_id) source.songVersionId = item.version_id || item.song_version_id;
+  const references = serviceItemScriptureReferences(item, memo, service);
+  if (references.length) source.scriptureReferences = references;
+  const asset = normalizeServiceAsset(memo.asset);
+  if (asset.name || asset.url || asset.kind) source.asset = asset;
+  return source;
 }
 
 function serviceDocumentSourceTextForSnapshot(service = null, items = []) {
@@ -22781,7 +22833,8 @@ function filterWorshipSetlistArchiveEntries(entries = []) {
   return entries.filter((entry) => {
     const source = entry.source || {};
     const candidateText = entry.candidates.map((candidate) =>
-      [candidate.raw_label, candidate.archive_display_label, candidate.raw_title, candidate.review_status].join(" ")).join(" ");
+      [candidate.raw_label, candidate.archive_display_label, candidate.raw_title, candidate.review_status,
+        ...worshipSetlistCandidateLinks(candidate).map((link) => link.text)].join(" ")).join(" ");
     return normalizeSearchValue([
       source.service_date,
       worshipSetlistArchiveTypeName(source.service_type_id),
@@ -22902,13 +22955,25 @@ function renderWorshipSetlistArchiveEntry(entry) {
     </article>`;
 }
 
+function worshipSetlistCandidateLinks(candidate) {
+  const title = String(candidate.raw_title || candidate.raw_label || "").trim() || "제목 없음";
+  const links = window.MindexSetlistLinks;
+  const parts = links ? links.split(title) : [title];
+  return parts.map((part) => ({ original: part, ...(links?.resolve(part, state.worshipSetlistSongCatalog?.index,
+    parts.length === 1 ? candidate.suggested_song_id : "") || { status: "pending", text: part }) }));
+}
+
 function renderWorshipSetlistCandidate(candidate) {
   const title = String(candidate.raw_title || candidate.raw_label || "").trim() || "제목 없음";
   const label = String(candidate.archive_display_label || candidate.raw_label || "").trim();
+  const content = worshipSetlistCandidateLinks(candidate).map((match) => {
+    if (match.status !== "linked") return escapeHtml(match.text);
+    return `<button class="svc-setlist-song-link" type="button" data-global-song-id="${escapeAttr(match.song.id)}" title="${escapeAttr(match.original)}">${escapeHtml(match.text)}</button>`;
+  }).join(" + ");
   return `
     <li>
       <span class="svc-setlist-song-role">${escapeHtml(label && label !== title ? label : "")}</span>
-      <span class="svc-setlist-song-title">${escapeHtml(title)}</span>
+      <span class="svc-setlist-song-title">${content}</span>
     </li>`;
 }
 

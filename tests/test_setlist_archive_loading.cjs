@@ -15,6 +15,7 @@ async function run({ cached = null, force = false, fail = false, auth = false } 
     readStaticSupabaseCache: (_, key) => { cacheReads++; assert.ok(key.startsWith('project-a:')); return cached && [cached]; },
     writeStaticSupabaseCache: () => { writes++; },
     renderCurrentServiceModuleDetail: () => snapshots.push(JSON.parse(JSON.stringify(ctx.state.worshipSetlistArchive))),
+    loadWorshipSetlistSongCatalog: () => {},
     renderServiceList: () => {}, console: {warn: () => {}},
     fetchSupabasePaged: async (table, select, build) => {
       if (table.endsWith('sources')) return sources;
