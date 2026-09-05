@@ -493,7 +493,13 @@ def main() -> int:
     full_save_body = app_source[full_save_start:full_save_end]
     service_update_index = full_save_body.find('.from("mindex_worship_services")')
     full_save_snapshot_index = full_save_body.find('captureWorshipRecoverySnapshot(service, "before-full-save")')
-    if full_save_snapshot_index >= 0 and service_update_index >= 0 and full_save_snapshot_index < service_update_index:
+    full_save_validate_index = full_save_body.find("validateWorshipPersistenceRows(rows, { serviceId });")
+    if (
+        full_save_snapshot_index >= 0
+        and service_update_index >= 0
+        and full_save_validate_index >= 0
+        and full_save_snapshot_index < full_save_validate_index < service_update_index
+    ):
         pass_("worship-full-save-captures-recovery-snapshot")
     else:
         fail("worship-full-save-captures-recovery-snapshot")

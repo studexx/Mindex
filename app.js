@@ -6383,11 +6383,6 @@ async function saveWorshipServiceInstance(service) {
     notes: service.raw_text || "",
   };
   if (state.serviceAliasSupported) servicePayload.service_alias = String(service.alias || "").trim();
-  const { error: serviceError } = await state.client
-    .from("mindex_worship_services")
-    .update(servicePayload)
-    .eq("id", serviceId);
-  if (serviceError) throw serviceError;
 
   const existingSections = state.worshipSections.filter((section) => section.service_id === serviceId);
   const existingElements = state.worshipElements.filter((element) =>
@@ -6445,6 +6440,13 @@ async function saveWorshipServiceInstance(service) {
   compactWorshipPersistenceRows(rows);
   preserveExistingWorshipContentRows(rows, existingSections, existingElements);
   validateWorshipPersistenceRows(rows, { serviceId });
+
+  const { error: serviceError } = await state.client
+    .from("mindex_worship_services")
+    .update(servicePayload)
+    .eq("id", serviceId);
+  if (serviceError) throw serviceError;
+
   if (rows.sections.length) {
     const { error } = await state.client
       .from("mindex_worship_sections")
