@@ -25715,7 +25715,6 @@ function servicePraiseLookupCandidates(value) {
     if (!SERVICE_PRAISE_TITLE_ALIASES) {
       SERVICE_PRAISE_TITLE_ALIASES = new Map([
         [normalizeTitle("내 안에 부어주소서"), "내 안에 부어 주소서"],
-        [normalizeTitle("능력의 이름 예수"), "예수 예수"],
         [normalizeTitle("하나님의 뜻 이뤄지네 꿈꾸는 어린이부"), "하나님의 뜻 이뤄지네"],
         [normalizeTitle("모든 이름 위에 뛰어난 이름"), "이 땅 위에 오신"],
       ]);

@@ -1,10 +1,9 @@
 (function (root) {
   "use strict";
   const key = (value) => String(value || "").normalize("NFKC").replace(/\s+/gu, "").toLowerCase();
-  // Reviewed against hymn 569 and the existing Praise alias + stored lyrics.
+  // Reviewed against hymn 569. Distinct songs must not become title aliases.
   const reviewedAliases = new Map([
     [key("선한 목자 되신 주"), "선한 목자 되신 우리 주"],
-    [key("능력의 이름 예수"), "예수 예수"],
   ]);
   function titleParts(value) {
     let text = String(value || "").trim();
