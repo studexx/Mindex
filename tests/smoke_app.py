@@ -6689,6 +6689,8 @@ def main() -> int:
                               version: document.version || '',
                               sourceText: document.sourceText || '',
                               sourceSignature: document.sourceSignature || '',
+                              sourceRecordCount: document.sourceRecords?.length || 0,
+                              sourceRecord: document.sourceRecords?.[0] || {},
                               slideSignature: document.slideSignature || '',
                               slideCount: document.slides.length,
                               slideAsset: document.slides.find((slide) => slide.asset)?.asset || {},
@@ -6711,6 +6713,10 @@ def main() -> int:
                         and service_document_snapshot["version"] == "service-document-v1"
                         and service_document_snapshot["sourceText"] == "[봉헌]\n이미지: 사용자가 남긴 안내 이미지"
                         and ":" in service_document_snapshot["sourceSignature"]
+                        and service_document_snapshot["sourceRecordCount"] == 1
+                        and service_document_snapshot["sourceRecord"].get("sectionTitle") == "봉헌"
+                        and service_document_snapshot["sourceRecord"].get("label") == "이미지"
+                        and service_document_snapshot["sourceRecord"].get("value") == "사용자가 남긴 안내 이미지"
                         and ":" in service_document_snapshot["slideSignature"]
                         and service_document_snapshot["slideCount"] >= 1
                         and service_document_snapshot["slideAsset"].get("name") == "꿈꾸는 어린이부 여름성경학교 안내"

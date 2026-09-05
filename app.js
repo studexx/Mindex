@@ -21016,6 +21016,7 @@ function buildServiceDocumentSnapshot(service = null, items = null) {
   const serviceId = String(service?.id || "").trim();
   const sourceItems = Array.isArray(items) ? items : getServiceOutputItems(serviceId);
   const sourceText = serviceDocumentSourceTextForSnapshot(service, sourceItems);
+  const sourceRecords = buildServiceDocumentSourceRecords(sourceText);
   const slides = buildServiceDocumentSlideSnapshots(serviceId);
   return {
     version: MINDEX_SERVICE_DOCUMENT_VERSION,
@@ -21032,9 +21033,32 @@ function buildServiceDocumentSnapshot(service = null, items = null) {
       slide.asset?.url || slide.imageSrc || slide.videoSrc || slide.audioSrc || "",
     ]))),
     sourceText,
+    sourceRecords,
     slides,
     exceptions: buildServiceDocumentExceptionNotes(service, sourceItems),
   };
+}
+
+function buildServiceDocumentSourceRecords(sourceText = "") {
+  return parseServiceSourceText(sourceText).map((record, index) => {
+    const payload = {
+      index: index + 1,
+      sectionTitle: record.sectionTitle,
+      label: record.label,
+      value: record.value,
+    };
+    if (record.hasAssignee) payload.assignee = record.assignee;
+    if (record.hasLyrics) payload.lyrics = limitServiceDocumentText(record.lyrics);
+    if (record.hasAssetName || record.hasAssetUrl) {
+      payload.asset = {};
+      if (record.hasAssetName) payload.asset.name = record.assetName;
+      if (record.hasAssetUrl) payload.asset.url = record.assetUrl;
+    }
+    return Object.fromEntries(Object.entries(payload).filter(([, value]) => {
+      if (value && typeof value === "object") return Object.keys(value).length;
+      return value !== "" && value != null;
+    }));
+  });
 }
 
 function serviceDocumentSourceTextForSnapshot(service = null, items = []) {
