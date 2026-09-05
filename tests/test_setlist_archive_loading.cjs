@@ -4,7 +4,7 @@ const vm = require('node:vm');
 const source = fs.readFileSync(require('node:path').join(__dirname, '../app.js'), 'utf8');
 const start = source.indexOf('async function loadWorshipSetlistArchive(');
 const fn = source.slice(start, source.indexOf('\n}\n', start) + 2);
-async function run({ cached = null, force = false, fail = false, auth = false } = {}) {
+async function run({ cached = null, force = false, fail = false, auth = false, liveFail = false } = {}) {
   let active = 0, peak = 0, writes = 0, cacheReads = 0;
   const snapshots = [];
   const sources = Array.from({length: 321}, (_, id) => ({id: String(id)}));
@@ -16,6 +16,7 @@ async function run({ cached = null, force = false, fail = false, auth = false } 
     writeStaticSupabaseCache: () => { writes++; },
     renderCurrentServiceModuleDetail: () => snapshots.push(JSON.parse(JSON.stringify(ctx.state.worshipSetlistArchive))),
     loadWorshipSetlistSongCatalog: () => {},
+    fetchWorshipSetlistServices: async () => { if (liveFail) throw new Error("live offline"); return {services:[{id:"live"}],sections:[],elements:[]}; },
     renderServiceList: () => {}, console: {warn: () => {}},
     fetchSupabasePaged: async (table, select, build) => {
       if (table.endsWith('sources')) return sources;
@@ -35,6 +36,7 @@ async function run({ cached = null, force = false, fail = false, auth = false } 
 }
 (async () => {
   const cold = await run();
+  assert.equal(cold.archive.live.services[0].id,"live");
   assert.equal(cold.peak, 3); assert.equal(cold.archive.candidates.length, 321); assert.equal(cold.writes, 1);
   const cached = {sources: [{id:'old'}], candidates: []};
   const warm = await run({cached});
@@ -44,6 +46,10 @@ async function run({ cached = null, force = false, fail = false, auth = false } 
   assert.equal(failed.archive.sources[0].id, 'old'); assert.equal(failed.archive.loading, false);
   assert.equal(failed.archive.error, 'offline'); assert.equal(failed.writes, 0);
   assert.equal((await run({cached, force:true})).cacheReads, 0);
+  const liveFailure = await run({cached, liveFail:true});
+  assert.equal(liveFailure.archive.sources[0].id,"old");
+  assert.equal(liveFailure.writes,0);
+  assert.equal(liveFailure.archive.error,"live offline");
   const privateResult = await run({cached, auth:true});
   assert.equal(privateResult.cacheReads, 0); assert.equal(privateResult.writes, 0);
   console.log('PASS: bounded parallel loading, complete results, cache-first refresh, failure preservation, forced refresh and authenticated isolation');

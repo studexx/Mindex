@@ -1411,7 +1411,7 @@ function bindStaticEvents() {
       renderServiceList();
       renderCurrentServiceModuleDetail();
       syncBrowserHistory();
-      void loadWorshipSetlistArchive();
+      void loadWorshipSetlistArchive({ force: true });
       return;
     }
 
@@ -3767,13 +3767,25 @@ async function loadWorshipSetlistSongCatalog({ force = false } = {}) {
     && state.selectedServiceTypeId === SERVICE_SETLIST_ARCHIVE_PANEL_ID) renderCurrentServiceModuleDetail();
 }
 
+async function fetchWorshipSetlistServices() {
+  // Only card metadata; do not load lyrics, slides, or full source documents.
+  const results = await Promise.allSettled([
+    fetchSupabasePaged("mindex_worship_services", "id,service_type_id,service_date,title,status,praise_leader,worship_leader", q => q.order("id")),
+    fetchSupabasePaged("mindex_worship_sections", "id,service_id,sort_order,section_key,title", q => q.order("id")),
+    fetchSupabasePaged("mindex_worship_elements", "id,section_id,sort_order,element_type,title,song_id,label:source_ref->>label", q => q.eq("element_type", "praise").order("id")),
+  ]);
+  const failure = results.find(result => result.status === "rejected");
+  if (failure) throw failure.reason;
+  return {services:results[0].value, sections:results[1].value, elements:results[2].value};
+}
+
 async function loadWorshipSetlistArchive({ force = false } = {}) {
   if (!state.client) return;
   void loadWorshipSetlistSongCatalog({ force });
   if (state.worshipSetlistArchive.loading) return;
   if (state.worshipSetlistArchive.loaded && !force) return;
   // Keep a complete snapshot only; authenticated projects never use this public cache.
-  const cacheKey = `${state.config.url}:${WORSHIP_IMPORT_SOURCE_LIST_SELECT}:${WORSHIP_IMPORT_CANDIDATE_LIST_SELECT}`;
+  const cacheKey = `${state.config.url}:live-services-v1:${WORSHIP_IMPORT_SOURCE_LIST_SELECT}:${WORSHIP_IMPORT_CANDIDATE_LIST_SELECT}`;
   const useCache = !state.config.authRequired;
   if (!state.worshipSetlistArchive.loaded && useCache && !force) {
     const cached = readStaticSupabaseCache("worship_setlist_archive", cacheKey)?.[0];
@@ -3785,11 +3797,16 @@ async function loadWorshipSetlistArchive({ force = false } = {}) {
   state.worshipSetlistArchive.error = "";
   renderCurrentServiceModuleDetail();
   try {
-    const sources = await fetchSupabasePaged("mindex_worship_import_sources", WORSHIP_IMPORT_SOURCE_LIST_SELECT, (query) =>
+    const snapshots = await Promise.allSettled([fetchWorshipSetlistServices(),
+      fetchSupabasePaged("mindex_worship_import_sources", WORSHIP_IMPORT_SOURCE_LIST_SELECT, (query) =>
       query
         .not("service_date", "is", null)
         .order("service_date", { ascending: false })
-        .order("service_type_id", { ascending: true }));
+        .order("service_type_id", { ascending: true }))]);
+    const failure = snapshots.find(result => result.status === "rejected");
+    if (failure) throw failure.reason;
+    const live = snapshots[0].value;
+    const sources = snapshots[1].value;
     const candidates = [];
     const batches = chunkArray(sources.map((source) => source.id).filter(Boolean), 80);
     // Bound concurrency so a growing archive cannot flood the API.
@@ -3803,10 +3820,11 @@ async function loadWorshipSetlistArchive({ force = false } = {}) {
             .order("sort_order", { ascending: true }))));
       candidates.push(...results.flat());
     }
-    if (useCache) writeStaticSupabaseCache("worship_setlist_archive", cacheKey, [{ sources, candidates }]);
+    if (useCache) writeStaticSupabaseCache("worship_setlist_archive", cacheKey, [{ sources, candidates, live }]);
     state.worshipSetlistArchive = {
       sources,
       candidates,
+      live,
       loaded: true,
       loading: false,
       error: "",
@@ -8021,7 +8039,7 @@ function handleDetailClick(event) {
     renderServiceList();
     renderCurrentServiceModuleDetail();
     syncBrowserHistory();
-    void loadWorshipSetlistArchive();
+    void loadWorshipSetlistArchive({ force: true });
     return;
   }
 
@@ -22217,7 +22235,7 @@ function renderServiceList() {
     </button>
     <button class="service-type-row${state.selectedServiceTypeId === SERVICE_SETLIST_ARCHIVE_PANEL_ID && !state.selectedServiceId ? " active" : ""}" type="button" data-service-setlist-archive>
       <span>${escapeHtml(SERVICE_SETLIST_ARCHIVE_PANEL_TITLE)}</span>
-      <small>${state.worshipSetlistArchive.loaded ? state.worshipSetlistArchive.sources.length : "DB"}</small>
+      <small>${state.worshipSetlistArchive.loaded ? worshipSetlistArchiveEntries().length : "DB"}</small>
     </button>
   `;
 
@@ -22921,10 +22939,16 @@ function worshipSetlistArchiveTypeOrder(typeId) {
 }
 
 function worshipSetlistArchiveEntries() {
+  const archive = state.worshipSetlistArchive;
+  const live = window.MindexSetlistLinks?.fromServices(archive.live, archive.sources, state.worshipSetlistSongCatalog?.index) || {sources:[], candidates:[]};
   const candidatesBySource = worshipSetlistArchiveCandidatesBySource();
-  return (state.worshipSetlistArchive.sources || []).map((source) => {
-    const candidates = prepareWorshipSetlistArchiveCandidates((candidatesBySource[source.id] || [])
-      .filter(isSetlistPraiseCandidate), source);
+  for (const candidate of live.candidates) (candidatesBySource[candidate.import_source_id] ||= []).push(candidate);
+  return [...(archive.sources || []), ...live.sources].map((source) => {
+    const rows = (candidatesBySource[source.id] || []).filter(isSetlistPraiseCandidate);
+    const candidates = source.source_kind === "worship"
+      ? rows.map(candidate => ({...candidate, archive_display_label:worshipSetlistArchiveDisplayLabel(candidate.raw_label),
+          archive_source_service_type:source.service_type_id}))
+      : prepareWorshipSetlistArchiveCandidates(rows, source);
     const needsReview = candidates.filter((candidate) => candidate.review_status === "needs_review").length;
     return {
       source,
@@ -23071,10 +23095,10 @@ function renderWorshipSetlistArchiveEntry(entry) {
 function worshipSetlistCandidateLinks(candidate) {
   const title = String(candidate.raw_title || candidate.raw_label || "").trim() || "제목 없음";
   const links = window.MindexSetlistLinks;
-  if (links?.isExcluded(candidate, candidate.archive_source_service_type)) {
+  if (candidate.archive_manual_song || links?.isExcluded(candidate, candidate.archive_source_service_type)) {
     return [{ status: "excluded", text: title }];
   }
-  const parts = links ? links.split(title) : [title];
+  const parts = links && !candidate.archive_live ? links.split(title) : [title];
   return parts.map((part) => ({ ...(links?.resolve(part, state.worshipSetlistSongCatalog?.index,
     parts.length === 1 ? candidate.suggested_song_id : "") || { status: "pending", text: part }) }));
 }
@@ -23090,7 +23114,7 @@ function renderWorshipSetlistCandidate(candidate) {
   }).join(" + ");
   return `
     <li>
-      <span class="svc-setlist-song-role">${escapeHtml(label && label !== title ? label : "")}</span>
+      <span class="svc-setlist-song-role">${escapeHtml(label && label !== displayTitle ? label : "")}</span>
       <span class="svc-setlist-song-title" title="${escapeAttr(displayTitle)}">${content}</span>
     </li>`;
 }

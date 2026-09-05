@@ -68,5 +68,43 @@
     const title = index.titles.get(key(song.title))?.size > 1 && song.subtitle ? `${song.title} (${song.subtitle})` : song.title;
     return { status: "linked", song, text: `${prefix}${title}${part.verse ? ` ${part.verse}` : ""}`, candidates: numbered };
   }
-  root.MindexSetlistLinks = { buildIndex, resolve, split, isExcluded };
+  function fromServices(snapshot = {}, archivedSources = [], index = null) {
+    const occupied = new Set(archivedSources.map(s => s.service_date + "|" + s.service_type_id));
+    const sections = new Map((snapshot.sections || []).map(s => [s.id, s]));
+    const grouped = new Map();
+    for (const element of snapshot.elements || []) {
+      const section = sections.get(element.section_id);
+      if (!section || element.element_type !== "praise" || (!element.song_id && !String(element.title || "").trim())) continue;
+      if (!grouped.has(section.service_id)) grouped.set(section.service_id, []);
+      grouped.get(section.service_id).push({element, section});
+    }
+    const sources = [], candidates = [];
+    for (const service of snapshot.services || []) {
+      const identity = service.service_date + "|" + service.service_type_id;
+      if (!service.service_date || occupied.has(identity)) continue;
+      const rows = grouped.get(service.id) || [];
+      if (!rows.length) continue;
+      occupied.add(identity);
+      const id = "worship:" + service.id;
+      sources.push({id, service_id: service.id, source_kind: "worship", source_name: service.title || "",
+        service_date: service.service_date, service_type_id: service.service_type_id,
+        leader: service.praise_leader || service.worship_leader || "", status: service.status});
+      rows.sort((a,b) => (Number(a.section.sort_order)||0)-(Number(b.section.sort_order)||0)
+        || String(a.section.id).localeCompare(String(b.section.id))
+        || (Number(a.element.sort_order)||0)-(Number(b.element.sort_order)||0)
+        || String(a.element.id).localeCompare(String(b.element.id)));
+      let mainNumber = 0;
+      rows.forEach(({element, section}, i) => {
+        let label = String(element.label || element.source_ref?.label || section.title || "찬양").trim();
+        if (/^찬양(?:\s*\d+)?$/.test(label)) label = "찬양 " + (++mainNumber);
+        candidates.push({id:element.id, import_source_id:id, sort_order:i+1, archive_display_order:i+1,
+          candidate_level:"element", candidate_key:section.section_key || "praise", suggested_type:"praise",
+          raw_label:label, raw_title:String(index?.byId.get(element.song_id)?.title || element.title || "").trim(), suggested_song_id:element.song_id || null,
+          archive_live:true,
+          archive_manual_song:!element.song_id, review_status:"approved"});
+      });
+    }
+    return {sources, candidates};
+  }
+  root.MindexSetlistLinks = { buildIndex, resolve, split, isExcluded, fromServices };
 })(typeof window === "undefined" ? globalThis : window);

@@ -44,3 +44,27 @@ const distinct=buildIndex([{id:'jesus',title:'예수 예수'},{id:'power',title:
 assert.equal(resolve('능력의 이름 예수',distinct).song.id,'power');
 assert.equal(resolve('568 선한 목자 되신 우리 주',reviewed).status,'hymn-number');
 console.log('PASS: third-service special exclusions and removal of legacy aliases');
+
+const services=[{id:'s',service_date:'2026-07-12',service_type_id:'sun_3rd',praise_leader:'인도자'},
+ {id:'other',service_date:'2026-07-12',service_type_id:'sun_2nd'},
+ {id:'empty',service_date:'2026-07-19',service_type_id:'sun_3rd'}];
+const sections=[{id:'section',service_id:'s',sort_order:1,title:'찬양',section_key:'praise'},
+ {id:'second',service_id:'other',sort_order:1,title:'찬양'}];
+const elements=[{id:'b',section_id:'section',sort_order:2,element_type:'praise',song_id:'b',label:'찬양 2'},
+ {id:'a',section_id:'section',sort_order:1,element_type:'praise',song_id:'a',label:'찬양 1'},
+ {id:'empty-slot',section_id:'section',sort_order:3,element_type:'praise',title:''},
+ {id:'manual',section_id:'section',sort_order:4,element_type:'praise',title:'특송 제목',label:'특송'},
+ {id:'text',section_id:'section',sort_order:5,element_type:'body',title:'본문'},
+ {id:'other-song',section_id:'second',sort_order:1,element_type:'praise',song_id:'a'}];
+const live=MindexSetlistLinks.fromServices({services,sections,elements});
+assert.equal(live.sources.length,2);assert.equal(live.candidates.length,4);
+assert.equal(live.sources[0].leader,'인도자');
+assert.deepEqual(live.candidates.filter(c=>c.import_source_id==='worship:s').map(c=>c.id),['a','b','manual']);
+assert.equal(live.candidates.find(c=>c.id==='manual').archive_manual_song,true);
+const merged=MindexSetlistLinks.fromServices({services,sections,elements},[{service_date:'2026-07-12',service_type_id:'sun_3rd'}]);
+assert.equal(merged.sources.length,1);assert.equal(merged.sources[0].service_type_id,'sun_2nd');
+assert.equal(MindexSetlistLinks.fromServices({services,sections,elements:[]}).sources.length,0);
+console.log('PASS: live service cards, exact service-type deduplication, ordered songs, empty slots, manual praise and leaders');
+
+const namedLive=MindexSetlistLinks.fromServices({services,sections,elements},[],index);
+assert.equal(namedLive.candidates.find(c=>c.id==="a").raw_title,"곡 A");
