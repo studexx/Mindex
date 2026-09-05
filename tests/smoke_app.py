@@ -1473,12 +1473,12 @@ def main() -> int:
                     const groups = groupWorshipSetlistArchiveEntries(entries, view);
                     return groups.reduce((count, group) => count + group.entries.length, 0) === entries.length
                       && groups.every(group => group.entries.every(entry => group.key === (view === 'date'
-                        ? String(entry.source.service_date || '')
+                        ? worshipSetlistArchiveWeek(entry.source.service_date).key
                         : worshipAppServiceTypeId(entry.source.service_type_id) || '')));
                   });
                 }""")
                 if archive_groups:
-                    pass_("setlist-archive-view-groups", "date/service grouping preserves all entries")
+                    pass_("setlist-archive-view-groups", "week/service grouping preserves all entries")
                 else:
                     fail("setlist-archive-view-groups", "group membership or count mismatch")
                 page.locator('[data-service-setlist-view="date"]').click()

@@ -61,3 +61,26 @@ assert.ok(context.renderWorshipSetlistArchiveEntry(entry).includes('<strong>2026
 assert.ok(context.renderWorshipSetlistArchiveEntry({...entry, source:{}}).includes('미기록'));
 assert.ok(context.renderWorshipSetlistArchiveEntry({...entry, source:{leader:'<이름>'}}).includes('&lt;이름&gt;'));
 console.log('PASS: Leader search, absent leader, HTML escaping and contextual card titles');
+
+context.serviceTypeSortOrder = value => ({fri:2,youth:3})[value] || 1;
+for (const name of ['parseLocalDate', 'toLocalDateStr', 'worshipSetlistArchiveWeek', 'groupWorshipSetlistArchiveEntries']) {
+  const start = source.indexOf(`function ${name}(`);
+  vm.runInContext(source.slice(start, source.indexOf('\n}\n', start) + 2), context);
+}
+const week = context.worshipSetlistArchiveWeek;
+assert.equal(week('2026-07-12').key, '2026-07-12');
+assert.equal(week('2026-07-18').key, '2026-07-12');
+assert.equal(week('2026-07-19').key, '2026-07-19');
+assert.equal(week('2026-01-01').title, '2025-12-28 ~ 2026-01-03');
+assert.equal(week('2026-02-31').key, '');
+assert.equal(week('').title, '날짜 없음');
+const weeklyEntries = ['2026-07-17','2026-07-12','2026-07-19','2026-07-15'].map(service_date => ({source:{service_date,service_type_id:'fri'}}));
+const weekly = context.groupWorshipSetlistArchiveEntries(weeklyEntries,'date');
+assert.equal(weekly.length,2);
+assert.equal(weekly[0].key,'2026-07-19');
+assert.equal(weekly[1].entries.map(e=>e.source.service_date).join(','),'2026-07-12,2026-07-15,2026-07-17');
+const byService = context.groupWorshipSetlistArchiveEntries(weeklyEntries,'service');
+assert.equal(byService[0].entries[0].source.service_date,'2026-07-19');
+context.state.worshipSetlistArchiveView = 'date';
+assert.ok(context.renderWorshipSetlistArchiveEntry(entry).includes('2026-01-16'));
+console.log('PASS: Sunday/Saturday boundaries, year boundary, invalid dates, week ordering and card dates');

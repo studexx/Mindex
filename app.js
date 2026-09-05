@@ -22657,7 +22657,7 @@ function renderServiceSetlistArchiveDetail() {
       </div>
       ${archive.error ? `<p class="service-no-results">${escapeHtml(archive.error)}</p>` : ""}
       <div class="svc-setlist-view-switch" role="group" aria-label="콘티 보기 방식">
-        ${[["date", "날짜별"], ["service", "예배별"]].map(([view, label]) => `
+        ${[["date", "주별"], ["service", "예배별"]].map(([view, label]) => `
           <button type="button" data-service-setlist-view="${view}" aria-pressed="${state.worshipSetlistArchiveView === view}">${label}</button>
         `).join("")}
       </div>
@@ -22666,16 +22666,28 @@ function renderServiceSetlistArchiveDetail() {
   finishDetailRender();
 }
 
+function worshipSetlistArchiveWeek(value) {
+  if (!/^\d{4}-\d{2}-\d{2}$/u.test(String(value || ""))) return { key: "", title: "날짜 없음" };
+  const start = parseLocalDate(value);
+  if (Number.isNaN(start.getTime()) || toLocalDateStr(start) !== value) return { key: "", title: "날짜 없음" };
+  start.setDate(start.getDate() - start.getDay());
+  const end = new Date(start);
+  end.setDate(end.getDate() + 6);
+  const key = toLocalDateStr(start);
+  return { key, title: `${key} ~ ${toLocalDateStr(end)}` };
+}
+
 function groupWorshipSetlistArchiveEntries(entries = [], view = state.worshipSetlistArchiveView) {
   const byService = view === "service";
   const groups = new Map();
   entries.forEach((entry) => {
+    const week = byService ? null : worshipSetlistArchiveWeek(entry.source.service_date);
     const key = byService
       ? worshipAppServiceTypeId(entry.source.service_type_id) || ""
-      : String(entry.source.service_date || "");
+      : week.key;
     if (!groups.has(key)) groups.set(key, {
       key,
-      title: byService ? (key ? serviceTypeDisplayName(key) : "예배 미지정") : key || "날짜 없음",
+      title: byService ? (key ? serviceTypeDisplayName(key) : "예배 미지정") : week.title,
       entries: [],
     });
     groups.get(key).entries.push(entry);
@@ -22684,7 +22696,7 @@ function groupWorshipSetlistArchiveEntries(entries = [], view = state.worshipSet
     ? serviceTypeSortOrder(a.key) - serviceTypeSortOrder(b.key) || a.title.localeCompare(b.title, "ko")
     : b.key.localeCompare(a.key));
   for (const group of result) {
-    group.entries.sort((a, b) => String(b.source.service_date || "").localeCompare(String(a.source.service_date || ""))
+    group.entries.sort((a, b) => (byService ? -1 : 1) * String(a.source.service_date || "").localeCompare(String(b.source.service_date || ""))
       || serviceTypeSortOrder(worshipAppServiceTypeId(a.source.service_type_id))
         - serviceTypeSortOrder(worshipAppServiceTypeId(b.source.service_type_id)));
   }
@@ -22717,6 +22729,7 @@ function renderWorshipSetlistArchiveEntry(entry) {
       <header>
         <div class="svc-setlist-entry-title">
           <strong>${escapeHtml(title)}</strong>
+          ${state.worshipSetlistArchiveView !== "service" ? `<span class="svc-setlist-leader">${escapeHtml(source.service_date || "날짜 없음")}</span>` : ""}
           <span class="svc-setlist-leader"><span>인도</span> ${escapeHtml(leader || "미기록")}</span>
         </div>
       </header>
