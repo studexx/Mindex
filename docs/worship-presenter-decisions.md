@@ -22,6 +22,9 @@ Small visual polish that does not alter behavior does not need an entry.
 
 ## Current Decisions
 
+- 전역 담당 표기는 `담당`, 유형명은 `제목 / 담당`으로 통일한다. 기존 명칭의
+  입력 호환성은 유지한다. 상세 규칙은 `docs/ui-contracts.md`의 Assignee Terminology를 따른다.
+
 ### Setlist Archive Navigation
 
 - 역대 콘티의 `sunday-main`/`sun_3rd` 원본은 2부 특송을 함께 담으므로

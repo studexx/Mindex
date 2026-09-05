@@ -125,3 +125,11 @@ Presenter details live in `docs/thread-worship-presenter.md`. Keep shell edits o
 - Dense presenter status, navigation, help, and section metadata must still use
   the shared `11px` label and `12px` metadata scale. Reserve smaller text for
   nonessential thumbnail annotations only.
+
+## Assignee Terminology
+
+- 전역 UI에서 개인·단체 공통 입력 label과 placeholder는 `담당`으로 통일한다.
+  `title_person` 유형의 표시명은 `제목 / 담당`이다. 특송도 같은 용어를 사용한다.
+- `인도`, `설교` 등 구체적인 역할명은 유지한다. 기존 `담당자`·`담당기관` 데이터와
+  `제목 / 담당자` 유형명은 호환 입력으로 계속 인식하지만 새 UI에는 표시하지 않는다.
+- 내부 `person`/`assignee` 필드와 DB 값은 이 용어 정리를 위해 변경하지 않는다.

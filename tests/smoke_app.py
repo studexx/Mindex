@@ -9161,7 +9161,7 @@ def main() -> int:
                             "citationSection": "sermon",
                         }
                         and presenter_preparation_paste["looseInput"] == {
-                            "placeholder": "찬양1 곡명\n찬양2 곡명\n찬양3 곡명\n찬양4 곡명\n찬송 곡명\n대표기도 이름 직분\n성경봉독 히 10:38-39\n특송 곡명 / 담당기관\n말씀 \"설교 제목\"\n설교 김남영 목사",
+                            "placeholder": "찬양1 곡명\n찬양2 곡명\n찬양3 곡명\n찬양4 곡명\n찬송 곡명\n대표기도 이름 직분\n성경봉독 히 10:38-39\n특송 곡명 / 담당\n말씀 \"설교 제목\"\n설교 김남영 목사",
                             "createdTitles": ["주 찬양합니다", "변찮는 주님의 사랑과", "승리는 내 것일세", "꽃들도"],
                             "praiseSongIds": ["__created_song_1__", "__created_song_2__", "__created_song_3__", "__created_song_4__"],
                             "prayer": "문병자 권사",

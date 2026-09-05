@@ -433,7 +433,7 @@ const SERVICE_ELEMENT_TYPE_UI_OPTIONS = [
   ["scripture_reading", "성경봉독"],
   ["scripture_body", "성경 본문"],
   ["title", "제목"],
-  ["title_person", "제목 / 담당자"],
+  ["title_person", "제목 / 담당"],
   ["title_content", "제목 / 내용"],
   ["body", "본문"],
   ["plain_text", "일반 텍스트"],
@@ -9950,6 +9950,9 @@ const SERVICE_ELEMENT_TYPE_ALIASES = {
   title_person: "title_person",
   title_assignee: "title_person",
   "title-person": "title_person",
+  "제목/담당": "title_person",
+  "제목 / 담당": "title_person",
+  "제목담당": "title_person",
   "제목/담당자": "title_person",
   "제목 / 담당자": "title_person",
   "제목담당자": "title_person",
@@ -23130,7 +23133,7 @@ function renderWorshipTemplateDraftCard(type) {
 function worshipElementTypeLabel(type) {
   const normalized = String(type || "").trim();
   return {
-    title_person: "제목 / 담당자",
+    title_person: "제목 / 담당",
     scripture_reading: "성경봉독",
     scripture_body: "성경 본문",
     plain_text: "일반 텍스트",
@@ -25753,9 +25756,9 @@ function inferServiceItemAssignee(item) {
   const label = String(item?.label || "").replace(/\s+/g, "");
   const note = String(item?.raw_title || "").trim();
   if (!label) return "";
-  if (/특송/.test(label)) return "담당기관";
+  if (/특송/.test(label)) return "담당";
   if (/말씀|설교/.test(label)) return "담임목사";
-  if (/^기도$/.test(label) && looksLikePersonOrGroup(note)) return "담당자";
+  if (/^기도$/.test(label) && looksLikePersonOrGroup(note)) return "담당";
   return "";
 }
 
@@ -25927,7 +25930,7 @@ function presenterPreparationPlaceholderLinesForItem(item, service, context) {
   if (["praise_db", "score_db", "lyrics_db"].includes(mode) || serviceItemRequiresSongSelection(item, service)) {
     const base = presenterPreparationPlaceholderSongLabel(item);
     if (!base) return [];
-    const assignee = isSpecialSongServiceItem(item) ? " / 담당기관" : "";
+    const assignee = isSpecialSongServiceItem(item) ? " / 담당" : "";
     return [`${base} 곡명${assignee}`];
   }
   if (mode === "scripture" || isScriptureBodyServiceItem(item)) {
@@ -26680,7 +26683,7 @@ function presenterServiceAssigneeInputLabel() {
 }
 
 function serviceItemAssigneeInputLabel(item = {}) {
-  return isSpecialSongServiceItem(item) ? "담당기관" : "담당";
+  return "담당";
 }
 
 function renderPresenterControlsTop(service, slides, active, index) {
