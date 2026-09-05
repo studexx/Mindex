@@ -9988,7 +9988,7 @@ function normalizeServiceInputMode(value) {
 
 function worshipDbInputModeForSave(value) {
   const inputMode = normalizeServiceInputMode(value);
-  if (["score_db", "lyrics_db", "manual_praise"].includes(inputMode)) return "praise_db";
+  if (["score_db", "lyrics_db"].includes(inputMode)) return "praise_db";
   return WORSHIP_DB_ELEMENT_INPUT_MODES.has(inputMode) ? inputMode : "";
 }
 
@@ -10945,6 +10945,7 @@ function selectedServiceForEditor() {
 
 function serviceItemAllowsManualSongText(item = {}, service = selectedServiceForEditor()) {
   const label = compactSearchValue(item.label || "");
+  if (isSongServiceLabel(item.label)) return true;
   if (isSpecialSongServiceItem(item)) return true;
   if (isAllGenerationsWorshipService(service) && isMainPraiseServiceItem(item, { allowUnlabeled: true })) return true;
   return false;
