@@ -6367,6 +6367,18 @@ def main() -> int:
                           const service = { id: '__smoke_source_view__', type_id: 'special', date: '2026-08-02', alias: '찬양예배' };
                           const items = [
                             normalizeServiceItem({
+                              id: '__smoke_source_creed__',
+                              service_id: service.id,
+                              label: '사도신경',
+                              raw_title: '사도신경',
+                              memo: serializeServiceItemMemo({
+                                elementType: 'title',
+                                inputMode: 'none',
+                              }),
+                              _worshipSectionKey: 'creed',
+                              _worshipSectionTitle: '신앙고백',
+                            }, 0),
+                            normalizeServiceItem({
                               id: '__smoke_source_reading__',
                               service_id: service.id,
                               label: '성경봉독',
@@ -6378,7 +6390,7 @@ def main() -> int:
                               }),
                               _worshipSectionKey: 'scripture_reading',
                               _worshipSectionTitle: '성경봉독',
-                            }, 0),
+                            }, 1),
                             normalizeServiceItem({
                               id: '__smoke_source_special__',
                               service_id: service.id,
@@ -6393,7 +6405,7 @@ def main() -> int:
                               }),
                               _worshipSectionKey: 'special_song',
                               _worshipSectionTitle: '특송',
-                            }, 1),
+                            }, 2),
                             normalizeServiceItem({
                               id: '__smoke_source_video__',
                               service_id: service.id,
@@ -6405,7 +6417,7 @@ def main() -> int:
                               }),
                               _worshipSectionKey: 'announcements',
                               _worshipSectionTitle: '광고',
-                            }, 2),
+                            }, 3),
                           ];
                           const originalServices = state.services;
                           const originalItems = state.serviceItems[service.id];
@@ -6434,10 +6446,13 @@ def main() -> int:
                         and service_source_view.get("hasRoot")
                         and service_source_view.get("hasSourcePanel")
                         and service_source_view.get("hasCopy")
-                        and "# 8월 2일 (주일)" in service_source_view["source"]
-                        and "## 성경봉독" in service_source_view["source"]
-                        and "- 성경봉독: 느 6:15–19; 7:1–4" in service_source_view["source"]
-                        and "- 특송: 하나님의 나팔 소리" in service_source_view["source"]
+                        and "# " not in service_source_view["source"]
+                        and "date:" not in service_source_view["source"]
+                        and "[신앙고백]" not in service_source_view["source"]
+                        and "사도신경" not in service_source_view["source"]
+                        and "[성경봉독]" in service_source_view["source"]
+                        and "성경봉독: 느 6:15–19; 7:1–4" in service_source_view["source"]
+                        and "특송: 하나님의 나팔 소리" in service_source_view["source"]
                         and "  담당: 할렐루야 찬양대" in service_source_view["source"]
                         and "  가사:" in service_source_view["source"]
                         and "    누가 나와 함께 가려오" in service_source_view["source"]

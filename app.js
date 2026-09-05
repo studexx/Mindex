@@ -23334,39 +23334,32 @@ function renderServiceSourcePanel(service) {
 }
 
 function buildServiceSourceText(service) {
-  const items = getServiceOutputItems(service?.id || "");
-  const lines = [
-    `# ${serviceSourceHeader(service)}`,
-    `date: ${String(service?.date || "").trim() || "-"}`,
-    `type: ${serviceDisplayTypeName(service) || "-"}`,
-  ];
-  const variant = serviceVariantDisplayName(service);
-  if (variant && compactSearchValue(variant) !== compactSearchValue(serviceDisplayTypeName(service))) {
-    lines.push(`alias: ${variant}`);
-  }
-  lines.push("");
+  const items = getServiceOutputItems(service?.id || "")
+    .filter((item) => serviceSourceItemIsUserDiscretionary(item, service));
+  const lines = [];
 
   let lastSectionKey = "";
   for (const item of items) {
     const memo = parseServiceItemMemo(item.memo);
-    if (memo.hiddenInPresentation) continue;
     const sectionTitle = serviceSourceSectionTitle(item);
     const sectionKey = String(item._worshipSectionId || item._worshipSectionKey || sectionTitle || "").trim();
     if (sectionTitle && sectionKey !== lastSectionKey) {
       if (lines.at(-1) !== "") lines.push("");
-      lines.push(`## ${sectionTitle}`);
+      lines.push(`[${sectionTitle}]`);
       lastSectionKey = sectionKey;
     }
     const itemLines = serviceSourceItemLines(item, service, memo);
     if (itemLines.length) lines.push(...itemLines);
   }
-  return lines.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+  return lines.join("\n").replace(/\n{3,}/g, "\n\n").trim() || "입력할 사용자 재량 항목이 없습니다.";
 }
 
-function serviceSourceHeader(service = {}) {
-  return cleanList([formatServiceDate(service), serviceDisplayTypeName(service), serviceVariantDisplayName(service)])
-    .filter((part, index, list) => list.findIndex((value) => compactSearchValue(value) === compactSearchValue(part)) === index)
-    .join(" · ") || "예배";
+function serviceSourceItemIsUserDiscretionary(item = {}, service = null) {
+  const memo = parseServiceItemMemo(item.memo);
+  if (memo.hiddenInPresentation) return false;
+  const asset = normalizeServiceAsset(memo.asset);
+  if (serviceMemoInputMode(memo, item) === "asset" || asset.name || asset.url) return true;
+  return presenterServiceInputHasEditableField(item, service);
 }
 
 function serviceSourceSectionTitle(item = {}) {
@@ -23376,7 +23369,7 @@ function serviceSourceSectionTitle(item = {}) {
 function serviceSourceItemLines(item = {}, service = null, memo = parseServiceItemMemo(item.memo)) {
   const label = String(item.label || "").trim() || "항목";
   const value = serviceSourceItemValue(item, service, memo);
-  const lines = [`- ${value && compactSearchValue(value) !== compactSearchValue(label) ? `${label}: ${value}` : label}`];
+  const lines = [value && compactSearchValue(value) !== compactSearchValue(label) ? `${label}: ${value}` : `${label}:`];
   const assignee = serviceItemEditableAssigneeValue(item, service);
   if (assignee && !lines[0].includes(assignee)) lines.push(`  담당: ${assignee}`);
   const lyrics = servicePraiseInputMode(item, memo, service) === "manual_praise"
