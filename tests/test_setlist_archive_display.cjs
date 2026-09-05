@@ -4,14 +4,15 @@ const vm = require('node:vm');
 const path = require('node:path');
 
 const source = fs.readFileSync(path.join(__dirname, '../app.js'), 'utf8');
+require("../mindex.setlist-links.js");
 const context = {
-  window: {},
+  window: {MindexSetlistLinks:globalThis.MindexSetlistLinks},
   worshipSetlistCandidateLinks: candidate => [{text:candidate.raw_title}],
   normalizeTitle: value => value.trim(),
   worshipAppServiceTypeId: value => value === 'fri' ? 'friday' : value,
 };
 vm.createContext(context);
-for (const name of ['worshipSetlistArchiveTypeName', 'worshipSetlistArchiveTypeOrder']) {
+for (const name of ['worshipSetlistArchiveTypeName', 'worshipSetlistArchiveTypeOrder', 'worshipSetlistArchiveAliases']) {
   const start = source.indexOf(`function ${name}(`);
   vm.runInContext(source.slice(start, source.indexOf('\n}\n', start) + 2), context);
 }
@@ -107,3 +108,8 @@ const sundayGroups = context.groupWorshipSetlistArchiveEntries([
 assert.equal(sundayGroups[0].title, '주일예배');
 assert.equal(context.groupWorshipSetlistArchiveEntries(sundayGroups.flatMap(g=>g.entries), 'date')[0].entries[0].source.service_type_id, 'sunday-main');
 console.log('PASS: archive Sunday name and priority in service/week views');
+
+const medleyRows=prepare([song("찬양","A + B",1),song("찬양","C + D + E",2),song("찬양","F",3)],{service_type_id:"sun_3rd"});
+assert.equal(medleyRows.map(c=>c.archive_display_label).join("|"),"찬양 1–2|찬양 3–5|찬양 6");
+assert.equal(context.worshipSetlistArchiveAliases({service_type_id:"sun_3rd",aliases:["온세대 찬양예배","온세대 찬양예배"]}),"온세대 찬양예배");
+console.log("PASS: medley numbering ranges and unique service aliases");

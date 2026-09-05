@@ -88,7 +88,7 @@
       const id = "worship:" + service.id;
       sources.push({id, service_id: service.id, source_kind: "worship", source_name: service.title || "",
         service_date: service.service_date, service_type_id: service.service_type_id,
-        leader: service.praise_leader || service.worship_leader || "", status: service.status});
+        leader: service.praise_leader || service.worship_leader || "", aliases:service.service_alias || "", status: service.status});
       rows.sort((a,b) => (Number(a.section.sort_order)||0)-(Number(b.section.sort_order)||0)
         || String(a.section.id).localeCompare(String(b.section.id))
         || (Number(a.element.sort_order)||0)-(Number(b.element.sort_order)||0)
@@ -96,7 +96,12 @@
       let mainNumber = 0;
       rows.forEach(({element, section}, i) => {
         let label = String(element.label || element.source_ref?.label || section.title || "찬양").trim();
-        if (/^찬양(?:\s*\d+)?$/.test(label)) label = "찬양 " + (++mainNumber);
+        if (/^찬양(?:\s*\d+)?$/.test(label)) {
+          const count = element.song_id ? 1 : Math.max(1, split(element.title).length);
+          const first = mainNumber + 1;
+          mainNumber += count;
+          label = `찬양 ${first}${count > 1 ? `–${mainNumber}` : ""}`;
+        }
         candidates.push({id:element.id, import_source_id:id, sort_order:i+1, archive_display_order:i+1,
           candidate_level:"element", candidate_key:section.section_key || "praise", suggested_type:"praise",
           raw_label:label, raw_title:String(index?.byId.get(element.song_id)?.title || element.title || "").trim(), suggested_song_id:element.song_id || null,

@@ -3449,6 +3449,7 @@ const WORSHIP_IMPORT_SOURCE_LIST_SELECT = [
   "service_date",
   "status",
   "leader:raw_payload->service->>leader",
+  "aliases:raw_payload->service->tags",
 ].join(",");
 const WORSHIP_IMPORT_CANDIDATE_LIST_SELECT = [
   "id",
@@ -3770,7 +3771,7 @@ async function loadWorshipSetlistSongCatalog({ force = false } = {}) {
 async function fetchWorshipSetlistServices() {
   // Only card metadata; do not load lyrics, slides, or full source documents.
   const results = await Promise.allSettled([
-    fetchSupabasePaged("mindex_worship_services", "id,service_type_id,service_date,title,status,praise_leader,worship_leader", q => q.order("id")),
+    fetchSupabasePaged("mindex_worship_services", "id,service_type_id,service_date,title,service_alias,status,praise_leader,worship_leader", q => q.order("id")),
     fetchSupabasePaged("mindex_worship_sections", "id,service_id,sort_order,section_key,title", q => q.order("id")),
     fetchSupabasePaged("mindex_worship_elements", "id,section_id,sort_order,element_type,title,song_id,label:source_ref->>label", q => q.eq("element_type", "praise").order("id")),
   ]);
@@ -22923,8 +22924,11 @@ function prepareWorshipSetlistArchiveCandidates(candidates = [], source = {}) {
     if (candidate === legacyWorshipPraise || (isFriday && candidate.archive_display_label === "입례찬양")) {
       return { ...candidate, archive_display_label: "입례찬양", archive_display_order: 40 };
     }
-    if (label === "찬양") {
-      return { ...candidate, archive_display_label: `찬양 ${++praiseNumber}` };
+    if (/^찬양(?:\s*\d+(?:[–-]\d+)?)?$/.test(label)) {
+      const count = Math.max(1, window.MindexSetlistLinks?.split(candidate.raw_title).length || 1);
+      const first = praiseNumber + 1;
+      praiseNumber += count;
+      return { ...candidate, archive_display_label: `찬양 ${first}${count > 1 ? `–${praiseNumber}` : ""}` };
     }
     return candidate;
   }).sort(compareSetlistCandidatesForDisplay);
@@ -22976,6 +22980,7 @@ function filterWorshipSetlistArchiveEntries(entries = []) {
       source.service_date,
       worshipSetlistArchiveTypeName(source.service_type_id),
       source.source_name,
+      worshipSetlistArchiveAliases(source),
       source.leader,
       source.source_path,
       source.status,
@@ -23068,16 +23073,24 @@ function renderWorshipSetlistArchiveGroups(entries = []) {
     </div>`;
 }
 
+function worshipSetlistArchiveAliases(source = {}) {
+  const values = Array.isArray(source.aliases) ? source.aliases : [source.aliases || ""];
+  const typeName = worshipSetlistArchiveTypeName(source.service_type_id);
+  return [...new Set(values.map(value => String(value || "").trim()).filter(value => value && value !== typeName))].join(" · ");
+}
+
 function renderWorshipSetlistArchiveEntry(entry) {
   const source = entry.source || {};
   const typeName = worshipSetlistArchiveTypeName(source.service_type_id);
   const title = state.worshipSetlistArchiveView === "service" ? source.service_date || "날짜 없음" : typeName;
   const leader = String(source.leader || "").trim();
+  const aliases = worshipSetlistArchiveAliases(source);
   return `
     <article class="svc-setlist-entry${entry.missing ? " is-missing" : ""}${entry.needsReview ? " needs-review" : ""}">
       <header>
         <div class="svc-setlist-entry-title">
           ${state.worshipSetlistArchiveView !== "service" ? `<strong>${escapeHtml(title)}</strong>` : ""}
+          ${aliases ? `<span class="svc-setlist-alias" title="${escapeAttr(aliases)}">${escapeHtml(aliases)}</span>` : ""}
           <div class="svc-setlist-entry-meta">
             ${state.worshipSetlistArchiveView === "service" ? `<strong>${escapeHtml(title)}</strong>` : `<span class="svc-setlist-leader">${escapeHtml(source.service_date || "날짜 없음")}</span>`}
             <span class="svc-setlist-leader svc-setlist-entry-leader"><span>인도</span> ${escapeHtml(leader || "미기록")}</span>

@@ -37,6 +37,10 @@ Small visual polish that does not alter behavior does not need an entry.
 
 ### Setlist Archive Navigation
 
+- 콘티 카드에 예배 별명을 표시하고 검색에도 포함한다. 실제 예배의 `service_alias`와
+  import 콘티의 service tags를 사용하며 비어 있으면 별명 줄을 만들지 않는다.
+  메인 찬양 번호는 행 수가 아니라 곡 수로 센다. `A + B`는 `찬양 1–2`,
+  다음 `C + D + E`는 `찬양 3–5`이며 이후 단일 곡은 `찬양 6`이다.
 - 역대 콘티는 기존 import 콘티와 실제 Worship 예배를 함께 표시한다. 실제 예배는
   저장된 praise 항목에 곡 ID 또는 제목이 있을 때만 카드를 만들고 빈 순서는 제외한다.
   section/element 순서와 찬양 인도자(없으면 예배 인도자)를 사용한다. 가사·슬라이드는 조회하지 않는다.

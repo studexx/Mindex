@@ -8880,3 +8880,8 @@ body.is-chromium .svc-slide-thumb.active:hover .svc-slide-thumb-frame {
 .svc-setlist-song-link:hover, .svc-setlist-song-link:focus-visible {
   text-decoration: underline; text-underline-offset: 3px;
 }
+
+.svc-setlist-alias {
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  color: var(--ink-2); font-size: var(--ui-meta-size); font-weight: var(--ui-meta-weight);
+}

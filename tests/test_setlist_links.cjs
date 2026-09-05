@@ -68,3 +68,7 @@ console.log('PASS: live service cards, exact service-type deduplication, ordered
 
 const namedLive=MindexSetlistLinks.fromServices({services,sections,elements},[],index);
 assert.equal(namedLive.candidates.find(c=>c.id==="a").raw_title,"곡 A");
+const medleyLive=MindexSetlistLinks.fromServices({services:[{id:'m',service_date:'2026-08-21',service_type_id:'fri',service_alias:'삼삼오오예배'}],sections:[{id:'ms',service_id:'m',sort_order:1,title:'찬양'}],elements:[{id:'m1',section_id:'ms',sort_order:1,element_type:'praise',title:'A + B',label:'찬양 1'},{id:'m2',section_id:'ms',sort_order:2,element_type:'praise',title:'C + D + E',label:'찬양 2'},{id:'m3',section_id:'ms',sort_order:3,element_type:'praise',song_id:'a',label:'찬양 3'}]});
+assert.equal(medleyLive.sources[0].aliases,'삼삼오오예배');
+assert.deepEqual(medleyLive.candidates.map(c=>c.raw_label),['찬양 1–2','찬양 3–5','찬양 6']);
+console.log('PASS: live service aliases and medley ranges');
