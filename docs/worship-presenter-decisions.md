@@ -24,6 +24,10 @@ Small visual polish that does not alter behavior does not need an entry.
 
 ### Setlist Archive Navigation
 
+- 인도자는 원본 `raw_payload.service.leader`의 이름·직분을 그대로 표시하고
+  검색에도 포함한다. 값이 없으면 `인도 미기록`으로 표시하며 다른 예배의
+  담당자를 추정해 채우지 않는다. 날짜별 카드는 예배명, 예배별 카드는 날짜를
+  제목으로 쓰며 공통 그룹 제목을 반복하지 않는다. 곡 역할과 곡명은 열을 나누어 표시한다.
 - 금요기도회 역대 콘티의 메인 찬양은 `찬양 1·2·3…`으로 표시한다.
   기존 `setlist` import에서 `찬양` 6곡으로 합쳐진 경우 앞의 5곡이 메인
   찬양이고 마지막 1곡은 `입례찬양`이다. 화면에서는 특송 뒤, 결단 앞에

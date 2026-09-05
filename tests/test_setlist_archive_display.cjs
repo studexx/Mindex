@@ -41,3 +41,23 @@ for (const [raw, expected] of [['예배찬양','입례찬양'], ['봉헌','봉�
 }
 assert.equal(prepare([song('봉헌','곡',1)], {service_type_id:'youth'})[0].archive_display_label, '봉헌찬양');
 console.log('PASS: Archive role labels across services and no duplicated suffix');
+
+context.state = { search: '이재희', worshipSetlistArchiveView: 'date' };
+context.normalizeSearchValue = value => String(value || '').trim().toLowerCase();
+context.serviceTypeDisplayName = () => '금요기도회';
+context.escapeHtml = value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+for (const name of ['filterWorshipSetlistArchiveEntries', 'renderWorshipSetlistArchiveEntry', 'renderWorshipSetlistCandidate']) {
+  const start = source.indexOf(`function ${name}(`);
+  vm.runInContext(source.slice(start, source.indexOf('\n}\n', start) + 2), context);
+}
+const entry = {source: {service_date: '2026-01-16', service_type_id: 'fri', leader: '이재희 청년'}, candidates: result};
+assert.equal(context.filterWorshipSetlistArchiveEntries([entry]).length, 1);
+context.state.search = '다른 인도자';
+assert.equal(context.filterWorshipSetlistArchiveEntries([entry]).length, 0);
+assert.ok(context.renderWorshipSetlistArchiveEntry(entry).includes('이재희 청년'));
+assert.ok(context.renderWorshipSetlistArchiveEntry(entry).includes('<strong>금요기도회</strong>'));
+context.state.worshipSetlistArchiveView = 'service';
+assert.ok(context.renderWorshipSetlistArchiveEntry(entry).includes('<strong>2026-01-16</strong>'));
+assert.ok(context.renderWorshipSetlistArchiveEntry({...entry, source:{}}).includes('미기록'));
+assert.ok(context.renderWorshipSetlistArchiveEntry({...entry, source:{leader:'<이름>'}}).includes('&lt;이름&gt;'));
+console.log('PASS: Leader search, absent leader, HTML escaping and contextual card titles');

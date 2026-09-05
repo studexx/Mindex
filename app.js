@@ -3469,6 +3469,7 @@ const WORSHIP_IMPORT_SOURCE_LIST_SELECT = [
   "service_date",
   "status",
   "parse_report",
+  "leader:raw_payload->service->>leader",
   "created_at",
   "updated_at",
 ].join(",");
@@ -22625,6 +22626,7 @@ function filterWorshipSetlistArchiveEntries(entries = []) {
       source.service_date,
       serviceTypeDisplayName(source.service_type_id),
       source.source_name,
+      source.leader,
       source.source_path,
       source.status,
       candidateText,
@@ -22639,7 +22641,6 @@ function renderServiceSetlistArchiveDetail() {
   const archive = state.worshipSetlistArchive;
   const allEntries = worshipSetlistArchiveEntries();
   const entries = filterWorshipSetlistArchiveEntries(allEntries);
-  const q = normalizeSearchValue(state.search);
   refs.detailPane.innerHTML = `
     <div class="service-date-list service-date-list--setlists">
       <div class="service-section-head">
@@ -22647,7 +22648,7 @@ function renderServiceSetlistArchiveDetail() {
           <h2 class="service-date-list-title">${escapeHtml(SERVICE_SETLIST_ARCHIVE_PANEL_TITLE)}</h2>
         </div>
         <div class="service-section-head-actions">
-          ${archive.loading || q ? `<span class="service-search-count">${archive.loading ? "불러오는 중" : `${entries.length}개 콘티`}</span>` : ""}
+          <span class="service-search-count">${archive.loading ? "불러오는 중" : `${entries.length}개 콘티`}</span>
           <button class="reference-new-btn secondary" type="button" data-service-setlist-refresh aria-label="역대 콘티 새로고침">
             <i data-lucide="refresh-cw"></i>
           </button>
@@ -22708,11 +22709,14 @@ function renderWorshipSetlistArchiveGroups(entries = []) {
 function renderWorshipSetlistArchiveEntry(entry) {
   const source = entry.source || {};
   const typeName = serviceTypeDisplayName(source.service_type_id);
+  const title = state.worshipSetlistArchiveView === "service" ? source.service_date || "날짜 없음" : typeName;
+  const leader = String(source.leader || "").trim();
   return `
     <article class="svc-setlist-entry${entry.missing ? " is-missing" : ""}${entry.needsReview ? " needs-review" : ""}">
       <header>
         <div class="svc-setlist-entry-title">
-          <strong>${escapeHtml(source.service_date || "날짜 없음")} · ${escapeHtml(typeName)}</strong>
+          <strong>${escapeHtml(title)}</strong>
+          <span class="svc-setlist-leader"><span>인도</span> ${escapeHtml(leader || "미기록")}</span>
         </div>
       </header>
       ${entry.candidates.length ? `
@@ -22728,7 +22732,8 @@ function renderWorshipSetlistCandidate(candidate) {
   const label = String(candidate.archive_display_label || candidate.raw_label || "").trim();
   return `
     <li>
-      <span>${escapeHtml(label && label !== title ? `${label} · ${title}` : title)}</span>
+      <span class="svc-setlist-song-role">${escapeHtml(label && label !== title ? label : "")}</span>
+      <span class="svc-setlist-song-title">${escapeHtml(title)}</span>
     </li>`;
 }
 
