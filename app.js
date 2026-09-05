@@ -8029,6 +8029,15 @@ function handleDetailClick(event) {
     return;
   }
 
+  const serviceItemCommit = event.target.closest("[data-service-item-commit]");
+  if (serviceItemCommit) {
+    void commitServiceItemInputs(
+      serviceItemCommit.dataset.serviceId || state.selectedServiceId,
+      Number(serviceItemCommit.dataset.serviceItemIndex),
+    );
+    return;
+  }
+
   const serviceItemAction = event.target.closest("[data-service-item-action]");
   if (serviceItemAction) {
     runServiceItemAction(
@@ -9523,6 +9532,33 @@ function commitDeferredServiceTextInput(field, options = {}) {
       silent: true,
     });
   }
+  return true;
+}
+
+async function commitServiceItemInputs(serviceId = state.selectedServiceId, index = -1) {
+  const itemIndex = Number(index);
+  if (!serviceId || !Number.isInteger(itemIndex) || itemIndex < 0) return false;
+  const fields = [...(refs.detailPane || document).querySelectorAll("[data-service-item-field]")]
+    .filter((field) => Number(field.dataset.serviceItemIndex) === itemIndex)
+    .filter((field) => !field.dataset.serviceId || field.dataset.serviceId === serviceId);
+  let touched = false;
+  fields.forEach((field) => {
+    if (!field.matches("input, textarea, select")) return;
+    if (isDeferredServiceTextInput(field)) {
+      clearDeferredServiceTextPreview(field);
+      updateServiceItemField(field, { deferPresenterRefresh: true });
+      field.dataset.initialValue = field.value;
+      field.dataset.presenterPreviewValue = field.value;
+    } else {
+      updateServiceItemField(field, { deferPresenterRefresh: true });
+    }
+    touched = true;
+  });
+  if (!touched) return false;
+  await resolveAndSaveCommittedServiceItem(serviceId, itemIndex, {
+    renderAfterSave: false,
+    resolveScriptureBeforeSave: false,
+  });
   return true;
 }
 
@@ -27824,7 +27860,15 @@ function renderPresenterBoardSubgroupInputControls(serviceId, subgroup = {}) {
       <div class="svc-board-subgroup-control-item" data-service-item-index="${escapeAttr(String(context.index))}">
         ${label ? `<span class="svc-board-subgroup-control-label">${escapeHtml(label)}</span>` : ""}
         ${controls}
-        ${audioControls}
+        <div class="svc-board-subgroup-flow">
+          <button class="reference-new-btn svc-board-subgroup-commit" type="button"
+            data-service-item-commit
+            data-service-id="${escapeAttr(serviceId)}"
+            data-service-item-index="${escapeAttr(String(context.index))}">
+            <i data-lucide="check"></i><span>반영</span>
+          </button>
+          ${audioControls}
+        </div>
       </div>`;
   }).filter(Boolean);
   if (!blocks.length) return "";

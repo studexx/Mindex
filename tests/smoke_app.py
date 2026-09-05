@@ -6255,6 +6255,108 @@ def main() -> int:
                     else:
                         fail("presenter-input-enter-commit-guard", json.dumps(presenter_input_enter_commit_guard, ensure_ascii=False))
 
+                    presenter_item_apply_flow = page.evaluate(
+                        """
+                        (async () => {
+                          if (
+                            typeof commitServiceItemInputs !== 'function'
+                            || typeof renderPresenterBoardSubgroupInputControls !== 'function'
+                          ) return { ready: false, reason: 'functions' };
+                          const service = { id: '__smoke_item_apply_flow__', type_id: 'special', date: '2026-08-02' };
+                          const item = normalizeServiceItem({
+                            id: '__smoke_item_apply_flow_item__',
+                            service_id: service.id,
+                            label: '특송',
+                            raw_title: '이전 제목',
+                            assignee: '이전 담당',
+                            memo: serializeServiceItemMemo({
+                              elementType: 'praise',
+                              inputMode: 'manual_praise',
+                              outputMode: 'lyrics',
+                              slides: ['이전 가사'],
+                            }),
+                            _worshipSectionKey: 'special_song',
+                            _worshipSectionTitle: '특송',
+                            _worshipElementTemplateModified: true,
+                            _worshipTemplatePlaceholder: false,
+                          }, 0);
+                          const originalServices = state.services;
+                          const originalItems = state.serviceItems[service.id];
+                          const originalSelectedServiceId = state.selectedServiceId;
+                          const originalResolveAndSave = resolveAndSaveCommittedServiceItem;
+                          const originalDirty = state.dirty.service;
+                          const host = document.createElement('div');
+                          const saves = [];
+                          try {
+                            state.services = [service, ...originalServices.filter((candidate) => candidate.id !== service.id)];
+                            state.serviceItems[service.id] = [item];
+                            state.selectedServiceId = service.id;
+                            state.dirty.service = false;
+                            const html = renderPresenterBoardSubgroupInputControls(service.id, {
+                              id: item.id,
+                              label: '특송',
+                              title: '이전 제목',
+                              slides: [{ slide: { elementId: item.id } }],
+                            });
+                            refs.detailPane.appendChild(host);
+                            host.innerHTML = html;
+                            const title = host.querySelector('[data-service-item-field="raw_title"]');
+                            const lyrics = host.querySelector('[data-service-item-field="manual_praise_lyrics"]');
+                            const assignee = host.querySelector('[data-service-item-field="assignee"]');
+                            const button = host.querySelector('[data-service-item-commit]');
+                            if (!title || !lyrics || !assignee || !button) {
+                              return { ready: false, reason: 'controls', html };
+                            }
+                            title.value = '새 특송 제목';
+                            lyrics.value = '첫 줄\\n\\n후렴';
+                            assignee.value = '새 담당';
+                            resolveAndSaveCommittedServiceItem = async (serviceId, index, options = {}) => {
+                              saves.push({ serviceId, index: Number(index), renderAfterSave: options.renderAfterSave, resolveScriptureBeforeSave: options.resolveScriptureBeforeSave });
+                              return true;
+                            };
+                            await commitServiceItemInputs(button.dataset.serviceId, Number(button.dataset.serviceItemIndex));
+                            const updated = state.serviceItems[service.id][0] || {};
+                            const memo = parseServiceItemMemo(updated.memo);
+                            return {
+                              ready: true,
+                              buttonLabel: button.textContent.replace(/\\s+/g, ' ').trim(),
+                              rawTitle: updated.raw_title || '',
+                              assignee: updated.assignee || '',
+                              inputMode: memo.inputMode || '',
+                              slides: memo.slides || [],
+                              saves,
+                              dirty: state.dirty.service,
+                            };
+                          } finally {
+                            resolveAndSaveCommittedServiceItem = originalResolveAndSave;
+                            state.services = originalServices;
+                            if (originalItems === undefined) delete state.serviceItems[service.id];
+                            else state.serviceItems[service.id] = originalItems;
+                            state.selectedServiceId = originalSelectedServiceId;
+                            state.dirty.service = originalDirty;
+                            host.remove();
+                          }
+                        })()
+                        """
+                    )
+                    if (
+                        presenter_item_apply_flow.get("ready")
+                        and presenter_item_apply_flow["buttonLabel"] == "반영"
+                        and presenter_item_apply_flow["rawTitle"] == "새 특송 제목"
+                        and presenter_item_apply_flow["assignee"] == "새 담당"
+                        and presenter_item_apply_flow["inputMode"] == "manual_praise"
+                        and presenter_item_apply_flow["slides"] == ["첫 줄", "후렴"]
+                        and presenter_item_apply_flow["saves"] == [{
+                            "serviceId": "__smoke_item_apply_flow__",
+                            "index": 0,
+                            "renderAfterSave": False,
+                            "resolveScriptureBeforeSave": False,
+                        }]
+                    ):
+                        pass_("presenter-item-apply-flow", json.dumps(presenter_item_apply_flow, ensure_ascii=False))
+                    else:
+                        fail("presenter-item-apply-flow", json.dumps(presenter_item_apply_flow, ensure_ascii=False))
+
                     presenter_preparation_double_enter = page.evaluate(
                         """
                         (() => {
