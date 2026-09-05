@@ -6609,6 +6609,69 @@ def main() -> int:
                     else:
                         fail("service-source-view-apply", json.dumps(service_source_view_apply, ensure_ascii=False))
 
+                    service_document_snapshot = page.evaluate(
+                        """
+                        (() => {
+                          if (
+                            typeof buildServiceDocumentSnapshot !== 'function'
+                            || typeof serviceDocumentSnapshotFromRef !== 'function'
+                            || typeof withServiceDocumentSnapshot !== 'function'
+                          ) return { ready: false, reason: 'functions' };
+                          const service = { id: '__smoke_service_document__', type_id: 'special', date: '2026-07-19', alias: '온세대예배', _worshipSourceRef: {} };
+                          const item = normalizeServiceItem({
+                            id: '__smoke_service_document_asset__',
+                            service_id: service.id,
+                            label: '이미지',
+                            memo: serializeServiceItemMemo({
+                              elementType: 'image',
+                              inputMode: 'asset',
+                              asset: { kind: 'image', name: '꿈꾸는 어린이부 여름성경학교 안내', url: 'assets/worship-templates/all-generations-2026-07-19-offering-thanks.png' },
+                            }),
+                            _worshipSectionKey: 'offering',
+                            _worshipSectionTitle: '봉헌',
+                          }, 0);
+                          const originalServices = state.services;
+                          const originalItems = state.serviceItems[service.id];
+                          const originalCache = presenterSlideBuildCache.get(service.id);
+                          try {
+                            state.services = [service, ...originalServices.filter((candidate) => candidate.id !== service.id)];
+                            state.serviceItems[service.id] = [item];
+                            presenterSlideBuildCache.delete(service.id);
+                            const document = buildServiceDocumentSnapshot(service, [item]);
+                            const sourceRef = withServiceDocumentSnapshot(service, [item]);
+                            const fromRef = serviceDocumentSnapshotFromRef({ _worshipSourceRef: sourceRef }) || {};
+                            return {
+                              ready: true,
+                              version: document.version || '',
+                              sourceText: document.sourceText || '',
+                              slideCount: document.slides.length,
+                              slideAsset: document.slides.find((slide) => slide.asset)?.asset || {},
+                              exceptionReason: document.exceptions[0]?.reason || '',
+                              roundTripVersion: fromRef.version || '',
+                            };
+                          } finally {
+                            state.services = originalServices;
+                            if (originalItems === undefined) delete state.serviceItems[service.id];
+                            else state.serviceItems[service.id] = originalItems;
+                            if (originalCache) presenterSlideBuildCache.set(service.id, originalCache);
+                            else presenterSlideBuildCache.delete(service.id);
+                          }
+                        })()
+                        """
+                    )
+                    if (
+                        service_document_snapshot.get("ready")
+                        and service_document_snapshot["version"] == "service-document-v1"
+                        and "이미지: 꿈꾸는 어린이부 여름성경학교 안내" in service_document_snapshot["sourceText"]
+                        and service_document_snapshot["slideCount"] >= 1
+                        and service_document_snapshot["slideAsset"].get("name") == "꿈꾸는 어린이부 여름성경학교 안내"
+                        and "봉헌 섹션의 이미지 항목" in service_document_snapshot["exceptionReason"]
+                        and service_document_snapshot["roundTripVersion"] == "service-document-v1"
+                    ):
+                        pass_("service-document-snapshot", json.dumps(service_document_snapshot, ensure_ascii=False))
+                    else:
+                        fail("service-document-snapshot", json.dumps(service_document_snapshot, ensure_ascii=False))
+
                     presenter_preparation_double_enter = page.evaluate(
                         """
                         (() => {

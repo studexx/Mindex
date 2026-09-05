@@ -3506,6 +3506,8 @@ const WORSHIP_ELEMENT_BASE_LIST_SELECT = [
   "created_at",
   "updated_at",
 ].join(",");
+const MINDEX_SERVICE_DOCUMENT_SOURCE_REF_KEY = "mindexServiceDocument";
+const MINDEX_SERVICE_DOCUMENT_VERSION = "service-document-v1";
 
 async function worshipElementListSelect() {
   const hasSlotKey = await detectTableColumnSupport("mindex_worship_elements", "slot_key");
@@ -6364,6 +6366,12 @@ async function saveWorshipServiceInstance(service) {
   const praiseLeader = serviceUsesPraiseLeader(service.type_id)
     ? cleanServiceAssignee(service.praiseLeader || service.leader)
     : "";
+  const items = ensureUniqueServiceItemPersistenceIds(normalizeServiceItemsForTemplateHierarchy(
+    service,
+    normalizeServiceItemsInCurrentOrder(getServiceItems(serviceId)),
+  )).filter((item) => !isUnmodifiedTemplatePlaceholder(item));
+  const sourceRef = withServiceDocumentSnapshot(service, items);
+  service._worshipSourceRef = sourceRef;
   const servicePayload = {
     service_type_id: canonicalTypeId,
     service_date: service.date,
@@ -6372,9 +6380,7 @@ async function saveWorshipServiceInstance(service) {
     status: service._worshipStatus || "draft",
     worship_leader: worshipLeader,
     praise_leader: praiseLeader,
-    source_ref: service._worshipSourceRef && typeof service._worshipSourceRef === "object"
-      ? service._worshipSourceRef
-      : {},
+    source_ref: sourceRef,
     notes: service.raw_text || "",
   };
   if (state.serviceAliasSupported) servicePayload.service_alias = String(service.alias || "").trim();
@@ -6389,10 +6395,6 @@ async function saveWorshipServiceInstance(service) {
     existingSections.some((section) => section.id === element.section_id));
   const existingSectionById = Object.fromEntries(existingSections.map((section) => [section.id, section]));
   const existingElementById = Object.fromEntries(existingElements.map((element) => [element.id, element]));
-  const items = ensureUniqueServiceItemPersistenceIds(normalizeServiceItemsForTemplateHierarchy(
-    service,
-    normalizeServiceItemsInCurrentOrder(getServiceItems(serviceId)),
-  )).filter((item) => !isUnmodifiedTemplatePlaceholder(item));
   const elementTypedStateColumns = await worshipElementTypedStateColumns();
   const rows = buildWorshipPersistenceRows(service, items, existingSectionById, existingElementById, {
     elementTypedStateColumns,
@@ -6585,6 +6587,13 @@ async function saveWorshipServiceElementPatch(service, itemId) {
   if (!elementRow) return false;
   const sectionRow = rows.sections.find((section) => section.id === elementRow.section_id);
   captureWorshipRecoverySnapshot(service, "before-element-patch");
+  const sourceRef = withServiceDocumentSnapshot(service, items);
+  service._worshipSourceRef = sourceRef;
+  const { error: serviceError } = await state.client
+    .from("mindex_worship_services")
+    .update({ source_ref: sourceRef })
+    .eq("id", serviceId);
+  if (serviceError) throw serviceError;
   if (sectionRow) {
     const { error } = await state.client
       .from("mindex_worship_sections")
@@ -21019,6 +21028,119 @@ function serviceSourceRef(service = null) {
   return {};
 }
 
+function serviceDocumentSnapshotFromRef(service = null) {
+  const document = serviceSourceRef(service)[MINDEX_SERVICE_DOCUMENT_SOURCE_REF_KEY];
+  return document && typeof document === "object" ? document : null;
+}
+
+function withServiceDocumentSnapshot(service = null, items = null) {
+  const base = serviceSourceRef(service);
+  const document = buildServiceDocumentSnapshot(service, items);
+  return {
+    ...base,
+    [MINDEX_SERVICE_DOCUMENT_SOURCE_REF_KEY]: document,
+  };
+}
+
+function buildServiceDocumentSnapshot(service = null, items = null) {
+  const serviceId = String(service?.id || "").trim();
+  const sourceItems = Array.isArray(items) ? items : getServiceOutputItems(serviceId);
+  return {
+    version: MINDEX_SERVICE_DOCUMENT_VERSION,
+    updatedAt: new Date().toISOString(),
+    sourceText: buildServiceSourceText(service, { items: sourceItems }),
+    slides: buildServiceDocumentSlideSnapshots(serviceId),
+    exceptions: buildServiceDocumentExceptionNotes(service, sourceItems),
+  };
+}
+
+function buildServiceDocumentSlideSnapshots(serviceId = "") {
+  return buildServicePresenterSlides(serviceId)
+    .map((slide, index) => compactServiceDocumentSlide(slide, index))
+    .filter(Boolean);
+}
+
+function compactServiceDocumentSlide(slide = {}, index = 0) {
+  if (!slide || typeof slide !== "object") return null;
+  const asset = normalizeServiceAsset(slide.asset || slide.media);
+  const payload = {
+    index: index + 1,
+    id: String(slide.id || "").trim(),
+    elementId: String(slide.elementId || "").trim(),
+    sectionId: String(slide.sectionId || "").trim(),
+    sectionKey: String(slide.sectionKey || "").trim(),
+    elementLabel: String(slide.elementLabel || slide.label || "").trim(),
+    type: String(slide.type || "").trim(),
+    layout: presenterSlideLayout(slide),
+    elementType: presenterSlideElementType(slide),
+    title: String(slide.title || "").trim(),
+    text: limitServiceDocumentText(slide.text || slide.bodyText || slide.body || ""),
+    outputContext: presenterSlideOutputContext(slide, true),
+    hidden: presenterSlideIsHidden(slide),
+    autoTrailingBlank: Boolean(slide.autoTrailingBlank),
+    linkedSource: serviceDocumentSlideLinkedSource(slide),
+  };
+  if (asset.name || asset.url || asset.kind) payload.asset = asset;
+  if (slide.imageSrc) payload.imageSrc = String(slide.imageSrc).trim();
+  if (slide.videoSrc) payload.videoSrc = String(slide.videoSrc).trim();
+  if (slide.audioSrc) payload.audioSrc = String(slide.audioSrc).trim();
+  return Object.fromEntries(Object.entries(payload).filter(([, value]) => {
+    if (Array.isArray(value)) return value.length;
+    if (value && typeof value === "object") return Object.keys(value).length;
+    return value !== "" && value !== false && value != null;
+  }));
+}
+
+function limitServiceDocumentText(value = "") {
+  const text = String(value || "");
+  return text.length > 8000 ? `${text.slice(0, 8000)}\n[truncated]` : text;
+}
+
+function serviceDocumentSlideLinkedSource(slide = {}) {
+  const source = {};
+  if (slide.songId || slide.song_id) source.songId = slide.songId || slide.song_id;
+  if (slide.songVersionId || slide.song_version_id || slide.versionId) {
+    source.songVersionId = slide.songVersionId || slide.song_version_id || slide.versionId;
+  }
+  if (slide.scriptureContext || slide.referenceRange || slide.referenceBook) {
+    source.scripture = cleanList([slide.referenceBook, slide.referenceRange || slide.scriptureContext]).join(" ").trim();
+  }
+  if (slide.sourceType) source.sourceType = slide.sourceType;
+  if (slide.componentType) source.componentType = slide.componentType;
+  return source;
+}
+
+function buildServiceDocumentExceptionNotes(service = null, items = []) {
+  return (Array.isArray(items) ? items : [])
+    .map((item) => serviceDocumentExceptionForItem(service, item))
+    .filter(Boolean);
+}
+
+function serviceDocumentExceptionForItem(service = null, item = {}) {
+  const memo = parseServiceItemMemo(item.memo);
+  const asset = normalizeServiceAsset(memo.asset);
+  const hasAsset = asset.name || asset.url || asset.kind;
+  if (!hasAsset) return null;
+  const section = serviceSourceSectionTitle(item) || String(item._worshipSectionTitle || "").trim() || "예배";
+  const label = String(item.label || "").trim() || serviceAssetFileKindLabel(asset.kind);
+  const serviceName = cleanList([
+    service?.date || service?.service_date || "",
+    serviceDisplayTypeName(service) || service?.title || "",
+  ]).join(" ");
+  const assetLabel = asset.name || presenterMediaFileName(asset.url) || serviceAssetFileKindLabel(asset.kind);
+  return {
+    type: "asset",
+    scope: "service",
+    target: {
+      section,
+      label,
+      elementId: String(item.id || "").trim(),
+    },
+    asset,
+    reason: `${serviceName ? `${serviceName}: ` : ""}${section} 섹션의 ${label} 항목에 ${assetLabel} ${serviceAssetFileKindLabel(asset.kind)}를 연결함.`,
+  };
+}
+
 function normalizeServiceDisplayName(value) {
   return String(value || "").replace(/주일예배 \((1부|2부|3부)\)/g, "주일예배 [$1]");
 }
@@ -23349,9 +23471,13 @@ function renderServiceSourcePanel(service) {
     </details>`;
 }
 
-function buildServiceSourceText(service) {
-  const items = getServiceOutputItems(service?.id || "")
+function buildServiceSourceText(service, options = {}) {
+  const items = (Array.isArray(options.items) ? options.items : getServiceOutputItems(service?.id || ""))
     .filter((item) => serviceSourceItemIsUserDiscretionary(item, service));
+  if (!items.length) {
+    const sourceText = String(serviceDocumentSnapshotFromRef(service)?.sourceText || "").trim();
+    if (sourceText) return sourceText;
+  }
   const lines = [];
 
   let lastSectionKey = "";
