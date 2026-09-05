@@ -8045,6 +8045,15 @@ function handleDetailClick(event) {
     return;
   }
 
+  const serviceSourceHistoryBtn = event.target.closest("[data-service-source-history]");
+  if (serviceSourceHistoryBtn) {
+    restoreServiceSourceHistory(
+      serviceSourceHistoryBtn.dataset.serviceSourceHistory || state.selectedServiceId,
+      Number(serviceSourceHistoryBtn.dataset.serviceSourceHistoryIndex),
+    );
+    return;
+  }
+
   const deleteServiceBtn = event.target.closest("[data-delete-service]");
   if (deleteServiceBtn) {
     deleteService(deleteServiceBtn.dataset.deleteService);
@@ -23625,18 +23634,88 @@ function renderServiceSourcePanel(service) {
       </summary>
       <div class="svc-source-panel-body">
         <textarea class="svc-source-text" data-service-source-text="${escapeAttr(service.id)}" data-service-source-signature="${escapeAttr(compactTextSignature(source))}" spellcheck="false" aria-label="예배 원문">${escapeHtml(source)}</textarea>
-        <div class="svc-source-actions">
-          <button class="reference-new-btn svc-source-apply" type="button" data-service-source-apply="${escapeAttr(service.id)}">
-            <i data-lucide="check"></i>
-            <span>반영</span>
-          </button>
-          <button class="reference-new-btn secondary svc-source-copy" type="button" data-service-source-copy="${escapeAttr(service.id)}">
-            <i data-lucide="clipboard"></i>
-            <span>복사</span>
-          </button>
+        <div class="svc-source-side">
+          ${renderServiceSourceHistory(service)}
+          <div class="svc-source-actions">
+            <button class="reference-new-btn svc-source-apply" type="button" data-service-source-apply="${escapeAttr(service.id)}">
+              <i data-lucide="check"></i>
+              <span>반영</span>
+            </button>
+            <button class="reference-new-btn secondary svc-source-copy" type="button" data-service-source-copy="${escapeAttr(service.id)}">
+              <i data-lucide="clipboard"></i>
+              <span>복사</span>
+            </button>
+          </div>
         </div>
       </div>
     </details>`;
+}
+
+function serviceDocumentHistoryFromRef(service = null) {
+  const history = serviceSourceRef(service)[MINDEX_SERVICE_DOCUMENT_HISTORY_SOURCE_REF_KEY];
+  return Array.isArray(history) ? history.filter((entry) => entry && typeof entry === "object") : [];
+}
+
+function renderServiceSourceHistory(service) {
+  const history = serviceDocumentHistoryFromRef(service)
+    .filter((entry) => String(entry.sourceText || "").trim())
+    .slice(0, MINDEX_SERVICE_DOCUMENT_HISTORY_LIMIT);
+  if (!history.length) return "";
+  return `
+    <div class="svc-source-history" aria-label="이전 저장본">
+      <div class="svc-source-history-head">
+        <span>이전 저장본</span>
+        <small>원문 복구</small>
+      </div>
+      <div class="svc-source-history-list">
+        ${history.map((entry, index) => `
+          <button class="svc-source-history-item" type="button" data-service-source-history="${escapeAttr(service.id)}" data-service-source-history-index="${escapeAttr(index)}">
+            <span>${escapeHtml(serviceSourceHistoryLabel(entry, index))}</span>
+            <small>${escapeHtml(serviceSourceHistoryMeta(entry))}</small>
+          </button>
+        `).join("")}
+      </div>
+    </div>`;
+}
+
+function serviceSourceHistoryLabel(entry = {}, index = 0) {
+  const captured = entry.updatedAt ? formatServiceSourceHistoryTime(entry.updatedAt) : "";
+  return captured || `이전 저장본 ${index + 1}`;
+}
+
+function formatServiceSourceHistoryTime(value = "") {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const dd = String(date.getDate()).padStart(2, "0");
+  const hh = String(date.getHours()).padStart(2, "0");
+  const min = String(date.getMinutes()).padStart(2, "0");
+  return `${mm}/${dd} ${hh}:${min}`;
+}
+
+function serviceSourceHistoryMeta(entry = {}) {
+  const records = Array.isArray(entry.sourceRecords) ? entry.sourceRecords.length : 0;
+  const slides = Array.isArray(entry.slides) ? entry.slides.length : 0;
+  return cleanList([
+    records ? `항목 ${records}` : "",
+    slides ? `슬라이드 ${slides}` : "",
+  ]).join(" · ") || "원문";
+}
+
+function restoreServiceSourceHistory(serviceId = state.selectedServiceId, historyIndex = -1) {
+  const id = String(serviceId || "").trim();
+  const service = state.services.find((candidate) => candidate.id === id);
+  const textarea = serviceSourceTextareaForService(id);
+  const entry = serviceDocumentHistoryFromRef(service)[Number(historyIndex)];
+  const sourceText = String(entry?.sourceText || "").trim();
+  if (!service || !textarea || !sourceText) {
+    showToast("불러올 이전 저장본을 찾지 못했습니다.", "error");
+    return false;
+  }
+  textarea.value = sourceText;
+  textarea.dispatchEvent(new Event("input", { bubbles: true }));
+  showToast("이전 저장본 원문을 불러왔습니다. 반영 후 저장해 주세요.", "info");
+  return true;
 }
 
 function buildServiceSourceText(service, options = {}) {

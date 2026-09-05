@@ -6693,6 +6693,8 @@ def main() -> int:
                           const originalServices = state.services;
                           const originalItems = state.serviceItems[service.id];
                           const originalCache = presenterSlideBuildCache.get(service.id);
+                          const originalDetailHtml = refs.detailPane.innerHTML;
+                          const originalDirty = state.dirty.service;
                           try {
                             state.services = [service, ...originalServices.filter((candidate) => candidate.id !== service.id)];
                             state.serviceItems[service.id] = [item];
@@ -6702,6 +6704,11 @@ def main() -> int:
                             const sourceRef = withServiceDocumentSnapshot(service, [item]);
                             const fromRef = serviceDocumentSnapshotFromRef({ _worshipSourceRef: sourceRef }) || {};
                             const history = sourceRef[MINDEX_SERVICE_DOCUMENT_HISTORY_SOURCE_REF_KEY] || [];
+                            service._worshipSourceRef = sourceRef;
+                            refs.detailPane.innerHTML = renderServiceSourcePanel(service);
+                            const historyButton = refs.detailPane.querySelector('[data-service-source-history]');
+                            const restored = restoreServiceSourceHistory(service.id, 0);
+                            const textarea = refs.detailPane.querySelector('[data-service-source-text="__smoke_service_document__"]');
                             return {
                               ready: true,
                               version: document.version || '',
@@ -6716,10 +6723,16 @@ def main() -> int:
                               historyCount: history.length,
                               historySourceText: history[0]?.sourceText || '',
                               historySlideCount: history[0]?.slides?.length || 0,
+                              historyButton: Boolean(historyButton),
+                              restored,
+                              restoredText: textarea?.value || '',
+                              restoredPending: serviceSourceTextHasPendingChanges(textarea),
                               roundTripVersion: fromRef.version || '',
                               roundTripSourceSignature: fromRef.sourceSignature || '',
                             };
                           } finally {
+                            refs.detailPane.innerHTML = originalDetailHtml;
+                            state.dirty.service = originalDirty;
                             state.services = originalServices;
                             if (originalItems === undefined) delete state.serviceItems[service.id];
                             else state.serviceItems[service.id] = originalItems;
@@ -6749,6 +6762,10 @@ def main() -> int:
                         and service_document_snapshot["historyCount"] == 1
                         and service_document_snapshot["historySourceText"] == "[봉헌]\n이미지: 이전 안내 이미지"
                         and service_document_snapshot["historySlideCount"] == 1
+                        and service_document_snapshot["historyButton"]
+                        and service_document_snapshot["restored"]
+                        and service_document_snapshot["restoredText"] == "[봉헌]\n이미지: 이전 안내 이미지"
+                        and service_document_snapshot["restoredPending"]
                         and service_document_snapshot["roundTripVersion"] == "service-document-v1"
                         and service_document_snapshot["roundTripSourceSignature"] == service_document_snapshot["sourceSignature"]
                     ):
