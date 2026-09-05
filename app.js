@@ -8023,6 +8023,12 @@ function handleDetailClick(event) {
     return;
   }
 
+  const serviceSourceApplyBtn = event.target.closest("[data-service-source-apply]");
+  if (serviceSourceApplyBtn) {
+    applyServiceSourceText(serviceSourceApplyBtn.dataset.serviceSourceApply || state.selectedServiceId);
+    return;
+  }
+
   const deleteServiceBtn = event.target.closest("[data-delete-service]");
   if (deleteServiceBtn) {
     deleteService(deleteServiceBtn.dataset.deleteService);
@@ -23321,14 +23327,20 @@ function renderServiceSourcePanel(service) {
     <details class="svc-source-panel">
       <summary class="svc-source-panel-head">
         <span>예배 원문</span>
-        <small>읽기 전용</small>
+        <small>편집 후 반영</small>
       </summary>
       <div class="svc-source-panel-body">
-        <textarea class="svc-source-text" readonly spellcheck="false" aria-label="예배 원문">${escapeHtml(source)}</textarea>
-        <button class="reference-new-btn secondary svc-source-copy" type="button" data-service-source-copy="${escapeAttr(service.id)}">
-          <i data-lucide="clipboard"></i>
-          <span>복사</span>
-        </button>
+        <textarea class="svc-source-text" data-service-source-text="${escapeAttr(service.id)}" spellcheck="false" aria-label="예배 원문">${escapeHtml(source)}</textarea>
+        <div class="svc-source-actions">
+          <button class="reference-new-btn svc-source-apply" type="button" data-service-source-apply="${escapeAttr(service.id)}">
+            <i data-lucide="check"></i>
+            <span>반영</span>
+          </button>
+          <button class="reference-new-btn secondary svc-source-copy" type="button" data-service-source-copy="${escapeAttr(service.id)}">
+            <i data-lucide="clipboard"></i>
+            <span>복사</span>
+          </button>
+        </div>
       </div>
     </details>`;
 }
@@ -23393,6 +23405,167 @@ function serviceSourceItemValue(item = {}, service = null, memo = parseServiceIt
   const asset = normalizeServiceAsset(memo.asset);
   if (asset.name || asset.url) return asset.name || asset.url;
   return serviceItemDisplayText(item);
+}
+
+function parseServiceSourceText(value = "") {
+  const records = [];
+  let sectionTitle = "";
+  let current = null;
+  let readingLyrics = false;
+  const finish = () => {
+    if (!current) return;
+    current.lyrics = current.lyricLines.join("\n").replace(/\s+$/g, "");
+    delete current.lyricLines;
+    records.push(current);
+  };
+
+  for (const rawLine of String(value || "").replace(/\r\n?/g, "\n").split("\n")) {
+    const line = rawLine.replace(/\s+$/g, "");
+    const sectionMatch = line.match(/^\[([^\]]+)\]$/);
+    if (sectionMatch) {
+      finish();
+      current = null;
+      readingLyrics = false;
+      sectionTitle = sectionMatch[1].trim();
+      continue;
+    }
+    const itemMatch = line.match(/^([^:\[\]\n][^:\n]*?):\s*(.*)$/);
+    if (itemMatch && !/^\s/.test(line)) {
+      finish();
+      current = {
+        sectionTitle,
+        label: itemMatch[1].trim(),
+        value: itemMatch[2].trim(),
+        assignee: "",
+        assetName: "",
+        assetUrl: "",
+        hasAssignee: false,
+        hasAssetName: false,
+        hasAssetUrl: false,
+        hasLyrics: false,
+        lyricLines: [],
+      };
+      readingLyrics = false;
+      continue;
+    }
+    if (!current) continue;
+    const metaMatch = line.match(/^\s{2,}([^:]+):\s*(.*)$/);
+    if (metaMatch) {
+      const key = compactSearchValue(metaMatch[1]);
+      const metaValue = metaMatch[2].trim();
+      if (key === "담당") {
+        current.assignee = metaValue;
+        current.hasAssignee = true;
+        readingLyrics = false;
+        continue;
+      }
+      if (key === "파일") {
+        current.assetName = metaValue;
+        current.hasAssetName = true;
+        readingLyrics = false;
+        continue;
+      }
+      if (key === "링크") {
+        current.assetUrl = metaValue;
+        current.hasAssetUrl = true;
+        readingLyrics = false;
+        continue;
+      }
+      if (key === "가사") {
+        current.hasLyrics = true;
+        readingLyrics = true;
+        continue;
+      }
+    }
+    if (readingLyrics) {
+      current.lyricLines.push(line.replace(/^\s{4}/, "").replace(/^\s{2}/, ""));
+    }
+  }
+  finish();
+  return records.filter((record) => record.label);
+}
+
+function applyServiceSourceText(serviceId = state.selectedServiceId) {
+  const id = String(serviceId || "").trim();
+  const service = state.services.find((candidate) => candidate.id === id);
+  if (!service) return false;
+  const textarea = refs.detailPane?.querySelector(`[data-service-source-text="${CSS.escape(id)}"]`);
+  if (!textarea) return false;
+  const records = parseServiceSourceText(textarea.value);
+  const realItems = getServiceItems(id);
+  const candidates = getServiceOutputItems(id)
+    .map((item) => ({ item, index: realItems.findIndex((candidate) => candidate.id === item.id) }))
+    .filter((entry) => entry.index >= 0 && serviceSourceItemIsUserDiscretionary(entry.item, service));
+  const usedIndexes = new Set();
+  let applied = 0;
+
+  for (const record of records) {
+    const target = serviceSourceFindTarget(record, candidates, usedIndexes);
+    if (!target) continue;
+    if (applyServiceSourceRecord(id, target.index, record)) {
+      usedIndexes.add(target.index);
+      applied += 1;
+    }
+  }
+
+  if (!applied) {
+    showToast("반영할 예배 원문 항목을 찾지 못했습니다.", "error");
+    return false;
+  }
+  refreshPresenterForService(id, { publish: false });
+  renderCurrentServiceModuleDetail();
+  renderServiceList();
+  updateSaveState();
+  showToast(`예배 원문 ${applied}개 항목을 반영했습니다. 상단 저장을 눌러 확정해 주세요.`, "info");
+  return true;
+}
+
+function serviceSourceFindTarget(record = {}, candidates = [], usedIndexes = new Set()) {
+  const labelKey = compactSearchValue(record.label);
+  const sectionKey = compactSearchValue(record.sectionTitle);
+  return candidates.find(({ item, index }) =>
+    !usedIndexes.has(index)
+    && compactSearchValue(item.label || "") === labelKey
+    && (!sectionKey || compactSearchValue(serviceSourceSectionTitle(item)) === sectionKey))
+    || candidates.find(({ item, index }) =>
+      !usedIndexes.has(index)
+      && compactSearchValue(item.label || "") === labelKey);
+}
+
+function serviceSourceVirtualField(serviceId, index, key, value) {
+  return {
+    dataset: {
+      serviceId,
+      serviceItemIndex: String(index),
+      serviceItemField: key,
+    },
+    value: String(value || ""),
+  };
+}
+
+function applyServiceSourceRecord(serviceId, index, record = {}) {
+  const item = getServiceItems(serviceId)[index];
+  if (!item) return false;
+  const memo = parseServiceItemMemo(item.memo);
+  const asset = normalizeServiceAsset(memo.asset);
+  const assetMode = serviceMemoInputMode(memo, item) === "asset" || asset.name || asset.url;
+  if (assetMode) {
+    if (record.hasAssetName || record.value) {
+      updateServiceItemField(serviceSourceVirtualField(serviceId, index, "asset_name", record.hasAssetName ? record.assetName : record.value), { deferPresenterRefresh: true });
+    }
+    if (record.hasAssetUrl) {
+      updateServiceItemField(serviceSourceVirtualField(serviceId, index, "asset_url", record.assetUrl), { deferPresenterRefresh: true });
+    }
+  } else {
+    updateServiceItemField(serviceSourceVirtualField(serviceId, index, "raw_title", record.value), { deferPresenterRefresh: true });
+  }
+  if (record.hasAssignee) {
+    updateServiceItemField(serviceSourceVirtualField(serviceId, index, "assignee", record.assignee), { deferPresenterRefresh: true });
+  }
+  if (record.hasLyrics) {
+    updateServiceItemField(serviceSourceVirtualField(serviceId, index, "manual_praise_lyrics", record.lyrics), { deferPresenterRefresh: true });
+  }
+  return true;
 }
 
 function serviceBulletinSectionTitle(item = {}) {

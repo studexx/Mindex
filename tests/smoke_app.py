@@ -6431,6 +6431,8 @@ def main() -> int:
                               source,
                               hasRoot: html.includes('id="servicePresenterControls"'),
                               hasSourcePanel: html.includes('svc-source-panel'),
+                              hasEditableText: html.includes('data-service-source-text="__smoke_source_view__"') && !html.includes('readonly'),
+                              hasApply: html.includes('data-service-source-apply="__smoke_source_view__"'),
                               hasCopy: html.includes('data-service-source-copy="__smoke_source_view__"'),
                             };
                           } finally {
@@ -6445,6 +6447,8 @@ def main() -> int:
                         service_source_view.get("ready")
                         and service_source_view.get("hasRoot")
                         and service_source_view.get("hasSourcePanel")
+                        and service_source_view.get("hasEditableText")
+                        and service_source_view.get("hasApply")
                         and service_source_view.get("hasCopy")
                         and "# " not in service_source_view["source"]
                         and "date:" not in service_source_view["source"]
@@ -6462,6 +6466,148 @@ def main() -> int:
                         pass_("service-source-view-export", json.dumps(service_source_view, ensure_ascii=False))
                     else:
                         fail("service-source-view-export", json.dumps(service_source_view, ensure_ascii=False))
+
+                    service_source_view_apply = page.evaluate(
+                        """
+                        (() => {
+                          if (
+                            typeof applyServiceSourceText !== 'function'
+                            || typeof renderServiceSourcePanel !== 'function'
+                          ) return { ready: false, reason: 'functions' };
+                          const service = { id: '__smoke_source_apply__', type_id: 'special', date: '2026-08-02', alias: '찬양예배' };
+                          const items = [
+                            normalizeServiceItem({
+                              id: '__smoke_source_apply_reading__',
+                              service_id: service.id,
+                              label: '성경봉독',
+                              raw_title: '느 6:15-19',
+                              memo: serializeServiceItemMemo({
+                                elementType: 'scripture_body',
+                                inputMode: 'scripture',
+                                scriptureReferences: ['느 6:15-19'],
+                              }),
+                              _worshipSectionKey: 'scripture_reading',
+                              _worshipSectionTitle: '성경봉독',
+                            }, 0),
+                            normalizeServiceItem({
+                              id: '__smoke_source_apply_special__',
+                              service_id: service.id,
+                              label: '특송',
+                              raw_title: '이전 특송',
+                              assignee: '이전 담당',
+                              memo: serializeServiceItemMemo({
+                                elementType: 'praise',
+                                inputMode: 'manual_praise',
+                                outputMode: 'lyrics',
+                                slides: ['이전 가사'],
+                              }),
+                              _worshipSectionKey: 'special_song',
+                              _worshipSectionTitle: '특송',
+                            }, 1),
+                            normalizeServiceItem({
+                              id: '__smoke_source_apply_video__',
+                              service_id: service.id,
+                              label: '교회소식',
+                              memo: serializeServiceItemMemo({
+                                elementType: 'video',
+                                inputMode: 'asset',
+                                asset: { kind: 'video', name: '이전광고.mp4', url: 'https://example.com/old.mp4' },
+                              }),
+                              _worshipSectionKey: 'announcements',
+                              _worshipSectionTitle: '광고',
+                            }, 2),
+                          ];
+                          const originalServices = state.services;
+                          const originalItems = state.serviceItems[service.id];
+                          const originalSelectedServiceId = state.selectedServiceId;
+                          const originalDetailHtml = refs.detailPane.innerHTML;
+                          const originalRenderCurrent = renderCurrentServiceModuleDetail;
+                          const originalRenderServiceList = renderServiceList;
+                          const originalRefreshPresenter = refreshPresenterForService;
+                          const originalDirty = state.dirty.service;
+                          const refreshes = [];
+                          let rendered = false;
+                          try {
+                            state.services = [service, ...originalServices.filter((candidate) => candidate.id !== service.id)];
+                            state.serviceItems[service.id] = items;
+                            state.selectedServiceId = service.id;
+                            state.dirty.service = false;
+                            refs.detailPane.innerHTML = renderServiceSourcePanel(service);
+                            const textarea = refs.detailPane.querySelector('[data-service-source-text="__smoke_source_apply__"]');
+                            if (!textarea) return { ready: false, reason: 'textarea' };
+                            textarea.value = [
+                              '[성경봉독]',
+                              '성경봉독: 막 1:1-3',
+                              '',
+                              '[특송]',
+                              '특송: 새 특송',
+                              '  담당: 새 담당',
+                              '  가사:',
+                              '    첫 줄',
+                              '    ',
+                              '    후렴',
+                              '',
+                              '[광고]',
+                              '교회소식: 새광고.mp4',
+                              '  파일: 새광고.mp4',
+                              '  링크: https://example.com/new.mp4',
+                            ].join('\\n');
+                            renderCurrentServiceModuleDetail = () => { rendered = true; };
+                            renderServiceList = () => {};
+                            refreshPresenterForService = (serviceId, options = {}) => refreshes.push({ serviceId, publish: options.publish });
+                            const applied = applyServiceSourceText(service.id);
+                            const reading = state.serviceItems[service.id][0];
+                            const special = state.serviceItems[service.id][1];
+                            const video = state.serviceItems[service.id][2];
+                            const readingMemo = parseServiceItemMemo(reading.memo);
+                            const specialMemo = parseServiceItemMemo(special.memo);
+                            const videoMemo = parseServiceItemMemo(video.memo);
+                            return {
+                              ready: true,
+                              applied,
+                              readingTitle: reading.raw_title || '',
+                              readingReferences: readingMemo.scriptureReferences || [],
+                              specialTitle: special.raw_title || '',
+                              specialAssignee: special.assignee || '',
+                              specialInputMode: specialMemo.inputMode || '',
+                              specialSlides: specialMemo.slides || [],
+                              asset: videoMemo.asset || {},
+                              dirty: state.dirty.service,
+                              rendered,
+                              refreshes,
+                            };
+                          } finally {
+                            renderCurrentServiceModuleDetail = originalRenderCurrent;
+                            renderServiceList = originalRenderServiceList;
+                            refreshPresenterForService = originalRefreshPresenter;
+                            refs.detailPane.innerHTML = originalDetailHtml;
+                            state.services = originalServices;
+                            if (originalItems === undefined) delete state.serviceItems[service.id];
+                            else state.serviceItems[service.id] = originalItems;
+                            state.selectedServiceId = originalSelectedServiceId;
+                            state.dirty.service = originalDirty;
+                          }
+                        })()
+                        """
+                    )
+                    if (
+                        service_source_view_apply.get("ready")
+                        and service_source_view_apply.get("applied")
+                        and service_source_view_apply["readingTitle"] == "막 1:1–3"
+                        and service_source_view_apply["readingReferences"] == ["막 1:1–3"]
+                        and service_source_view_apply["specialTitle"] == "새 특송"
+                        and service_source_view_apply["specialAssignee"] == "새 담당"
+                        and service_source_view_apply["specialInputMode"] == "manual_praise"
+                        and service_source_view_apply["specialSlides"] == ["첫 줄", "후렴"]
+                        and service_source_view_apply["asset"].get("name") == "새광고.mp4"
+                        and service_source_view_apply["asset"].get("url") == "https://example.com/new.mp4"
+                        and service_source_view_apply.get("dirty")
+                        and service_source_view_apply.get("rendered")
+                        and service_source_view_apply["refreshes"] == [{"serviceId": "__smoke_source_apply__", "publish": False}]
+                    ):
+                        pass_("service-source-view-apply", json.dumps(service_source_view_apply, ensure_ascii=False))
+                    else:
+                        fail("service-source-view-apply", json.dumps(service_source_view_apply, ensure_ascii=False))
 
                     presenter_preparation_double_enter = page.evaluate(
                         """

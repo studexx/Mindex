@@ -6217,6 +6217,10 @@ body[data-theme="dark"] .service-week-empty:hover {
   align-items: start;
   padding: 0 var(--s3) var(--s3);
 }
+.svc-source-actions {
+  display: grid;
+  gap: var(--s2);
+}
 .svc-source-text {
   min-height: 220px;
   max-height: 44vh;
@@ -6233,6 +6237,10 @@ body[data-theme="dark"] .service-week-empty:hover {
   white-space: pre;
 }
 .svc-source-copy {
+  min-height: 34px;
+  white-space: nowrap;
+}
+.svc-source-apply {
   min-height: 34px;
   white-space: nowrap;
 }
