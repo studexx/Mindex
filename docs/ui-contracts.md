@@ -48,6 +48,10 @@ Read `HANDOFF.md` first. This file is the short UI contract for Codex threads so
 
 ## Navigation
 
+- 예배 검색 결과는 `7월 19일 주일예배 [3부]`처럼 날짜와 정규 예배 종류를
+  한 줄로 표시한다. 요일, 예배 별명, 설교 미리보기는 검색 결과 행에 붙이지 않는다.
+  검색 매칭과 클릭 시 열리는 예배는 기존 동작을 유지한다.
+
 Primary app modules:
 
 1. `service` - Worship and presenter work.

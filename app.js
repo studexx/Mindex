@@ -14671,16 +14671,12 @@ function renderGlobalScriptureResult(result) {
 }
 
 function renderGlobalServiceResult(service) {
-  const meta = [
-    serviceDisplayTypeName(service),
-  ].filter(Boolean).join(META_SEPARATOR);
-  const preview = serviceItemPreview(service.id);
+  const title = `${formatServiceDate(service, { weekday: false })} ${serviceTypeDisplayName(service.type_id)}`;
   return `
-    <button class="song-item global-search-result" type="button" data-global-service-id="${escapeAttr(service.id)}">
+    <button class="song-item global-search-result" type="button" data-global-service-id="${escapeAttr(service.id)}" aria-label="${escapeAttr(title)}">
       <span class="song-title">
-        <span class="song-title-text">${escapeHtml(formatServiceDate(service))}</span>
+        <span class="song-title-text">${escapeHtml(title)}</span>
       </span>
-      <span class="song-meta-line">${escapeHtml([meta, preview].filter(Boolean).join(" · "))}</span>
     </button>
   `;
 }
@@ -24856,12 +24852,12 @@ function formatServiceDate(service, options = {}) {
   const start = new Date(`${service.date}T00:00:00`);
   const startText = options.compact
     ? `${start.getMonth() + 1}/${start.getDate()} ${serviceWeekdayLabel(start)}`
-    : `${start.getMonth() + 1}월 ${start.getDate()}일 (${serviceWeekdayLabel(start)})`;
+    : `${start.getMonth() + 1}월 ${start.getDate()}일${options.weekday === false ? "" : ` (${serviceWeekdayLabel(start)})`}`;
   if (!service.date_end) return startText;
   const end = new Date(`${service.date_end}T00:00:00`);
   const endText = options.compact
     ? `${end.getMonth() + 1}/${end.getDate()} ${serviceWeekdayLabel(end)}`
-    : `${end.getMonth() + 1}월 ${end.getDate()}일 (${serviceWeekdayLabel(end)})`;
+    : `${end.getMonth() + 1}월 ${end.getDate()}일${options.weekday === false ? "" : ` (${serviceWeekdayLabel(end)})`}`;
   return `${startText} - ${endText}`;
 }
 
