@@ -6748,6 +6748,19 @@ def main() -> int:
                             const fromRef = serviceDocumentSnapshotFromRef({ _worshipSourceRef: sourceRef }) || {};
                             const history = sourceRef[MINDEX_SERVICE_DOCUMENT_HISTORY_SOURCE_REF_KEY] || [];
                             service._worshipSourceRef = sourceRef;
+                            const placeholder = normalizeServiceItem({
+                              id: '__smoke_service_document_placeholder__',
+                              service_id: service.id,
+                              label: '이미지',
+                              raw_title: '',
+                              _worshipSectionKey: 'offering',
+                              _worshipSectionTitle: '봉헌',
+                              _worshipTemplateProjected: true,
+                              _worshipTemplatePlaceholder: true,
+                            }, 0);
+                            state.serviceItems[service.id] = [placeholder];
+                            presenterSlideBuildCache.delete(service.id);
+                            const fallbackSlides = buildServicePresenterSlides(service.id);
                             refs.detailPane.innerHTML = renderServiceSourcePanel(service);
                             const historyButton = refs.detailPane.querySelector('[data-service-source-history]');
                             const restored = restoreServiceSourceHistory(service.id, 0);
@@ -6768,6 +6781,9 @@ def main() -> int:
                               slideSlotKey: document.slides.find((slide) => slide.elementId === item.id)?.slotKey || '',
                               slideKey: document.slides.find((slide) => slide.elementId === item.id)?.slideKey || '',
                               slideAsset: document.slides.find((slide) => slide.asset)?.asset || {},
+                              fallbackCount: fallbackSlides.length,
+                              fallbackRestoredCount: fallbackSlides.filter((slide) => slide.serviceDocumentFallback).length,
+                              fallbackAsset: fallbackSlides.find((slide) => slide.serviceDocumentFallback && slide.asset)?.asset || {},
                               exceptionReason: document.exceptions[0]?.reason || '',
                               historyCount: history.length,
                               historySourceText: history[0]?.sourceText || '',
@@ -6814,6 +6830,9 @@ def main() -> int:
                         and service_document_snapshot["slideSlotKey"] == "offering.media"
                         and service_document_snapshot["slideKey"]
                         and service_document_snapshot["slideAsset"].get("name") == "꿈꾸는 어린이부 여름성경학교 안내"
+                        and service_document_snapshot["fallbackCount"] >= service_document_snapshot["slideCount"]
+                        and service_document_snapshot["fallbackRestoredCount"] >= 1
+                        and service_document_snapshot["fallbackAsset"].get("name") == "꿈꾸는 어린이부 여름성경학교 안내"
                         and "봉헌 섹션의 이미지 항목" in service_document_snapshot["exceptionReason"]
                         and service_document_snapshot["historyCount"] == 1
                         and service_document_snapshot["historySourceText"] == "[봉헌]\n이미지: 이전 안내 이미지"

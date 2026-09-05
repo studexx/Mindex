@@ -30593,6 +30593,10 @@ function buildServicePresenterSlidesUncached(serviceId) {
   if (!service) return [];
 
   const outputItems = getServiceOutputItems(serviceId);
+  const documentFallbackSlides = serviceDocumentPresenterSlides(service);
+  if (documentFallbackSlides.length && serviceItemsShouldUseDocumentSlideFallback(outputItems)) {
+    return documentFallbackSlides;
+  }
   if (outputItems.length) {
     let slides = outputItems
       .sort((a, b) => a.sort_order - b.sort_order)
@@ -30621,6 +30625,88 @@ function buildServicePresenterSlidesUncached(serviceId) {
   }
 
   return withPresenterElementTrailingBlanks([presenterReadySlide(service)], service);
+}
+
+function serviceItemsShouldUseDocumentSlideFallback(items = []) {
+  if (!Array.isArray(items) || !items.length) return true;
+  return items.every((item) => isUnmodifiedTemplatePlaceholder(item) || !serviceItemHasUserSavedContent(item));
+}
+
+function serviceItemHasUserSavedContent(item = {}) {
+  const memo = parseServiceItemMemo(item.memo);
+  return Boolean(
+    item.song_id
+    || item.version_id
+    || item.song_version_id
+    || cleanServiceAssignee(item.assignee)
+    || serviceItemRawTitleHasUserContent(item)
+    || formatServiceManualPraiseLyricsInput(item.memo)
+    || hasServiceAsset(normalizeServiceAsset(memo.asset))
+    || Array.isArray(memo.slides) && memo.slides.length
+  );
+}
+
+function serviceItemRawTitleHasUserContent(item = {}) {
+  const rawTitle = String(item.raw_title || "").trim();
+  if (!rawTitle) return false;
+  const label = String(item.label || "").trim();
+  return !label || compactSearchValue(rawTitle) !== compactSearchValue(label);
+}
+
+function serviceDocumentPresenterSlides(service = null) {
+  const document = serviceDocumentSnapshotFromRef(service);
+  const slides = normalizeServiceDocumentSlides(document?.slides);
+  if (!slides.length) return [];
+  const restored = slides
+    .map((slide, index) => serviceDocumentSlideToPresenterSlide(slide, index, service))
+    .filter(Boolean);
+  if (!restored.length) return [];
+  const withReady = restored[0] && isPresenterPreparationSlide(restored[0])
+    ? restored
+    : [presenterReadySlide(service), ...restored];
+  return normalizePresenterSlidesForServiceOutput(withReady, service);
+}
+
+function serviceDocumentSlideToPresenterSlide(slide = {}, index = 0, service = null) {
+  if (!slide || typeof slide !== "object") return null;
+  const layout = slide.layout || presenterSlideLayout(slide);
+  const elementType = slide.elementType || presenterSlideElementType(slide);
+  const asset = normalizeServiceAsset(slide.asset);
+  const restored = {
+    id: slide.id || `${service?.id || "service"}:document-slide:${index + 1}`,
+    sectionId: slide.sectionId || `${service?.id || "service"}:document-section:${slide.sectionKey || index + 1}`,
+    elementId: slide.elementId || "",
+    sectionIndex: Number(slide.index) || index + 1,
+    sectionKey: slide.sectionKey || "",
+    slotKey: normalizeWorshipSlotKey(slide.slotKey || slide.linkedSource?.slotKey),
+    sectionLabel: slide.elementLabel || slide.title || "예배 문서",
+    sectionHeading: slide.elementLabel || slide.title || "예배 문서",
+    sectionTitle: slide.elementLabel || slide.title || "예배 문서",
+    elementLabel: slide.elementLabel || "",
+    elementTitle: slide.title || slide.elementLabel || "",
+    elementType,
+    layout,
+    type: slide.type || presenterSlideTypeFromModel({ ...slide, layout, elementType }),
+    label: slide.elementLabel || slide.title || "",
+    title: slide.title || slide.elementLabel || "",
+    marker: slide.title || slide.elementLabel || "",
+    text: slide.text || "",
+    outputContext: normalizePresenterOutputContext(slide.outputContext) || "",
+    hiddenInPresentation: Boolean(slide.hidden),
+    autoTrailingBlank: Boolean(slide.autoTrailingBlank),
+    serviceDocumentFallback: true,
+    sort: index,
+  };
+  if (asset.name || asset.url || asset.kind) restored.asset = asset;
+  if (slide.imageSrc) restored.imageSrc = slide.imageSrc;
+  if (slide.videoSrc) restored.videoSrc = slide.videoSrc;
+  if (slide.audioSrc) restored.audioSrc = slide.audioSrc;
+  const issues = presenterSlideModelIssues(restored);
+  if (issues.length) {
+    console.warn("Skipped invalid service document slide fallback.", { slide, issues });
+    return null;
+  }
+  return restored;
 }
 
 function normalizePresenterSlidesForServiceOutput(slides = [], service = null) {
