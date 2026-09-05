@@ -314,7 +314,7 @@
   height: calc(64 * var(--presenter-stage-unit));
   max-height: 10cqh;
   object-fit: contain;
-  opacity: .82;
+  opacity: 1;
 }
 .presenter-ready-screen-copy {
   position: relative;
@@ -326,7 +326,7 @@
 }
 .presenter-ready-screen-kicker {
   margin: 0;
-  color: rgba(255, 255, 255, .68);
+  color: #fff;
   font-size: calc(50 * var(--presenter-stage-unit));
   font-weight: 560;
   line-height: 1.16;
