@@ -3586,7 +3586,7 @@ body[data-module="presenter"] .detail-pane {
   display: grid;
   min-width: 0;
   min-height: 36px;
-  grid-template-columns: minmax(0, 1fr) 28px;
+  grid-template-columns: minmax(0, 1fr);
   align-items: center;
   gap: 6px;
   border-radius: var(--r);

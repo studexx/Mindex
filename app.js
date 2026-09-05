@@ -22272,9 +22272,6 @@ function renderServiceSidebarCard(service, options = {}) {
     return `
       <div class="service-sidebar-card-row${active}">
         ${cardButton}
-        <button class="service-sidebar-presenter" type="button" data-open-presenter-service="${escapeAttr(service.id)}" aria-label="Presenter에서 열기">
-          <i data-lucide="screen-share"></i>
-        </button>
       </div>`;
   }
   return `
