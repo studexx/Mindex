@@ -2900,6 +2900,7 @@ async function loadSongs() {
     return await songLoadPromise;
   } finally {
     songLoadPromise = null;
+    renderLoadingStatus();
   }
 }
 
@@ -3019,15 +3020,10 @@ async function loadMissingSongsForIds(targetIds = []) {
   let songRows = [];
   if (missingIds.length) {
     try {
-      for (const batch of chunkArray(missingIds, 80)) {
-        const { data, error } = await state.client
-          .from("mindex_songs")
-          .select("*")
-          .in("id", batch)
-          .order("title", { ascending: true });
-        if (error) throw error;
-        songRows.push(...(data || []));
-      }
+      songRows = await fetchSupabaseBatches(missingIds, (batch) =>
+        fetchSupabasePaged("mindex_songs", "*", (query) => query.in("id", batch)
+          .order("title", { ascending: true }).order("id", { ascending: true })));
+
     } catch (error) {
       if (!isUnavailableRelationError(error)) console.warn("Could not load linked praise songs.", error);
     }
@@ -3068,25 +3064,16 @@ async function attachRelationalSongVersionsForSongs(songIds = []) {
 
   let versionRows = [];
   try {
-    for (const batch of chunkArray(ids, 80)) {
-      const [sourceResponse, canonicalResponse] = await Promise.all([
-        state.client
-          .from("mindex_song_versions")
-          .select("*")
-          .in("source_song_id", batch)
-          .order("source_song_id", { ascending: true })
-          .order("version_order", { ascending: true }),
-        state.client
-          .from("mindex_song_versions")
-          .select("*")
-          .in("canonical_song_id", batch)
-          .order("canonical_song_id", { ascending: true })
-          .order("version_order", { ascending: true }),
-      ]);
-      if (sourceResponse.error) throw sourceResponse.error;
-      if (canonicalResponse.error) throw canonicalResponse.error;
-      versionRows.push(...(sourceResponse.data || []), ...(canonicalResponse.data || []));
-    }
+    versionRows = await fetchSupabaseBatches(ids, async (batch) => {
+      const results = await Promise.allSettled(["source_song_id", "canonical_song_id"].map((column) =>
+        fetchSupabasePaged("mindex_song_versions", "*", (query) => query.in(column, batch)
+          .order(column, { ascending: true }).order("version_order", { ascending: true })
+          .order("id", { ascending: true }))));
+      const failure = results.find((result) => result.status === "rejected");
+      if (failure) throw failure.reason;
+      return results.flatMap((result) => result.value);
+    }, { concurrency: 2 });
+
   } catch (error) {
     if (!isUnavailableRelationError(error)) console.warn("Could not load linked song versions.", error);
     state.songVersionTablesSupported = false;
@@ -3102,17 +3089,11 @@ async function attachRelationalSongVersionsForSongs(songIds = []) {
 
   let unitRows = [];
   try {
-    for (const batch of chunkArray(versionRows.map((row) => row.id), 80)) {
-      const { data, error } = await state.client
-        .from("mindex_version_units")
-        .select("*")
-        .in("version_id", batch)
-        .order("version_id", { ascending: true })
-        .order("curated_order", { ascending: true })
-        .order("unit_order", { ascending: true });
-      if (error) throw error;
-      unitRows.push(...(data || []));
-    }
+    unitRows = await fetchSupabaseBatches(versionRows.map((row) => row.id), (batch) =>
+      fetchSupabasePaged("mindex_version_units", "*", (query) => query.in("version_id", batch)
+        .order("version_id", { ascending: true }).order("curated_order", { ascending: true })
+        .order("unit_order", { ascending: true }).order("id", { ascending: true })));
+
   } catch (error) {
     if (!isUnavailableRelationError(error)) console.warn("Could not load linked song units.", error);
     state.songVersionTablesSupported = false;
@@ -3128,59 +3109,30 @@ async function attachRelationalSongVersionsForSongs(songIds = []) {
 }
 
 async function attachRelationalSongVersions() {
-  let versionResponse;
-  try {
-    versionResponse = await fetchAllRows(() =>
-      state.client
-        .from("mindex_song_versions")
-        .select("*")
-        .order("source_song_id", { ascending: true })
-        .order("canonical_song_id", { ascending: true })
-        .order("version_order", { ascending: true })
-    );
-  } catch (error) {
-    if (!isUnavailableRelationError(error)) console.warn("Could not load song versions.", error);
+  // Both tables are independent; publish versions only after their units arrive.
+  const responses = await Promise.allSettled([
+    fetchAllRows(() => state.client.from("mindex_song_versions").select("*")
+      .order("source_song_id", { ascending: true })
+      .order("canonical_song_id", { ascending: true })
+      .order("version_order", { ascending: true })),
+    fetchAllRows(() => state.client.from("mindex_version_units").select("*")
+      .order("version_id", { ascending: true })
+      .order("curated_order", { ascending: true })
+      .order("unit_order", { ascending: true })),
+  ]);
+  const failure = responses.find((result) => result.status === "rejected" || result.value?.error);
+  if (failure) {
+    const error = failure.status === "rejected" ? failure.reason : failure.value.error;
+    if (!isUnavailableRelationError(error)) console.warn("Could not load song versions and units.", error);
     state.songVersionTablesSupported = false;
     state.songVersionPraiseTypesSupported = false;
     return;
   }
-
-  if (versionResponse.error) {
-    if (!isUnavailableRelationError(versionResponse.error)) console.warn("Could not load song versions.", versionResponse.error);
-    state.songVersionTablesSupported = false;
-    state.songVersionPraiseTypesSupported = false;
-    return;
-  }
-
-  let unitResponse;
-  try {
-    unitResponse = await fetchAllRows(() =>
-      state.client
-        .from("mindex_version_units")
-        .select("*")
-        .order("version_id", { ascending: true })
-        .order("curated_order", { ascending: true })
-        .order("unit_order", { ascending: true })
-    );
-  } catch (error) {
-    if (!isUnavailableRelationError(error)) console.warn("Could not load version units.", error);
-    state.songVersionTablesSupported = false;
-    state.songVersionPraiseTypesSupported = false;
-    return;
-  }
-
-  if (unitResponse.error) {
-    if (!isUnavailableRelationError(unitResponse.error)) console.warn("Could not load version units.", unitResponse.error);
-    state.songVersionTablesSupported = false;
-    state.songVersionPraiseTypesSupported = false;
-    return;
-  }
-
+  const [versionResponse, unitResponse] = responses.map((result) => result.value);
   state.songVersionTablesSupported = true;
   state.songVersionPraiseTypesSupported =
     (versionResponse.data || []).some((row) => Object.prototype.hasOwnProperty.call(row, "praise_types"))
     || await detectSongVersionPraiseTypesSupport();
-
   await yieldToBrowser();
   attachRelationalSongVersionRows(versionResponse.data || [], unitResponse.data || []);
 }
@@ -3425,6 +3377,19 @@ async function fetchSupabasePaged(table, select = "*", buildQuery = (query) => q
     rows.push(...(data || []));
     if (!data || data.length < pageSize) return rows;
   }
+}
+
+async function fetchSupabaseBatches(ids, fetchBatch, { concurrency = 3 } = {}) {
+  const rows = [];
+  const batches = chunkArray([...new Set(ids)], 80);
+  for (const group of chunkArray(batches, concurrency)) {
+    // Settle the whole group before releasing a load lock or falling back to cache.
+    const results = await Promise.allSettled(group.map((batch) => fetchBatch(batch)));
+    const failure = results.find((result) => result.status === "rejected");
+    if (failure) throw failure.reason;
+    rows.push(...results.flatMap((result) => result.value));
+  }
+  return rows;
 }
 
 function yieldToBrowser() {
@@ -3746,26 +3711,15 @@ async function fetchWorshipRowsForServiceIds(serviceIds = []) {
   const elementSelect = await worshipElementListSelect();
   const cacheKey = worshipRowsCacheKey(ids, elementSelect);
   try {
-    const sections = [];
-    for (const batch of chunkArray(ids, 80)) {
-      const rows = await fetchSupabasePaged("mindex_worship_sections", WORSHIP_SECTION_LIST_SELECT, (query) =>
-        query
-          .in("service_id", batch)
-          .order("service_id", { ascending: true })
-          .order("sort_order", { ascending: true }));
-      sections.push(...rows);
-    }
-
+    const sections = await fetchSupabaseBatches(ids, (batch) =>
+      fetchSupabasePaged("mindex_worship_sections", WORSHIP_SECTION_LIST_SELECT, (query) =>
+        query.in("service_id", batch).order("service_id", { ascending: true })
+          .order("sort_order", { ascending: true }).order("id", { ascending: true })));
     const sectionIds = sections.map((section) => section.id).filter(Boolean);
-    const elements = [];
-    for (const batch of chunkArray(sectionIds, 80)) {
-      const rows = await fetchSupabasePaged("mindex_worship_elements", elementSelect, (query) =>
-        query
-          .in("section_id", batch)
-          .order("section_id", { ascending: true })
-          .order("sort_order", { ascending: true }));
-      elements.push(...rows);
-    }
+    const elements = await fetchSupabaseBatches(sectionIds, (batch) =>
+      fetchSupabasePaged("mindex_worship_elements", elementSelect, (query) =>
+        query.in("section_id", batch).order("section_id", { ascending: true })
+          .order("sort_order", { ascending: true }).order("id", { ascending: true })));
 
     writeStaticSupabaseCache("mindex_worship_rows", cacheKey, [{ sections, elements }]);
     return { sections, elements };
@@ -22778,12 +22732,10 @@ function worshipSetlistArchiveEntries() {
     const candidates = prepareWorshipSetlistArchiveCandidates((candidatesBySource[source.id] || [])
       .filter(isSetlistPraiseCandidate), source);
     const needsReview = candidates.filter((candidate) => candidate.review_status === "needs_review").length;
-    const matched = candidates.filter((candidate) => setlistCandidateMatchedSong(candidate)).length;
     return {
       source,
       candidates,
       needsReview,
-      matched,
       missing: candidates.length === 0,
     };
   }).sort((a, b) => {
