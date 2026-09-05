@@ -6597,6 +6597,10 @@ def main() -> int:
                             const specialMemo = parseServiceItemMemo(special.memo);
                             const videoMemo = parseServiceItemMemo(video.memo);
                             const recovery = JSON.parse(localStorage.getItem(recoveryKey) || '{}');
+                            refs.detailPane.innerHTML = renderServiceSourcePanel(service);
+                            const recoveryButton = refs.detailPane.querySelector('[data-service-source-recovery]');
+                            const recoveryRestored = restoreServiceSourceRecovery(service.id);
+                            const recoveryTextarea = refs.detailPane.querySelector('[data-service-source-text="__smoke_source_apply__"]');
                             return {
                               ready: true,
                               applied,
@@ -6616,6 +6620,9 @@ def main() -> int:
                               saveDirtyAfterInput,
                               rerenderPreservedDraft: rerenderedSource.includes('새 특송'),
                               pendingAfterApply,
+                              recoveryButton: Boolean(recoveryButton),
+                              recoveryRestored,
+                              recoveryRestoredText: recoveryTextarea?.value || '',
                               dirty: state.dirty.service,
                               rendered,
                               refreshes,
@@ -6657,6 +6664,9 @@ def main() -> int:
                         and service_source_view_apply["saveDirtyAfterInput"]
                         and service_source_view_apply["rerenderPreservedDraft"]
                         and not service_source_view_apply["pendingAfterApply"]
+                        and service_source_view_apply["recoveryButton"]
+                        and service_source_view_apply["recoveryRestored"]
+                        and service_source_view_apply["recoveryRestoredText"] == service_source_view_apply["sourceDraft"]
                         and service_source_view_apply.get("dirty")
                         and service_source_view_apply.get("rendered")
                         and service_source_view_apply["refreshes"] == [{"serviceId": "__smoke_source_apply__", "publish": False}]

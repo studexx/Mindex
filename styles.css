@@ -6265,6 +6265,9 @@ body[data-theme="dark"] .service-week-empty:hover {
   background: color-mix(in srgb, var(--accent) 11%, var(--panel));
   color: var(--ink);
 }
+.svc-source-recovery-item {
+  border-color: color-mix(in srgb, var(--accent) 32%, var(--line));
+}
 .svc-source-history-item span,
 .svc-source-history-item small {
   min-width: 0;

@@ -8035,7 +8035,7 @@ function handleDetailClick(event) {
   const serviceSourceCopyBtn = event.target.closest("[data-service-source-copy]");
   if (serviceSourceCopyBtn) {
     const service = state.services.find((candidate) => candidate.id === serviceSourceCopyBtn.dataset.serviceSourceCopy);
-    if (service) void copyText(buildServiceSourceText(service));
+    if (service) void copyText(serviceSourceTextForEditor(service));
     return;
   }
 
@@ -8051,6 +8051,12 @@ function handleDetailClick(event) {
       serviceSourceHistoryBtn.dataset.serviceSourceHistory || state.selectedServiceId,
       Number(serviceSourceHistoryBtn.dataset.serviceSourceHistoryIndex),
     );
+    return;
+  }
+
+  const serviceSourceRecoveryBtn = event.target.closest("[data-service-source-recovery]");
+  if (serviceSourceRecoveryBtn) {
+    restoreServiceSourceRecovery(serviceSourceRecoveryBtn.dataset.serviceSourceRecovery || state.selectedServiceId);
     return;
   }
 
@@ -23642,6 +23648,7 @@ function renderServiceSourcePanel(service) {
       <div class="svc-source-panel-body">
         <textarea class="svc-source-text" data-service-source-text="${escapeAttr(service.id)}" data-service-source-signature="${escapeAttr(compactTextSignature(source))}" spellcheck="false" aria-label="예배 원문">${escapeHtml(source)}</textarea>
         <div class="svc-source-side">
+          ${renderServiceSourceRecovery(service)}
           ${renderServiceSourceHistory(service)}
           <div class="svc-source-actions">
             <button class="reference-new-btn svc-source-apply" type="button" data-service-source-apply="${escapeAttr(service.id)}">
@@ -23666,6 +23673,51 @@ function serviceDocumentHistoryFromRef(service = null) {
 function serviceSourceTextForEditor(service = null) {
   if (typeof service?._worshipSourceTextDraft === "string") return service._worshipSourceTextDraft;
   return buildServiceSourceText(service);
+}
+
+function latestWorshipRecoverySnapshotForService(serviceId = state.selectedServiceId) {
+  const id = String(serviceId || "").trim();
+  if (!id) return null;
+  const latestRaw = safeStorageGet("local", worshipRecoveryLatestSnapshotKey(id), "");
+  try {
+    const latest = latestRaw ? JSON.parse(latestRaw) : null;
+    if (latest?.serviceId === id) return latest;
+  } catch {
+    // Fall back to the compact history list below.
+  }
+  return [...readWorshipRecoverySnapshots()].reverse().find((snapshot) => snapshot?.serviceId === id) || null;
+}
+
+function serviceDocumentFromRecoverySnapshot(snapshot = null) {
+  const document = snapshot?.serviceDocument;
+  return document && typeof document === "object" ? document : null;
+}
+
+function renderServiceSourceRecovery(service) {
+  const snapshot = latestWorshipRecoverySnapshotForService(service?.id);
+  const document = serviceDocumentFromRecoverySnapshot(snapshot);
+  if (!String(document?.sourceText || "").trim()) return "";
+  return `
+    <div class="svc-source-history" aria-label="로컬 복구본">
+      <div class="svc-source-history-head">
+        <span>로컬 복구본</span>
+        <small>${escapeHtml(formatServiceSourceHistoryTime(snapshot.capturedAt) || "최근")}</small>
+      </div>
+      <button class="svc-source-history-item svc-source-recovery-item" type="button" data-service-source-recovery="${escapeAttr(service.id)}">
+        <span>${escapeHtml(serviceSourceRecoveryLabel(snapshot))}</span>
+        <small>${escapeHtml(serviceSourceHistoryMeta(document))}</small>
+      </button>
+    </div>`;
+}
+
+function serviceSourceRecoveryLabel(snapshot = {}) {
+  const reason = String(snapshot.reason || "").trim();
+  if (reason === "before-full-save") return "저장 직전";
+  if (reason === "before-element-patch") return "항목 저장 직전";
+  if (reason === "before-service-delete") return "삭제 직전";
+  if (reason === "after-source-text-apply") return "원문 반영 직후";
+  if (reason === "before-save-source-text-apply") return "원문 저장 직전";
+  return "최근 복구본";
 }
 
 function renderServiceSourceHistory(service) {
@@ -23727,6 +23779,22 @@ function restoreServiceSourceHistory(serviceId = state.selectedServiceId, histor
   textarea.value = sourceText;
   textarea.dispatchEvent(new Event("input", { bubbles: true }));
   showToast("이전 저장본 원문을 불러왔습니다. 반영 후 저장해 주세요.", "info");
+  return true;
+}
+
+function restoreServiceSourceRecovery(serviceId = state.selectedServiceId) {
+  const id = String(serviceId || "").trim();
+  const service = state.services.find((candidate) => candidate.id === id);
+  const textarea = serviceSourceTextareaForService(id);
+  const document = serviceDocumentFromRecoverySnapshot(latestWorshipRecoverySnapshotForService(id));
+  const sourceText = String(document?.sourceText || "").trim();
+  if (!service || !textarea || !sourceText) {
+    showToast("불러올 로컬 복구본을 찾지 못했습니다.", "error");
+    return false;
+  }
+  textarea.value = sourceText;
+  textarea.dispatchEvent(new Event("input", { bubbles: true }));
+  showToast("로컬 복구본 원문을 불러왔습니다. 반영 후 저장해 주세요.", "info");
   return true;
 }
 
