@@ -5654,10 +5654,10 @@ def main() -> int:
                 )
                 if (
                     "주 내 아버지" in section_song_title_output_font_state["text"]
-                    and section_song_title_output_font_state["headingFontSize"] > section_song_title_output_font_state["nameFontSize"]
+                    and section_song_title_output_font_state["headingFontSize"] < section_song_title_output_font_state["nameFontSize"]
                     and 65 <= section_song_title_output_font_state["headingFontSize"] <= 70
-                    and 50 <= section_song_title_output_font_state["nameFontSize"] <= 55
-                    and section_song_title_output_font_state["nameFontWeight"] == "600"
+                    and 73 <= section_song_title_output_font_state["nameFontSize"] <= 76
+                    and section_song_title_output_font_state["nameFontWeight"] == "800"
                 ):
                     pass_("presenter-section-song-title-output-font", json.dumps(section_song_title_output_font_state, ensure_ascii=False))
                 else:
@@ -5709,8 +5709,8 @@ def main() -> int:
                 )
                 if (
                     "주 찬양합니다" in plain_song_title_output_font_state["text"]
-                    and 50 <= plain_song_title_output_font_state["fontSize"] <= 55
-                    and plain_song_title_output_font_state["fontWeight"] == "600"
+                    and 73 <= plain_song_title_output_font_state["fontSize"] <= 76
+                    and plain_song_title_output_font_state["fontWeight"] == "800"
                     and plain_song_title_output_font_state["lineHeight"] >= plain_song_title_output_font_state["fontSize"]
                 ):
                     pass_("presenter-plain-song-title-output-font", json.dumps(plain_song_title_output_font_state, ensure_ascii=False))
@@ -5744,7 +5744,7 @@ def main() -> int:
                 )
                 if (
                     all("주 찬양합니다" in item["text"] for item in fullscreen_song_title_output_font_state)
-                    and all(50 <= item["fontSize"] <= 55 for item in fullscreen_song_title_output_font_state)
+                    and all(73 <= item["fontSize"] <= 76 for item in fullscreen_song_title_output_font_state)
                     and all(item["fontWeight"] == "800" for item in fullscreen_song_title_output_font_state)
                 ):
                     pass_("presenter-fullscreen-song-title-output-font", json.dumps(fullscreen_song_title_output_font_state, ensure_ascii=False))
