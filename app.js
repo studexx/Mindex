@@ -27645,10 +27645,7 @@ function renderPresenterBoardSection(group, activeIndex, serviceId) {
 function renderPresenterReferenceMediaQuickAdd(sectionKey, serviceId) {
   const sectionLabel = presenterReferenceMediaSectionLabel(sectionKey);
   return `
-    <div class="svc-reference-media-quick-add">
-      <div class="svc-reference-media-quick-add-copy">
-        <strong>${escapeHtml(sectionLabel)}</strong>
-      </div>
+    <div class="svc-reference-media-quick-add" role="group" aria-label="${escapeAttr(sectionLabel)}">
       <div class="svc-reference-media-quick-add-actions">
         <button class="svc-reference-media-add" type="button" data-presenter-reference-media-add
           data-presenter-reference-media-section="${escapeAttr(sectionKey)}" data-service-id="${escapeAttr(serviceId)}">
