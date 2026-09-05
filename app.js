@@ -28108,11 +28108,7 @@ function presenterScriptureReferenceBadgeBookName(rawBook = "", slide = null) {
 function renderPresenterSlideMiniPreview(slide, serviceId = state.presenter.serviceId) {
   const service = state.services.find((svc) => svc.id === serviceId);
   const serviceChromakey = presenterServiceUsesChromakey(service);
-  const previewSlide = slide
-    ? (presenterSlideOutputContext(slide, serviceChromakey) === "clean"
-      ? normalizeCleanPresenterSlideLayout(slide)
-      : normalizeChromakeyPresenterSlideLayout(slide))
-    : slide;
+  const previewSlide = normalizePresenterMiniPreviewSlide(slide, serviceChromakey);
   const backgroundImages = presenterBackgroundSourcesForService(service, {
     includeChromakeyCleanSlides: presenterSlideOutputContext(previewSlide, serviceChromakey) === "clean",
   });
@@ -28143,6 +28139,64 @@ function renderPresenterSlideMiniPreview(slide, serviceId = state.presenter.serv
         ${renderPresenterSlideFrame(previewSlide, { noChromakey: frameState.noChromakey, previewStage: true })}
       </span>
     </span>`;
+}
+
+function normalizePresenterMiniPreviewSlide(slide = null, serviceChromakey = true) {
+  if (!slide) return slide;
+  const outputContext = presenterSlideOutputContext(slide, serviceChromakey);
+  const normalizedSlide = outputContext === "clean"
+    ? normalizeCleanPresenterSlideLayout(slide)
+    : normalizeChromakeyPresenterSlideLayout(slide);
+  if (outputContext !== "clean") return normalizedSlide;
+  if (presenterSlideLayout(normalizedSlide) !== PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT) return normalizedSlide;
+  if (
+    presenterSlideElementType(normalizedSlide) === PRESENTER_ELEMENT_TYPES.TITLE_ASSIGNEE
+    && !isPresenterMainPraiseSlide(normalizedSlide)
+    && String(normalizedSlide.orderTitle || "").trim()
+    && String(normalizedSlide.contentTitle || "").trim()
+  ) {
+    const title = String(normalizedSlide.contentTitle || normalizedSlide.text || "")
+      .replace(PRESENTER_SONG_NOTE_PATTERN, "")
+      .trim();
+    const bodyText = String(normalizedSlide.orderTitle || normalizedSlide.title || "").trim();
+    return {
+      ...normalizedSlide,
+      elementType: PRESENTER_ELEMENT_TYPES.TITLE_CONTENT,
+      layout: PRESENTER_SLIDE_LAYOUTS.CENTER_TEXT,
+      type: "title-content",
+      title: title || bodyText || "찬양",
+      assignee: "",
+      bodyText,
+      text: cleanList([title || bodyText || "찬양", bodyText && compactSearchValue(bodyText) !== compactSearchValue(title) ? bodyText : ""]).join("\n"),
+      outputContext: "clean",
+    };
+  }
+  if (presenterSlideElementType(normalizedSlide) !== PRESENTER_ELEMENT_TYPES.PRAISE || normalizedSlide.type !== "song-title") {
+    return normalizedSlide;
+  }
+  if (isPresenterMainPraiseSlide(normalizedSlide)) return normalizedSlide;
+  const heading = String(
+    normalizedSlide.sectionHeading
+    || normalizedSlide.elementLabel
+    || normalizedSlide.label
+    || normalizedSlide.sectionLabel
+    || "",
+  ).trim();
+  const title = String(normalizedSlide.title || normalizedSlide.text || "")
+    .replace(PRESENTER_SONG_NOTE_PATTERN, "")
+    .trim() || heading || "찬양";
+  const bodyText = heading && compactSearchValue(heading) !== compactSearchValue(title) ? heading : "";
+  return {
+    ...normalizedSlide,
+    elementType: PRESENTER_ELEMENT_TYPES.TITLE_CONTENT,
+    layout: PRESENTER_SLIDE_LAYOUTS.CENTER_TEXT,
+    type: "title-content",
+    title,
+    assignee: "",
+    bodyText,
+    text: cleanList([title, bodyText]).join("\n"),
+    outputContext: "clean",
+  };
 }
 
 function presenterMediaFileName(source) {

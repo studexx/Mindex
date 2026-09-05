@@ -5504,13 +5504,17 @@ def main() -> int:
                       const bar = mount.querySelector('.presenter-slide-text');
                       const songLayout = mount.querySelector('.presenter-section-song-title');
                       const orderContent = mount.querySelector('.presenter-title-assignee--order-content');
+                      const titleContent = mount.querySelector('.presenter-title-content');
                       const heading = mount.querySelector('.presenter-title-assignee-order');
                       const name = mount.querySelector('.presenter-title-assignee-content');
+                      const title = mount.querySelector('.presenter-title-content-title');
                       const result = {
                         noChromakey: Boolean(host?.classList.contains('no-chromakey')),
                         hasBackground: Boolean(host?.classList.contains('has-background')),
                         hasSongLayout: Boolean(songLayout),
                         hasOrderContent: Boolean(orderContent),
+                        hasTitleContent: Boolean(titleContent),
+                        titleText: title?.textContent?.trim() || '',
                         display: '',
                         columns: '',
                         headingInsideBar: false,
@@ -5542,10 +5546,9 @@ def main() -> int:
 	                    section_song_title_fit_state["noChromakey"]
 	                    and section_song_title_fit_state["hasBackground"]
 	                    and not section_song_title_fit_state["hasSongLayout"]
-	                    and section_song_title_fit_state["hasOrderContent"]
-	                    and section_song_title_fit_state["display"] == "grid"
-	                    and section_song_title_fit_state["headingInsideBar"]
-	                    and section_song_title_fit_state["nameInsideBar"]
+	                    and not section_song_title_fit_state["hasOrderContent"]
+	                    and section_song_title_fit_state["hasTitleContent"]
+	                    and "이 천지간 만물들아" in section_song_title_fit_state["titleText"]
 	                ):
                     pass_("presenter-section-song-title-fit", json.dumps(section_song_title_fit_state, ensure_ascii=False))
                 else:
