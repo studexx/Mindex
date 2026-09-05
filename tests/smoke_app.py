@@ -462,11 +462,13 @@ def main() -> int:
     recovery_body = app_source[recovery_start:recovery_end]
     if (
         "function cloneRecoveryRecord" in recovery_body
+        and "serviceDocument" in recovery_body
+        and "buildWorshipRecoveryServiceDocument(service)" in recovery_body
         and "JSON.parse(JSON.stringify" not in recovery_body
     ):
-        pass_("worship-recovery-shallow-clone")
+        pass_("worship-recovery-shallow-clone-and-service-document")
     else:
-        fail("worship-recovery-shallow-clone")
+        fail("worship-recovery-shallow-clone-and-service-document")
 
     full_save_end = app_source.find("async function saveServiceItemPatch", full_save_start)
     full_save_body = app_source[full_save_start:full_save_end]

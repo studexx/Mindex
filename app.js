@@ -2100,17 +2100,31 @@ function buildWorshipRecoverySnapshot(service = null, reason = "before-save") {
   if (!serviceId) return null;
   const rows = worshipRecoverySnapshotRows(serviceId);
   if (!rows.sections.length && !rows.elements.length) return null;
+  const serviceDocument = buildWorshipRecoveryServiceDocument(service);
   return {
     schema: 1,
     reason,
     capturedAt: new Date().toISOString(),
     serviceId,
     service: cloneRecoveryRecord(service),
+    serviceDocument,
     sectionCount: rows.sections.length,
     elementCount: rows.elements.length,
     sections: rows.sections,
     elements: rows.elements,
   };
+}
+
+function buildWorshipRecoveryServiceDocument(service = null) {
+  if (!service?.id || typeof buildServiceDocumentSnapshot !== "function") {
+    return serviceDocumentSnapshotFromRef(service);
+  }
+  try {
+    return buildServiceDocumentSnapshot(service, getServiceItems(service.id));
+  } catch (error) {
+    console.warn("Could not build worship recovery service document.", error);
+    return serviceDocumentSnapshotFromRef(service);
+  }
 }
 
 function captureWorshipRecoverySnapshot(service = null, reason = "before-save") {
