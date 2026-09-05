@@ -7773,12 +7773,12 @@ textarea.svc-presenter-input-control--multiline {
 .svc-board-subgroup-controls .svc-presenter-input-field {
   display: grid;
   min-width: 0;
-  grid-template-rows: 14px 30px;
+  grid-template-rows: max-content auto;
   gap: 4px;
 }
 .svc-board-subgroup-controls .svc-presenter-input-field:not(.svc-presenter-input-field--lyrics, .svc-presenter-input-field--scripture-parts) {
   grid-template-columns: max-content minmax(0, 1fr);
-  grid-template-rows: 30px;
+  grid-template-rows: minmax(30px, auto);
   align-items: center;
   gap: 8px;
 }
@@ -7817,6 +7817,11 @@ textarea.svc-presenter-input-control--multiline {
   line-height: 30px;
   outline: none;
   padding: 0 10px;
+}
+.svc-board-subgroup-controls textarea.svc-presenter-input-control--multiline {
+  height: auto;
+  line-height: 1.55;
+  padding: 10px 12px;
 }
 .svc-board-subgroup-controls .svc-presenter-input-control:focus,
 .svc-board-subgroup-controls .svc-edit-title:focus,
