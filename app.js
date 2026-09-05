@@ -10955,7 +10955,6 @@ function selectedServiceForEditor() {
 }
 
 function serviceItemAllowsManualSongText(item = {}, service = selectedServiceForEditor()) {
-  const label = compactSearchValue(item.label || "");
   if (isSongServiceLabel(item.label)) return true;
   if (isSpecialSongServiceItem(item)) return true;
   if (isAllGenerationsWorshipService(service) && isMainPraiseServiceItem(item, { allowUnlabeled: true })) return true;

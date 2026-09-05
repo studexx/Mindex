@@ -32,7 +32,6 @@
     denseStep: 5,
     layoutStep: 10,
     detailPadding: 25,
-    legacyShellStep: 5,
   });
 
   const MOTION = Object.freeze({
