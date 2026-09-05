@@ -1509,6 +1509,35 @@ def main() -> int:
                     pass_("service-rail-click-opens-week-board", json.dumps(service_rail_state, ensure_ascii=False))
                 else:
                     fail("service-rail-click-opens-week-board", json.dumps(service_rail_state, ensure_ascii=False))
+                calendar_alternative_service_skip_state = page.evaluate(
+                    """
+                    (() => {
+                      const previousCalendarData = state.calendarData;
+                      try {
+                        state.calendarData = [
+                          { date: '2099-09-06', church_schedule: '청년부 야외예배' },
+                          { date: '2099-09-13', church_schedule: '청소년부 문화예배' },
+                          { date: '2099-09-20', church_schedule: '청년부 예배' },
+                        ];
+                        return {
+                          youngAdultOutdoor: [...calendarSkippedServiceTypesForDate('2099-09-06')],
+                          youthCulture: [...calendarSkippedServiceTypesForDate('2099-09-13')],
+                          regularYoungAdult: [...calendarSkippedServiceTypesForDate('2099-09-20')],
+                        };
+                      } finally {
+                        state.calendarData = previousCalendarData;
+                      }
+                    })()
+                    """
+                )
+                if (
+                    calendar_alternative_service_skip_state["youngAdultOutdoor"] == ["young-adult"]
+                    and calendar_alternative_service_skip_state["youthCulture"] == ["youth"]
+                    and calendar_alternative_service_skip_state["regularYoungAdult"] == []
+                ):
+                    pass_("calendar-alternative-service-skip", json.dumps(calendar_alternative_service_skip_state, ensure_ascii=False))
+                else:
+                    fail("calendar-alternative-service-skip", json.dumps(calendar_alternative_service_skip_state, ensure_ascii=False))
                 page.evaluate("() => { resetHomeState(); render(); }")
                 page.wait_for_function("() => document.body.dataset.module === 'home'", timeout=5000)
 

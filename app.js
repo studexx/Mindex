@@ -4010,10 +4010,28 @@ function isAllGenerationsWorshipDate(date) {
   return isAllGenerationsWorshipContext(calendarTextForDate(date));
 }
 
+const CALENDAR_SERVICE_SKIP_CONTEXTS = [
+  { typeId: "children", aliases: ["어린이부", "아동부", "유초등부"] },
+  { typeId: "youth", aliases: ["청소년부", "중고등부"] },
+  { typeId: "young-adult", aliases: ["청년부", "청년"] },
+];
+const CALENDAR_SERVICE_SKIP_KEYWORDS = ["야외예배", "문화예배"];
+
 function calendarSkippedServiceTypesForDate(date) {
   const compact = compactSearchValue(calendarTextForDate(date));
   const skipped = new Set();
-  if (compact.includes("청년부야외예배")) skipped.add("young-adult");
+  if (!compact) return skipped;
+  for (const context of CALENDAR_SERVICE_SKIP_CONTEXTS) {
+    const matchesAlternative = context.aliases.some((alias) => {
+      const aliasKey = compactSearchValue(alias);
+      return CALENDAR_SERVICE_SKIP_KEYWORDS.some((keyword) => {
+        const keywordKey = compactSearchValue(keyword);
+        return compact.includes(`${aliasKey}${keywordKey}`)
+          || compact.includes(`${keywordKey}${aliasKey}`);
+      });
+    });
+    if (matchesAlternative) skipped.add(context.typeId);
+  }
   return skipped;
 }
 
