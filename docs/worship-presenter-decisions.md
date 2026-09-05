@@ -37,6 +37,11 @@ Small visual polish that does not alter behavior does not need an entry.
 
 ### Setlist Archive Navigation
 
+- 별명은 카드 첫 줄 오른쪽에 정렬한다. 주별은 예배명, 예배별은 날짜 옆에 표시한다.
+- 2026-01-04~05-31 주일 콘티 17건의 `나는 예배자입니다 + 소원`을 DB에서
+  `입례찬양`/`entrance_praise`로 정정했다. 메인 번호에서 제외하며 원본 백업은
+  `backups/setlist-sunday-entrance-before-20260906.json`에 보관한다.
+
 - 1부 설교자를 예배 인도자 기본값으로 자동 대입하던 예외는 제거한다.
 
 - 주일 콘티는 3부 기준 `주일예배` 카드 하나만 표시한다. 같은 날짜 2부 특송만

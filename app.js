@@ -23089,10 +23089,12 @@ function renderWorshipSetlistArchiveEntry(entry) {
     <article class="svc-setlist-entry${entry.missing ? " is-missing" : ""}${entry.needsReview ? " needs-review" : ""}">
       <header>
         <div class="svc-setlist-entry-title">
-          ${state.worshipSetlistArchiveView !== "service" ? `<strong>${escapeHtml(title)}</strong>` : ""}
-          ${aliases ? `<span class="svc-setlist-alias" title="${escapeAttr(aliases)}">${escapeHtml(aliases)}</span>` : ""}
+          <div class="svc-setlist-entry-heading">
+            <strong>${escapeHtml(title)}</strong>
+            ${aliases ? `<span class="svc-setlist-alias" title="${escapeAttr(aliases)}">${escapeHtml(aliases)}</span>` : ""}
+          </div>
           <div class="svc-setlist-entry-meta">
-            ${state.worshipSetlistArchiveView === "service" ? `<strong>${escapeHtml(title)}</strong>` : `<span class="svc-setlist-leader">${escapeHtml(source.service_date || "날짜 없음")}</span>`}
+            ${state.worshipSetlistArchiveView !== "service" ? `<span class="svc-setlist-leader">${escapeHtml(source.service_date || "날짜 없음")}</span>` : ""}
             <span class="svc-setlist-leader svc-setlist-entry-leader"><span>인도</span> ${escapeHtml(leader || "미기록")}</span>
           </div>
         </div>

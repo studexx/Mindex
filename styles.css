@@ -8897,3 +8897,10 @@ body.is-chromium .svc-slide-thumb.active:hover .svc-slide-thumb-frame {
   min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   color: var(--ink-2); font-size: var(--ui-meta-size); font-weight: var(--ui-meta-weight);
 }
+
+.svc-setlist-entry-heading {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 12px; min-width: 0;
+}
+.svc-setlist-entry-heading > strong { flex-shrink: 0; }
+.svc-setlist-entry-heading > .svc-setlist-alias { margin-left: auto; text-align: right; }
