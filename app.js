@@ -21077,7 +21077,7 @@ function buildServiceDocumentSourceRecords(sourceText = "", items = [], service 
       elementId: String(item?.id || "").trim(),
       sectionId: String(item?._worshipSectionId || item?.section_id || "").trim(),
       sectionKey: String(item?._worshipSectionKey || item?.section_key || "").trim(),
-      slotKey: normalizeWorshipSlotKey(item?.slot_key || item?.source_ref?.slotKey || item?.source_ref?.slot_key || item?.config?.slotKey),
+      slotKey: normalizeWorshipSlotKey(item?._worshipSlotKey || item?.slot_key || item?.source_ref?.slotKey || item?.source_ref?.slot_key || item?.config?.slotKey),
       sectionTitle: record.sectionTitle,
       label: record.label,
       value: record.value,
