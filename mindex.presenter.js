@@ -3816,7 +3816,8 @@ function fitPresenterSermonTitleText(host) {
       const baseSize = Number.parseFloat(window.getComputedStyle(textBox).fontSize);
       if (!Number.isFinite(baseSize) || baseSize <= 0) return;
 
-      const floor = Math.min(minimumSize, baseSize);
+      const songTitle = textBox.closest('.presenter-slide--fullscreen-song-title');
+      const floor = Math.min(songTitle ? 48 * (outputRoot.clientWidth || 1920) / 1920 : minimumSize, baseSize);
       for (let size = baseSize; size >= floor; size -= 2) {
         textBox.style.fontSize = `${size}px`;
         if (textBox.scrollWidth <= textBox.clientWidth + 1) return;
@@ -4336,6 +4337,13 @@ function trimPresenterOutputImagePreloadCache() {
 }
 
 function renderPresenterSlideFrame(slide, options = {}) {
+  if (options.noChromakey && slide?.type === "song-title" && presenterSlideElementType(slide) === PRESENTER_ELEMENT_TYPES.PRAISE) {
+    const title = formatPresenterSongTitleText(String(slide.title || slide.text || "").trim());
+    // Output and previews must use the same song-only fullscreen composition.
+    slide = { ...slide, elementType: PRESENTER_ELEMENT_TYPES.TITLE_CONTENT,
+      layout: PRESENTER_SLIDE_LAYOUTS.CENTER_TEXT, type: "title-content",
+      title, text: title, bodyText: "", assignee: "", fullscreenSongTitle: true };
+  }
   const slideClass = presenterSlideRenderClass(slide);
   const extraClasses = presenterSlideExtraClasses(slide);
   const body = renderPresenterSlideBody(slide, options);
@@ -4354,6 +4362,7 @@ function renderPresenterSlideFrame(slide, options = {}) {
 
 function presenterSlideExtraClasses(slide) {
   const classes = [];
+  if (slide?.fullscreenSongTitle) classes.push("presenter-slide--fullscreen-song-title");
   const layout = presenterSlideLayout(slide);
   if (presenterSlideIsScoreLike(slide)) classes.push("presenter-slide--score");
   if (layout !== PRESENTER_SLIDE_LAYOUTS.BLANK && presenterScriptureContextUsesReadingForm(slide?.scriptureContext)) classes.push("presenter-slide--scripture-reading");
@@ -4627,10 +4636,10 @@ function renderPresenterTitleContentSlide(slide) {
   const titleChars = presenterLineCharEstimate(title);
   return `
     <div class="presenter-title-content">
-      <span class="presenter-title-content-title" style="--line-chars: ${escapeAttr(titleChars)}">${escapeHtml(title)}</span>
-      <div class="presenter-title-content-body">
+      <span class="presenter-title-content-title" style="--line-chars: ${escapeAttr(titleChars)}">${slide.fullscreenSongTitle ? renderPresenterSongText(title, slide) : escapeHtml(title)}</span>
+      ${slide.fullscreenSongTitle ? "" : `<div class="presenter-title-content-body">
         ${bodyLines.map((line) => `<span style="--line-chars: ${presenterLineCharEstimate(line)}">${escapePresenterSlideLine(line, slide)}</span>`).join("")}
-      </div>
+      </div>`}
     </div>
   `;
 }

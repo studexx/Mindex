@@ -22,44 +22,58 @@ def main():
                 for key in ['praise', 'pre_scripture_praise', 'entrance_praise',
                             'response_song', 'prayer_meeting_praise', 'special_song']:
                     for title in ['임재', '한라에서 백두까지 백두에서 땅끝까지',
-                                  '한라에서 백두까지 백두에서 땅끝까지 주님의 사랑을 전하리']:
+                                  '한라에서 백두까지 백두에서 땅끝까지 주님의 사랑을 전하리',
+                                  '주의 자녀로 산다는 것은']:
                         result = page.evaluate("""({chromakey, key, title}) => {
                           const slide = {id:'title-test', type:'song-title', elementType:'praise',
                             layout:'lower_bar_text', sectionKey:key, title, text:'♬ ' + title,
+                            sectionHeading:'찬양 1', label:'찬양 1',
                             outputContext:chromakey ? 'chromakey' : 'fullscreen', live:true};
+                          if (chromakey) delete slide.sectionHeading;
                           renderPresenterOutput({serviceId:'title-test', serviceType:'sunday-main',
                             chromakey, slides:[slide], index:0, safetyBlank:false}, {});
                           const measure = root => {
-                            const box = root.querySelector('.presenter-slide--song-title > .presenter-slide-text');
+                            const box = root.querySelector(chromakey
+                              ? '.presenter-slide--song-title > .presenter-slide-text'
+                              : '.presenter-slide--fullscreen-song-title .presenter-title-content-title');
                             const range = document.createRange();
                             range.selectNodeContents(box);
                             const bounds = box.getBoundingClientRect();
                             const style = getComputedStyle(box);
+                            const stage = root.matches('.presenter-output-root') ? root : root.querySelector('.presenter-output-root');
+                            const stageBounds = stage.getBoundingClientRect();
+                            const clip = chromakey ? bounds : stageBounds;
+                            const textBounds = range.getBoundingClientRect();
                             return {size:parseFloat(style.fontSize), weight:style.fontWeight,
-                              inside:[...range.getClientRects()].every(r => r.left >= bounds.left - 1
-                                && r.right <= bounds.right + 1 && r.top >= bounds.top - 1
-                                && r.bottom <= bounds.bottom + 1)};
+                              clean:chromakey || (!root.querySelector('.presenter-title-content-body')
+                                && !root.textContent.includes('찬양 1') && box.textContent.includes('♬')
+                                && box.scrollWidth <= box.clientWidth + 1
+                                && Math.abs((textBounds.left + textBounds.right - stageBounds.left - stageBounds.right) / 2) < 2
+                                && Math.abs((bounds.top + bounds.bottom - stageBounds.top - stageBounds.bottom) / 2) < 1),
+                              inside:[...range.getClientRects()].every(r => r.left >= clip.left - 1
+                                && r.right <= clip.right + 1 && r.top >= clip.top - 1
+                                && r.bottom <= clip.bottom + 1)};
                           };
                           const output = measure(document.getElementById('presenterOutputRoot'));
                           const mount = document.createElement('div');
                           mount.className = 'svc-slide-thumb-frame';
                           mount.style.cssText='position:fixed;top:0;left:0;width:406px;height:228.375px';
-                          mount.innerHTML = chromakey ? renderPresenterSlideMiniPreview(slide)
-                            : '<span class="svc-slide-mini-canvas presenter-output-root no-chromakey">'
-                              + renderPresenterSlideFrame(slide, {noChromakey:true, previewStage:true}) + '</span>';
+                          mount.innerHTML = renderPresenterSlideMiniPreview(slide);
                           document.body.append(mount);
                           applyPresenterPreviewScales(mount);
                           fitPresenterSongTitlePreviews(mount);
+                          fitPresenterSermonTitlePreviews(mount);
                           const preview = measure(mount);
                           mount.remove();
                           return {output, preview};
                         }""", {'chromakey': chromakey, 'key': key, 'title': title})
                         assert result['output'] == result['preview'], result
+                        page.screenshot(path=f'/tmp/mindex-song-title-{chromakey}.png')
                         for value in result.values():
-                            assert value['weight'] == '800' and value['inside'], result
-                            assert 56 <= value['size'] <= 100.01, result
+                            assert value['weight'] == '800' and value['inside'] and value['clean'], result
+                            assert (56 if chromakey else 48) <= value['size'] <= (100.01 if chromakey else 150.01), result
                             if title == '임재':
-                                assert abs(value['size'] - 100) < 0.1, result
+                                assert abs(value['size'] - (100 if chromakey else 150)) < 0.1, result
                         print('PASS', chromakey, key, title, result, flush=True)
                 page.screenshot(path=f'/tmp/mindex-song-title-{chromakey}.png')
             browser.close()

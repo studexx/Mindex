@@ -609,6 +609,13 @@
   overflow-wrap: anywhere;
   font-size: inherit;
 }
+.presenter-slide--fullscreen-song-title {
+  padding: 7cqh 7cqw;
+}
+.presenter-slide--fullscreen-song-title .presenter-title-content-title {
+  font-size: var(--presenter-size-song-title);
+  font-weight: var(--presenter-weight-display);
+}
 .presenter-slide--lyrics,
 .presenter-slide--song-title,
 .presenter-slide--scripture,

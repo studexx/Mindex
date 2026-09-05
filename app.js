@@ -28274,31 +28274,7 @@ function normalizePresenterMiniPreviewSlide(slide = null, serviceChromakey = tru
       outputContext: "clean",
     };
   }
-  if (presenterSlideElementType(normalizedSlide) !== PRESENTER_ELEMENT_TYPES.PRAISE || normalizedSlide.type !== "song-title") {
-    return normalizedSlide;
-  }
-  const heading = String(
-    normalizedSlide.sectionHeading
-    || normalizedSlide.elementLabel
-    || normalizedSlide.label
-    || normalizedSlide.sectionLabel
-    || "",
-  ).trim();
-  const title = String(normalizedSlide.title || normalizedSlide.text || "")
-    .replace(PRESENTER_SONG_NOTE_PATTERN, "")
-    .trim() || heading || "찬양";
-  const bodyText = heading && compactSearchValue(heading) !== compactSearchValue(title) ? heading : "";
-  return {
-    ...normalizedSlide,
-    elementType: PRESENTER_ELEMENT_TYPES.TITLE_CONTENT,
-    layout: PRESENTER_SLIDE_LAYOUTS.CENTER_TEXT,
-    type: "title-content",
-    title,
-    assignee: "",
-    bodyText,
-    text: cleanList([title, bodyText]).join("\n"),
-    outputContext: "clean",
-  };
+  return normalizedSlide;
 }
 
 function presenterMediaFileName(source) {

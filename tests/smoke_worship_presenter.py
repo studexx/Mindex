@@ -5733,7 +5733,7 @@ def main() -> int:
                             layout: PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT, type: 'song-title', title: '주 찬양합니다',
                             text: '♪ 주 찬양합니다', sectionKey }], index: 0, safetyBlank: false,
                         });
-                        const name = outputRoot.querySelector('.presenter-slide--song-title > .presenter-slide-text');
+                        const name = outputRoot.querySelector('.presenter-slide--fullscreen-song-title .presenter-title-content-title');
                         const style = name ? getComputedStyle(name) : null;
                         return { sectionKey, text: outputRoot.innerText || '', fontSize: style ? Number.parseFloat(style.fontSize) : 0, fontWeight: style?.fontWeight || '' };
                       });
@@ -5744,7 +5744,7 @@ def main() -> int:
                 )
                 if (
                     all("주 찬양합니다" in item["text"] for item in fullscreen_song_title_output_font_state)
-                    and all(73 <= item["fontSize"] <= 76 for item in fullscreen_song_title_output_font_state)
+                    and all(110 <= item["fontSize"] <= 114 for item in fullscreen_song_title_output_font_state)
                     and all(item["fontWeight"] == "800" for item in fullscreen_song_title_output_font_state)
                 ):
                     pass_("presenter-fullscreen-song-title-output-font", json.dumps(fullscreen_song_title_output_font_state, ensure_ascii=False))
@@ -5862,7 +5862,7 @@ def main() -> int:
                           text: '♪ 주 내 소망은 주 더 알기 원합니다', sectionHeading: '찬양', sectionKey: 'praise' }],
                         index: 0, safetyBlank: false,
                       });
-                      const name = outputRoot.querySelector('.presenter-section-song-title-name');
+                      const name = outputRoot.querySelector('.presenter-slide--fullscreen-song-title .presenter-title-content-title');
                       const style = name ? getComputedStyle(name) : null;
                       const result = {
                         fontSize: style ? Number.parseFloat(style.fontSize) : 0,
@@ -5878,7 +5878,7 @@ def main() -> int:
                 if (
                     72 <= fullscreen_long_song_title_fit_state["fontSize"] < 152
                     and fullscreen_long_song_title_fit_state["scrollWidth"] <= fullscreen_long_song_title_fit_state["clientWidth"]
-                    and fullscreen_long_song_title_fit_state["textAlign"] == "right"
+                    and fullscreen_long_song_title_fit_state["textAlign"] == "center"
                 ):
                     pass_("presenter-fullscreen-long-song-title-fit", json.dumps(fullscreen_long_song_title_fit_state, ensure_ascii=False))
                 else:
