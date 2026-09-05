@@ -3887,10 +3887,13 @@ body[data-module="presenter"] .detail-pane {
   overflow-wrap: anywhere;
 }
 .svc-setlist-song-title {
+  min-width: 0;
   color: var(--ink);
   font-size: var(--ui-row-size);
   font-weight: var(--ui-row-weight);
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 @media (max-width: 600px) {
   .svc-setlist-entry { padding: 15px; }
@@ -8869,7 +8872,8 @@ body.is-chromium .svc-slide-thumb.active:hover .svc-slide-thumb-frame {
 }
 
 .svc-setlist-song-link {
-  display: inline; padding: 0; border: 0; border-radius: 0;
+  display: inline-block; max-width: 100%; padding: 0; border: 0; border-radius: 0;
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis; vertical-align: bottom;
   background: none; color: inherit; font: inherit; line-height: inherit;
   text-align: left; cursor: pointer;
 }

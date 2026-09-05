@@ -23087,7 +23087,7 @@ function renderWorshipSetlistCandidate(candidate) {
   return `
     <li>
       <span class="svc-setlist-song-role">${escapeHtml(label && label !== title ? label : "")}</span>
-      <span class="svc-setlist-song-title">${content}</span>
+      <span class="svc-setlist-song-title" title="${escapeAttr(title)}">${content}</span>
     </li>`;
 }
 
