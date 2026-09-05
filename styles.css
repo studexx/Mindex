@@ -3750,6 +3750,37 @@ body[data-module="presenter"] .detail-pane {
   flex-direction: column;
   gap: 12px;
 }
+.svc-setlist-view-switch {
+  display: flex;
+  align-self: flex-start;
+  gap: 5px;
+  padding: 5px;
+  border-radius: var(--r);
+  background: var(--control-surface);
+}
+.svc-setlist-view-switch button {
+  min-height: 30px;
+  padding: 5px 15px;
+  border: 0;
+  border-radius: var(--r);
+  background: transparent;
+  color: var(--ink-3);
+  font-size: var(--ui-row-size);
+  font-weight: 600;
+  cursor: pointer;
+}
+.svc-setlist-view-switch button:hover {
+  background: var(--sidebar-hover-bg);
+  color: var(--ink);
+}
+.svc-setlist-view-switch button[aria-pressed="true"] {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.svc-setlist-group-count {
+  margin-left: 5px;
+  font-weight: var(--ui-meta-weight);
+}
 .svc-setlist-entry-list {
   display: grid;
   min-width: 0;

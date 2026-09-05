@@ -656,6 +656,7 @@ const state = {
   templateElementSuppressions: new Map(),
   worshipTemplates: [],
   worshipTemplateItems: [],
+  worshipSetlistArchiveView: "date",
   worshipSetlistArchive: {
     sources: [],
     candidates: [],
@@ -7997,6 +7998,16 @@ function handleDetailClick(event) {
     return;
   }
 
+  const serviceSetlistViewBtn = event.target.closest("[data-service-setlist-view]");
+  if (serviceSetlistViewBtn) {
+    const view = serviceSetlistViewBtn.dataset.serviceSetlistView;
+    if (!["date", "service"].includes(view) || state.worshipSetlistArchiveView === view) return;
+    state.worshipSetlistArchiveView = view;
+    renderServiceSetlistArchiveDetail();
+    refs.detailPane.querySelector(`[data-service-setlist-view="${view}"]`)?.focus();
+    return;
+  }
+
   const serviceSetlistRefreshBtn = event.target.closest("[data-service-setlist-refresh]");
   if (serviceSetlistRefreshBtn) {
     void loadWorshipSetlistArchive({ force: true });
@@ -14331,6 +14342,10 @@ function scheduleSearchRender(delay = 180) {
 
 function renderSearchResultsForCurrentModule() {
   renderSongList();
+  if (state.module === "service" && state.selectedServiceTypeId === SERVICE_SETLIST_ARCHIVE_PANEL_ID) {
+    renderServiceSetlistArchiveDetail();
+    return;
+  }
   if (isServiceDataModule()) return;
   if (state.module === "home") renderDetail();
   if (state.module === "scripture") renderDetail();
@@ -22483,6 +22498,7 @@ function setlistCandidateBelongsToSource(candidate = {}, source = {}) {
 }
 
 function setlistCandidateDisplayOrder(candidate = {}) {
+  if (candidate.archive_display_order != null) return candidate.archive_display_order;
   const key = String(candidate.candidate_key || "").trim();
   const label = normalizeTitle(candidate.raw_label || "");
   if (key === "praise" || label === "찬양") return 10;
@@ -22506,13 +22522,36 @@ function setlistCandidateMatchedSong(candidate = {}) {
   return title ? findServicePraiseSong(title) : null;
 }
 
+function prepareWorshipSetlistArchiveCandidates(candidates = [], source = {}) {
+  const sorted = [...candidates].sort(compareSetlistCandidatesForDisplay);
+  if (worshipAppServiceTypeId(source.service_type_id) !== "friday") return sorted;
+
+  const praise = sorted.filter((candidate) => normalizeTitle(candidate.raw_label || "") === "찬양");
+  const hasWorshipPraise = sorted.some((candidate) => normalizeTitle(candidate.raw_label || "") === "예배찬양");
+  // Legacy setlist imports merged the five opening songs and the separately
+  // labeled 찬양 into one six-song section. Five-song services have no such slot.
+  const legacyWorshipPraise = source.source_kind === "setlist" && !hasWorshipPraise && praise.length === 6
+    ? praise[praise.length - 1]
+    : null;
+  let praiseNumber = 0;
+  return sorted.map((candidate) => {
+    const label = normalizeTitle(candidate.raw_label || "");
+    if (candidate === legacyWorshipPraise || label === "예배찬양") {
+      return { ...candidate, archive_display_label: "예배찬양", archive_display_order: 40 };
+    }
+    if (label === "찬양") {
+      return { ...candidate, archive_display_label: `찬양 ${++praiseNumber}` };
+    }
+    return candidate;
+  }).sort(compareSetlistCandidatesForDisplay);
+}
+
 function worshipSetlistArchiveEntries() {
   const candidatesBySource = worshipSetlistArchiveCandidatesBySource();
   return (state.worshipSetlistArchive.sources || []).map((source) => {
-    const candidates = (candidatesBySource[source.id] || [])
+    const candidates = prepareWorshipSetlistArchiveCandidates((candidatesBySource[source.id] || [])
       .filter(isSetlistPraiseCandidate)
-      .filter((candidate) => setlistCandidateBelongsToSource(candidate, source))
-      .sort(compareSetlistCandidatesForDisplay);
+      .filter((candidate) => setlistCandidateBelongsToSource(candidate, source)), source);
     const needsReview = candidates.filter((candidate) => candidate.review_status === "needs_review").length;
     const matched = candidates.filter((candidate) => setlistCandidateMatchedSong(candidate)).length;
     return {
@@ -22536,7 +22575,7 @@ function filterWorshipSetlistArchiveEntries(entries = []) {
   return entries.filter((entry) => {
     const source = entry.source || {};
     const candidateText = entry.candidates.map((candidate) =>
-      [candidate.raw_label, candidate.raw_title, candidate.review_status].join(" ")).join(" ");
+      [candidate.raw_label, candidate.archive_display_label, candidate.raw_title, candidate.review_status].join(" ")).join(" ");
     return normalizeSearchValue([
       source.service_date,
       serviceTypeDisplayName(source.service_type_id),
@@ -22570,25 +22609,49 @@ function renderServiceSetlistArchiveDetail() {
         </div>
       </div>
       ${archive.error ? `<p class="service-no-results">${escapeHtml(archive.error)}</p>` : ""}
+      <div class="svc-setlist-view-switch" role="group" aria-label="콘티 보기 방식">
+        ${[["date", "날짜별"], ["service", "예배별"]].map(([view, label]) => `
+          <button type="button" data-service-setlist-view="${view}" aria-pressed="${state.worshipSetlistArchiveView === view}">${label}</button>
+        `).join("")}
+      </div>
       ${archive.loading && !archive.loaded ? renderLoadingDetail() : renderWorshipSetlistArchiveGroups(entries)}
     </div>`;
   finishDetailRender();
 }
 
+function groupWorshipSetlistArchiveEntries(entries = [], view = state.worshipSetlistArchiveView) {
+  const byService = view === "service";
+  const groups = new Map();
+  entries.forEach((entry) => {
+    const key = byService
+      ? worshipAppServiceTypeId(entry.source.service_type_id) || ""
+      : String(entry.source.service_date || "");
+    if (!groups.has(key)) groups.set(key, {
+      key,
+      title: byService ? (key ? serviceTypeDisplayName(key) : "예배 미지정") : key || "날짜 없음",
+      entries: [],
+    });
+    groups.get(key).entries.push(entry);
+  });
+  const result = [...groups.values()].sort((a, b) => byService
+    ? serviceTypeSortOrder(a.key) - serviceTypeSortOrder(b.key) || a.title.localeCompare(b.title, "ko")
+    : b.key.localeCompare(a.key));
+  for (const group of result) {
+    group.entries.sort((a, b) => String(b.source.service_date || "").localeCompare(String(a.source.service_date || ""))
+      || serviceTypeSortOrder(worshipAppServiceTypeId(a.source.service_type_id))
+        - serviceTypeSortOrder(worshipAppServiceTypeId(b.source.service_type_id)));
+  }
+  return result;
+}
+
 function renderWorshipSetlistArchiveGroups(entries = []) {
   if (!entries.length) return `<p class="service-no-results">표시할 역대 콘티가 없습니다.</p>`;
-  const groups = [];
-  entries.forEach((entry) => {
-    const month = String(entry.source.service_date || "").slice(0, 7) || "날짜 없음";
-    const group = groups[groups.length - 1];
-    if (group?.month === month) group.entries.push(entry);
-    else groups.push({ month, entries: [entry] });
-  });
+  const groups = groupWorshipSetlistArchiveEntries(entries);
   return `
     <div class="svc-setlist-month-groups">
       ${groups.map((group) => `
         <section class="svc-setlist-month-group">
-          <h3>${escapeHtml(group.month)}</h3>
+          <h3>${escapeHtml(group.title)} <span class="svc-setlist-group-count">${group.entries.length}</span></h3>
           <div class="svc-setlist-entry-list">
             ${group.entries.map(renderWorshipSetlistArchiveEntry).join("")}
           </div>
@@ -22617,7 +22680,7 @@ function renderWorshipSetlistArchiveEntry(entry) {
 
 function renderWorshipSetlistCandidate(candidate) {
   const title = String(candidate.raw_title || candidate.raw_label || "").trim() || "제목 없음";
-  const label = String(candidate.raw_label || "").trim();
+  const label = String(candidate.archive_display_label || candidate.raw_label || "").trim();
   return `
     <li>
       <span>${escapeHtml(label && label !== title ? `${label} · ${title}` : title)}</span>
@@ -22935,6 +22998,8 @@ function renderServiceDetail() {
   if (selectedService && state.selectedServiceTypeId !== selectedService.type_id) {
     state.selectedServiceTypeId = selectedService.type_id;
   }
+
+  renderPageTabTitle();
 
   if (state.selectedServiceTypeId === SERVICE_TEMPLATES_PANEL_ID) {
     renderServiceTemplatesDetail();

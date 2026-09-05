@@ -1458,6 +1458,33 @@ def main() -> int:
 
                 page.evaluate("switchModule('service')")
                 page.wait_for_function("() => document.body.dataset.module === 'service'", timeout=5000)
+                page.locator('[data-service-setlist-archive]').first.click()
+                page.wait_for_function("() => document.querySelector('.page-tab.active > span')?.textContent === '역대 콘티'", timeout=5000)
+                archive_tab = page.evaluate("() => state.pageTabs[state.pageTabIndex]")
+                if archive_tab["label"] == "역대 콘티" and archive_tab["snapshot"]["selectedServiceTypeId"] == "__setlist_archive":
+                    pass_("setlist-archive-tab-title", archive_tab["label"])
+                else:
+                    fail("setlist-archive-tab-title", json.dumps(archive_tab, ensure_ascii=False))
+                page.locator('[data-service-setlist-view="service"]').click()
+                page.wait_for_function("() => document.querySelector('[data-service-setlist-view=service]')?.getAttribute('aria-pressed') === 'true'", timeout=5000)
+                archive_groups = page.evaluate("""() => {
+                  const entries = worshipSetlistArchiveEntries();
+                  return ['date', 'service'].every(view => {
+                    const groups = groupWorshipSetlistArchiveEntries(entries, view);
+                    return groups.reduce((count, group) => count + group.entries.length, 0) === entries.length
+                      && groups.every(group => group.entries.every(entry => group.key === (view === 'date'
+                        ? String(entry.source.service_date || '')
+                        : worshipAppServiceTypeId(entry.source.service_type_id) || '')));
+                  });
+                }""")
+                if archive_groups:
+                    pass_("setlist-archive-view-groups", "date/service grouping preserves all entries")
+                else:
+                    fail("setlist-archive-view-groups", "group membership or count mismatch")
+                page.locator('[data-service-setlist-view="date"]').click()
+                page.wait_for_function("() => document.querySelector('[data-service-setlist-view=date]')?.getAttribute('aria-pressed') === 'true'", timeout=5000)
+                page.locator('[data-service-week]').first.click()
+                page.wait_for_function("() => document.querySelector('.page-tab.active > span')?.textContent === '이번 주 예배'", timeout=5000)
                 service_default_state = page.evaluate(
                     """
                     (() => ({

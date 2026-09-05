@@ -22,6 +22,21 @@ Small visual polish that does not alter behavior does not need an entry.
 
 ## Current Decisions
 
+### Setlist Archive Navigation
+
+- 금요기도회 역대 콘티의 메인 찬양은 `찬양 1·2·3…`으로 표시한다.
+  기존 `setlist` import에서 `찬양` 6곡으로 합쳐진 경우 앞의 5곡이 메인
+  찬양이고 마지막 1곡은 `예배찬양`이다. 화면에서는 특송 뒤, 결단 앞에
+  배치한다. 5곡뿐인 콘티는 모두 메인 찬양으로 유지하며, 다른 예배나
+  다른 곡 수에 이 복원 규칙을 확대 적용하지 않는다. 명시적인 `예배찬양`
+  항목이 이미 있으면 그것을 사용한다. 이 규칙은 archive 표시용이며
+  원본 import 데이터와 현재 예배/Presenter의 입례찬양 규칙을 변경하지 않는다.
+- `날짜별`(기본)은 같은 날짜의 콘티를 최신 날짜부터 묶고, `예배별`은
+  예배 종류별로 묶어 각 그룹 안에서 최신 날짜부터 표시한다. 검색은 두
+  보기 모두에 적용하며, 보기 선택은 화면 재진입과 데이터 새로고침 동안 유지한다.
+- `역대 콘티`로 이동하면 활성 탭 제목과 저장된 탭 snapshot도 즉시
+  갱신한다. 다른 예배 화면으로 돌아가면 해당 화면의 제목을 표시한다.
+
 ### Controller Reload Recovery
 
 - Reloading the controller must not stop an already-open Presenter output.
