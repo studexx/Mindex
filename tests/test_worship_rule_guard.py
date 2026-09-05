@@ -140,6 +140,16 @@ class WorshipRuleGuardTests(unittest.TestCase):
         self.assertIn("rows.elements.push(element)", preserve)
         self.assertIn("rows.sections.push(section)", preserve)
 
+    def test_sermon_scripture_slot_wins_over_generic_sermon_label(self) -> None:
+        derive = function_block(self.source, "deriveWorshipSlotKey")
+        sermon_branch = derive.split('if (sectionKey === "sermon")', 1)[1].split('if (sectionKey === "response_song")', 1)[0]
+        self.assertLess(
+            sermon_branch.index('inputMode === "scripture" || elementType === "scripture_body"'),
+            sermon_branch.index('["설교", "설교제목"].includes(label)'),
+        )
+        self.assertIn("const itemSlotKey = normalizeWorshipSlotKey(item._worshipSlotKey || item.slotKey || item.slot_key)", self.source)
+        self.assertIn("if (itemSlotKey) sourceRef.slotKey = itemSlotKey", self.source)
+
     def test_fixed_doxology_scope_does_not_absorb_sunday_main(self) -> None:
         fixed = function_block(self.source, "publicFixedDoxologySpec")
         self.assertIn('"sunday-first"', fixed)

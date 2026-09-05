@@ -4457,12 +4457,12 @@ function deriveWorshipSlotKey(context = {}) {
   if (sectionKey === "special_song") return "special.song";
   if (sectionKey === "sermon") {
     if (label === "실시간성구송출") return "sermon.live_scripture";
-    if (["설교", "설교제목"].includes(label)) return "sermon.title";
     if (/^인용구절(\d*)$/.test(label)) {
       const match = label.match(/^인용구절(\d*)$/);
       return `sermon.citation.${match?.[1] ? Number(match[1]) : 1}`;
     }
     if (["설교본문", "본문", "성경본문", "말씀본문", "말씀"].includes(label) || inputMode === "scripture" || elementType === "scripture_body") return "sermon.scripture";
+    if (["설교", "설교제목"].includes(label)) return "sermon.title";
     if (hasAsset || ["image", "video", "ppt", "pdf"].includes(elementType) || inputMode === "asset") return "sermon.media";
   }
   if (sectionKey === "response_song") return elementType === "praise" || inputMode.includes("db") || inputMode === "manual_praise" ? "response.song" : "response.prayer";
@@ -7366,6 +7366,8 @@ function serviceElementConfigForSave(existingConfig = {}, parsed = emptyServiceI
 
 function serviceElementSourceRefForSave(existingSourceRef = {}, item = {}, parsed = emptyServiceItemMemo(), manualBody = false) {
   const sourceRef = { ...(existingSourceRef && typeof existingSourceRef === "object" ? existingSourceRef : {}) };
+  const itemSlotKey = normalizeWorshipSlotKey(item._worshipSlotKey || item.slotKey || item.slot_key);
+  if (itemSlotKey) sourceRef.slotKey = itemSlotKey;
   sourceRef.label = String(item.label || sourceRef.label || "").trim();
   if (parsed.connectedPraise) {
     sourceRef.connectedPraise = parsed.connectedPraise;
