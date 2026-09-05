@@ -9,7 +9,7 @@ const context = {
   worshipAppServiceTypeId: value => value === 'fri' ? 'friday' : value,
 };
 vm.createContext(context);
-for (const name of ['setlistCandidateDisplayOrder', 'compareSetlistCandidatesForDisplay', 'prepareWorshipSetlistArchiveCandidates']) {
+for (const name of ['setlistCandidateDisplayOrder', 'compareSetlistCandidatesForDisplay', 'worshipSetlistArchiveDisplayLabel', 'prepareWorshipSetlistArchiveCandidates']) {
   const start = source.indexOf(`function ${name}(`);
   assert.ok(start >= 0, name);
   vm.runInContext(source.slice(start, source.indexOf('\n}\n', start) + 2), context);
@@ -25,13 +25,19 @@ const rows = [...opening, song('찬양', '272 고통의 멍에 벗으려고', 6)
 const original = JSON.stringify(rows);
 const result = prepare(rows, friday);
 assert.equal(result.map(row => row.archive_display_label || row.raw_label).join('|'),
-  '찬양 1|찬양 2|찬양 3|찬양 4|찬양 5|특송|예배찬양|결단|기도 1|기도 2|기도 3');
+  '찬양 1|찬양 2|찬양 3|찬양 4|찬양 5|특송|입례찬양|결단찬양|기도찬양 1|기도찬양 2|기도찬양 3');
 assert.equal(result[6].raw_title, '272 고통의 멍에 벗으려고');
 assert.equal(JSON.stringify(rows), original, 'source data must stay unchanged');
 assert.equal(prepare(opening, friday).at(-1).archive_display_label, '찬양 5');
-assert.equal(prepare(rows.filter(row => row.raw_label !== '특송'), friday)[5].archive_display_label, '예배찬양');
-assert.equal(prepare([...opening, song('예배찬양', '별도 예배찬양', 6)], friday).at(-1).archive_display_label, '예배찬양');
-assert.ok(prepare(rows, { ...friday, service_type_id: 'wednesday' }).every(row => !row.archive_display_label));
-assert.ok(prepare(rows, { ...friday, source_kind: 'pptx' }).every(row => row.archive_display_label !== '예배찬양'));
-assert.ok(prepare([...rows, song('찬양', '추가 메인 찬양', 12)], friday).every(row => row.archive_display_label !== '예배찬양'));
+assert.equal(prepare(rows.filter(row => row.raw_label !== '특송'), friday)[5].archive_display_label, '입례찬양');
+assert.equal(prepare([...opening, song('예배찬양', '별도 예배찬양', 6)], friday).at(-1).archive_display_label, '입례찬양');
+assert.ok(prepare(rows, { ...friday, service_type_id: 'wednesday' }).filter(row => row.raw_label === '찬양').every(row => row.archive_display_label === '찬양'));
+assert.ok(prepare(rows, { ...friday, source_kind: 'pptx' }).every(row => row.archive_display_label !== '입례찬양'));
+assert.ok(prepare([...rows, song('찬양', '추가 메인 찬양', 12)], friday).every(row => row.archive_display_label !== '입례찬양'));
 console.log('PASS: Friday archive ordering, numbering, missing worship praise, explicit role, scope and source preservation');
+
+for (const [raw, expected] of [['예배찬양','입례찬양'], ['봉헌','봉헌찬양'], ['결단','결단찬양'], ['기도 1','기도찬양 1'], ['기도찬양 2','기도찬양 2'], ['파송','파송찬양'], ['폐회','폐회찬양'], ['특송','특송'], ['3부 특송','3부 특송']]) {
+  assert.equal(context.worshipSetlistArchiveDisplayLabel(raw), expected);
+}
+assert.equal(prepare([song('봉헌','곡',1)], {service_type_id:'youth'})[0].archive_display_label, '봉헌찬양');
+console.log('PASS: Archive role labels across services and no duplicated suffix');

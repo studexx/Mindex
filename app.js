@@ -22521,12 +22521,22 @@ function setlistCandidateMatchedSong(candidate = {}) {
   return title ? findServicePraiseSong(title) : null;
 }
 
+function worshipSetlistArchiveDisplayLabel(value) {
+  const label = String(value || "").trim();
+  if (label === "예배찬양") return "입례찬양";
+  const role = label.match(/^(봉헌|결단|기도|파송|폐회|입례)(?:찬양)?\s*(\d+)?$/u);
+  return role ? `${role[1]}찬양${role[2] ? ` ${role[2]}` : ""}` : label;
+}
+
 function prepareWorshipSetlistArchiveCandidates(candidates = [], source = {}) {
-  const sorted = [...candidates].sort(compareSetlistCandidatesForDisplay);
+  const sorted = candidates.map((candidate) => ({
+    ...candidate,
+    archive_display_label: worshipSetlistArchiveDisplayLabel(candidate.raw_label),
+  })).sort(compareSetlistCandidatesForDisplay);
   if (worshipAppServiceTypeId(source.service_type_id) !== "friday") return sorted;
 
   const praise = sorted.filter((candidate) => normalizeTitle(candidate.raw_label || "") === "찬양");
-  const hasWorshipPraise = sorted.some((candidate) => normalizeTitle(candidate.raw_label || "") === "예배찬양");
+  const hasWorshipPraise = sorted.some((candidate) => candidate.archive_display_label === "입례찬양");
   // Legacy setlist imports merged the five opening songs and the separately
   // labeled 찬양 into one six-song section. Five-song services have no such slot.
   const legacyWorshipPraise = source.source_kind === "setlist" && !hasWorshipPraise && praise.length === 6
@@ -22535,8 +22545,8 @@ function prepareWorshipSetlistArchiveCandidates(candidates = [], source = {}) {
   let praiseNumber = 0;
   return sorted.map((candidate) => {
     const label = normalizeTitle(candidate.raw_label || "");
-    if (candidate === legacyWorshipPraise || label === "예배찬양") {
-      return { ...candidate, archive_display_label: "예배찬양", archive_display_order: 40 };
+    if (candidate === legacyWorshipPraise || candidate.archive_display_label === "입례찬양") {
+      return { ...candidate, archive_display_label: "입례찬양", archive_display_order: 40 };
     }
     if (label === "찬양") {
       return { ...candidate, archive_display_label: `찬양 ${++praiseNumber}` };
