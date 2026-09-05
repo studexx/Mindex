@@ -6596,12 +6596,6 @@ async function saveWorshipServiceElementPatch(service, itemId) {
   const sectionRow = rows.sections.find((section) => section.id === elementRow.section_id);
   captureWorshipRecoverySnapshot(service, "before-element-patch");
   const sourceRef = withServiceDocumentSnapshot(service, items);
-  service._worshipSourceRef = sourceRef;
-  const { error: serviceError } = await state.client
-    .from("mindex_worship_services")
-    .update({ source_ref: sourceRef })
-    .eq("id", serviceId);
-  if (serviceError) throw serviceError;
   if (sectionRow) {
     const { error } = await state.client
       .from("mindex_worship_sections")
@@ -6612,6 +6606,12 @@ async function saveWorshipServiceElementPatch(service, itemId) {
     .from("mindex_worship_elements")
     .upsert([elementRow], { onConflict: "id" });
   if (error) throw error;
+  const { error: serviceError } = await state.client
+    .from("mindex_worship_services")
+    .update({ source_ref: sourceRef })
+    .eq("id", serviceId);
+  if (serviceError) throw serviceError;
+  service._worshipSourceRef = sourceRef;
 
   if (sectionRow) {
     state.worshipSections = [
@@ -11764,7 +11764,9 @@ function serviceScriptureReferenceParts(reference, fallback = "") {
     || KOREAN_BIBLE_BOOK_ABBREVIATIONS[reference.book.code]
     || reference.book.code
     || "";
-  const book = fullBook;
+  const book = reference.book.shortName
+    || KOREAN_BIBLE_BOOK_ABBREVIATIONS[reference.book.code]
+    || fullBook;
   const range = reference.verse
     ? `${reference.chapter}:${reference.verse}${reference.verseEnd ? `–${reference.verseEnd}` : ""}`
     : String(reference.chapter);
@@ -25852,7 +25854,10 @@ function formatServiceBibleReferenceMatch(bookName, chapter, verse, verseEnd) {
 
 function formatServiceBibleReference(reference, fallback = "") {
   if (!reference?.book || !reference?.chapter) return normalizeServiceItemReferenceSpacing(fallback);
-  const book = reference.book.koreanName || reference.book.shortName || reference.book.code;
+  const book = reference.book.shortName
+    || KOREAN_BIBLE_BOOK_ABBREVIATIONS[reference.book.code]
+    || reference.book.koreanName
+    || reference.book.code;
   const versePart = reference.verse
     ? `${reference.chapter}:${reference.verse}${reference.verseEnd ? `–${reference.verseEnd}` : ""}`
     : String(reference.chapter);

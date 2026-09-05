@@ -4836,7 +4836,7 @@ def main() -> int:
                     """
                 )
                 if (
-                    form_preset_state["hymnTypes"] == ["song-title", "lyrics", "lyrics", "lyrics", "lyrics", "blank", "lyrics", "lyrics"]
+                    form_preset_state["hymnTypes"] == ["title-assignee", "song-title", "lyrics", "lyrics", "lyrics", "lyrics", "blank", "lyrics", "lyrics"]
                     and form_preset_state["hymnTitleTexts"] == ["♬ 999 특송 테스트"]
                     and form_preset_state["hymnMarkers"] == ["Verse 1", "Chorus", "Verse 2", "Chorus", "Verse 4", "Chorus"]
                     and form_preset_state["hymnTexts"] == [
