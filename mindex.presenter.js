@@ -3804,18 +3804,66 @@ function fitPresenterSongTitleText(host) {
     });
 }
 
+const presenterLyricFitCache = new Map();
+const PRESENTER_LYRIC_FIT_CACHE_LIMIT = 512;
+const PRESENTER_LYRIC_FIT_STYLE_KEYS = [
+  "fontFamily", "fontSize", "fontWeight", "fontStyle", "fontStretch", "fontVariant",
+  "fontFeatureSettings", "fontVariationSettings", "fontKerning", "fontOpticalSizing",
+  "letterSpacing", "wordSpacing", "lineHeight", "whiteSpace", "textTransform", "textIndent",
+  "writingMode", "direction", "boxSizing", "paddingLeft", "paddingRight", "paddingTop", "paddingBottom",
+  "marginLeft", "marginRight", "gap", "display", "content", "verticalAlign", "transform",
+];
+
+function presenterLyricFitKey(textBox) {
+  const metrics = (node, pseudo) => {
+    const style = getComputedStyle(node, pseudo);
+    return PRESENTER_LYRIC_FIT_STYLE_KEYS.map((key) => style[key]);
+  };
+  return JSON.stringify([
+    textBox.innerHTML, textBox.clientWidth, textBox.clientHeight, metrics(textBox),
+    [...textBox.querySelectorAll("*")].map((node) => [metrics(node), metrics(node, "::before"), metrics(node, "::after")]),
+  ]);
+}
+
+function rememberPresenterLyricFit(key, fontSize) {
+  if (presenterLyricFitCache.size >= PRESENTER_LYRIC_FIT_CACHE_LIMIT) {
+    presenterLyricFitCache.delete(presenterLyricFitCache.keys().next().value);
+  }
+  presenterLyricFitCache.set(key, fontSize);
+}
+
+// Font metrics may change without a resize, including after an initial fallback-font fit.
+document.fonts?.addEventListener("loadingdone", () => {
+  presenterLyricFitCache.clear();
+  window.requestAnimationFrame(() => fitPresenterLyricText(document));
+});
+document.fonts?.addEventListener("loadingerror", () => {
+  presenterLyricFitCache.clear();
+  window.requestAnimationFrame(() => fitPresenterLyricText(document));
+});
+
 function fitPresenterLyricText(host) {
   host.querySelectorAll('.presenter-slide--lyrics[data-element-type="praise"] > .presenter-slide-text').forEach((textBox) => {
     textBox.style.removeProperty("font-size");
     const baseSize = Number.parseFloat(getComputedStyle(textBox).fontSize);
     if (!Number.isFinite(baseSize) || baseSize <= 0 || !textBox.clientWidth) return;
+    // Read the unfitted CSS size first so theme, viewport and typography changes invalidate the key.
+    const key = document.fonts?.status === "loading" ? null : presenterLyricFitKey(textBox);
+    if (key !== null && presenterLyricFitCache.has(key)) {
+      const size = presenterLyricFitCache.get(key);
+      if (size) textBox.style.fontSize = size;
+      return;
+    }
     const fits = () => {
       const style = getComputedStyle(textBox);
       const width = textBox.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
       return [...textBox.children].every((line) => presenterTextNaturalWidth(line) <= width - 2)
         && textBox.scrollHeight <= textBox.clientHeight + 1;
     };
-    if (fits()) return;
+    if (fits()) {
+      if (key !== null) rememberPresenterLyricFit(key, "");
+      return;
+    }
     // Measure complete lines, including generated verse numbers, before revealing the frame.
     let low = 0;
     let high = baseSize;
@@ -3826,6 +3874,7 @@ function fitPresenterLyricText(host) {
       else high = size;
     }
     textBox.style.fontSize = `${low}px`;
+    if (key !== null) rememberPresenterLyricFit(key, textBox.style.fontSize);
   });
 }
 
