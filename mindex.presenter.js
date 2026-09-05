@@ -3481,7 +3481,6 @@ function renderPresenterOutput(payload, options = {}) {
     presenterOutputRenderState.pendingImageSource = activeImageSource;
     root.dataset.presenterPendingImageSource = activeImageSource;
     root.setAttribute("aria-busy", "true");
-    applyPresenterOutputFrameState(root, frameState);
     presenterOutputLayers(root);
     const rerenderIfReady = () => {
       if (
@@ -3602,12 +3601,11 @@ function commitPresenterOutputFrame(root, payload, slide, frameState, token, opt
       nextLayer.dataset.presenterFrameToken = String(token);
     }
     nextLayer.dataset.presenterFrameKey = frameKey;
-    applyPresenterOutputFrameState(root, frameState);
-    fitPresenterChromakeyScriptureText(nextLayer, frameState);
-    fitPresenterSongTitleText(nextLayer);
-    fitPresenterSermonTitleText(nextLayer);
     nextLayer.classList.add("is-next");
     activatePresenterOutputLayer(root, layers.active, nextLayer, frameState, token, () => {
+      fitPresenterChromakeyScriptureText(nextLayer, frameState);
+      fitPresenterSongTitleText(nextLayer);
+      fitPresenterSermonTitleText(nextLayer);
       bindPresenterOutputAutoAdvance(root, payload, slide, options, token);
     });
     warmPresenterOutputImages(payload, slide || null);
@@ -3655,8 +3653,8 @@ function activatePresenterOutputLayer(root, activeLayer, nextLayer, frameState =
     nextLayer.classList.add("is-active");
     if (animated) nextLayer.classList.add("is-entering");
     nextLayer.classList.remove("is-next");
-    root?.prepend?.(nextLayer);
-    root?.append?.(activeLayer);
+    // Keep composited media layers attached while swapping their visibility.
+    applyPresenterOutputFrameState(root, frameState);
     if (animated) {
       nextLayer.dataset.presenterEnteringToken = String(token);
       window.setTimeout(() => {
