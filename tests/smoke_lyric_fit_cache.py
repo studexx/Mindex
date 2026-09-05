@@ -24,7 +24,8 @@ def main():
               const box=document.querySelector('.is-active .presenter-slide-text');
               const host=box.parentElement;
               await Promise.all([400,700].map(weight=>document.fonts.load(weight+' 16px '+getComputedStyle(box).fontFamily)));
-              await new Promise(resolve=>requestAnimationFrame(resolve));
+              await document.fonts.ready;
+              await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
               const original=presenterTextNaturalWidth;
               let calls=0;
               presenterTextNaturalWidth=(node)=>{calls++;return original(node)};
@@ -36,7 +37,7 @@ def main():
                   const miss=calls, fitted=box.style.fontSize;
                   calls=0; fitPresenterLyricText(host);
                   const hit=calls;
-                  if(hit || !miss) throw new Error(name+': expected miss then hit, '+miss+'/'+hit);
+                  if(hit || !miss) throw new Error(name+': expected miss then hit, '+miss+'/'+hit+', fonts='+document.fonts.status);
                   presenterLyricFitCache.clear();
                   fitPresenterLyricText(host);
                   if(box.style.fontSize!==fitted) throw new Error(name+': cached size differs from fresh fit');
