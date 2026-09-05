@@ -20,16 +20,22 @@ def main():
             page.evaluate('document.fonts.ready')
             for chromakey in [True, False]:
                 for key in ['praise', 'pre_scripture_praise', 'entrance_praise',
-                            'response_song', 'prayer_meeting_praise', 'special_song', 'offering']:
+                            'response_song', 'prayer_meeting_praise', 'special_song', 'offering',
+                            'hymn_praise', 'doxology', 'sending', 'closing_song', 'closing_hymn', 'closing_visual']:
                     for title in ['임재', '한라에서 백두까지 백두에서 땅끝까지',
                                   '한라에서 백두까지 백두에서 땅끝까지 주님의 사랑을 전하리',
                                   '주의 자녀로 산다는 것은']:
                         result = page.evaluate("""({chromakey, key, title}) => {
-                          const slide = {id:'title-test', type:'song-title', elementType:'praise',
+                          let slide = {id:'title-test', type:'song-title', elementType:'praise',
                             layout:'lower_bar_text', sectionKey:key, title, text:'♬ ' + title,
                             sectionHeading:'찬양 1', label:'찬양 1',
                             outputContext:chromakey ? 'chromakey' : 'fullscreen', live:true};
                           if (chromakey) delete slide.sectionHeading;
+                          else {
+                            slide = {...presenterSongTitleSlide(
+                              {id:'title-test',label:'찬양 1'}, {sectionKey:key}, null, null, title, 0),
+                              outputContext:'fullscreen',live:true};
+                          }
                           renderPresenterOutput({serviceId:'title-test', serviceType:'sunday-main',
                             chromakey, slides:[slide], index:0, safetyBlank:false}, {});
                           const measure = root => {

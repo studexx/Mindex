@@ -2284,7 +2284,7 @@ function presenterSongTitleSlide(item, section, song, version, displayText, inde
   const displayTitle = presenterSongTitleDisplayTitle(connectedTitle ? null : song, connectedTitle ? null : version, effectiveDisplayText, sectionHeading);
   const titleText = presenterSongTitleContentText(displayTitle, sectionHeading);
   if (sectionHeading) {
-    return presenterOrderContentTitleSlide(item, section, index, sectionHeading, titleText);
+    return { ...presenterOrderContentTitleSlide(item, section, index, sectionHeading, titleText), songTitle: displayTitle };
   }
   return {
     id: `${item.id || index}:song-title`,
@@ -4369,8 +4369,8 @@ function trimPresenterOutputImagePreloadCache() {
 }
 
 function renderPresenterSlideFrame(slide, options = {}) {
-  if (options.noChromakey && slide?.type === "song-title" && presenterSlideElementType(slide) === PRESENTER_ELEMENT_TYPES.PRAISE) {
-    const title = formatPresenterSongTitleText(String(slide.title || slide.text || "").trim());
+  if (options.noChromakey && (slide?.songTitle || (slide?.type === "song-title" && presenterSlideElementType(slide) === PRESENTER_ELEMENT_TYPES.PRAISE))) {
+    const title = formatPresenterSongTitleText(String(slide.songTitle || slide.title || slide.text || "").trim());
     // Output and previews must use the same song-only fullscreen composition.
     slide = { ...slide, elementType: PRESENTER_ELEMENT_TYPES.TITLE_CONTENT,
       layout: PRESENTER_SLIDE_LAYOUTS.CENTER_TEXT, type: "title-content",
