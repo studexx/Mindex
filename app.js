@@ -22442,6 +22442,13 @@ function serviceSidebarChildItemDisplayParts(item, service = null) {
 }
 
 function serviceSidebarChildItemDisplayText(item = {}) {
+  const service = state.services.find((candidate) => candidate.id === item.service_id) || null;
+  const effectiveItem = serviceItemWithSharedSundayContent(item, service);
+  const song = serviceItemLinkedSong(effectiveItem);
+  if (song) {
+    const version = getPresenterServiceItemVersion(song, effectiveItem, service);
+    return presenterSongTitleDisplayTitle(song, version, serviceItemDisplayText(effectiveItem));
+  }
   const rawTitle = String(item?.raw_title || "").trim();
   if (rawTitle) {
     const contentTitle = serviceItemContentTitleWithoutElementName(item, rawTitle);
