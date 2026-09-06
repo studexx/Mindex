@@ -19005,8 +19005,19 @@ function resizeFormTextareas() {
 
 function resizeFormTextarea(textarea) {
   if (!textarea) return;
+  // Measuring a shorter height can clamp every scrollable ancestor at the bottom.
+  const scrollPositions = [];
+  for (let parent = textarea.parentElement; parent; parent = parent.parentElement) {
+    if (parent.scrollTop || parent.scrollLeft) {
+      scrollPositions.push([parent, parent.scrollTop, parent.scrollLeft]);
+    }
+  }
   textarea.style.height = "auto";
   textarea.style.height = `${textarea.scrollHeight}px`;
+  scrollPositions.forEach(([parent, top, left]) => {
+    parent.scrollTop = top;
+    parent.scrollLeft = left;
+  });
 }
 
 // ─── Service module ───────────────────────────────────────────────────────────
