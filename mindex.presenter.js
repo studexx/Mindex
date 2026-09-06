@@ -2882,6 +2882,7 @@ function handlePresenterControllerMessage(message = {}) {
   if (message.type === "presenter-heartbeat") {
     markPresenterOutputConnected(message.clientId, message.warmup);
     restorePresenterControllerSession();
+    reconcilePresenterTransportReceipt(message);
     return;
   }
   if (message.type === "presenter-output-disconnect") {
@@ -2983,6 +2984,23 @@ const PRESENTER_NAVIGATION_STORAGE_KEY = "mindex.presenter.state.navigation";
 let presenterTransportSequence = 0;
 const presenterTransportSession = `${Date.now()}:${Math.random()}`;
 let presenterTransportSnapshot = null;
+let presenterTransportLatest = null;
+
+function reconcilePresenterTransportReceipt(message = {}) {
+  const latest = presenterTransportLatest;
+  if (!latest || typeof message.receivedMessageId !== "string") return;
+  if (state.presenter.outputStopAt || latest.payload.serviceId !== state.presenter.serviceId) return;
+  if (message.receivedMessageId === latest.payload.messageId) return;
+  if (Date.now() - latest.sentAt < 750 || Date.now() - latest.retriedAt < 1000) return;
+  latest.retriedAt = Date.now();
+  // Replay the same ID: a delayed acknowledgement must not render twice.
+  safeStorageSet("local", PRESENTER_STORAGE_KEY, JSON.stringify(latest.payload));
+  try {
+    state.presenter.channel?.postMessage({ type: "presenter-state", payload: latest.payload });
+  } catch {
+    // The storage event remains available when the channel has closed.
+  }
+}
 
 function mergePresenterNavigation(snapshot, navigation) {
   if (!snapshot || navigation?.snapshotId !== snapshot.snapshotId) return snapshot;
@@ -3010,14 +3028,24 @@ function publishPresenterPayload(payload, options = {}) {
   if (compact) {
     const navigation = { snapshotId: presenterTransportSnapshot.id, messageId,
       index, slideAnchor, safetyBlank, liveScripture, livePraise, updatedAt };
+    presenterTransportLatest = { payload: { ...payload, ...navigation }, sentAt: Date.now(), retriedAt: 0 };
     safeStorageSet("local", PRESENTER_NAVIGATION_STORAGE_KEY, JSON.stringify(navigation));
-    state.presenter.channel?.postMessage({ type: "presenter-navigation", payload: navigation });
+    try {
+      state.presenter.channel?.postMessage({ type: "presenter-navigation", payload: navigation });
+    } catch {
+      // Keep controller navigation usable while storage delivers the move.
+    }
     return;
   }
   const snapshot = { ...payload, snapshotId: messageId, messageId };
+  presenterTransportLatest = { payload: snapshot, sentAt: Date.now(), retriedAt: 0 };
   const stored = safeStorageSet("local", PRESENTER_STORAGE_KEY, JSON.stringify(snapshot));
   presenterTransportSnapshot = stored ? { id: messageId, contentKey } : null;
-  state.presenter.channel?.postMessage({ type: "presenter-state", payload: snapshot });
+  try {
+    state.presenter.channel?.postMessage({ type: "presenter-state", payload: snapshot });
+  } catch {
+    // Storage delivery and heartbeat reconciliation can recover this send.
+  }
 }
 
 function presenterOutputUrl(options = {}) {
@@ -3240,6 +3268,7 @@ function initPresenterOutputCore() {
       type: "presenter-heartbeat",
       clientId: outputClientId,
       transportVersion: 1,
+      receivedMessageId: currentPayload?.messageId || "",
       warmup: presenterOutputWarmupSummary(),
     });
   };
