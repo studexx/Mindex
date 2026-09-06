@@ -30629,28 +30629,7 @@ function buildServicePresenterSlidesUncached(serviceId) {
 
 function serviceItemsShouldUseDocumentSlideFallback(items = []) {
   if (!Array.isArray(items) || !items.length) return true;
-  return items.every((item) => isUnmodifiedTemplatePlaceholder(item) || !serviceItemHasUserSavedContent(item));
-}
-
-function serviceItemHasUserSavedContent(item = {}) {
-  const memo = parseServiceItemMemo(item.memo);
-  return Boolean(
-    item.song_id
-    || item.version_id
-    || item.song_version_id
-    || cleanServiceAssignee(item.assignee)
-    || serviceItemRawTitleHasUserContent(item)
-    || formatServiceManualPraiseLyricsInput(item.memo)
-    || hasServiceAsset(normalizeServiceAsset(memo.asset))
-    || Array.isArray(memo.slides) && memo.slides.length
-  );
-}
-
-function serviceItemRawTitleHasUserContent(item = {}) {
-  const rawTitle = String(item.raw_title || "").trim();
-  if (!rawTitle) return false;
-  const label = String(item.label || "").trim();
-  return !label || compactSearchValue(rawTitle) !== compactSearchValue(label);
+  return items.every((item) => isUnmodifiedTemplatePlaceholder(item));
 }
 
 function serviceDocumentPresenterSlides(service = null) {

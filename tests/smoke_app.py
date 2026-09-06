@@ -6761,6 +6761,25 @@ def main() -> int:
                             state.serviceItems[service.id] = [placeholder];
                             presenterSlideBuildCache.delete(service.id);
                             const fallbackSlides = buildServicePresenterSlides(service.id);
+                            const pendingReference = normalizeServiceItem({
+                              id: '__smoke_service_document_pending_reference__',
+                              service_id: service.id,
+                              label: '참고 화면',
+                              raw_title: '',
+                              memo: serializeServiceItemMemo({
+                                elementType: 'image',
+                                componentType: 'image',
+                                inputMode: 'asset',
+                                asset: { kind: 'image', name: '', url: '' },
+                              }),
+                              _worshipSectionKey: 'announcements',
+                              _worshipSectionTitle: '광고',
+                              _worshipElementTemplateModified: true,
+                              _worshipTemplatePlaceholder: false,
+                            }, 1);
+                            state.serviceItems[service.id] = [placeholder, pendingReference];
+                            presenterSlideBuildCache.delete(service.id);
+                            const pendingSlides = buildServicePresenterSlides(service.id);
                             refs.detailPane.innerHTML = renderServiceSourcePanel(service);
                             const historyButton = refs.detailPane.querySelector('[data-service-source-history]');
                             const restored = restoreServiceSourceHistory(service.id, 0);
@@ -6784,6 +6803,9 @@ def main() -> int:
                               fallbackCount: fallbackSlides.length,
                               fallbackRestoredCount: fallbackSlides.filter((slide) => slide.serviceDocumentFallback).length,
                               fallbackAsset: fallbackSlides.find((slide) => slide.serviceDocumentFallback && slide.asset)?.asset || {},
+                              pendingFallbackCount: pendingSlides.filter((slide) => slide.serviceDocumentFallback).length,
+                              pendingReferenceCount: pendingSlides.filter((slide) => slide.referenceMediaPending).length,
+                              pendingReferenceElementId: pendingSlides.find((slide) => slide.referenceMediaPending)?.elementId || '',
                               exceptionReason: document.exceptions[0]?.reason || '',
                               historyCount: history.length,
                               historySourceText: history[0]?.sourceText || '',
@@ -6833,6 +6855,9 @@ def main() -> int:
                         and service_document_snapshot["fallbackCount"] >= service_document_snapshot["slideCount"]
                         and service_document_snapshot["fallbackRestoredCount"] >= 1
                         and service_document_snapshot["fallbackAsset"].get("name") == "꿈꾸는 어린이부 여름성경학교 안내"
+                        and service_document_snapshot["pendingFallbackCount"] == 0
+                        and service_document_snapshot["pendingReferenceCount"] == 1
+                        and service_document_snapshot["pendingReferenceElementId"] == "__smoke_service_document_pending_reference__"
                         and "봉헌 섹션의 이미지 항목" in service_document_snapshot["exceptionReason"]
                         and service_document_snapshot["historyCount"] == 1
                         and service_document_snapshot["historySourceText"] == "[봉헌]\n이미지: 이전 안내 이미지"
