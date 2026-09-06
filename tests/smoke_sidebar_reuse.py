@@ -41,6 +41,24 @@ def main():
                 }''')
                 assert all(result.values()), result
                 print('PASS sidebar reuse', engine, result)
+                updates = page.evaluate('''() => {
+                  const service={id:'controls-fixture',type_id:'sunday-afternoon'};
+                  state.services=[service]; state.presenter.serviceId=service.id;
+                  isPresenterOutputWindowOpen=()=>true;
+                  const slides=Array.from({length:45},(_,i)=>({id:'slide:'+i,type:'lyrics',elementType:'praise',layout:'center-text',title:'찬양',text:'가사 '+i}));
+                  const root=document.createElement('div'); root.className='svc-presenter-side-panel';root.style.width='300px';document.body.append(root);
+                  root.innerHTML=renderPresenterControlsTop(service,slides,true,0);
+                  refreshIcons(root);applyPresenterPreviewScales(root);fitPresenterPreviewText(root);
+                  const selectors=['.svc-presenter-top','.svc-presenter-live-preview','[data-presenter-jump-input]','[data-presenter-action="next"]'];
+                  const nodes=selectors.map(s=>root.querySelector(s));nodes[2].focus();
+                  for(let i=1;i<=40;i++) {
+                    patchPresenterControlsTop(root,service,slides,true,i);
+                    if(selectors.some((s,j)=>root.querySelector(s)!==nodes[j]) || document.activeElement!==nodes[2]) throw Error('controller replaced');
+                    if(Number(nodes[2].value)!==i+1 || !nodes[1].textContent.includes('가사 '+i)) throw Error('stale slide');
+                  }
+                  root.remove();return 40;
+                }''')
+                print('PASS live controller transitions', engine, updates)
                 browser.close()
     finally:
         server.shutdown()
