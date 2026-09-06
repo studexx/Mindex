@@ -30245,28 +30245,48 @@ function clearPresenterTransientBoardActiveMarks(root = document.getElementById(
   syncPresenterBoardSelectionClasses(root);
 }
 
+function patchPresenterControlTree(current, next) {
+  if (current.isEqualNode(next)) return;
+  if (current.nodeType !== next.nodeType || current.nodeName !== next.nodeName) {
+    current.replaceWith(next.cloneNode(true));
+    return;
+  }
+  if (current.nodeType !== Node.ELEMENT_NODE) {
+    current.textContent = next.textContent;
+    return;
+  }
+  // Preview geometry belongs to the mounted frame, not the slide markup.
+  const scale = current.style?.getPropertyValue("--presenter-preview-scale");
+  if (scale) next.style.setProperty("--presenter-preview-scale", scale);
+  if (current.tagName === "DETAILS" && current.open) next.open = true;
+  for (const attr of [...current.attributes]) {
+    if (!next.hasAttribute(attr.name)) current.removeAttribute(attr.name);
+  }
+  for (const attr of [...next.attributes]) {
+    if (current.getAttribute(attr.name) !== attr.value) current.setAttribute(attr.name, attr.value);
+  }
+  if (current instanceof HTMLInputElement && current.value !== next.value) current.value = next.value;
+  const previousChildren = [...current.childNodes];
+  const nextChildren = [...next.childNodes];
+  nextChildren.forEach((child, index) => {
+    if (previousChildren[index]) patchPresenterControlTree(previousChildren[index], child);
+    else current.appendChild(child.cloneNode(true));
+  });
+  previousChildren.slice(nextChildren.length).forEach((child) => child.remove());
+}
+
 function patchPresenterControlsTop(root, service, slides, active, index) {
   if (!root || !service) return;
   root.setAttribute("aria-label", uiText("presenter.controls"));
   const currentTop = root.querySelector(".svc-presenter-top");
-  if (currentTop?.querySelector("button:active")) {
-    if (root.dataset.presenterTopPatchPending !== "true") {
-      root.dataset.presenterTopPatchPending = "true";
-      window.setTimeout(() => {
-        delete root.dataset.presenterTopPatchPending;
-        if (root.isConnected) renderPresenterControlState(service.id);
-      }, 0);
-    }
-    return;
-  }
   const template = document.createElement("template");
   template.innerHTML = renderPresenterControlsTop(service, slides, active, index).trim();
   const nextTop = template.content.firstElementChild;
   if (!currentTop || !nextTop) return;
-  currentTop.replaceWith(nextTop);
   refreshIcons(nextTop);
-  schedulePresenterPreviewScaleUpdate(nextTop);
-  schedulePresenterPreviewLayoutUpdate(refs.rightSidebar);
+  patchPresenterControlTree(currentTop, nextTop);
+  applyPresenterPreviewScales(currentTop);
+  fitPresenterPreviewText(currentTop);
 }
 
 function patchPresenterBoardActiveState(root, serviceId, active, index) {
