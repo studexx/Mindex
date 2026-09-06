@@ -2107,6 +2107,8 @@ function buildPresenterScriptureTextSlides(item, section, index, service = null)
       layout: PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT,
       type: "scripture",
       scriptureContext: context,
+      scriptureVerse: Number(verse.number || verse.verse) || null,
+      scriptureVerseEnd: Number(verse.verseEnd || verse.verse_end) || null,
       label: item.label || "본문",
       title: verseReference,
       marker: verseReference,
@@ -2174,12 +2176,26 @@ function presenterCitationScriptureText(verse = {}, payload = {}, context = "") 
 }
 
 function presenterCitationVerseReference(verse = {}, payload = {}, verseNumber = "") {
-  const book = String(verse.referenceBook || payload.referenceBook || "").trim();
+  const book = presenterCitationBookName(verse.referenceBook || payload.referenceBook || "");
   const range = String(verse.referenceRange || payload.referenceRange || "").trim();
   const chapter = range.match(/^(\d+)/)?.[1] || "";
   const number = String(verseNumber || "").trim();
   if (book && chapter && number) return `${book} ${chapter}:${number}`;
-  return String(verse.reference || payload.reference || "").trim();
+  return presenterCitationDisplayReference(verse.reference || payload.reference || "");
+}
+
+function presenterCitationBookName(value = "") {
+  const name = String(value || "").trim();
+  const book = typeof findBibleBookByReferenceName === "function" ? findBibleBookByReferenceName(name) : null;
+  return MINDEX_CONSTANTS.KOREAN_BIBLE_BOOK_ABBREVIATIONS?.[book?.code] || book?.shortName || name;
+}
+
+function presenterCitationDisplayReference(value = "") {
+  const text = String(value || "").trim();
+  const reference = typeof parseBibleReference === "function" ? parseBibleReference(text) : null;
+  if (!reference) return text;
+  const parts = serviceScriptureReferenceParts(reference, text);
+  return [presenterCitationBookName(parts.referenceBook), parts.referenceRange].filter(Boolean).join(" ");
 }
 
 function presenterScriptureBodyContext(item = {}, section = {}, service = null) {
@@ -4569,12 +4585,16 @@ function renderPresenterScriptureReadingSlide(slide) {
 }
 
 function presenterScriptureReadingHeaderReference(slide = {}, verseNumber = "") {
-  const referenceBook = presenterScriptureReadingBookName(slide?.referenceBook);
+  const citation = String(slide?.scriptureContext || "").startsWith("citation");
+  const referenceBook = citation
+    ? presenterCitationBookName(slide?.referenceBook)
+    : presenterScriptureReadingBookName(slide?.referenceBook);
   const referenceRange = String(slide?.referenceRange || "").trim();
   const chapter = referenceRange.match(/^(\d+)/)?.[1] || "";
   const verse = String(verseNumber || "").trim();
   const chapterReference = [referenceBook, chapter && verse ? `${chapter}:${verse}` : chapter ? `${chapter}장` : referenceRange].filter(Boolean).join(" ").trim();
-  return chapterReference || String(slide?.title || slide?.marker || "").trim();
+  const fallback = String(slide?.title || slide?.marker || "").trim();
+  return chapterReference || (citation ? presenterCitationDisplayReference(fallback) : fallback);
 }
 
 function presenterScriptureReadingBookName(value = "") {

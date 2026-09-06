@@ -6320,8 +6320,8 @@ def main() -> int:
                     and scripture_context_state["sermonHasLowerBarText"]
                     and scripture_context_state["sermonFontSize"] == scripture_context_state["lyricsFontSizeToken"]
                     and scripture_context_state["citationTexts"] == [
-                        "출애굽기 24:1   또 모세에게 이르시되",
-                        "출애굽기 24:2   너 모세만 여호와께 가까이 나아오고",
+                        "출 24:1   또 모세에게 이르시되",
+                        "출 24:2   너 모세만 여호와께 가까이 나아오고",
                     ]
 	                    and scripture_context_state["citationBadge"] == "출애굽기 24:1"
                     and scripture_context_state["citationNoNumberBadge"] == "출애굽기 24:1–2"
@@ -6336,7 +6336,7 @@ def main() -> int:
                     and scripture_context_state["fullscreenCitationNoChromakey"]
                     and scripture_context_state["fullscreenCitationHasReadingClass"]
                     and scripture_context_state["fullscreenCitationHasReadingBody"]
-                    and scripture_context_state["fullscreenCitationReference"] == "출애굽기 24:1"
+                    and scripture_context_state["fullscreenCitationReference"] == "출 24:1"
                     and scripture_context_state["fullscreenCitationText"].startswith("또 모세에게")
                 ):
                     pass_("presenter-scripture-context-layouts", json.dumps(scripture_context_state, ensure_ascii=False))

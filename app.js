@@ -8573,6 +8573,8 @@ function handleDetailKeydown(event) {
 
   const citationReferenceInput = event.target.closest("[data-presenter-citation-reference-input]");
   if (citationReferenceInput) {
+    event.stopPropagation();
+    if (event.isComposing || event.keyCode === 229) return;
     if (event.key === "Enter") {
       event.preventDefault();
       event.stopPropagation();
@@ -27797,11 +27799,15 @@ function updateLiveScriptureDraft(value) {
   state.presenter.liveScripture.draft = String(value || "");
 }
 
+const pendingPresenterCitationRequests = new Set();
+
 async function appendPresenterCitationReference(input) {
   const serviceId = String(input?.dataset?.serviceId || state.selectedServiceId || "").trim();
   const elementId = String(input?.dataset?.presenterCitationElementId || "").trim();
   const rawValue = String(input?.value || "").trim();
   if (!serviceId || !elementId || !rawValue) return;
+  const requestKey = `${serviceId}:${elementId}`;
+  if (pendingPresenterCitationRequests.has(requestKey)) return;
 
   const service = state.services.find((candidate) => candidate.id === serviceId);
   const items = getServiceItems(serviceId);
@@ -27813,7 +27819,7 @@ async function appendPresenterCitationReference(input) {
   }
 
   const addedReferences = normalizeServiceScriptureReferenceList(rawValue);
-  if (!addedReferences.length) {
+  if (!addedReferences.length || addedReferences.some((reference) => !parseBibleReference(reference))) {
     showToast("성경 주소를 확인해 주세요.", "error");
     return;
   }
@@ -27833,6 +27839,7 @@ async function appendPresenterCitationReference(input) {
   state.dirty.service = true;
   markServiceElementDirty(serviceId, item);
 
+  pendingPresenterCitationRequests.add(requestKey);
   try {
     await resolveServiceScriptureBeforeSave(serviceId, index);
     const targetReference = parseBibleReference(addedReferences[0]);
@@ -27856,6 +27863,8 @@ async function appendPresenterCitationReference(input) {
     void saveServiceItemPatch(serviceId, index, { renderAfterSave: false, silent: true });
   } catch (error) {
     showToast(error.message || "성구를 불러오지 못했습니다.", "error");
+  } finally {
+    pendingPresenterCitationRequests.delete(requestKey);
   }
 }
 
@@ -27864,11 +27873,13 @@ function presenterSlideMatchesScriptureReference(slide = {}, targetReference = n
   const slideReference = parseBibleReference(slide?.title || slide?.marker || "");
   if (slideReference?.book?.code !== targetReference.book.code) return false;
   if (slideReference.chapter !== targetReference.chapter) return false;
+  const verse = Number(slide.scriptureVerse) || slideReference.verse;
+  const verseEnd = Number(slide.scriptureVerseEnd)
+    || (Number(slide.scriptureVerse) ? verse : slideReference.verseEnd || verse);
   if (targetReference.verse === null || targetReference.verse === undefined) {
-    return Boolean(slideReference.verse);
+    return Boolean(verse);
   }
-  return slideReference.verse === targetReference.verse
-    && (slideReference.verseEnd || slideReference.verse) === (targetReference.verseEnd || targetReference.verse);
+  return verse <= targetReference.verse && verseEnd >= targetReference.verse;
 }
 
 function emptyLivePraiseState(draft = "") {
