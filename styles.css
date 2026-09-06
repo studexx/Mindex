@@ -7240,6 +7240,8 @@ textarea.svc-presenter-input-control--multiline {
   right: 0;
   z-index: 45;
   width: min(320px, calc(100vw - 42px));
+  max-height: min(480px, 50dvh);
+  overflow-y: auto;
   border: 1px solid var(--line-soft);
   border-radius: var(--r);
   background: color-mix(in srgb, var(--panel) 96%, var(--bg));
@@ -7266,6 +7268,9 @@ textarea.svc-presenter-input-control--multiline {
   display: grid;
   gap: 4px;
   margin: 0;
+}
+.svc-presenter-help-panel dl + .svc-presenter-help-head {
+  padding-top: 12px;
 }
 .svc-presenter-help-panel dl > div {
   display: grid;

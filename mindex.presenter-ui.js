@@ -49,14 +49,18 @@ function setPresenterAlwaysOnTopPreference(enabled) {
 
 function renderPresenterHelpControl() {
   const rows = [
-    ["송출 시작 / 송출 종료", "출력 창 열기 / 닫기"],
-    ["Space / →", "다음 슬라이드"],
-    ["←", "이전 슬라이드"],
+    ["클릭", "슬라이드 선택"],
+    ["더블클릭", "선택한 슬라이드 송출"],
+    ["→ / ↓ / Space", "다음 슬라이드"],
+    ["← / ↑", "이전 슬라이드"],
     ["번호 + Enter", "해당 슬라이드로 이동"],
     ["0 + Enter", "빈 화면"],
-    ["범위 밖 번호", "현재 화면 유지"],
-    ["Esc Esc", "프레젠터 종료"],
-    ["실시간 성구 송출", "해당 순서에서 성구 입력"],
+    ["Home / End", "첫 / 마지막 슬라이드"],
+    ["Esc 2번", "송출 종료 (빠르게 연속)"],
+  ];
+  const inputRows = [
+    ["인용 구절", "성경 주소 입력 후 Enter로 해당 절 이동. 범위는 첫 절로 이동"],
+    ["예배 입력", "Enter 2번 또는 반영 버튼"],
   ];
   return `
     <details class="svc-presenter-help" data-presenter-help>
@@ -66,10 +70,21 @@ function renderPresenterHelpControl() {
       <div class="svc-presenter-help-panel" role="dialog" aria-label="${escapeAttr(uiText("presenter.help.title"))}">
         <div class="svc-presenter-help-head">
           <strong>${escapeHtml(uiText("presenter.help.title"))}</strong>
-          <small>출력 창은 앱 제어로만 전체화면 전환합니다</small>
+          <small>송출 중인 예배의 조작 기준입니다. 글을 입력할 때는 슬라이드 이동 단축키가 작동하지 않습니다.</small>
         </div>
         <dl>
           ${rows.map(([key, value]) => `
+            <div>
+              <dt>${escapeHtml(key)}</dt>
+              <dd>${escapeHtml(value)}</dd>
+            </div>`).join("")}
+        </dl>
+        <div class="svc-presenter-help-head">
+          <strong>입력</strong>
+          <small>인용 구절은 준비 상태에서는 선택만, 송출 중에는 바로 전환합니다.</small>
+        </div>
+        <dl>
+          ${inputRows.map(([key, value]) => `
             <div>
               <dt>${escapeHtml(key)}</dt>
               <dd>${escapeHtml(value)}</dd>
