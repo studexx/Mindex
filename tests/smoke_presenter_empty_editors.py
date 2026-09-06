@@ -45,6 +45,7 @@ def main():
                   root.innerHTML = html;
                   assert(root.querySelector('[data-service-element-id="'+id+'"]'), id+' editor missing');
                   assert(root.querySelector('input, textarea, select'), id+' fields missing');
+                  assert(!root.querySelector('.svc-board-subgroup-control-label'), id+' duplicate heading');
                   assert(!root.querySelector('.svc-board-subgroup.active'), id+' false active');
                   assert(!root.querySelector('.svc-board-grid').textContent.trim(), id+' phantom thumbnail');
                   assert(root.querySelector('.svc-board-subgroup-head').disabled, id+' invalid jump');

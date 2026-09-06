@@ -28935,7 +28935,7 @@ function renderPresenterBoardSubgroupInputControls(serviceId, subgroup = {}) {
     const audioControls = serviceItemSupportsHeaderAudio(context.item)
       ? renderPresenterBoardItemAudioControls(serviceId, context)
       : "";
-    const label = String(context.item.label || "항목").trim();
+    const label = contexts.length > 1 ? String(context.item.label || "항목").trim() : "";
     return `
       <div class="svc-board-subgroup-control-item" data-service-item-index="${escapeAttr(String(context.index))}">
         ${label ? `<span class="svc-board-subgroup-control-label">${escapeHtml(label)}</span>` : ""}
