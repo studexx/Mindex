@@ -3121,7 +3121,7 @@ function shouldKeepPresenterShortcutInFocusedControl(event) {
   }
   if (target.closest("[data-service-music-action]")) return true;
   if (
-    presenterControllerNavigationKey(event.key)
+    (presenterControllerNavigationKey(event.key) || /^\d$/.test(event.key) || event.key === "Escape")
     && target.closest("[data-presenter-action], .svc-slide-thumb[data-presenter-index][data-service-id], .svc-slide-thumb-wrap[data-presenter-index][data-service-id]")
   ) {
     return false;
