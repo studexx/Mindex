@@ -134,7 +134,6 @@ function renderPresenterServiceInputRail(service) {
     <aside class="svc-presenter-input-rail" aria-label="예배 입력">
       <header class="svc-presenter-input-rail-head">
         <span>예배 입력</span>
-        <small>빠른 반영</small>
       </header>
       <section class="svc-presenter-preparation-input">
         <textarea class="svc-presenter-preparation-text" data-presenter-preparation-input data-service-id="${escapeAttr(service.id)}" rows="5" placeholder="${escapeAttr(placeholder)}" aria-label="예배 준비 입력">${escapeHtml(draft)}</textarea>
