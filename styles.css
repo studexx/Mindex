@@ -6898,8 +6898,10 @@ textarea.svc-presenter-input-control--multiline {
   background: #000;
 }
 .svc-presenter-live-preview .svc-slide-mini-output {
-  width: 100%;
-  height: 100%;
+  position: absolute;
+  inset: 0;
+  width: auto;
+  height: auto;
 }
 .svc-presenter-live-preview .presenter-slide,
 .svc-presenter-live-preview .presenter-output-root {

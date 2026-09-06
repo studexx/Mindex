@@ -26,7 +26,7 @@ def main():
               refs.rightSidebar.style.cssText = 'display:block;position:fixed;right:0;top:100px;width:254px;height:500px';
               refs.detailPane.innerHTML = '<div id="previewBoardFixture"></div>';
             }""")
-            for width in (254, 360, 220):
+            for width in (254, 254.5, 360, 220):
                 page.evaluate("""width => {
                   refs.rightSidebar.style.width = `${width}px`;
                   setRightSidebarContent(window.previewFixture);
@@ -37,7 +37,7 @@ def main():
                 page.wait_for_timeout(100)
                 check_geometry(page)
                 # A later resize must still be observed after board hydration.
-                page.evaluate("refs.rightSidebar.style.width = '300px'")
+                page.evaluate("width => refs.rightSidebar.style.width = `${width + 0.5}px`", width)
                 page.wait_for_timeout(100)
                 check_geometry(page)
             page.locator('.svc-presenter-live-preview').screenshot(path='/tmp/mindex-preview-lifecycle.png')
@@ -53,7 +53,7 @@ def check_geometry(page):
       return {left: canvas.left - frame.left, top: canvas.top - frame.top,
         right: frame.right - canvas.right, bottom: frame.bottom - canvas.bottom};
     }""")
-    assert all(-0.1 <= value <= 3 for value in geometry.values()), geometry
+    assert all(abs(value) <= 0.1 for value in geometry.values()), geometry
     print('PASS sidebar preview fits after replacement/resize', geometry)
 
 
