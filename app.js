@@ -28048,7 +28048,10 @@ function presenterDeferredBoardGroupIndexes(groups = [], activeIndex = -1, slide
 }
 
 function renderDeferredPresenterBoardSection(group, serviceId, groupIndex) {
-  const firstIndex = group.slides[0]?.slideIndex ?? 0;
+  if (group.slides.some(({ slide }) => slide.controllerEditorOnly)) {
+    return renderPresenterBoardSection(group, -1, serviceId);
+  }
+  const firstIndex = group.slides.find(({ slideIndex }) => slideIndex >= 0)?.slideIndex ?? -1;
   const visibleTitle = group.title || group.label || group.name;
   const interactionLabel = presenterSlideInteractionHint(serviceId, group.name || visibleTitle);
   const referenceMediaSectionKey = presenterBoardReferenceMediaSectionKey(group, serviceId);
@@ -28401,10 +28404,38 @@ function nextPreparationTarget(service = null) {
   return null;
 }
 
+function presenterBoardEntries(slides, service) {
+  const entries = slides.map((slide, slideIndex) => ({ slide, slideIndex }));
+  if (!service) return entries;
+  const items = getServiceOutlineItems(service);
+  const belongsToItem = (slide, item) => {
+    const connected = normalizeServiceConnectedPraise(slide.connectedPraise || slide.connected_praise);
+    return presenterSlideBelongsToItem(slide, item)
+      || Boolean(connected && [connected.primaryItemId, ...(connected.itemIds || []), ...(connected.secondaryItemIds || [])]
+        .includes(String(item.id || "")));
+  };
+  items.forEach((item, index) => {
+    if (entries.some(({ slide }) => belongsToItem(slide, item))) return;
+    // Controller-only entries keep editors reachable without adding output slides.
+    const slide = {
+      ...presenterSectionForServiceItem(item, index, serviceItemDisplayText(item)),
+      id: `${item.id}:editor-only`,
+      controllerEditorOnly: true,
+      label: item.label || "",
+      title: serviceItemDisplayText(item),
+      text: "",
+    };
+    const nextIndex = entries.findIndex((entry) => items.slice(index + 1)
+      .some((next) => belongsToItem(entry.slide, next)));
+    entries.splice(nextIndex < 0 ? entries.length : nextIndex, 0, { slide, slideIndex: -1 });
+  });
+  return entries;
+}
+
 function groupPresenterSlidesBySection(slides, serviceId = state.selectedServiceId) {
   const service = state.services.find((svc) => svc.id === serviceId);
   const groups = [];
-  slides.forEach((slide, slideIndex) => {
+  presenterBoardEntries(slides, service).forEach(({ slide, slideIndex }) => {
     const mainPraise = isPresenterMainPraiseSlide(slide);
     const mainPraiseMarker = mainPraise && isPresenterPraiseSectionMarkerSlide(slide);
     const mainPraiseAssignee = mainPraiseMarker
@@ -28707,8 +28738,8 @@ function presenterPraiseSubgroupLabel(label, number) {
 }
 
 function renderPresenterBoardSection(group, activeIndex, serviceId) {
-  const active = group.slides.some(({ slideIndex }) => slideIndex === activeIndex);
-  const firstIndex = group.slides[0]?.slideIndex ?? 0;
+  const active = group.slides.some(({ slideIndex }) => slideIndex >= 0 && slideIndex === activeIndex);
+  const firstIndex = group.slides.find(({ slideIndex }) => slideIndex >= 0)?.slideIndex ?? -1;
   const visibleTitle = group.title || group.label || group.name;
   const interactionLabel = presenterSlideInteractionHint(serviceId, group.name || visibleTitle);
   const referenceMediaSectionKey = presenterBoardReferenceMediaSectionKey(group, serviceId);
@@ -28728,6 +28759,7 @@ function renderPresenterBoardSection(group, activeIndex, serviceId) {
     <section class="svc-board-section${active ? " active" : ""}" role="listitem" aria-label="${escapeAttr(group.name)}">
       <div class="svc-board-section-head-row">
         <button class="svc-board-section-head" type="button"
+          ${firstIndex < 0 ? "disabled" : ""}
           data-presenter-action="jump"
           data-presenter-index="${firstIndex}"
           data-service-id="${escapeAttr(serviceId)}"
@@ -28813,8 +28845,8 @@ function renderPresenterNextPreparationButton(serviceId, nextTarget = null) {
 }
 
 function renderPresenterBoardSubgroup(subgroup, activeIndex, serviceId, options = {}) {
-  const active = subgroup.slides.some(({ slideIndex }) => slideIndex === activeIndex);
-  const firstIndex = subgroup.slides[0]?.slideIndex ?? 0;
+  const active = subgroup.slides.some(({ slideIndex }) => slideIndex >= 0 && slideIndex === activeIndex);
+  const firstIndex = subgroup.slides.find(({ slideIndex }) => slideIndex >= 0)?.slideIndex ?? -1;
   const slides = options.slides || annotatePresenterFormStarts(subgroup.slides).entries;
   const display = presenterBoardSubgroupDisplay(serviceId, subgroup);
   const rawLabel = Object.prototype.hasOwnProperty.call(display, "label")
@@ -28840,6 +28872,7 @@ function renderPresenterBoardSubgroup(subgroup, activeIndex, serviceId, options 
       ${showHead ? `
         <header class="svc-board-subgroup-head-row">
           <button class="svc-board-subgroup-head" type="button"
+            ${firstIndex < 0 ? "disabled" : ""}
             data-presenter-action="jump"
             data-presenter-index="${firstIndex}"
             data-service-id="${escapeAttr(serviceId)}"
@@ -29141,6 +29174,7 @@ function presenterLabelDuplicatesSlideText(label, slide) {
 }
 
 function renderPresenterSlideThumb(slide, slideIndex, activeIndex, serviceId, formLabel = "") {
+  if (slide.controllerEditorOnly) return "";
   const active = slideIndex === activeIndex;
   const hidden = Boolean(slide?.hiddenInPresentation || slide?.hidden_in_presentation || slide?.hidden);
   const elementKey = presenterSlideElementGroupKey(slide) || `slide:${slideIndex}`;
