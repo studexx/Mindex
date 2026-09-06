@@ -2796,8 +2796,8 @@ function presenterStatePayload(serviceId = state.presenter.serviceId) {
 
 function readPresenterControllerRestorePayload() {
   try {
-    const raw = safeStorageGet("local", PRESENTER_STORAGE_KEY, "");
-    const payload = raw ? normalizePresenterPayload(JSON.parse(raw)) : null;
+    const stored = readPresenterStoredPayload();
+    const payload = stored ? normalizePresenterPayload(stored) : null;
     if (!payload?.serviceId || !payload.slides.length) return null;
     if (Date.now() - payload.updatedAt > PRESENTER_CONTROLLER_RESTORE_MAX_AGE_MS) return null;
     return payload;
@@ -2870,10 +2870,13 @@ function bindPresenterChannel() {
 }
 
 function handlePresenterControllerMessage(message = {}) {
+  if (["presenter-ready", "presenter-heartbeat"].includes(message.type)) {
+    state.presenter.outputTransportVersion = Number(message.transportVersion) || 0;
+  }
   if (message.type === "presenter-ready") {
     markPresenterOutputConnected(message.clientId);
     const restoreState = restorePresenterControllerSession();
-    if (restoreState === "none") publishPresenterState();
+    if (restoreState === "none") publishPresenterState({ force: true });
     return;
   }
   if (message.type === "presenter-heartbeat") {
@@ -2973,12 +2976,48 @@ function refreshPresenterOutputConnectionState() {
 function publishPresenterState(options = {}) {
   const payload = presenterStatePayload();
   if (!options.force && !payload.serviceId && !payload.slides.length) return;
-  publishPresenterPayload(payload);
+  publishPresenterPayload(payload, options);
 }
 
-function publishPresenterPayload(payload) {
-  safeStorageSet("local", PRESENTER_STORAGE_KEY, JSON.stringify(payload));
-  state.presenter.channel?.postMessage({ type: "presenter-state", payload });
+const PRESENTER_NAVIGATION_STORAGE_KEY = "mindex.presenter.state.navigation";
+let presenterTransportSequence = 0;
+const presenterTransportSession = `${Date.now()}:${Math.random()}`;
+let presenterTransportSnapshot = null;
+
+function mergePresenterNavigation(snapshot, navigation) {
+  if (!snapshot || navigation?.snapshotId !== snapshot.snapshotId) return snapshot;
+  if (Number(navigation.updatedAt) < Number(snapshot.updatedAt)) return snapshot;
+  return { ...snapshot, ...navigation, slides: snapshot.slides };
+}
+
+function readPresenterStoredPayload() {
+  const snapshot = JSON.parse(safeStorageGet("local", PRESENTER_STORAGE_KEY, "null") || "null");
+  try {
+    const navigation = JSON.parse(safeStorageGet("local", PRESENTER_NAVIGATION_STORAGE_KEY, "null") || "null");
+    return mergePresenterNavigation(snapshot, navigation);
+  } catch {
+    return snapshot;
+  }
+}
+
+function publishPresenterPayload(payload, options = {}) {
+  const { index, slideAnchor, safetyBlank, liveScripture, livePraise, updatedAt,
+    snapshotId: previousSnapshotId, messageId: previousMessageId, ...content } = payload;
+  const contentKey = JSON.stringify(content);
+  const messageId = `${presenterTransportSession}:${++presenterTransportSequence}`;
+  const compact = !options.force && state.presenter.outputTransportVersion === 1
+    && presenterTransportSnapshot?.contentKey === contentKey;
+  if (compact) {
+    const navigation = { snapshotId: presenterTransportSnapshot.id, messageId,
+      index, slideAnchor, safetyBlank, liveScripture, livePraise, updatedAt };
+    safeStorageSet("local", PRESENTER_NAVIGATION_STORAGE_KEY, JSON.stringify(navigation));
+    state.presenter.channel?.postMessage({ type: "presenter-navigation", payload: navigation });
+    return;
+  }
+  const snapshot = { ...payload, snapshotId: messageId, messageId };
+  const stored = safeStorageSet("local", PRESENTER_STORAGE_KEY, JSON.stringify(snapshot));
+  presenterTransportSnapshot = stored ? { id: messageId, contentKey } : null;
+  state.presenter.channel?.postMessage({ type: "presenter-state", payload: snapshot });
 }
 
 function presenterOutputUrl(options = {}) {
@@ -3167,7 +3206,19 @@ function initPresenterOutputCore() {
   let outputStopping = false;
   const outputClientId = `presenter-output:${Date.now()}:${Math.random().toString(36).slice(2)}`;
   let heartbeatTimer = null;
+  const receivedMessages = new Set();
+  const receivedSequences = new Map();
   const applyPayload = (payload) => {
+    if (payload?.messageId && receivedMessages.has(payload.messageId)) return;
+    if (payload?.messageId) {
+      const split = payload.messageId.lastIndexOf(":");
+      const sender = payload.messageId.slice(0, split);
+      const sequence = Number(payload.messageId.slice(split + 1));
+      if (Number.isFinite(sequence) && sequence <= (receivedSequences.get(sender) || 0)) return;
+      if (Number.isFinite(sequence)) receivedSequences.set(sender, sequence);
+      receivedMessages.add(payload.messageId);
+      if (receivedMessages.size > 128) receivedMessages.delete(receivedMessages.values().next().value);
+    }
     currentPayload = normalizePresenterPayload(payload);
     syncPresenterOutputDocumentTitle(currentPayload);
     renderPresenterOutput(currentPayload, { onAutoAdvance: requestPresenterOutputNext });
@@ -3188,6 +3239,7 @@ function initPresenterOutputCore() {
     sendControllerMessage({
       type: "presenter-heartbeat",
       clientId: outputClientId,
+      transportVersion: 1,
       warmup: presenterOutputWarmupSummary(),
     });
   };
@@ -3249,7 +3301,7 @@ function initPresenterOutputCore() {
 
   const renderStoredState = () => {
     try {
-      const stored = JSON.parse(safeStorageGet("local", PRESENTER_STORAGE_KEY, "null") || "null");
+      const stored = readPresenterStoredPayload();
       applyPayload(stored);
     } catch {
       applyPayload(null);
@@ -3257,7 +3309,7 @@ function initPresenterOutputCore() {
   };
   const renderFreshStoredState = () => {
     try {
-      const stored = JSON.parse(safeStorageGet("local", PRESENTER_STORAGE_KEY, "null") || "null");
+      const stored = readPresenterStoredPayload();
       if (!stored?.updatedAt || Date.now() - Number(stored.updatedAt) > 5000) return false;
       applyPayload(stored);
       return true;
@@ -3266,6 +3318,14 @@ function initPresenterOutputCore() {
     }
   };
   const handleOutputSignalMessage = (message = {}) => {
+    if (message?.type === "presenter-navigation") {
+      if (message.payload?.snapshotId === currentPayload?.snapshotId) {
+        applyPayload(mergePresenterNavigation(currentPayload, message.payload));
+      } else {
+        renderStoredState();
+      }
+      return;
+    }
     if (message?.type === "presenter-state") {
       applyInitialPresenterState(message.payload);
       return;
@@ -3293,6 +3353,10 @@ function initPresenterOutputCore() {
   if (channel) {
     renderFreshStoredState();
     channel.onmessage = (event) => {
+      if (event.data?.type === "presenter-navigation") {
+        handleOutputSignalMessage(event.data);
+        return;
+      }
       if (event.data?.type === "presenter-state") {
         applyInitialPresenterState(event.data.payload);
         return;
@@ -3328,7 +3392,7 @@ function initPresenterOutputCore() {
   });
 
   window.addEventListener("storage", (event) => {
-    if (event.key === PRESENTER_STORAGE_KEY) {
+    if (event.key === PRESENTER_STORAGE_KEY || event.key === PRESENTER_NAVIGATION_STORAGE_KEY) {
       renderStoredState();
       return;
     }
@@ -3404,6 +3468,8 @@ function presenterOutputKeyAction(event) {
 function normalizePresenterPayload(payload) {
   const slides = Array.isArray(payload?.slides) ? payload.slides : [];
   return {
+    snapshotId: payload?.snapshotId || "",
+    messageId: payload?.messageId || "",
     serviceId: payload?.serviceId || null,
     serviceType: payload?.serviceType || "",
     serviceTitle: payload?.serviceTitle || "",
@@ -3511,7 +3577,8 @@ function renderPresenterOutput(payload, options = {}) {
     presenterOutputLayers(root);
     const rerenderIfReady = () => {
       if (
-        root.dataset.presenterPendingImageSource === activeImageSource
+        token === presenterOutputRenderState.token
+        && root.dataset.presenterPendingImageSource === activeImageSource
         && presenterOutputImageIsReady(activeImageSource)
       ) {
         renderPresenterOutput(payload, options);
@@ -4187,7 +4254,7 @@ function preparePresenterOutputVideoForPaint(video) {
     video.addEventListener("canplay", finish, { once: true });
     video.addEventListener("playing", finish, { once: true });
     video.addEventListener("error", finish, { once: true });
-    video.load?.();
+    if (video.networkState === HTMLMediaElement.NETWORK_EMPTY) video.load?.();
   });
 }
 
