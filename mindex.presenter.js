@@ -651,6 +651,7 @@ function presenterFormPlanForServiceItem(version = {}, item, song = null) {
 }
 
 function presenterMissingFormWarnings(missing = [], forms = [], preset = null) {
+  if (preset?.omitMissingForms) return [];
   const strength = String(preset?.strength || "").trim().toLowerCase();
   const automaticPreset = ["auto", "default", "suggested"].includes(strength);
   const sourceHasChorus = normalizeForms(forms || [])
@@ -670,8 +671,8 @@ function presenterSpecialSongHymnFormPreset(item = {}, song = null, version = nu
     || Boolean(song?.hymn_no || version?.hymn_no);
   if (!isHymn) return null;
   return presenterSpecialSongHymnDisplayPreset(matchedRule?.formPreset || normalizeServiceFormPreset(
-    ["1절", "후렴", "2절", "후렴", "간주", "마지막 절", "후렴"],
-    "1절-후렴-2절-후렴-간주-마지막 절-후렴",
+    PUBLIC_SPECIAL_HYMN_FORM_PRESET_FORMS,
+    PUBLIC_SPECIAL_HYMN_FORM_PRESET_HINT,
     "default",
   ));
 }
@@ -680,10 +681,10 @@ function presenterSpecialSongHymnDisplayPreset(preset = null) {
   if (!preset?.forms?.length) return preset;
   const forms = cleanList(preset.forms).map((label) => {
     const target = normalizePresenterFormPresetLabel(label);
-    if (target.lastVerse) return "마지막 절";
-    if (target.type === "verse" && target.number) return `${target.number}절`;
-    if (target.type === "chorus") return "후렴";
-    if (target.type === "instrumental") return "간주";
+    if (target.lastVerse) return "VL";
+    if (target.type === "verse" && target.number && !target.group) return `V${target.number}`;
+    if (target.type === "chorus" && !target.group) return target.number ? `C${target.number}` : "C";
+    if (target.type === "instrumental") return "Int";
     return String(label || "").trim();
   });
   return {
@@ -691,6 +692,7 @@ function presenterSpecialSongHymnDisplayPreset(preset = null) {
     forms,
     hint: forms.join("-"),
     omitUnlisted: true,
+    omitMissingForms: String(preset.strength || "").toLowerCase() === "default",
   };
 }
 
@@ -1085,6 +1087,10 @@ function findPresenterFormForPresetTarget(forms = [], target = {}) {
     if (target.key === candidate.key) return form;
     if (target.type && target.type === candidate.type && (!target.number || target.number === candidate.number)) return form;
   }
+  // A single verse is stored without a number; V1 still denotes that first verse.
+  if (target.type === "verse" && target.number === 1 && sameType.length === 1 && !sameType[0].target.number) {
+    return sameType[0].form;
+  }
   if (target.groupIndex && target.type) {
     const unnumbered = sameType.filter(({ target: candidate }) => !candidate.number);
     if (unnumbered.length === 1) return unnumbered[0].form;
@@ -1133,7 +1139,7 @@ function presenterFormDisplayLabel(form = {}) {
 function normalizePresenterFormPresetLabel(value = "") {
   const raw = String(value || "").trim();
   const compact = compactSearchValue(raw);
-  const lastVerse = /^(마지막절|lastverse|last)$/i.test(compact);
+  const lastVerse = /^(vl|마지막절|lastverse|last)$/i.test(compact);
   if (lastVerse) return { key: "last-verse", type: "verse", number: 0, lastVerse: true };
   const hymnVerse = raw.match(/^(\d+)\s*절$/u);
   if (hymnVerse) return { key: `verse:${hymnVerse[1]}`, type: "verse", number: Number(hymnVerse[1]) };
@@ -1177,7 +1183,7 @@ function normalizePresenterFormPresetLabel(value = "") {
   if (/^(coda|ending)\s*[a-z]?$/i.test(raw)) {
     return { key: "coda", type: "coda", number: 0 };
   }
-  if (/^(간주|interlude|instrumental)\s*[a-z]?$/i.test(raw)) {
+  if (/^(int|간주|interlude|instrumental)\s*[a-z]?$/i.test(raw)) {
     return { key: "instrumental", type: "instrumental", number: 0, blank: true };
   }
   const tags = raw.match(/^(tags)$/i);
@@ -1214,7 +1220,7 @@ function normalizePresenterFormType(value = "") {
   if (/^(coda|ending)$/i.test(compact)) return "coda";
   if (/^tag$/i.test(compact)) return "tag";
   if (/^lyrics$/i.test(compact)) return "lyrics";
-  if (/^(interlude|instrumental|간주)$/i.test(compact)) return "instrumental";
+  if (/^(int|interlude|instrumental|간주)$/i.test(compact)) return "instrumental";
   return compact;
 }
 

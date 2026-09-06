@@ -814,7 +814,7 @@ def main() -> int:
                     "groupedLabels": ["V1A", "V1B"],
                     "groupedLyrics": ["1행\n2행\n3행\n4행", "5행\n6행\n7행\n8행"],
                     "specialHymnOrder": ["sv1", "sc", "sv2", "sc", "preset-blank:instrumental", "sv4", "sc"],
-                    "specialHymnLabels": ["1절", "후렴", "2절", "후렴", "간주", "마지막 절", "후렴"],
+                    "specialHymnLabels": ["1절", "Chorus", "2절", "Chorus", "Instrumental", "마지막 절", "Chorus"],
                     "specialHymnWithoutChorusWarnings": [],
                 }:
                     pass_("presenter-ccm-repeats-chorus", json.dumps(ccm_form_order_state, ensure_ascii=False))
@@ -4836,9 +4836,9 @@ def main() -> int:
                     """
                 )
                 if (
-                    form_preset_state["hymnTypes"] == ["title-assignee", "song-title", "lyrics", "lyrics", "lyrics", "lyrics", "blank", "lyrics", "lyrics"]
+                    form_preset_state["hymnTypes"] == ["title-assignee", "song-title", "lyrics", "lyrics", "lyrics", "lyrics", "blank", "lyrics", "lyrics", "lyrics"]
                     and form_preset_state["hymnTitleTexts"] == ["♬ 999 특송 테스트"]
-                    and form_preset_state["hymnMarkers"] == ["Verse 1", "Chorus", "Verse 2", "Chorus", "Verse 4", "Chorus"]
+                    and form_preset_state["hymnMarkers"] == ["Verse 1", "Chorus", "Verse 2", "Chorus", "Verse 4", "Chorus", "Coda"]
                     and form_preset_state["hymnTexts"] == [
                         "1절 첫 줄\n1절 둘째 줄",
                         "후렴 첫 줄\n후렴 둘째 줄",
@@ -4846,6 +4846,7 @@ def main() -> int:
                         "후렴 첫 줄\n후렴 둘째 줄",
                         "마지막 절 첫 줄\n마지막 절 둘째 줄",
                         "후렴 첫 줄\n후렴 둘째 줄",
+                        "아멘",
                     ]
                     and "3절 첫 줄" not in "\n".join(form_preset_state["hymnTexts"])
                     and form_preset_state["hymnWarnings"] == []
@@ -5006,6 +5007,13 @@ def main() -> int:
                             "marker": "Chorus",
                             "text": "후렴 첫 줄\n후렴 둘째 줄",
                             "formKey": "h-c:6",
+                            "sectionKey": "special_song",
+                        },
+                        {
+                            "type": "lyrics",
+                            "marker": "Coda",
+                            "text": "아멘",
+                            "formKey": "h-coda:7",
                             "sectionKey": "special_song",
                         },
                     ]

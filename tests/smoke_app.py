@@ -4132,8 +4132,8 @@ def main() -> int:
                             "sectionTitle": "특송",
                             "elementLabel": "특송",
                             "when": {"songType": "hymn"},
-                            "forms": ["1절", "후렴", "2절", "후렴", "간주", "마지막 절", "후렴"],
-                            "hint": "1절-후렴-2절-후렴-간주-마지막 절-후렴",
+                            "forms": ["V1", "C", "V2", "C", "Int", "VL", "C", "Coda"],
+                            "hint": "V1-C-V2-C-Int-VL-C-Coda",
                             "strength": "default",
                         }
                         and template_terms["sundayPublicScaffold"]["first"]["titles"][:4] == ["준비", "신앙고백", "찬양", "참회기도"]
@@ -4425,7 +4425,7 @@ def main() -> int:
                             "legacyAugmentedSequenceValue": "V-C-V-C-B-C-Coda",
                             "legacyAugmentedSequenceForms": ["V", "C", "V", "C", "B", "C", "Coda"],
                             "inputValue": "V1-V2-C-B-Coda",
-                            "hymnInputValue": "1절-후렴-2절-후렴-간주-마지막 절-후렴",
+                            "hymnInputValue": "V1-C-V2-C-Int-VL-C-Coda",
                             "disabledMemoKeepsOverride": True,
                             "disabledValue": "",
                             "savedOverride": True,

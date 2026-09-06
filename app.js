@@ -10467,8 +10467,9 @@ function parseObjectPayload(value) {
 }
 
 const LEGACY_PUBLIC_SPECIAL_HYMN_FORM_PRESET_FORMS = ["1절", "2절", "간주", "마지막 절"];
-const PUBLIC_SPECIAL_HYMN_FORM_PRESET_FORMS = ["1절", "후렴", "2절", "후렴", "간주", "마지막 절", "후렴"];
-const PUBLIC_SPECIAL_HYMN_FORM_PRESET_HINT = "1절-후렴-2절-후렴-간주-마지막 절-후렴";
+const PREVIOUS_PUBLIC_SPECIAL_HYMN_FORM_PRESET_FORMS = ["1절", "후렴", "2절", "후렴", "간주", "마지막 절", "후렴"];
+const PUBLIC_SPECIAL_HYMN_FORM_PRESET_FORMS = ["V1", "C", "V2", "C", "Int", "VL", "C", "Coda"];
+const PUBLIC_SPECIAL_HYMN_FORM_PRESET_HINT = PUBLIC_SPECIAL_HYMN_FORM_PRESET_FORMS.join("-");
 
 function normalizeServiceFormPreset(value, fallbackHint = "", fallbackStrength = "") {
   const source = parseObjectPayload(value);
@@ -10510,6 +10511,7 @@ function normalizeServiceFormPresetForms(value) {
 function normalizeSongFormPresetLabel(value = "") {
   const raw = String(value || "").trim();
   const compact = compactSearchValue(raw);
+  if (/^(vl|마지막절|lastverse|last)$/i.test(compact)) return { key: "last-verse", type: "verse", number: 0, lastVerse: true };
   const verse = raw.match(/^(?:v|verse)\s*(\d*)([a-z])?$/i) || raw.match(/^(\d+)\s*절$/u);
   if (verse) {
     const number = Number(verse[1]) || 0;
@@ -10540,7 +10542,7 @@ function normalizeSongFormPresetLabel(value = "") {
   if (coda) {
     return { key: "coda", type: "coda" };
   }
-  const instrumental = raw.match(/^(?:간주|interlude|instrumental)\s*[a-z]?$/i);
+  const instrumental = raw.match(/^(?:int|간주|interlude|instrumental)\s*[a-z]?$/i);
   if (instrumental) {
     return { key: "instrumental", type: "instrumental" };
   }
@@ -10559,6 +10561,7 @@ function songFormPresetDisplayLabel(value = "") {
   const raw = String(value || "").trim();
   if (!raw) return "";
   const target = normalizeSongFormPresetLabel(raw);
+  if (target.lastVerse) return "VL";
   const group = String(target.group || "").trim().toUpperCase();
   const suffix = target.number ? ` ${target.number}` : group ? ` ${group}` : "";
   if (target.type === "verse") return `Verse${suffix}`;
@@ -10619,9 +10622,11 @@ function normalizeServiceFormPresetRulePreset(preset, when = {}) {
   const isHymnRule = songTypes.includes("hymn");
   if (!isHymnRule) return preset;
   const formsKey = preset.forms.map((item) => compactSearchValue(item)).join("|");
-  const legacyKey = LEGACY_PUBLIC_SPECIAL_HYMN_FORM_PRESET_FORMS.map((item) => compactSearchValue(item)).join("|");
-  if (formsKey !== legacyKey) return preset;
-  const legacyHint = LEGACY_PUBLIC_SPECIAL_HYMN_FORM_PRESET_FORMS.join("-");
+  if (["manual", "forced", "song-default"].includes(String(preset.strength || "").toLowerCase())) return preset;
+  const legacy = [LEGACY_PUBLIC_SPECIAL_HYMN_FORM_PRESET_FORMS, PREVIOUS_PUBLIC_SPECIAL_HYMN_FORM_PRESET_FORMS]
+    .find((forms) => forms.map((item) => compactSearchValue(item)).join("|") === formsKey);
+  if (!legacy) return preset;
+  const legacyHint = legacy.join("-");
   const hint = compactSearchValue(preset.hint || "") === compactSearchValue(legacyHint)
     ? PUBLIC_SPECIAL_HYMN_FORM_PRESET_HINT
     : firstNonBlankString(preset.hint, PUBLIC_SPECIAL_HYMN_FORM_PRESET_HINT);
