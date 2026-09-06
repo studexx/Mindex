@@ -28444,8 +28444,20 @@ function presenterBoardEntries(slides, service) {
       || Boolean(connected && [connected.primaryItemId, ...(connected.itemIds || []), ...(connected.secondaryItemIds || [])]
         .includes(String(item.id || "")));
   };
+  const ownershipFor = (slide) => {
+    const indexes = new Set();
+    let lastIndex = -1;
+    items.forEach((item, index) => {
+      if (!belongsToItem(slide, item)) return;
+      indexes.add(index);
+      lastIndex = index;
+    });
+    return { indexes, lastIndex };
+  };
+  // Cache membership once; insertion only consults indexes, not nested slide scans.
+  const ownership = entries.map(({ slide }) => ownershipFor(slide));
   items.forEach((item, index) => {
-    if (entries.some(({ slide }) => belongsToItem(slide, item))) return;
+    if (ownership.some((entry) => entry.indexes.has(index))) return;
     // Controller-only entries keep editors reachable without adding output slides.
     const slide = {
       ...presenterSectionForServiceItem(item, index, serviceItemDisplayText(item)),
@@ -28455,9 +28467,10 @@ function presenterBoardEntries(slides, service) {
       title: serviceItemDisplayText(item),
       text: "",
     };
-    const nextIndex = entries.findIndex((entry) => items.slice(index + 1)
-      .some((next) => belongsToItem(entry.slide, next)));
-    entries.splice(nextIndex < 0 ? entries.length : nextIndex, 0, { slide, slideIndex: -1 });
+    const nextIndex = ownership.findIndex((entry) => entry.lastIndex > index);
+    const insertionIndex = nextIndex < 0 ? entries.length : nextIndex;
+    entries.splice(insertionIndex, 0, { slide, slideIndex: -1 });
+    ownership.splice(insertionIndex, 0, ownershipFor(slide));
   });
   return entries;
 }
@@ -30485,7 +30498,7 @@ function refreshPresenterForService(serviceId, options = {}) {
   const previousSlides = state.presenter.slides;
   const previousIndex = state.presenter.index;
   const signature = presenterSlideBuildSourceSignature(serviceId);
-  state.presenter.slides = buildServicePresenterSlides(serviceId);
+  state.presenter.slides = buildServicePresenterSlides(serviceId, signature);
   state.presenter.sourceItems = state.serviceItems[serviceId] || null;
   state.presenter.sourceSignature = signature;
   state.presenter.index = reconcilePresenterIndexForSlides(previousSlides, previousIndex, state.presenter.slides);
@@ -30608,7 +30621,7 @@ function presenterSlidesForService(serviceId) {
     state.presenter.index = clampPresenterIndex(state.presenter.index, state.presenter.slides.length);
     return state.presenter.slides;
   }
-  const slides = buildServicePresenterSlides(serviceId);
+  const slides = buildServicePresenterSlides(serviceId, signature);
   if (state.presenter.serviceId === serviceId) {
     const previousSlides = state.presenter.slides;
     const previousIndex = state.presenter.index;
@@ -30618,6 +30631,27 @@ function presenterSlidesForService(serviceId) {
     state.presenter.index = reconcilePresenterIndexForSlides(previousSlides, previousIndex, slides);
   }
   return slides;
+}
+
+function presenterServiceScriptureCacheSignature(service, items) {
+  // Legacy slide-only services do not expose their dependencies as service items.
+  if (!items.length) return state.bibleVerseCacheVersion || 0;
+  const keys = new Set();
+  items.forEach((item) => {
+    if (!isScriptureBodyServiceItem(item)) return;
+    const memo = parseServiceItemMemo(item.memo);
+    if (memo.manualScripture) return;
+    serviceItemScriptureReferences(item, memo, service).forEach((text) => {
+      const reference = parseBibleReference(text);
+      const translation = serviceItemBibleTranslationForReference(item, memo, text);
+      if (reference && translation?.id) {
+        keys.add(bibleVerseCacheKey(translation.id, reference.book.code, reference.chapter));
+      }
+    });
+  });
+  return [...keys].sort().map((key) => [key, compactTextSignature(JSON.stringify(
+    (state.bibleVerseCache.get(key) || []).map((row) => [row.verse, row.verse_end, row.text]),
+  ))]);
 }
 
 function presenterSlideBuildSourceSignature(serviceId) {
@@ -30630,7 +30664,7 @@ function presenterSlideBuildSourceSignature(serviceId) {
       service.type_id || "",
       service.date || service.service_date || "",
       service.updated_at || "",
-      state.bibleVerseCacheVersion || 0,
+      presenterServiceScriptureCacheSignature(service, items),
       state.hymnScoreManifestLoaded ? Object.keys(state.hymnScoreManifest || {}).length : 0,
     ],
     items: items.map((item) => {
