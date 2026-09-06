@@ -15445,11 +15445,30 @@ function applyRightSidebarVisibility(hasContent = refs.rightSidebar?.dataset.has
 function setRightSidebarContent(html = "") {
   if (!refs.rightSidebar) return;
   const hasContent = Boolean(String(html || "").trim());
-  refs.rightSidebar.innerHTML = hasContent ? html : "";
+  const current = refs.rightSidebar.querySelector("[data-presenter-right-sidebar]");
+  const template = document.createElement("template");
+  template.innerHTML = hasContent ? html : "";
+  const next = template.content.firstElementChild;
+  const sameService = current?.dataset.serviceId
+    && next?.matches("[data-presenter-right-sidebar]")
+    && current.dataset.serviceId === next.dataset.serviceId;
+  if (sameService) {
+    const scrollTop = refs.rightSidebar.scrollTop;
+    const preparation = current.querySelector("[data-presenter-preparation-input]");
+    const resizedHeight = preparation?.style.height;
+    refreshIcons(next);
+    patchPresenterControlTree(current, next);
+    if (resizedHeight && preparation.isConnected) preparation.style.height = resizedHeight;
+    refs.rightSidebar.scrollTop = scrollTop;
+  } else {
+    refs.rightSidebar.replaceChildren(template.content);
+  }
   refs.rightSidebar.dataset.hasContent = hasContent ? "true" : "false";
   applyRightSidebarVisibility(hasContent);
   if (hasContent) {
     refreshIcons(refs.rightSidebar);
+    applyPresenterPreviewScales(refs.rightSidebar);
+    fitPresenterPreviewText(refs.rightSidebar);
     schedulePresenterPreviewLayoutUpdate(refs.rightSidebar);
   }
 }

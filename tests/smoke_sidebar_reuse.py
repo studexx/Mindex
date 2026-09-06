@@ -1,0 +1,50 @@
+from smoke_app import launch_chromium, start_local_app_server, sync_playwright
+
+
+def main():
+    server, url = start_local_app_server()
+    try:
+        with sync_playwright() as p:
+            for engine in ('chromium', 'webkit'):
+                browser = launch_chromium(p) if engine == 'chromium' else p.webkit.launch()
+                page = browser.new_page()
+                page.route('**/*supabase*/**', lambda route: route.abort())
+                page.goto(url, wait_until='domcontentloaded')
+                page.wait_for_function("typeof setRightSidebarContent === 'function'")
+                result = page.evaluate('''async () => {
+                  state.module='presenter';
+                  const markup=(id,title)=>`<div data-presenter-right-sidebar data-service-id="${id}">
+                    <div style="height:600px">${title}</div>
+                    <div class="svc-presenter-live-preview" style="width:254px"><span class="svc-slide-mini-output"><span class="svc-slide-mini-canvas presenter-output-root"><span>${title}</span></span></span></div>
+                    <details data-presenter-help><summary>도움말</summary>내용</details>
+                    <textarea data-presenter-preparation-input>초안</textarea></div>`;
+                  refs.rightSidebar.style.cssText='display:block;height:300px;overflow:auto';
+                  setRightSidebarContent(markup('fixture','첫 화면'));
+                  const root=refs.rightSidebar.firstElementChild, canvas=root.querySelector('.svc-slide-mini-canvas');
+                  const input=root.querySelector('textarea'), help=root.querySelector('details');
+                  input.value='작성 중';input.style.height='180px';input.focus();input.setSelectionRange(1,2);help.open=true;
+                  refs.rightSidebar.scrollTop=200;
+                  let removals=0;
+                  const observer=new MutationObserver(records=>records.forEach(r=>r.removedNodes.forEach(n=>{if(n===root||n===canvas||n===input)removals++;})));
+                  observer.observe(refs.rightSidebar,{subtree:true,childList:true});
+                  for(let i=0;i<10;i++)setRightSidebarContent(markup('fixture','화면 '+i));
+                  await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+                  const stable=root.isConnected && canvas.isConnected && input.isConnected && !removals;
+                  const editing=document.activeElement===input && input.value==='작성 중' && input.selectionStart===1 && input.style.height==='180px';
+                  const preserved=help.open && refs.rightSidebar.scrollTop===200;
+                  const updated=canvas.textContent==='화면 9';
+                  observer.disconnect();
+                  setRightSidebarContent(markup('other','다른 예배'));
+                  const switched=!root.isConnected && refs.rightSidebar.firstElementChild.dataset.serviceId==='other';
+                  setRightSidebarContent('');
+                  return {stable,editing,preserved,updated,switched,cleared:!refs.rightSidebar.children.length};
+                }''')
+                assert all(result.values()), result
+                print('PASS sidebar reuse', engine, result)
+                browser.close()
+    finally:
+        server.shutdown()
+
+
+if __name__ == '__main__':
+    main()
