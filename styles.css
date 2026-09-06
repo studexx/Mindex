@@ -6904,6 +6904,11 @@ textarea.svc-presenter-input-control--multiline {
   width: auto;
   height: auto;
 }
+.svc-presenter-live-preview::before {
+  content: "";
+  display: block;
+  padding-top: 56.25%;
+}
 .svc-presenter-live-preview .presenter-slide,
 .svc-presenter-live-preview .presenter-output-root {
   pointer-events: none;

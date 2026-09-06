@@ -3720,8 +3720,6 @@ function commitPresenterOutputFrame(root, payload, slide, frameState, token, opt
   layers.next.dataset.presenterFrameKey = frameKey;
   layers.next.classList.add("is-next");
   preparePresenterOutputFrameForPaint(layers.next)
-    .then(() => nextAnimationFrame())
-    .then(() => nextAnimationFrame())
     .finally(() => {
       if (token !== presenterOutputRenderState.token || commitToken !== presenterOutputRenderState.commitToken) return;
       root.removeAttribute("aria-busy");
@@ -4207,8 +4205,7 @@ function preparePresenterOutputFrameForPaint(host) {
   });
   const videos = [...host.querySelectorAll("video.presenter-video")];
   const videoReady = videos.map(preparePresenterOutputVideoForPaint);
-  return Promise.all([...imageReady, ...videoReady])
-    .then(() => nextAnimationFrame());
+  return Promise.all([...imageReady, ...videoReady]);
 }
 
 function preparePresenterOutputVideoForPaint(video) {

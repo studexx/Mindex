@@ -27461,14 +27461,15 @@ function presenterControlBoardKey(service, slides = [], active = false, chromake
     slide?.audioSrc || "",
     presenterSlideRenderKeyText(slide),
   ].join(":")).join("|");
-  return [
+  // Escape control characters before round-tripping this key through HTML attributes.
+  return JSON.stringify([
     service?.id || "",
     theme,
     chromakey ? "chroma" : "clean",
     active ? "active" : "preview",
     slides.length,
     slideKey,
-  ].join("::");
+  ]);
 }
 
 function presenterOutputWarmupUiState(serviceId, options = {}) {
@@ -29507,7 +29508,7 @@ function runPresenterAction(action, serviceId = state.selectedServiceId, options
     return;
   }
 
-  preparePresenterService(serviceId);
+  preparePresenterNavigation(serviceId);
 
   state.presenter.jumpDraft = "";
   if (["next", "prev", "first", "last", "jump"].includes(action)) {
@@ -30400,6 +30401,15 @@ function presenterServiceNeedsHymnScoreManifest(serviceId) {
       : null;
     return Boolean(song?.hymn_no && isSongServiceLabel(item?.label || ""));
   });
+}
+
+function preparePresenterNavigation(serviceId) {
+  // Projected items can be cloned on reads; content signatures are authoritative.
+  if (state.presenter.serviceId === serviceId
+    && state.presenter.slides?.length
+    && state.presenter.sourceSignature === presenterSlideBuildSourceSignature(serviceId)) return true;
+  preparePresenterService(serviceId);
+  return false;
 }
 
 function preparePresenterService(serviceId = state.selectedServiceId) {
