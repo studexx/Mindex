@@ -1339,7 +1339,11 @@ function bindStaticEvents() {
 
     const songItem = event.target.closest("[data-song-id]");
     if (songItem) {
-      selectSong(songItem.dataset.songId);
+      await selectSong(songItem.dataset.songId);
+      if (state.selectedSongId === songItem.dataset.songId && window.matchMedia("(max-width: 560px)").matches) {
+        document.body.classList.add("sidebar-collapsed");
+        syncSidebarCollapsedState();
+      }
       return;
     }
 
@@ -16360,7 +16364,7 @@ function linkedSongVersionEntries(song) {
 function renderSingleVersionForms() {
   const song = getSelectedSong();
   const version = getSelectedVersion();
-  const gridStyle = "grid-template-columns: minmax(320px, 1fr);";
+  const gridStyle = "grid-template-columns: minmax(0, 1fr);";
   return `
     <div class="version-compare-grid single-version">
       <div class="version-compare-head" style="${gridStyle}">
