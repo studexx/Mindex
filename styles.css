@@ -2675,6 +2675,7 @@ body[data-module="calendar"] .detail-pane { overflow: hidden; }
 }
 .bible-reader {
   display: grid;
+  min-width: 0;
   gap: var(--s3);
   margin-top: var(--s1);
 }
@@ -2691,11 +2692,10 @@ body[data-module="calendar"] .detail-pane { overflow: hidden; }
 }
 .bible-control--copy { min-width: 156px; }
 .bible-control > span:not(.bible-chapter-control) {
-  color: var(--ink-4);
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: .03em;
-  text-transform: uppercase;
+  color: var(--ink-3);
+  font-size: var(--ui-meta-size);
+  font-weight: var(--ui-meta-weight);
+  letter-spacing: 0;
 }
 .bible-chapter-control {
   display: grid;
@@ -2741,6 +2741,9 @@ body[data-module="calendar"] .detail-pane { overflow: hidden; }
 }
 .bible-verse-list {
   display: grid;
+  width: 100%;
+  max-width: 900px;
+  min-width: 0;
   gap: 6px;
   padding-top: var(--s1);
 }
@@ -2823,7 +2826,13 @@ body[data-module="calendar"] .detail-pane { overflow: hidden; }
 }
 .bible-verse.selected span { color: var(--accent); }
 .bible-verse strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
   font-weight: 500;
+}
+body[data-module="scripture"] .scripture-editor .meta-attribute-label {
+  color: var(--ink-3);
+  letter-spacing: 0;
 }
 .bible-verse mark {
   border-radius: 3px;
@@ -3314,6 +3323,33 @@ body[data-module="calendar"] .detail-pane { overflow: hidden; }
 .form-actions .icon-btn:hover { background: color-mix(in srgb, var(--panel-2) 80%, transparent); }
 .form-actions .review-action { color: var(--accent); }
 #newSongBtn { display: none; }
+
+/* Keep praise editing controls in place; let the lyrics carry the emphasis. */
+body[data-module="praise"] .version-compare-column,
+body[data-module="praise"] .version-compare-rows {
+  gap: 10px;
+}
+body[data-module="praise"] .form-block {
+  gap: 5px;
+  padding: 10px;
+}
+body[data-module="praise"] .form-block:not(.needs-review):not(.readonly) {
+  background: transparent;
+}
+body[data-module="praise"] .version-picker:hover .form-block:not(.needs-review):not(.readonly) {
+  background: color-mix(in srgb, var(--panel-2) 24%, transparent);
+}
+body[data-module="praise"] .form-type-select,
+body[data-module="praise"] .form-label-text {
+  background: color-mix(in srgb, var(--panel-2) 32%, transparent);
+}
+body[data-module="praise"] .version-compare-title {
+  padding: 10px;
+}
+body[data-module="praise"] .version-title-main,
+body[data-module="praise"] .version-title-actions {
+  gap: 5px;
+}
 
 .loading-status {
   position: static;
@@ -6346,12 +6382,12 @@ body[data-theme="dark"] .service-week-empty:hover {
 .svc-presenter-input-rail {
   display: grid;
   min-width: 0;
-  gap: 8px;
+  gap: 10px;
   border: 0;
   border-top: 1px solid var(--line-soft);
   border-radius: 0;
   background: transparent;
-  padding: 14px 12px 12px;
+  padding: 15px 12px;
 }
 .service-sidebar-section--presenter-context {
   padding-top: 4px;
@@ -6719,11 +6755,11 @@ textarea.svc-presenter-input-control--multiline {
   flex-direction: column;
   align-items: stretch;
   grid-template-columns: 1fr;
-  gap: 8px;
+  gap: 10px;
   border: 0;
   border-radius: 0;
   background: transparent;
-  padding: 0 12px 8px;
+  padding: 0 12px 10px;
 }
 .svc-presenter-output-group {
   display: inline-flex;
@@ -7190,13 +7226,13 @@ textarea.svc-presenter-input-control--multiline {
   order: 1;
   grid-template-columns: minmax(0, 1fr);
   align-items: stretch;
-  gap: 8px;
+  gap: 10px;
 }
 .svc-presenter-side-panel .svc-presenter-live-copy {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 7px 8px;
+  gap: 5px 10px;
   order: 0;
 }
 .svc-presenter-side-panel .svc-presenter-live-copy .svc-presenter-state-group {

@@ -17378,11 +17378,11 @@ async function copyText(text) {
     } else {
       fallbackCopy(value);
     }
-    showToast("Copied.");
+    showToast("복사했어요.");
   } catch (error) {
     try {
       fallbackCopy(value);
-      showToast("Copied.");
+      showToast("복사했어요.");
     } catch (fallbackError) {
       showToast(fallbackError.message || "Copy failed.", "error");
     }
