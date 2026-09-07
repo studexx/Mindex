@@ -6278,7 +6278,7 @@ function serviceSaveErrorMessage(error) {
 async function saveService(serviceId = state.selectedServiceId, options = {}) {
   if (!requireClient()) return false;
   if (state.saving) {
-    if (activeServiceSavePromise && !options._afterActiveServiceSave) {
+    if (activeServiceSavePromise) {
       try {
         await activeServiceSavePromise;
       } catch (_error) {
@@ -6286,7 +6286,7 @@ async function saveService(serviceId = state.selectedServiceId, options = {}) {
         // latest in-memory service state so uploads and deferred edits do not
         // silently disappear behind the global saving guard.
       }
-      return saveService(serviceId, { ...options, _afterActiveServiceSave: true });
+      return saveService(serviceId, options);
     }
     const message = "다른 저장이 끝나는 중입니다. 잠시 후 다시 시도해 주세요.";
     if (!options.silent) showToast(message, "error");
@@ -6315,23 +6315,27 @@ async function saveService(serviceId = state.selectedServiceId, options = {}) {
   updateSaveState();
   const savePromise = (async () => {
     await saveDirtyServiceTypes();
+    let saved = { unchanged: true };
     if (service && !service._isExpected) {
-      await saveWorshipServiceInstance(service);
+      saved = await saveWorshipServiceInstance(service);
     }
-    state.dirty.service = false;
-    state.dirtyServiceElementIds.delete(serviceId);
-    state.dirtyServiceStructureIds.delete(serviceId);
-    captureCleanFingerprint("service");
+    const unchanged = saved?.unchanged !== false;
+    if (unchanged) {
+      state.dirtyServiceElementIds.delete(serviceId);
+      state.dirtyServiceStructureIds.delete(serviceId);
+    }
+    finishServiceSaveDirtyState(unchanged);
     if (!options.silent) showToast("예배를 저장했습니다.");
     // Field-level commits already refreshed the affected presenter content. Avoid
     // rebuilding the whole application after a small inline edit.
-    if (options.renderAfterSave !== false) render();
+    if (unchanged && !serviceHasPendingTextEdits(serviceId) && options.renderAfterSave !== false) render();
     else renderServiceList();
-    return true;
+    return { itemIds: saved?.itemIds };
   })();
   activeServiceSavePromise = savePromise;
   try {
-    return await savePromise;
+    await savePromise;
+    return true;
   } catch (error) {
     const message = serviceSaveErrorMessage(error);
     if (!options.silent) showToast(message, "error");
@@ -6387,6 +6391,8 @@ async function worshipElementTypedStateColumns() {
 async function saveWorshipServiceInstance(service) {
   const serviceId = service.id;
   await ensureWorshipServiceRowsLoadedForPersistence(serviceId);
+  const inputSignature = JSON.stringify(getServiceItems(serviceId));
+  const metadataSignature = serviceSaveMetadataSignature(service);
   captureWorshipRecoverySnapshot(service, "before-full-save");
   const canonicalTypeId = canonicalWorshipServiceTypeId(service.type_id);
   const worshipLeader = cleanServiceAssignee(service.worshipLeader || service._worshipLeader);
@@ -6421,6 +6427,11 @@ async function saveWorshipServiceInstance(service) {
   const rows = buildWorshipPersistenceRows(service, items, existingSectionById, existingElementById, {
     elementTypedStateColumns,
   });
+  const savedIdentities = new Map(items.map((item, index) => [item.id, {
+    id: rows.elements[index].id,
+    sectionId: rows.elements[index].section_id,
+    sectionKey: item._worshipSectionKey,
+  }]));
   const suppressedItems = [...state.templateElementSuppressions.values()]
     .filter((item) => item?.service_id === serviceId);
   const suppressedIds = state.templateElementSuppressions;
@@ -6508,6 +6519,8 @@ async function saveWorshipServiceInstance(service) {
     if (error) throw error;
   }
 
+  const unchanged = inputSignature === JSON.stringify(getServiceItems(serviceId))
+    && metadataSignature === serviceSaveMetadataSignature(service);
   state.worshipSections = [
     ...state.worshipSections.filter((section) => section.service_id !== serviceId),
     ...rows.sections,
@@ -6517,26 +6530,73 @@ async function saveWorshipServiceInstance(service) {
     ...state.worshipElements.filter((element) => !existingSectionIdsForService.has(element.section_id)),
     ...rows.elements,
   ];
-  state.serviceItems[serviceId] = projectWorshipServiceItemsFromTemplate(
-    service,
-    groupWorshipElements(rows.sections, rows.elements)[serviceId] || [],
-  );
-  suppressedItems.forEach((item) => suppressedIds.delete(item.id));
+  if (unchanged) {
+    state.serviceItems[serviceId] = projectWorshipServiceItemsFromTemplate(
+      service,
+      groupWorshipElements(rows.sections, rows.elements)[serviceId] || [],
+    );
+  } else {
+    // Keep newer content, but acknowledge IDs assigned to newly persisted items.
+    state.serviceItems[serviceId] = getServiceItems(serviceId).map((item) => {
+      const identity = savedIdentities.get(item.id);
+      if (!identity) return item;
+      return {
+        ...item,
+        id: identity.id,
+        _worshipSectionId: item._worshipSectionKey === identity.sectionKey
+          ? identity.sectionId : item._worshipSectionId,
+      };
+    });
+    const dirtyIds = state.dirtyServiceElementIds.get(serviceId);
+    if (dirtyIds) state.dirtyServiceElementIds.set(serviceId,
+      new Set([...dirtyIds].map((id) => savedIdentities.get(id)?.id || id)));
+  }
+  suppressedItems.forEach((item) => {
+    if (suppressedIds.get(item.id) === item) suppressedIds.delete(item.id);
+  });
   await syncSharedSundayContentAfterSave(service, items, { elementTypedStateColumns });
-  refreshPresenterForService(serviceId);
+  refreshPresenterForService(serviceId, { renderControls: !serviceHasPendingTextEdits(serviceId) });
+  return { unchanged, itemIds: new Map([...savedIdentities].map(([id, saved]) => [id, saved.id])) };
+}
+
+function serviceSaveMetadataSignature(service) {
+  return JSON.stringify([
+    service.type_id, service.date, service.date_end, service.title, service.alias,
+    service.worshipLeader, service._worshipLeader, service.praiseLeader, service.leader,
+    service._worshipStatus, service.raw_text, service._worshipSourceTextDraft,
+  ]);
+}
+
+function serviceHasPendingTextEdits(serviceId) {
+  return serviceSourceTextHasPendingChanges(serviceSourceTextareaForService(serviceId))
+    || [...(refs.detailPane?.querySelectorAll("[data-service-item-field]") || [])]
+    .some((field) => (field.dataset.serviceId || state.selectedServiceId) === serviceId
+      && isDeferredServiceTextInput(field)
+      && field.dataset.initialValue !== undefined
+      && field.value !== field.dataset.initialValue);
+}
+
+function finishServiceSaveDirtyState(unchanged) {
+  state.dirty.service = !unchanged || state.dirtyServiceElementIds.size > 0
+    || state.dirtyServiceStructureIds.size > 0 || state.dirtyServiceTypeIds.size > 0
+    || serviceHasPendingTextEdits(state.selectedServiceId);
+  if (!state.dirty.service) captureCleanFingerprint("service");
 }
 
 async function saveServiceItemPatch(serviceId = state.selectedServiceId, index = -1, options = {}) {
   if (!requireClient()) return false;
+  let itemId = options._itemId || getServiceItems(serviceId)[Number(index)]?.id;
+  if (!itemId) return false;
   if (state.saving) {
-    if (activeServiceSavePromise && !options._afterActiveServiceSave) {
+    if (activeServiceSavePromise) {
       try {
-        await activeServiceSavePromise;
+        const saved = await activeServiceSavePromise;
+        itemId = saved?.itemIds?.get(itemId) || itemId;
       } catch (_error) {
         // The active save already reported its own failure. Retry once with the
         // latest in-memory item state.
       }
-      return saveServiceItemPatch(serviceId, index, { ...options, _afterActiveServiceSave: true });
+      return saveServiceItemPatch(serviceId, index, { ...options, _itemId: itemId });
     }
     const message = "다른 저장이 끝나는 중입니다. 잠시 후 다시 시도해 주세요.";
     if (!options.silent) showToast(message, "error");
@@ -6545,7 +6605,7 @@ async function saveServiceItemPatch(serviceId = state.selectedServiceId, index =
   }
 
   const service = state.services.find((candidate) => candidate.id === serviceId);
-  const item = getServiceItems(serviceId)[Number(index)];
+  const item = getServiceItems(serviceId).find((candidate) => candidate.id === itemId);
   if (!service || !item || service._isExpected) return false;
   if (!isUuid(item.id) || state.dirtyServiceStructureIds.has(serviceId)) {
     return saveService(serviceId, options);
@@ -6553,32 +6613,35 @@ async function saveServiceItemPatch(serviceId = state.selectedServiceId, index =
 
   state.saving = true;
   updateSaveState();
-  try {
+  const savePromise = (async () => {
     await saveDirtyServiceTypes();
-    const saved = await saveWorshipServiceElementPatch(service, item.id);
+    return saveWorshipServiceElementPatch(service, item.id);
+  })();
+  activeServiceSavePromise = savePromise;
+  let needsFullSave = false;
+  try {
+    const saved = await savePromise;
     if (!saved) {
-      state.saving = false;
-      updateSaveState();
-      return await saveService(serviceId, options);
+      needsFullSave = true;
+    } else {
+      if (saved.unchanged) clearServiceElementDirty(serviceId, item);
+      finishServiceSaveDirtyState(saved.unchanged);
+      if (!options.silent) showToast("항목을 저장했습니다.");
+      if (!state.dirty.service && options.renderAfterSave !== false) render();
+      else renderServiceList();
+      return true;
     }
-    clearServiceElementDirty(serviceId, item);
-    if (!state.dirtyServiceStructureIds.has(serviceId) && !state.dirtyServiceElementIds.get(serviceId)?.size) {
-      state.dirty.service = false;
-      captureCleanFingerprint("service");
-    }
-    if (!options.silent) showToast("항목을 저장했습니다.");
-    if (options.renderAfterSave !== false) render();
-    else renderServiceList();
-    return true;
   } catch (error) {
     const message = serviceSaveErrorMessage(error);
     if (!options.silent) showToast(message, "error");
     if (options.throwOnError) throw new Error(message);
     return false;
   } finally {
+    if (activeServiceSavePromise === savePromise) activeServiceSavePromise = null;
     state.saving = false;
     updateSaveState();
   }
+  if (needsFullSave) return saveService(serviceId, options);
 }
 
 async function saveServiceItemMutation(serviceId = state.selectedServiceId, index = -1, options = {}) {
@@ -6593,6 +6656,8 @@ async function saveWorshipServiceElementPatch(service, itemId) {
   if (!serviceId || !targetItemId) return false;
   await ensureWorshipServiceRowsLoadedForPersistence(serviceId);
 
+  const inputItem = getServiceItems(serviceId).find((item) => item.id === targetItemId);
+  const inputSignature = JSON.stringify(inputItem);
   const existingSections = state.worshipSections.filter((section) => section.service_id === serviceId);
   const existingElements = state.worshipElements.filter((element) =>
     existingSections.some((section) => section.id === element.section_id));
@@ -6634,6 +6699,8 @@ async function saveWorshipServiceElementPatch(service, itemId) {
   if (serviceError) throw serviceError;
   service._worshipSourceRef = sourceRef;
 
+  const currentItems = getServiceItems(serviceId);
+  const unchanged = inputSignature === JSON.stringify(currentItems.find((item) => item.id === targetItemId));
   if (sectionRow) {
     state.worshipSections = [
       ...state.worshipSections.filter((section) => section.id !== sectionRow.id),
@@ -6644,20 +6711,20 @@ async function saveWorshipServiceElementPatch(service, itemId) {
     ...state.worshipElements.filter((element) => element.id !== elementRow.id),
     elementRow,
   ];
-  state.serviceItems[serviceId] = projectWorshipServiceItemsFromTemplate(
-    service,
-    groupWorshipElements(
-      state.worshipSections.filter((section) => section.service_id === serviceId),
-      state.worshipElements,
-    )[serviceId] || [],
-  );
+  // A patch acknowledges one item, never the other items' unsaved drafts.
+  const savedItem = (groupWorshipElements(
+    state.worshipSections.filter((section) => section.service_id === serviceId),
+    state.worshipElements,
+  )[serviceId] || []).find((item) => item.id === targetItemId);
+  state.serviceItems[serviceId] = currentItems.map((item) =>
+    unchanged && savedItem && item.id === targetItemId ? savedItem : item);
   await syncSharedSundayContentAfterSave(
     service,
     items.filter((item) => item.id === targetItemId),
     { elementTypedStateColumns },
   );
-  refreshPresenterForService(serviceId);
-  return true;
+  refreshPresenterForService(serviceId, { renderControls: !serviceHasPendingTextEdits(serviceId) });
+  return { unchanged };
 }
 
 async function syncSharedSundayContentAfterSave(sourceService, sourceItems = [], options = {}) {
@@ -30502,7 +30569,7 @@ function refreshPresenterForService(serviceId, options = {}) {
   if (!serviceId) return;
   const isActive = state.presenter.serviceId === serviceId;
   if (!isActive) {
-    if (state.module === "presenter" && state.selectedServiceId === serviceId) renderPresenterControlState(serviceId);
+    if (options.renderControls !== false && state.module === "presenter" && state.selectedServiceId === serviceId) renderPresenterControlState(serviceId);
     return;
   }
   const previousSlides = state.presenter.slides;
