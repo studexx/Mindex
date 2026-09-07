@@ -250,6 +250,7 @@ const PRESENTER_CHANNEL = "mindex.presenter";
 const PRESENTER_STORAGE_KEY = "mindex.presenter.state";
 const PRESENTER_SIGNAL_KEY = "mindex.presenter.signal";
 const PRESENTER_TARGET_SCREEN_STORAGE_KEY = "mindex.presenter.targetScreen.v1";
+let presenterScreenDetails = null;
 const PRESENTER_ALWAYS_ON_TOP_STORAGE_KEY = "mindex.presenter.alwaysOnTop.v1";
 const WORSHIP_RECOVERY_SNAPSHOTS_STORAGE_KEY = "mindex.worshipRecoverySnapshots.v1";
 const WORSHIP_RECOVERY_LATEST_STORAGE_PREFIX = "mindex.worshipRecoverySnapshot.latest.v1.";
@@ -854,6 +855,7 @@ async function init() {
   render();
   finishUiBoot();
   syncBrowserHistory({ replace: true });
+  void requestPresenterScreens({ silent: true });
 
   if (state.client) {
     await initializeAuth();
@@ -26447,7 +26449,7 @@ function normalizePresenterScreen(screen = {}, index = 0, currentScreen = null) 
   };
 }
 
-async function requestPresenterScreens() {
+async function requestPresenterScreens({ silent = false } = {}) {
   const electronDisplays = window.mindexElectron?.getPresenterDisplays;
   if (electronDisplays) {
     try {
@@ -26457,32 +26459,59 @@ async function requestPresenterScreens() {
         .filter((screen) => screen.rect.width > 0 && screen.rect.height > 0);
       applyPresenterScreens(screens);
       renderPresenterControlState(presenterViewServiceId());
-      showToast(screens.length > 1 ? "출력 화면을 감지했습니다." : "출력 화면을 확인했습니다.", "success");
+      if (!silent) showToast(screens.length > 1 ? "출력 화면을 감지했습니다." : "출력 화면을 확인했습니다.", "success");
       return screens;
     } catch (error) {
       console.warn("Could not detect Electron presenter screens.", error);
-      showToast("출력 화면을 감지하지 못했습니다.", "error");
+      if (!silent) showToast("출력 화면을 감지하지 못했습니다.", "error");
       return [];
     }
   }
   if (!window.getScreenDetails || !window.isSecureContext) {
-    showToast("이 브라우저에서는 화면 감지를 지원하지 않습니다.", "error");
+    if (!silent) showToast("이 브라우저에서는 화면 감지를 지원하지 않습니다.", "error");
     return [];
   }
   try {
+    // Restore coordinates only with an existing grant; never prompt during boot.
+    if (silent) {
+      if (!navigator.permissions?.query) return [];
+      const permission = await navigator.permissions.query({ name: "window-management" });
+      if (permission.state !== "granted") return [];
+    }
     const details = await window.getScreenDetails();
     const screens = Array.from(details?.screens || [])
       .map((screen, index) => normalizePresenterScreen(screen, index, details?.currentScreen))
       .filter((screen) => screen.rect.width > 0 && screen.rect.height > 0);
+    observePresenterScreenDetails(details);
     applyPresenterScreens(screens);
     renderPresenterControlState(presenterViewServiceId());
-    showToast(screens.length > 1 ? "출력 화면을 감지했습니다." : "감지된 외부 화면이 없습니다.", screens.length > 1 ? "success" : "info");
+    if (!silent) showToast(screens.length > 1 ? "출력 화면을 감지했습니다." : "감지된 외부 화면이 없습니다.", screens.length > 1 ? "success" : "info");
     return screens;
   } catch (error) {
     console.warn("Could not detect presenter screens.", error);
-    showToast("화면 감지 권한을 확인해 주세요.", "error");
+    if (!silent) showToast("화면 감지 권한을 확인해 주세요.", "error");
     return [];
   }
+}
+
+function observePresenterScreenDetails(details) {
+  if (presenterScreenDetails === details) return;
+  presenterScreenDetails?.removeEventListener?.("screenschange", refreshPresenterScreenDetails);
+  presenterScreenDetails?.removeEventListener?.("currentscreenchange", refreshPresenterScreenDetails);
+  presenterScreenDetails = details;
+  details?.addEventListener?.("screenschange", refreshPresenterScreenDetails);
+  details?.addEventListener?.("currentscreenchange", refreshPresenterScreenDetails);
+}
+
+function refreshPresenterScreenDetails() {
+  const details = presenterScreenDetails;
+  if (!details) return;
+  const screens = Array.from(details.screens || [])
+    .map((screen, index) => normalizePresenterScreen(screen, index, details.currentScreen))
+    .filter((screen) => screen.rect.width > 0 && screen.rect.height > 0);
+  // Update the next launch target only; never move or reopen a live output.
+  applyPresenterScreens(screens);
+  renderPresenterControlState(presenterViewServiceId());
 }
 
 function applyPresenterScreens(screens = []) {

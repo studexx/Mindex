@@ -510,6 +510,12 @@ Small visual polish that does not alter behavior does not need an entry.
   별명에 이 값을 합쳐 저장하거나 새 범용 metadata bucket을 만들지 않는다.
 
 ## Presenter Output Rules
+- Controller startup restores display coordinates in the background only when
+  `window-management` permission is already granted. Otherwise display detection
+  remains an explicit user action. Electron uses its existing display bridge.
+  Output launch never awaits detection; saved available targets retain priority.
+  Display-change events update future launch targets, never move or reopen live
+  output windows, and never request fullscreen.
 - `참고 화면`은 전역 presenter toolbar가 아니라 `설교` 또는 `광고` 섹션에 추가한다.
   `참고 화면 추가`는 해당 섹션의 마지막에 image element를 만들며, 이름과
   파일/링크를 채우면 기존 media contract로 clean fullscreen output에 송출한다.
