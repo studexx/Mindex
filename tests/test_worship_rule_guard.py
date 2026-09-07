@@ -214,11 +214,14 @@ class WorshipRuleGuardTests(unittest.TestCase):
     def test_committed_item_edits_use_element_patch_save(self) -> None:
         patch = function_block(self.source, "saveWorshipServiceElementPatch")
         item_save = function_block(self.source, "saveServiceItemPatch")
+        lifecycle = function_block(self.source, "runServiceSave")
         committed = function_block(self.source, "resolveAndSaveCommittedServiceItem")
 
         self.assertIn("saveWorshipServiceElementPatch(service, item.id)", item_save)
-        self.assertIn("activeServiceSavePromise = savePromise", item_save)
-        self.assertIn("const saved = await savePromise", item_save)
+        self.assertIn("await runServiceSave(options", item_save)
+        self.assertIn("waitForServiceSave(options", item_save)
+        self.assertIn("activeServiceSavePromise = savePromise", lifecycle)
+        self.assertIn("return await savePromise", lifecycle)
         self.assertIn('.from("mindex_worship_sections")', patch)
         self.assertIn('.upsert([sectionRow], { onConflict: "id" })', patch)
         self.assertIn('.from("mindex_worship_elements")', patch)

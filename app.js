@@ -6275,24 +6275,47 @@ function serviceSaveErrorMessage(error) {
   return message || "예배를 저장하지 못했습니다.";
 }
 
-async function saveService(serviceId = state.selectedServiceId, options = {}) {
-  if (!requireClient()) return false;
-  if (state.saving) {
-    if (activeServiceSavePromise) {
-      try {
-        await activeServiceSavePromise;
-      } catch (_error) {
-        // The active save already reported its own failure. Retry once with the
-        // latest in-memory service state so uploads and deferred edits do not
-        // silently disappear behind the global saving guard.
-      }
-      return saveService(serviceId, options);
-    }
+async function waitForServiceSave(options, resume, itemId = "") {
+  if (!activeServiceSavePromise) {
     const message = "다른 저장이 끝나는 중입니다. 잠시 후 다시 시도해 주세요.";
     if (!options.silent) showToast(message, "error");
     if (options.throwOnError) throw new Error(message);
     return false;
   }
+  try {
+    const saved = await activeServiceSavePromise;
+    itemId = saved?.itemIds?.get(itemId) || itemId;
+  } catch (_error) {
+    // The failed save reported its error; resume against the latest draft.
+  }
+  return resume(itemId);
+}
+
+async function runServiceSave(options, save) {
+  state.saving = true;
+  updateSaveState();
+  const savePromise = (async () => {
+    await saveDirtyServiceTypes();
+    return save();
+  })();
+  activeServiceSavePromise = savePromise;
+  try {
+    return await savePromise;
+  } catch (error) {
+    const message = serviceSaveErrorMessage(error);
+    if (!options.silent) showToast(message, "error");
+    if (options.throwOnError) throw new Error(message);
+    return false;
+  } finally {
+    if (activeServiceSavePromise === savePromise) activeServiceSavePromise = null;
+    state.saving = false;
+    updateSaveState();
+  }
+}
+
+async function saveService(serviceId = state.selectedServiceId, options = {}) {
+  if (!requireClient()) return false;
+  if (state.saving) return waitForServiceSave(options, () => saveService(serviceId, options));
   commitActiveDeferredServiceTextInput(serviceId);
   const sourceTextHadPendingChanges = serviceSourceTextHasPendingChanges(serviceSourceTextareaForService(serviceId));
   const sourceTextApplied = applyPendingServiceSourceTextBeforeSave(serviceId);
@@ -6311,10 +6334,7 @@ async function saveService(serviceId = state.selectedServiceId, options = {}) {
     return false;
   }
 
-  state.saving = true;
-  updateSaveState();
-  const savePromise = (async () => {
-    await saveDirtyServiceTypes();
+  return Boolean(await runServiceSave(options, async () => {
     let saved = { unchanged: true };
     if (service && !service._isExpected) {
       saved = await saveWorshipServiceInstance(service);
@@ -6331,21 +6351,7 @@ async function saveService(serviceId = state.selectedServiceId, options = {}) {
     if (unchanged && !serviceHasPendingTextEdits(serviceId) && options.renderAfterSave !== false) render();
     else renderServiceList();
     return { itemIds: saved?.itemIds };
-  })();
-  activeServiceSavePromise = savePromise;
-  try {
-    await savePromise;
-    return true;
-  } catch (error) {
-    const message = serviceSaveErrorMessage(error);
-    if (!options.silent) showToast(message, "error");
-    if (options.throwOnError) throw new Error(message);
-    return false;
-  } finally {
-    if (activeServiceSavePromise === savePromise) activeServiceSavePromise = null;
-    state.saving = false;
-    updateSaveState();
-  }
+  }));
 }
 
 async function saveDirtyServiceTypes() {
@@ -6585,23 +6591,11 @@ function finishServiceSaveDirtyState(unchanged) {
 
 async function saveServiceItemPatch(serviceId = state.selectedServiceId, index = -1, options = {}) {
   if (!requireClient()) return false;
-  let itemId = options._itemId || getServiceItems(serviceId)[Number(index)]?.id;
+  const itemId = options._itemId || getServiceItems(serviceId)[Number(index)]?.id;
   if (!itemId) return false;
   if (state.saving) {
-    if (activeServiceSavePromise) {
-      try {
-        const saved = await activeServiceSavePromise;
-        itemId = saved?.itemIds?.get(itemId) || itemId;
-      } catch (_error) {
-        // The active save already reported its own failure. Retry once with the
-        // latest in-memory item state.
-      }
-      return saveServiceItemPatch(serviceId, index, { ...options, _itemId: itemId });
-    }
-    const message = "다른 저장이 끝나는 중입니다. 잠시 후 다시 시도해 주세요.";
-    if (!options.silent) showToast(message, "error");
-    if (options.throwOnError) throw new Error(message);
-    return false;
+    return waitForServiceSave(options,
+      (id) => saveServiceItemPatch(serviceId, index, { ...options, _itemId: id }), itemId);
   }
 
   const service = state.services.find((candidate) => candidate.id === serviceId);
@@ -6611,37 +6605,22 @@ async function saveServiceItemPatch(serviceId = state.selectedServiceId, index =
     return saveService(serviceId, options);
   }
 
-  state.saving = true;
-  updateSaveState();
-  const savePromise = (async () => {
-    await saveDirtyServiceTypes();
-    return saveWorshipServiceElementPatch(service, item.id);
-  })();
-  activeServiceSavePromise = savePromise;
   let needsFullSave = false;
-  try {
-    const saved = await savePromise;
+  const result = await runServiceSave(options, async () => {
+    const saved = await saveWorshipServiceElementPatch(service, item.id);
     if (!saved) {
       needsFullSave = true;
-    } else {
-      if (saved.unchanged) clearServiceElementDirty(serviceId, item);
-      finishServiceSaveDirtyState(saved.unchanged);
-      if (!options.silent) showToast("항목을 저장했습니다.");
-      if (!state.dirty.service && options.renderAfterSave !== false) render();
-      else renderServiceList();
-      return true;
+      return false;
     }
-  } catch (error) {
-    const message = serviceSaveErrorMessage(error);
-    if (!options.silent) showToast(message, "error");
-    if (options.throwOnError) throw new Error(message);
-    return false;
-  } finally {
-    if (activeServiceSavePromise === savePromise) activeServiceSavePromise = null;
-    state.saving = false;
-    updateSaveState();
-  }
+    if (saved.unchanged) clearServiceElementDirty(serviceId, item);
+    finishServiceSaveDirtyState(saved.unchanged);
+    if (!options.silent) showToast("항목을 저장했습니다.");
+    if (!state.dirty.service && options.renderAfterSave !== false) render();
+    else renderServiceList();
+    return saved;
+  });
   if (needsFullSave) return saveService(serviceId, options);
+  return Boolean(result);
 }
 
 async function saveServiceItemMutation(serviceId = state.selectedServiceId, index = -1, options = {}) {

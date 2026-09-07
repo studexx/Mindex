@@ -167,6 +167,31 @@ def run(browser, url):
       await save(a);
       check(state.dirty.service, 'other service marked clean');
       results.push('other service remains dirty');
+      [a,b] = fixture(); state.saving = true;
+      check(await saveService(sid, {silent:true}) === false, 'full save stole unrelated lock');
+      check(await saveServiceItemPatch(sid, 0, {silent:true}) === false, 'patch stole unrelated lock');
+      check(await save(a).catch(() => 'rejected') === 'rejected', 'busy throwOnError ignored');
+      check(state.saving && writes.length === 0, 'busy guard performed a write');
+      results.push('unrelated save lock and error options preserved');
+
+      [a,b] = fixture(); edit(a, 'Fallback');
+      const realPatch = saveWorshipServiceElementPatch;
+      saveWorshipServiceElementPatch = async () => false;
+      try {
+        check(await save(a), 'patch fallback failed');
+        check(!state.saving && !activeServiceSavePromise && !state.dirty.service, 'fallback left save locked');
+      } finally { saveWorshipServiceElementPatch = realPatch; }
+      results.push('patch fallback releases lock before full save');
+
+      [a,b] = fixture(); edit(a, 'Keep after type failure');
+      const realSaveTypes = saveDirtyServiceTypes;
+      saveDirtyServiceTypes = async () => { throw Error('injected type save failure'); };
+      try {
+        check(await saveServiceItemPatch(sid, 0, {silent:true}) === false, 'save error did not return false');
+        check(!state.saving && !activeServiceSavePromise && state.dirty.service && writes.length === 0, 'type failure lost dirty state or lock');
+      } finally { saveDirtyServiceTypes = realSaveTypes; }
+      check(await save(a), 'save could not retry after type failure');
+      results.push('shared lifecycle handles prerequisite failure and retry');
       for (const type of ['sunday-first', 'sunday-second', 'sunday-main', 'sunday-afternoon']) {
         [a,b] = fixture(type);
         edit(a, 'Saved title'); edit(b, 'Unsaved title');
