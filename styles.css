@@ -3351,6 +3351,32 @@ body[data-module="praise"] .version-title-actions {
   gap: 5px;
 }
 
+body[data-module="praise"] .version-type-tag {
+  color: var(--ink-3);
+  font-size: var(--ui-meta-size);
+}
+body[data-module="praise"] .version-type-tag.on {
+  color: var(--accent);
+}
+body[data-module="praise"] .version-attention-status,
+body[data-module="praise"] .form-type-select,
+body[data-module="praise"] .form-label-text {
+  font-size: var(--ui-meta-size);
+}
+body[data-module="praise"] .song-count-badge {
+  min-width: 18px;
+  height: 18px;
+  font-size: var(--ui-meta-size);
+}
+@media (max-width: 560px) {
+  body[data-module="praise"] .editor-head {
+    gap: 10px;
+  }
+  body[data-module="praise"] .editor-head-right {
+    gap: 5px;
+  }
+}
+
 .loading-status {
   position: static;
   display: inline-flex;
@@ -6488,7 +6514,7 @@ body[data-theme="dark"] .service-week-empty:hover {
   outline: 0;
   padding: 10px 12px;
 }
-.svc-presenter-preparation-text::placeholder { color: var(--placeholder-ink); font-weight: var(--ui-meta-weight); }
+.svc-presenter-preparation-text::placeholder { color: var(--ink-4); opacity: 1; font-weight: var(--ui-meta-weight); }
 .svc-presenter-preparation-text:focus { background: color-mix(in srgb, var(--panel-2) 68%, transparent); }
 .svc-presenter-preparation-actions {
   display: flex;
