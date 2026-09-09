@@ -537,6 +537,16 @@ Small visual polish that does not alter behavior does not need an entry.
   subgroup의 시작점으로 board를 이동한다. 긴 찬양/지연 렌더 구간에서도
   선택된 순서의 입력·thumb 영역이 빈 화면 없이 보이는 것이 우선이다.
 
+## Benediction Replacement
+- 모든 예배의 축도 입력 영역에 `주기도문으로 변경` 버튼을 제공한다.
+- 변경은 해당 예배 요소에만 저장하며 공통 양식과 다른 예배는 수정하지 않는다.
+- `config.benedictionReplacement` version 1에 원래 축도 필드를 보관한다.
+  원래 slot identity를 유지하여 재조회 시 축도가 다시 생성되지 않게 한다.
+- 주기도문은 기존 공통 본문/렌더러를 사용한다. `축도로 되돌리기`는 보관한
+  담당자, 제목, 메모를 복원하며 replacement metadata를 제거한다.
+- 예배 document exceptions에는 `benediction_replacement` 사유를 남긴다.
+- 주일 1부의 기존 설교자별 기본 순서 판정은 변경하지 않는다.
+
 ## Service Auto-Schedule Rules
 - 어린이부 예배, 청소년부 예배, 청년부 예배는 주일 자동 생성 대상이다.
 - 단, 해당 주일의 교회력 `church_schedule`에 `온세대 찬양예배`가

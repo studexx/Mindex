@@ -4674,6 +4674,7 @@ function groupWorshipElements(sections = [], elements = []) {
       song_id: element.song_id || null,
       song_version_id: element.song_version_id || null,
       memo: serializeServiceItemMemo({
+        note: config.note,
         elementType,
         inputMode,
         outputMode: config.outputMode || config.output_mode || config.renderMode || config.render_mode,
@@ -4696,6 +4697,7 @@ function groupWorshipElements(sections = [], elements = []) {
         playback,
         presenterRole,
         connectedPraise,
+        benedictionReplacement: config.benedictionReplacement,
         hiddenInPresentation: Boolean(config.hiddenInPresentation || config.hidden_in_presentation),
         templateSuppressed: Boolean(config.templateSuppressed || config.template_suppressed),
         reviewStatus: element.review_status,
@@ -7308,6 +7310,8 @@ function serviceElementTitleForSave(item = {}, elementType = "") {
 
 function serviceElementConfigForSave(existingConfig = {}, parsed = emptyServiceItemMemo(), options = {}) {
   const config = { ...(existingConfig && typeof existingConfig === "object" ? existingConfig : {}) };
+  if (parsed.benedictionReplacement) config.benedictionReplacement = parsed.benedictionReplacement;
+  else delete config.benedictionReplacement;
   const outputMode = serviceItemUsesFlexibleOfferingSlot(options.item) && !serviceItemUsesScoreInputMode(options.item, parsed)
     ? ""
     : parsed.outputMode;
@@ -8153,6 +8157,16 @@ function handleDetailClick(event) {
     runServiceDefaultItemAction(
       serviceDefaultAction.dataset.serviceDefaultAction,
       Number(serviceDefaultAction.dataset.serviceDefaultIndex),
+    );
+    return;
+  }
+
+  const benedictionToggle = event.target.closest("[data-service-benediction-toggle]");
+  if (benedictionToggle) {
+    void setServiceBenedictionReplacement(
+      benedictionToggle.dataset.serviceId,
+      benedictionToggle.dataset.serviceItemId,
+      benedictionToggle.dataset.serviceBenedictionToggle === "lords_prayer",
     );
     return;
   }
@@ -10788,6 +10802,75 @@ function serviceItemConnectedPraiseOrderTitle(item = {}, connected = null) {
   return rawTitle || connected?.title || "";
 }
 
+function normalizeBenedictionReplacement(value) {
+  if (value?.version !== 1 || compactSearchValue(value?.original?.label || "") !== "축도") return null;
+  const fields = ["label", "raw_title", "assignee", "memo", "default_text",
+    "song_id", "version_id", "song_version_id", "_worshipSlotKey"];
+  return { version: 1, original: Object.fromEntries(fields
+    .filter((key) => typeof value.original[key] === "string" || value.original[key] === null)
+    .map((key) => [key, value.original[key]])) };
+}
+
+function serviceItemCanReplaceBenediction(item, memo = parseServiceItemMemo(item?.memo)) {
+  return Boolean(memo.benedictionReplacement) || compactSearchValue(item?.label || "") === "축도";
+}
+
+function replaceServiceBenediction(item, enabled) {
+  if (!item) return false;
+  const memo = parseServiceItemMemo(item.memo);
+  if (!serviceItemCanReplaceBenediction(item, memo) || Boolean(memo.benedictionReplacement) === enabled) return false;
+  if (enabled) {
+    const backup = normalizeBenedictionReplacement({ version: 1, original: item });
+    item.label = "주기도문";
+    item.raw_title = PUBLIC_LORDS_PRAYER_TEXT;
+    item.assignee = "";
+    item.song_id = item.version_id = item.song_version_id = null;
+    item.memo = serializeServiceItemMemo({
+      elementType: "body", inputMode: "text", introSlide: { title: "주기도문" },
+      benedictionReplacement: backup,
+    });
+  } else {
+    for (const key of ["label", "raw_title", "assignee", "memo", "song_id", "version_id", "song_version_id"]) delete item[key];
+    Object.assign(item, memo.benedictionReplacement.original);
+  }
+  item._worshipElementTemplateModified = true;
+  item._worshipTemplatePlaceholder = false;
+  return true;
+}
+
+async function setServiceBenedictionReplacement(serviceId, itemId, enabled) {
+  if (state.saving) return waitForServiceSave({},
+    (id) => setServiceBenedictionReplacement(serviceId, id, enabled), itemId);
+  const service = state.services.find((candidate) => candidate.id === serviceId);
+  const items = getServiceItems(serviceId);
+  const index = items.findIndex((candidate) => candidate.id === itemId);
+  const item = items[index];
+  if (!service || !item || !serviceItemCanReplaceBenediction(item)) return false;
+  if (serviceSourceTextHasPendingChanges(serviceSourceTextareaForService(serviceId))) {
+    showToast("편집 중인 예배 원문을 먼저 반영한 뒤 변경해 주세요.", "info");
+    return false;
+  }
+  if (Boolean(parseServiceItemMemo(item.memo).benedictionReplacement) === enabled) return true;
+  for (const field of refs.detailPane?.querySelectorAll("[data-service-item-field]") || []) {
+    if ((field.dataset.serviceId || state.selectedServiceId) !== serviceId
+      || Number(field.dataset.serviceItemIndex) !== index) continue;
+    clearDeferredServiceTextPreview(field);
+    updateServiceItemField(field, { deferPresenterRefresh: true });
+    field.dataset.initialValue = field.value;
+    field.dataset.presenterPreviewValue = field.value;
+  }
+  const current = getServiceItems(serviceId).find((candidate) => candidate.id === itemId);
+  if (!replaceServiceBenediction(current, enabled)) return false;
+  delete service._worshipSourceTextDraft;
+  state.dirty.service = true;
+  markServiceElementDirty(serviceId, current);
+  refreshPresenterForService(serviceId, { renderControls: !serviceHasPendingTextEdits(serviceId) });
+  const saved = await saveServiceItemPatch(serviceId,
+    getServiceItems(serviceId).findIndex((candidate) => candidate.id === itemId), { renderAfterSave: false });
+  if (saved) showToast(enabled ? "이 예배의 축도를 주기도문으로 변경했습니다." : "이 예배의 축도를 복원했습니다.");
+  return saved;
+}
+
 function parseServiceItemMemo(value) {
   const raw = String(value || "").trim();
   if (!raw) return emptyServiceItemMemo();
@@ -10827,6 +10910,7 @@ function parseServiceItemMemo(value) {
         playback: normalizeServicePlaybackConfig(parsed.playback, elementType),
         presenterRole,
         connectedPraise,
+        benedictionReplacement: normalizeBenedictionReplacement(parsed.benedictionReplacement),
         hiddenInPresentation: Boolean(parsed.hiddenInPresentation || parsed.hidden_in_presentation || parsed.hidden),
         templateSuppressed: Boolean(parsed.templateSuppressed || parsed.template_suppressed),
       };
@@ -11062,11 +11146,12 @@ function serializeServiceItemMemo(value = {}) {
   const playback = normalizeServicePlaybackConfig(value.playback, elementType);
   const presenterRole = normalizeServicePresenterRole(value.presenterRole || value.presenter_role || value.role);
   const connectedPraise = normalizeServiceConnectedPraise(value.connectedPraise || value.connected_praise);
+  const benedictionReplacement = normalizeBenedictionReplacement(value.benedictionReplacement);
   const hiddenInPresentation = Boolean(value.hiddenInPresentation || value.hidden_in_presentation || value.hidden);
   const templateSuppressed = Boolean(value.templateSuppressed || value.template_suppressed);
   const defaultAssetKind = serviceAssetKindForElementType(elementType);
   if (!asset.kind && defaultAssetKind && hasServiceAsset(asset)) asset.kind = defaultAssetKind;
-  if (!slides.length && !scriptureReference && !scriptureReferences.length && !scriptureTranslationId && !scriptureReferencePayloads.length && !manualScripture && !hasServiceIntroSlide(introSlide) && !formHint && !formPreset && !formPresetDisabled && !formPresetRules.length && !templateKey && !templateVariant && !elementType && !outputMode && !inputMode && !textHighlights.length && !hasServiceAsset(asset) && !hasServiceAsset(audioAsset) && !hasServicePlaybackConfig(playback) && !presenterRole && !connectedPraise && !hiddenInPresentation && !templateSuppressed) return note;
+  if (!slides.length && !scriptureReference && !scriptureReferences.length && !scriptureTranslationId && !scriptureReferencePayloads.length && !manualScripture && !hasServiceIntroSlide(introSlide) && !formHint && !formPreset && !formPresetDisabled && !formPresetRules.length && !templateKey && !templateVariant && !elementType && !outputMode && !inputMode && !textHighlights.length && !hasServiceAsset(asset) && !hasServiceAsset(audioAsset) && !hasServicePlaybackConfig(playback) && !presenterRole && !connectedPraise && !benedictionReplacement && !hiddenInPresentation && !templateSuppressed) return note;
   const payload = { note };
   if (scriptureReference) payload.scriptureReference = scriptureReference;
   if (scriptureReferences.length) payload.scriptureReferences = scriptureReferences;
@@ -11086,6 +11171,7 @@ function serializeServiceItemMemo(value = {}) {
   if (textHighlights.length) payload.textHighlights = textHighlights;
   if (presenterRole) payload.presenterRole = presenterRole;
   if (connectedPraise) payload.connectedPraise = connectedPraise;
+  if (benedictionReplacement) payload.benedictionReplacement = benedictionReplacement;
   if (hiddenInPresentation) payload.hiddenInPresentation = true;
   if (templateSuppressed) payload.templateSuppressed = true;
   if (hasServiceAsset(asset)) payload.asset = asset;
@@ -20433,6 +20519,11 @@ function collapseDuplicateBenedictionProjectionItems(items = []) {
 }
 
 function collapseBenedictionLordsPrayerProjectionItems(items = []) {
+  const replacement = items.find((item) => parseServiceItemMemo(item.memo).benedictionReplacement);
+  if (replacement) return items.filter((item) => item === replacement
+    || !item._worshipTemplatePlaceholder
+    || templateProjectionSectionKey(item) !== templateProjectionSectionKey(replacement)
+    || !["축도", "주기도문"].includes(compactSearchValue(item.label || "")));
   const hasBenediction = items.some((item) => {
     const labelKey = compactSearchValue(item?.label || item?.raw_title || "");
     return templateProjectionSectionKey(item) === "sending" && labelKey === "축도";
@@ -20640,7 +20731,7 @@ function serviceItemTemplateProjectionKey(item = {}, options = {}) {
   const sectionKey = templateProjectionSectionKey(item);
   if (options.sectionOnly) return sectionKey;
   if (options.includeElementOrder) return `${sectionKey}:${Number(item._worshipElementOrder) || 0}`;
-  const labelKey = compactSearchValue(item.label || "");
+  const labelKey = compactSearchValue(parseServiceItemMemo(item.memo).benedictionReplacement?.original.label || item.label || "");
   return `${sectionKey}:${labelKey}`;
 }
 
@@ -20689,6 +20780,7 @@ function mergeTemplateProjectionItem(templateItem = {}, existingItem = {}) {
       : (existingLabel || templateLabel);
     merged._worshipElementOrder = existingItem._worshipElementOrder || templateItem._worshipElementOrder;
   }
+  if (parseServiceItemMemo(existingItem.memo).benedictionReplacement) merged.assignee = existingItem.assignee || "";
   return merged;
 }
 
@@ -21554,6 +21646,11 @@ function buildServiceDocumentExceptionNotes(service = null, items = []) {
 
 function serviceDocumentExceptionForItem(service = null, item = {}) {
   const memo = parseServiceItemMemo(item.memo);
+  if (memo.benedictionReplacement) return {
+    type: "benediction_replacement", scope: "service",
+    target: { section: serviceSourceSectionTitle(item), label: item.label, elementId: item.id },
+    reason: "해당 예배의 축도를 주기도문으로 대체함. 원래 축도 정보는 복원을 위해 보존함.",
+  };
   const asset = normalizeServiceAsset(memo.asset);
   const hasAsset = asset.name || asset.url || asset.kind;
   if (!hasAsset) return null;
@@ -26991,6 +27088,7 @@ function presenterServiceInputItem(item, service) {
   const model = serviceItemEditorModel(item, { service });
   const memo = model.parsed || parseServiceItemMemo(item.memo);
   const inputMode = model.song ? servicePraiseInputMode(item, memo, service) : serviceMemoInputMode(memo, item);
+  if (serviceItemCanReplaceBenediction(item, memo)) return { mode: "benediction", model, memo };
   if (presenterServiceInputIsStatic(item, memo)) return null;
   if (inputMode === "none" || inputMode === "config") return null;
   if (inputMode === "manual_praise") return { mode: "text", model, memo };
@@ -27021,6 +27119,12 @@ function presenterServiceInputControls(item, index, service) {
   const context = presenterServiceInputItem(item, service);
   if (!context) return "";
   const { mode, model, memo } = context;
+  if (mode === "benediction") return `
+    ${memo.benedictionReplacement ? "" : renderPresenterServiceTextInputs(item, index, model, memo)}
+    <button class="btn ghost" type="button" data-service-benediction-toggle="${memo.benedictionReplacement ? "benediction" : "lords_prayer"}"
+      data-service-id="${escapeAttr(service.id)}" data-service-item-id="${escapeAttr(item.id)}" ${state.saving ? "disabled" : ""}>
+      <i data-lucide="repeat-2"></i>${memo.benedictionReplacement ? "축도로 되돌리기" : "주기도문으로 변경"}
+    </button>`;
   if (isMonthlyCorporatePrayerGroupItem(item, memo)) {
     return renderPresenterMonthlyCorporatePrayerInputs(item, index, memo, service?.id || model?.service?.id);
   }
@@ -27086,6 +27190,7 @@ function isAnnouncementTextInputItem(item = {}) {
 function presenterServiceInputHasEditableField(item, service) {
   const context = presenterServiceInputItem(item, service);
   if (!context) return false;
+  if (context.mode === "benediction") return true;
   if (isMonthlyCorporatePrayerGroupItem(item, context.memo)) return true;
   if (["praise_db", "score_db", "lyrics_db", "scripture", "asset"].includes(context.mode)) return true;
   if (context.mode === "text" && servicePraiseInputMode(item, context.memo, service) === "manual_praise") return true;
