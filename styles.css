@@ -9037,4 +9037,3 @@ body.is-chromium .svc-slide-thumb.active:hover .svc-slide-thumb-frame {
 .svc-setlist-week-status { display: grid; gap: 6px; padding: 20px 0; color: var(--ink-3); font-size: var(--ui-meta-size); }
 .svc-setlist-week-status strong { color: var(--ink-2); }
 
-.svc-setlist-week-legend { margin: 0; color: var(--ink-3); font-size: var(--ui-meta-size); }

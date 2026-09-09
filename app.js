@@ -23378,7 +23378,6 @@ function renderServiceSetlistArchiveDetail() {
           <button type="button" data-service-setlist-view="${view}" aria-pressed="${state.worshipSetlistArchiveView === view}">${label}</button>
         `).join("")}
       </div>
-      ${state.worshipSetlistArchiveView !== "service" ? `<p class="svc-setlist-week-legend">한 주의 예배 현황 · 통합예배 / 집회 없음 / 콘티 미등록 / 기록 없음</p>` : ""}
       ${archive.loading && !archive.loaded ? renderLoadingDetail() : renderWorshipSetlistArchiveGroups(entries)}
     </div>`;
   finishDetailRender();
