@@ -4020,7 +4020,9 @@ function fridayWeekOfMonth(dateValue = "") {
 function fridayServiceVariantForDate(dateValue = "") {
   const date = String(dateValue || "").trim().slice(0, 10);
   if (!date || date < FRIDAY_SERVICE_VARIANT_START_DATE) return null;
-  return FRIDAY_SERVICE_VARIANTS[fridayWeekOfMonth(date)] || null;
+  const week = fridayWeekOfMonth(date);
+  if ((week === 2 || week === 3) && date.slice(0, 7) !== "2026-08") return null;
+  return FRIDAY_SERVICE_VARIANTS[week] || null;
 }
 
 function autoFridayServiceTarget(date = "") {
