@@ -65,7 +65,10 @@
     if (numbered.length !== 1) return { status: "ambiguous", text: value, candidates: numbered };
     const song = numbered[0];
     const prefix = part.number ? `${part.oldHymnal ? "통 " : ""}${part.number} ` : "";
-    const title = index.titles.get(key(song.title))?.size > 1 && song.subtitle ? `${song.title} (${song.subtitle})` : song.title;
+    const sameTitle = [...(index.titles.get(key(song.title)) || [])].map(id => index.byId.get(id));
+    const needsSubtitle = sameTitle.some(other => other.id !== song.id
+      && Boolean(other.modernNumbers.size || other.oldNumbers.size) === Boolean(song.modernNumbers.size || song.oldNumbers.size));
+    const title = needsSubtitle && song.subtitle ? `${song.title} (${song.subtitle})` : song.title;
     return { status: "linked", song, text: `${prefix}${title}${part.verse ? ` ${part.verse}` : ""}`, candidates: numbered };
   }
   function fromServices(snapshot = {}, archivedSources = [], index = null) {
