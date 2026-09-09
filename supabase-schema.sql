@@ -596,8 +596,8 @@ create table if not exists public.mindex_bible_verses (
   unique (translation_id, book_code, chapter, verse)
 );
 
-create index if not exists mindex_bible_verses_lookup_idx
-  on public.mindex_bible_verses (translation_id, book_code, chapter, verse);
+-- The UNIQUE constraint above already indexes translation/book/chapter/verse.
+-- Do not duplicate it with a separate lookup index.
 
 create index if not exists mindex_bible_verses_book_chapter_idx
   on public.mindex_bible_verses (book_code, chapter);
