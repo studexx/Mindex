@@ -27122,7 +27122,7 @@ function presenterServiceInputControls(item, index, service) {
   if (mode === "benediction") return `
     ${memo.benedictionReplacement ? "" : renderPresenterServiceTextInputs(item, index, model, memo)}
     <button class="btn ghost" type="button" data-service-benediction-toggle="${memo.benedictionReplacement ? "benediction" : "lords_prayer"}"
-      data-service-id="${escapeAttr(service.id)}" data-service-item-id="${escapeAttr(item.id)}" ${state.saving ? "disabled" : ""}>
+      data-service-id="${escapeAttr(service.id)}" data-service-item-id="${escapeAttr(item.id)}">
       <i data-lucide="repeat-2"></i>${memo.benedictionReplacement ? "축도로 되돌리기" : "주기도문으로 변경"}
     </button>`;
   if (isMonthlyCorporatePrayerGroupItem(item, memo)) {

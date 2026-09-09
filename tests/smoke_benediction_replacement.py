@@ -73,6 +73,9 @@ def run(browser, url):
         check(replacement?.label === '주기도문' && replacement.assignee === '', type+' replacement lost');
         check(!getServiceItems(sid).some(x => x.label === '축도'), type+' benediction regenerated');
         check(presenterServiceInputControls(replacement, 0, service).includes('축도로 되돌리기'), type+' missing restore');
+        state.saving = true;
+        check(!presenterServiceInputControls(replacement, 0, service).includes('disabled'), type+' save-time render leaves button locked');
+        state.saving = false;
         const slides = buildPresenterSlidesForServiceItem(replacement, service, 0);
         check(JSON.stringify(slides).includes('하늘에 계신'), type+' prayer body missing from slides');
         check(serviceDocumentExceptionForItem(service, replacement).type === 'benediction_replacement', 'exception note missing');
