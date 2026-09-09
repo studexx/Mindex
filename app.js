@@ -3456,6 +3456,8 @@ const WORSHIP_IMPORT_SOURCE_LIST_SELECT = [
   "status",
   "leader:raw_payload->service->>leader",
   "aliases:raw_payload->service->tags",
+  "weekly_status:raw_payload->service->>weekly_status",
+  "weekly_reason:raw_payload->service->>weekly_reason",
 ].join(",");
 const WORSHIP_IMPORT_CANDIDATE_LIST_SELECT = [
   "id",
@@ -3778,7 +3780,7 @@ async function loadWorshipSetlistSongCatalog({ force = false } = {}) {
 async function fetchWorshipSetlistServices() {
   // Only card metadata; do not load lyrics, slides, or full source documents.
   const results = await Promise.allSettled([
-    fetchSupabasePaged("mindex_worship_services", "id,service_type_id,service_date,title,service_alias,status,praise_leader,worship_leader", q => q.order("id")),
+    fetchSupabasePaged("mindex_worship_services", "id,service_type_id,service_date,title,service_alias,status,praise_leader,worship_leader,no_gathering:source_ref->no_gathering", q => q.order("id")),
     fetchSupabasePaged("mindex_worship_sections", "id,service_id,sort_order,section_key,title", q => q.order("id")),
     fetchSupabasePaged("mindex_worship_elements", "id,section_id,sort_order,element_type,title,song_id,label:source_ref->>label", q => q.eq("element_type", "praise").order("id")),
   ]);
@@ -3793,7 +3795,7 @@ async function loadWorshipSetlistArchive({ force = false } = {}) {
   if (state.worshipSetlistArchive.loading) return;
   if (state.worshipSetlistArchive.loaded && !force) return;
   // Keep a complete snapshot only; authenticated projects never use this public cache.
-  const cacheKey = `${state.config.url}:live-services-v1:${WORSHIP_IMPORT_SOURCE_LIST_SELECT}:${WORSHIP_IMPORT_CANDIDATE_LIST_SELECT}`;
+  const cacheKey = `${state.config.url}:live-services-v2:${WORSHIP_IMPORT_SOURCE_LIST_SELECT}:${WORSHIP_IMPORT_CANDIDATE_LIST_SELECT}`;
   const useCache = !state.config.authRequired;
   if (!state.worshipSetlistArchive.loaded && useCache && !force) {
     const cached = readStaticSupabaseCache("worship_setlist_archive", cacheKey)?.[0];
@@ -22594,7 +22596,7 @@ function renderServiceList() {
     </button>
     <button class="service-type-row${state.selectedServiceTypeId === SERVICE_SETLIST_ARCHIVE_PANEL_ID && !state.selectedServiceId ? " active" : ""}" type="button" data-service-setlist-archive>
       <span>${escapeHtml(SERVICE_SETLIST_ARCHIVE_PANEL_TITLE)}</span>
-      <small>${state.worshipSetlistArchive.loaded ? worshipSetlistArchiveEntries().length : "DB"}</small>
+      <small>${state.worshipSetlistArchive.loaded ? worshipSetlistArchiveEntries().filter(entry => entry.candidates.length).length : "DB"}</small>
     </button>
   `;
 
@@ -23340,6 +23342,8 @@ function filterWorshipSetlistArchiveEntries(entries = []) {
       worshipSetlistArchiveTypeName(source.service_type_id),
       source.source_name,
       worshipSetlistArchiveAliases(source),
+      source.weekly_status,
+      source.weekly_reason,
       source.leader,
       source.source_path,
       source.status,
@@ -23362,7 +23366,7 @@ function renderServiceSetlistArchiveDetail() {
           <h2 class="service-date-list-title">${escapeHtml(SERVICE_SETLIST_ARCHIVE_PANEL_TITLE)}</h2>
         </div>
         <div class="service-section-head-actions">
-          <span class="service-search-count">${archive.loading ? "불러오는 중" : `${entries.length}개 콘티`}</span>
+          <span class="service-search-count">${archive.loading ? "불러오는 중" : `${entries.filter(entry => entry.candidates.length).length}개 콘티`}</span>
           <button class="reference-new-btn secondary" type="button" data-service-setlist-refresh aria-label="역대 콘티 새로고침">
             <i data-lucide="refresh-cw"></i>
           </button>
@@ -23374,6 +23378,7 @@ function renderServiceSetlistArchiveDetail() {
           <button type="button" data-service-setlist-view="${view}" aria-pressed="${state.worshipSetlistArchiveView === view}">${label}</button>
         `).join("")}
       </div>
+      ${state.worshipSetlistArchiveView !== "service" ? `<p class="svc-setlist-week-legend">한 주의 예배 현황 · 통합예배 / 집회 없음 / 콘티 미등록 / 기록 없음</p>` : ""}
       ${archive.loading && !archive.loaded ? renderLoadingDetail() : renderWorshipSetlistArchiveGroups(entries)}
     </div>`;
   finishDetailRender();
@@ -23417,19 +23422,34 @@ function groupWorshipSetlistArchiveEntries(entries = [], view = state.worshipSet
 }
 
 function renderWorshipSetlistArchiveGroups(entries = []) {
-  if (!entries.length) return `<p class="service-no-results">표시할 역대 콘티가 없습니다.</p>`;
-  const groups = groupWorshipSetlistArchiveEntries(entries);
+  const weekly = state.worshipSetlistArchiveView !== "service" && !String(state.search || "").trim();
+  const groups = weekly && window.MindexWorshipWeek
+    ? window.MindexWorshipWeek.build(entries, state.worshipSetlistArchive.live?.services || [])
+    : groupWorshipSetlistArchiveEntries(entries);
+  if (!groups.length) return `<p class="service-no-results">표시할 역대 콘티가 없습니다.</p>`;
   return `
     <div class="svc-setlist-month-groups">
       ${groups.map((group) => `
         <section class="svc-setlist-month-group">
-          <h3>${escapeHtml(group.title)} <span class="svc-setlist-group-count">${group.entries.length}</span></h3>
+          <h3>${escapeHtml(group.title)} <span class="svc-setlist-group-count">${group.entries.filter(entry => entry.candidates.length).length}개 콘티</span></h3>
           <div class="svc-setlist-entry-list">
-            ${group.entries.map(renderWorshipSetlistArchiveEntry).join("")}
+            ${group.entries.map(entry => entry.weeklyStatus ? renderWorshipWeekStatus(entry) : renderWorshipSetlistArchiveEntry(entry)).join("")}
           </div>
         </section>
       `).join("")}
     </div>`;
+}
+
+function renderWorshipWeekStatus(entry) {
+  const title = state.worshipSetlistArchiveView === "service" ? entry.source.service_date : entry.slotName;
+  return `<article class="svc-setlist-entry svc-setlist-entry--status">
+    <header><div class="svc-setlist-entry-title">
+      <div class="svc-setlist-entry-heading"><strong>${escapeHtml(title)}</strong></div>
+      ${state.worshipSetlistArchiveView !== "service" ? `<span class="svc-setlist-leader">${escapeHtml(entry.source.service_date)}</span>` : ""}
+    </div></header>
+    <div class="svc-setlist-week-status"><strong>${escapeHtml(entry.weeklyStatus)}</strong>
+      <span>${escapeHtml(entry.weeklyReason)}</span></div>
+  </article>`;
 }
 
 function worshipSetlistArchiveAliases(source = {}) {
@@ -23439,6 +23459,7 @@ function worshipSetlistArchiveAliases(source = {}) {
 }
 
 function renderWorshipSetlistArchiveEntry(entry) {
+  if (!entry.candidates.length && entry.source.weekly_status) return renderWorshipWeekStatus({...entry,slotName:worshipSetlistArchiveTypeName(entry.source.service_type_id),weeklyStatus:entry.source.weekly_status,weeklyReason:entry.source.weekly_reason || ""});
   const source = entry.source || {};
   const typeName = worshipSetlistArchiveTypeName(source.service_type_id);
   const title = state.worshipSetlistArchiveView === "service" ? source.service_date || "날짜 없음" : typeName;

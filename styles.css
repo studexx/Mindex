@@ -9032,3 +9032,9 @@ body.is-chromium .svc-slide-thumb.active:hover .svc-slide-thumb-frame {
 }
 .svc-setlist-entry-heading > strong { flex-shrink: 0; }
 .svc-setlist-entry-heading > .svc-setlist-alias { margin-left: auto; text-align: right; }
+
+.svc-setlist-entry--status { background: transparent; border: 1px dashed var(--line); }
+.svc-setlist-week-status { display: grid; gap: 6px; padding: 20px 0; color: var(--ink-3); font-size: var(--ui-meta-size); }
+.svc-setlist-week-status strong { color: var(--ink-2); }
+
+.svc-setlist-week-legend { margin: 0; color: var(--ink-3); font-size: var(--ui-meta-size); }

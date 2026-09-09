@@ -4,6 +4,7 @@ import { join, relative } from "node:path";
 const roots = [
   "index.html",
   "app.js",
+  "mindex.worship-week.js",
   "mindex.constants.js",
   "mindex.design-tokens.js",
   "mindex.presenter.js",
