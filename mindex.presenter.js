@@ -2518,7 +2518,11 @@ function presenterSectionForServiceItem(item, index, displayText, song = null, v
   const linkedElementTitle = linkedSongTitle || (song ? presenterPraiseElementTitle(song, version, displayText) : "");
   const elementTitle = linkedElementTitle || [no, title].filter(Boolean).join(" ") || displayText || label || `항목 ${index + 1}`;
   const sectionLabelText = cleanList([label, formHint]).join(" · ");
+  // Count the source version, not the selected/repeated performance sequence.
+  const verseForms = normalizeForms(version?.forms || []).filter((form) =>
+    normalizePresenterFormPresetLabel(presenterFormDisplayLabel(form)).type === "verse");
   return {
+    ...(verseForms.length === 1 ? { controllerSingleVerse: true } : {}),
     sectionId: item?._worshipSectionId || item?.id || `section:${index}:${normalizeTitle([label, displayText].filter(Boolean).join(" "))}`,
     elementId: item?.id || `element:${index}:${normalizeTitle([label, displayText].filter(Boolean).join(" "))}`,
     sectionIndex: Number(item?._worshipSectionOrder) || index + 1,

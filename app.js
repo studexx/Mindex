@@ -29384,6 +29384,8 @@ function presenterSlideSupportsFormGrouping(slide) {
 function presenterFormGroupLabel(slide) {
   const label = String(slide?.formLabel || slide?.marker || "").trim();
   if (isGenericPresenterFormLabel(label)) return "";
+  const form = normalizePresenterFormPresetLabel(label);
+  if (slide?.controllerSingleVerse && form.type === "verse" && form.number === 1 && !form.group) return "Verse";
   return songFormPresetDisplayLabel(label) || label;
 }
 
