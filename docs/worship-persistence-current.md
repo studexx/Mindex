@@ -82,6 +82,10 @@ the corresponding characterization with the required safety assertion.
 
 Next implementation should be separately scoped and reviewed:
 
+The proposed protocol and rollout are in
+[Atomic Worship Save Design](worship-atomic-save-design.md); this is design only,
+not an implemented guarantee.
+
 1. Define an expected aggregate revision and an atomic server operation for
    service document + sections + elements, including deletes. All instance write
    paths must participate; adding CAS only to the last document write is not enough.
