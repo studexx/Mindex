@@ -1,7 +1,10 @@
 # Worship Data Contract
 
-This document defines the target Worship domain model. It follows
-`docs/thread-worship-presenter.md` and `scripts/worship-schema.sql`.
+This document describes the target Worship domain model and historical design
+decisions. It is not proof of the deployed database constraints or atomic saves.
+For the implementation baseline, write paths, compatibility fields and known
+guarantee gaps, read [Current Persistence Contract](worship-persistence-current.md).
+It follows `docs/thread-worship-presenter.md` and `scripts/worship-schema.sql`.
 
 ## Boundary
 
@@ -15,6 +18,10 @@ Older service tables are compatibility/import residue. Do not add new Worship
 concepts by extending `raw_title`, `memo`, `fixed_items`, or `order_template`.
 
 ## Core Hierarchy
+
+This is the relational target hierarchy. Current saves persist service documents
+in `services.source_ref` as well as section/element rows; they do not write the
+slide table as the authoritative slide document. See the current contract above.
 
 ```text
 mindex_worship_services

@@ -1,0 +1,100 @@
+# Current Worship Persistence Contract
+
+Reviewed 2026-09-10 against the shared checkout of `app.js`,
+`scripts/worship-schema.sql` and the existing save-safety tests. The checkout
+contains concurrent work. This is a code/schema-source audit, not a production
+catalog inspection or evidence of a specific lost production record. No data,
+constraints or migrations were changed by this audit.
+
+## Current representation
+
+| Surface | Current implementation | Limit |
+| --- | --- | --- |
+| Service identity | `mindex_worship_services.id`, section and element UUIDs | Display labels and sort order are not stable IDs. |
+| Instance data | Service row, section rows, element rows | Saved through separate API requests, not one transaction. |
+| Content | `input_mode`, `content_state`, `asset`, `config`, `source_ref` and typed links | Optional column detection retains compatibility; JSON references are not foreign keys. |
+| Behavioral slot | Optional `slot_key`, plus `source_ref.slotKey` / `config.slotKey`; runtime `_worshipSlotKey` | Current validator detects duplicate slots in its input only; no service-wide SQL uniqueness guarantee established by this audit. |
+| Service document | `source_ref.mindexServiceDocument`: sourceText, sourceRecords, slides, exceptions, signatures | Coexists with normalized rows; not yet a single authoritative transactional aggregate. |
+| Canonical content | `song_id`, `song_version_id`, `scripture_id`; resolved Scripture references and asset URLs | Canonical ownership stays outside Worship; persisted source/slides may also contain copied content. |
+| Recovery | Browser-local snapshots and bounded `mindexServiceDocumentHistory` in source_ref | Best effort / bounded, not an independent durable audit log or rollback transaction. |
+
+`buildServiceDocumentSnapshot` derives source text from an explicit draft or
+current items, and slides from the presenter builder. Source records link text
+records back to item/section/slot identities. These are coordinated projections,
+not a completed source-text-only storage model. Do not remove compatibility
+fields or the normalized rows on the assumption that the migration is complete.
+
+The checked SQL declares foreign keys for service -> section -> element -> slide
+with cascading child deletion, and nullable canonical references with SET NULL.
+It does not declare JSON-to-record foreign keys, or a composite constraint proving
+that a song version belongs to the linked song. Deployed constraints/triggers
+must be inspected separately before asserting production integrity.
+
+## Write paths
+
+- `runServiceSave`: serializes saves in the current JS runtime; saves dirty
+  service-type defaults first. It does not coordinate another tab/computer.
+- `saveWorshipServiceInstance`: validates rows; updates service metadata/document;
+  upserts sections; upserts elements; deletes removed elements; deletes removed
+  sections; then updates local state. Earlier requests remain committed if a
+  later one fails. The in-memory source_ref is assigned before the service write.
+- `saveWorshipServiceElementPatch`: validates all current items; upserts the
+  target section and element; updates the service document built from all items;
+  then acknowledges only the target item's local dirty state. Other local drafts
+  can therefore appear in the document although their element rows were not saved.
+- Both paths use ID-only predicates for service updates, not an expected revision
+  or updated_at comparison. Local signatures protect edits made during this
+  runtime's request; they do not prevent overwriting a newer remote document.
+- `saveDirtyServiceTypes` updates defaults independently. Success there followed
+  by instance failure is not rolled back. Treat defaults as a separate operation.
+- `syncSharedSundayContentAfterSave` is currently a no-op. Shared Sunday content
+  is read-time projection, not guaranteed edit-time bidirectional persistence.
+  Do not describe the proposed sibling synchronization as deployed behavior.
+
+## Verified gaps and existing protections
+
+1. **High: partial commits.** Failure of the document update after an element
+   upsert leaves a new element with an old document. Full saves have the opposite
+   write order and can leave a new document with old rows. UI error handling is
+   not DB rollback.
+2. **High: cross-client lost updates.** ID-only document replacement accepts a
+   stale client's source_ref. A same-tab save queue is not compare-and-swap.
+3. **Medium: scope validation.** `validateWorshipPersistenceRows` checks IDs,
+   timestamps, modes and duplicate slot keys, but currently does not reject a
+   section belonging to another service or an element whose section is absent
+   from the submitted set. Ordinary FK existence alone does not establish ownership.
+4. **Recovery is limited.** Local snapshot failure warns but does not prevent
+   save. Remote history shares the same overwrite path. The history size constant
+   is measured with JS string length, and trimming retains one entry even above
+   that limit; it is not a hard UTF-8 byte cap.
+
+Existing protections remain valuable: loading rows before first persistence,
+typed-state normalization, pre-write validation, retained content/suppression
+markers, local dirty-state signatures, and same-runtime save serialization.
+Do not remove them when adding server-side protection.
+
+## Reproduction and next acceptance criteria
+
+Run `node tests/audit_worship_persistence_contract.cjs`. It uses extracted current
+functions with an in-memory API double; no browser, credentials or network. It
+characterizes known gaps rather than proving safety. If a gap is fixed, replace
+the corresponding characterization with the required safety assertion.
+
+Next implementation should be separately scoped and reviewed:
+
+1. Define an expected aggregate revision and an atomic server operation for
+   service document + sections + elements, including deletes. All instance write
+   paths must participate; adding CAS only to the last document write is not enough.
+2. Validate service ownership, canonical pair consistency and slot identity inside
+   that operation. Reject stale/mismatched input without any committed row changes.
+3. Define whether saving one element excludes other unsaved drafts from the
+   authoritative document or intentionally saves the whole aggregate. Align the UI
+   acknowledgement with that choice; do not silently change existing behavior.
+4. Retain a recoverable previous revision and introduce idempotent request IDs.
+   Test retries after uncertain network outcomes, failure at each write stage,
+   stale clients, concurrent structure edits and fresh-client readback.
+5. Confirm live schema/RLS and client rollout compatibility before any migration.
+   A new client guard cannot constrain old clients still writing directly.
+
+No broad JSON cleanup, curated-record normalization, table deletion or production
+migration is authorized by this audit document.
