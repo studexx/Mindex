@@ -1380,7 +1380,6 @@ function presenterAnnouncementItems(text = "") {
     .replace(/\r\n?/g, "\n")
     .split("\n")
     .map((line) => line.trim())
-    .filter(Boolean)
     .forEach((line) => {
       const match = line.match(/^(?:(\d+)[.)]|([①-⑳]))\s*(.*)$/u);
       if (match) {
@@ -1400,7 +1399,7 @@ function presenterAnnouncementItems(text = "") {
       items.push(current);
     });
 
-  return items.filter((item) => item.lines.length);
+  return items.filter((item) => item.lines.some((line) => line.trim()));
 }
 
 function presenterAnnouncementBodyText(text = "") {
@@ -4855,10 +4854,10 @@ function renderPresenterLiturgicalBodySlide(slide) {
   const body = announcementItems.length
     ? `<div class="presenter-announcement-items">${announcementItems.map((item) => {
       const marker = String(item.marker || "").trim();
-      const itemLines = item.lines.map((line) => String(line || "").trim()).filter(Boolean);
+      const itemLines = item.lines.map((line) => String(line || "").trim());
       return `<div class="presenter-announcement-item${marker ? "" : " presenter-announcement-item--plain"}">
         ${marker ? `<span class="presenter-announcement-marker">${escapeHtml(marker)}</span>` : ""}
-        <span class="presenter-announcement-copy">${itemLines.map((line) => `<span style="--line-chars: ${presenterLineCharEstimate(line)}">${escapePresenterSlideLine(line, slide)}</span>`).join("")}</span>
+        <span class="presenter-announcement-copy">${itemLines.map((line) => `<span style="--line-chars: ${presenterLineCharEstimate(line)}">${line ? escapePresenterSlideLine(line, slide) : "<br>"}</span>`).join("")}</span>
       </div>`;
     }).join("")}</div>`
     : `<div class="presenter-liturgical-body-lines">
