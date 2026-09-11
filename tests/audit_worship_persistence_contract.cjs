@@ -32,7 +32,7 @@ function fixture(failDocument) {
             filters.push([key, value]);
             if (failDocument) return {error: new Error('document write failed')};
             db.document = clone(payload.source_ref);
-            return {error: null};
+            return {error: null, count: 1};
           }};
         },
       };

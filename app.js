@@ -6422,7 +6422,6 @@ async function saveWorshipServiceInstance(service) {
     normalizeServiceItemsInCurrentOrder(getServiceItems(serviceId)),
   )).filter((item) => !isUnmodifiedTemplatePlaceholder(item));
   const sourceRef = withServiceDocumentSnapshot(service, items);
-  service._worshipSourceRef = sourceRef;
   const servicePayload = {
     service_type_id: canonicalTypeId,
     service_date: service.date,
@@ -6498,11 +6497,12 @@ async function saveWorshipServiceInstance(service) {
   preserveExistingWorshipContentRows(rows, existingSections, existingElements);
   validateWorshipPersistenceRows(rows, { serviceId });
 
-  const { error: serviceError } = await state.client
+  const { error: serviceError, count: serviceCount } = await state.client
     .from("mindex_worship_services")
-    .update(servicePayload)
+    .update(servicePayload, { count: "exact" })
     .eq("id", serviceId);
   if (serviceError) throw serviceError;
+  if (serviceCount !== 1) throw new Error("예배 저장 결과를 확인하지 못했습니다. 입력은 유지됩니다. 예배 상태와 권한을 확인해 주세요.");
 
   if (rows.sections.length) {
     const { error } = await state.client
@@ -6537,6 +6537,7 @@ async function saveWorshipServiceInstance(service) {
     if (error) throw error;
   }
 
+  service._worshipSourceRef = sourceRef;
   const unchanged = inputSignature === JSON.stringify(getServiceItems(serviceId))
     && metadataSignature === serviceSaveMetadataSignature(service);
   state.worshipSections = [
@@ -6683,11 +6684,12 @@ async function saveWorshipServiceElementPatch(service, itemId) {
     .from("mindex_worship_elements")
     .upsert([elementRow], { onConflict: "id" });
   if (error) throw error;
-  const { error: serviceError } = await state.client
+  const { error: serviceError, count: serviceCount } = await state.client
     .from("mindex_worship_services")
-    .update({ source_ref: sourceRef })
+    .update({ source_ref: sourceRef }, { count: "exact" })
     .eq("id", serviceId);
   if (serviceError) throw serviceError;
+  if (serviceCount !== 1) throw new Error("예배 저장 결과를 확인하지 못했습니다. 입력은 유지됩니다. 예배 상태와 권한을 확인해 주세요.");
   service._worshipSourceRef = sourceRef;
 
   const currentItems = getServiceItems(serviceId);
@@ -21476,7 +21478,9 @@ function compactServiceDocumentHistoryEntry(document = null) {
 
 function serviceDocumentHistoryEntryKey(document = null) {
   if (!document || typeof document !== "object") return "";
-  return cleanList([document.sourceSignature, document.slideSignature]).join("|");
+  const content = compactServiceDocumentHistoryEntry(document);
+  delete content.updatedAt;
+  return JSON.stringify(content);
 }
 
 function trimServiceDocumentHistory(entries = []) {

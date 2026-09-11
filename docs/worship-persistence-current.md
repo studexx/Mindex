@@ -1,5 +1,22 @@
 # Current Worship Persistence Contract
 
+## Save receipt hardening (2026-09-11)
+
+Full and element saves now request an exact affected-row count for the service
+update and reject zero or missing counts without clearing the local draft.
+Full saves advance the local source document baseline only after all row writes
+succeed. Recovery-history equality compares the complete compact document,
+excluding only its timestamp, so linked-source, layout and exception changes
+are retained even when text/slide signatures are unchanged.
+
+This is not transactional saving or cross-client revision checking. Partial
+writes and concurrent ID-only replacements remain possible. No production
+data, authentication, grants or RLS changes are included.
+
+Offline verification: `tests/test_worship_save_receipts.cjs` exercises the
+bundled SDK and history comparison; `tests/smoke_service_save_safety.py`
+exercises draft retention and save queues in Chromium and WebKit.
+
 Reviewed 2026-09-10 against the shared checkout of `app.js`,
 `scripts/worship-schema.sql` and the existing save-safety tests. The checkout
 contains concurrent work. This is a code/schema-source audit, not a production

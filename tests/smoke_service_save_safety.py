@@ -53,8 +53,8 @@ def run(browser, url):
         writes = []; renders = 0; hook = null; refreshOptions = null;
         const write = async (table, value) => {
           writes.push({table, value:clone(value)});
-          if (hook) return await hook(table, value);
-          return {error:null};
+          const result = hook ? await hook(table, value) : {error:null};
+          return {count:1, ...result};
         };
         state.client = {from:table => ({
           upsert:rows => write(table, rows),
@@ -84,6 +84,32 @@ def run(browser, url):
         return {started, release};
       };
       const results = [];
+      for (const count of [0, null]) {
+        const [target] = fixture();
+        edit(target, 'Keep this draft');
+        hook = async table => table === 'mindex_worship_services'
+          ? {error:null, count} : {error:null};
+        let failed = false;
+        try { await save(target); } catch (_) { failed = true; }
+        check(failed && state.dirty.service, 'unconfirmed patch acknowledged');
+        check(item(target).raw_title === 'Keep this draft', 'patch failure lost draft');
+      }
+      results.push('zero/missing affected count rejects patch and retains draft');
+
+      let [fullTarget] = fixture();
+      edit(fullTarget, 'Keep full draft');
+      const originalRef = state.services[0]._worshipSourceRef;
+      hook = async () => ({error:null, count:0});
+      let fullFailed = false;
+      try {
+        await saveService(sid, {silent:true, renderAfterSave:false, throwOnError:true});
+      } catch (_) { fullFailed = true; }
+      check(fullFailed && state.dirty.service, 'unconfirmed full save acknowledged');
+      check(writes.length === 1 && writes[0].table === 'mindex_worship_services',
+        'full save wrote children after zero-row update');
+      check(state.services[0]._worshipSourceRef === originalRef, 'failed save replaced source baseline');
+      results.push('zero-row full save stops before children and preserves baseline');
+
       let [a,b] = fixture();
       edit(a, 'Save A'); edit(b, 'Draft B');
       await save(a);
