@@ -4656,7 +4656,7 @@ function renderPresenterSlideBody(slide, options = {}) {
   if (layout === PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT && slide?.type === "song-title" && slide.sectionHeading) return renderPresenterSectionSongTitleSlide(slide);
   if (layout === PRESENTER_SLIDE_LAYOUTS.BLANK) return "";
   if (slide?.type === "liturgical-body") return renderPresenterLiturgicalBodySlide(slide);
-  if (presenterSlideIsTitleContent(slide)) return renderPresenterTitleContentSlide(slide);
+  if (presenterSlideIsTitleContent(slide)) return renderPresenterTitleContentSlide(slide, options);
   return `<div class="presenter-slide-text">${renderPresenterSlideText(slide)}</div>`;
 }
 
@@ -4900,12 +4900,16 @@ function renderPresenterSectionSongTitleSlide(slide) {
   `;
 }
 
-function renderPresenterTitleContentSlide(slide) {
+function renderPresenterTitleContentSlide(slide, options = {}) {
   const title = String(slide.title || "").trim();
+  const orderHeading = options.noChromakey && presenterTitleAssigneeIsSermon(slide)
+    ? String(slide.orderTitle || slide.sectionTitle || "설교").trim()
+    : "";
   const bodyLines = presenterTitleContentLines(slide);
   const titleChars = presenterLineCharEstimate(title);
   return `
     <div class="presenter-title-content">
+      ${orderHeading ? `<span class="presenter-fullscreen-order-heading">${escapeHtml(presenterOrderDisplayLabel(orderHeading))}</span>` : ""}
       ${slide.fullscreenSongTitle && slide.songTitleContent?.orderTitle ? `<span class="presenter-fullscreen-song-heading">${escapeHtml(presenterOrderDisplayLabel(slide.songTitleContent.orderTitle))}</span>` : ""}
       <span class="presenter-title-content-title" style="--line-chars: ${escapeAttr(titleChars)}">${slide.fullscreenSongTitle ? renderPresenterSongText(title, slide) : escapeHtml(title)}</span>
       ${slide.fullscreenSongTitle && slide.songTitleContent?.detail ? `<span class="presenter-fullscreen-song-detail">${slide.songTitleContent.detailKind === "subtitle" ? `(${escapeHtml(slide.songTitleContent.detail)})` : escapeHtml(slide.songTitleContent.detail)}</span>` : ""}
