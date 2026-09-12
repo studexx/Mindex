@@ -29513,12 +29513,11 @@ function renderPresenterBoardSubgroupAudioControls(serviceId, subgroup = {}) {
         <strong title="${escapeAttr(label)}">${escapeHtml(label)}</strong>
         <button class="icon-btn" type="button" data-service-item-audio-clear
           data-service-id="${escapeAttr(serviceId)}" data-service-item-index="${context.index}"
-          aria-label="음원 연결 해제" title="음원 연결 해제"><i data-lucide="x"></i></button>` : `
-        <span><i data-lucide="audio-lines"></i>음원</span>`}
+          aria-label="음원 연결 해제" title="음원 연결 해제"><i data-lucide="x"></i></button>` : ""}
       <label class="svc-board-subgroup-audio-upload" title="${source ? "음원 교체" : "음원 추가"}">
         <input type="file" accept="${SERVICE_ITEM_AUDIO_ACCEPT}" data-service-item-audio-file
           data-service-id="${escapeAttr(serviceId)}" data-service-item-index="${context.index}" />
-        <i data-lucide="${source ? "refresh-cw" : "upload"}"></i><span>${source ? "교체" : "추가"}</span>
+        <i data-lucide="${source ? "refresh-cw" : "upload"}"></i><span>${source ? "교체" : "음원 추가"}</span>
       </label>
     </div>`;
 }
@@ -29641,12 +29640,11 @@ function renderPresenterBoardItemAudioControls(serviceId, context = {}) {
         <strong title="${escapeAttr(label)}">${escapeHtml(label)}</strong>
         <button class="icon-btn" type="button" data-service-item-audio-clear
           data-service-id="${escapeAttr(serviceId)}" data-service-item-index="${context.index}"
-          aria-label="음원 연결 해제" title="음원 연결 해제"><i data-lucide="x"></i></button>` : `
-        <span><i data-lucide="audio-lines"></i>음원</span>`}
+          aria-label="음원 연결 해제" title="음원 연결 해제"><i data-lucide="x"></i></button>` : ""}
       <label class="svc-board-subgroup-audio-upload" title="${source ? "음원 교체" : "음원 추가"}">
         <input type="file" accept="${SERVICE_ITEM_AUDIO_ACCEPT}" data-service-item-audio-file
           data-service-id="${escapeAttr(serviceId)}" data-service-item-index="${context.index}" />
-        <i data-lucide="${source ? "refresh-cw" : "upload"}"></i><span>${source ? "교체" : "추가"}</span>
+        <i data-lucide="${source ? "refresh-cw" : "upload"}"></i><span>${source ? "교체" : "음원 추가"}</span>
       </label>
     </div>`;
 }
