@@ -689,3 +689,7 @@ Small visual polish that does not alter behavior does not need an entry.
 ## Linked Praise Hydration and Medley Labels
 - 곡 목록 로딩 지연·실패로 연결된 곡을 찾지 못해도 저장된 song/version ID를 지우지 않는다. 연결 해제와 직접 입력 전환은 기존 명시적 사용자 동작으로 처리한다.
 - 원숫자 변환은 송출 슬라이드 내부에만 적용한다(메들리 포함: `찬양 6–7` → `찬양 ⑥–⑦`). 컨트롤러 목록·입력 제목은 저장된 일반 숫자를 유지한다. 썸네일·미리보기의 슬라이드 내용은 실제 송출과 동일하다.
+
+## Song Form Input Normalization
+- 송폼 입력·저장 시 알려진 영문 토큰을 `V`, `PC`, `C`, `B`, `Int`, `Tag`, `Tags`, `Coda`, `VL`로 정규화하고 구분자 앞뒤 공백을 제거한다. 예: `v1a - pc - c - 간주` → `V1A-PC-C-Int`.
+- 절 번호·부분 구분·반복 순서·빈 입력은 유지한다. 한글 표기도 `1절 → V1`, `후렴 → C`, `마지막 절 → VL`, `간주 → Int`로 통일한다. 알 수 없는 토큰은 임의로 바꾸거나 삭제하지 않는다.

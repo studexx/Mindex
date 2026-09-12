@@ -4740,7 +4740,7 @@ function serviceFormHintFromConfig(config = {}) {
     || config.disable_form_preset
   ) return "";
   const preset = normalizeServiceFormPreset(config.formPreset || config.form_preset, config.formHint || config.form_hint);
-  return String(config.formHint || config.form_hint || preset?.hint || "").trim();
+  return normalizeServiceFormHint(config.formHint || config.form_hint || preset?.hint);
 }
 
 function worshipElementDisplayTitle(element = {}, section = {}, sourceRef = {}, config = {}) {
@@ -10299,7 +10299,7 @@ function updateServiceItemField(field, options = {}) {
       item.song_version_id = null;
     }
     if (key === "form_hint") {
-      const formHint = String(field.value || "").trim();
+      const formHint = normalizeServiceFormHint(field.value);
       parsed.formHint = formHint;
       parsed.formPreset = formHint
         ? normalizeServiceFormPreset(formHint, formHint, "manual")
@@ -10888,18 +10888,48 @@ function normalizeServiceFormPreset(value, fallbackHint = "", fallbackStrength =
   const strength = firstNonBlankString(source?.strength, source?.defaultStrength, source?.default_strength, fallbackStrength);
   const preset = {};
   if (forms.length) preset.forms = forms;
-  if (hint) preset.hint = hint;
+  if (hint) preset.hint = normalizeServiceFormHint(hint);
   if (strength) preset.strength = strength;
   if (source?.omitUnlisted || source?.omit_unlisted) preset.omitUnlisted = true;
   return Object.keys(preset).length ? preset : null;
 }
 
+function canonicalServiceFormToken(value = "") {
+  const raw = String(value || "").trim();
+  const part = raw.match(/^(v|verse|c|chorus|pc|prechorus|pre-chorus|p-c|p\.c\.|b|bridge)\s*(\d*)([a-z])?$/i);
+  if (part) {
+    const type = part[1].toLowerCase();
+    const prefix = /^(v|verse)$/.test(type) ? "V"
+      : /^(c|chorus)$/.test(type) ? "C"
+        : /^(b|bridge)$/.test(type) ? "B" : "PC";
+    return prefix + part[2] + String(part[3] || "").toUpperCase();
+  }
+  const instrumental = raw.match(/^(int|간주|interlude|instrumental)\s*([a-z]?)$/i);
+  if (instrumental) return "Int" + instrumental[2].toUpperCase();
+  if (/^vl$/i.test(raw)) return "VL";
+  if (/^tags$/i.test(raw)) return "Tags";
+  const ending = raw.match(/^(tag|coda|ending)\s*([a-z]?)$/i);
+  if (ending) return (/^tag$/i.test(ending[1]) ? "Tag" : "Coda") + ending[2].toUpperCase();
+  const hymnVerse = raw.match(/^(\d+)\s*절$/u);
+  if (hymnVerse) return "V" + hymnVerse[1];
+  if (raw === "후렴") return "C";
+  if (/^마지막\s*절$/u.test(raw)) return "VL";
+  // Unknown user-authored labels are not discarded or guessed.
+  return raw;
+}
+
 function normalizeServiceFormPresetForms(value) {
-  if (Array.isArray(value)) return cleanList(value);
+  if (Array.isArray(value)) return cleanList(value).map(canonicalServiceFormToken).filter(Boolean);
   return String(value || "")
+    .replace(/\bpre-chorus\b/gi, "PC")
+    .replace(/\bp-c\b/gi, "PC")
     .split(/\s*(?:,|[-+>→])\s*/)
-    .map((item) => item.trim())
+    .map(canonicalServiceFormToken)
     .filter(Boolean);
+}
+
+function normalizeServiceFormHint(value = "") {
+  return normalizeServiceFormPresetForms(value).join("-");
 }
 
 function normalizeSongFormPresetLabel(value = "") {
@@ -11015,13 +11045,13 @@ function normalizeServiceFormPresetRulePreset(preset, when = {}) {
   const songTypes = normalizePraiseTypes(when.songType || when.song_type || when.praiseType || when.praise_type);
   const isHymnRule = songTypes.includes("hymn");
   if (!isHymnRule) return preset;
-  const formsKey = preset.forms.map((item) => compactSearchValue(item)).join("|");
+  const formsKey = normalizeServiceFormPresetForms(preset.forms).map((item) => compactSearchValue(item)).join("|");
   if (["manual", "forced", "song-default"].includes(String(preset.strength || "").toLowerCase())) return preset;
   const legacy = [LEGACY_PUBLIC_SPECIAL_HYMN_FORM_PRESET_FORMS, PREVIOUS_PUBLIC_SPECIAL_HYMN_FORM_PRESET_FORMS]
-    .find((forms) => forms.map((item) => compactSearchValue(item)).join("|") === formsKey);
+    .find((forms) => normalizeServiceFormPresetForms(forms).map((item) => compactSearchValue(item)).join("|") === formsKey);
   if (!legacy) return preset;
   const legacyHint = legacy.join("-");
-  const hint = compactSearchValue(preset.hint || "") === compactSearchValue(legacyHint)
+  const hint = compactSearchValue(normalizeServiceFormHint(preset.hint)) === compactSearchValue(normalizeServiceFormHint(legacyHint))
     ? PUBLIC_SPECIAL_HYMN_FORM_PRESET_HINT
     : firstNonBlankString(preset.hint, PUBLIC_SPECIAL_HYMN_FORM_PRESET_HINT);
   return {
@@ -11457,7 +11487,7 @@ function serializeServiceItemMemo(value = {}) {
   const scriptureTranslationId = String(value.scriptureTranslationId || value.scripture_translation_id || "").trim();
   const scriptureReferencePayloads = normalizeServiceScriptureReferencePayloads(value.scriptureReferencePayloads || value.scripture_reference_payloads, scriptureReferences);
   const manualScripture = normalizeServiceManualScripture(value.manualScripture || value.manual_scripture);
-  const formHint = String(value.formHint || value.form_hint || "").trim();
+  const formHint = normalizeServiceFormHint(value.formHint || value.form_hint);
   const formPreset = normalizeServiceFormPreset(value.formPreset || value.form_preset, formHint);
   const formPresetDisabled = Boolean(value.formPresetDisabled || value.form_preset_disabled || value.disableFormPreset || value.disable_form_preset);
   const formPresetRules = normalizeServiceFormPresetRules(value.formPresetRules || value.form_preset_rules);
