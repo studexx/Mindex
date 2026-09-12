@@ -8137,13 +8137,13 @@ textarea.svc-presenter-input-control--multiline {
   max-width: 100%;
   display: grid;
   min-width: 0;
-  grid-template-columns: 3.5rem minmax(0, 1fr);
+  grid-template-columns: max-content minmax(0, 1fr);
   grid-template-rows: auto;
   align-items: start;
   gap: 8px;
 }
 .svc-board-subgroup-controls .svc-presenter-input-field:not(.svc-presenter-input-field--lyrics, .svc-presenter-input-field--scripture-parts) {
-  grid-template-columns: 3.5rem minmax(0, 1fr);
+  grid-template-columns: max-content minmax(0, 1fr);
   grid-template-rows: minmax(30px, auto);
   align-items: center;
   gap: 8px;

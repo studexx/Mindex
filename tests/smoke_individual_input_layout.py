@@ -36,6 +36,10 @@ def main():
                         for(const n of controls){const r=n.getBoundingClientRect();if(r.left<g.left-1||r.right>g.right+1)errors.push('overflow '+n.outerHTML.slice(0,80))}
                         for(const label of group.querySelectorAll('label.svc-presenter-input-field')){
                           const span=label.querySelector(':scope > span'),field=label.querySelector('input,textarea');
+                          if(span) {
+                            const range=document.createRange();range.selectNodeContents(span);
+                            if(span.getBoundingClientRect().width-range.getBoundingClientRect().width>2)errors.push('label has fixed empty width');
+                          }
                           if(span&&field&&field.getBoundingClientRect().height){if(span.getBoundingClientRect().right>field.getBoundingClientRect().left+1)errors.push('label overlaps')}
                         }
                         const flow=group.querySelector('.svc-board-subgroup-flow').getBoundingClientRect();
