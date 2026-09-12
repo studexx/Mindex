@@ -31664,13 +31664,13 @@ function presenterElementTrailingBlankSlide(slide, index, service = null) {
     // chromakey context (for example a special-song element).
     outputContext: serviceChromakey ? "chromakey" : "clean",
     autoTrailingBlank: true,
-    sectionRole: "",
     readyServiceName: "",
     sort: (Number(slide.sort) || index) + 0.009,
   };
 }
 
 function isPresenterPreparationSlide(slide) {
+  if (presenterSlideLayout(slide) === PRESENTER_SLIDE_LAYOUTS.BLANK) return false;
   if (slide?.type === "ready" || slide?.sectionRole === "ready") return true;
   return /(?:예배\s*)?준비|대기/i.test(`${slide.sectionLabel || ""} ${slide.title || ""}`);
 }

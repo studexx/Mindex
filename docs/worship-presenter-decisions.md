@@ -1,5 +1,12 @@
 # Worship / Presenter Decision Log
 
+## Blank Group Ownership (2026-09-12)
+
+- Keep sectionRole on generated blanks: the controller uses it to keep praise
+  blanks with their originating songs and avoid duplicate editor groups.
+- A blank layout is never a preparation slide, regardless of inherited role.
+  Ready and closing trailing blanks remain enabled; no DB content is changed.
+
 ## Ready And Closing Blanks (2026-09-12)
 
 - Ready screens/videos and closing visuals use the common trailing-blank rule.
