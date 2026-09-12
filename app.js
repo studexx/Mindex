@@ -22998,6 +22998,11 @@ function serviceSidebarChildItemTitle(item, service = null) {
   return `${label} · ${title}`;
 }
 
+function serviceElementDisplayLabel(value = "") {
+  const label = String(value || "").trim();
+  return ["청소년부광고", "청년부광고"].includes(compactSearchValue(label)) ? "광고" : label;
+}
+
 function serviceSidebarChildItemDisplayParts(item, service = null) {
   const connectedOrderTitle = serviceItemConnectedPraiseTitle(item, "order");
   const connectedSongTitle = serviceItemConnectedPraiseTitle(item, "title");
@@ -23007,7 +23012,7 @@ function serviceSidebarChildItemDisplayParts(item, service = null) {
       title: serviceSidebarOutlineFirstLine(connectedSongTitle || serviceItemDisplayText(item) || connectedOrderTitle, item),
     };
   }
-  const label = String(item?.label || "").trim();
+  const label = serviceElementDisplayLabel(item?.label);
   const fallback = serviceSidebarChildItemTitle(item, service);
   if (!label) return { meta: "", title: serviceSidebarOutlineFirstLine(fallback || "항목", item) };
   const title = serviceSidebarChildItemDisplayText(item);
@@ -25190,7 +25195,7 @@ function renderServiceEditorLabelCell(item, origIndex, attrs = {}, model = servi
       />`;
   }
   return `
-    <span class="svc-edit-label svc-edit-label--static">${escapeHtml(item.label || "항목")}</span>
+    <span class="svc-edit-label svc-edit-label--static">${escapeHtml(serviceElementDisplayLabel(item.label) || "항목")}</span>
     ${renderServiceTemplateBadge(service?.type_id, item)}
     ${model.showTitle ? "" : renderServiceEditorFormControls(item, origIndex, model)}`;
 }
@@ -29280,6 +29285,9 @@ function presenterBoardSubgroupDisplay(serviceId, subgroup = {}) {
   const contexts = presenterBoardSubgroupInputContexts(serviceId, subgroup);
   const item = contexts.length === 1 ? contexts[0]?.item : null;
   const sectionKey = String(item?._worshipSectionKey || item?.section_key || "").trim();
+  if (serviceElementDisplayLabel(fallback.label) !== fallback.label) {
+    return { ...fallback, label: serviceElementDisplayLabel(fallback.label) };
+  }
   if (sectionKey === "announcements" && compactSearchValue(fallback.label) === "광고") {
     return {
       ...fallback,

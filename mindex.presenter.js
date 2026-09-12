@@ -1362,8 +1362,7 @@ function isLiturgicalBodyLabel(...values) {
 function liturgicalBodyTitle(item = {}) {
   const label = compactSearchValue(item?.label || "");
   const title = compactSearchValue(item?.raw_title || "");
-  if (label === "청소년부광고") return "청소년부 광고";
-  if (label === "청년부광고") return "청년부 광고";
+  if (label === "청소년부광고" || label === "청년부광고") return "광고";
   if (label === "주기도문" || title === "주기도문" || String(item?._worshipSectionKey || "") === "lords_prayer") return "주기도문";
   if (label === "공동체고백" || title === "공동체고백" || String(item?._worshipSectionKey || "") === "community_confession") return "공동체고백";
   return "사도신경";

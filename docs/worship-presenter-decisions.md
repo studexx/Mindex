@@ -22,6 +22,9 @@ Small visual polish that does not alter behavior does not need an entry.
 
 ## Current Decisions
 
+- 부서 예배의 청소년부 광고·청년부 광고 표시명은 순서 목록, 편집기, 송출에서 `광고`로 통일한다.
+  내부 label, template 식별 및 광고 본문은 그대로 보존한다.
+
 - 월삭 공동기도는 `공동기도 1·2`, `기도찬양`, `공동기도 3·4`의 세 엘리멘트로 편집한다.
   각 기도 묶음은 두 제목과 두 담당을 corporatePrayers에 함께 저장하고 해당 출력도 소유한다.
   기도찬양의 기존 곡 연결은 그대로 유지한다. 제목만 묶고 담당을 별도 항목으로 남기지 않는다.
