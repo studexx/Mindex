@@ -23249,7 +23249,7 @@ function renderServiceOutlineChildRow(service, item, index, selectedIndex, slide
       title="${escapeAttr(interactionHint)}"
       >
       <span class="service-outline-main">
-        ${titleParts.meta ? `<span class="service-outline-kind">${escapeHtml(presenterOrderDisplayLabel(titleParts.meta))}</span>` : ""}
+        ${titleParts.meta ? `<span class="service-outline-kind">${escapeHtml(titleParts.meta)}</span>` : ""}
         ${titleParts.title ? `<strong>${escapeHtml(titleParts.title)}</strong>` : ""}
         ${showMissingBadge ? renderServiceOutlineMissingBadge(missing) : ""}
       </span>
@@ -29508,7 +29508,7 @@ function renderPresenterBoardSubgroup(subgroup, activeIndex, serviceId, options 
   const visibleTitle = isPresenterPreparationSlide(firstSlide)
     ? ""
     : presenterVisibleTitle(rawLabel, rawTitle);
-  const visibleLabel = presenterOrderDisplayLabel(rawLabel);
+  const visibleLabel = rawLabel;
   const interactionLabel = presenterSlideInteractionHint(serviceId, subgroup.name || visibleLabel);
   const warnings = presenterWarningsForEntries(subgroup.slides);
   const inputControls = renderPresenterBoardSubgroupInputControls(serviceId, subgroup);
@@ -29575,7 +29575,7 @@ function renderPresenterBoardSubgroupInputControls(serviceId, subgroup = {}) {
     const label = contexts.length > 1 ? String(context.item.label || "항목").trim() : "";
     return `
       <div class="svc-board-subgroup-control-item" data-service-id="${escapeAttr(serviceId)}" data-service-item-id="${escapeAttr(context.item.id || "")}" data-service-item-index="${escapeAttr(String(context.index))}">
-        ${label ? `<span class="svc-board-subgroup-control-label">${escapeHtml(presenterOrderDisplayLabel(label))}</span>` : ""}
+        ${label ? `<span class="svc-board-subgroup-control-label">${escapeHtml(label)}</span>` : ""}
         ${controls}
         <div class="svc-board-subgroup-flow">
           <span class="svc-input-status" data-service-input-status role="status" aria-live="polite"></span>

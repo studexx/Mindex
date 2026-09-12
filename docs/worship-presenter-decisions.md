@@ -688,4 +688,4 @@ Small visual polish that does not alter behavior does not need an entry.
 
 ## Linked Praise Hydration and Medley Labels
 - 곡 목록 로딩 지연·실패로 연결된 곡을 찾지 못해도 저장된 song/version ID를 지우지 않는다. 연결 해제와 직접 입력 전환은 기존 명시적 사용자 동작으로 처리한다.
-- 메들리 순서 범위도 화면에서는 원숫자로 표시한다(`찬양 6–7` → `찬양 ⑥–⑦`). 저장된 순서와 곡 제목은 변경하지 않는다.
+- 원숫자 변환은 송출 슬라이드 내부에만 적용한다(메들리 포함: `찬양 6–7` → `찬양 ⑥–⑦`). 컨트롤러 목록·입력 제목은 저장된 일반 숫자를 유지한다. 썸네일·미리보기의 슬라이드 내용은 실제 송출과 동일하다.
