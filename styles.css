@@ -8316,6 +8316,18 @@ textarea.svc-presenter-input-control--multiline {
   flex: 0 0 24px;
   height: 24px;
 }
+.svc-board-subgroup-controls .svc-presenter-input-field--song .svc-song-picker--linked {
+  flex: 0 1 auto;
+  max-width: 100%;
+  flex-wrap: wrap;
+}
+.svc-board-subgroup-controls .svc-presenter-input-field--song .svc-edit-title {
+  flex: 1 1 160px;
+  min-width: min(100%, 140px);
+}
+.svc-board-subgroup-controls .svc-presenter-input-field--song .svc-form-hint.compact {
+  height: 30px;
+}
 @media (max-width: 760px) {
   .svc-board-subgroup-controls {
     grid-template-columns: minmax(0, 1fr);
