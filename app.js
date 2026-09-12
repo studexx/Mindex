@@ -10038,9 +10038,15 @@ function serviceInputFeedbackSignature(editor) {
 function setServiceInputFeedback(editor, status) {
   const labels = { modified: "수정됨", saving: "반영·저장 중", saved: "저장됨", error: "저장 실패" };
   editor.dataset.inputStatus = status;
-  const feedback = editor.querySelector("[data-service-input-status]");
+  const actions = editor.querySelector("[data-service-item-actions]")
+    || [...(editor.closest(".svc-board-subgroup")?.querySelectorAll("[data-service-item-actions]") || [])]
+      .find((candidate) => candidate.dataset.serviceId === editor.dataset.serviceId
+        && candidate.dataset.serviceItemIndex === editor.dataset.serviceItemIndex)
+    || editor;
+  actions.dataset.inputStatus = status;
+  const feedback = actions.querySelector("[data-service-input-status]");
   if (feedback) feedback.textContent = labels[status] || "";
-  const button = editor.querySelector("[data-service-item-commit]");
+  const button = actions.querySelector("[data-service-item-commit]");
   if (button) {
     button.disabled = status === "saving";
     button.setAttribute("aria-busy", String(status === "saving"));
@@ -29556,11 +29562,14 @@ function renderPresenterBoardSubgroup(subgroup, activeIndex, serviceId, options 
   const visibleLabel = rawLabel;
   const interactionLabel = presenterSlideInteractionHint(serviceId, subgroup.name || visibleLabel);
   const warnings = presenterWarningsForEntries(subgroup.slides);
-  const inputControls = renderPresenterBoardSubgroupInputControls(serviceId, subgroup);
+  const inputContexts = presenterBoardSubgroupInputContexts(serviceId, subgroup);
+  const headerContext = options.showHead && inputContexts.length === 1 ? inputContexts[0] : null;
+  const inputControls = renderPresenterBoardSubgroupInputControls(serviceId, subgroup, { headerActions: Boolean(headerContext) });
+  const headerActions = headerContext && inputControls ? renderPresenterBoardItemActions(serviceId, headerContext) : "";
   const context = presenterBoardSubgroupItemContext(serviceId, subgroup);
   const itemIndexAttr = context ? ` data-service-item-index="${escapeAttr(String(context.index))}"` : "";
   const elementIdAttr = context?.item?.id ? ` data-service-element-id="${escapeAttr(context.item.id)}"` : "";
-  const showHead = Boolean(options.showHead && (visibleLabel || visibleTitle || warnings.length));
+  const showHead = Boolean(options.showHead && (visibleLabel || visibleTitle || warnings.length || headerActions));
   return `
     <div class="svc-board-subgroup${active ? " active" : ""}${showHead ? "" : " collapsed-head"}"${itemIndexAttr}${elementIdAttr}>
       ${showHead ? `
@@ -29576,6 +29585,7 @@ function renderPresenterBoardSubgroup(subgroup, activeIndex, serviceId, options 
             ${visibleTitle ? `<strong>${escapeHtml(visibleTitle)}</strong>` : ""}
             ${renderPresenterWarnings(warnings)}
           </button>
+          ${headerActions}
         </header>` : ""}
       ${inputControls}
       <div class="svc-board-grid">
@@ -29608,30 +29618,32 @@ function renderPresenterBoardSubgroupAudioControls(serviceId, subgroup = {}) {
     </div>`;
 }
 
-function renderPresenterBoardSubgroupInputControls(serviceId, subgroup = {}) {
+function renderPresenterBoardItemActions(serviceId, context) {
+  const audioControls = serviceItemSupportsHeaderAudio(context.item)
+    ? renderPresenterBoardItemAudioControls(serviceId, context) : "";
+  return `
+    <div class="svc-board-subgroup-flow" data-service-item-actions data-service-id="${escapeAttr(serviceId)}" data-service-item-index="${escapeAttr(String(context.index))}">
+      <span class="svc-input-status" data-service-input-status role="status" aria-live="polite"></span>
+      <button class="reference-new-btn svc-board-subgroup-commit" type="button" data-service-item-commit
+        data-service-id="${escapeAttr(serviceId)}" data-service-item-index="${escapeAttr(String(context.index))}">
+        <i data-lucide="check"></i><span>저장</span>
+      </button>
+      ${audioControls}
+    </div>`;
+}
+
+function renderPresenterBoardSubgroupInputControls(serviceId, subgroup = {}, options = {}) {
   const contexts = presenterBoardSubgroupInputContexts(serviceId, subgroup);
   if (!contexts.length) return "";
   const blocks = contexts.map((context) => {
     const controls = presenterServiceInputControls(context.item, context.index, context.service);
     if (!controls) return "";
-    const audioControls = serviceItemSupportsHeaderAudio(context.item)
-      ? renderPresenterBoardItemAudioControls(serviceId, context)
-      : "";
     const label = contexts.length > 1 ? String(context.item.label || "항목").trim() : "";
     return `
       <div class="svc-board-subgroup-control-item" data-service-id="${escapeAttr(serviceId)}" data-service-item-id="${escapeAttr(context.item.id || "")}" data-service-item-index="${escapeAttr(String(context.index))}">
-        ${label ? `<span class="svc-board-subgroup-control-label">${escapeHtml(label)}</span>` : ""}
+        ${label ? `<div class="svc-board-subgroup-control-head"><span class="svc-board-subgroup-control-label">${escapeHtml(label)}</span>${renderPresenterBoardItemActions(serviceId, context)}</div>` : ""}
         ${controls}
-        <div class="svc-board-subgroup-flow">
-          <span class="svc-input-status" data-service-input-status role="status" aria-live="polite"></span>
-          <button class="reference-new-btn svc-board-subgroup-commit" type="button"
-            data-service-item-commit
-            data-service-id="${escapeAttr(serviceId)}"
-            data-service-item-index="${escapeAttr(String(context.index))}">
-            <i data-lucide="check"></i><span>저장</span>
-          </button>
-          ${audioControls}
-        </div>
+        ${options.headerActions || label ? "" : renderPresenterBoardItemActions(serviceId, context)}
       </div>`;
   }).filter(Boolean);
   if (!blocks.length) return "";
