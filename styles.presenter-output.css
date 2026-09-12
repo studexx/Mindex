@@ -62,6 +62,9 @@
   --presenter-output-stroke: #000;
   --presenter-font-family: var(--font-presenter, "Mindex Presenter", "Freesentation", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif);
   --presenter-scripture-font: var(--presenter-font-family);
+  --presenter-reading-font-family: "Eulyoo1945", "을유1945", "AppleMyungjo", "Nanum Myeongjo", serif;
+  --presenter-weight-support: 600;
+  --presenter-weight-liturgical: 600;
   /* Typography scale, ordered by presenter role. Keep output rules on these
      semantic tokens; the size aliases below preserve the existing selectors. */
   /* Fixed stage measurements use the 5px grid. Ratios stay semantic. */
@@ -124,6 +127,8 @@
   user-select: none;
 }
 .presenter-output-root.no-chromakey {
+  --presenter-weight-support: 700;
+  --presenter-weight-liturgical: 700;
   --presenter-text-inset: 7.5cqw;
   /* Fullscreen output is read from a distance; chromakey keeps its lower-bar scale. */
   --presenter-type-title: calc(170 * var(--presenter-stage-unit));
@@ -330,7 +335,7 @@
   margin: 0;
   color: #fff;
   font-size: calc(50 * var(--presenter-stage-unit));
-  font-weight: 560;
+  font-weight: var(--presenter-weight-meta);
   line-height: 1.16;
 }
 .presenter-ready-screen-message {
@@ -428,7 +433,7 @@
 .presenter-waiting-loop-script {
   color: rgba(255, 255, 255, .68);
   font-size: calc(50 * var(--presenter-stage-unit));
-  font-weight: 560;
+  font-weight: var(--presenter-weight-meta);
   line-height: 1.16;
 }
 .presenter-waiting-loop-title {
@@ -452,7 +457,7 @@
   align-items: center;
   gap: .18em;
   font-size: var(--presenter-size-liturgical-body);
-  font-weight: var(--presenter-weight-body);
+  font-weight: var(--presenter-weight-liturgical);
   line-height: 1.34;
   text-align: center;
 }
@@ -484,7 +489,7 @@
   justify-content: center;
   gap: 1.8cqh;
   font-size: var(--presenter-size-liturgical-body);
-  font-weight: var(--presenter-weight-body);
+  font-weight: var(--presenter-weight-liturgical);
   line-height: 1.18;
   word-break: keep-all;
 }
@@ -507,7 +512,7 @@
   justify-content: center;
   gap: .7em;
   font-size: var(--presenter-size-liturgical-body);
-  font-weight: var(--presenter-weight-body);
+  font-weight: var(--presenter-weight-liturgical);
   line-height: 1.18;
 }
 .presenter-announcement-item {
@@ -565,7 +570,7 @@
 .presenter-slide--liturgical-body .presenter-title-content-body {
   gap: .12em;
   font-size: var(--presenter-size-liturgical-body);
-  font-weight: var(--presenter-weight-body);
+  font-weight: var(--presenter-weight-liturgical);
   line-height: 1.34;
 }
 .presenter-slide--liturgical-body .presenter-title-content-body span {
@@ -602,7 +607,7 @@
   gap: .12em;
   color: color-mix(in srgb, var(--presenter-output-fg) 92%, transparent);
   font-size: var(--presenter-size-meta);
-  font-weight: var(--presenter-weight-body);
+  font-weight: var(--presenter-weight-support);
   line-height: 1.08;
 }
 .presenter-title-content-body span {
@@ -623,13 +628,14 @@
 .presenter-fullscreen-song-detail {
   max-width: 100%;
   font-size: var(--presenter-size-meta);
-  font-weight: var(--presenter-weight-body);
+  font-weight: var(--presenter-weight-support);
   line-height: 1.2;
   white-space: normal;
   overflow-wrap: anywhere;
 }
 .presenter-fullscreen-song-detail {
   font-size: calc(75 * var(--presenter-stage-unit));
+  font-weight: var(--presenter-weight-body);
 }
 .presenter-slide--lyrics,
 .presenter-slide--song-title,
@@ -698,7 +704,7 @@
   color: #000;
   font-family: var(--presenter-scripture-font);
   font-size: calc(50 * var(--presenter-stage-unit));
-  font-weight: var(--presenter-weight-body);
+  font-weight: var(--presenter-weight-meta);
   line-height: 1;
   text-align: left;
   letter-spacing: 0;
@@ -1171,7 +1177,7 @@
   flex: 1 1 auto;
   max-width: 100%;
   overflow: visible;
-  font-family: "Eulyoo1945", "을유1945", "AppleMyungjo", "Nanum Myeongjo", serif;
+  font-family: var(--presenter-reading-font-family);
   font-synthesis: weight;
   font-size: var(--presenter-scripture-reading-text-size);
   font-weight: 700;
@@ -1197,6 +1203,7 @@
   -webkit-text-stroke: 0;
 }
 .presenter-scripture-reading-fin {
+  font-family: var(--presenter-reading-font-family);
   position: absolute;
   right: 0;
   bottom: 0;

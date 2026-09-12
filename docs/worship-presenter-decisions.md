@@ -1,5 +1,15 @@
 # Worship / Presenter Decision Log
 
+## 50px Metadata Typography (2026-09-13)
+
+- Presenter roles at the 1920-stage 50px size use weight 600. Larger fullscreen
+  support/liturgical roles retain their prior weights via mode-specific tokens.
+- Fin. shares the reading body's font-family token and retains italic styling;
+  reading body size/weight and the translation label's family are unchanged.
+- Eulyoo1945 is currently a local installed font, not a bundled web font. Safari
+  may restrict access to user-installed fonts; CSS family equality alone does
+  not guarantee identical glyphs across browsers. No font files were added.
+
 ## Document Restore Blanks (2026-09-13)
 
 - While document-slide fallback remains active, restored slides pass through the
