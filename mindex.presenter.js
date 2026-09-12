@@ -52,6 +52,7 @@ function presenterSlidesWithSpecialSongTitle(item = {}, section = {}, slides = [
   const titleSlideIndex = slides.findIndex((slide) => slide?.type === "song-title");
   const existingSpecialTitleIndex = slides.findIndex((slide) =>
     slide?.type === "title-assignee"
+    && !slide.songTitle
     && normalizeTitle(slide.title) === normalizeTitle(item.label || section.sectionLabel || "특송"));
   const existingSpecialTitle = existingSpecialTitleIndex >= 0 ? slides[existingSpecialTitleIndex] : null;
   if (existingSpecialTitle?.missingContent) {
@@ -59,7 +60,10 @@ function presenterSlidesWithSpecialSongTitle(item = {}, section = {}, slides = [
   }
   const titleSlide = titleSlideIndex >= 0 ? slides[titleSlideIndex] : null;
   const remainingSlides = slides.filter((_, slideIndex) =>
-    slideIndex !== existingSpecialTitleIndex);
+    slideIndex !== existingSpecialTitleIndex)
+    .map((slide) => slide?.type === "song-title" || slide?.songTitle
+      ? { ...slide, omitFullscreenOrderTitle: true }
+      : slide);
   return presenterSlidesWithSundayMainSpecialSongOutput([
     presenterSpecialSongSectionTitleSlide(item, section, index, titleSlide),
     ...remainingSlides,
@@ -2305,8 +2309,10 @@ function presenterSongTitleSlide(item, section, song, version, displayText, inde
   const displayTitle = presenterSongTitleDisplayTitle(connectedTitle ? null : song, connectedTitle ? null : version, effectiveDisplayText, sectionHeading);
   const titleText = presenterSongTitleContentText(displayTitle, sectionHeading);
   const songDetail = connectedTitle ? "" : presenterSongTitleDetail(song, version);
+  const fullscreenSongName = songDetail && presenterSongTitleHymnNo(song, version)
+    ? splitHymnNo(displayTitle).title || displayTitle : displayTitle;
   if (sectionHeading) {
-    return { ...presenterOrderContentTitleSlide(item, section, index, sectionHeading, titleText), songTitle: displayTitle, songDetail };
+    return { ...presenterOrderContentTitleSlide(item, section, index, sectionHeading, titleText), songTitle: displayTitle, songDetail, fullscreenSongName };
   }
   return {
     id: `${item.id || index}:song-title`,
@@ -2318,6 +2324,7 @@ function presenterSongTitleSlide(item, section, song, version, displayText, inde
     title: displayTitle,
     subtitle: connectedTitle ? "" : versionDisplayName(song, version),
     songDetail,
+    fullscreenSongName,
     marker,
     sectionHeading,
     bodyText: "",
@@ -4548,8 +4555,8 @@ function trimPresenterOutputImagePreloadCache() {
 
 function renderPresenterSlideFrame(slide, options = {}) {
   if (options.noChromakey && (slide?.songTitle || (slide?.type === "song-title" && presenterSlideElementType(slide) === PRESENTER_ELEMENT_TYPES.PRAISE))) {
-    const title = formatPresenterSongTitleText(String(slide.songTitle || slide.title || slide.text || "").trim());
-    const orderTitle = String(slide.orderTitle || slide.sectionHeading || slide.label || "").trim();
+    const title = formatPresenterSongTitleText(String(slide.fullscreenSongName || slide.songTitle || slide.title || slide.text || "").trim());
+    const orderTitle = slide.omitFullscreenOrderTitle ? "" : String(slide.orderTitle || slide.sectionHeading || slide.label || "").trim();
     // Keep the order heading when adapting song titles for fullscreen output.
     slide = { ...slide, elementType: PRESENTER_ELEMENT_TYPES.TITLE_CONTENT,
       layout: PRESENTER_SLIDE_LAYOUTS.CENTER_TEXT, type: "title-content",

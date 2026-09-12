@@ -47,6 +47,21 @@ def main():
                   if(presenterSongTitleDetail({original_title:'Original',subtitle:'Subtitle'})!=='Original') throw Error('Original precedence');
                   if(presenterSongTitleDetail({original_title:' ',subtitle:'Subtitle'})!=='Subtitle') throw Error('Subtitle fallback');
                   if(presenterSongTitleDetail({title:'Only title'})!=='') throw Error('Empty detail');
+                  for(const label of ['특송','봉헌특송']) {
+                    const item={id:'special-fixture',label,assignee:'이연약구역 일동'};
+                    const section={sectionKey:label==='특송'?'special_song':'offering',sectionLabel:label};
+                    const song={title:'나 이제 주님의 새 생명 얻은 몸',hymn_no:'436'};
+                    const titleSlide=presenterSongTitleSlide(item,section,song,{name:'새찬송가'},song.title,0);
+                    const slides=presenterSlidesWithSpecialSongTitle(item,section,[titleSlide],0,{type_id:'sunday-second'});
+                    if(slides.length!==2) throw Error('Special title sequence lost');
+                    const first=renderPresenterSlideFrame(slides[0],{noChromakey:true});
+                    if(!first.includes(label)||!first.includes('이연약구역 일동')) throw Error('Missing special heading');
+                    root.innerHTML=renderPresenterSlideFrame(slides[1],{noChromakey:true});
+                    if(root.querySelector('.presenter-fullscreen-song-heading')) throw Error('Repeated special heading');
+                    if(root.querySelector('.presenter-title-content-title').textContent.includes('436')) throw Error('Repeated hymn number');
+                    if(root.querySelector('.presenter-fullscreen-song-detail').textContent!=='(새찬송가 436장)') throw Error('Missing hymn detail');
+                    if(!renderPresenterSlideFrame(slides[1],{}).includes('436')) throw Error('Chromakey number removed');
+                  }
                   return checked;
                 }''')
                 page.screenshot(path=f'/tmp/fullscreen-song-heading-{engine}.png')
