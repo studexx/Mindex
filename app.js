@@ -10321,6 +10321,14 @@ function updateServiceItemField(field, options = {}) {
     if (key === "asset_name" || key === "asset_url") {
       const asset = normalizeServiceAsset(parsed.asset);
       asset[key === "asset_name" ? "name" : "url"] = field.value;
+      if (key === "asset_url" && isPresenterReferenceMediaItem(item, parsed)) {
+        const detectedKind = presenterReferenceMediaKindForSource(asset.url);
+        if (detectedKind) {
+          parsed.elementType = detectedKind;
+          parsed.componentType = detectedKind;
+          asset.kind = detectedKind;
+        }
+      }
       const elementType = serviceMemoElementType(parsed);
       const assetKind = serviceAssetKindForElementType(elementType);
       if (!asset.kind && assetKind) asset.kind = assetKind;
@@ -12695,6 +12703,20 @@ function presenterReferenceMediaKindForFile(file) {
   return "";
 }
 
+function presenterReferenceMediaKindForSource(source = "") {
+  const value = String(source || "").trim();
+  if (!value) return "";
+  try {
+    const url = new URL(value, "https://mindex.invalid/");
+    if (url.protocol === "data:") return presenterReferenceMediaKindForFile({ type: value.slice(5).split(/[;,]/)[0] });
+    if (!["http:", "https:"].includes(url.protocol)) return "";
+    let name = url.pathname;
+    try { name = decodeURIComponent(name); } catch {}
+    return presenterReferenceMediaKindForFile({ name });
+  } catch {
+    return "";
+  }
+}
 function serviceAssetFileAcceptForKind(kind = "") {
   const normalized = String(kind || "").trim().toLowerCase();
   if (normalized === "image") return "image/*";
@@ -27774,18 +27796,20 @@ function renderPresenterServiceAssetInput(item, index, memo) {
   const elementType = serviceMemoElementType(memo);
   const serviceId = item.service_id || state.selectedServiceId;
   if (isPresenterReferenceMediaItem(item, memo)) {
-    const kind = ["image", "video", "audio"].includes(elementType) ? elementType : "image";
+    const detectedKind = presenterReferenceMediaKindForSource(asset.url);
+    const kind = detectedKind || (["image", "video", "audio"].includes(elementType) ? elementType : "image");
+    const needsKindSelection = Boolean(asset.url && !detectedKind);
     return `
       <div class="svc-reference-media-input">
         <div class="svc-reference-media-toolbar">
-          <label class="svc-presenter-input-field">
+          ${needsKindSelection ? `<label class="svc-presenter-input-field">
             <span>종류</span>
             <select class="svc-presenter-input-control" data-service-item-field="element_type" data-service-item-index="${index}" data-service-id="${escapeAttr(serviceId)}" aria-label="참고 화면 종류">
               <option value="image"${kind === "image" ? " selected" : ""}>이미지</option>
               <option value="video"${kind === "video" ? " selected" : ""}>영상</option>
               <option value="audio"${kind === "audio" ? " selected" : ""}>음원</option>
             </select>
-          </label>
+          </label>` : detectedKind ? `<span class="svc-reference-media-kind">${escapeHtml(serviceAssetFileKindLabel(kind))}</span>` : ""}
           <label class="svc-reference-media-upload">
             <input type="file" accept="${PRESENTER_REFERENCE_MEDIA_ACCEPT}" data-presenter-reference-media-file data-service-id="${escapeAttr(serviceId)}" data-service-item-index="${index}" />
             <i data-lucide="upload"></i><span>파일 선택</span>
