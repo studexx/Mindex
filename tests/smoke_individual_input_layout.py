@@ -20,9 +20,10 @@ def main():
                   const blocks=[renderPresenterServiceTextInputs(special,0,model,parseServiceItemMemo(special.memo)),
                     renderPresenterServiceScriptureInput(scripture,1,{}),
                     renderPresenterServiceTextInputs(announcement,2,model,{}),
-                    renderPresenterServicePraiseInput({id:'song',label:'찬양 1',raw_title:'주 은혜임을',memo:''},3,{...model,showTitle:true,song:true,strictSong:true,titlePlaceholder:'곡명',parsed:{}})];
+                    renderPresenterServicePraiseInput({id:'song',label:'찬양 1',raw_title:'주 은혜임을',memo:''},3,{...model,showTitle:true,song:true,strictSong:true,titlePlaceholder:'곡명',parsed:{}}),
+                    renderPresenterMonthlyCorporatePrayerInputs({label:'공동기도 3·4'},4,{corporatePrayers:[{title:'치유와 회복을 위해',assignee:'유혜경 집사'},{title:'교회학교를 위해',assignee:'유정희 권사'}]},service.id)];
                   document.body.innerHTML='<main id="fixture" style="margin:24px;width:960px">'+blocks.map((html,i)=>
-                    '<h2 style="font-size:16px">'+['특송','설교 본문','광고','찬양'][i]+'</h2><div class="svc-board-subgroup-controls"><div class="svc-board-subgroup-control-item">'+html+
+                    '<h2 style="font-size:16px">'+['특송','설교 본문','광고','찬양','공동기도 3·4'][i]+'</h2><div class="svc-board-subgroup-controls"><div class="svc-board-subgroup-control-item">'+html+
                     '<div class="svc-board-subgroup-flow"><button class="reference-new-btn svc-board-subgroup-commit" type="button">반영</button></div></div></div>').join('')+'</main>';
                 }''')
                 for width in [960, 600, 320]:
@@ -30,6 +31,11 @@ def main():
                     page.wait_for_timeout(100)
                     result = page.evaluate('''() => {
                       const errors=[];
+                      for(const row of document.querySelectorAll('.svc-presenter-input-group--corporate-prayer > label')) {
+                        const fields=[...row.querySelectorAll('input')].map(n=>n.getBoundingClientRect());
+                        if(row.getBoundingClientRect().width>480 && Math.abs(fields[0].top-fields[1].top)>1)errors.push('prayer row wraps unnecessarily');
+                        if(fields[0].top===fields[1].top && fields[0].right>fields[1].left)errors.push('prayer fields overlap');
+                      }
                       for(const group of document.querySelectorAll('.svc-board-subgroup-controls')) {
                         const g=group.getBoundingClientRect();
                         const controls=[...group.querySelectorAll('input,textarea,select,button')].filter(n=>n.getBoundingClientRect().height);

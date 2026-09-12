@@ -8350,6 +8350,22 @@ textarea.svc-presenter-input-control--multiline {
 .svc-board-subgroup-controls .svc-presenter-input-control-wrap > .svc-item-link {
   flex: 0 0 auto;
 }
+.svc-presenter-input-group--corporate-prayer {
+  display: grid;
+  gap: 8px;
+  container-type: inline-size;
+}
+.svc-board-subgroup-controls .svc-presenter-input-group--corporate-prayer > .svc-presenter-input-field {
+  grid-template-columns: max-content minmax(0, 1fr) minmax(130px, .35fr);
+}
+@container (max-width: 480px) {
+  .svc-board-subgroup-controls .svc-presenter-input-group--corporate-prayer > .svc-presenter-input-field {
+    grid-template-columns: max-content minmax(0, 1fr);
+  }
+  .svc-presenter-input-group--corporate-prayer [data-service-item-field="corporate_prayer_assignee"] {
+    grid-column: 2;
+  }
+}
 .svc-slide-form-badge {
   display: inline-flex;
   min-width: 0;
