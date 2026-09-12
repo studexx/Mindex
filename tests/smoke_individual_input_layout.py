@@ -39,7 +39,14 @@ def main():
                           if(span&&field&&field.getBoundingClientRect().height){if(span.getBoundingClientRect().right>field.getBoundingClientRect().left+1)errors.push('label overlaps')}
                         }
                         const flow=group.querySelector('.svc-board-subgroup-flow').getBoundingClientRect();
-                        for(const n of controls.filter(n=>n.tagName!=='BUTTON'))if(n.getBoundingClientRect().bottom>flow.top+1)errors.push('actions overlap');
+                        for(const n of controls.filter(n=>n.tagName!=='BUTTON')) {
+                          const r=n.getBoundingClientRect();
+                          if(Math.min(r.right,flow.right)-Math.max(r.left,flow.left)>1 && Math.min(r.bottom,flow.bottom)-Math.max(r.top,flow.top)>1)errors.push('actions overlap');
+                        }
+                        if(innerWidth>1000 && g.width>900 && group.querySelectorAll('textarea').length===0) {
+                          const first=controls[0]?.getBoundingClientRect();
+                          if(first && Math.abs(flow.top-first.top)>2)errors.push('unnecessary action row');
+                        }
                       }
                       return errors;
                     }''')

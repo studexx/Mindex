@@ -8073,7 +8073,6 @@ textarea.svc-presenter-input-control--multiline {
   min-height: var(--ui-icon-btn-inline);
 }
 .svc-board-subgroup-controls {
-  container-type: inline-size;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   width: 100%;
@@ -8088,10 +8087,10 @@ textarea.svc-presenter-input-control--multiline {
   gap: 8px;
 }
 .svc-board-subgroup-control-item {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(180px, 0.35fr);
+  display: flex;
+  flex-wrap: wrap;
   min-width: 0;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
 }
 .svc-board-subgroup-controls--stacked {
@@ -8107,8 +8106,9 @@ textarea.svc-presenter-input-control--multiline {
   grid-column: 2;
 }
 .svc-board-subgroup-flow {
-  grid-column: 1 / -1;
-  order: 3;
+  flex: 0 1 auto;
+  max-width: 100%;
+  margin-left: auto;
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -8120,10 +8120,11 @@ textarea.svc-presenter-input-control--multiline {
   grid-column: 1 / -1;
 }
 .svc-board-subgroup-commit {
-  min-height: 35px;
+  min-height: 30px;
   white-space: nowrap;
 }
 .svc-board-subgroup-control-label {
+  flex: 1 0 100%;
   grid-column: 1 / -1;
   color: var(--accent);
   font-size: var(--ui-label-size);
@@ -8132,6 +8133,8 @@ textarea.svc-presenter-input-control--multiline {
   padding-left: 2px;
 }
 .svc-board-subgroup-controls .svc-presenter-input-field {
+  flex: 1 1 220px;
+  max-width: 100%;
   display: grid;
   min-width: 0;
   grid-template-columns: 3.5rem minmax(0, 1fr);
@@ -8321,14 +8324,12 @@ textarea.svc-presenter-input-control--multiline {
     flex-wrap: wrap;
   }
 }
-.svc-board-subgroup-control-item > .svc-presenter-input-field:only-of-type,
-.svc-board-subgroup-control-item > .svc-presenter-input-field:has(textarea),
 .svc-board-subgroup-control-item > .svc-presenter-input-group,
 .svc-board-subgroup-control-item > .svc-reference-media-input {
-  grid-column: 1 / -1;
+  flex: 1 1 280px;
+  min-width: 0;
 }
 .svc-board-subgroup-controls .svc-presenter-input-field:not(.svc-presenter-input-field--scripture-parts):has(textarea) {
-  order: 2;
   align-items: start;
 }
 .svc-board-subgroup-controls .svc-presenter-input-field:not(:has(> span), .svc-presenter-input-field--scripture-parts) {
@@ -8348,18 +8349,6 @@ textarea.svc-presenter-input-control--multiline {
 }
 .svc-board-subgroup-controls .svc-presenter-input-control-wrap > .svc-item-link {
   flex: 0 0 auto;
-}
-@container (max-width: 640px) {
-  .svc-board-subgroup-control-item,
-  .svc-board-subgroup-controls--stacked .svc-board-subgroup-control-item {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .svc-board-subgroup-controls .svc-presenter-input-field--assignee {
-    grid-column: 1;
-  }
-  .svc-board-subgroup-controls .svc-edit-title-wrap {
-    flex-wrap: wrap;
-  }
 }
 .svc-slide-form-badge {
   display: inline-flex;
