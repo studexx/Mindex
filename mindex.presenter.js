@@ -1349,7 +1349,7 @@ function isLiturgicalBodyServiceItem(item = {}) {
   const sectionKey = String(item?._worshipSectionKey || "").trim();
   if (sectionKey === "creed" || sectionKey === "lords_prayer" || sectionKey === "community_confession") return true;
   return isLiturgicalBodyLabel(item?.label, item?.raw_title, item?._worshipSectionTitle)
-    || ["청소년부광고", "청년부광고"].includes(compactSearchValue(item?.label || ""));
+    || isAnnouncementTextInputItem(item);
 }
 
 function isLiturgicalBodyLabel(...values) {
@@ -1362,7 +1362,7 @@ function isLiturgicalBodyLabel(...values) {
 function liturgicalBodyTitle(item = {}) {
   const label = compactSearchValue(item?.label || "");
   const title = compactSearchValue(item?.raw_title || "");
-  if (label === "청소년부광고" || label === "청년부광고") return "광고";
+  if (isAnnouncementTextInputItem(item)) return "광고";
   if (label === "주기도문" || title === "주기도문" || String(item?._worshipSectionKey || "") === "lords_prayer") return "주기도문";
   if (label === "공동체고백" || title === "공동체고백" || String(item?._worshipSectionKey || "") === "community_confession") return "공동체고백";
   return "사도신경";
@@ -1414,7 +1414,7 @@ function liturgicalBodyText(item = {}, memo = parseServiceItemMemo(item?.memo), 
   const title = liturgicalBodyTitle(item);
   const canonical = presenterCanonicalLiturgicalBodyText(title);
   if (canonical && !item?.template_modified && !item?.templateModified) return canonical;
-  const announcement = ["청소년부광고", "청년부광고"].includes(compactSearchValue(item?.label || ""));
+  const announcement = isAnnouncementTextInputItem(item);
   if (memo.slides?.length) {
     const memoText = memo.slides.join("\n\n");
     return announcement ? presenterAnnouncementBodyText(memoText) : memoText.trim();
@@ -1456,7 +1456,7 @@ function buildPresenterLiturgicalBodySlides(item, section, index, service, memo,
   const text = liturgicalBodyText(item, memo, displayText);
   if (!text) return [];
   const title = liturgicalBodyTitle(item);
-  const announcementItems = ["청소년부광고", "청년부광고"].includes(compactSearchValue(item?.label || ""))
+  const announcementItems = isAnnouncementTextInputItem(item)
     ? presenterAnnouncementItems(text)
     : [];
   const textHighlights = liturgicalBodyTextHighlights(item, memo);

@@ -4559,7 +4559,7 @@ function deriveWorshipSlotKey(context = {}) {
   if (sectionKey === "announcements") {
     if (label === "새가족환영") return "announcements.new_family";
     if (label === "참고화면" || hasAsset || ["image", "video", "ppt", "pdf"].includes(elementType) || inputMode === "asset") return "announcements.media";
-    if (["청소년부광고", "청년부광고"].includes(label)) return "announcements.department";
+    if (["청소년부광고", "청년부광고"].includes(label) || (label === "광고" && ["body", "plain_text"].includes(elementType))) return "announcements.department";
     return "announcements.main";
   }
   if (sectionKey === "sending") {
@@ -4609,7 +4609,8 @@ function groupWorshipElements(sections = [], elements = []) {
     }) || normalizeWorshipElementType(element.element_type);
     if (configuredElementType === "live_scripture" && compactSearchValue(elementLabel) === "실시간성구송출") return grouped;
     const departmentAnnouncementBody = sectionKey === "announcements"
-      && ["청소년부광고", "청년부광고"].includes(compactSearchValue(elementLabel));
+      && (["청소년부광고", "청년부광고"].includes(compactSearchValue(elementLabel))
+        || (compactSearchValue(elementLabel) === "광고" && ["body", "plain_text"].includes(configuredElementType)));
     const dbInputMode = normalizeServiceInputMode(element.input_mode);
     const contentInputMode = normalizeServiceInputMode(element.content_state?.inputMode || element.content_state?.input_mode);
     const configInputMode = normalizeServiceInputMode(
@@ -19800,8 +19801,8 @@ function youthWorshipAnnouncementsStep() {
     flex: true,
     sectionKey: "announcements",
     elements: [{
-      label: "청소년부 광고",
-      name: "청소년부 광고",
+      label: "광고",
+      name: "광고",
       elementType: "body",
       default_text: "오늘도 청소년부 예배에 오신 여러분을 환영하고 축복합니다 :)\n1. 오늘 2부 활동은 반별 모임으로 진행합니다.",
     }],
@@ -19816,8 +19817,8 @@ function youngAdultWorshipAnnouncementsStep() {
     flex: true,
     sectionKey: "announcements",
     elements: [{
-      label: "청년부 광고",
-      name: "청년부 광고",
+      label: "광고",
+      name: "광고",
       elementType: "body",
       default_text: "오늘도 청년부 예배에 오신 여러분을 환영하고 축복합니다 :)\n1. 오늘 2부 활동은 셀 모임으로 진행합니다.",
     }],
@@ -20332,7 +20333,7 @@ const SERVICE_ORDER_TEMPLATE_OPTIONS = {
 };
 
 function normalizeServiceItem(item = {}, index = 0) {
-  const label = item.label || "";
+  const label = serviceElementDisplayLabel(item.label);
   const normalized = {
     id: item.id || createLocalId(),
     service_id: item.service_id || state.selectedServiceId || null,
@@ -20808,7 +20809,7 @@ function templateProjectionRawTitle(templateItem = {}, existingItem = {}, elemen
   const sectionKey = templateProjectionSectionKey(templateItem);
   const existingTitle = String(existingItem.raw_title || "").trim();
   const templateLabel = String(templateItem.label || "").trim();
-  if (["청소년부광고", "청년부광고"].includes(compactSearchValue(templateLabel))
+  if (isAnnouncementTextInputItem(templateItem)
     && ["교회소식", "광고"].includes(compactSearchValue(existingTitle))) return "";
   // A generated slot name such as "찬양 1" is not a song query. Keep real
   // template defaults (for example a hymn title), but clear this placeholder.
@@ -27190,7 +27191,7 @@ function presenterServiceTextInputSpec(item, model, memo) {
     || (!monthlyCorporatePrayerGroup && /설교제목|특송|공동기도/.test(label))
     || serviceTitlePersonNeedsTitleInput(item, memo)
     || specialSong
-    || ["청소년부광고", "청년부광고"].includes(label)
+    || isAnnouncementTextInputItem(item)
     || (Boolean(String(item.raw_title || "").trim()) && !genericTitle && elementType !== "title_person");
   const needsAssignee = (
     elementType === "title_person" && !monthlyCorporatePrayerGroup
@@ -27223,7 +27224,11 @@ function presenterServiceRequiredTextInputState(item = {}, model = null, memo = 
 }
 
 function isAnnouncementTextInputItem(item = {}) {
-  return ["청소년부광고", "청년부광고"].includes(compactSearchValue(item?.label || ""));
+  const label = compactSearchValue(item?.label || "");
+  if (["청소년부광고", "청년부광고"].includes(label)) return true;
+  return label === "광고"
+    && String(item._worshipSectionKey || item.section_key || "") === "announcements"
+    && ["body", "plain_text"].includes(serviceMemoElementType(parseServiceItemMemo(item.memo)));
 }
 
 function presenterServiceInputHasEditableField(item, service) {
