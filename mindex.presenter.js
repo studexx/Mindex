@@ -1379,14 +1379,13 @@ function presenterAnnouncementItems(text = "") {
   String(text || "")
     .replace(/\r\n?/g, "\n")
     .split("\n")
-    .map((line) => line.trim())
     .forEach((line) => {
-      const match = line.match(/^(?:(\d+)[.)]|([①-⑳]))\s*(.*)$/u);
+      const match = line.match(/^\s*(?:(\d+)[.)]|([①-⑳]))[ \t]?(.*)$/u);
       if (match) {
         const numericIndex = match[1] ? Number(match[1]) - 1 : circledIndex.get(match[2]);
         current = {
           marker: Number.isInteger(numericIndex) && numericIndex >= 0 ? presenterCircledNumber(numericIndex) : match[2] || "",
-          lines: [String(match[3] || "").trim()].filter(Boolean),
+          lines: [String(match[3] || "")],
         };
         items.push(current);
         return;
@@ -1414,12 +1413,12 @@ function liturgicalBodyText(item = {}, memo = parseServiceItemMemo(item?.memo), 
   if (canonical && !item?.template_modified && !item?.templateModified) return canonical;
   const announcement = ["청소년부광고", "청년부광고"].includes(compactSearchValue(item?.label || ""));
   if (memo.slides?.length) {
-    const memoText = memo.slides.join("\n\n").trim();
-    return announcement ? presenterAnnouncementBodyText(memoText) : memoText;
+    const memoText = memo.slides.join("\n\n");
+    return announcement ? presenterAnnouncementBodyText(memoText) : memoText.trim();
   }
-  const text = String(item?.raw_title || displayText || "").trim();
-  if (!text || compactSearchValue(text) === compactSearchValue(title)) return "";
-  return announcement ? presenterAnnouncementBodyText(text) : canonical || text;
+  const text = String(item?.raw_title || displayText || "");
+  if (!text.trim() || compactSearchValue(text) === compactSearchValue(title)) return "";
+  return announcement ? presenterAnnouncementBodyText(text) : canonical || text.trim();
 }
 
 function presenterCanonicalLiturgicalBodyText(title = "") {
@@ -4854,7 +4853,7 @@ function renderPresenterLiturgicalBodySlide(slide) {
   const body = announcementItems.length
     ? `<div class="presenter-announcement-items">${announcementItems.map((item) => {
       const marker = String(item.marker || "").trim();
-      const itemLines = item.lines.map((line) => String(line || "").trim());
+      const itemLines = item.lines.map((line) => String(line || ""));
       return `<div class="presenter-announcement-item${marker ? "" : " presenter-announcement-item--plain"}">
         ${marker ? `<span class="presenter-announcement-marker">${escapeHtml(marker)}</span>` : ""}
         <span class="presenter-announcement-copy">${itemLines.map((line) => `<span style="--line-chars: ${presenterLineCharEstimate(line)}">${line ? escapePresenterSlideLine(line, slide) : "<br>"}</span>`).join("")}</span>

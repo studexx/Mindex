@@ -528,7 +528,7 @@
 }
 .presenter-announcement-copy span {
   max-width: none;
-  white-space: normal;
+  white-space: pre-wrap;
   overflow-wrap: normal;
   font-size: inherit;
 }
