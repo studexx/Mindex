@@ -4679,7 +4679,7 @@ function renderPresenterScriptureReadingSlide(slide) {
 }
 
 function presenterScriptureReadingHeaderReference(slide = {}, verseNumber = "") {
-  const citation = String(slide?.scriptureContext || "").startsWith("citation");
+  const citation = slide?.scriptureContext === "citation-chromakey";
   const referenceBook = citation
     ? presenterCitationBookName(slide?.referenceBook)
     : presenterScriptureReadingBookName(slide?.referenceBook);
@@ -4688,7 +4688,7 @@ function presenterScriptureReadingHeaderReference(slide = {}, verseNumber = "") 
   const verse = String(verseNumber || "").trim();
   const chapterReference = [referenceBook, chapter && verse ? `${chapter}:${verse}` : chapter ? `${chapter}장` : referenceRange].filter(Boolean).join(" ").trim();
   const fallback = String(slide?.title || slide?.marker || "").trim();
-  return chapterReference || (citation ? presenterCitationDisplayReference(fallback) : fallback);
+  return chapterReference || (citation ? presenterCitationDisplayReference(fallback) : presenterScriptureReadingDisplayReference(fallback));
 }
 
 function presenterScriptureReadingBookName(value = "") {

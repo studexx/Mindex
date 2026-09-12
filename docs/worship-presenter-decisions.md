@@ -22,6 +22,10 @@ Small visual polish that does not alter behavior does not need an entry.
 
 ## Current Decisions
 
+- 인용 구절의 성경 책 이름 약칭은 크로마키 출력에만 적용한다.
+  풀스크린 인용 구절은 성경봉독과 동일하게 전체 이름을 표시한다.
+  섬네일과 실제 송출은 동일한 규칙을 사용하며 저장된 말씀 입력값은 변경하지 않는다.
+
 - 찬양 로딩 완료 시 promise 해제 후 로딩 표시를 갱신한다.
 - 찬양 버전·가사 테이블은 독립적으로 병렬 조회하되 둘 다 성공해야 곡에 반영한다.
   가사 검색과 Presenter가 전체 가사를 사용하므로 목록 최적화를 이유로 가사를 생략하지 않는다.
