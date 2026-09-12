@@ -129,11 +129,11 @@ function renderPresenterServiceInputRail(service) {
   const draft = state.presenterPreparationDrafts[service.id] || "";
   const examples = presenterPreparationPlaceholderForService(service);
   const applying = state.presenterPreparationApplyingServiceIds.has(service.id);
-  const placeholder = examples || "찬양1 곡명\n대표기도 이름 직분\n성경봉독 히 10:38-39\n말씀 \"설교 제목\"";
+  const placeholder = examples || "입력할 항목이 없습니다";
   return `
     <aside class="svc-presenter-input-rail" aria-label="예배 입력">
       <header class="svc-presenter-input-rail-head">
-        <span>예배 입력</span>
+        <span>예배 일괄 입력</span>
       </header>
       <section class="svc-presenter-preparation-input">
         <textarea class="svc-presenter-preparation-text" data-presenter-preparation-input data-service-id="${escapeAttr(service.id)}" rows="5" placeholder="${escapeAttr(placeholder)}" aria-label="예배 준비 입력">${escapeHtml(draft)}</textarea>

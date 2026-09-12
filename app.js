@@ -12258,9 +12258,15 @@ function runPresenterSectionItemAction(action, index) {
   }
   if (action === "delete" && position >= 0) {
     const item = items[index];
-    if (item?._worshipTemplateProjected && isUuid(item.id)) {
-      state.templateElementSuppressions.set(item.id, item);
+    if (item?.id && TEMPLATE_PROJECTED_SERVICE_TYPES.has(worshipAppServiceTypeId(service.type_id))) {
+      state.templateElementSuppressions.set(item.id, {
+        ...item,
+        service_id: serviceId,
+        memo: serializeServiceItemMemo({ ...parseServiceItemMemo(item.memo), templateSuppressed: true }),
+        _worshipElementTemplateModified: true,
+      });
     }
+    markServiceItemSharedContentDirty(item, service);
     items.splice(index, 1);
   }
   if (action === "add") {
@@ -22711,11 +22717,11 @@ function renderPresenterSidebarPreparationInput(service) {
   const draft = state.presenterPreparationDrafts[service.id] || "";
   const applying = state.presenterPreparationApplyingServiceIds.has(service.id);
   const examples = presenterPreparationPlaceholderForService(service);
-  const placeholder = examples || "찬양1 곡명\n대표기도 이름 직분\n성경봉독 히 10:38-39\n말씀 \"설교 제목\"";
+  const placeholder = examples || "입력할 항목이 없습니다";
   return `
     <section class="service-sidebar-section service-sidebar-section--preparation-input" aria-label="예배 입력 붙여넣기">
       <div class="service-sidebar-head">
-        <span>예배 입력</span>
+        <span>예배 일괄 입력</span>
       </div>
       <div class="svc-presenter-preparation-input svc-presenter-preparation-input--sidebar">
         <textarea class="svc-presenter-preparation-text svc-presenter-preparation-text--sidebar" data-presenter-preparation-input data-service-id="${escapeAttr(service.id)}" rows="4" placeholder="${escapeAttr(placeholder)}" aria-label="예배 입력 붙여넣기">${escapeHtml(draft)}</textarea>
@@ -26715,27 +26721,29 @@ function presenterPreparationPlaceholderLinesForItem(item, service, context) {
   const label = compactSearchValue(item?.label || "");
   const sectionKey = String(item?._worshipSectionKey || "").trim();
   const mode = context.mode;
-  if (["praise_db", "score_db", "lyrics_db"].includes(mode) || serviceItemRequiresSongSelection(item, service)) {
+  if (["praise_db", "score_db", "lyrics_db", "manual_praise"].includes(mode) || serviceItemRequiresSongSelection(item, service)) {
     const base = presenterPreparationPlaceholderSongLabel(item);
     if (!base) return [];
-    const assignee = isSpecialSongServiceItem(item) ? " / 담당" : "";
-    return [`${base} 곡명${assignee}`];
+    const special = isSpecialSongServiceItem(item);
+    const ordinal = Number(label.match(/\d+$/)?.[0] || 1);
+    const song = special ? "그 크신 하나님의 사랑"
+      : mode === "score_db" ? "찬 250장"
+        : ["주 은혜임을", "꽃들도", "주 품에"][(ordinal - 1) % 3] || "주 은혜임을";
+    return [`${base}: ${song}${special ? " / 찬양대" : ""}`];
   }
   if (mode === "scripture" || isScriptureBodyServiceItem(item)) {
-    return [`${presenterPreparationPlaceholderTextLabel(item) || "성경봉독"} 히 10:38-39`];
+    return [`${presenterPreparationPlaceholderTextLabel(item) || "성경봉독"}: 히브리서 10:38-39`];
   }
   const { needsTitle, needsAssignee } = presenterServiceTextInputSpec(item, context.model, context.memo);
   if (sectionKey === "sermon" && ["설교", "설교제목"].includes(label)) {
-    const lines = [];
-    if (needsTitle) lines.push('말씀 "설교 제목"');
-    if (needsAssignee) lines.push("설교 김남영 목사");
-    return lines;
+    if (needsTitle) return [`설교 제목: 은혜로 사는 삶${needsAssignee ? " / 홍길동 목사" : ""}`];
+    return needsAssignee ? ["설교: 홍길동 목사"] : [];
   }
   const inputLabel = presenterPreparationPlaceholderTextLabel(item);
   if (!inputLabel) return [];
-  if (needsTitle && needsAssignee) return [`${inputLabel} 제목 / 담당`];
-  if (needsAssignee) return [`${inputLabel} 이름 직분`];
-  if (needsTitle) return [`${inputLabel} 제목`];
+  if (needsTitle && needsAssignee) return [`${inputLabel}: 교회를 위해 / 홍길동 집사`];
+  if (needsAssignee) return [`${inputLabel}: 홍길동 ${label === "축도" ? "목사" : "집사"}`];
+  if (needsTitle) return [`${inputLabel}: 교회를 위해`];
   return [];
 }
 
