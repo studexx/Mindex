@@ -29563,6 +29563,7 @@ function presenterBoardSubgroupDisplay(serviceId, subgroup = {}) {
   };
   const contexts = presenterBoardSubgroupInputContexts(serviceId, subgroup);
   const item = contexts.length === 1 ? contexts[0]?.item : null;
+  if (item && isAnnouncementTextInputItem(item)) fallback.title = "";
   const sectionKey = String(item?._worshipSectionKey || item?.section_key || "").trim();
   if (serviceElementDisplayLabel(fallback.label) !== fallback.label) {
     return { ...fallback, label: serviceElementDisplayLabel(fallback.label) };
