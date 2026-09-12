@@ -52,8 +52,13 @@ def main():
                     const section={sectionKey:label==='특송'?'special_song':'offering',sectionLabel:label};
                     const song={title:'나 이제 주님의 새 생명 얻은 몸',hymn_no:'436'};
                     const titleSlide=presenterSongTitleSlide(item,section,song,{name:'새찬송가'},song.title,0);
+                    if(!titleSlide.songTitleContent || 'fullscreenSongName' in titleSlide || 'songDetail' in titleSlide) throw Error('Legacy fields generated');
                     const slides=presenterSlidesWithSpecialSongTitle(item,section,[titleSlide],0,{type_id:'sunday-second'});
                     if(slides.length!==2) throw Error('Special title sequence lost');
+                    if(slides[1].songTitleContent.orderTitle!=='' || 'omitFullscreenOrderTitle' in slides[1]) throw Error('Layout flag generated');
+                    const repeated=presenterSlidesWithSpecialSongTitle(item,section,slides,0,{type_id:'sunday-second'});
+                    if(repeated.length!==2) throw Error('Repeated composition duplicated title');
+                    if(!titleSlide.songTitleContent.orderTitle) throw Error('Original title data mutated');
                     const first=renderPresenterSlideFrame(slides[0],{noChromakey:true});
                     if(!first.includes(label)||!first.includes('이연약구역 일동')) throw Error('Missing special heading');
                     root.innerHTML=renderPresenterSlideFrame(slides[1],{noChromakey:true});

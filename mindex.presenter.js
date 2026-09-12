@@ -62,7 +62,7 @@ function presenterSlidesWithSpecialSongTitle(item = {}, section = {}, slides = [
   const remainingSlides = slides.filter((_, slideIndex) =>
     slideIndex !== existingSpecialTitleIndex)
     .map((slide) => slide?.type === "song-title" || slide?.songTitle
-      ? { ...slide, omitFullscreenOrderTitle: true }
+      ? { ...slide, songTitleContent: { ...presenterSongTitleContent(slide), orderTitle: "" } }
       : slide);
   return presenterSlidesWithSundayMainSpecialSongOutput([
     presenterSpecialSongSectionTitleSlide(item, section, index, titleSlide),
@@ -2309,10 +2309,14 @@ function presenterSongTitleSlide(item, section, song, version, displayText, inde
   const displayTitle = presenterSongTitleDisplayTitle(connectedTitle ? null : song, connectedTitle ? null : version, effectiveDisplayText, sectionHeading);
   const titleText = presenterSongTitleContentText(displayTitle, sectionHeading);
   const songDetail = connectedTitle ? "" : presenterSongTitleDetail(song, version);
-  const fullscreenSongName = songDetail && presenterSongTitleHymnNo(song, version)
-    ? splitHymnNo(displayTitle).title || displayTitle : displayTitle;
+  const songTitleContent = {
+    orderTitle: sectionHeading || item.label || "",
+    title: songDetail && presenterSongTitleHymnNo(song, version)
+      ? splitHymnNo(displayTitle).title || displayTitle : displayTitle,
+    detail: songDetail,
+  };
   if (sectionHeading) {
-    return { ...presenterOrderContentTitleSlide(item, section, index, sectionHeading, titleText), songTitle: displayTitle, songDetail, fullscreenSongName };
+    return { ...presenterOrderContentTitleSlide(item, section, index, sectionHeading, titleText), songTitle: displayTitle, songTitleContent };
   }
   return {
     id: `${item.id || index}:song-title`,
@@ -2323,8 +2327,7 @@ function presenterSongTitleSlide(item, section, song, version, displayText, inde
     label: item.label || "",
     title: displayTitle,
     subtitle: connectedTitle ? "" : versionDisplayName(song, version),
-    songDetail,
-    fullscreenSongName,
+    songTitleContent,
     marker,
     sectionHeading,
     bodyText: "",
@@ -2348,6 +2351,16 @@ function presenterSongTitleDetail(song = null, version = null) {
     return `${versionName} ${number}장`;
   }
   return String(song?.original_title || "").trim() || String(song?.subtitle || "").trim();
+}
+
+function presenterSongTitleContent(slide = {}) {
+  if (slide.songTitleContent) return slide.songTitleContent;
+  // Older in-memory snapshots use separate fields; normalize at the boundary.
+  return {
+    orderTitle: slide.omitFullscreenOrderTitle ? "" : String(slide.orderTitle || slide.sectionHeading || slide.label || "").trim(),
+    title: String(slide.fullscreenSongName || slide.songTitle || slide.title || slide.text || "").trim(),
+    detail: String(slide.songDetail || "").trim(),
+  };
 }
 
 function presenterOrderContentTitleSlide(item, section, index, orderTitle = "", contentTitle = "") {
@@ -4555,12 +4568,12 @@ function trimPresenterOutputImagePreloadCache() {
 
 function renderPresenterSlideFrame(slide, options = {}) {
   if (options.noChromakey && (slide?.songTitle || (slide?.type === "song-title" && presenterSlideElementType(slide) === PRESENTER_ELEMENT_TYPES.PRAISE))) {
-    const title = formatPresenterSongTitleText(String(slide.fullscreenSongName || slide.songTitle || slide.title || slide.text || "").trim());
-    const orderTitle = slide.omitFullscreenOrderTitle ? "" : String(slide.orderTitle || slide.sectionHeading || slide.label || "").trim();
+    const content = presenterSongTitleContent(slide);
+    const title = formatPresenterSongTitleText(content.title);
     // Keep the order heading when adapting song titles for fullscreen output.
     slide = { ...slide, elementType: PRESENTER_ELEMENT_TYPES.TITLE_CONTENT,
       layout: PRESENTER_SLIDE_LAYOUTS.CENTER_TEXT, type: "title-content",
-      title, text: title, orderTitle, bodyText: "", assignee: "", fullscreenSongTitle: true };
+      title, text: title, songTitleContent: content, bodyText: "", assignee: "", fullscreenSongTitle: true };
   }
   const slideClass = presenterSlideRenderClass(slide);
   const extraClasses = presenterSlideExtraClasses(slide);
@@ -4869,9 +4882,9 @@ function renderPresenterTitleContentSlide(slide) {
   const titleChars = presenterLineCharEstimate(title);
   return `
     <div class="presenter-title-content">
-      ${slide.fullscreenSongTitle && slide.orderTitle ? `<span class="presenter-fullscreen-song-heading">${escapeHtml(slide.orderTitle)}</span>` : ""}
+      ${slide.fullscreenSongTitle && slide.songTitleContent?.orderTitle ? `<span class="presenter-fullscreen-song-heading">${escapeHtml(slide.songTitleContent.orderTitle)}</span>` : ""}
       <span class="presenter-title-content-title" style="--line-chars: ${escapeAttr(titleChars)}">${slide.fullscreenSongTitle ? renderPresenterSongText(title, slide) : escapeHtml(title)}</span>
-      ${slide.fullscreenSongTitle && slide.songDetail ? `<span class="presenter-fullscreen-song-detail">(${escapeHtml(slide.songDetail)})</span>` : ""}
+      ${slide.fullscreenSongTitle && slide.songTitleContent?.detail ? `<span class="presenter-fullscreen-song-detail">(${escapeHtml(slide.songTitleContent.detail)})</span>` : ""}
       ${slide.fullscreenSongTitle ? "" : `<div class="presenter-title-content-body">
         ${bodyLines.map((line) => `<span style="--line-chars: ${presenterLineCharEstimate(line)}">${escapePresenterSlideLine(line, slide)}</span>`).join("")}
       </div>`}
