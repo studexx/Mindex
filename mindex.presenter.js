@@ -4537,10 +4537,11 @@ function trimPresenterOutputImagePreloadCache() {
 function renderPresenterSlideFrame(slide, options = {}) {
   if (options.noChromakey && (slide?.songTitle || (slide?.type === "song-title" && presenterSlideElementType(slide) === PRESENTER_ELEMENT_TYPES.PRAISE))) {
     const title = formatPresenterSongTitleText(String(slide.songTitle || slide.title || slide.text || "").trim());
-    // Output and previews must use the same song-only fullscreen composition.
+    const orderTitle = String(slide.orderTitle || slide.sectionHeading || slide.label || "").trim();
+    // Keep the order heading when adapting song titles for fullscreen output.
     slide = { ...slide, elementType: PRESENTER_ELEMENT_TYPES.TITLE_CONTENT,
       layout: PRESENTER_SLIDE_LAYOUTS.CENTER_TEXT, type: "title-content",
-      title, text: title, bodyText: "", assignee: "", fullscreenSongTitle: true };
+      title, text: title, orderTitle, bodyText: "", assignee: "", fullscreenSongTitle: true };
   }
   const slideClass = presenterSlideRenderClass(slide);
   const extraClasses = presenterSlideExtraClasses(slide);
@@ -4849,6 +4850,7 @@ function renderPresenterTitleContentSlide(slide) {
   const titleChars = presenterLineCharEstimate(title);
   return `
     <div class="presenter-title-content">
+      ${slide.fullscreenSongTitle && slide.orderTitle ? `<span class="presenter-fullscreen-song-heading">${escapeHtml(slide.orderTitle)}</span>` : ""}
       <span class="presenter-title-content-title" style="--line-chars: ${escapeAttr(titleChars)}">${slide.fullscreenSongTitle ? renderPresenterSongText(title, slide) : escapeHtml(title)}</span>
       ${slide.fullscreenSongTitle ? "" : `<div class="presenter-title-content-body">
         ${bodyLines.map((line) => `<span style="--line-chars: ${presenterLineCharEstimate(line)}">${escapePresenterSlideLine(line, slide)}</span>`).join("")}

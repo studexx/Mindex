@@ -618,6 +618,14 @@
   font-size: var(--presenter-size-song-title);
   font-weight: var(--presenter-weight-display);
 }
+.presenter-fullscreen-song-heading {
+  max-width: 100%;
+  font-size: var(--presenter-size-meta);
+  font-weight: var(--presenter-weight-body);
+  line-height: 1.2;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
 .presenter-slide--lyrics,
 .presenter-slide--song-title,
 .presenter-slide--scripture,
