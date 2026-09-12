@@ -249,6 +249,8 @@ Small visual polish that does not alter behavior does not need an entry.
 - Fixed liturgical content, shared scripture reading, and fixed closing media
   are not preparation inputs.
 - `예배 입력`의 `반영`은 서비스 입력에만 적용하고 저장하지 않는다.
+  저장 단축키는 capture 단계에서 Cmd/Ctrl+S를 처리하며 한글 키보드의 KeyS도 인식한다.
+  예배 저장은 dirty 판정으로 입력 중인 값의 commit을 건너뛰지 않는다.
   반영 뒤에는 상단 `저장` 버튼이 활성화되며, 사용자가 그 버튼으로
   Supabase 저장을 명시적으로 확정한다.
 - `예배 입력`은 현장용 rough text를 받아야 한다. `찬송가 9, 288, 182`

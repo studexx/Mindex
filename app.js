@@ -1523,6 +1523,8 @@ function bindStaticEvents() {
     scheduleServiceMusicResume("pointerup");
   }, { capture: true });
 
+  window.addEventListener("keydown", handleSaveShortcut, { capture: true });
+
   window.addEventListener("keydown", (event) => {
     const isThemeToggle =
       (event.metaKey || event.ctrlKey) &&
@@ -1533,13 +1535,6 @@ function bindStaticEvents() {
       event.preventDefault();
       event.stopPropagation();
       toggleTheme();
-      return;
-    }
-
-    const isSave = (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s";
-    if (isSave) {
-      event.preventDefault();
-      saveAll();
       return;
     }
 
@@ -5959,17 +5954,24 @@ async function deleteSelectedSong() {
   }
 }
 
+function handleSaveShortcut(event) {
+  if (!(event.metaKey || event.ctrlKey) || event.altKey || event.shiftKey) return;
+  if (event.code !== "KeyS" && String(event.key).toLowerCase() !== "s") return;
+  event.preventDefault();
+  event.stopPropagation();
+  if (!event.repeat) void saveAll();
+}
+
 async function saveAll() {
   if (state.module === "home") return;
   const saveState = currentSaveButtonState();
   if (!saveState.available) return false;
+  if (isServiceDataModule()) {
+    return await saveService(state.module === "presenter" ? presenterViewServiceId() : state.selectedServiceId);
+  }
   if (!saveState.dirty) return true;
   if (state.module === "references") {
     await saveReferenceLinks();
-    return;
-  }
-  if (isServiceDataModule()) {
-    await saveService(state.module === "presenter" ? presenterViewServiceId() : state.selectedServiceId);
     return;
   }
   if (state.module === "scripture") {
