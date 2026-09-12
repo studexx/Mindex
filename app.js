@@ -13128,7 +13128,9 @@ function applyServiceSongSelectionWithService(item, service = null) {
     || resolvePresenterPreparationSong(item.raw_title, item, service || selectedServiceForEditor())
     || findServicePraiseSong(item.raw_title);
   if (!song) {
-    item.song_id = null;
+    // A missing catalog row is not an explicit unlink. Preserve saved IDs
+    // while linked-song hydration is pending or has failed.
+    if (item.song_id) return;
     item.version_id = null;
     item.song_version_id = null;
     return;

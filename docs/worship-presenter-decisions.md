@@ -685,3 +685,7 @@ Small visual polish that does not alter behavior does not need an entry.
 ## Empty Praise Removal from Source Text
 - 예배 원문에서 빈 찬양 줄을 지우면 해당 예배의 template suppression을 저장하여 재조회·양식 투영 후에도 다시 생성하지 않는다.
 - 원문 항목이 모두 매칭된 경우만 적용하며, 곡·직접 입력·가사·파일이 있는 순서와 찬양 이외 항목은 이 처리로 삭제하지 않는다.
+
+## Linked Praise Hydration and Medley Labels
+- 곡 목록 로딩 지연·실패로 연결된 곡을 찾지 못해도 저장된 song/version ID를 지우지 않는다. 연결 해제와 직접 입력 전환은 기존 명시적 사용자 동작으로 처리한다.
+- 메들리 순서 범위도 화면에서는 원숫자로 표시한다(`찬양 6–7` → `찬양 ⑥–⑦`). 저장된 순서와 곡 제목은 변경하지 않는다.
