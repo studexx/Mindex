@@ -2114,6 +2114,7 @@ function buildPresenterScriptureTextSlides(item, section, index, service = null)
       referenceRange: verse.referenceRange || payload.referenceRange || "",
       translationLabel: verse.translationLabel || payload.translationLabel || "",
       text: citation ? presenterCitationScriptureText(verse, payload, context) : verseText,
+      ...(context === "citation-chromakey" ? { citationBodyText: verse.text } : {}),
       citationQuickInsert: citation,
       scriptureReadingFinal: readingFinal,
       ...(readingForm ? { outputContext: "clean" } : {}),
@@ -4565,6 +4566,7 @@ function presenterSlideExtraClasses(slide) {
   if (layout !== PRESENTER_SLIDE_LAYOUTS.BLANK && presenterScriptureContextUsesReadingForm(slide?.scriptureContext)) classes.push("presenter-slide--scripture-reading");
   if (layout !== PRESENTER_SLIDE_LAYOUTS.BLANK && slide?.scriptureContext === "sermon") classes.push("presenter-slide--scripture-sermon");
   if (layout !== PRESENTER_SLIDE_LAYOUTS.BLANK && slide?.scriptureContext === "citation") classes.push("presenter-slide--scripture-citation");
+  if (layout !== PRESENTER_SLIDE_LAYOUTS.BLANK && slide?.scriptureContext === "citation-chromakey") classes.push("presenter-slide--citation-tab");
   return classes.join(" ");
 }
 
@@ -4605,6 +4607,7 @@ function renderPresenterSlideBody(slide, options = {}) {
   }
   if (layout === PRESENTER_SLIDE_LAYOUTS.MEDIA && elementType === PRESENTER_ELEMENT_TYPES.IMAGE) return renderPresenterImageSlide(slide, options);
   if (layout === PRESENTER_SLIDE_LAYOUTS.FILE) return renderPresenterFileSlide(slide);
+  if (layout !== PRESENTER_SLIDE_LAYOUTS.BLANK && elementType === PRESENTER_ELEMENT_TYPES.SCRIPTURE_TEXT && slide?.scriptureContext === "citation-chromakey") return renderPresenterCitationTabSlide(slide);
   if (elementType === PRESENTER_ELEMENT_TYPES.SCRIPTURE_TEXT && presenterScriptureContextUsesReadingForm(slide?.scriptureContext)) return renderPresenterScriptureReadingSlide(slide);
   if (layout === PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT && elementType === PRESENTER_ELEMENT_TYPES.TITLE_ASSIGNEE) return renderPresenterTitleAssigneeSlide(slide);
   if (layout === PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT && slide?.type === "song-title" && slide.sectionHeading) return renderPresenterSectionSongTitleSlide(slide);
@@ -4657,6 +4660,18 @@ function renderPresenterFullscreenReadySlide(slide) {
   `;
 }
 
+function renderPresenterCitationTabSlide(slide) {
+  const raw = String(slide?.text || "");
+  const number = presenterScriptureVerseParts(raw).number || presenterScriptureVerseNumber({
+    number: slide?.scriptureVerse, verseEnd: slide?.scriptureVerseEnd,
+  });
+  const reference = presenterScriptureReadingHeaderReference(slide, number);
+  // Older slide snapshots store the reference and body separated by whitespace.
+  const body = slide?.citationBodyText ?? raw.replace(/^.*?\s{2,}/, "");
+  return `<div class="presenter-citation-tab">${escapeHtml(reference)}</div>
+    <div class="presenter-slide-text"><span>${escapeHtml(body)}</span></div>`;
+}
+
 function renderPresenterScriptureReadingSlide(slide) {
   const reference = String(slide?.title || slide?.marker || "").trim();
   const translationLabel = String(slide?.translationLabel || "").trim();
@@ -4679,16 +4694,13 @@ function renderPresenterScriptureReadingSlide(slide) {
 }
 
 function presenterScriptureReadingHeaderReference(slide = {}, verseNumber = "") {
-  const citation = slide?.scriptureContext === "citation-chromakey";
-  const referenceBook = citation
-    ? presenterCitationBookName(slide?.referenceBook)
-    : presenterScriptureReadingBookName(slide?.referenceBook);
+  const referenceBook = presenterScriptureReadingBookName(slide?.referenceBook);
   const referenceRange = String(slide?.referenceRange || "").trim();
   const chapter = referenceRange.match(/^(\d+)/)?.[1] || "";
   const verse = String(verseNumber || "").trim();
   const chapterReference = [referenceBook, chapter && verse ? `${chapter}:${verse}` : chapter ? `${chapter}장` : referenceRange].filter(Boolean).join(" ").trim();
   const fallback = String(slide?.title || slide?.marker || "").trim();
-  return chapterReference || (citation ? presenterCitationDisplayReference(fallback) : presenterScriptureReadingDisplayReference(fallback));
+  return chapterReference || presenterScriptureReadingDisplayReference(fallback);
 }
 
 function presenterScriptureReadingBookName(value = "") {

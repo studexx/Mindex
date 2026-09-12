@@ -24,5 +24,5 @@ for (const scriptureContext of ['citation', 'reading', 'sermon']) {
 }
 const verse = {referenceBook: '열왕기상', referenceRange: '1:1', text: '본문'};
 assert.equal(context.presenterCitationVerseReference(verse, {}, '1'), '왕상 1:1');
-assert.equal(context.presenterScriptureReadingHeaderReference({...verse, scriptureContext: 'citation-chromakey'}, '1'), '왕상 1:1');
-console.log('PASS fullscreen full names; chromakey abbreviations; input unchanged');
+assert.equal(context.presenterScriptureReadingHeaderReference({...verse, scriptureContext: 'citation-chromakey'}, '1'), '열왕기상 1:1');
+console.log('PASS fullscreen and chromakey tab full names; input unchanged');

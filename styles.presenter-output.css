@@ -674,6 +674,26 @@
   text-shadow: none;
   word-break: keep-all;
 }
+.presenter-citation-tab {
+  position: absolute;
+  left: 0;
+  bottom: var(--presenter-output-bar-height);
+  width: fit-content;
+  max-width: 100%;
+  padding: calc(15 * var(--presenter-stage-unit)) calc(80 * var(--presenter-stage-unit)) calc(15 * var(--presenter-stage-unit)) var(--presenter-text-inset);
+  background: #fff;
+  color: #000;
+  font-family: var(--presenter-scripture-font);
+  font-size: calc(70 * var(--presenter-stage-unit));
+  font-weight: 800;
+  line-height: 1;
+  text-align: left;
+  letter-spacing: 0;
+  clip-path: polygon(0 0, calc(100% - 50 * var(--presenter-stage-unit)) 0, 100% calc(50 * var(--presenter-stage-unit)), 100% 100%, 0 100%);
+}
+.presenter-slide--citation-tab > .presenter-slide-text {
+  white-space: pre-wrap;
+}
 .presenter-song-note {
   display: inline-block;
   font-family: var(--presenter-font-family);
