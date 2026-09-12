@@ -27,8 +27,8 @@
         const merged=allGeneration && ['children','youth'].includes(id);
         const noGathering=saved && (saved.no_gathering===true || saved.no_gathering==='true' || /집회\s*없음/.test(aliases(saved)));
         return [{source:{...(saved||{}),service_type_id:id,service_date:saved?.service_date||add(key,day),aliases:saved?.service_alias||''},
-          candidates:[],missing:true,slotName:name,weeklyStatus:merged?'통합예배':noGathering?'집회 없음':saved?'콘티 미등록':'기록 없음',
-          weeklyReason:merged?'온세대 주일예배와 함께':noGathering?(saved.service_alias||saved.title||''):saved?'예배 일정 등록됨':'집회 여부 미확인'}];
+          candidates:[],missing:true,slotName:name,weeklyStatus:merged?'집회 없음':noGathering?'집회 없음':saved?'콘티 미등록':'기록 없음',
+          weeklyReason:merged?'온세대 찬양예배':noGathering?(saved.service_alias||saved.title||''):saved?'예배 일정 등록됨':'집회 여부 미확인'}];
       });
       for(const e of actual) if(!used.has(e)) cells.push(e);
       groups.push({key,title:key+' ~ '+add(key,6),entries:cells});
