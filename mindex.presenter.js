@@ -2214,6 +2214,10 @@ function presenterScriptureContextUsesReadingForm(context = "") {
   return context === "reading" || context === "sermon" || context === "citation";
 }
 
+function presenterScriptureContextUsesAddressTab(context = "") {
+  return context === "citation-chromakey" || context === "sermon-chromakey";
+}
+
 function serviceScriptureTextPayload(item, memo = parseServiceItemMemo(item?.memo), service = null) {
   if (typeof serviceScriptureTextPayloadFromBible === "function") {
     const resolved = serviceScriptureTextPayloadFromBible(item, memo, service);
@@ -4606,7 +4610,7 @@ function presenterSlideExtraClasses(slide) {
   if (layout !== PRESENTER_SLIDE_LAYOUTS.BLANK && presenterScriptureContextUsesReadingForm(slide?.scriptureContext)) classes.push("presenter-slide--scripture-reading");
   if (layout !== PRESENTER_SLIDE_LAYOUTS.BLANK && slide?.scriptureContext === "sermon") classes.push("presenter-slide--scripture-sermon");
   if (layout !== PRESENTER_SLIDE_LAYOUTS.BLANK && slide?.scriptureContext === "citation") classes.push("presenter-slide--scripture-citation");
-  if (layout !== PRESENTER_SLIDE_LAYOUTS.BLANK && slide?.scriptureContext === "citation-chromakey") classes.push("presenter-slide--citation-tab");
+  if (layout !== PRESENTER_SLIDE_LAYOUTS.BLANK && presenterScriptureContextUsesAddressTab(slide?.scriptureContext)) classes.push("presenter-slide--citation-tab");
   return classes.join(" ");
 }
 
@@ -4647,7 +4651,7 @@ function renderPresenterSlideBody(slide, options = {}) {
   }
   if (layout === PRESENTER_SLIDE_LAYOUTS.MEDIA && elementType === PRESENTER_ELEMENT_TYPES.IMAGE) return renderPresenterImageSlide(slide, options);
   if (layout === PRESENTER_SLIDE_LAYOUTS.FILE) return renderPresenterFileSlide(slide);
-  if (layout !== PRESENTER_SLIDE_LAYOUTS.BLANK && elementType === PRESENTER_ELEMENT_TYPES.SCRIPTURE_TEXT && slide?.scriptureContext === "citation-chromakey") return renderPresenterCitationTabSlide(slide);
+  if (layout !== PRESENTER_SLIDE_LAYOUTS.BLANK && elementType === PRESENTER_ELEMENT_TYPES.SCRIPTURE_TEXT && presenterScriptureContextUsesAddressTab(slide?.scriptureContext)) return renderPresenterCitationTabSlide(slide);
   if (elementType === PRESENTER_ELEMENT_TYPES.SCRIPTURE_TEXT && presenterScriptureContextUsesReadingForm(slide?.scriptureContext)) return renderPresenterScriptureReadingSlide(slide);
   if (layout === PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT && elementType === PRESENTER_ELEMENT_TYPES.TITLE_ASSIGNEE) return renderPresenterTitleAssigneeSlide(slide);
   if (layout === PRESENTER_SLIDE_LAYOUTS.LOWER_BAR_TEXT && slide?.type === "song-title" && slide.sectionHeading) return renderPresenterSectionSongTitleSlide(slide);

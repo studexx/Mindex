@@ -701,7 +701,7 @@
   line-height: 1;
   text-align: left;
   letter-spacing: 0;
-  clip-path: polygon(0 0, calc(100% - 12 * var(--presenter-stage-unit)) 0, 100% calc(12 * var(--presenter-stage-unit)), 100% 100%, 0 100%);
+  border-radius: 0 calc(28 * var(--presenter-stage-unit)) 0 0;
 }
 .presenter-slide--citation-tab > .presenter-slide-text {
   white-space: pre-wrap;
