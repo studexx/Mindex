@@ -19,16 +19,29 @@ def main():
               const old={id:'song',title:'테스트',memo:JSON.stringify({versions:[{id:'version',name:'Default',forms:[]}]})};
               const song=normalizeServerSong(old);
               const roundtrip=normalizeServerSong({...old,memo:serializeSongMemo(song)});
+              const previousSelected=getSelectedSong;
+              const previousUpdateSaveState=updateSaveState;
+              updateSaveState=()=>{};
+              getSelectedSong=()=>song;
+              for (const name of ['Default','default','버전 1','Default Remix','']) {
+                updateVersionNameField({dataset:{versionNameField:'version'},value:name});
+                const expected=name || '기본';
+                const loaded=normalizeServerSong({...old,memo:serializeSongMemo(song)});
+                if (song.versions[0].name!==expected || loaded.versions[0].name!==expected)
+                  throw new Error('Version name changed: '+name);
+              }
+              getSelectedSong=previousSelected;
+              updateSaveState=previousUpdateSaveState;
               return {draft:draft.versions[0].name, raw:draft.versions[0].raw_section_name,
-                imported:song.versions[0].name, saved:roundtrip.versions[0].name,
+                imported:roundtrip.versions[0].name, saved:roundtrip.versions[0].name,
                 id:roundtrip.versions[0].id,
                 fallback:normalizeServerSong({id:'empty',title:'빈 곡'}).versions[0].name,
                 labels:['Default','default',' DEFAULT ','기본',''].map(displayVersionName),
                 custom:displayVersionName('Default Remix')};
             }''')
-            assert result=={'draft':'기본','raw':'기본','imported':'기본','saved':'기본','id':'version',
-                'fallback':'기본','labels':['기본']*5,'custom':'Default Remix'}, result
-            print('PASS Korean default: creation, legacy load, save roundtrip, fallback; custom names retained')
+            assert result=={'draft':'기본','raw':'기본','imported':'Default','saved':'Default','id':'version',
+                'fallback':'기본','labels':['Default','default','DEFAULT','기본','기본'],'custom':'Default Remix'}, result
+            print('PASS explicit names survive editing and save roundtrip; empty/new names use Korean default')
             browser.close()
     finally:
         if server: server.shutdown()

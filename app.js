@@ -18012,11 +18012,8 @@ function normalizeRawTitleMeta(value) {
 
 
 function normalizeGeneratedVersionName(name) {
-  const value = String(name || "").trim();
-  const koreanGenerated = value.match(/^버전\s*(\d+)$/);
-  if (koreanGenerated) return `Version ${koreanGenerated[1]}`;
-  if (/^default$/i.test(value) || value === "기본") return "기본";
-  return value;
+  // Explicit names must survive editing, serialization and reload unchanged.
+  return String(name || "").trim();
 }
 
 function displayVersionName(name) {
