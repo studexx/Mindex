@@ -1,5 +1,13 @@
 # Worship / Presenter Decision Log
 
+## Ready And Closing Blanks (2026-09-12)
+
+- Ready screens/videos and closing visuals use the common trailing-blank rule.
+  The ready/closing suppression helper is removed. Existing blank slides and
+  automatic blanks still do not receive duplicate blanks.
+- Generated blanks clear ready metadata as well as visible media/text. Waiting
+  video playback itself and persisted worship content are unchanged.
+
 ## Welcome Blank And Examples (2026-09-12)
 
 - Praise welcome uses the common trailing-blank rule; it no longer explicitly

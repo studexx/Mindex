@@ -31580,7 +31580,6 @@ function withPresenterElementTrailingBlanks(slides = [], service = null) {
 function shouldAppendPresenterElementTrailingBlank(slide, nextSlide, context = {}) {
   if (!slide || slide.autoTrailingBlank) return false;
   if (slide.skipTrailingBlank) return false;
-  if (presenterSlideSuppressesTrailingBlank(slide)) return false;
   if (presenterSlideLayout(slide) === PRESENTER_SLIDE_LAYOUTS.BLANK) return false;
   const currentKey = presenterSlideElementGroupKey(slide);
   const nextKey = presenterSlideElementGroupKey(nextSlide);
@@ -31611,17 +31610,6 @@ function presenterMainPraiseElementOrdinal(targetSlide, slides = []) {
     if (key && !keys.includes(key)) keys.push(key);
   });
   return keys.indexOf(targetKey) + 1;
-}
-
-function presenterSlideSuppressesTrailingBlank(slide = {}) {
-  const sectionKey = String(slide.sectionKey || "").trim();
-  const sectionRole = String(slide.sectionRole || "").trim();
-  return (
-    slide.type === "ready"
-    || sectionRole === "ready"
-    || sectionKey === "ready"
-    || sectionKey === "closing_visual"
-  );
 }
 
 function presenterSlideElementGroupKey(slide) {
@@ -31675,6 +31663,8 @@ function presenterElementTrailingBlankSlide(slide, index, service = null) {
     // chromakey context (for example a special-song element).
     outputContext: serviceChromakey ? "chromakey" : "clean",
     autoTrailingBlank: true,
+    sectionRole: "",
+    readyServiceName: "",
     sort: (Number(slide.sort) || index) + 0.009,
   };
 }

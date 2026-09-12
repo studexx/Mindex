@@ -2267,8 +2267,8 @@ def main() -> int:
                     and fallback_state["closingGroups"][0]["title"] == "폐회"
                     and fallback_state["closingGroups"][0]["subgroups"] >= 1
                     and fallback_state["trailingBlankPolicy"] == {
-                        "readyHasBlankAfterReady": False,
-                        "closingHasBlankAfterClosing": False,
+                        "readyHasBlankAfterReady": True,
+                        "closingHasBlankAfterClosing": True,
                         "normalHasBlankAfterPrayer": True,
                         "scriptureHasBlankAfterReading": True,
                         "prayerPraiseHasBlankAfterFirst": True,
