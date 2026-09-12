@@ -26820,6 +26820,13 @@ async function applyPresenterPreparationInput(serviceId = state.selectedServiceI
       return;
     }
 
+    const plan = planPresenterPreparationEntries(entries, service);
+    if (plan.errors.length) {
+      showToast(plan.errors.join("\n"), "error");
+      return;
+    }
+    if (!entries.length) return;
+
     let items = getServiceItems(serviceId).map((item) => ({ ...item }));
     const scriptureItemIds = new Set();
     const versionWarnings = [];
@@ -26827,7 +26834,7 @@ async function applyPresenterPreparationInput(serviceId = state.selectedServiceI
     const textFieldUpdates = [];
     let citationReferences = null;
 
-    for (const entry of entries) {
+    for (const { entry, projected, content, assignee, mode } of plan.planned) {
       if (entry.key === "인용구절") {
         const references = normalizeServiceScriptureReferenceList(entry.content);
         if (!references.length || references.some((reference) => !parseBibleReference(reference))) {
@@ -26838,21 +26845,9 @@ async function applyPresenterPreparationInput(serviceId = state.selectedServiceI
         continue;
       }
 
-      const targetLabel = presenterPreparationTargetLabel(entry.rawLabel || entry.label, service, entry.content);
-      const contentParts = entry.content.split(/\s+\/\s+/);
-      const content = String(contentParts.shift() || "").trim();
-      const assignee = contentParts.join(" / ").trim();
-      const projected = findPresenterPreparationProjectedItem(service, targetLabel);
-      if (!projected) {
-        errors.push(`${entry.label} 항목을 이 예배에서 찾지 못했습니다.`);
-        continue;
-      }
       const targetIndex = materializePresenterPreparationItem(service, items, projected);
       const item = items[targetIndex];
       const memo = parseServiceItemMemo(item.memo);
-      const mode = isSongServiceLabel(item.label) || isSpecialSongServiceItem(item)
-        ? servicePraiseInputMode(item, memo, service)
-        : serviceMemoInputMode(memo, item);
 
       if (mode === "manual_praise" && isSpecialSongServiceItem(item)) {
         const existingSong = await resolveExistingPraiseSongForServiceInputAfterCatalogLoad(content, item, service);
