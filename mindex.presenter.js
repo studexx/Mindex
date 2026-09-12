@@ -4812,6 +4812,20 @@ function renderPresenterImageSlide(slide, options = {}) {
   return `<img class="presenter-image${referenceClass}" src="${escapeAttr(source)}" alt="" decoding="${decoding}" loading="${loading}" fetchpriority="${fetchPriority}" draggable="false" />`;
 }
 
+function presenterOrderDisplayLabel(value = "") {
+  const label = String(value || "");
+  // Format only order labels; content and persisted values remain unchanged.
+  return label.replace(/^([가-힣A-Za-z][가-힣A-Za-z ]*?)\s*(\d+(?:\s*·\s*\d+)*)$/u, (match, name, numbers) => {
+    const values = numbers.split("·").map((part) => Number(part.trim()));
+    if (values.some((number) => number < 1 || number > 50)) return match;
+    const circled = values.map((number) => String.fromCodePoint(
+      number <= 20 ? 0x2460 + number - 1
+        : number <= 35 ? 0x3251 + number - 21 : 0x32b1 + number - 36,
+    ));
+    return name.trim() + " " + circled.join("·");
+  });
+}
+
 function renderPresenterTitleAssigneeSlide(slide) {
   const title = String(slide.title || slide.text || slide.label || "").trim();
   const assignee = String(slide.assignee || slide.subtitle || "").trim();
@@ -4832,7 +4846,7 @@ function renderPresenterTitleAssigneeSlide(slide) {
   if (orderTitle && contentTitle && !assignee) {
     return `
       <div class="presenter-slide-text presenter-title-assignee presenter-title-assignee--order-content">
-        <span class="presenter-title-assignee-order" style="--line-chars: ${escapeAttr(orderChars)}">${escapeHtml(orderTitle)}</span>
+        <span class="presenter-title-assignee-order" style="--line-chars: ${escapeAttr(orderChars)}">${escapeHtml(presenterOrderDisplayLabel(orderTitle))}</span>
         <span class="presenter-title-assignee-content" style="--line-chars: ${escapeAttr(contentChars)}">${escapeHtml(contentTitle)}</span>
       </div>
     `;
@@ -4840,7 +4854,7 @@ function renderPresenterTitleAssigneeSlide(slide) {
   if (orderTitle && contentTitle && assignee) {
     return `
       <div class="presenter-slide-text presenter-title-assignee presenter-title-assignee--three-part">
-        <span class="presenter-title-assignee-order" style="--line-chars: ${escapeAttr(orderChars)}">${escapeHtml(orderTitle)}</span>
+        <span class="presenter-title-assignee-order" style="--line-chars: ${escapeAttr(orderChars)}">${escapeHtml(presenterOrderDisplayLabel(orderTitle))}</span>
         <span class="presenter-title-assignee-content" style="--line-chars: ${escapeAttr(contentChars)}">${escapeHtml(contentTitle)}</span>
         <span class="presenter-title-assignee-person" style="--line-chars: ${escapeAttr(assigneeChars)}">${escapeHtml(assignee)}</span>
       </div>
@@ -4849,7 +4863,7 @@ function renderPresenterTitleAssigneeSlide(slide) {
   const soloClass = assignee ? "" : " presenter-title-assignee--solo";
   return `
     <div class="presenter-slide-text presenter-title-assignee${soloClass}">
-      <span class="presenter-title-assignee-title" style="--line-chars: ${escapeAttr(titleChars)}">${escapeHtml(title)}</span>
+      <span class="presenter-title-assignee-title" style="--line-chars: ${escapeAttr(titleChars)}">${escapeHtml(title === slide.label || title === slide.sectionLabel ? presenterOrderDisplayLabel(title) : title)}</span>
       ${assignee ? `<span class="presenter-title-assignee-person" style="--line-chars: ${escapeAttr(assigneeChars)}">${escapeHtml(assignee)}</span>` : ""}
     </div>
   `;
@@ -4880,7 +4894,7 @@ function renderPresenterSectionSongTitleSlide(slide) {
   const titleChars = presenterLineCharEstimate(title);
   return `
     <div class="presenter-slide-text presenter-section-song-title">
-      <span class="presenter-section-song-title-heading" style="--line-chars: ${escapeAttr(headingChars)}">${escapeHtml(heading)}</span>
+      <span class="presenter-section-song-title-heading" style="--line-chars: ${escapeAttr(headingChars)}">${escapeHtml(presenterOrderDisplayLabel(heading))}</span>
       <span class="presenter-section-song-title-name" style="--line-chars: ${escapeAttr(titleChars)}">${renderPresenterSongText(title, slide)}</span>
     </div>
   `;
@@ -4892,7 +4906,7 @@ function renderPresenterTitleContentSlide(slide) {
   const titleChars = presenterLineCharEstimate(title);
   return `
     <div class="presenter-title-content">
-      ${slide.fullscreenSongTitle && slide.songTitleContent?.orderTitle ? `<span class="presenter-fullscreen-song-heading">${escapeHtml(slide.songTitleContent.orderTitle)}</span>` : ""}
+      ${slide.fullscreenSongTitle && slide.songTitleContent?.orderTitle ? `<span class="presenter-fullscreen-song-heading">${escapeHtml(presenterOrderDisplayLabel(slide.songTitleContent.orderTitle))}</span>` : ""}
       <span class="presenter-title-content-title" style="--line-chars: ${escapeAttr(titleChars)}">${slide.fullscreenSongTitle ? renderPresenterSongText(title, slide) : escapeHtml(title)}</span>
       ${slide.fullscreenSongTitle && slide.songTitleContent?.detail ? `<span class="presenter-fullscreen-song-detail">${slide.songTitleContent.detailKind === "subtitle" ? `(${escapeHtml(slide.songTitleContent.detail)})` : escapeHtml(slide.songTitleContent.detail)}</span>` : ""}
       ${slide.fullscreenSongTitle ? "" : `<div class="presenter-title-content-body">
