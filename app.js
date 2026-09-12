@@ -8207,6 +8207,9 @@ function handleSidebarPresenterActionClick(event) {
 }
 
 function handleDetailClick(event) {
+  document.querySelectorAll(".svc-reference-media-quick-add[open]").forEach((menu) => {
+    if (!menu.contains(event.target)) menu.removeAttribute("open");
+  });
   if (handleServiceOutlineSlideEvent(event)) return;
 
   const homeNextServiceAction = event.target.closest("[data-home-next-service-action]");
@@ -8752,6 +8755,7 @@ function handlePresenterDetailClick(event) {
 
   const referenceMediaAdd = event.target.closest("[data-presenter-reference-media-add]");
   if (referenceMediaAdd) {
+    referenceMediaAdd.closest("details")?.removeAttribute("open");
     addPresenterReferenceMedia(
       referenceMediaAdd.dataset.serviceId || state.selectedServiceId,
       referenceMediaAdd.dataset.presenterReferenceMediaSection,
@@ -8834,6 +8838,13 @@ function isPresenterPreparationInputEvent(event) {
 }
 
 function handleDetailKeydown(event) {
+  const mediaMenu = event.target.closest(".svc-reference-media-quick-add[open]");
+  if (event.key === "Escape" && mediaMenu) {
+    mediaMenu.removeAttribute("open");
+    mediaMenu.querySelector("summary")?.focus();
+    event.preventDefault();
+    return;
+  }
   const preparationInput = event.target.closest("[data-presenter-preparation-input]");
   if (preparationInput) {
     if (presenterPreparationDoubleEnterShouldApply(preparationInput, event)) {
@@ -9210,6 +9221,7 @@ function handleDetailChange(event) {
 
   const referenceMediaDirectFile = event.target.closest("[data-presenter-reference-media-direct-file]");
   if (referenceMediaDirectFile) {
+    referenceMediaDirectFile.closest("details")?.removeAttribute("open");
     void addAndUploadPresenterReferenceMedia(referenceMediaDirectFile);
     return;
   }
@@ -28705,8 +28717,8 @@ function renderDeferredPresenterBoardSection(group, serviceId, groupIndex) {
             ${visibleTitle ? `<strong>${escapeHtml(visibleTitle)}</strong>` : ""}
           </span>
         </button>
+        ${referenceMediaQuickAdd}
       </div>
-      ${referenceMediaQuickAdd}
       <div class="svc-board-section-deferred-body" aria-hidden="true"></div>
     </section>`;
 }
@@ -29418,8 +29430,8 @@ function renderPresenterBoardSection(group, activeIndex, serviceId) {
             ${visibleTitle ? `<strong>${escapeHtml(visibleTitle)}</strong>` : ""}
           </span>
         </button>
+        ${referenceMediaQuickAdd}
       </div>
-      ${referenceMediaQuickAdd}
       <div class="svc-board-subgroups">
         ${subgroupsHtml}
       </div>
@@ -29429,19 +29441,22 @@ function renderPresenterBoardSection(group, activeIndex, serviceId) {
 function renderPresenterReferenceMediaQuickAdd(sectionKey, serviceId) {
   const sectionLabel = presenterReferenceMediaSectionLabel(sectionKey);
   return `
-    <div class="svc-reference-media-quick-add" role="group" aria-label="${escapeAttr(sectionLabel)}">
+    <details class="svc-reference-media-quick-add">
+      <summary class="svc-reference-media-add" aria-label="${escapeAttr(sectionLabel)} 자료 추가" title="자료 추가">
+        <i data-lucide="plus"></i><span>추가</span>
+      </summary>
       <div class="svc-reference-media-quick-add-actions">
-        <button class="svc-reference-media-add" type="button" data-presenter-reference-media-add
-          data-presenter-reference-media-section="${escapeAttr(sectionKey)}" data-service-id="${escapeAttr(serviceId)}">
-          <i data-lucide="plus"></i><span>화면 추가</span>
-        </button>
         <label class="svc-reference-media-upload">
           <input type="file" accept="${PRESENTER_REFERENCE_MEDIA_ACCEPT}" data-presenter-reference-media-direct-file
-            data-presenter-reference-media-section="${escapeAttr(sectionKey)}" data-service-id="${escapeAttr(serviceId)}" />
-          <i data-lucide="upload"></i><span>파일 추가</span>
+            data-presenter-reference-media-section="${escapeAttr(sectionKey)}" data-service-id="${escapeAttr(serviceId)}" aria-label="파일 선택" />
+          <i data-lucide="upload"></i><span>파일 선택</span>
         </label>
+        <button class="svc-reference-media-add" type="button" data-presenter-reference-media-add
+          data-presenter-reference-media-section="${escapeAttr(sectionKey)}" data-service-id="${escapeAttr(serviceId)}">
+          <i data-lucide="link"></i><span>URL 입력</span>
+        </button>
       </div>
-    </div>`;
+    </details>`;
 }
 
 function presenterBoardReferenceMediaSectionKey(group = {}, serviceId = state.selectedServiceId) {
