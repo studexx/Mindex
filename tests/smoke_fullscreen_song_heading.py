@@ -27,7 +27,7 @@ def main():
                       const heading=root.querySelector('.presenter-fullscreen-song-heading');
                       const title=root.querySelector('.presenter-title-content-title');
                       const detail=root.querySelector('.presenter-fullscreen-song-detail');
-                      if(detail?.textContent!=='(Original title)') throw Error('Missing song detail');
+                      if(detail?.textContent!=='Original title') throw Error('Missing song detail');
                       const detailSize=parseFloat(getComputedStyle(detail).fontSize),headingSize=parseFloat(getComputedStyle(heading).fontSize);
                       if(Math.abs(detailSize-75*width/1920)>.1 || getComputedStyle(detail).fontWeight!=='700' || getComputedStyle(title).fontWeight!=='800') throw Error('Incorrect type hierarchy');
                       if(heading?.textContent!==label || !title?.textContent.includes('하늘 보좌')) throw Error('Missing title');
@@ -64,8 +64,13 @@ def main():
                     root.innerHTML=renderPresenterSlideFrame(slides[1],{noChromakey:true});
                     if(root.querySelector('.presenter-fullscreen-song-heading')) throw Error('Repeated special heading');
                     if(root.querySelector('.presenter-title-content-title').textContent.includes('436')) throw Error('Repeated hymn number');
-                    if(root.querySelector('.presenter-fullscreen-song-detail').textContent!=='(새찬송가 436장)') throw Error('Missing hymn detail');
+                    if(root.querySelector('.presenter-fullscreen-song-detail').textContent!=='새찬송가 436장') throw Error('Missing hymn detail');
                     if(!renderPresenterSlideFrame(slides[1],{}).includes('436')) throw Error('Chromakey number removed');
+                  }
+                  for(const [song,expected] of [[{original_title:'Original',subtitle:'Subtitle'},'Original'],[{subtitle:'Subtitle'},'(Subtitle)'],[{original_title:' ',subtitle:'Subtitle'},'(Subtitle)']]) {
+                    const slide=presenterSongTitleSlide({label:'찬양 1'},{}, {...song,title:'곡명'}, {},'곡명',0);
+                    root.innerHTML=renderPresenterSlideFrame(slide,{noChromakey:true});
+                    if(root.querySelector('.presenter-fullscreen-song-detail')?.textContent!==expected) throw Error('Detail punctuation');
                   }
                   return checked;
                 }''')

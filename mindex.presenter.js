@@ -2314,6 +2314,7 @@ function presenterSongTitleSlide(item, section, song, version, displayText, inde
     title: songDetail && presenterSongTitleHymnNo(song, version)
       ? splitHymnNo(displayTitle).title || displayTitle : displayTitle,
     detail: songDetail,
+    detailKind: connectedTitle ? "" : presenterSongTitleDetailKind(song, version),
   };
   if (sectionHeading) {
     return { ...presenterOrderContentTitleSlide(item, section, index, sectionHeading, titleText), songTitle: displayTitle, songTitleContent };
@@ -2351,6 +2352,12 @@ function presenterSongTitleDetail(song = null, version = null) {
     return `${versionName} ${number}장`;
   }
   return String(song?.original_title || "").trim() || String(song?.subtitle || "").trim();
+}
+
+function presenterSongTitleDetailKind(song = null, version = null) {
+  if (presenterSongTitleHymnNo(song, version)) return "hymn";
+  if (String(song?.original_title || "").trim()) return "original";
+  return String(song?.subtitle || "").trim() ? "subtitle" : "";
 }
 
 function presenterSongTitleContent(slide = {}) {
@@ -4884,7 +4891,7 @@ function renderPresenterTitleContentSlide(slide) {
     <div class="presenter-title-content">
       ${slide.fullscreenSongTitle && slide.songTitleContent?.orderTitle ? `<span class="presenter-fullscreen-song-heading">${escapeHtml(slide.songTitleContent.orderTitle)}</span>` : ""}
       <span class="presenter-title-content-title" style="--line-chars: ${escapeAttr(titleChars)}">${slide.fullscreenSongTitle ? renderPresenterSongText(title, slide) : escapeHtml(title)}</span>
-      ${slide.fullscreenSongTitle && slide.songTitleContent?.detail ? `<span class="presenter-fullscreen-song-detail">(${escapeHtml(slide.songTitleContent.detail)})</span>` : ""}
+      ${slide.fullscreenSongTitle && slide.songTitleContent?.detail ? `<span class="presenter-fullscreen-song-detail">${slide.songTitleContent.detailKind === "subtitle" ? `(${escapeHtml(slide.songTitleContent.detail)})` : escapeHtml(slide.songTitleContent.detail)}</span>` : ""}
       ${slide.fullscreenSongTitle ? "" : `<div class="presenter-title-content-body">
         ${bodyLines.map((line) => `<span style="--line-chars: ${presenterLineCharEstimate(line)}">${escapePresenterSlideLine(line, slide)}</span>`).join("")}
       </div>`}
