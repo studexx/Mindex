@@ -627,6 +627,9 @@
   white-space: normal;
   overflow-wrap: anywhere;
 }
+.presenter-fullscreen-song-detail {
+  font-size: calc(75 * var(--presenter-stage-unit));
+}
 .presenter-slide--lyrics,
 .presenter-slide--song-title,
 .presenter-slide--scripture,

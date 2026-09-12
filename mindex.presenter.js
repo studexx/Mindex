@@ -4864,7 +4864,7 @@ function renderPresenterTitleContentSlide(slide) {
     <div class="presenter-title-content">
       ${slide.fullscreenSongTitle && slide.orderTitle ? `<span class="presenter-fullscreen-song-heading">${escapeHtml(slide.orderTitle)}</span>` : ""}
       <span class="presenter-title-content-title" style="--line-chars: ${escapeAttr(titleChars)}">${slide.fullscreenSongTitle ? renderPresenterSongText(title, slide) : escapeHtml(title)}</span>
-      ${slide.fullscreenSongTitle && slide.songDetail ? `<span class="presenter-fullscreen-song-detail">${escapeHtml(slide.songDetail)}</span>` : ""}
+      ${slide.fullscreenSongTitle && slide.songDetail ? `<span class="presenter-fullscreen-song-detail">(${escapeHtml(slide.songDetail)})</span>` : ""}
       ${slide.fullscreenSongTitle ? "" : `<div class="presenter-title-content-body">
         ${bodyLines.map((line) => `<span style="--line-chars: ${presenterLineCharEstimate(line)}">${escapePresenterSlideLine(line, slide)}</span>`).join("")}
       </div>`}

@@ -27,8 +27,9 @@ def main():
                       const heading=root.querySelector('.presenter-fullscreen-song-heading');
                       const title=root.querySelector('.presenter-title-content-title');
                       const detail=root.querySelector('.presenter-fullscreen-song-detail');
-                      if(detail?.textContent!=='Original title') throw Error('Missing song detail');
-                      if(getComputedStyle(detail).fontSize!==getComputedStyle(heading).fontSize || getComputedStyle(detail).fontWeight!=='700' || getComputedStyle(title).fontWeight!=='800') throw Error('Incorrect type hierarchy');
+                      if(detail?.textContent!=='(Original title)') throw Error('Missing song detail');
+                      const detailSize=parseFloat(getComputedStyle(detail).fontSize),headingSize=parseFloat(getComputedStyle(heading).fontSize);
+                      if(Math.abs(detailSize-75*width/1920)>.1 || getComputedStyle(detail).fontWeight!=='700' || getComputedStyle(title).fontWeight!=='800') throw Error('Incorrect type hierarchy');
                       if(heading?.textContent!==label || !title?.textContent.includes('하늘 보좌')) throw Error('Missing title');
                       const h=heading.getBoundingClientRect(),t=title.getBoundingClientRect(),r=root.getBoundingClientRect();
                       if(h.height<=0 || h.bottom>t.top+1 || h.left<r.left-1 || h.right>r.right+1 || t.bottom>r.bottom+1) throw Error('Clipped or overlapping: '+label+' '+width);
