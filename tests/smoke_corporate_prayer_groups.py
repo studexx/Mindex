@@ -40,6 +40,9 @@ def main():
               const rows=buildWorshipPersistenceRows(service,merged);
               validateWorshipPersistenceRows(rows,{serviceId:service.id});
               check(rows.elements.length===3,'wrong persisted row count');
+              const legacyConfig={inputMode:'text',elementType:'title_person'};
+              const migratedConfig=serviceElementConfigForSave(legacyConfig,parseServiceItemMemo(merged[2].memo),{item:merged[2],service});
+              check(migratedConfig.templateKey==='monthly_corporate_prayer_group','existing row loses group type');
               const loaded=groupWorshipElements(rows.sections,rows.elements)[service.id];
               const group=loaded.find(x=>x.label==='공동기도 3·4');
               check(parseServiceItemMemo(group.memo).corporatePrayers[1].assignee==='담당 4','save reload loses person');

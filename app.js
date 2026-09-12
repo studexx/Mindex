@@ -7380,7 +7380,10 @@ function serviceElementConfigForSave(existingConfig = {}, parsed = emptyServiceI
     delete config.inputMode;
     delete config.input_mode;
   }
-  if (parsed.corporatePrayers?.length) config.corporatePrayers = parsed.corporatePrayers;
+  if (parsed.corporatePrayers?.length) {
+    config.corporatePrayers = parsed.corporatePrayers;
+    if (parsed.templateKey === "monthly_corporate_prayer_group") config.templateKey = parsed.templateKey;
+  }
   config.contentState = {
     state: contentState.state,
     reason: contentState.reason,
