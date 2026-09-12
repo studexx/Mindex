@@ -28371,7 +28371,7 @@ function renderDeferredPresenterBoardSection(group, serviceId, groupIndex) {
   const estimatedRows = Math.max(1, Math.ceil(group.slides.length / 5));
   const estimatedHeight = 52 + estimatedRows * 146;
   return `
-    <section class="svc-board-section svc-board-section--deferred" role="listitem"
+    <section class="svc-board-section svc-board-section--deferred" role="listitem" data-presenter-section-key="${escapeAttr(group.id)}"
       data-presenter-deferred-board-section
       data-service-id="${escapeAttr(serviceId)}"
       data-presenter-board-group-index="${groupIndex}"
@@ -28395,10 +28395,10 @@ function renderDeferredPresenterBoardSection(group, serviceId, groupIndex) {
 }
 
 function mountDeferredPresenterBoardSections(root, serviceId, slides) {
+  root?._presenterBoardObserver?.disconnect?.();
   if (!root?.isConnected || !serviceId || typeof IntersectionObserver === "undefined") return;
   const deferredSections = [...root.querySelectorAll("[data-presenter-deferred-board-section]")];
   if (!deferredSections.length) return;
-  root._presenterBoardObserver?.disconnect?.();
   const observer = new IntersectionObserver((entries) => {
     entries.forEach((entry) => {
       if (!entry.isIntersecting) return;
@@ -29078,8 +29078,9 @@ function renderPresenterBoardSection(group, activeIndex, serviceId) {
       slides: annotated.entries,
     });
   }).join("");
+  const contentKey = compactTextSignature(JSON.stringify([group.name, visibleTitle, interactionLabel, firstIndex, referenceMediaQuickAdd, subgroupsHtml]));
   return `
-    <section class="svc-board-section${active ? " active" : ""}" role="listitem" aria-label="${escapeAttr(group.name)}">
+    <section class="svc-board-section${active ? " active" : ""}" role="listitem" aria-label="${escapeAttr(group.name)}" data-presenter-section-key="${escapeAttr(group.id)}" data-presenter-section-content="${escapeAttr(contentKey)}">
       <div class="svc-board-section-head-row">
         <button class="svc-board-section-head" type="button"
           ${firstIndex < 0 ? "disabled" : ""}
@@ -30424,16 +30425,22 @@ function renderPresenterControlState(serviceId = state.selectedServiceId) {
       const viewportSnapshot = capturePresenterViewportSnapshot(serviceId);
       const template = document.createElement("template");
       template.innerHTML = renderServicePresenterControls(service, slides, active, index).trim();
-      const nextRoot = template.content.firstElementChild;
+      let nextRoot = template.content.firstElementChild;
       setRightSidebarContent(renderPresenterRightSidebar(service, slides, active, index));
       try {
-        root.replaceWith(nextRoot);
+        if (sameService && patchPresenterBoardSections(root, nextRoot, serviceId, slides, active, index)) {
+          nextRoot = root;
+        } else {
+          root._presenterBoardObserver?.disconnect?.();
+          root.replaceWith(nextRoot);
+        }
       } catch (error) {
         if (error?.name !== "NotFoundError") throw error;
         renderPresenterDetail();
         return;
       }
       clearPresenterTransientBoardActiveMarks(nextRoot, serviceId);
+      patchPresenterBoardActiveState(nextRoot, serviceId, active, index);
       if (!restorePresenterFocusedThumb(nextRoot, focusedThumb)) {
         restorePresenterFocusedInput(focusedInRightSidebar ? refs.rightSidebar : nextRoot, focusedInput);
       }
@@ -30450,6 +30457,62 @@ function renderPresenterControlState(serviceId = state.selectedServiceId) {
     return;
   }
   updateSaveState();
+}
+
+function patchPresenterBoardSections(root, nextRoot, serviceId, slides, active, index) {
+  const board = root.querySelector(".svc-slide-board");
+  const nextBoard = nextRoot?.querySelector(".svc-slide-board");
+  if (!board || !nextBoard) return false;
+  const currentSections = [...board.querySelectorAll(":scope > .svc-board-section")];
+  const nextSections = [...nextBoard.querySelectorAll(":scope > .svc-board-section")];
+  const keys = (nodes) => nodes.map((node) => node.dataset.presenterSectionKey);
+  const valid = (values) => values.every(Boolean) && new Set(values).size === values.length;
+  if (!valid(keys(currentSections)) || !valid(keys(nextSections))) return false;
+  const mounted = new Map(currentSections.map((node) => [node.dataset.presenterSectionKey, node]));
+  const groups = groupPresenterSlidesBySection(slides, serviceId);
+  const activeIndex = presenterBoardActiveIndex(slides, active, index);
+  const retained = new Map();
+  for (let next of nextSections) {
+    const current = mounted.get(next.dataset.presenterSectionKey);
+    if (!current) continue;
+    // Once visible, keep a section mounted instead of reverting to its placeholder.
+    if (next.hasAttribute("data-presenter-deferred-board-section") && !current.hasAttribute("data-presenter-deferred-board-section")) {
+      const group = groups[Number(next.dataset.presenterBoardGroupIndex)];
+      const template = document.createElement("template");
+      template.innerHTML = renderPresenterBoardSection(group, activeIndex, serviceId).trim();
+      const expanded = template.content.firstElementChild;
+      next.replaceWith(expanded);
+      next = expanded;
+    }
+    if (!current.dataset.presenterSectionContent || current.dataset.presenterSectionContent !== next.dataset.presenterSectionContent) {
+      refreshIcons(next);
+      patchPresenterControlTree(current, next);
+    }
+    retained.set(next, current);
+  }
+  const desired = [...nextBoard.children].map((node) => retained.get(node) || node);
+  [...board.childNodes].forEach((node) => { if (node.nodeType !== Node.ELEMENT_NODE) node.remove(); });
+  let cursor = board.firstElementChild;
+  for (const node of desired) {
+    if (node !== cursor) board.insertBefore(node, cursor);
+    cursor = node.nextElementSibling;
+  }
+  const keep = new Set(desired);
+  [...board.children].forEach((node) => { if (!keep.has(node)) node.remove(); });
+  if (!desired.length) board.replaceChildren(...nextBoard.childNodes);
+  for (const attr of [...board.attributes]) {
+    if (!nextBoard.hasAttribute(attr.name)) board.removeAttribute(attr.name);
+  }
+  for (const attr of [...nextBoard.attributes]) board.setAttribute(attr.name, attr.value);
+  const source = root.querySelector(".svc-source-panel");
+  const nextSource = nextRoot.querySelector(".svc-source-panel");
+  if (source && nextSource && !source.open) {
+    refreshIcons(nextSource);
+    patchPresenterControlTree(source, nextSource);
+  }
+  root.className = nextRoot.className;
+  root.dataset.boardKey = nextRoot.dataset.boardKey;
+  return true;
 }
 
 function capturePresenterFocusedInput(root) {
