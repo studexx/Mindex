@@ -671,3 +671,7 @@ Small visual polish that does not alter behavior does not need an entry.
   기존 `봉헌찬송`, `폐회찬송`)은 제거한다. `새가족환영`은 3부 공통 안내 slot으로
   유지한다. 사용자가 수정한 항목은
   `template_modified`를 존중해 보존한다.
+
+## Empty Praise Removal from Source Text
+- 예배 원문에서 빈 찬양 줄을 지우면 해당 예배의 template suppression을 저장하여 재조회·양식 투영 후에도 다시 생성하지 않는다.
+- 원문 항목이 모두 매칭된 경우만 적용하며, 곡·직접 입력·가사·파일이 있는 순서와 찬양 이외 항목은 이 처리로 삭제하지 않는다.

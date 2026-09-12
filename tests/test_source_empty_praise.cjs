@@ -1,0 +1,14 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+const source=fs.readFileSync(require('node:path').join(__dirname,'../app.js'),'utf8');
+const fn=source.slice(source.indexOf('function suppressOmittedEmptySourcePraiseItems('),source.indexOf('function applyServiceSourceText('));
+const memo={elementType:'praise'};
+const items=[{id:'kept',memo},{id:'empty',memo},{id:'linked',song_id:'song',memo},{id:'manual',raw_title:'곡',memo},{id:'lyrics',memo:{...memo,slides:['가사']}},{id:'asset',memo:{...memo,asset:{url:'score.png'}}},{id:'other',memo:{elementType:'scripture_body'}}];
+const state={serviceItems:{svc:items},templateElementSuppressions:new Map(),dirty:{}};
+const c={state,parseServiceItemMemo:x=>x,serializeServiceItemMemo:x=>x,serviceMemoElementType:x=>x.elementType,normalizeServiceAsset:x=>x||{},hasServiceAsset:x=>Boolean(x.url)};vm.createContext(c);vm.runInContext(fn,c);
+assert.equal(c.suppressOmittedEmptySourcePraiseItems({id:'svc'},items.map((item,index)=>({item,index})),new Set([0])),1);
+assert.deepEqual(state.serviceItems.svc.map(x=>x.id),['kept','linked','manual','lyrics','asset','other']);
+assert.equal(state.templateElementSuppressions.get('empty').memo.templateSuppressed,true);
+assert.equal(state.templateElementSuppressions.get('empty').service_id,'svc');
+assert.equal(state.dirty.service,true);
+assert(source.includes('if (usedIndexes.size === records.length) {\n    suppressOmittedEmptySourcePraiseItems'));
+console.log('PASS omitted empty praise suppression; filled and non-praise items preserved');

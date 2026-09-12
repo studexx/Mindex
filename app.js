@@ -24735,6 +24735,34 @@ function applyPendingServiceSourceTextBeforeSave(serviceId = state.selectedServi
   });
 }
 
+function suppressOmittedEmptySourcePraiseItems(service, candidates, usedIndexes) {
+  const omitted = candidates.filter(({ item, index }) => {
+    const memo = parseServiceItemMemo(item.memo);
+    return !usedIndexes.has(index)
+      && serviceMemoElementType(memo) === "praise"
+      && !item.song_id
+      && !String(item.raw_title || item.title || "").trim()
+      && !(memo.slides || []).some((slide) => String(slide || "").trim())
+      && !hasServiceAsset(normalizeServiceAsset(memo.asset));
+  });
+  const removedIds = new Set();
+  omitted.forEach(({ item }) => {
+    if (!item.id) return;
+    state.templateElementSuppressions.set(item.id, {
+      ...item,
+      service_id: service.id,
+      memo: serializeServiceItemMemo({ ...parseServiceItemMemo(item.memo), templateSuppressed: true }),
+      _worshipElementTemplateModified: true,
+    });
+    removedIds.add(item.id);
+  });
+  if (removedIds.size) {
+    state.serviceItems[service.id] = (state.serviceItems[service.id] || []).filter((item) => !removedIds.has(item.id));
+    state.dirty.service = true;
+  }
+  return removedIds.size;
+}
+
 function applyServiceSourceText(serviceId = state.selectedServiceId, options = {}) {
   const id = String(serviceId || "").trim();
   const service = state.services.find((candidate) => candidate.id === id);
@@ -24761,6 +24789,9 @@ function applyServiceSourceText(serviceId = state.selectedServiceId, options = {
   if (!applied) {
     if (!options.silent) showToast("반영할 예배 원문 항목을 찾지 못했습니다.", "error");
     return false;
+  }
+  if (usedIndexes.size === records.length) {
+    suppressOmittedEmptySourcePraiseItems(service, candidates, usedIndexes);
   }
   service._worshipSourceTextDraft = textarea.value;
   textarea.dataset.serviceSourceSignature = compactTextSignature(textarea.value);
