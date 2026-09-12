@@ -29517,7 +29517,7 @@ function renderPresenterBoardSubgroupAudioControls(serviceId, subgroup = {}) {
       <label class="svc-board-subgroup-audio-upload" title="${source ? "음원 교체" : "음원 추가"}">
         <input type="file" accept="${SERVICE_ITEM_AUDIO_ACCEPT}" data-service-item-audio-file
           data-service-id="${escapeAttr(serviceId)}" data-service-item-index="${context.index}" />
-        <i data-lucide="${source ? "refresh-cw" : "upload"}"></i><span>${source ? "교체" : "음원 추가"}</span>
+        <i data-lucide="${source ? "refresh-cw" : "upload"}"></i><span>${source ? "교체" : "음원"}</span>
       </label>
     </div>`;
 }
@@ -29542,7 +29542,7 @@ function renderPresenterBoardSubgroupInputControls(serviceId, subgroup = {}) {
             data-service-item-commit
             data-service-id="${escapeAttr(serviceId)}"
             data-service-item-index="${escapeAttr(String(context.index))}">
-            <i data-lucide="check"></i><span>반영·저장</span>
+            <i data-lucide="check"></i><span>저장</span>
           </button>
           ${audioControls}
         </div>
@@ -29645,7 +29645,7 @@ function renderPresenterBoardItemAudioControls(serviceId, context = {}) {
       <label class="svc-board-subgroup-audio-upload" title="${source ? "음원 교체" : "음원 추가"}">
         <input type="file" accept="${SERVICE_ITEM_AUDIO_ACCEPT}" data-service-item-audio-file
           data-service-id="${escapeAttr(serviceId)}" data-service-item-index="${context.index}" />
-        <i data-lucide="${source ? "refresh-cw" : "upload"}"></i><span>${source ? "교체" : "음원 추가"}</span>
+        <i data-lucide="${source ? "refresh-cw" : "upload"}"></i><span>${source ? "교체" : "음원"}</span>
       </label>
     </div>`;
 }
