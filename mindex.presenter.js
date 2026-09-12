@@ -2304,8 +2304,9 @@ function presenterSongTitleSlide(item, section, song, version, displayText, inde
   const sectionHeading = presenterSongTitleSectionHeading(item, section);
   const displayTitle = presenterSongTitleDisplayTitle(connectedTitle ? null : song, connectedTitle ? null : version, effectiveDisplayText, sectionHeading);
   const titleText = presenterSongTitleContentText(displayTitle, sectionHeading);
+  const songDetail = connectedTitle ? "" : presenterSongTitleDetail(song, version);
   if (sectionHeading) {
-    return { ...presenterOrderContentTitleSlide(item, section, index, sectionHeading, titleText), songTitle: displayTitle };
+    return { ...presenterOrderContentTitleSlide(item, section, index, sectionHeading, titleText), songTitle: displayTitle, songDetail };
   }
   return {
     id: `${item.id || index}:song-title`,
@@ -2316,6 +2317,7 @@ function presenterSongTitleSlide(item, section, song, version, displayText, inde
     label: item.label || "",
     title: displayTitle,
     subtitle: connectedTitle ? "" : versionDisplayName(song, version),
+    songDetail,
     marker,
     sectionHeading,
     bodyText: "",
@@ -2329,6 +2331,16 @@ function presenterSongTitleContentText(displayTitle = "", sectionHeading = "") {
   const headingKey = compactSearchValue(sectionHeading);
   if (!titleKey || (headingKey && titleKey === headingKey)) return "입력 필요";
   return formatPresenterSongTitleText(displayTitle);
+}
+
+function presenterSongTitleDetail(song = null, version = null) {
+  const hymnNo = presenterSongTitleHymnNo(song, version);
+  if (hymnNo) {
+    const number = hymnNo.replace(/^통\s*/, "");
+    const versionName = versionDisplayName(song, version);
+    return `${versionName} ${number}장`;
+  }
+  return String(song?.original_title || "").trim() || String(song?.subtitle || "").trim();
 }
 
 function presenterOrderContentTitleSlide(item, section, index, orderTitle = "", contentTitle = "") {
@@ -4852,6 +4864,7 @@ function renderPresenterTitleContentSlide(slide) {
     <div class="presenter-title-content">
       ${slide.fullscreenSongTitle && slide.orderTitle ? `<span class="presenter-fullscreen-song-heading">${escapeHtml(slide.orderTitle)}</span>` : ""}
       <span class="presenter-title-content-title" style="--line-chars: ${escapeAttr(titleChars)}">${slide.fullscreenSongTitle ? renderPresenterSongText(title, slide) : escapeHtml(title)}</span>
+      ${slide.fullscreenSongTitle && slide.songDetail ? `<span class="presenter-fullscreen-song-detail">${escapeHtml(slide.songDetail)}</span>` : ""}
       ${slide.fullscreenSongTitle ? "" : `<div class="presenter-title-content-body">
         ${bodyLines.map((line) => `<span style="--line-chars: ${presenterLineCharEstimate(line)}">${escapePresenterSlideLine(line, slide)}</span>`).join("")}
       </div>`}

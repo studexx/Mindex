@@ -618,7 +618,8 @@
   font-size: var(--presenter-size-song-title);
   font-weight: var(--presenter-weight-display);
 }
-.presenter-fullscreen-song-heading {
+.presenter-fullscreen-song-heading,
+.presenter-fullscreen-song-detail {
   max-width: 100%;
   font-size: var(--presenter-size-meta);
   font-weight: var(--presenter-weight-body);
