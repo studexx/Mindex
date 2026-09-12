@@ -29042,8 +29042,16 @@ function presenterBoardEntries(slides, service) {
 function groupPresenterSlidesBySection(slides, serviceId = state.selectedServiceId) {
   const service = state.services.find((svc) => svc.id === serviceId);
   const groups = [];
+  const owners = new Map();
+  slides.forEach((slide) => {
+    const key = presenterSlideElementGroupKey(slide);
+    if (key && !slide.autoTrailingBlank && !owners.has(key)) owners.set(key, slide);
+  });
   presenterBoardEntries(slides, service).forEach(({ slide, slideIndex }) => {
-    const mainPraise = isPresenterMainPraiseSlide(slide);
+    // Blank payload is empty by design; use its owner for controller grouping.
+    const groupSource = slide.autoTrailingBlank
+      ? owners.get(presenterSlideElementGroupKey(slide)) || slide : slide;
+    const mainPraise = isPresenterMainPraiseSlide(groupSource);
     const mainPraiseMarker = mainPraise && isPresenterPraiseSectionMarkerSlide(slide);
     const mainPraiseAssignee = mainPraiseMarker
       ? cleanPresenterAssignee(slide.bodyText || slide.subtitle || slide.assignee || slide.sectionAssignee)
@@ -29051,7 +29059,7 @@ function groupPresenterSlidesBySection(slides, serviceId = state.selectedService
     const praiseMeta = mainPraise
       ? servicePraiseBoardMetaCandidate(service, [{ assignee: mainPraiseAssignee, praiseIntro: mainPraiseMarker }])
       : { text: "", priority: 0 };
-    const id = mainPraise ? presenterMainPraiseGroupId(slide) : presenterBoardSectionGroupId(slide, slideIndex);
+    const id = mainPraise ? presenterMainPraiseGroupId(groupSource) : presenterBoardSectionGroupId(groupSource, slideIndex);
     const previous = groups[groups.length - 1];
     let group = mainPraise
       ? groups.find((candidate) => candidate.kind === "main-praise" && candidate.id === id)
@@ -29060,7 +29068,7 @@ function groupPresenterSlidesBySection(slides, serviceId = state.selectedService
         : null;
 
     if (!group) {
-      group = createPresenterSlideGroup(slide, slideIndex, {
+      group = createPresenterSlideGroup(groupSource, slideIndex, {
         id,
         kind: mainPraise ? "main-praise" : "item",
         praiseMeta: praiseMeta.text,

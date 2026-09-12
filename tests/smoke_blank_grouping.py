@@ -33,6 +33,23 @@ def main():
                   const blank=presenterElementTrailingBlankSlide(ready,1,service);
                   check(!isPresenterPreparationSlide(blank),'blank classified as ready');
                   check(isPresenterPreparationSlide(ready),'ready lost');
+                  const keys=['ready','praise','entrance_praise','special_song','scripture_reading',
+                    'sermon','offering','announcements','closing_hymn','closing_visual'];
+                  const fixtures=keys.map(key=>({id:key,elementId:key,sectionId:'section-'+key,
+                    sectionKey:key,sectionRole:key==='praise'?'main-praise':'',label:key,elementLabel:key,
+                    type:'image',layout:'media',imageSrc:'test.png'}));
+                  for(const source of fixtures) {
+                    const pair=withPresenterElementTrailingBlanks([source],service);
+                    const before=JSON.stringify(pair);
+                    const grouped=groupPresenterSlidesBySection(pair,service.id);
+                    check(grouped.length===1 && grouped[0].subgroups.length===1,'split '+source.sectionKey);
+                    check(grouped[0].subgroups[0].slides.length===2,'detached blank '+source.sectionKey);
+                    check(JSON.stringify(pair)===before,'mutated output '+source.sectionKey);
+                  }
+                  const closing=withPresenterElementTrailingBlanks(fixtures.slice(-2),service);
+                  const closingGroups=groupPresenterSlidesBySection(closing,service.id);
+                  check(closingGroups.length===1 && closingGroups[0].subgroups.length===2,'combined closing group split');
+                  check(closingGroups[0].slides.map(e=>e.slide.id).join()===closing.map(s=>s.id).join(),'closing order');
                   return 'PASS three songs, one section, three editor groups, each blank follows its song, ready classification';
                 }'''))
                 browser.close()

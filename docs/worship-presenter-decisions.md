@@ -1,5 +1,12 @@
 # Worship / Presenter Decision Log
 
+## Automatic Blank Grouping (2026-09-13)
+
+- Controller section grouping uses the originating element's non-automatic slide
+  for automatic blanks. Empty output metadata must not split the controller group.
+- This applies to all sections, including the shared closing hymn/visual group.
+  Output payload, slide order, and persisted worship data are unchanged.
+
 ## Blank Group Ownership (2026-09-12)
 
 - Keep sectionRole on generated blanks: the controller uses it to keep praise
