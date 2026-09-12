@@ -26974,7 +26974,7 @@ function presenterPreparationPlaceholderForService(service) {
   for (const item of items) {
     const context = presenterServiceInputItem(item, service);
     if (!context) continue;
-    for (const line of presenterPreparationPlaceholderLinesForItem(item, service, context)) {
+    for (const line of presenterPreparationPlaceholderLinesForItem(item, service, { ...context, exampleIndex: lines.length })) {
       addLine(line);
     }
   }
@@ -26997,9 +26997,13 @@ function presenterPreparationPlaceholderLinesForItem(item, service, context) {
     if (!base) return [];
     const special = isSpecialSongServiceItem(item);
     const ordinal = Number(label.match(/\d+$/)?.[0] || 1);
-    const song = special ? "그 크신 하나님의 사랑"
-      : mode === "score_db" ? "찬 250장"
-        : ["주 은혜임을", "꽃들도", "주 품에"][(ordinal - 1) % 3] || "주 은혜임을";
+    const exampleIndex = context.exampleIndex ?? (ordinal - 1);
+    const songs = ["주 은혜임을", "꽃들도", "주 품에", "주님의 선하심", "주님 큰 영광 받으소서",
+      "나의 반석이신 하나님", "부르신 곳에서", "주 예수보다 더 귀한 것은 없네", "그 크신 하나님의 사랑", "내 주 되신 주를 참 사랑하고"];
+    const hymns = [250, 288, 35, 180, 314, 310, 305, 428, 545, 620];
+    const song = mode === "score_db" ? `찬 ${hymns[exampleIndex % hymns.length]}장`
+      : special && context.exampleIndex === undefined ? "그 크신 하나님의 사랑"
+        : songs[exampleIndex % songs.length];
     return [`${base}: ${song}${special ? " / 찬양대" : ""}`];
   }
   if (mode === "scripture" || isScriptureBodyServiceItem(item)) {

@@ -1,5 +1,13 @@
 # Worship / Presenter Decision Log
 
+## Welcome Blank And Examples (2026-09-12)
+
+- Praise welcome uses the common trailing-blank rule; it no longer explicitly
+  suppresses its blank. Ready and closing-screen behavior is unchanged.
+- The first ten bulk-input example lines choose distinct song/hymn examples by
+  displayed position, rather than repeating one hymn or cycling three songs.
+- These changes do not modify persisted worship content.
+
 ## Preparation Examples (2026-09-12)
 
 - Manual praise examples use the persisted input mode even when the editor

@@ -2234,7 +2234,7 @@ def main() -> int:
                         "subtitle": "",
                         "bodyText": "썸프레이즈",
                         "text": "찬양\n썸프레이즈",
-                        "skipTrailingBlank": True,
+                        "skipTrailingBlank": False,
                         "boardGroupLabel": "찬양",
                         "boardSubgroupLabel": "환영",
                         "boardSubgroupTitle": "",

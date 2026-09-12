@@ -1690,7 +1690,7 @@ function presenterElementSlideFromMemoCore(item, section, index, memo, displayTe
       marker: "",
       text: [displayTitle, bodyText].filter(Boolean).join("\n"),
       sort: index,
-      ...(mainPraiseIntro ? { skipTrailingBlank: true, _praiseIntroSlide: true } : {}),
+      ...(mainPraiseIntro ? { _praiseIntroSlide: true } : {}),
     };
   }
   if (presenterMemoElementIsTitleSlide(elementType)) {
