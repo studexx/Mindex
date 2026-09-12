@@ -2446,7 +2446,7 @@ function presenterSongTitleNormalizedHeading(heading = "", sectionKey = "") {
     doxology: "송영",
     sending: "송영",
     response_song: "결단찬양",
-    prayer_meeting_praise: "기도 찬양",
+    prayer_meeting_praise: "기도찬양",
     closing_hymn: "폐회찬송",
     closing_visual: "폐회찬송",
     closing_song: "폐회찬송",

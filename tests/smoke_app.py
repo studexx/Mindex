@@ -2698,7 +2698,7 @@ def main() -> int:
                             }, {
                               id: '__smoke_friday_3355_legacy_prayer_song__',
                               service_id: service.id,
-                              label: '기도 찬양 1',
+                              label: '기도찬양 1',
                               raw_title: '주여 이 시간',
                               _worshipSectionKey: 'prayer_meeting_praise',
                               _worshipSectionTitle: '기도회',
@@ -3551,7 +3551,7 @@ def main() -> int:
                               sourceFound: Boolean(target.id),
                               suppressed: isTemplateSuppressedServiceItem(suppressed),
                               projected: projected.some((item) => item.label === '특송'),
-                              preservedSlots: ['교회소식', '성경봉독', '입례찬양', '결단찬양', '기도 찬양 1', '자율기도']
+                              preservedSlots: ['교회소식', '성경봉독', '입례찬양', '결단찬양', '기도찬양 1', '자율기도']
                                 .map((label) => ({
                                   label,
                                   sectionKey: itemFor(label)._worshipSectionKey || '',
@@ -4054,7 +4054,7 @@ def main() -> int:
                         and "입례찬양" not in template_terms["friday3355Scaffold"]["projectedSections"]
                         and "입례찬양" not in template_terms["friday3355Scaffold"]["projectedLabels"]
                         and "기도회" not in template_terms["friday3355Scaffold"]["projectedSections"]
-                        and "기도 찬양 1" not in template_terms["friday3355Scaffold"]["projectedLabels"]
+                        and "기도찬양 1" not in template_terms["friday3355Scaffold"]["projectedLabels"]
                         and "자율기도" not in template_terms["friday3355Scaffold"]["projectedLabels"]
                         and template_terms["friday3355Scaffold"]["sending"] == [
                             {"label": "축도", "person": "김남영 목사"},
@@ -4455,7 +4455,7 @@ def main() -> int:
                             "찬양 1", "찬양 2", "찬양 3", "찬양 4", "찬양 5"
                         ]
                         and any(
-                            item["label"] == "기도 찬양 1"
+                            item["label"] == "기도찬양 1"
                             and item["sectionKey"] == "prayer_meeting_praise"
                             for item in template_terms["fridayScaffold"]["rawTitles"]
                         )
@@ -4510,7 +4510,7 @@ def main() -> int:
 	                                {"label": "성경봉독", "sectionKey": "scripture_reading", "title": "입력:성경봉독"},
 	                                {"label": "입례찬양", "sectionKey": "entrance_praise", "title": "입력:입례찬양"},
 	                                {"label": "결단찬양", "sectionKey": "response_song", "title": "입력:결단찬양"},
-	                                {"label": "기도 찬양 1", "sectionKey": "prayer_meeting_praise", "title": "입력:기도 찬양 1"},
+	                                {"label": "기도찬양 1", "sectionKey": "prayer_meeting_praise", "title": "입력:기도찬양 1"},
 	                                {"label": "자율기도", "sectionKey": "prayer_meeting_praise", "title": "입력:자율기도"},
 	                            ],
 	                        }
@@ -8719,7 +8719,7 @@ def main() -> int:
                     presenter_preparation_label_priority = page.evaluate(
                         """
                         (() => {
-                          const parsed = parsePresenterPreparationInput(`기도 찬양 나의 반석이신 하나님
+                          const parsed = parsePresenterPreparationInput(`기도찬양 나의 반석이신 하나님
 기도찬양2 부흥
 대표기도 문병자 권사
 특송 찬 430
@@ -8746,8 +8746,8 @@ def main() -> int:
                     if (
                         presenter_preparation_label_priority.get("errors") == []
                         and presenter_preparation_label_priority.get("entries") == [
-                            {"rawLabel": "기도 찬양", "label": "기도 찬양", "key": "기도찬양", "rawKey": "기도찬양", "content": "나의 반석이신 하나님"},
-                            {"rawLabel": "기도찬양 2", "label": "기도 찬양 2", "key": "기도찬양2", "rawKey": "기도찬양2", "content": "부흥"},
+                            {"rawLabel": "기도찬양", "label": "기도찬양", "key": "기도찬양", "rawKey": "기도찬양", "content": "나의 반석이신 하나님"},
+                            {"rawLabel": "기도찬양 2", "label": "기도찬양 2", "key": "기도찬양2", "rawKey": "기도찬양2", "content": "부흥"},
                             {"rawLabel": "대표기도", "label": "대표기도", "key": "대표기도", "rawKey": "대표기도", "content": "문병자 권사"},
                             {"rawLabel": "특송", "label": "특송", "key": "특송", "rawKey": "특송", "content": "찬 430"},
                             {"rawLabel": "말씀", "label": "설교 본문", "key": "설교본문", "rawKey": "말씀", "content": "신유란 무엇인가요?"},
@@ -9161,10 +9161,10 @@ def main() -> int:
                             }, {
                               id: '__smoke_friday_legacy_prayer_praise__',
                               service_id: fridayService.id,
-                              label: '기도 찬양 1',
+                              label: '기도찬양 1',
                               memo: serializeServiceItemMemo({ elementType: 'praise', inputMode: 'praise_db' }),
                               _worshipSectionKey: 'prayer_meeting_praise',
-                              _worshipSectionTitle: '기도 찬양',
+                              _worshipSectionTitle: '기도찬양',
                               _worshipElementTemplateModified: true,
                             }]);
                             const freePrayer = state.serviceItems[fridayService.id].find((entry) => entry.label === '자율기도') || {};
@@ -9180,7 +9180,7 @@ def main() -> int:
 
 금요기도회입니다!
 입례찬양 주 예수 나의 산 소망 G
-기도 찬양 마지막 날에 D
+기도찬양 마지막 날에 D
 기도찬양2 부흥 G`;
                             await applyPresenterPreparationInput(fridayService.id);
                             const fridayItems = state.serviceItems[fridayService.id] || [];
@@ -9287,8 +9287,8 @@ def main() -> int:
                                 placeholder: fridayPlaceholder,
                                 labels: ['찬양 1', '찬양 2', '찬양 3', '찬양 4', '찬양 5'].map((label) => fridayByLabel(label).label || ''),
                                 praiseSongIds: ['찬양 1', '찬양 2', '찬양 3', '찬양 4', '찬양 5'].map((label) => fridayByLabel(label).song_id || ''),
-                                entryPraiseSongIds: ['입례찬양', '기도 찬양 1', '기도 찬양 2'].map((label) => fridayByLabel(label).song_id || ''),
-                                prayerPraiseOneRawTitle: fridayByLabel('기도 찬양 1').raw_title || '',
+                                entryPraiseSongIds: ['입례찬양', '기도찬양 1', '기도찬양 2'].map((label) => fridayByLabel(label).song_id || ''),
+                                prayerPraiseOneRawTitle: fridayByLabel('기도찬양 1').raw_title || '',
                                 prayerAssignee: fridayByLabel('대표기도').assignee || fridayByLabel('기도').assignee || '',
                                 songInputs: ['주 내 소망은 주 더 알기 원합니다 G', '오직 주의 사랑에 매여 D', '내 삶의 이유라 D'].map(presenterPreparationSongContent),
                                 legacyEntranceLabel: fridayLegacyItems.find((entry) => entry.label === '입례찬양')?.label || '',

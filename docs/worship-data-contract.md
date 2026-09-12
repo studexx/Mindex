@@ -94,8 +94,8 @@ Initial slot examples:
 | `response.song` | 결단찬양 | `response_song` | `praise` | `lyrics_db` / `score_db` / `manual_praise` | lyrics/score | Optional by service type. |
 | `response.prayer` | 결단기도 | `response_song` | `title_person` or `title` | `text` | title-assignee/title | Service templates decide whether 담당자 is needed. |
 | `prayer.corporate.N` | 공동기도 N | `corporate_prayer` | `title_person` | `text` | title-assignee | Repeatable monthly prayer slots. |
-| `prayer.corporate.song` | 기도 찬양 | `corporate_prayer` | `praise` | `lyrics_db` / `score_db` | lyrics/score | Monthly prayer praise within corporate prayer. |
-| `prayer.meeting.song.N` | 기도 찬양 N | `prayer_meeting_praise` | `praise` | `lyrics_db` / `score_db` | lyrics/score | Friday/prayer-meeting praise slots. |
+| `prayer.corporate.song` | 기도찬양 | `corporate_prayer` | `praise` | `lyrics_db` / `score_db` | lyrics/score | Monthly prayer praise within corporate prayer. |
+| `prayer.meeting.song.N` | 기도찬양 N | `prayer_meeting_praise` | `praise` | `lyrics_db` / `score_db` | lyrics/score | Friday/prayer-meeting praise slots. |
 | `prayer.meeting.free` | 자율기도 | `prayer_meeting_praise` | `plain_text` / `title_person` | `text` | title/body | Free prayer slot. |
 | `offering.praise` | 봉헌찬송 | `offering` | `praise` | `score_db` / `lyrics_db` | score/lyrics | Regular public services only unless explicitly enabled. |
 | `offering.special` | 봉헌특송 | `offering` | `praise` | `lyrics_db` / `manual_praise` / `score_db` | lyrics/score | Optional dated/manual slot. |
@@ -459,7 +459,7 @@ monthly
 ├─ 08. Corporate Prayer / corporate_prayer
 │  ├─ title_person / 공동기도 1
 │  ├─ title_person / 공동기도 2
-│  ├─ praise / 기도 찬양
+│  ├─ praise / 기도찬양
 │  ├─ title_person / 공동기도 3
 │  └─ title_person / 공동기도 4
 ├─ 09. Offering / offering

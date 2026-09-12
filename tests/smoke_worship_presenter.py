@@ -2131,7 +2131,7 @@ def main() -> int:
                               sectionId: '__smoke_prayer_meeting__',
                               sectionKey: 'prayer_meeting_praise',
                               sectionLabel: '기도회',
-                              elementLabel: '기도 찬양 2',
+                              elementLabel: '기도찬양 2',
                               elementType: 'praise',
                               layout: 'lower_bar_text',
                               type: 'song-title',

@@ -272,6 +272,7 @@ function normalizePresenterPreparationInputLabel(label = "") {
   const aliases = {
     기도: "대표기도",
     대표기도: "대표기도",
+    기도찬양: "기도찬양",
     성경: "성경봉독",
     성경본문: "성경봉독",
     성경봉독본문: "성경봉독",
@@ -300,7 +301,7 @@ function normalizePresenterPreparationInputLabel(label = "") {
   if (numbered) {
     const displayBase = {
       찬양: "찬양",
-      기도찬양: "기도 찬양",
+      기도찬양: "기도찬양",
       공동기도: "공동기도",
     }[numbered[1]] || numbered[1];
     return `${displayBase} ${Number(numbered[2])}`;
@@ -348,6 +349,7 @@ function presenterPreparationTargetLabel(key = "", service = null, content = "")
   }
   return {
     대표기도: "대표기도",
+    기도찬양: "기도찬양",
     기도: "대표기도",
     성경: "성경봉독",
     성경봉독: "성경봉독",

@@ -20261,8 +20261,8 @@ function publicFridayTemplate() {
       flex: true,
       sectionKey: "prayer_meeting_praise",
       elements: [
-        { label: "기도 찬양 1", name: "기도 찬양 1", elementType: "praise" },
-        { label: "기도 찬양 2", name: "기도 찬양 2", elementType: "praise" },
+        { label: "기도찬양 1", name: "기도찬양 1", elementType: "praise" },
+        { label: "기도찬양 2", name: "기도찬양 2", elementType: "praise" },
         { label: "자율기도", name: "자율기도", elementType: "title", default_text: "자율기도" },
       ],
     },

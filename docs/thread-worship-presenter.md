@@ -81,7 +81,7 @@ Service > Section > Element > Slide
 Concrete hierarchy examples:
 
 - `월삭예배 > 월삭 기도 > 기도 1 > 제목/담당자 slide`
-- `월삭예배 > 월삭 기도 > 기도 찬양 > praise title/body slides`
+- `월삭예배 > 월삭 기도 > 기도찬양 > praise title/body slides`
 - `주일예배 > 찬양 > 가서 제자 삼으라 > praise title/body slides`
 - `주일예배 > 신앙고백 > 사도신경 > body slides`
 - `주일예배 > 봉헌 > 봉헌찬양 > praise slides`
