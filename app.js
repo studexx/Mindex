@@ -31426,7 +31426,7 @@ function serviceDocumentPresenterSlides(service = null) {
   const withReady = restored[0] && isPresenterPreparationSlide(restored[0])
     ? restored
     : [presenterReadySlide(service), ...restored];
-  return normalizePresenterSlidesForServiceOutput(withReady, service);
+  return withPresenterElementTrailingBlanks(normalizePresenterSlidesForServiceOutput(withReady, service), service);
 }
 
 function serviceDocumentSlideToPresenterSlide(slide = {}, index = 0, service = null) {

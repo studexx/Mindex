@@ -1,5 +1,12 @@
 # Worship / Presenter Decision Log
 
+## Document Restore Blanks (2026-09-13)
+
+- While document-slide fallback remains active, restored slides pass through the
+  same trailing-blank policy as item-built slides. Existing blanks are retained.
+- This does not recreate the fallback in checkouts that have removed it, mutate
+  stored snapshots, or change which data source is selected for presentation.
+
 ## Automatic Blank Grouping (2026-09-13)
 
 - Controller section grouping uses the originating element's non-automatic slide
