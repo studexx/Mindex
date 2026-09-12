@@ -31626,6 +31626,7 @@ function presenterSlideIsTitleContent(slide) {
 }
 
 function presenterFixedTitleText(item = {}) {
+  if (isAnnouncementTextInputItem(item)) return "";
   const label = compactSearchValue(item?.label || item?.raw_title || "");
   const sectionKey = String(item?._worshipSectionKey || item?.sectionKey || item?.section_key || "").trim();
   if (sectionKey === "confession" && label === "사죄의선언") return "사죄의 선언";
