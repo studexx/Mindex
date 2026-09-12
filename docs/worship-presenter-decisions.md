@@ -1,5 +1,17 @@
 # Worship / Presenter Decision Log
 
+## Individual Input Feedback (2026-09-12)
+
+- The individual editor command is labeled `반영·저장`: it still applies the
+  fields and saves to the DB. Quick worship input retains its separate semantics.
+- Visible editors show modified, saving, saved, or failed feedback next to the
+  command. Feedback updates do not replace input DOM or move focus.
+- Save completion compares the captured field values and pending deferred input.
+  Later typing remains modified; failure leaves the draft intact. Feedback is
+  transient UI state, not persisted worship metadata.
+- Individual commit returns the real save result, including false on validation
+  or persistence failure. Existing save serialization and synchronization remain.
+
 ## Sunday Edit Synchronization (2026-09-12)
 
 - Each service displays and edits its own persisted values. Empty values do not

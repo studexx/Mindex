@@ -8123,6 +8123,19 @@ textarea.svc-presenter-input-control--multiline {
   min-height: 30px;
   white-space: nowrap;
 }
+
+.svc-input-status {
+  min-width: 5.5em;
+  font-size: 12px;
+  line-height: 1.4;
+  text-align: right;
+  color: var(--ink-3);
+}
+
+[data-input-status="error"] > .svc-board-subgroup-flow .svc-input-status {
+  color: var(--danger);
+  font-weight: 700;
+}
 .svc-board-subgroup-control-label {
   flex: 1 0 100%;
   grid-column: 1 / -1;

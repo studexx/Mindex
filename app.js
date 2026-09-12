@@ -6308,6 +6308,7 @@ async function waitForServiceSave(options, resume, itemId = "") {
 }
 
 async function runServiceSave(options, save) {
+  const feedback = beginServiceInputFeedback(options.feedbackServiceId, options.feedbackItemId);
   state.saving = true;
   updateSaveState();
   const savePromise = (async () => {
@@ -6316,8 +6317,11 @@ async function runServiceSave(options, save) {
   })();
   activeServiceSavePromise = savePromise;
   try {
-    return await savePromise;
+    const result = await savePromise;
+    finishServiceInputFeedback(feedback, Boolean(result));
+    return result;
   } catch (error) {
+    finishServiceInputFeedback(feedback, false);
     const message = serviceSaveErrorMessage(error);
     if (!options.silent) showToast(message, "error");
     if (options.throwOnError) throw new Error(message);
@@ -6350,7 +6354,7 @@ async function saveService(serviceId = state.selectedServiceId, options = {}) {
     return false;
   }
 
-  return Boolean(await runServiceSave(options, async () => {
+  return Boolean(await runServiceSave({ ...options, feedbackServiceId: serviceId }, async () => {
     let saved = { unchanged: true };
     if (service && !service._isExpected) {
       saved = await saveWorshipServiceInstance(service);
@@ -6626,7 +6630,7 @@ async function saveServiceItemPatch(serviceId = state.selectedServiceId, index =
   }
 
   let needsFullSave = false;
-  const result = await runServiceSave(options, async () => {
+  const result = await runServiceSave({ ...options, feedbackServiceId: serviceId, feedbackItemId: itemId }, async () => {
     const saved = await saveWorshipServiceElementPatch(service, item.id);
     if (!saved) {
       needsFullSave = true;
@@ -9091,6 +9095,7 @@ function handleDetailInput(event) {
 
   const serviceField = event.target.closest("[data-service-item-field]");
   if (serviceField) {
+    markServiceInputFeedbackChanged(serviceField);
     if (isDeferredServiceTextInput(serviceField)) {
       if (isPresenterEnterCommittedServiceInput(serviceField)) {
         clearDeferredServiceTextPreview(serviceField);
@@ -9961,11 +9966,10 @@ async function commitServiceItemInputs(serviceId = state.selectedServiceId, inde
     touched = true;
   });
   if (!touched) return false;
-  await resolveAndSaveCommittedServiceItem(serviceId, itemIndex, {
+  return Boolean(await resolveAndSaveCommittedServiceItem(serviceId, itemIndex, {
     renderAfterSave: false,
     resolveScriptureBeforeSave: false,
-  });
-  return true;
+  }));
 }
 
 function commitActiveDeferredServiceTextInput(serviceId = state.selectedServiceId) {
@@ -9996,14 +10000,67 @@ function serviceItemSelectSaveOptions(field) {
 }
 
 async function resolveAndSaveCommittedServiceItem(serviceId, index, options = {}) {
-  await resolveServiceSongSelectionBeforeSave(serviceId, index);
-  if (options.resolveScriptureBeforeSave !== false) {
-    await resolveServiceScriptureBeforeSave(serviceId, index);
+  const itemId = getServiceItems(serviceId)[index]?.id;
+  const feedback = itemId ? beginServiceInputFeedback(serviceId, itemId) : [];
+  let saved = false;
+  try {
+    await resolveServiceSongSelectionBeforeSave(serviceId, index);
+    if (options.resolveScriptureBeforeSave !== false) {
+      await resolveServiceScriptureBeforeSave(serviceId, index);
+    }
+    const item = getServiceItems(serviceId)[index];
+    const service = state.services.find((candidate) => candidate.id === serviceId);
+    if (!item || !service || serviceItemSongSelectionInvalid(item, service) || serviceItemScriptureInputInvalid(item)) return false;
+    saved = await saveServiceItemPatch(serviceId, index, options);
+    return saved;
+  } finally {
+    finishServiceInputFeedback(feedback, Boolean(saved));
   }
-  const item = getServiceItems(serviceId)[index];
-  const service = state.services.find((candidate) => candidate.id === serviceId);
-  if (!item || !service || serviceItemSongSelectionInvalid(item, service) || serviceItemScriptureInputInvalid(item)) return;
-  await saveServiceItemPatch(serviceId, index, options);
+}
+
+function serviceInputFeedbackSignature(editor) {
+  return JSON.stringify([...editor.querySelectorAll("input[data-service-item-field], textarea[data-service-item-field], select[data-service-item-field]")]
+    .map((field) => [field.dataset.serviceItemField, field.value, field.checked]));
+}
+
+function setServiceInputFeedback(editor, status) {
+  const labels = { modified: "수정됨", saving: "반영·저장 중", saved: "저장됨", error: "저장 실패" };
+  editor.dataset.inputStatus = status;
+  const feedback = editor.querySelector("[data-service-input-status]");
+  if (feedback) feedback.textContent = labels[status] || "";
+  const button = editor.querySelector("[data-service-item-commit]");
+  if (button) {
+    button.disabled = status === "saving";
+    button.setAttribute("aria-busy", String(status === "saving"));
+  }
+}
+
+function markServiceInputFeedbackChanged(field) {
+  const editor = field.closest(".svc-board-subgroup-control-item");
+  if (editor) setServiceInputFeedback(editor, "modified");
+}
+
+function beginServiceInputFeedback(serviceId, itemId) {
+  if (!serviceId) return [];
+  return [...document.querySelectorAll(".svc-board-subgroup-control-item")]
+    .filter((editor) => editor.dataset.serviceId === serviceId
+      && (!itemId || editor.dataset.serviceItemId === itemId))
+    .map((editor) => {
+      const signature = serviceInputFeedbackSignature(editor);
+      setServiceInputFeedback(editor, "saving");
+      return { editor, signature };
+    });
+}
+
+function finishServiceInputFeedback(snapshots, saved) {
+  for (const { editor, signature } of snapshots) {
+    if (!editor.isConnected) continue;
+    const pending = [...editor.querySelectorAll("[data-service-item-field]")]
+      .some((field) => isDeferredServiceTextInput(field)
+        && field.dataset.initialValue !== undefined && field.dataset.initialValue !== field.value);
+    setServiceInputFeedback(editor, !saved ? "error"
+      : !pending && serviceInputFeedbackSignature(editor) === signature ? "saved" : "modified");
+  }
 }
 
 async function resolveServiceSongSelectionBeforeSave(serviceId, index) {
@@ -29453,15 +29510,16 @@ function renderPresenterBoardSubgroupInputControls(serviceId, subgroup = {}) {
       : "";
     const label = contexts.length > 1 ? String(context.item.label || "항목").trim() : "";
     return `
-      <div class="svc-board-subgroup-control-item" data-service-item-index="${escapeAttr(String(context.index))}">
+      <div class="svc-board-subgroup-control-item" data-service-id="${escapeAttr(serviceId)}" data-service-item-id="${escapeAttr(context.item.id || "")}" data-service-item-index="${escapeAttr(String(context.index))}">
         ${label ? `<span class="svc-board-subgroup-control-label">${escapeHtml(label)}</span>` : ""}
         ${controls}
         <div class="svc-board-subgroup-flow">
+          <span class="svc-input-status" data-service-input-status role="status" aria-live="polite"></span>
           <button class="reference-new-btn svc-board-subgroup-commit" type="button"
             data-service-item-commit
             data-service-id="${escapeAttr(serviceId)}"
             data-service-item-index="${escapeAttr(String(context.index))}">
-            <i data-lucide="check"></i><span>반영</span>
+            <i data-lucide="check"></i><span>반영·저장</span>
           </button>
           ${audioControls}
         </div>
