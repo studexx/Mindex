@@ -6577,7 +6577,10 @@ async function saveWorshipServiceInstance(service) {
   suppressedItems.forEach((item) => {
     if (suppressedIds.get(item.id) === item) suppressedIds.delete(item.id);
   });
-  await syncSharedSundayContentAfterSave(service, items, { elementTypedStateColumns });
+  await syncSharedSundayContentAfterSave(service, items, {
+    elementTypedStateColumns,
+    previousItems: groupWorshipElements(existingSections, existingElements)[serviceId] || [],
+  });
   refreshPresenterForService(serviceId, { renderControls: !serviceHasPendingTextEdits(serviceId) });
   return { unchanged, itemIds: new Map([...savedIdentities].map(([id, saved]) => [id, saved.id])) };
 }
@@ -6718,18 +6721,257 @@ async function saveWorshipServiceElementPatch(service, itemId) {
   await syncSharedSundayContentAfterSave(
     service,
     items.filter((item) => item.id === targetItemId),
-    { elementTypedStateColumns },
+    {
+      elementTypedStateColumns,
+      previousItems: groupWorshipElements(existingSections, existingElements)[serviceId] || [],
+    },
   );
   refreshPresenterForService(serviceId, { renderControls: !serviceHasPendingTextEdits(serviceId) });
   return { unchanged };
 }
 
 async function syncSharedSundayContentAfterSave(sourceService, sourceItems = [], options = {}) {
-  void sourceService;
-  void sourceItems;
-  void options;
-  // Shared Sunday content is a read-time projection only. Persisting it into
-  // sibling services can overwrite service-specific praise or sermon data.
+  const previousItems = options.previousItems || [];
+  const persistedItems = groupWorshipElements(
+    state.worshipSections.filter((section) => section.service_id === sourceService.id), state.worshipElements,
+  )[sourceService.id] || [];
+  for (const item of sourceItems) {
+    if (!item._worshipSharedContentDirty && !state.dirtyServiceElementIds.get(sourceService.id)?.has(item.id)) continue;
+    const key = sundaySharedContentKey(item);
+    const persisted = persistedItems.filter((candidate) => sundaySharedContentKey(candidate) === key);
+    if (persisted.length > 1) continue;
+    const savedItem = persisted[0] || item;
+    const previous = previousItems.filter((candidate) => sundaySharedContentKey(candidate) === key);
+    if (previous.length !== 1 || !sundayEditSyncEligible(savedItem, sourceService)
+      || !sundayEditSyncEligible(previous[0], sourceService)
+      || sundayEditSyncSignature(previous[0]) === sundayEditSyncSignature(savedItem)) continue;
+    const types = sundaySharedContentTypesForItem(item, sourceService);
+    for (const target of state.services.filter((service) => service.id !== sourceService.id
+      && service.date === sourceService.date && types.includes(worshipAppServiceTypeId(service.type_id)))) {
+      const jobKey = `${sourceService.id}:${target.id}:${key}`;
+      const pending = pendingSundayEditSync.get(jobKey);
+      pendingSundayEditSync.set(jobKey, {
+        sourceServiceId: sourceService.id, targetId: target.id, key,
+        previous: JSON.parse(JSON.stringify(previous[0])), item: JSON.parse(JSON.stringify(savedItem)),
+        previousSignatures: uniqueList([...(pending?.previousSignatures || []),
+          ...(pending ? [sundayEditSyncSignature(pending.previous), sundayEditSyncSignature(pending.item)] : [])]),
+      });
+    }
+  }
+  const failures = [];
+  persistPendingSundayEditSync();
+  for (const [jobKey, job] of pendingSundayEditSync) {
+    if (job.sourceServiceId !== sourceService.id) continue;
+    const savedSourceItems = groupWorshipElements(
+      state.worshipSections.filter((section) => section.service_id === sourceService.id),
+      state.worshipElements,
+    )[sourceService.id] || [];
+    const savedSource = savedSourceItems.filter((item) => sundaySharedContentKey(item) === job.key);
+    if (savedSource.length === 1 && sundayEditSyncSignature(savedSource[0]) !== sundayEditSyncSignature(job.item)) {
+      pendingSundayEditSync.delete(jobKey);
+      persistPendingSundayEditSync();
+      failures.push(`${job.item.label}: 원본이 바뀌어 이전 동기화 요청을 취소했습니다.`);
+      continue;
+    }
+    try {
+      await persistSundayEditSync(job, options);
+      pendingSundayEditSync.delete(jobKey);
+      persistPendingSundayEditSync();
+    } catch (error) {
+      failures.push(error.message || "연결 예배 저장 실패");
+    }
+  }
+  if (failures.length) {
+    const message = `현재 예배는 저장됐지만 연결 예배 반영은 완료되지 않았습니다. ${uniqueList(failures).join(" / ")}`;
+    showToast(message, "error");
+    throw new Error(message);
+  }
+}
+
+const SUNDAY_EDIT_SYNC_STORAGE_KEY = "mindex.worship.edit-sync.v1";
+const pendingSundayEditSync = readPendingSundayEditSync();
+
+function readPendingSundayEditSync() {
+  try {
+    const entries = JSON.parse(safeStorageGet("local", SUNDAY_EDIT_SYNC_STORAGE_KEY, "[]"));
+    return new Map(Array.isArray(entries) ? entries.filter((entry) => Array.isArray(entry)
+      && entry.length === 2 && entry[1]?.sourceServiceId && entry[1]?.targetId
+      && entry[1]?.previous && entry[1]?.item) : []);
+  } catch { return new Map(); }
+}
+
+function persistPendingSundayEditSync() {
+  if (!pendingSundayEditSync.size) {
+    safeStorageRemove("local", SUNDAY_EDIT_SYNC_STORAGE_KEY);
+    return;
+  }
+  if (!safeStorageSet("local", SUNDAY_EDIT_SYNC_STORAGE_KEY, JSON.stringify([...pendingSundayEditSync]))) {
+    throw new Error("연결 예배 재시도 기록을 저장하지 못했습니다. 이 창을 닫지 말고 다시 저장해 주세요.");
+  }
+}
+
+function sundayEditSyncEligible(item = {}, service = null) {
+  if (!worshipServiceParticipatesInSharedSundayContent(service)) return false;
+  const memo = parseServiceItemMemo(item.memo);
+  if (memo.asset?.url || memo.templateSuppressed || memo.hiddenInPresentation
+    || (memo.slides || []).some((slide) => slide && typeof slide === "object")) return false;
+  const key = sundaySharedContentKey(item);
+  const label = compactSearchValue(item.label || "");
+  const type = serviceMemoElementType(memo);
+  if (key.startsWith("main-praise:")) return /^찬양[1-3]$/.test(label) && type === "praise";
+  if (key === "offering-hymn") return label === "봉헌찬송" && type === "praise";
+  if (key === "sermon-title") return label === "설교제목" && ["title_person", "title_assignee"].includes(type);
+  if (key === "scripture-reading") return label === "성경봉독" && type === "scripture_body";
+  if (key === "sermon-scripture") return label === "설교본문" && type === "scripture_body";
+  return key.startsWith("sermon-citation:") && /^인용구절\d*$/.test(label) && type === "scripture_body";
+}
+
+function sundayEditSyncContent(item = {}) {
+  const key = sundaySharedContentKey(item);
+  const memo = parseServiceItemMemo(item.memo);
+  if (key === "sermon-title") return { title: item.raw_title || "", assignee: item.assignee || "" };
+  if (key === "scripture-reading" || key === "sermon-scripture" || key.startsWith("sermon-citation:")) {
+    return { references: serviceItemDirectScriptureReferences(item, memo), payloads: memo.scriptureReferencePayloads || [] };
+  }
+  return {
+    song: item.song_id || "", version: item.version_id || item.song_version_id || "",
+    inputMode: memo.inputMode || "",
+    title: item.raw_title || "", formHint: memo.formHint || "", formPreset: memo.formPreset || null,
+    formPresetDisabled: Boolean(memo.formPresetDisabled), formPresetRules: memo.formPresetRules || [],
+    slides: item.song_id ? [] : memo.slides || [],
+  };
+}
+
+function sundayEditSyncSignature(item) {
+  return JSON.stringify(sundayEditSyncContent(item));
+}
+
+function applySundayEditSync(target, source) {
+  const content = sundayEditSyncContent(source);
+  const next = { ...target, _worshipElementTemplateModified: true, _worshipTemplatePlaceholder: false };
+  const memo = parseServiceItemMemo(target.memo);
+  if (Object.hasOwn(content, "references")) {
+    next.raw_title = source.raw_title || "";
+    next.memo = serializeServiceItemMemo({ ...memo, scriptureReference: content.references[0] || "",
+      scriptureReferences: content.references, scriptureReferencePayloads: content.payloads, slides: [] });
+  } else if (Object.hasOwn(content, "song")) {
+    Object.assign(next, { song_id: content.song || null, version_id: content.version || null,
+      song_version_id: content.version || null, raw_title: content.title });
+    next.memo = serializeServiceItemMemo({ ...memo, formHint: content.formHint, formPreset: content.formPreset,
+      formPresetDisabled: content.formPresetDisabled, formPresetRules: content.formPresetRules, slides: content.slides,
+      inputMode: content.inputMode,
+      outputMode: memo.inputMode === content.inputMode ? memo.outputMode : parseServiceItemMemo(source.memo).outputMode });
+  } else Object.assign(next, { raw_title: content.title, assignee: content.assignee });
+  return next;
+}
+
+function sundayEditSyncHasLocalDraft(serviceId) {
+  return Boolean(state.dirtyServiceElementIds.get(serviceId)?.size || state.dirtyServiceStructureIds.has(serviceId)
+    || presenterControllerIsLive(serviceId)
+    || serviceHasPendingTextEdits(serviceId)
+    || (state.selectedServiceId === serviceId && state.dirty.service));
+}
+
+function sundayEditSyncSourceText(document, item, next, service) {
+  const source = String(document.sourceText || "").replace(/\r\n?/g, "\n");
+  const records = parseServiceSourceText(source, { includeRanges: true });
+  const matches = records.filter((record) => compactSearchValue(record.label) === compactSearchValue(item.label));
+  const scoped = matches.filter((record) => record.sectionTitle === serviceSourceSectionTitle(item));
+  const candidates = scoped.length ? scoped : matches;
+  const replacement = serviceSourceItemLines(next, service).join("\n");
+  if (!candidates.length) return `${source.trimEnd()}\n\n[${serviceSourceSectionTitle(item)}]\n${replacement}`.trim();
+  if (candidates.length !== 1) throw new Error("연결 예배 원문의 항목 위치가 중복되어 반영하지 않았습니다.");
+  const record = candidates[0];
+  const lines = source.split("\n");
+  const trailing = lines.slice(record.startLine, record.endLine).reverse().findIndex((line) => line.trim());
+  const keepBlankLines = trailing < 0 ? 0 : trailing;
+  return [...lines.slice(0, record.startLine), replacement,
+    ...Array(keepBlankLines).fill(""), ...lines.slice(record.endLine)].join("\n");
+}
+
+async function persistSundayEditSync(job, options = {}) {
+  const target = state.services.find((service) => service.id === job.targetId);
+  if (!target || !worshipServiceParticipatesInSharedSundayContent(target)) return;
+  const label = `${target.date} ${serviceTypeDisplayName(target.type_id)} ${job.item.label}`;
+  const conflict = () => new Error(`${label}: 별도 편집·송출 상태 또는 저장 충돌을 확인해 주세요. 덮어쓰지 않았습니다.`);
+  if (sundayEditSyncHasLocalDraft(target.id)) throw conflict();
+  const { data: serviceRow, error: serviceError } = await state.client.from("mindex_worship_services")
+    .select("*").eq("id", target.id).single();
+  if (serviceError) throw serviceError;
+  const freshService = normalizeWorshipService(serviceRow);
+  if (freshService.date !== state.services.find((service) => service.id === job.sourceServiceId)?.date
+    || freshService.type_id !== target.type_id || !worshipServiceParticipatesInSharedSundayContent(freshService)) return;
+  const { sections, elements } = await fetchWorshipRowsForServiceIds([target.id]);
+  const items = groupWorshipElements(sections, elements)[target.id] || [];
+  const matches = items.filter((item) => sundaySharedContentKey(item) === job.key);
+  // Never create template placeholders or reinterpret substitute elements as shared content.
+  if (matches.length !== 1 || !sundayEditSyncEligible(matches[0], freshService)) return;
+  const item = matches[0];
+  if (sundayEditSyncSignature(item) !== sundayEditSyncSignature(job.previous)
+    && !(job.previousSignatures || []).includes(sundayEditSyncSignature(item))
+    && sundayEditSyncSignature(item) !== sundayEditSyncSignature(job.item)) throw conflict();
+  await loadSongsForIds(uniqueList(items.map((candidate) => candidate.song_id).filter(Boolean)
+    .concat(job.item.song_id || []).filter(Boolean)));
+  if (sundayEditSyncHasLocalDraft(target.id)) throw conflict();
+  const next = applySundayEditSync(item, job.item);
+  const existing = elements.find((row) => row.id === item.id);
+  const typed = options.elementTypedStateColumns || await worshipElementTypedStateColumns();
+  const rows = buildWorshipPersistenceRows(freshService, [next],
+    Object.fromEntries(sections.map((row) => [row.id, row])), { [existing.id]: existing }, { elementTypedStateColumns: typed });
+  sanitizeWorshipPersistenceRows(rows, { elementTypedStateColumns: typed });
+  compactWorshipPersistenceRows(rows);
+  validateWorshipPersistenceRows(rows, { serviceId: target.id });
+  const generated = rows.elements[0];
+  const fields = ["title", "person", "body", "song_id", "song_version_id", "scripture_reference", "config", "content_state", "input_mode", "template_modified"];
+  const patch = Object.fromEntries(fields.filter((key) => Object.hasOwn(generated, key)).map((key) => [key, generated[key]]));
+  if (next.song_id) patch.song_version_id = next.version_id || next.song_version_id || null;
+  patch.updated_at = new Date().toISOString();
+  const document = serviceDocumentSnapshotFromRef(freshService);
+  const sourceText = document ? sundayEditSyncSourceText(document, item, next, freshService) : "";
+  const { error, count } = await state.client.from("mindex_worship_elements")
+    .update(patch, { count: "exact" }).eq("id", existing.id).eq("updated_at", existing.updated_at);
+  if (error) throw error;
+  if (count !== 1) throw conflict();
+  const saved = { ...existing, ...patch };
+  const nextItems = items.map((candidate) => candidate.id === item.id ? next : candidate);
+  // Replace only this element's snapshots; preserve unrelated custom slides verbatim.
+  if (document) {
+    const replacements = buildPresenterSlidesForServiceItem(next, freshService, items.indexOf(item))
+      .map((slide, index) => compactServiceDocumentSlide({ ...slide, elementId: item.id,
+        sectionId: item._worshipSectionId, sectionKey: item._worshipSectionKey, elementLabel: item.label,
+        slotKey: serviceItemSlotKey(item) }, index, next)).filter(Boolean);
+    let replaced = false;
+    const slides = (document.slides || []).flatMap((slide) => {
+      if (slide.elementId !== item.id) return [slide];
+      if (replaced) return [];
+      replaced = true;
+      return replacements;
+    });
+    if (!replaced) slides.push(...replacements);
+    const orderedSlides = slides.map((slide, index) => ({ ...slide, index: index + 1 }));
+    const updated = { ...document, updatedAt: patch.updated_at, sourceText, slides: orderedSlides,
+      sourceSignature: compactTextSignature(sourceText),
+      slideSignature: compactTextSignature(JSON.stringify(orderedSlides)),
+      sourceRecords: buildServiceDocumentSourceRecords(sourceText, nextItems, freshService) };
+    const ref = { ...serviceRow.source_ref, [MINDEX_SERVICE_DOCUMENT_SOURCE_REF_KEY]: updated,
+      [MINDEX_SERVICE_DOCUMENT_HISTORY_SOURCE_REF_KEY]: serviceDocumentHistoryWithPrevious(document,
+        serviceRow.source_ref?.[MINDEX_SERVICE_DOCUMENT_HISTORY_SOURCE_REF_KEY], updated) };
+    const { error: refError, count: refCount } = await state.client.from("mindex_worship_services")
+      .update({ source_ref: ref, updated_at: patch.updated_at }, { count: "exact" }).eq("id", target.id).eq("source_ref", JSON.stringify(serviceRow.source_ref));
+    if (refError || refCount !== 1) {
+      throw new Error(`${label}: 항목은 저장됐지만 원문 기록 갱신이 완료되지 않았습니다. 다시 저장해 주세요.`);
+    }
+    target._worshipSourceRef = ref;
+  }
+  if (!sundayEditSyncHasLocalDraft(target.id)) {
+    const sectionIds = new Set(sections.map((section) => section.id));
+    state.worshipSections = [...state.worshipSections.filter((section) => section.service_id !== target.id), ...sections];
+    state.worshipElements = [...state.worshipElements.filter((element) => !sectionIds.has(element.section_id)),
+      ...elements.map((element) => element.id === saved.id ? saved : element)];
+    state.serviceItems[target.id] = projectWorshipServiceItemsFromTemplate(target, nextItems);
+    state.loadedWorshipServiceIds.add(target.id);
+    refreshPresenterForService(target.id, { publish: false, renderControls: false });
+  }
 }
 
 async function syncSharedSundayContentToService(targetService, key, sourceItem, options = {}) {
@@ -18771,7 +19013,7 @@ function currentSaveButtonState() {
     const serviceId = state.module === "presenter" ? presenterViewServiceId() : state.selectedServiceId;
     return {
       label: "예배 저장",
-      dirty: state.dirty.service,
+      dirty: state.dirty.service || [...pendingSundayEditSync.values()].some((job) => job.sourceServiceId === serviceId),
       available: Boolean(state.services.find((svc) => svc.id === serviceId)),
     };
   }
@@ -24320,19 +24562,23 @@ function serviceSourceItemValue(item = {}, service = null, memo = parseServiceIt
   return serviceItemDisplayText(item);
 }
 
-function parseServiceSourceText(value = "") {
+function parseServiceSourceText(value = "", options = {}) {
   const records = [];
+  const lines = String(value || "").replace(/\r\n?/g, "\n").split("\n");
+  let lineNumber = 0;
   let sectionTitle = "";
   let current = null;
   let readingLyrics = false;
   const finish = () => {
     if (!current) return;
+    if (options.includeRanges) current.endLine = lineNumber;
     current.lyrics = current.lyricLines.join("\n").replace(/\s+$/g, "");
     delete current.lyricLines;
     records.push(current);
   };
 
-  for (const rawLine of String(value || "").replace(/\r\n?/g, "\n").split("\n")) {
+  for (const [index, rawLine] of lines.entries()) {
+    lineNumber = index;
     const line = rawLine.replace(/\s+$/g, "");
     const sectionMatch = line.match(/^\[([^\]]+)\]$/);
     if (sectionMatch) {
@@ -24347,6 +24593,7 @@ function parseServiceSourceText(value = "") {
       finish();
       current = {
         sectionTitle,
+        ...(options.includeRanges ? { startLine: index } : {}),
         label: itemMatch[1].trim(),
         value: itemMatch[2].trim(),
         assignee: "",
@@ -24394,6 +24641,7 @@ function parseServiceSourceText(value = "") {
       current.lyricLines.push(line.replace(/^\s{4}/, "").replace(/^\s{2}/, ""));
     }
   }
+  lineNumber = lines.length;
   finish();
   return records.filter((record) => record.label);
 }
@@ -26140,69 +26388,12 @@ function serviceItemHasDirectSundaySharedContent(item = {}, service = null) {
   return false;
 }
 
-function sharedSundayContentSourceItem(item = {}, service = null) {
-  if (!worshipServiceParticipatesInSharedSundayContent(service)) return null;
-  const key = sundaySharedContentKey(item);
-  const serviceDate = String(service?.date || "").trim();
-  const sharedTypes = sundaySharedContentTypesForItem(item, service);
-  if (!key || !serviceDate || !sharedTypes.length || serviceItemHasDirectSundaySharedContent(item, service)) return null;
-  const currentType = worshipAppServiceTypeId(service?.type_id);
-  return sharedTypes
-    .filter((typeId) => typeId !== currentType)
-    .flatMap((typeId) => state.services.filter((candidate) =>
-      worshipAppServiceTypeId(candidate.type_id) === typeId
-      && String(candidate.date || "").trim() === serviceDate
-      && worshipServiceParticipatesInSharedSundayContent(candidate)))
-    .map((candidateService) => {
-      const candidateItems = state.serviceItems[candidateService.id] || [];
-      const sourceIndex = sundaySharedContentItemIndex(candidateItems, key, candidateService);
-      const sourceItem = sourceIndex >= 0 ? candidateItems[sourceIndex] : null;
-      return sourceItem ? { item: sourceItem, service: candidateService } : null;
-    })
-    .find((entry) => entry && serviceItemHasDirectSundaySharedContent(entry.item, entry.service)) || null;
+function sharedSundayContentSourceItem() {
+  return null;
 }
 
-function serviceItemWithSharedSundayContent(item = {}, service = null) {
-  const source = sharedSundayContentSourceItem(item, service);
-  if (!source?.item) return item;
-  const sourceItem = source.item;
-  const key = sundaySharedContentKey(item);
-  const next = { ...item };
-  if (key === "scripture-reading" || key === "sermon-scripture" || key.startsWith("sermon-citation:")) {
-    const memo = parseServiceItemMemo(item.memo);
-    const references = serviceItemDirectScriptureReferences(sourceItem, parseServiceItemMemo(sourceItem.memo));
-    if (references.length) {
-      const sourceMemo = parseServiceItemMemo(sourceItem.memo);
-      const referencePayloads = normalizeServiceScriptureReferencePayloads(sourceMemo.scriptureReferencePayloads, references);
-      next.raw_title = formatServiceScriptureReferenceList(references);
-      next.memo = serializeServiceItemMemo({
-        ...memo,
-        elementType: memo.elementType || "scripture_body",
-        inputMode: memo.inputMode || "scripture",
-        scriptureReference: references[0],
-        scriptureReferences: references,
-        scriptureReferencePayloads: referencePayloads,
-        slides: [],
-      });
-    }
-    return next;
-  }
-  if (key === "sermon-title") {
-    const currentTitle = String(next.raw_title || "").trim();
-    const sourceTitle = String(sourceItem.raw_title || "").trim();
-    if (!currentTitle || presenterTitleAssigneeTitleIsGeneric(currentTitle, next.label || "")) {
-      next.raw_title = sourceTitle;
-    }
-    next.assignee = next.assignee || sourceItem.assignee || "";
-    return next;
-  }
-  if (key.startsWith("main-praise:") || key === "offering-hymn") {
-    next.song_id = next.song_id || sourceItem.song_id || "";
-    next.version_id = next.version_id || sourceItem.version_id || sourceItem.song_version_id || "";
-    next.song_version_id = next.song_version_id || sourceItem.song_version_id || sourceItem.version_id || "";
-    next.raw_title = next.raw_title || sourceItem.raw_title || "";
-  }
-  return next;
+function serviceItemWithSharedSundayContent(item = {}) {
+  return item;
 }
 
 function isSharedScriptureReadingServiceItem(item = {}) {

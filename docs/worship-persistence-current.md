@@ -64,9 +64,16 @@ must be inspected separately before asserting production integrity.
   runtime's request; they do not prevent overwriting a newer remote document.
 - `saveDirtyServiceTypes` updates defaults independently. Success there followed
   by instance failure is not rolled back. Treat defaults as a separate operation.
-- `syncSharedSundayContentAfterSave` is currently a no-op. Shared Sunday content
-  is read-time projection, not guaranteed edit-time bidirectional persistence.
-  Do not describe the proposed sibling synchronization as deployed behavior.
+- `syncSharedSundayContentAfterSave` runs after a successful source save, only
+  for explicitly edited content whose persisted before/after values differ.
+  Read-time sibling projection is disabled. Each service displays its own values.
+  Existing same-date standard elements synchronize only when their content matches
+  the source's previous value (or a retry value). Different values, local drafts,
+  live output, duplicate slots, replacements, and absent rows are not overwritten.
+  Targets use updated_at CAS with exact row receipts. Target document writes
+  separately compare the previous source_ref. These writes are not transactional;
+  a failed document write is reported and retried with the durable local job.
+  A subsequent source save retries pending jobs; merely loading a service does not.
 
 ## Verified gaps and existing protections
 

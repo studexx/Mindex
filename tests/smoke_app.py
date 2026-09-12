@@ -4590,7 +4590,7 @@ def main() -> int:
                             "elementTitle": "온세대 특송",
                             "audioKind": "audio",
                         }
-                        and template_terms["sharedSundayContentProjection"]["secondPraiseStatic"] is True
+                        and template_terms["sharedSundayContentProjection"]["secondPraiseStatic"] is False
                         and template_terms["sharedSundayContentProjection"]["secondPraiseMissing"] == "missing"
                         and template_terms["sharedSundayContentProjection"]["secondPraiseText"]
                         and template_terms["sharedSundayContentProjection"]["secondPraiseSongId"]
@@ -4603,23 +4603,23 @@ def main() -> int:
                             [],
                         ]
                         and template_terms["sharedSundayContentProjection"]["secondOfferingText"]
-                        and template_terms["sharedSundayContentProjection"]["thirdReadingRefs"] == ["마태복음 13:31–33", "마태복음 13:44–50"]
-                        and template_terms["sharedSundayContentProjection"]["thirdReadingMissing"] == "filled"
-                        and template_terms["sharedSundayContentProjection"]["thirdSermonTitleText"] == "믿음으로 사는 사람"
-                        and template_terms["sharedSundayContentProjection"]["thirdSermonTitleAssignee"] == "김남영 목사"
-                        and template_terms["sharedSundayContentProjection"]["thirdSermonTitleStatic"] is True
-                        and template_terms["sharedSundayContentProjection"]["thirdSermonBodyRefs"] == ["마태복음 13:31–33", "마태복음 13:44–50"]
-                        and template_terms["sharedSundayContentProjection"]["thirdSermonBodyPayloadReference"] == "마태복음 13:31–33"
-                        and template_terms["sharedSundayContentProjection"]["thirdCitationRefs"] == ["고린도전서 13:4–7"]
+                        and template_terms["sharedSundayContentProjection"]["thirdReadingRefs"] == []
+                        and template_terms["sharedSundayContentProjection"]["thirdReadingMissing"] == "missing"
+                        and template_terms["sharedSundayContentProjection"]["thirdSermonTitleText"] == "설교 제목"
+                        and template_terms["sharedSundayContentProjection"]["thirdSermonTitleAssignee"] == ""
+                        and template_terms["sharedSundayContentProjection"]["thirdSermonTitleStatic"] is False
+                        and template_terms["sharedSundayContentProjection"]["thirdSermonBodyRefs"] == []
+                        and template_terms["sharedSundayContentProjection"]["thirdSermonBodyPayloadReference"] == ""
+                        and template_terms["sharedSundayContentProjection"]["thirdCitationRefs"] == []
                         and template_terms["sharedSundayContentProjection"]["thirdOfferingText"]
-                        and template_terms["sharedSundayContentProjection"]["thirdOfferingStatic"] is True
+                        and template_terms["sharedSundayContentProjection"]["thirdOfferingStatic"] is False
                         and template_terms["sharedSundayContentProjection"]["syncedPraiseSongId"]
                         and template_terms["sharedSundayContentProjection"]["clearedPraiseSongId"] == template_terms["sharedSundayContentProjection"]["syncedPraiseSongId"]
                         and template_terms["sharedSundayContentProjection"]["syncedScriptureRefs"] == ["마태복음 13:31–33", "마태복음 13:44–50"]
                         and template_terms["sharedSundayContentProjection"]["clearedScriptureRefs"] == ["마태복음 13:31–33", "마태복음 13:44–50"]
-                        and template_terms["sharedSundayContentProjection"]["thirdMissingSlides"] == [
+                        and set(template_terms["sharedSundayContentProjection"]["thirdMissingSlides"]).issuperset([
                             "찬양 1", "찬양 2", "찬양 3", "찬양 4", "찬송", "대표기도", "특송",
-                        ]
+                        ])
                         and template_terms["fullscreenSermonBodyCompatibility"] == {
                             "staticInput": False,
                             "contentState": "filled",

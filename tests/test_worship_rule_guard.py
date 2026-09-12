@@ -89,10 +89,10 @@ class WorshipRuleGuardTests(unittest.TestCase):
     def test_department_announcement_defaults_stay_seeded(self) -> None:
         youth = function_block(self.source, "youthWorshipAnnouncementsStep")
         young_adult = function_block(self.source, "youngAdultWorshipAnnouncementsStep")
-        self.assertIn("청소년부 광고", youth)
+        self.assertIn('label: "광고"', youth)
         self.assertIn("오늘도 청소년부 예배에 오신 여러분을 환영하고 축복합니다 :)", youth)
         self.assertIn("1. 오늘 2부 활동은 반별 모임으로 진행합니다.", youth)
-        self.assertIn("청년부 광고", young_adult)
+        self.assertIn('label: "광고"', young_adult)
         self.assertIn("오늘도 청년부 예배에 오신 여러분을 환영하고 축복합니다 :)", young_adult)
         self.assertIn("1. 오늘 2부 활동은 셀 모임으로 진행합니다.", young_adult)
 
@@ -122,8 +122,13 @@ class WorshipRuleGuardTests(unittest.TestCase):
         self.assertNotIn("syncSharedSundayContentToService(", sync_after_save)
         self.assertNotIn("state.client", sync_after_save)
         self.assertIn("worshipServiceParticipatesInSharedSundayContent(targetService)", sync_to_service)
-        self.assertIn("worshipServiceParticipatesInSharedSundayContent(service)", source_lookup)
-        self.assertIn("worshipServiceParticipatesInSharedSundayContent(candidate)", source_lookup)
+        self.assertIn("return null", source_lookup)
+        self.assertIn("previousItems", sync_after_save)
+        self.assertIn("persistSundayEditSync(job, options)", sync_after_save)
+        edit_sync = function_block(self.source, "persistSundayEditSync")
+        self.assertIn('count: "exact"', edit_sync)
+        self.assertIn('.eq("updated_at", existing.updated_at)', edit_sync)
+        self.assertNotIn(".upsert(", edit_sync)
         main_praise_branch = shared.split('key.startsWith("main-praise:")', 1)[1].split('if ((["scripture-reading"', 1)[0]
         self.assertIn('return ["sunday-first", "sunday-second"]', main_praise_branch)
         self.assertNotIn('"sunday-main"', main_praise_branch)

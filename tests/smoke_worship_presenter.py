@@ -3172,6 +3172,9 @@ def main() -> int:
                         sharedSundaySecondSermonBody,
                         sharedSundaySecondCitation,
                       ];
+                      // These target records represent a completed edit synchronization, not a read fallback.
+                      Object.assign(sharedSundayThirdSermonBody, applySundayEditSync(sharedSundayThirdSermonBody, sharedSundaySecondSermonBody));
+                      Object.assign(sharedSundayThirdCitation, applySundayEditSync(sharedSundayThirdCitation, sharedSundaySecondCitation));
                       state.serviceItems[sharedSundayThirdService.id] = [
                         sharedSundayThirdSermonBody,
                         sharedSundayThirdCitation,

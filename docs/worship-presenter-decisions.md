@@ -1,5 +1,21 @@
 # Worship / Presenter Decision Log
 
+## Sunday Edit Synchronization (2026-09-12)
+
+- Each service displays and edits its own persisted values. Empty values do not
+  borrow sibling content or hide their editor.
+- Confirmed edits synchronize after source save: praise 1-3 between Sunday 1/2,
+  reading and sermon/citations between 2/3, offering hymn between 1/2/3 on the same date.
+- Only existing, unambiguous, standard elements with matching previous content
+  participate. Alternative offerings, videos, special songs, custom media, and
+  missing template rows are not converted into shared elements.
+- Different target content, pending edits, live output, and revision conflicts
+  are preserved. Failures are visible; local retry records survive reload.
+  Saving the source again retries them without resynchronizing unchanged fields.
+- Only target content fields are written, never sibling sections/order. Document
+  text/history and that element's slide snapshots are updated while unrelated
+  slide snapshots are retained. Multi-row writes are not an atomic transaction.
+
 This is the durable record for behavior that must not be silently reverted by
 another task. It supplements the data contract; it records reviewed product
 decisions rather than implementation history.
