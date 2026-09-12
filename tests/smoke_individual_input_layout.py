@@ -20,18 +20,25 @@ def main():
                   const blocks=[renderPresenterServiceTextInputs(special,0,model,parseServiceItemMemo(special.memo)),
                     renderPresenterServiceScriptureInput(scripture,1,{}),
                     renderPresenterServiceTextInputs(announcement,2,model,{}),
-                    renderPresenterServicePraiseInput({id:'song',label:'찬양 1',raw_title:'나를 사랑하는 주님',version_id:'v1',memo:''},3,{...model,showAssignee:false,showTitle:true,song:true,strictSong:true,titlePlaceholder:'곡명',parsed:{},linkedSong:{id:'linked',title:'나를 사랑하는 주님'},songVersions:[{id:'v1',name:'기본'},{id:'v2',name:'다른 버전'}]}),
+                    renderPresenterServicePraiseInput({id:'song',label:'특송',raw_title:'아름답게 하리라',version_id:'v1',memo:''},3,{...model,showAssignee:true,showTitle:true,song:true,strictSong:true,titleValue:'아름답게 하리라',titlePlaceholder:'곡명',parsed:{},linkedSong:{id:'linked',title:'아름답게 하리라'},songVersions:[{id:'v1',name:'기본'},{id:'v2',name:'다른 버전'}]}),
                     renderPresenterMonthlyCorporatePrayerInputs({label:'공동기도 3·4'},4,{corporatePrayers:[{title:'치유와 회복을 위해',assignee:'유혜경 집사'},{title:'교회학교를 위해',assignee:'유정희 권사'}]},service.id)];
                   document.body.innerHTML='<main id="fixture" style="margin:24px;width:960px">'+blocks.map((html,i)=>
                     '<h2 style="font-size:16px">'+['특송','설교 본문','광고','찬양','공동기도 3·4'][i]+'</h2><div class="svc-board-subgroup-controls"><div class="svc-board-subgroup-control-item">'+html+
-                    '<div class="svc-board-subgroup-flow"><button class="reference-new-btn svc-board-subgroup-commit" type="button">반영</button></div></div></div>').join('')+'</main>';
+                    '<div class="svc-board-subgroup-flow"><button class="reference-new-btn svc-board-subgroup-commit" type="button">반영·저장</button>'+(i===3?'<button class="reference-new-btn" type="button">음원 추가</button>':'')+'</div></div></div>').join('')+'</main>';
                 }''')
-                for width in [960, 600, 320]:
+                for width in [960, 850, 600, 320]:
                     page.evaluate("w=>document.getElementById('fixture').style.width=w+'px'", width)
                     page.wait_for_timeout(100)
                     result = page.evaluate('''() => {
                       const errors=[];
                       const song=document.querySelector('.svc-presenter-input-field--song');
+                      const songRow=song?.closest('.svc-board-subgroup-control-item');
+                      if(songRow && songRow.getBoundingClientRect().width>780) {
+                        const fields=[...songRow.querySelectorAll('input,select,button')].filter(n=>n.getBoundingClientRect().height);
+                        const tops=fields.map(n=>n.getBoundingClientRect().top).sort((a,b)=>a-b);
+                        const rows=[];for(const top of tops)if(!rows.length||top-rows[rows.length-1]>16)rows.push(top);
+                        if(rows.length>2)errors.push('special song still uses three rows');
+                      }
                       if(song && song.getBoundingClientRect().width>800) {
                         const fields=[...song.querySelectorAll('input,select')].filter(n=>n.getBoundingClientRect().height);
                         if(fields.some(n=>Math.abs(n.getBoundingClientRect().top-fields[0].getBoundingClientRect().top)>2))errors.push('linked song forced extra rows');
@@ -51,7 +58,10 @@ def main():
                             const range=document.createRange();range.selectNodeContents(span);
                             if(span.getBoundingClientRect().width-range.getBoundingClientRect().width>2)errors.push('label has fixed empty width');
                           }
-                          if(span&&field&&field.getBoundingClientRect().height){if(span.getBoundingClientRect().right>field.getBoundingClientRect().left+1)errors.push('label overlaps')}
+                          if(span&&field&&field.getBoundingClientRect().height){
+                            const a=span.getBoundingClientRect(),b=field.getBoundingClientRect();
+                            if(Math.min(a.bottom,b.bottom)>Math.max(a.top,b.top)+1 && a.right>b.left+1)errors.push('label overlaps');
+                          }
                         }
                         const flow=group.querySelector('.svc-board-subgroup-flow').getBoundingClientRect();
                         for(const n of controls.filter(n=>n.tagName!=='BUTTON')) {
@@ -60,7 +70,7 @@ def main():
                         }
                         if(innerWidth>1000 && g.width>900 && group.querySelectorAll('textarea').length===0) {
                           const first=controls[0]?.getBoundingClientRect();
-                          if(first && Math.abs(flow.top-first.top)>2)errors.push('unnecessary action row');
+                          if(first && !group.querySelector('.svc-presenter-input-field--song') && Math.abs(flow.top-first.top)>2)errors.push('unnecessary action row');
                         }
                       }
                       return errors;

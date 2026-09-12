@@ -8328,6 +8328,13 @@ textarea.svc-presenter-input-control--multiline {
 .svc-board-subgroup-controls .svc-presenter-input-field--song .svc-form-hint.compact {
   height: 30px;
 }
+.svc-board-subgroup-control-item > .svc-presenter-input-field--song,
+.svc-board-subgroup-control-item > .svc-presenter-input-field--song > .svc-edit-title-wrap {
+  display: contents;
+}
+.svc-board-subgroup-controls .svc-presenter-input-field--assignee {
+  flex: 0 1 180px;
+}
 @media (max-width: 760px) {
   .svc-board-subgroup-controls {
     grid-template-columns: minmax(0, 1fr);
