@@ -696,12 +696,12 @@
   background: #fff;
   color: #000;
   font-family: var(--presenter-scripture-font);
-  font-size: calc(62.5 * var(--presenter-stage-unit));
+  font-size: calc(50 * var(--presenter-stage-unit));
   font-weight: var(--presenter-weight-body);
   line-height: 1;
   text-align: left;
   letter-spacing: 0;
-  border-radius: 0 calc(8 * var(--presenter-stage-unit)) 0 0;
+  clip-path: polygon(0 0, calc(100% - 12 * var(--presenter-stage-unit)) 0, 100% calc(12 * var(--presenter-stage-unit)), 100% 100%, 0 100%);
 }
 .presenter-slide--citation-tab > .presenter-slide-text {
   white-space: pre-wrap;
