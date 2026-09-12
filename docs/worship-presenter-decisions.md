@@ -1,5 +1,14 @@
 # Worship / Presenter Decision Log
 
+## Preparation Examples (2026-09-12)
+
+- Manual praise examples use the persisted input mode even when the editor
+  exposes that mode as text. Announcement examples use announcement content.
+- Monthly grouped prayers expose one example per prayer. Bulk input updates the
+  corresponding corporatePrayers entry, preserving its sibling, sourceElementId,
+  and an omitted assignee. No separate prayer elements are created.
+- Bulk apply remains an in-memory edit; saving is still a separate action.
+
 ## Individual Input Feedback (2026-09-12)
 
 - The individual editor command is labeled `반영·저장`: it still applies the

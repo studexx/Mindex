@@ -111,7 +111,19 @@ function planPresenterPreparationEntries(entries, service) {
     const contentParts = entry.content.split(/\s+\/\s+/);
     const content = String(contentParts.shift() || "").trim();
     const assignee = contentParts.join(" / ").trim();
-    const projected = findPresenterPreparationProjectedItem(service, targetLabel);
+    const prayerNumber = Number(entry.key.match(/^공동기도(\d+)$/)?.[1]);
+    const prayerGroups = prayerNumber ? servicePrepEditorItems(service.id).filter((item) => {
+      if (!isMonthlyCorporatePrayerGroupItem(item)) return false;
+      const start = Number(String(item.label).match(/\d+/)?.[0]);
+      return prayerNumber === start || prayerNumber === start + 1;
+    }) : [];
+    if (prayerGroups.length > 1) {
+      errors.push(`${entry.line}번째 줄 공동기도의 대상이 여러 개입니다.`);
+      continue;
+    }
+    const projected = prayerGroups[0] || findPresenterPreparationProjectedItem(service, targetLabel);
+    const corporatePrayerIndex = prayerGroups.length
+      ? prayerNumber - Number(String(projected.label).match(/\d+/)?.[0]) : undefined;
     if (!projected) {
       errors.push(`${entry.line}번째 줄 ${entry.label} 항목을 이 예배에서 찾지 못했습니다.`);
       continue;
@@ -119,7 +131,7 @@ function planPresenterPreparationEntries(entries, service) {
     // Sermon title and preacher may intentionally address different fields of one item.
     const field = (entry.rawKey || entry.key) === "설교" && !assignee
       && presenterPreparationContentLooksAssignee(content) ? "assignee" : "content";
-    const targetKey = `${projected.id || targetLabel}:${field}`;
+    const targetKey = `${projected.id || targetLabel}:${corporatePrayerIndex ?? field}`;
     if (targets.has(targetKey)) {
       errors.push(`${entry.line}번째 줄 ${entry.label} 항목이 같은 예배 순서에 중복 지정되었습니다.`);
     }
@@ -134,7 +146,7 @@ function planPresenterPreparationEntries(entries, service) {
         errors.push(`${entry.line}번째 줄 ${entry.label}의 성경 주소를 확인해 주세요.`);
       }
     }
-    planned.push({ entry, projected, content, assignee, mode });
+    planned.push({ entry, projected, content, assignee, mode, corporatePrayerIndex });
   }
   return { planned, errors };
 }

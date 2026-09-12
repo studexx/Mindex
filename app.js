@@ -26985,7 +26985,14 @@ function presenterPreparationPlaceholderLinesForItem(item, service, context) {
   const label = compactSearchValue(item?.label || "");
   const sectionKey = String(item?._worshipSectionKey || "").trim();
   const mode = context.mode;
-  if (["praise_db", "score_db", "lyrics_db", "manual_praise"].includes(mode) || serviceItemRequiresSongSelection(item, service)) {
+  if (isMonthlyCorporatePrayerGroupItem(item, context.memo)) {
+    const start = Number(String(item.label).match(/\d+/)?.[0]);
+    return [start, start + 1].map((ordinal) => `공동기도${ordinal}: 교회를 위해 / 홍길동 집사`);
+  }
+  if (isAnnouncementTextInputItem(item)) return ["광고: 다음 주 예배 후 모임이 있습니다."];
+  if (["praise_db", "score_db", "lyrics_db", "manual_praise"].includes(mode)
+    || servicePraiseInputMode(item, context.memo, service) === "manual_praise"
+    || serviceItemRequiresSongSelection(item, service)) {
     const base = presenterPreparationPlaceholderSongLabel(item);
     if (!base) return [];
     const special = isSpecialSongServiceItem(item);
@@ -27103,7 +27110,7 @@ async function applyPresenterPreparationInput(serviceId = state.selectedServiceI
     const textFieldUpdates = [];
     let citationReferences = null;
 
-    for (const { entry, projected, content, assignee, mode } of plan.planned) {
+    for (const { entry, projected, content, assignee, mode, corporatePrayerIndex } of plan.planned) {
       if (entry.key === "인용구절") {
         const references = normalizeServiceScriptureReferenceList(entry.content);
         if (!references.length || references.some((reference) => !parseBibleReference(reference))) {
@@ -27114,9 +27121,22 @@ async function applyPresenterPreparationInput(serviceId = state.selectedServiceI
         continue;
       }
 
-      const targetIndex = materializePresenterPreparationItem(service, items, projected);
+      const existingGroupIndex = corporatePrayerIndex === undefined ? -1 : items.findIndex((candidate) =>
+        isMonthlyCorporatePrayerGroupItem(candidate) && candidate.label === projected.label);
+      const targetIndex = existingGroupIndex >= 0 ? existingGroupIndex
+        : materializePresenterPreparationItem(service, items, projected);
       const item = items[targetIndex];
       const memo = parseServiceItemMemo(item.memo);
+
+      if (corporatePrayerIndex !== undefined) {
+        const prayers = monthlyCorporatePrayerEntries(item, memo);
+        prayers[corporatePrayerIndex] = { ...prayers[corporatePrayerIndex], title: content,
+          assignee: assignee || prayers[corporatePrayerIndex].assignee };
+        item.memo = serializeServiceItemMemo({ ...memo, corporatePrayers: prayers, slides: prayers.map((prayer) => prayer.title) });
+        item._worshipElementTemplateModified = true;
+        item._worshipTemplatePlaceholder = false;
+        continue;
+      }
 
       if (mode === "manual_praise" && isSpecialSongServiceItem(item)) {
         const existingSong = await resolveExistingPraiseSongForServiceInputAfterCatalogLoad(content, item, service);
