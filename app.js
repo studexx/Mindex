@@ -4688,6 +4688,7 @@ function groupWorshipElements(sections = [], elements = []) {
         formPresetRules,
         templateKey: config.templateKey || config.template_key,
         templateVariant: config.templateVariant || config.template_variant,
+        corporatePrayers: config.corporatePrayers,
         scriptureReference,
         scriptureReferences,
         scriptureTranslationId: config.scriptureTranslationId || config.scripture_translation_id,
@@ -7379,6 +7380,7 @@ function serviceElementConfigForSave(existingConfig = {}, parsed = emptyServiceI
     delete config.inputMode;
     delete config.input_mode;
   }
+  if (parsed.corporatePrayers?.length) config.corporatePrayers = parsed.corporatePrayers;
   config.contentState = {
     state: contentState.state,
     reason: contentState.reason,
@@ -9955,13 +9957,14 @@ function updateServiceItemField(field, options = {}) {
     }
     item.memo = serializeServiceItemMemo(parsed);
   }
-  if (key === "corporate_prayer_topic") {
+  if (key === "corporate_prayer_topic" || key === "corporate_prayer_assignee") {
     const parsed = parseServiceItemMemo(item.memo);
     const topicIndex = Number(field.dataset.corporatePrayerTopicIndex);
     if (isMonthlyCorporatePrayerGroupItem(item, parsed) && Number.isInteger(topicIndex) && topicIndex >= 0 && topicIndex < 2) {
-      const slides = Array.isArray(parsed.slides) ? [...parsed.slides] : [];
-      slides[topicIndex] = String(field.value || "").trim();
-      parsed.slides = slides.slice(0, 2);
+      const prayers = monthlyCorporatePrayerEntries(item, parsed);
+      prayers[topicIndex][key === "corporate_prayer_topic" ? "title" : "assignee"] = String(field.value || "").trim();
+      parsed.corporatePrayers = prayers;
+      parsed.slides = prayers.map((prayer) => prayer.title);
       item.memo = serializeServiceItemMemo(parsed);
     }
   }
@@ -10906,6 +10909,7 @@ function parseServiceItemMemo(value) {
         formPresetRules: normalizeServiceFormPresetRules(parsed.formPresetRules || parsed.form_preset_rules),
         templateKey: String(parsed.templateKey || parsed.template_key || "").trim(),
         templateVariant: String(parsed.templateVariant || parsed.template_variant || "").trim(),
+        corporatePrayers: normalizeCorporatePrayers(parsed.corporatePrayers),
         elementType,
         componentType: elementType,
         outputMode: normalizeServiceOutputMode(parsed.outputMode || parsed.output_mode || parsed.renderMode || parsed.render_mode),
@@ -11170,6 +11174,7 @@ function serializeServiceItemMemo(value = {}) {
   if (formPresetDisabled) payload.formPresetDisabled = true;
   if (formPresetRules.length) payload.formPresetRules = formPresetRules;
   if (templateKey) payload.templateKey = templateKey;
+  if (value.corporatePrayers?.length) payload.corporatePrayers = normalizeCorporatePrayers(value.corporatePrayers);
   if (templateVariant) payload.templateVariant = templateVariant;
   if (elementType) payload.elementType = elementType;
   if (outputMode) payload.outputMode = outputMode;
@@ -20397,7 +20402,7 @@ function projectWorshipServiceItemsFromTemplate(service, items = []) {
   if (!TEMPLATE_PROJECTED_SERVICE_TYPES.has(appTypeId)) {
     return normalizeServiceItemsForTemplateHierarchy(service, items);
   }
-  const sourceItems = mergeRememberedTemplateSuppressionItems(service?.id, items);
+  const sourceItems = mergeMonthlyCorporatePrayerItems(mergeRememberedTemplateSuppressionItems(service?.id, items));
 
   // Migrate legacy section ownership before hierarchy normalization. Otherwise
   // normalization recognizes the entrance-praise label but preserves its old
@@ -27308,6 +27313,62 @@ function isMonthlyCorporatePrayerGroupItem(item = {}, memo = parseServiceItemMem
     && memo.templateKey === "monthly_corporate_prayer_group";
 }
 
+function normalizeCorporatePrayers(entries = []) {
+  return (Array.isArray(entries) ? entries : []).slice(0, 2).map((entry) => ({
+    title: String(entry?.title || "").trim(),
+    assignee: String(entry?.assignee || "").trim(),
+    sourceElementId: String(entry?.sourceElementId || "").trim(),
+  }));
+}
+
+function monthlyCorporatePrayerEntries(item, memo = parseServiceItemMemo(item?.memo)) {
+  if (memo.corporatePrayers?.length === 2) return normalizeCorporatePrayers(memo.corporatePrayers);
+  return [0, 1].map((index) => ({ title: String(memo.slides?.[index] || ""), assignee: "", sourceElementId: "" }));
+}
+
+function mergeMonthlyCorporatePrayerItems(items = []) {
+  let result = [...items];
+  for (const start of [1, 3]) {
+    const inSection = (item) => templateProjectionSectionKey(item) === "corporate_prayer";
+    const label = `공동기도 ${start}·${start + 1}`;
+    const groups = result.filter((item) => inSection(item) && item.label === label);
+    const members = [start, start + 1].map((ordinal) => result.filter((item) => inSection(item)
+      && compactSearchValue(item.label) === `공동기도${ordinal}`));
+    if (groups.length > 1 || members.some((list) => list.length > 1)) continue;
+    const group = groups[0];
+    const groupMemo = group ? parseServiceItemMemo(group.memo) : null;
+    if (groupMemo?.corporatePrayers?.length === 2) {
+      const incorporated = new Set(groupMemo.corporatePrayers.map((entry) => entry.sourceElementId).filter(Boolean));
+      result = result.filter((item) => item === group || !inSection(item) || !incorporated.has(item.id));
+      continue;
+    }
+    if (members.some((list) => list.length !== 1)) continue;
+    const pair = members.map((list) => list[0]);
+    const comparableTitle = (value) => String(value || "").trim().replace(/^['"“”‘’]+|['"“”‘’]+$/g, "");
+    if (groupMemo?.slides?.some((title, index) => title && comparableTitle(title) !== comparableTitle(pair[index]?.raw_title))) continue;
+    if (pair.some((item) => {
+      const memo = parseServiceItemMemo(item.memo);
+      return item.song_id || serviceMemoElementType(memo) !== "title_person"
+        || memo.slides.length || memo.note || hasServiceAsset(memo.asset) || hasServiceAsset(memo.audioAsset)
+        || memo.hiddenInPresentation || memo.templateSuppressed;
+    })) continue;
+    const base = group || pair[0];
+    const prayers = pair.map((item) => ({ title: String(item.raw_title || ""), assignee: String(item.assignee || ""), sourceElementId: item.id }));
+    const merged = { ...base, label, raw_title: label, assignee: "",
+      _worshipSlotKey: `prayer.corporate.${start}${start + 1}`,
+      _worshipElementOrder: start === 1 ? 1 : 3,
+      _worshipElementTemplateModified: true,
+      memo: serializeServiceItemMemo({ ...parseServiceItemMemo(base.memo),
+        elementType: "title_person", templateKey: "monthly_corporate_prayer_group",
+        corporatePrayers: prayers, slides: prayers.map((entry) => entry.title) }),
+    };
+    const insertion = Math.min(...[group, ...pair].filter(Boolean).map((item) => result.indexOf(item)));
+    result = result.filter((item) => item !== group && !pair.includes(item));
+    result.splice(insertion, 0, merged);
+  }
+  return result;
+}
+
 function monthlyCorporatePrayerOrdinalsForItem(item = {}) {
   const ordinals = String(item?.label || "")
     .match(/\d+/g)
@@ -27320,7 +27381,8 @@ function monthlyCorporatePrayerOrdinalsForItem(item = {}) {
 
 function renderPresenterMonthlyCorporatePrayerInputs(item, index, memo, serviceId = state.selectedServiceId) {
   const ordinals = monthlyCorporatePrayerOrdinalsForItem(item);
-  const topics = Array.isArray(memo.slides) ? memo.slides : [];
+  const prayers = monthlyCorporatePrayerEntries(item, memo);
+  const topics = prayers.map((entry) => entry.title);
   const serviceIdAttr = serviceId ? ` data-service-id="${escapeAttr(serviceId)}"` : "";
   return `
     <div class="svc-presenter-input-group svc-presenter-input-group--corporate-prayer">
@@ -27331,6 +27393,10 @@ function renderPresenterMonthlyCorporatePrayerInputs(item, index, memo, serviceI
             data-service-item-index="${index}"${serviceIdAttr} data-corporate-prayer-topic-index="${topicIndex}"
             value="${escapeAttr(String(topics[topicIndex] || "").replace(/^['"“”‘’]+|['"“”‘’]+$/g, ""))}"
             placeholder="기도 제목" onkeydown="handleDetailKeydown(event)" aria-label="${escapeAttr(`공동기도 ${ordinal} 제목`)}" />
+          <input class="svc-presenter-input-control" type="text" data-service-item-field="corporate_prayer_assignee"
+            data-service-item-index="${index}"${serviceIdAttr} data-corporate-prayer-topic-index="${topicIndex}"
+            value="${escapeAttr(prayers[topicIndex].assignee)}" placeholder="담당"
+            aria-label="${escapeAttr(`공동기도 ${ordinal} 담당`)}" />
         </label>`).join("")}
     </div>`;
 }
@@ -31945,11 +32011,12 @@ function presenterMonthlyCorporatePrayerSlides(item = {}, section = {}, index = 
   const label = String(item.label || section.elementLabel || "").trim();
   const ordinals = label.match(/\d+/g)?.map((value) => Number(value)).filter((value) => Number.isFinite(value) && value > 0) || [];
   if (!ordinals.length) return [];
-  const topics = memo.slides.map((slide) => String(slide || "").trim()).filter(Boolean).slice(0, 2);
+  const prayers = monthlyCorporatePrayerEntries(item, memo);
+  const topics = prayers.map((prayer) => prayer.title);
   if (!topics.length) return [];
   const topicSlides = topics.map((topic, topicIndex) => {
     const ordinal = ordinals[topicIndex] || ordinals[0] + topicIndex;
-    const title = `공동기도 ${ordinal}`;
+    const title = topic;
     return {
       id: `${item.id || index}:corporate-prayer-topic:${ordinal}`,
       ...section,
@@ -31958,9 +32025,9 @@ function presenterMonthlyCorporatePrayerSlides(item = {}, section = {}, index = 
       type: "title-assignee",
       label,
       title,
-      assignee: topic,
+      assignee: prayers[topicIndex].assignee,
       marker: "",
-      text: cleanList([title, topic]).join("\n"),
+      text: cleanList([title, prayers[topicIndex].assignee]).join("\n"),
       sort: index + topicIndex / 100,
     };
   });
